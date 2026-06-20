@@ -499,6 +499,118 @@ function addFanService(accessory, name, storePath, store, writeCallback, speedPa
 }
 
 /**
+ * Adds a Thermostat service.
+ * Supports SmartThings thermostat capabilities.
+ * Store paths: deviceKey/thermostatMode (string), /thermostatOperatingState (string),
+ *   /temperature (°C), /heatingSetpoint (°C), /coolingSetpoint (°C)
+ */
+function addThermostatService(accessory, name, deviceKey, store, writeCapability) {
+  const svc = accessory.addService(Service.Thermostat, name);
+
+  const modePath    = `${deviceKey}/thermostatMode`;
+  const opStatePath = `${deviceKey}/thermostatOperatingState`;
+  const tempPath    = `${deviceKey}/temperature`;
+  const heatSetPath = `${deviceKey}/heatingSetpoint`;
+  const coolSetPath = `${deviceKey}/coolingSetpoint`;
+
+  function stModeToHK(mode) {
+    if (mode === 'heat') return 1;
+    if (mode === 'cool') return 2;
+    if (mode === 'auto') return 3;
+    return 0;
+  }
+  function hkModeToST(v) {
+    if (v === 1) return 'heat';
+    if (v === 2) return 'cool';
+    if (v === 3) return 'auto';
+    return 'off';
+  }
+  function stOpToHK(state) {
+    if (state === 'heating') return 1;
+    if (state === 'cooling') return 2;
+    return 0;
+  }
+
+  svc.getCharacteristic(Characteristic.CurrentHeatingCoolingState)
+    .onGet(() => stOpToHK(store.get(opStatePath)));
+
+  svc.getCharacteristic(Characteristic.TargetHeatingCoolingState)
+    .onGet(() => stModeToHK(store.get(modePath)))
+    .onSet(async (v) => {
+      if (!writeCapability) return;
+      const mode = hkModeToST(v);
+      await writeCapability('thermostatMode', 'setThermostatMode', [mode]);
+      store.update(modePath, mode);
+    });
+
+  svc.getCharacteristic(Characteristic.CurrentTemperature)
+    .setProps({ minValue: -20, maxValue: 60 })
+    .onGet(() => clamp(store.get(tempPath) ?? 20, -20, 60));
+
+  svc.getCharacteristic(Characteristic.TargetTemperature)
+    .setProps({ minValue: 4, maxValue: 38, minStep: 0.5 })
+    .onGet(() => {
+      const mode = store.get(modePath);
+      if (mode === 'cool') return clamp(store.get(coolSetPath) ?? 24, 4, 38);
+      return clamp(store.get(heatSetPath) ?? 20, 4, 38);
+    })
+    .onSet(async (v) => {
+      if (!writeCapability) return;
+      const mode = store.get(modePath);
+      if (mode === 'cool') {
+        await writeCapability('thermostatCoolingSetpoint', 'setCoolingSetpoint', [v]);
+        store.update(coolSetPath, v);
+      } else {
+        await writeCapability('thermostatHeatingSetpoint', 'setHeatingSetpoint', [v]);
+        store.update(heatSetPath, v);
+      }
+    });
+
+  svc.getCharacteristic(Characteristic.TemperatureDisplayUnits)
+    .onGet(() => 0)
+    .onSet(() => {});
+
+  svc.getCharacteristic(Characteristic.HeatingThresholdTemperature)
+    .setProps({ minValue: 4, maxValue: 38, minStep: 0.5 })
+    .onGet(() => clamp(store.get(heatSetPath) ?? 20, 4, 38))
+    .onSet(async (v) => {
+      if (!writeCapability) return;
+      await writeCapability('thermostatHeatingSetpoint', 'setHeatingSetpoint', [v]);
+      store.update(heatSetPath, v);
+    });
+
+  svc.getCharacteristic(Characteristic.CoolingThresholdTemperature)
+    .setProps({ minValue: 10, maxValue: 35, minStep: 0.5 })
+    .onGet(() => clamp(store.get(coolSetPath) ?? 24, 10, 35))
+    .onSet(async (v) => {
+      if (!writeCapability) return;
+      await writeCapability('thermostatCoolingSetpoint', 'setCoolingSetpoint', [v]);
+      store.update(coolSetPath, v);
+    });
+
+  store.on('change', ({ key, value }) => {
+    if (key === opStatePath)
+      svc.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(stOpToHK(value));
+    if (key === modePath)
+      svc.getCharacteristic(Characteristic.TargetHeatingCoolingState).updateValue(stModeToHK(value));
+    if (key === tempPath)
+      svc.getCharacteristic(Characteristic.CurrentTemperature).updateValue(clamp(value, -20, 60));
+    if (key === heatSetPath) {
+      svc.getCharacteristic(Characteristic.HeatingThresholdTemperature).updateValue(clamp(value, 4, 38));
+      if (store.get(modePath) !== 'cool')
+        svc.getCharacteristic(Characteristic.TargetTemperature).updateValue(clamp(value, 4, 38));
+    }
+    if (key === coolSetPath) {
+      svc.getCharacteristic(Characteristic.CoolingThresholdTemperature).updateValue(clamp(value, 10, 35));
+      if (store.get(modePath) === 'cool')
+        svc.getCharacteristic(Characteristic.TargetTemperature).updateValue(clamp(value, 4, 38));
+    }
+  });
+
+  return svc;
+}
+
+/**
  * Adds a ContactSensor service.
  * 0 = contact detected (closed/normal), 1 = contact not detected (open/alarm)
  */
@@ -611,6 +723,12 @@ function buildDeviceAccessory(device, store) {
             return device._writeCapability('switch', cmd);
           },
           speed ? `${device.key}/${speed.path}` : null);
+      }
+    }
+
+    if (hkType === 'thermostat') {
+      if (device._writeCapability) {
+        addThermostatService(acc, device.label, device.key, store, device._writeCapability);
       }
     }
 

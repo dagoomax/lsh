@@ -28,6 +28,11 @@ const CAPABILITIES = {
   contactSensor:               { storeAttr: 'contact',          name: 'Contact',      format: 'on-off',      homekit: 'contact' },
   motionSensor:                { storeAttr: 'motion',           name: 'Motion',       format: 'on-off',      homekit: 'motion' },
   illuminanceMeasurement:      { storeAttr: 'illuminance',      name: 'Illuminance',  format: 'number',  homekit: 'lux' },
+  thermostatMode:              { storeAttr: 'thermostatMode',          name: 'Mode',             format: 'string', raw: true },
+  thermostatHeatingSetpoint:   { storeAttr: 'heatingSetpoint',         name: 'Heating Setpoint', format: 'temperature', unit: '°C', controllable: true, type: 'range', writeCmd: 'setHeatingSetpoint', capabilityId: 'thermostatHeatingSetpoint', min: 4, max: 38 },
+  thermostatCoolingSetpoint:   { storeAttr: 'coolingSetpoint',         name: 'Cooling Setpoint', format: 'temperature', unit: '°C', controllable: true, type: 'range', writeCmd: 'setCoolingSetpoint', capabilityId: 'thermostatCoolingSetpoint', min: 10, max: 35 },
+  thermostatOperatingState:    { storeAttr: 'thermostatOperatingState',name: 'Operating State',  format: 'string', raw: true },
+  temperatureSetpoint:         { storeAttr: 'heatingSetpoint',         name: 'Setpoint',         format: 'temperature', unit: '°C', controllable: true, type: 'range', writeCmd: 'setHeatingSetpoint', capabilityId: 'temperatureSetpoint', min: 4, max: 38 },
   fanControl:                  { storeAttr: 'switch',           name: 'Fan',          format: 'on-off',  homekit: 'fan-rw',   controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off', capabilityId: 'switch' },
   fanSpeed:                    { storeAttr: 'level',            name: 'Fan Speed',    format: 'percent', controllable: true, type: 'range', writeCmd: 'setFanSpeed', capabilityId: 'fanSpeed', min: 0, max: 100 },
   carbonMonoxideDetector:      { storeAttr: 'carbonMonoxide',   name: 'CO Detector',  format: 'alarm',       homekit: 'co' },
@@ -43,7 +48,9 @@ function _deriveHomekitTypes(caps) {
   const types = [];
 
   // ── Controllable device type (mutually exclusive) ──────────
-  if (caps.has('lock')) {
+  if (caps.has('thermostatMode') || caps.has('thermostatHeatingSetpoint') || caps.has('temperatureSetpoint')) {
+    types.push('thermostat');
+  } else if (caps.has('lock')) {
     types.push('lock-rw');
   } else if (caps.has('doorControl')) {
     types.push('door-rw');
@@ -220,8 +227,8 @@ class SmartThingsClient {
       let value = attrData.value;
       if (value == null) continue;
 
-      // Normalise string state values to 1/0
-      if (typeof value === 'string') {
+      // Normalise string state values to 1/0 (skip raw: true attributes like thermostat mode)
+      if (!def.raw && typeof value === 'string') {
         if (['on', 'open', 'active', 'present', 'unlocked', 'detected'].includes(value)) value = 1;
         else if (['off', 'closed', 'inactive', 'not present', 'locked', 'clear'].includes(value)) value = 0;
       }
