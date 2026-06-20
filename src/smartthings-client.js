@@ -27,7 +27,9 @@ const CAPABILITIES = {
   battery:                     { storeAttr: 'battery',          name: 'Battery',      format: 'percent',     homekit: 'battery-level' },
   contactSensor:               { storeAttr: 'contact',          name: 'Contact',      format: 'on-off',      homekit: 'contact' },
   motionSensor:                { storeAttr: 'motion',           name: 'Motion',       format: 'on-off',      homekit: 'motion' },
-  illuminanceMeasurement:      { storeAttr: 'illuminance',      name: 'Illuminance',  format: 'number' },
+  illuminanceMeasurement:      { storeAttr: 'illuminance',      name: 'Illuminance',  format: 'number',  homekit: 'lux' },
+  fanControl:                  { storeAttr: 'switch',           name: 'Fan',          format: 'on-off',  homekit: 'fan-rw',   controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off', capabilityId: 'switch' },
+  fanSpeed:                    { storeAttr: 'level',            name: 'Fan Speed',    format: 'percent', controllable: true, type: 'range', writeCmd: 'setFanSpeed', capabilityId: 'fanSpeed', min: 0, max: 100 },
   carbonMonoxideDetector:      { storeAttr: 'carbonMonoxide',   name: 'CO Detector',  format: 'alarm',       homekit: 'co' },
   smokeDetector:               { storeAttr: 'smoke',            name: 'Smoke',        format: 'alarm',       homekit: 'smoke' },
   waterSensor:                 { storeAttr: 'water',            name: 'Water Sensor', format: 'on-off',      homekit: 'leak' },
@@ -36,6 +38,38 @@ const CAPABILITIES = {
   doorControl:                 { storeAttr: 'door',             name: 'Door',         format: 'on-off',      controllable: true, type: 'toggle',     writeOn: 'open',               writeOff: 'close',   capabilityId: 'doorControl' },
   windowShade:                 { storeAttr: 'windowShade',      name: 'Shade',        format: 'on-off',      controllable: true, type: 'toggle',     writeOn: 'open',               writeOff: 'close',   capabilityId: 'windowShade' },
 };
+
+function _deriveHomekitTypes(caps) {
+  const types = [];
+
+  // ── Controllable device type (mutually exclusive) ──────────
+  if (caps.has('lock')) {
+    types.push('lock-rw');
+  } else if (caps.has('doorControl')) {
+    types.push('door-rw');
+  } else if (caps.has('windowShade')) {
+    types.push('cover-rw');
+  } else if (caps.has('fanControl') || (caps.has('switch') && caps.has('fanSpeed'))) {
+    types.push('fan-rw');
+  } else if (caps.has('switch')) {
+    // Dimmer or colour bulb → Lightbulb; plain switch → Switch
+    types.push(caps.has('switchLevel') ? 'light-rw' : 'switch-rw');
+  }
+
+  // ── Sensor types (additive) ────────────────────────────────
+  if (caps.has('battery'))                     types.push('battery-level');
+  if (caps.has('temperatureMeasurement'))      types.push('temperature');
+  if (caps.has('relativeHumidityMeasurement')) types.push('humidity');
+  if (caps.has('contactSensor'))               types.push('contact');
+  if (caps.has('motionSensor'))                types.push('motion');
+  if (caps.has('smokeDetector'))               types.push('smoke');
+  if (caps.has('carbonMonoxideDetector'))      types.push('co');
+  if (caps.has('waterSensor'))                 types.push('leak');
+  if (caps.has('presenceSensor'))              types.push('occupancy');
+  if (caps.has('illuminanceMeasurement'))      types.push('lux');
+
+  return types;
+}
 
 function deviceColor(caps) {
   if (caps.has('powerMeter') || caps.has('energyMeter')) return 'solar';
@@ -100,12 +134,10 @@ class SmartThingsClient {
       );
 
       const sensors = [];
-      const homekitTypes = [];
       for (const [capId, def] of Object.entries(CAPABILITIES)) {
         if (!caps.has(capId)) continue;
 
         if (def.type === 'color') {
-          // colorControl stores hue + saturation separately; the UI renders a combined picker
           sensors.push({ path: 'hue',        name: 'Hue',        format: 'number', hidden: true });
           sensors.push({ path: 'saturation', name: 'Saturation', format: 'number', hidden: true });
           sensors.push({ path: 'color',      name: def.name,     format: 'color',  controllable: true, type: 'color', capabilityId: def.capabilityId });
@@ -123,10 +155,12 @@ class SmartThingsClient {
         if (def.min != null)   sensor.min          = def.min;
         if (def.max != null)   sensor.max          = def.max;
         sensors.push(sensor);
-        if (def.homekit && !homekitTypes.includes(def.homekit)) homekitTypes.push(def.homekit);
       }
 
-      if (sensors.length === 0) continue; // skip devices with no mapped capabilities
+      if (sensors.length === 0) continue;
+
+      // Determine HomeKit types — order matters: specific types take precedence over generic switch
+      const homekitTypes = _deriveHomekitTypes(caps);
 
       const deviceId = item.deviceId;
       const device = {

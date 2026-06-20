@@ -258,6 +258,247 @@ function addOccupancySensorService(accessory, name, storePath, store) {
 }
 
 /**
+ * Adds a Lightbulb service.
+ * options: { hasLevel, hasColor, hasColorTemp }
+ * Store paths: deviceKey/switch, /level, /hue (0-100), /saturation (0-100), /colorTemperature (K)
+ */
+function addLightbulbService(accessory, name, deviceKey, store, writeCapability, options = {}) {
+  const svc = accessory.addService(Service.Lightbulb, name);
+
+  const swPath    = `${deviceKey}/switch`;
+  const levelPath = `${deviceKey}/level`;
+  const huePath   = `${deviceKey}/hue`;
+  const satPath   = `${deviceKey}/saturation`;
+  const ctPath    = `${deviceKey}/colorTemperature`;
+
+  svc.getCharacteristic(Characteristic.On)
+    .onGet(() => store.get(swPath) === 1)
+    .onSet(async (v) => {
+      await writeCapability('switch', v ? 'on' : 'off');
+      store.update(swPath, v ? 1 : 0);
+    });
+
+  if (options.hasLevel) {
+    svc.getCharacteristic(Characteristic.Brightness)
+      .onGet(() => clamp(store.get(levelPath), 0, 100))
+      .onSet(async (v) => {
+        await writeCapability('switchLevel', 'setLevel', [v]);
+        store.update(levelPath, v);
+      });
+  }
+
+  if (options.hasColor) {
+    // SmartThings hue: 0-100 → HomeKit: 0-360
+    svc.getCharacteristic(Characteristic.Hue)
+      .onGet(() => clamp((store.get(huePath) ?? 0) * 3.6, 0, 360))
+      .onSet(async (v) => {
+        const stHue = Math.round(v / 3.6);
+        const sat   = store.get(satPath) ?? 100;
+        await writeCapability('colorControl', 'setColor', [{ hue: stHue, saturation: sat }]);
+        store.update(huePath, stHue);
+      });
+
+    svc.getCharacteristic(Characteristic.Saturation)
+      .onGet(() => clamp(store.get(satPath), 0, 100))
+      .onSet(async (v) => {
+        const hue = store.get(huePath) ?? 0;
+        await writeCapability('colorControl', 'setColor', [{ hue, saturation: v }]);
+        store.update(satPath, v);
+      });
+  }
+
+  if (options.hasColorTemp) {
+    // SmartThings: Kelvin → HomeKit: mired (1,000,000 / K), clamped 140–500
+    svc.getCharacteristic(Characteristic.ColorTemperature)
+      .setProps({ minValue: 140, maxValue: 500 })
+      .onGet(() => {
+        const k = store.get(ctPath) || 4000;
+        return clamp(Math.round(1000000 / k), 140, 500);
+      })
+      .onSet(async (mireds) => {
+        const k = Math.round(1000000 / mireds);
+        await writeCapability('colorTemperature', 'setColorTemperature', [k]);
+        store.update(ctPath, k);
+      });
+  }
+
+  store.on('change', ({ key, value }) => {
+    if (key === swPath)    svc.getCharacteristic(Characteristic.On).updateValue(value === 1);
+    if (key === levelPath) svc.getCharacteristic(Characteristic.Brightness)?.updateValue(clamp(value, 0, 100));
+    if (key === huePath)   svc.getCharacteristic(Characteristic.Hue)?.updateValue(clamp(value * 3.6, 0, 360));
+    if (key === satPath)   svc.getCharacteristic(Characteristic.Saturation)?.updateValue(clamp(value, 0, 100));
+    if (key === ctPath)    svc.getCharacteristic(Characteristic.ColorTemperature)?.updateValue(clamp(Math.round(1000000 / value), 140, 500));
+  });
+
+  return svc;
+}
+
+/**
+ * Adds a LightSensor service.
+ * storePath value: lux (0.0001–100000)
+ */
+function addLightSensorService(accessory, name, storePath, store) {
+  const svc = accessory.addService(Service.LightSensor, name);
+
+  svc.getCharacteristic(Characteristic.CurrentAmbientLightLevel)
+    .setProps({ minValue: 0.0001, maxValue: 100000 })
+    .onGet(() => Math.max(0.0001, store.get(storePath) ?? 0.0001));
+
+  store.on('change', ({ key, value }) => {
+    if (key === storePath)
+      svc.getCharacteristic(Characteristic.CurrentAmbientLightLevel)
+        .updateValue(Math.max(0.0001, value));
+  });
+
+  return svc;
+}
+
+/**
+ * Adds a LockMechanism service.
+ * store value: 0=unlocked, 1=locked
+ */
+function addLockService(accessory, name, storePath, store, writeCallback) {
+  const svc = accessory.addService(Service.LockMechanism, name);
+
+  // CurrentState: 0=unsecured, 1=secured, 2=jammed, 3=unknown
+  svc.getCharacteristic(Characteristic.LockCurrentState)
+    .onGet(() => store.get(storePath) === 1 ? 1 : 0);
+
+  // TargetState: 0=unsecured, 1=secured
+  svc.getCharacteristic(Characteristic.LockTargetState)
+    .onGet(() => store.get(storePath) === 1 ? 1 : 0)
+    .onSet(async (v) => {
+      if (!writeCallback) return;
+      await writeCallback(v === 1 ? 'lock' : 'unlock');
+      store.update(storePath, v);
+    });
+
+  store.on('change', ({ key, value }) => {
+    if (key === storePath) {
+      const locked = value === 1 ? 1 : 0;
+      svc.getCharacteristic(Characteristic.LockCurrentState).updateValue(locked);
+      svc.getCharacteristic(Characteristic.LockTargetState).updateValue(locked);
+    }
+  });
+
+  return svc;
+}
+
+/**
+ * Adds a WindowCovering service.
+ * store value: 0=closed, 1=open (binary) OR 0-100 (position %)
+ * If levelPath is provided, uses that for position; otherwise binary.
+ */
+function addWindowCoveringService(accessory, name, storePath, store, writeCallback, levelPath) {
+  const svc = accessory.addService(Service.WindowCovering, name);
+
+  function getPos() {
+    if (levelPath) return clamp(store.get(levelPath) ?? 0, 0, 100);
+    return store.get(storePath) === 1 ? 100 : 0;
+  }
+
+  svc.getCharacteristic(Characteristic.CurrentPosition)
+    .onGet(getPos);
+
+  svc.getCharacteristic(Characteristic.TargetPosition)
+    .onGet(getPos)
+    .onSet(async (v) => {
+      if (!writeCallback) return;
+      if (levelPath) {
+        await writeCallback('setLevel', [v]);
+        store.update(levelPath, v);
+      } else {
+        const cmd = v >= 50 ? 'open' : 'close';
+        await writeCallback(cmd);
+        store.update(storePath, v >= 50 ? 1 : 0);
+      }
+    });
+
+  svc.getCharacteristic(Characteristic.PositionState)
+    .onGet(() => 2); // 2 = STOPPED
+
+  const update = () => {
+    const pos = getPos();
+    svc.getCharacteristic(Characteristic.CurrentPosition).updateValue(pos);
+    svc.getCharacteristic(Characteristic.TargetPosition).updateValue(pos);
+  };
+
+  store.on('change', ({ key }) => {
+    if (key === storePath || key === levelPath) update();
+  });
+
+  return svc;
+}
+
+/**
+ * Adds a GarageDoorOpener service.
+ * store value: 0=closed, 1=open
+ */
+function addDoorService(accessory, name, storePath, store, writeCallback) {
+  const svc = accessory.addService(Service.GarageDoorOpener, name);
+
+  // CurrentDoorState: 0=open, 1=closed, 2=opening, 3=closing, 4=stopped
+  svc.getCharacteristic(Characteristic.CurrentDoorState)
+    .onGet(() => store.get(storePath) === 1 ? 0 : 1);
+
+  // TargetDoorState: 0=open, 1=closed
+  svc.getCharacteristic(Characteristic.TargetDoorState)
+    .onGet(() => store.get(storePath) === 1 ? 0 : 1)
+    .onSet(async (v) => {
+      if (!writeCallback) return;
+      await writeCallback(v === 0 ? 'open' : 'close');
+      store.update(storePath, v === 0 ? 1 : 0);
+    });
+
+  svc.getCharacteristic(Characteristic.ObstructionDetected)
+    .onGet(() => false);
+
+  store.on('change', ({ key, value }) => {
+    if (key === storePath) {
+      const state = value === 1 ? 0 : 1; // 0=open, 1=closed
+      svc.getCharacteristic(Characteristic.CurrentDoorState).updateValue(state);
+      svc.getCharacteristic(Characteristic.TargetDoorState).updateValue(state);
+    }
+  });
+
+  return svc;
+}
+
+/**
+ * Adds a Fan service.
+ * storePath: on/off (1/0). speedPath: 0-100 (optional).
+ */
+function addFanService(accessory, name, storePath, store, writeCallback, speedPath) {
+  const svc = accessory.addService(Service.Fanv2, name);
+
+  // Active: 0=inactive, 1=active
+  svc.getCharacteristic(Characteristic.Active)
+    .onGet(() => store.get(storePath) === 1 ? 1 : 0)
+    .onSet(async (v) => {
+      if (!writeCallback) return;
+      await writeCallback(v === 1 ? 'on' : 'off');
+      store.update(storePath, v === 1 ? 1 : 0);
+    });
+
+  if (speedPath) {
+    svc.getCharacteristic(Characteristic.RotationSpeed)
+      .onGet(() => clamp(store.get(speedPath) ?? 0, 0, 100))
+      .onSet(async (v) => {
+        if (!writeCallback) return;
+        await writeCallback('setLevel', [v]);
+        store.update(speedPath, v);
+      });
+  }
+
+  store.on('change', ({ key, value }) => {
+    if (key === storePath)  svc.getCharacteristic(Characteristic.Active).updateValue(value === 1 ? 1 : 0);
+    if (key === speedPath)  svc.getCharacteristic(Characteristic.RotationSpeed)?.updateValue(clamp(value, 0, 100));
+  });
+
+  return svc;
+}
+
+/**
  * Adds a ContactSensor service.
  * 0 = contact detected (closed/normal), 1 = contact not detected (open/alarm)
  */
@@ -319,6 +560,63 @@ function buildDeviceAccessory(device, store) {
         const writeCallback = (command) => device._writeCapability(s.capabilityId, command);
         addSwitchService(acc, device.label, `${device.key}/${s.path}`, store, writeCallback);
       }
+    }
+
+    if (hkType === 'light-rw') {
+      const hasSwitchLevel = device.sensors.some(s => s.path === 'level');
+      const hasColor       = device.sensors.some(s => s.path === 'hue');
+      const hasColorTemp   = device.sensors.some(s => s.path === 'colorTemperature');
+      if (device._writeCapability) {
+        addLightbulbService(acc, device.label, device.key, store, device._writeCapability, {
+          hasLevel:     hasSwitchLevel,
+          hasColor,
+          hasColorTemp,
+        });
+      }
+    }
+
+    if (hkType === 'lock-rw') {
+      const s = device.sensors.find(s => s.path === 'lock');
+      if (s && device._writeCapability) {
+        addLockService(acc, device.label, `${device.key}/${s.path}`, store,
+          (cmd) => device._writeCapability('lock', cmd));
+      }
+    }
+
+    if (hkType === 'cover-rw') {
+      const s      = device.sensors.find(s => s.path === 'windowShade');
+      const level  = device.sensors.find(s => s.path === 'level');
+      if (s && device._writeCapability) {
+        addWindowCoveringService(acc, device.label, `${device.key}/${s.path}`, store,
+          (cmd, args = []) => device._writeCapability('windowShade', cmd, args),
+          level ? `${device.key}/${level.path}` : null);
+      }
+    }
+
+    if (hkType === 'door-rw') {
+      const s = device.sensors.find(s => s.path === 'door');
+      if (s && device._writeCapability) {
+        addDoorService(acc, device.label, `${device.key}/${s.path}`, store,
+          (cmd) => device._writeCapability('doorControl', cmd));
+      }
+    }
+
+    if (hkType === 'fan-rw') {
+      const s     = device.sensors.find(s => s.path === 'switch');
+      const speed = device.sensors.find(s => s.path === 'level');
+      if (s && device._writeCapability) {
+        addFanService(acc, device.label, `${device.key}/${s.path}`, store,
+          (cmd, args = []) => {
+            if (cmd === 'setLevel') return device._writeCapability('switchLevel', 'setLevel', args);
+            return device._writeCapability('switch', cmd);
+          },
+          speed ? `${device.key}/${speed.path}` : null);
+      }
+    }
+
+    if (hkType === 'lux') {
+      const s = device.sensors.find(s => s.path === 'illuminance');
+      if (s) addLightSensorService(acc, `${device.label} Light`, `${device.key}/${s.path}`, store);
     }
 
     if (hkType === 'battery-level') {
