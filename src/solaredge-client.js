@@ -12,6 +12,8 @@
  *   solaredge/batteryLevel   — battery SOC % (0-100, if storage present)
  */
 
+const platformStatus = require('./platform-status');
+
 const BASE_URL = 'https://monitoringapi.solaredge.com';
 const POLL_INTERVAL_MS = 30000;
 
@@ -30,6 +32,7 @@ class SolarEdgeClient {
     // Verify connectivity with an initial poll
     await this._poll();
     this.connected = true;
+    platformStatus.set('solaredge', true);
     this.pollTimer = setInterval(() => this._poll(), POLL_INTERVAL_MS);
     console.log(`[SolarEdge] Started polling site ${siteId} every ${POLL_INTERVAL_MS / 1000}s`);
   }

@@ -8,6 +8,8 @@
  * Auth: Personal Access Token from https://account.smartthings.com/tokens
  */
 
+const platformStatus = require('./platform-status');
+
 const BASE_URL = 'https://api.smartthings.com/v1';
 const POLL_INTERVAL_MS = 30000;
 
@@ -71,6 +73,7 @@ class SmartThingsClient {
 
     await this._discoverDevices();
     this.connected = true;
+    platformStatus.set('smartthings', true);
     this.pollTimer = setInterval(() => this._pollAll(), POLL_INTERVAL_MS);
     console.log(`[SmartThings] Started — ${this.devices.length} device(s), polling every ${POLL_INTERVAL_MS / 1000}s`);
   }

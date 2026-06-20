@@ -1,6 +1,7 @@
 'use strict';
 
-const http = require('http');
+const http           = require('http');
+const platformStatus = require('./platform-status');
 
 class ShellyClient {
   constructor(config, store, sensorRegistry) {
@@ -21,6 +22,7 @@ class ShellyClient {
       );
     }
 
+    platformStatus.set('shelly', true);
     this._timer = setInterval(() => this._pollAll(), 30000);
   }
 

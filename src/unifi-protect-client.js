@@ -1,6 +1,7 @@
 'use strict';
 
-const https = require('https');
+const https          = require('https');
+const platformStatus = require('./platform-status');
 
 const POLL_MS = 30_000;
 
@@ -19,6 +20,7 @@ class UnifiProtectClient {
   async start() {
     await this._authenticate();
     await this._discoverAll();
+    platformStatus.set('unifi', true);
     this.pollTimer = setInterval(() => this._pollSensors().catch(() => {}), POLL_MS);
     console.log(`[UniFi Protect] Started — ${this._cameras.length} camera(s), ${this.devices.length} sensor(s)`);
   }

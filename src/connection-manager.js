@@ -1,6 +1,7 @@
 const { EventEmitter } = require('events');
-const MqttClient = require('./mqtt-client');
-const VrmClient  = require('./vrm-client');
+const MqttClient     = require('./mqtt-client');
+const VrmClient      = require('./vrm-client');
+const platformStatus = require('./platform-status');
 
 const FALLBACK_DELAY_MS  = 15000; // wait before switching to cloud after MQTT drops
 const RETRY_MQTT_DELAY_MS = 60000; // how often to log MQTT reconnect attempts
@@ -21,15 +22,20 @@ class ConnectionManager extends EventEmitter {
 
   async start() {
     const hasMqtt = !!(this.config.mqtt?.host);
-    const hasVrm  = !!(this.config.vrm?.email && this.config.vrm?.password);
+    const hasVrm  = this._hasVrmCredentials();
 
     if (hasMqtt) {
       await this._startMqtt();
     } else if (hasVrm) {
       await this._startVrm('No MQTT host configured');
     } else {
-      console.warn('[Connection] No data source configured.');
+      console.warn('[Connection] No data source configured — running without live Victron data.');
     }
+  }
+
+  _hasVrmCredentials() {
+    const v = this.config.vrm;
+    return !!(v?.apiToken || (v?.email && v?.password));
   }
 
   getActiveClient() {
@@ -61,17 +67,20 @@ class ConnectionManager extends EventEmitter {
     this.mqtt.on('connected', () => {
       this._mqttEverConnected = true;
       clearTimeout(this._fallbackTimer);
+      platformStatus.set('victron-mqtt', true);
 
       if (this.source === 'vrm') {
         console.log('[Connection] MQTT back online — stopping VRM cloud polling');
         this.vrm?.stop();
         this.vrm = null;
+        platformStatus.set('victron-vrm', false);
       }
 
       this._setSource('mqtt');
     });
 
     this.mqtt.on('disconnected', () => {
+      platformStatus.set('victron-mqtt', false);
       if (this.source !== 'mqtt') return;
       const delay = FALLBACK_DELAY_MS / 1000;
       console.log(`[Connection] MQTT dropped — switching to VRM cloud in ${delay}s…`);
@@ -91,9 +100,8 @@ class ConnectionManager extends EventEmitter {
   async _startVrm(reason) {
     if (this.vrm?.connected) return; // already running
 
-    const hasVrm = !!(this.config.vrm?.email && this.config.vrm?.password);
-    if (!hasVrm) {
-      console.warn(`[Connection] ${reason} — no VRM credentials configured for cloud fallback.`);
+    if (!this._hasVrmCredentials()) {
+      console.warn(`[Connection] ${reason} — VRM not configured, running offline.`);
       this._setSource(null);
       return;
     }
@@ -102,9 +110,11 @@ class ConnectionManager extends EventEmitter {
     try {
       this.vrm = new VrmClient(this.config, this.store);
       await this.vrm.start();
+      platformStatus.set('victron-vrm', true);
       this._setSource('vrm');
     } catch (err) {
       console.error(`[Connection] VRM cloud failed: ${err.message}`);
+      platformStatus.set('victron-vrm', false);
       this._setSource(null);
     }
   }

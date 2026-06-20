@@ -1,7 +1,8 @@
 'use strict';
 
-const net = require('net');
-const EventEmitter = require('events');
+const net            = require('net');
+const EventEmitter   = require('events');
+const platformStatus = require('./platform-status');
 
 const POLL_MS         = 10_000;
 const QUERY_TIMEOUT   = 3_000;
@@ -131,6 +132,7 @@ class SatelClient extends EventEmitter {
       const sock = new net.Socket();
       sock.setTimeout(10_000);
       sock.connect(this.cfg.port || 7094, this.cfg.host, () => {
+        platformStatus.set('satel', true);
         this.socket = sock;
         resolve();
       });
@@ -146,6 +148,7 @@ class SatelClient extends EventEmitter {
       });
       sock.on('close', () => {
         this.socket = null;
+        platformStatus.set('satel', false);
         console.warn('[Satel] Disconnected — reconnecting in 30 s');
         this.reconnTimer = setTimeout(() => this._connect().catch(() => {}), RECONNECT_DELAY);
       });

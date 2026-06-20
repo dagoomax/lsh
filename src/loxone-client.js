@@ -1,8 +1,9 @@
 'use strict';
 
-const WebSocket = require('ws');
-const crypto    = require('crypto');
-const http      = require('http');
+const WebSocket      = require('ws');
+const crypto         = require('crypto');
+const http           = require('http');
+const platformStatus = require('./platform-status');
 
 // ── Control type definitions ───────────────────────────────────────────────
 //
@@ -163,6 +164,7 @@ class LoxoneClient {
     this._hdr = null;
 
     this._ws.on('open', async () => {
+      platformStatus.set('loxone', true);
       try {
         await this._auth();
         const structure = await this._fetchStructure();
@@ -179,6 +181,7 @@ class LoxoneClient {
     this._ws.on('message', data => this._onMessage(Buffer.isBuffer(data) ? data : Buffer.from(data)));
 
     this._ws.on('close', () => {
+      platformStatus.set('loxone', false);
       console.log('[Loxone] Disconnected — reconnecting in 30 s');
       this._scheduleReconnect();
     });

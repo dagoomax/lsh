@@ -45,6 +45,8 @@ socket.on('devices', (devices) => {
 
 socket.on('device-discovered', (device) => addOrUpdateDevice(device));
 
+socket.on('platform-status', (status) => renderPlatformBar(status));
+
 // ── Value application ──────────────────────────────────────────────────────
 function applyValue(key, value) {
   // Update static DOM bindings
@@ -715,4 +717,36 @@ function esc(str) {
   const d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
+}
+
+// ── Platform status logos ──────────────────────────────────────────────────
+
+const PLATFORMS = [
+  { key: 'victron-mqtt', label: 'MQTT',         color: '#0066cc', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M8 20l5-10 3 6 2-4 4 8" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
+  { key: 'victron-vrm',  label: 'VRM',          color: '#0066cc', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M10 11h12M16 11v10M12 21h8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>' },
+  { key: 'smartthings',  label: 'SmartThings',  color: '#15bfff', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><circle cx="16" cy="16" r="5" fill="#fff"/><circle cx="16" cy="7"  r="2" fill="#fff"/><circle cx="16" cy="25" r="2" fill="#fff"/><circle cx="7"  cy="16" r="2" fill="#fff"/><circle cx="25" cy="16" r="2" fill="#fff"/></svg>' },
+  { key: 'solaredge',    label: 'SolarEdge',    color: '#f47920', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M16 8v2M16 22v2M8 16H6M26 16h-2M10.3 10.3l-1.4-1.4M23.1 23.1l-1.4-1.4M10.3 21.7l-1.4 1.4M23.1 8.9l-1.4 1.4" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="16" r="4" fill="#fff"/></svg>' },
+  { key: 'loxone',       label: 'Loxone',       color: '#69b034', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><rect x="9" y="9" width="14" height="14" rx="2" fill="#fff"/><rect x="13" y="13" width="6" height="6" rx="1" fill="currentColor"/></svg>' },
+  { key: 'satel',        label: 'Satel',        color: '#e31e24', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M11 11h10v10H11z" fill="none" stroke="#fff" stroke-width="2"/><path d="M14 14h4v4h-4z" fill="#fff"/></svg>' },
+  { key: 'unifi',        label: 'UniFi',        color: '#0559c9', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M16 9a7 7 0 010 14 7 7 0 010-14z" fill="none" stroke="#fff" stroke-width="2"/><path d="M16 13a3 3 0 010 6 3 3 0 010-6z" fill="#fff"/></svg>' },
+  { key: 'shelly',       label: 'Shelly',       color: '#f0a500', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M16 10v6l4 2" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="16" r="3" fill="#fff"/></svg>' },
+  { key: 'mqtt-explorer',label: 'Explorer',     color: '#7c3aed', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><circle cx="10" cy="10" r="2.5" fill="#fff"/><circle cx="22" cy="10" r="2.5" fill="#fff"/><circle cx="10" cy="22" r="2.5" fill="#fff"/><circle cx="22" cy="22" r="2.5" fill="#fff"/><path d="M12.5 10h7M10 12.5v7M22 12.5v7M12.5 22h7" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>' },
+];
+
+const platformBar = document.getElementById('platform-bar');
+
+function renderPlatformBar(status) {
+  if (!platformBar) return;
+  const visible = PLATFORMS.filter(p => p.key in status);
+  if (!visible.length) { platformBar.style.display = 'none'; return; }
+  platformBar.style.display = 'flex';
+  platformBar.innerHTML = visible.map(p => {
+    const connected = status[p.key];
+    return `
+      <div class="plat-badge ${connected ? 'plat-connected' : 'plat-disconnected'}"
+           style="--plat-color:${p.color}" title="${p.label}: ${connected ? 'connected' : 'disconnected'}">
+        <span class="plat-icon">${p.svg}</span>
+        <span class="plat-label">${p.label}</span>
+      </div>`;
+  }).join('');
 }

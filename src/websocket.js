@@ -1,4 +1,5 @@
-const { Server } = require('socket.io');
+const { Server }     = require('socket.io');
+const platformStatus = require('./platform-status');
 
 function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr) {
   const io = new Server(httpServer, { cors: { origin: '*' } });
@@ -12,6 +13,7 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr) {
     if (connectionMgr) {
       socket.emit('connection-status', connectionMgr.getStatus());
     }
+    socket.emit('platform-status', platformStatus.getAll());
 
     socket.on('disconnect', () => console.log(`[WS] Client disconnected (${socket.id})`));
   });
@@ -45,6 +47,11 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr) {
       io.emit('connection-status', connectionMgr.getStatus());
     });
   }
+
+  // Forward platform status changes
+  platformStatus.on('change', (status) => {
+    io.emit('platform-status', status);
+  });
 
   return io;
 }

@@ -1,6 +1,7 @@
 'use strict';
 
-const mqtt = require('mqtt');
+const mqtt           = require('mqtt');
+const platformStatus = require('./platform-status');
 
 const HISTORY_MAX = 100; // messages kept per topic
 
@@ -32,10 +33,12 @@ class MqttExplorer {
     this._client.on('connect', () => {
       console.log('[MQTT Explorer] Connected — subscribing to #');
       for (const sub of this._subs) this._client.subscribe(sub);
+      platformStatus.set('mqtt-explorer', true);
       this._io?.emit('mqtt-explorer-status', { connected: true });
     });
 
     this._client.on('close', () => {
+      platformStatus.set('mqtt-explorer', false);
       this._io?.emit('mqtt-explorer-status', { connected: false });
     });
 
