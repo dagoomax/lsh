@@ -6,6 +6,7 @@
   <title>Logs – LoxoneSwaggerHelper</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="logs.css">
+  <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('lsh-theme')||'dark')</script>
 </head>
 <body>
   <header>
@@ -16,7 +17,7 @@
       <a href="/logs.html" class="nav-link active">Logs</a>
       <a href="/mqtt.html" class="nav-link">MQTT</a>
     </nav>
-    <div></div>
+    <button class="theme-toggle" id="btn-theme"></button>
   </header>
 
   <main class="logs-main">
@@ -54,5 +55,6 @@
   </footer>
 
   <script src="logs.js"></script>
+  <script src="theme.js"></script>
 </body>
 </html>

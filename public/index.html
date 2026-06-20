@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LoxoneSwaggerHelper</title>
   <link rel="stylesheet" href="style.css">
+  <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('lsh-theme')||'dark')</script>
 </head>
 <body>
   <header>
@@ -16,6 +17,7 @@
       <a href="/mqtt.html" class="nav-link">MQTT</a>
     </nav>
     <div class="platform-bar" id="platform-bar"></div>
+    <button class="theme-toggle" id="btn-theme"></button>
     <div class="connection-status-wrap">
       <div class="connection-status" id="connection-status">Connecting...</div>
       <div class="source-badge" id="source-badge" style="display:none"></div>
@@ -171,5 +173,6 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="app.js"></script>
+  <script src="theme.js"></script>
 </body>
 </html>

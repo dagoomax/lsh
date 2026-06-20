@@ -6,6 +6,7 @@
   <title>Settings – LoxoneSwaggerHelper</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="settings.css">
+  <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('lsh-theme')||'dark')</script>
 </head>
 <body>
   <header>
@@ -16,7 +17,7 @@
       <a href="/logs.html" class="nav-link">Logs</a>
       <a href="/mqtt.html" class="nav-link">MQTT</a>
     </nav>
-    <div></div>
+    <button class="theme-toggle" id="btn-theme"></button>
   </header>
 
   <main class="settings-main">
@@ -396,5 +397,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="settings.js"></script>
+  <script src="theme.js"></script>
 </body>
 </html>
