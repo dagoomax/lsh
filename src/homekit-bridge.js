@@ -1,9 +1,11 @@
 const hap = require('hap-nodejs');
 const { generateSetupUri } = require('./homekit-uri');
+const { CameraDelegate, STREAMING_OPTIONS } = require('./homekit-camera');
 
 const {
   Accessory,
   Bridge,
+  CameraController,
   Characteristic,
   Service,
   Categories,
@@ -771,9 +773,29 @@ function buildDeviceAccessory(device, store) {
   return acc;
 }
 
+// ── Camera accessory builder ───────────────────────────────────────────────
+
+function addCameraToBridge(cam, bridge) {
+  const acc = new Accessory(cam.name, makeUUID(`camera-${cam.name}`));
+  acc.category = Categories.CAMERA;
+  setInfo(acc, 'Camera', cam.name, `CAM-${cam.name}`);
+
+  const delegate   = new CameraDelegate(cam);
+  const controller = new CameraController({
+    cameraStreamCount: 2,
+    delegate,
+    streamingOptions: STREAMING_OPTIONS,
+  });
+
+  acc.configureController(controller);
+  bridge.addBridgedAccessory(acc);
+  const streamType = cam.url ? 'snapshot+stream' : 'snapshot';
+  console.log(`[HomeKit] Camera: ${cam.name} (${streamType})`);
+}
+
 // ── Main bridge factory ────────────────────────────────────────────────────
 
-function startHomekitBridge(config, store, relayController, sensorRegistry) {
+function startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect } = {}) {
   const bridge = new Bridge('Victron Energy', makeUUID('bridge'));
 
   setInfo(bridge, 'Victron Energy', 'Cerbo GX Dashboard', 'VICTRON-001');
@@ -803,6 +825,32 @@ function startHomekitBridge(config, store, relayController, sensorRegistry) {
 
     bridge.addBridgedAccessory(acc);
     console.log(`[HomeKit] Relay switch: ${relay.name}`);
+  }
+
+  // ── Camera accessories ────────────────────────────────────
+  for (const cam of config.cameras ?? []) {
+    if (cam.name) {
+      try { addCameraToBridge(cam, bridge); } catch (err) {
+        console.error(`[HomeKit] Camera failed (${cam.name}): ${err.message}`);
+      }
+    }
+  }
+
+  // UniFi Protect cameras may not be discovered yet — add them when ready
+  if (unifiProtect) {
+    // Add any already-discovered cameras (unlikely but safe)
+    for (const cam of unifiProtect.getCameras()) {
+      try { addCameraToBridge(cam, bridge); } catch (err) {
+        console.error(`[HomeKit] UniFi camera failed (${cam.name}): ${err.message}`);
+      }
+    }
+    unifiProtect.on('cameras-discovered', (cameras) => {
+      for (const cam of cameras) {
+        try { addCameraToBridge(cam, bridge); } catch (err) {
+          console.error(`[HomeKit] UniFi camera failed (${cam.name}): ${err.message}`);
+        }
+      }
+    });
   }
 
   // ── Sensor accessories (auto-discovered from MQTT) ────────

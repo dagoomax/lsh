@@ -87,7 +87,7 @@ async function main() {
   }
 
   try {
-    startHomekitBridge(config, store, relayController, sensorRegistry);
+    startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect });
   } catch (err) {
     console.error(`[HomeKit] Start failed: ${err.message}`);
   }

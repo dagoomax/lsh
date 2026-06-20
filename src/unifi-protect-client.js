@@ -1,12 +1,14 @@
 'use strict';
 
 const https          = require('https');
+const EventEmitter   = require('events');
 const platformStatus = require('./platform-status');
 
 const POLL_MS = 30_000;
 
-class UnifiProtectClient {
+class UnifiProtectClient extends EventEmitter {
   constructor(config, store, sensorRegistry) {
+    super();
     this.cfg            = config.unifi;
     this.store          = store;
     this.sensorRegistry = sensorRegistry;
@@ -79,10 +81,30 @@ class UnifiProtectClient {
   async _discoverCameras() {
     const cams = await this._get('/proxy/protect/api/cameras');
     this._cameras = cams.map(cam => ({
-      name:        cam.name || cam.id,
-      url:         null,
-      snapshotUrl: `/api/unifi/snapshot/${cam.id}`,
+      name:          cam.name || cam.id,
+      url:           null,
+      snapshotUrl:   `/api/unifi/snapshot/${cam.id}`,
+      fetchSnapshot: () => this.fetchSnapshotBuffer(cam.id),
     }));
+    this.emit('cameras-discovered', this._cameras);
+  }
+
+  fetchSnapshotBuffer(cameraId) {
+    return new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: this.cfg.host,
+        path:     `/proxy/protect/api/cameras/${cameraId}/snapshot`,
+        method:   'GET',
+        headers:  this._headers(),
+        rejectUnauthorized: false,
+      }, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve(Buffer.concat(chunks)));
+      });
+      req.on('error', reject);
+      req.end();
+    });
   }
 
   async _discoverSensors() {
