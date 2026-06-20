@@ -1,0 +1,718 @@
+// ── State ──────────────────────────────────────────────────────────────────
+const socket      = io();
+const statusEl    = document.getElementById('connection-status');
+const sourceBadge = document.getElementById('source-badge');
+const relaysCon   = document.getElementById('relays-container');
+const batteryBar  = document.getElementById('battery-bar');
+const lastUpdate  = document.getElementById('last-update');
+const devicesGrid = document.getElementById('devices-grid');
+const devicesHdr  = document.getElementById('devices-header');
+
+const knownDevices = new Map();
+const cameraTimers = new Map();
+
+// ── Socket events ──────────────────────────────────────────────────────────
+socket.on('connect', () => {
+  statusEl.textContent = 'Connected';
+  statusEl.className = 'connection-status connected';
+  loadRelays();
+  loadCameras();
+});
+
+socket.on('disconnect', () => {
+  statusEl.textContent = 'Disconnected';
+  statusEl.className = 'connection-status disconnected';
+  setSourceBadge(null);
+});
+
+socket.on('connection-status', (status) => {
+  setSourceBadge(status.source);
+});
+
+socket.on('snapshot', (data) => {
+  for (const [key, value] of Object.entries(data)) applyValue(key, value);
+  updateTimestamp();
+});
+
+socket.on('update', (data) => {
+  for (const [key, value] of Object.entries(data)) applyValue(key, value);
+  updateTimestamp();
+});
+
+socket.on('devices', (devices) => {
+  for (const device of devices) addOrUpdateDevice(device);
+});
+
+socket.on('device-discovered', (device) => addOrUpdateDevice(device));
+
+// ── Value application ──────────────────────────────────────────────────────
+function applyValue(key, value) {
+  // Update static DOM bindings
+  document.querySelectorAll(`[data-key="${key}"]`).forEach((el) => {
+    el.textContent = fmt(value, el.dataset.format);
+  });
+
+  // Special handlers
+  if (key === 'system/0/Dc/Battery/Soc')    updateBatteryBar(value);
+  if (key === 'system/0/Ac/Grid/L1/Power')  updateGridFlow(value);
+  if (key.match(/^system\/0\/Relay\/\d+\/State$/)) {
+    const idx = parseInt(key.split('/')[3]);
+    updateRelayUI(idx, value === 1);
+  }
+
+  // Update device sensor cells
+  updateDeviceSensor(key, value);
+}
+
+// ── Formatters ─────────────────────────────────────────────────────────────
+const MPPT_STATES = {
+  0:'Off', 2:'Fault', 3:'Bulk', 4:'Absorption', 5:'Float',
+  6:'Storage', 7:'Equalize', 11:'External Control',
+};
+const VEBUS_STATES = {
+  0:'Off', 1:'Low Power', 2:'Fault', 3:'Bulk', 4:'Absorption',
+  5:'Float', 6:'Storage', 7:'Equalize', 8:'Passthru', 9:'Inverting',
+  10:'Power Assist', 11:'Power Supply', 244:'Sustain', 252:'External Control',
+  256:'Discharging', 257:'Sustain',
+};
+const VEBUS_MODES     = { 1:'Charger Only', 2:'Inverter Only', 3:'On', 4:'Off' };
+const BATTERY_STATES  = { 0:'Idle', 1:'Charging', 2:'Discharging' };
+const TANK_STATUSES   = { 0:'OK', 1:'Disconnected', 2:'Short Circuit', 3:'Reversed', 4:'Unknown' };
+const FLUID_TYPES     = { 0:'Fuel', 1:'Fresh Water', 2:'Waste Water', 3:'Live Well', 4:'Oil', 5:'Black Water', 6:'Gasoline' };
+const TEMP_TYPES      = { 0:'Battery', 1:'Fridge', 2:'Generic', 3:'Room', 4:'Outdoor', 5:'Water Heater' };
+const DINPUT_TYPES    = { 0:'Door', 1:'Bilge Pump', 2:'Bilge Alarm', 3:'Burglar Alarm', 4:'Smoke Alarm', 5:'Fire Alarm', 6:'CO₂ Alarm', 7:'Generator', 8:'None', 9:'Pulsemeter', 10:'Tank Pump' };
+const GENERATOR_STATES = { 0:'Stopped', 1:'Running', 10:'Error' };
+const CHARGER_STATES  = { 0:'Off', 1:'Low Power', 2:'Fault', 3:'Bulk', 4:'Absorption', 5:'Float', 6:'Storage', 7:'Equalize' };
+const MPPT_ERRORS     = { 0:'OK', 1:'Bat temp high', 2:'Bat volt high', 17:'Chgr temp high', 18:'Over-current', 20:'Bulk timeout', 26:'Terminals hot', 33:'PV volt high', 34:'PV current high', 38:'Input shutdown', 67:'BMS lost', 116:'Cal data lost', 119:'Settings lost' };
+
+function fmt(value, format) {
+  if (value === null || value === undefined) return '--';
+  switch (format) {
+    case 'voltage':       return `${Number(value).toFixed(2)} V`;
+    case 'current':       return `${Number(value).toFixed(1)} A`;
+    case 'power':
+    case 'power-raw':     return fmtPower(value);
+    case 'energy':        return `${Number(value).toFixed(2)} kWh`;
+    case 'capacity':      return `${Number(value).toFixed(1)} Ah`;
+    case 'percent':       return `${Number(value).toFixed(1)} %`;
+    case 'frequency':     return `${Number(value).toFixed(2)} Hz`;
+    case 'temperature':   return `${Number(value).toFixed(1)} °C`;
+    case 'pressure':      return `${Number(value).toFixed(0)} hPa`;
+    case 'volume':        return `${Number(value).toFixed(0)} L`;
+    case 'speed':         return `${(Number(value) * 3.6).toFixed(1)} km/h`;
+    case 'degrees':       return `${Number(value).toFixed(1)}°`;
+    case 'count':         return String(Math.round(Number(value)));
+    case 'number':        return Number(value).toFixed(2);
+    case 'gps-coord':     return Number(value).toFixed(6);
+    case 'on-off':        return value ? 'ON' : 'OFF';
+    case 'alarm':         return value === 1 ? '⚠ ALARM' : 'OK';
+    case 'grid-status':   return value === 1 ? 'Connected' : 'Disconnected';
+    case 'gps-fix':       return value === 1 ? 'Fix' : 'No Fix';
+    case 'mppt-state':    return MPPT_STATES[value]     ?? `State ${value}`;
+    case 'mppt-error':    return MPPT_ERRORS[value]     ?? `Error ${value}`;
+    case 'vebus-state':   return VEBUS_STATES[value]    ?? `State ${value}`;
+    case 'vebus-mode':    return VEBUS_MODES[value]     ?? `Mode ${value}`;
+    case 'battery-state': return BATTERY_STATES[value]  ?? `State ${value}`;
+    case 'charger-state': return CHARGER_STATES[value]  ?? `State ${value}`;
+    case 'tank-status':   return TANK_STATUSES[value]   ?? `Status ${value}`;
+    case 'fluid-type':    return FLUID_TYPES[value]     ?? `Type ${value}`;
+    case 'temp-type':     return TEMP_TYPES[value]      ?? `Type ${value}`;
+    case 'dinput-type':   return DINPUT_TYPES[value]    ?? `Type ${value}`;
+    case 'generator-state': return GENERATOR_STATES[value] ?? `State ${value}`;
+    case 'time':
+    case 'duration': {
+      if (!value || value <= 0) return '--';
+      const h = Math.floor(value / 3600);
+      const m = Math.floor((value % 3600) / 60);
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    }
+    case 'led':           return value === 1 ? '●' : '○';
+    default:              return typeof value === 'number' ? Number(value).toFixed(1) : String(value);
+  }
+}
+
+function fmtPower(value) {
+  const abs = Math.abs(Number(value));
+  return abs >= 1000 ? `${(abs / 1000).toFixed(2)} kW` : `${Math.round(abs)} W`;
+}
+
+// ── Battery bar ────────────────────────────────────────────────────────────
+function updateBatteryBar(soc) {
+  if (soc == null) return;
+  batteryBar.style.width = `${Math.min(100, Math.max(0, soc))}%`;
+  batteryBar.classList.remove('low', 'medium');
+  if (soc < 20) batteryBar.classList.add('low');
+  else if (soc < 50) batteryBar.classList.add('medium');
+}
+
+// ── Grid flow indicator ────────────────────────────────────────────────────
+function updateGridFlow(power) {
+  const parent = document.querySelector('.grid-card .metric-large');
+  if (!parent) return;
+  let el = parent.querySelector('.flow-direction');
+  if (!el) { el = document.createElement('span'); el.className = 'flow-direction'; parent.appendChild(el); }
+  if (power > 10)       { el.className = 'flow-direction importing'; el.textContent = 'importing'; }
+  else if (power < -10) { el.className = 'flow-direction exporting'; el.textContent = 'exporting'; }
+  else                  { el.textContent = ''; }
+}
+
+// ── Relays ─────────────────────────────────────────────────────────────────
+async function loadRelays() {
+  try {
+    const res = await fetch('/api/relays');
+    const { data } = await res.json();
+    renderRelays(data);
+  } catch { /* ignore */ }
+}
+
+function renderRelays(relays) {
+  relaysCon.innerHTML = '';
+  for (const relay of relays) {
+    const item = document.createElement('div');
+    item.className = 'relay-item';
+    item.innerHTML = `
+      <div>
+        <div class="relay-name">${esc(relay.name)}</div>
+        <div class="relay-status" id="relay-status-${relay.index}">${relay.on ? 'ON' : 'OFF'}</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="relay-toggle-${relay.index}" ${relay.on ? 'checked' : ''}>
+        <span class="toggle-slider"></span>
+      </label>`;
+    item.querySelector('input').addEventListener('change', (e) =>
+      toggleRelay(relay.index, e.target.checked, e.target));
+    relaysCon.appendChild(item);
+  }
+}
+
+function updateRelayUI(index, on) {
+  const cb = document.getElementById(`relay-toggle-${index}`);
+  if (cb) cb.checked = on;
+  const st = document.getElementById(`relay-status-${index}`);
+  if (st) st.textContent = on ? 'ON' : 'OFF';
+}
+
+async function toggleRelay(index, on, checkbox) {
+  checkbox.disabled = true;
+  try {
+    const res = await fetch(`/api/relay/${index}/state`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ on }),
+    });
+    if (!res.ok) { checkbox.checked = !on; }
+  } catch { checkbox.checked = !on; }
+  finally { checkbox.disabled = false; }
+}
+
+// ── Cameras ────────────────────────────────────────────────────────────────
+async function loadCameras() {
+  try {
+    const res = await fetch('/api/cameras');
+    const { data } = await res.json();
+    renderCameras(data || []);
+  } catch { /* ignore */ }
+}
+
+function renderCameras(cameras) {
+  const section = document.getElementById('cameras-section');
+  const grid    = document.getElementById('cameras-grid');
+
+  // Stop MJPEG streams before wiping the grid
+  grid.querySelectorAll('.camera-snapshot').forEach(img => { img.src = ''; });
+  cameraTimers.forEach(t => clearInterval(t));
+  cameraTimers.clear();
+
+  if (!cameras.length) { section.style.display = 'none'; return; }
+
+  section.style.display = '';
+  grid.innerHTML = '';
+
+  for (const cam of cameras) {
+    const card     = document.createElement('div');
+    card.className = 'camera-item';
+
+    const hasMjpeg    = !!(cam.mjpegUrl    && cam.mjpegUrl.trim());
+    const hasSnapshot = !!(cam.snapshotUrl && cam.snapshotUrl.trim());
+
+    const preview = document.createElement('div');
+    preview.className = 'camera-preview';
+
+    if (hasMjpeg) {
+      const img = document.createElement('img');
+      img.className = 'camera-snapshot';
+      img.alt = cam.name;
+      img.src = cam.mjpegUrl;           // browser streams natively
+      preview.appendChild(img);
+    } else if (hasSnapshot) {
+      const img = document.createElement('img');
+      img.className = 'camera-snapshot';
+      img.alt = cam.name;
+      img.loading = 'lazy';
+      img.src = cam.snapshotUrl;
+      preview.appendChild(img);
+      const refresh = () => { img.src = `${cam.snapshotUrl}?_=${Date.now()}`; };
+      cameraTimers.set(cam.name, setInterval(refresh, 10000));
+    } else {
+      preview.innerHTML = `<div class="camera-no-snapshot">
+        <span class="camera-placeholder-icon">📷</span>
+        <span>No snapshot</span>
+      </div>`;
+    }
+
+    const hasWebrtc = !!(cam.webrtcUrl && cam.webrtcUrl.trim());
+    const badge = hasMjpeg  ? '<span class="cam-live-badge">LIVE</span>'
+                : hasWebrtc ? '<span class="cam-live-badge cam-webrtc-badge">WebRTC</span>'
+                : '';
+
+    card.innerHTML = `<div class="camera-name">${esc(cam.name)}${badge}</div>`;
+    card.appendChild(preview);
+    card.insertAdjacentHTML('beforeend', `
+      <div class="camera-footer">
+        <span class="camera-url" title="${esc(cam.url || '')}">${esc(cam.url || '—')}</span>
+      </div>`);
+
+    card.addEventListener('click', () => openCameraModal(cam));
+    grid.appendChild(card);
+  }
+}
+
+// ── Camera modal ────────────────────────────────────────────────────────────
+
+let _modalTimer = null;
+let _modalCam   = null;
+let _activePc   = null;   // active RTCPeerConnection
+
+function openCameraModal(cam) {
+  _modalCam = cam;
+  _closeModalStreams();   // clean up any previous session
+
+  document.getElementById('cam-modal-title').textContent = cam.name;
+  document.getElementById('cam-modal-url').textContent   = cam.url || '';
+
+  const video  = document.getElementById('cam-modal-video');
+  const img    = document.getElementById('cam-modal-img');
+  const noSnap = document.getElementById('cam-modal-no-snap');
+  const info   = document.getElementById('cam-modal-refresh');
+
+  // Reset all panels
+  video.style.display  = 'none';
+  img.style.display    = 'none';
+  noSnap.style.display = 'none';
+  video.srcObject      = null;
+  img.src              = '';
+  img.alt              = cam.name;
+
+  if (cam.webrtcUrl && cam.webrtcUrl.trim()) {
+    video.style.display = 'block';
+    info.textContent    = 'WebRTC connecting…';
+    _startWebRTC(video, cam.webrtcUrl.trim())
+      .then(pc => {
+        _activePc = pc;
+        info.textContent = 'WebRTC live';
+      })
+      .catch(err => {
+        console.error('[WebRTC]', err.message);
+        info.textContent = `WebRTC failed — ${err.message}`;
+        // Graceful fallback to MJPEG or snapshot
+        video.style.display = 'none';
+        if (cam.mjpegUrl && cam.mjpegUrl.trim()) {
+          img.style.display = 'block';
+          img.src           = cam.mjpegUrl;
+          info.textContent  = 'Fallback: MJPEG';
+        } else if (cam.snapshotUrl && cam.snapshotUrl.trim()) {
+          img.style.display = 'block';
+          _refreshModalSnap(cam.snapshotUrl);
+          _modalTimer = setInterval(() => _refreshModalSnap(cam.snapshotUrl), 2000);
+          info.textContent = 'Fallback: snapshot (2 s)';
+        }
+      });
+
+  } else if (cam.mjpegUrl && cam.mjpegUrl.trim()) {
+    img.style.display = 'block';
+    img.src           = cam.mjpegUrl;
+    info.textContent  = 'MJPEG live stream';
+
+  } else if (cam.snapshotUrl && cam.snapshotUrl.trim()) {
+    img.style.display = 'block';
+    _refreshModalSnap(cam.snapshotUrl);
+    info.textContent = 'Refreshing every 2 s';
+    _modalTimer = setInterval(() => _refreshModalSnap(cam.snapshotUrl), 2000);
+
+  } else {
+    noSnap.style.display = 'flex';
+    info.textContent     = '';
+  }
+
+  document.getElementById('cam-modal').style.display = 'flex';
+  document.getElementById('cam-modal-close').focus();
+}
+
+function _refreshModalSnap(url) {
+  const img  = document.getElementById('cam-modal-img');
+  const next = new Image();
+  next.onload = () => { img.src = next.src; };
+  next.src = `${url}?_=${Date.now()}`;
+}
+
+function _closeModalStreams() {
+  clearInterval(_modalTimer);
+  _modalTimer = null;
+  if (_activePc) { _activePc.close(); _activePc = null; }
+  const img   = document.getElementById('cam-modal-img');
+  const video = document.getElementById('cam-modal-video');
+  if (img)   img.src        = '';
+  if (video) video.srcObject = null;
+}
+
+function closeCameraModal() {
+  document.getElementById('cam-modal').style.display = 'none';
+  _closeModalStreams();
+  _modalCam = null;
+}
+
+document.getElementById('cam-modal-close').addEventListener('click', closeCameraModal);
+document.querySelector('.cam-modal-backdrop').addEventListener('click', closeCameraModal);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && _modalCam) closeCameraModal();
+});
+
+// ── WebRTC (WHEP) ────────────────────────────────────────────────────────────
+// Implements the WebRTC HTTP Egress Protocol (WHEP, RFC 9559).
+// Works with go2rtc, mediamtx, Frigate, and any WHEP-compliant server.
+
+async function _startWebRTC(videoEl, whepUrl) {
+  const pc = new RTCPeerConnection({
+    iceServers:   [{ urls: 'stun:stun.l.google.com:19302' }],
+    bundlePolicy: 'max-bundle',
+  });
+
+  pc.ontrack = e => {
+    if (e.streams && e.streams[0]) videoEl.srcObject = e.streams[0];
+  };
+
+  // Receive-only — no camera/mic access needed
+  pc.addTransceiver('video', { direction: 'recvonly' });
+  pc.addTransceiver('audio', { direction: 'recvonly' });
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  // Wait for ICE candidates (max 3 s to avoid stalling on restricted networks)
+  await new Promise(resolve => {
+    if (pc.iceGatheringState === 'complete') { resolve(); return; }
+    const done = () => {
+      if (pc.iceGatheringState === 'complete') {
+        pc.removeEventListener('icegatheringstatechange', done);
+        resolve();
+      }
+    };
+    pc.addEventListener('icegatheringstatechange', done);
+    setTimeout(resolve, 3000);
+  });
+
+  // POST complete SDP offer to WHEP endpoint via server proxy
+  const resp = await fetch('/api/webrtc/offer', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ url: whepUrl, sdp: pc.localDescription.sdp }),
+  });
+
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${resp.status}`);
+  }
+
+  const { sdp, error } = await resp.json();
+  if (error) throw new Error(error);
+
+  await pc.setRemoteDescription({ type: 'answer', sdp });
+  return pc;
+}
+
+// ── Color conversion utilities ────────────────────────────────────────────
+// SmartThings hue: 0–100, saturation: 0–100 (not 0–360 / 0–100%)
+function hsvToHex(stHue, stSat) {
+  const h = stHue / 100, s = stSat / 100, v = 1;
+  const i = Math.floor(h * 6), f = h * 6 - i;
+  const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+  let r, g, b;
+  switch (i % 6) {
+    case 0: r=v; g=t; b=p; break; case 1: r=q; g=v; b=p; break;
+    case 2: r=p; g=v; b=t; break; case 3: r=p; g=q; b=v; break;
+    case 4: r=t; g=p; b=v; break; default: r=v; g=p; b=q;
+  }
+  return '#' + [r, g, b].map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
+}
+
+function hexToHsv(hex) {
+  const r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+  let h = 0;
+  if (d) {
+    if (max === r) h = ((g-b)/d % 6) / 6;
+    else if (max === g) h = ((b-r)/d + 2) / 6;
+    else h = ((r-g)/d + 4) / 6;
+    if (h < 0) h += 1;
+  }
+  return { hue: Math.round(h * 100), saturation: max ? Math.round((d/max) * 100) : 0 };
+}
+
+function syncColorInput(el) {
+  el.value = hsvToHex(el._hue ?? 0, el._sat ?? 100);
+}
+
+function formatRangeDisplay(rangeFormat, value) {
+  const v = Math.round(value);
+  if (rangeFormat === 'percent') return `${v}%`;
+  if (rangeFormat === 'color-temp') return `${v}K`;
+  return String(v);
+}
+
+// ── Card size ─────────────────────────────────────────────────────────────
+const SIZE_ICONS = { normal: '⊞', compact: '–', expanded: '⊠' };
+const SIZE_CYCLE = ['normal', 'compact', 'expanded'];
+
+function applyCardSize(card, size) {
+  card.classList.remove('compact', 'expanded');
+  if (size !== 'normal') card.classList.add(size);
+  const btn = card.querySelector('.card-size-btn');
+  if (btn) btn.textContent = SIZE_ICONS[size] || '⊞';
+}
+
+function cycleCardSize(card, deviceKey) {
+  const cur = SIZE_CYCLE.find(s => card.classList.contains(s)) || 'normal';
+  const next = SIZE_CYCLE[(SIZE_CYCLE.indexOf(cur) + 1) % SIZE_CYCLE.length];
+  localStorage.setItem(`card-size-${deviceKey}`, next);
+  applyCardSize(card, next);
+}
+
+// ── Debounce + send command ───────────────────────────────────────────────
+const debounceTimers = new Map();
+function debounce(key, fn, delay = 300) {
+  if (debounceTimers.has(key)) clearTimeout(debounceTimers.get(key));
+  debounceTimers.set(key, setTimeout(() => { debounceTimers.delete(key); fn(); }, delay));
+}
+
+async function sendDeviceCommand(deviceKey, sensorPath, value) {
+  try {
+    const res = await fetch(`/api/device/${deviceKey}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor: sensorPath, value }),
+    });
+    if (!res.ok) console.warn('[Control] Command failed:', res.status);
+  } catch (err) {
+    console.warn('[Control] Command error:', err.message);
+  }
+}
+
+// ── Device cards ───────────────────────────────────────────────────────────
+function buildSensorRow(sensor, readings, deviceKey) {
+  if (sensor.hidden) return '';
+  const fullKey = `${deviceKey}/${sensor.path}`;
+  const reading  = readings[sensor.path];
+
+  if (sensor.controllable && (sensor.type === 'range' || sensor.type === 'color-temp')) {
+    const cur  = reading?.value ?? sensor.min ?? 0;
+    const disp = formatRangeDisplay(sensor.format, cur);
+    return `<div class="sensor-row sensor-row-range">
+      <span class="sensor-label">${esc(sensor.name)}</span>
+      <div class="sensor-range-wrap">
+        <input type="range" class="sensor-range"
+          min="${sensor.min ?? 0}" max="${sensor.max ?? 100}" step="1" value="${cur}"
+          data-sensor-key="${fullKey}" data-device-key="${deviceKey}" data-sensor-path="${sensor.path}">
+        <span class="sensor-range-val" data-sensor-key="${fullKey}" data-range-format="${sensor.format}">${disp}</span>
+      </div>
+    </div>`;
+  }
+
+  if (sensor.controllable && sensor.type === 'color') {
+    const hue = readings['hue']?.value ?? 0;
+    const sat = readings['saturation']?.value ?? 100;
+    return `<div class="sensor-row sensor-row-color">
+      <span class="sensor-label">${esc(sensor.name)}</span>
+      <input type="color" class="sensor-color" value="${hsvToHex(hue, sat)}"
+        data-device-key="${deviceKey}" data-sensor-path="color"
+        data-hue-key="${deviceKey}/hue" data-sat-key="${deviceKey}/saturation">
+    </div>`;
+  }
+
+  if (sensor.controllable) {
+    const checked = reading && reading.value === 1 ? ' checked' : '';
+    return `<div class="sensor-row sensor-row-ctrl">
+      <span class="sensor-label">${esc(sensor.name)}</span>
+      <label class="toggle">
+        <input type="checkbox" class="sensor-toggle"
+          data-sensor-key="${fullKey}" data-device-key="${deviceKey}" data-sensor-path="${sensor.path}"${checked}>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`;
+  }
+
+  const value = reading ? fmt(reading.value, sensor.format) : '--';
+  const alarmClass = sensor.format === 'alarm' ? ' sensor-alarm' : '';
+  return `<div class="sensor-row${alarmClass}">
+    <span class="sensor-label">${esc(sensor.name)}</span>
+    <span class="sensor-value" data-sensor-key="${fullKey}">${value}</span>
+  </div>`;
+}
+
+function addOrUpdateDevice(device) {
+  if (!device || !device.key) return;
+
+  devicesHdr.style.display = '';
+
+  if (knownDevices.has(device.key)) {
+    const readings = device.readings || {};
+    for (const [sensorPath, reading] of Object.entries(readings)) {
+      updateDeviceSensor(`${device.key}/${sensorPath}`, reading.value);
+    }
+    return;
+  }
+
+  knownDevices.set(device.key, device);
+
+  const card = document.createElement('section');
+  card.className = `device-card device-${device.color || 'blue'}`;
+  card.id = `device-${device.key.replace(/\//g, '-')}`;
+
+  const readings = device.readings || {};
+  const sensorRows = (device.sensors || []).map((s) => buildSensorRow(s, readings, device.key)).join('');
+  const homekitBadges = (device.homekit || []).map((hk) =>
+    `<span class="hk-badge">${hkLabel(hk)}</span>`).join('');
+
+  card.innerHTML = `
+    <div class="device-header">
+      <span class="device-icon">${device.icon || '📟'}</span>
+      <div style="flex:1;min-width:0">
+        <div class="device-title">${esc(device.label)}</div>
+        <div class="device-meta">
+          <span class="device-instance">${device.type}/${device.instance}</span>
+          ${homekitBadges}
+        </div>
+      </div>
+      <button class="card-size-btn" title="Resize card">${SIZE_ICONS.normal}</button>
+    </div>
+    <div class="sensor-list">${sensorRows}</div>`;
+
+  devicesGrid.appendChild(card);
+
+  const savedSize = localStorage.getItem(`card-size-${device.key}`) || 'normal';
+  applyCardSize(card, savedSize);
+  card.querySelector('.card-size-btn').addEventListener('click', () => cycleCardSize(card, device.key));
+}
+
+// ── Device control events (toggle, range, color) ──────────────────────────
+devicesGrid.addEventListener('change', async (e) => {
+  const input = e.target;
+  if (!input.classList.contains('sensor-toggle')) return;
+  const deviceKey  = input.dataset.deviceKey;
+  const sensorPath = input.dataset.sensorPath;
+  const value = input.checked;
+  input.disabled = true;
+  try {
+    const res = await fetch(`/api/device/${deviceKey}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor: sensorPath, value }),
+    });
+    if (!res.ok) input.checked = !value;
+  } catch { input.checked = !value; }
+  finally { input.disabled = false; }
+});
+
+devicesGrid.addEventListener('input', (e) => {
+  const input = e.target;
+
+  if (input.classList.contains('sensor-range')) {
+    const deviceKey  = input.dataset.deviceKey;
+    const sensorPath = input.dataset.sensorPath;
+    const val = parseFloat(input.value);
+    const dispEl = devicesGrid.querySelector(`.sensor-range-val[data-sensor-key="${CSS.escape(input.dataset.sensorKey)}"]`);
+    if (dispEl) dispEl.textContent = formatRangeDisplay(dispEl.dataset.rangeFormat, val);
+    debounce(`range-${deviceKey}-${sensorPath}`, () => sendDeviceCommand(deviceKey, sensorPath, val));
+    return;
+  }
+
+  if (input.classList.contains('sensor-color')) {
+    const deviceKey  = input.dataset.deviceKey;
+    const sensorPath = input.dataset.sensorPath;
+    const color = hexToHsv(input.value);
+    debounce(`color-${deviceKey}`, () => sendDeviceCommand(deviceKey, sensorPath, color));
+  }
+});
+
+function updateDeviceSensor(fullKey, value) {
+  const cells = document.querySelectorAll(`[data-sensor-key="${CSS.escape(fullKey)}"]`);
+  cells.forEach((cell) => {
+    if (cell.tagName === 'INPUT' && cell.type === 'checkbox') {
+      if (!cell.disabled) cell.checked = value === 1;
+      return;
+    }
+    if (cell.tagName === 'INPUT' && cell.type === 'range') {
+      if (!cell.disabled) cell.value = value;
+      return;
+    }
+    if (cell.dataset.rangeFormat) {
+      cell.textContent = formatRangeDisplay(cell.dataset.rangeFormat, value);
+      return;
+    }
+    const format = cell.dataset.format || guessFormat(fullKey);
+    cell.textContent = fmt(value, format);
+    if (format === 'alarm') cell.classList.toggle('alarm-active', value === 1);
+  });
+
+  // Color picker updates via hue/saturation paths
+  document.querySelectorAll(`input.sensor-color[data-hue-key="${CSS.escape(fullKey)}"]`)
+    .forEach(el => { el._hue = value; syncColorInput(el); });
+  document.querySelectorAll(`input.sensor-color[data-sat-key="${CSS.escape(fullKey)}"]`)
+    .forEach(el => { el._sat = value; syncColorInput(el); });
+}
+
+function guessFormat(key) {
+  if (key.includes('/Temperature')) return 'temperature';
+  if (key.includes('/Voltage') || key.endsWith('/V')) return 'voltage';
+  if (key.includes('/Current') || key.endsWith('/I')) return 'current';
+  if (key.includes('/Power') || key.endsWith('/P')) return 'power';
+  if (key.includes('/Soc') || key.includes('/Level') || key.includes('/Humidity')) return 'percent';
+  if (key.includes('/Frequency') || key.endsWith('/F')) return 'frequency';
+  if (key.includes('/Yield')) return 'energy';
+  return 'number';
+}
+
+function hkLabel(hk) {
+  const map = {
+    temperature: '🌡 Temp', humidity: '💧 Humidity', battery: '🔋 Battery',
+    tank: '🪣 Tank', contact: '🔔 Contact', 'switch-rw': '💡 Switch',
+    'battery-level': '🔋 Battery', motion: '👁 Motion', smoke: '🔥 Smoke',
+    co: '⚠️ CO', leak: '💧 Leak', occupancy: '📍 Presence',
+  };
+  return map[hk] || hk;
+}
+
+// ── Timestamp ──────────────────────────────────────────────────────────────
+function setSourceBadge(source) {
+  if (!sourceBadge) return;
+  if (!source) { sourceBadge.style.display = 'none'; return; }
+  sourceBadge.style.display = '';
+  if (source === 'mqtt') {
+    sourceBadge.textContent = '⚡ Local MQTT';
+    sourceBadge.className = 'source-badge source-mqtt';
+  } else if (source === 'vrm') {
+    sourceBadge.textContent = '☁️ VRM Cloud';
+    sourceBadge.className = 'source-badge source-vrm';
+  } else {
+    sourceBadge.style.display = 'none';
+  }
+}
+
+function updateTimestamp() {
+  lastUpdate.textContent = `Last update: ${new Date().toLocaleTimeString()}`;
+}
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}

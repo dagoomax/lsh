@@ -1,0 +1,5 @@
+config.json
+node_modules/
+persist/
+logs/
+.claude/

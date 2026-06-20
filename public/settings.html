@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings – LoxoneSwaggerHelper</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <header>
+    <h1>LoxoneSwaggerHelper</h1>
+    <nav class="header-nav">
+      <a href="/" class="nav-link">Dashboard</a>
+      <a href="/settings.html" class="nav-link active">Settings</a>
+      <a href="/logs.html" class="nav-link">Logs</a>
+      <a href="/mqtt.html" class="nav-link">MQTT</a>
+    </nav>
+    <div></div>
+  </header>
+
+  <main class="settings-main">
+
+    <!-- MQTT -->
+    <section class="card settings-card">
+      <h2>Cerbo GX – MQTT Connection</h2>
+      <p class="section-desc">Direct local connection to your Cerbo GX (recommended).</p>
+
+      <div class="form-row">
+        <label for="mqtt-host">Host / IP Address</label>
+        <input type="text" id="mqtt-host" placeholder="192.168.1.100">
+      </div>
+      <div class="form-row">
+        <label for="mqtt-port">Port</label>
+        <input type="number" id="mqtt-port" placeholder="1883" min="1" max="65535">
+      </div>
+      <div class="form-row">
+        <label for="mqtt-portal">Portal ID <span class="hint">(leave blank to auto-discover)</span></label>
+        <input type="text" id="mqtt-portal" placeholder="e0ff50a097c0">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-mqtt">Test Connection</button>
+        <span class="test-result" id="mqtt-test-result"></span>
+      </div>
+    </section>
+
+    <!-- VRM -->
+    <section class="card settings-card">
+      <h2>VRM Cloud API <span class="badge">Fallback</span></h2>
+      <p class="section-desc">Used when local MQTT is unavailable.</p>
+
+      <div class="form-row">
+        <label for="vrm-api-token">API Token <span class="hint">(preferred — leave blank to use email/password)</span></label>
+        <input type="password" id="vrm-api-token" placeholder="eyJ0eXAiOiJKV1QiLCJhbGciOi…">
+      </div>
+      <div class="form-row">
+        <label for="vrm-email">VRM Email</label>
+        <input type="email" id="vrm-email" placeholder="you@example.com">
+      </div>
+      <div class="form-row">
+        <label for="vrm-password">VRM Password</label>
+        <input type="password" id="vrm-password" placeholder="••••••••">
+      </div>
+      <div class="form-row">
+        <label for="vrm-id">Installation ID</label>
+        <input type="text" id="vrm-id" placeholder="12345">
+      </div>
+
+      <div class="form-actions vrm-actions">
+        <button class="btn btn-secondary" id="btn-test-vrm">Test Credentials</button>
+        <button class="btn btn-secondary" id="btn-test-vrm-live">Test Live Data</button>
+        <button class="btn btn-primary"   id="btn-save-vrm">Save</button>
+      </div>
+      <div class="test-result" id="vrm-test-result"></div>
+
+      <!-- Live data preview panel (shown after successful live test) -->
+      <div id="vrm-live-panel" class="vrm-live-panel" style="display:none">
+        <div class="vrm-live-title">
+          <span id="vrm-inst-name">—</span>
+          <span class="vrm-live-badge">Live via Cloud</span>
+        </div>
+        <div class="vrm-live-grid">
+          <div class="vrm-live-item">
+            <span class="vrm-live-label">Battery SOC</span>
+            <span class="vrm-live-value" id="vl-soc">--</span>
+          </div>
+          <div class="vrm-live-item">
+            <span class="vrm-live-label">Battery Voltage</span>
+            <span class="vrm-live-value" id="vl-voltage">--</span>
+          </div>
+          <div class="vrm-live-item">
+            <span class="vrm-live-label">Solar Power</span>
+            <span class="vrm-live-value" id="vl-solar">--</span>
+          </div>
+          <div class="vrm-live-item">
+            <span class="vrm-live-label">Grid Power</span>
+            <span class="vrm-live-value" id="vl-grid">--</span>
+          </div>
+          <div class="vrm-live-item">
+            <span class="vrm-live-label">AC Consumption</span>
+            <span class="vrm-live-value" id="vl-consumption">--</span>
+          </div>
+          <div class="vrm-live-item">
+            <span class="vrm-live-label">System State</span>
+            <span class="vrm-live-value" id="vl-state">--</span>
+          </div>
+        </div>
+        <div class="vrm-live-ts" id="vrm-live-ts"></div>
+      </div>
+    </section>
+
+    <!-- SolarEdge -->
+    <section class="card settings-card">
+      <h2>SolarEdge <span class="badge">Optional</span></h2>
+      <p class="section-desc">Adds real-time solar production data from the SolarEdge Monitoring API. Runs alongside Victron data sources.</p>
+
+      <div class="form-row">
+        <label for="se-site-id">Site ID</label>
+        <input type="text" id="se-site-id" placeholder="12345">
+      </div>
+      <div class="form-row">
+        <label for="se-api-key">API Key</label>
+        <input type="password" id="se-api-key" placeholder="••••••••••••••••••••••••••••••••">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-solaredge">Test Connection</button>
+        <button class="btn btn-primary" id="btn-save-solaredge">Save</button>
+        <span class="test-result" id="se-test-result"></span>
+      </div>
+    </section>
+
+    <!-- SmartThings -->
+    <section class="card settings-card">
+      <h2>Samsung SmartThings <span class="badge">Optional</span></h2>
+      <p class="section-desc">Adds SmartThings devices (switches, power meters, sensors) to the dashboard. Get a Personal Access Token from <strong>account.smartthings.com/tokens</strong>.</p>
+
+      <div class="form-row">
+        <label for="st-token">Personal Access Token</label>
+        <input type="password" id="st-token" placeholder="••••••••••••••••••••••••••••••••••••">
+      </div>
+      <div class="form-row">
+        <label for="st-device-ids">Device IDs to sync <span class="hint">(comma-separated — leave blank for all devices)</span></label>
+        <input type="text" id="st-device-ids" placeholder="abc123-..., def456-...">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-smartthings">Test Connection</button>
+        <button class="btn btn-primary" id="btn-save-smartthings">Save</button>
+        <span class="test-result" id="st-test-result"></span>
+      </div>
+    </section>
+
+    <!-- Satel -->
+    <section class="card settings-card">
+      <h2>Satel INTEGRA <span class="badge">Optional</span></h2>
+      <p class="section-desc">Connect to a Satel INTEGRA alarm panel via ETHM-1 Plus module (TCP port 7094). Zones and partitions appear as dashboard sensors.</p>
+
+      <div class="form-row">
+        <label for="satel-host">ETHM-1 Plus Host / IP</label>
+        <input type="text" id="satel-host" placeholder="192.168.1.100">
+      </div>
+      <div class="form-row">
+        <label for="satel-port">Port <span class="hint">(default 7094)</span></label>
+        <input type="number" id="satel-port" placeholder="7094" min="1" max="65535">
+      </div>
+      <div class="form-row">
+        <label for="satel-code">Arm / Disarm Code <span class="hint">(PIN for arming/disarming partitions)</span></label>
+        <input type="password" id="satel-code" placeholder="••••">
+      </div>
+      <div class="form-row">
+        <label for="satel-zone-count">Zone count <span class="hint">(how many zones to monitor)</span></label>
+        <input type="number" id="satel-zone-count" placeholder="32" min="1" max="128">
+      </div>
+      <div class="form-row">
+        <label for="satel-partitions">Partitions <span class="hint">(comma-separated, e.g. 1,2)</span></label>
+        <input type="text" id="satel-partitions" placeholder="1">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-satel">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-satel">Save</button>
+        <span class="test-result" id="satel-test-result"></span>
+      </div>
+    </section>
+
+    <!-- UniFi Protect -->
+    <section class="card settings-card">
+      <h2>UniFi Protect <span class="badge">Optional</span></h2>
+      <p class="section-desc">Auto-discovers cameras (shown in dashboard) and sensors (door, motion, temperature, humidity) from a UniFi Dream Machine or UNVR.</p>
+
+      <div class="form-row">
+        <label for="unifi-host">Console Host / IP</label>
+        <input type="text" id="unifi-host" placeholder="192.168.1.1">
+      </div>
+      <div class="form-row">
+        <label for="unifi-apikey">API Key <span class="hint">(preferred — from UniFi OS → Control Plane → API Keys)</span></label>
+        <input type="password" id="unifi-apikey" placeholder="••••••••••••••••••••••••••••••••">
+      </div>
+      <div class="form-row">
+        <label for="unifi-user">Username <span class="hint">(fallback when no API key)</span></label>
+        <input type="text" id="unifi-user" placeholder="admin">
+      </div>
+      <div class="form-row">
+        <label for="unifi-pass">Password</label>
+        <input type="password" id="unifi-pass" placeholder="••••••••">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-unifi">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-unifi">Save</button>
+        <span class="test-result" id="unifi-test-result"></span>
+      </div>
+    </section>
+
+    <!-- Loxone -->
+    <section class="card settings-card">
+      <h2>Loxone Miniserver <span class="badge">Optional</span></h2>
+      <p class="section-desc">Connects to a Loxone Miniserver via WebSocket. All rooms, switches, dimmers, blinds, thermostats, and sensors are auto-discovered from the structure file.</p>
+
+      <div class="form-row">
+        <label for="loxone-host">Miniserver Host / IP</label>
+        <input type="text" id="loxone-host" placeholder="192.168.1.100">
+      </div>
+      <div class="form-row">
+        <label for="loxone-port">Port <span class="hint">(default 80)</span></label>
+        <input type="number" id="loxone-port" placeholder="80" min="1" max="65535">
+      </div>
+      <div class="form-row">
+        <label for="loxone-user">Username</label>
+        <input type="text" id="loxone-user" placeholder="admin">
+      </div>
+      <div class="form-row">
+        <label for="loxone-pass">Password</label>
+        <input type="password" id="loxone-pass" placeholder="••••••••">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-loxone">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-loxone">Save</button>
+        <span class="test-result" id="loxone-test-result"></span>
+      </div>
+    </section>
+
+    <!-- Shelly -->
+    <section class="card settings-card">
+      <h2>Shelly <span class="badge">Optional</span></h2>
+      <p class="section-desc">Add Shelly Gen1 and Gen2 smart devices by IP address. Switches, dimmers, plugs, and sensors are auto-detected and polled every 30 s.</p>
+
+      <div id="shelly-devices-list"></div>
+      <button class="btn btn-secondary" id="btn-add-shelly">+ Add Device</button>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-primary" id="btn-save-shelly">Save Devices</button>
+        <span class="test-result" id="shelly-save-result"></span>
+      </div>
+    </section>
+
+    <!-- Cameras -->
+    <section class="card settings-card">
+      <h2>Cameras</h2>
+      <p class="section-desc">Cameras shown on the dashboard. Provide an RTSP URL and optionally a snapshot URL (HTTP JPEG endpoint) for live preview.</p>
+
+      <div id="cameras-settings-list"></div>
+
+      <button class="btn btn-secondary" id="btn-add-camera">+ Add Camera</button>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-primary" id="btn-save-cameras">Save Cameras</button>
+        <span class="test-result" id="cameras-save-result"></span>
+      </div>
+    </section>
+
+    <!-- Relays -->
+    <section class="card settings-card">
+      <h2>Relays</h2>
+      <p class="section-desc">Name and enable the relays on your Cerbo GX.</p>
+
+      <div id="relays-settings-list"></div>
+
+      <button class="btn btn-secondary" id="btn-add-relay">+ Add Relay</button>
+    </section>
+
+    <!-- HomeKit -->
+    <section class="card settings-card">
+      <h2>HomeKit Integration</h2>
+      <p class="section-desc">Pair the relay bridge in Apple Home using the PIN below.</p>
+
+      <div class="form-row">
+        <label for="hk-pin">Pairing PIN</label>
+        <input type="text" id="hk-pin" placeholder="031-45-154" maxlength="10">
+      </div>
+      <div class="form-row">
+        <label for="hk-port">Bridge Port</label>
+        <input type="number" id="hk-port" placeholder="47128" min="1024" max="65535">
+      </div>
+      <div class="form-row">
+        <label for="hk-username">Bridge MAC</label>
+        <input type="text" id="hk-username" placeholder="CC:22:3D:E3:CE:F6">
+      </div>
+
+      <div class="homekit-qr">
+        <div class="qr-box">
+          <div id="homekit-qrcode"></div>
+          <div class="qr-loading" id="qr-loading">Generating…</div>
+        </div>
+        <div class="qr-info">
+          <div class="qr-pin-label">PIN Code</div>
+          <div class="qr-pin-value" id="hk-pin-big">--</div>
+          <p class="hint" style="margin-top:10px">Scan with iPhone Camera or open <strong>Home → Add Accessory</strong> and scan this code.</p>
+          <p class="hint" style="margin-top:6px">Or choose <strong>More Options</strong> and enter the PIN manually.</p>
+          <p class="hint qr-setup-id" id="qr-setup-id"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Server -->
+    <section class="card settings-card">
+      <h2>Server</h2>
+      <div class="form-row">
+        <label for="server-port">HTTP Port</label>
+        <input type="number" id="server-port" placeholder="3000" min="1024" max="65535">
+      </div>
+    </section>
+
+    <!-- Backup & Restore -->
+    <section class="card settings-card">
+      <h2>Backup &amp; Restore</h2>
+      <p class="section-desc">Save your entire configuration to a file or restore from a previous backup.</p>
+
+      <div class="backup-row">
+        <div class="backup-item">
+          <div class="backup-label">Export</div>
+          <p class="hint">Download <code>config.json</code> including all credentials and settings.</p>
+          <a class="btn btn-secondary" id="btn-export" href="/api/settings/export" download>⬇ Download Config</a>
+        </div>
+
+        <div class="backup-divider"></div>
+
+        <div class="backup-item">
+          <div class="backup-label">Import</div>
+          <p class="hint">Restore from a previously exported config file.</p>
+          <label class="btn btn-secondary" id="btn-import-label">
+            ⬆ Choose File…
+            <input type="file" id="import-file-input" accept=".json,application/json" style="display:none">
+          </label>
+        </div>
+      </div>
+
+      <!-- Preview panel shown after file is selected -->
+      <div id="import-preview" class="import-preview" style="display:none">
+        <div class="import-preview-title">
+          <span id="import-filename"></span>
+          <span class="import-preview-badge">Preview</span>
+        </div>
+        <div class="import-preview-grid">
+          <div class="import-kv"><span>MQTT Host</span><strong id="ip-mqtt-host">—</strong></div>
+          <div class="import-kv"><span>VRM Email</span><strong id="ip-vrm-email">—</strong></div>
+          <div class="import-kv"><span>Installation ID</span><strong id="ip-vrm-id">—</strong></div>
+          <div class="import-kv"><span>Relays</span><strong id="ip-relays">—</strong></div>
+          <div class="import-kv"><span>HomeKit PIN</span><strong id="ip-hk-pin">—</strong></div>
+          <div class="import-kv"><span>Server Port</span><strong id="ip-server-port">—</strong></div>
+        </div>
+        <div class="import-actions">
+          <button class="btn btn-primary" id="btn-import-confirm">Restore This Config</button>
+          <button class="btn btn-secondary" id="btn-import-cancel">Cancel</button>
+          <span class="test-result" id="import-result"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Save bar -->
+    <div class="save-bar">
+      <div class="save-message" id="save-message"></div>
+      <button class="btn btn-danger" id="btn-restart">Restart Server</button>
+      <button class="btn btn-primary" id="btn-save">Save Settings</button>
+    </div>
+
+    <!-- Restart overlay -->
+    <div id="restart-overlay" class="restart-overlay" style="display:none">
+      <div class="restart-box">
+        <div class="restart-spinner"></div>
+        <div class="restart-title" id="restart-title">Restarting…</div>
+        <div class="restart-sub" id="restart-sub">The server is restarting. Reconnecting in <strong id="restart-countdown">10</strong>s…</div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <span>LoxoneSwaggerHelper</span>
+    <span>Use <strong>Restart Server</strong> after changing connection settings</span>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoxoneSwaggerHelper</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>LoxoneSwaggerHelper</h1>
+    <nav class="header-nav">
+      <a href="/" class="nav-link active">Dashboard</a>
+      <a href="/settings.html" class="nav-link">Settings</a>
+      <a href="/logs.html" class="nav-link">Logs</a>
+      <a href="/mqtt.html" class="nav-link">MQTT</a>
+    </nav>
+    <div class="connection-status-wrap">
+      <div class="connection-status" id="connection-status">Connecting...</div>
+      <div class="source-badge" id="source-badge" style="display:none"></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ── System Overview ──────────────────────────────── -->
+    <section class="card battery-card">
+      <h2>Battery</h2>
+      <div class="metric-large">
+        <span data-key="system/0/Dc/Battery/Soc" id="battery-soc">--</span>
+        <span class="unit">%</span>
+      </div>
+      <div class="battery-bar-container">
+        <div class="battery-bar" id="battery-bar"></div>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <span class="label">Voltage</span>
+          <span class="value" data-key="system/0/Dc/Battery/Voltage" data-format="voltage">--</span>
+        </div>
+        <div class="metric">
+          <span class="label">Current</span>
+          <span class="value" data-key="system/0/Dc/Battery/Current" data-format="current">--</span>
+        </div>
+        <div class="metric">
+          <span class="label">Power</span>
+          <span class="value" data-key="system/0/Dc/Battery/Power" data-format="power">--</span>
+        </div>
+        <div class="metric">
+          <span class="label">Time to Go</span>
+          <span class="value" data-key="system/0/Dc/Battery/TimeToGo" data-format="time">--</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card solar-card">
+      <h2>Solar</h2>
+      <div class="metric-large">
+        <span data-key="system/0/Dc/Pv/Power" data-format="power-raw" id="solar-power">--</span>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <span class="label">Current</span>
+          <span class="value" data-key="system/0/Dc/Pv/Current" data-format="current">--</span>
+        </div>
+        <div class="metric">
+          <span class="label">Daily Yield</span>
+          <span class="value" data-key="system/0/PvChargerAggregated/Yield/User" data-format="energy">--</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card grid-card">
+      <h2>Grid</h2>
+      <div class="metric-large">
+        <span data-key="system/0/Ac/Grid/L1/Power" data-format="power-raw" id="grid-power">--</span>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <span class="label">Voltage</span>
+          <span class="value" data-key="system/0/Ac/Grid/L1/Voltage" data-format="voltage">--</span>
+        </div>
+        <div class="metric">
+          <span class="label">Current</span>
+          <span class="value" data-key="system/0/Ac/Grid/L1/Current" data-format="current">--</span>
+        </div>
+        <div class="metric">
+          <span class="label">Frequency</span>
+          <span class="value" data-key="system/0/Ac/Grid/L1/Frequency" data-format="frequency">--</span>
+        </div>
+        <div class="metric">
+          <span class="label">Status</span>
+          <span class="value" data-key="system/0/Ac/Grid/Available" data-format="grid-status">--</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card loads-card">
+      <h2>AC Loads</h2>
+      <div class="metric-large">
+        <span data-key="system/0/Ac/Consumption/L1/Power" data-format="power-raw" id="ac-loads-power">--</span>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <span class="label">L2 Power</span>
+          <span class="value" data-key="system/0/Ac/Consumption/L2/Power" data-format="power">--</span>
+        </div>
+        <div class="metric">
+          <span class="label">L3 Power</span>
+          <span class="value" data-key="system/0/Ac/Consumption/L3/Power" data-format="power">--</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card dc-card">
+      <h2>DC System</h2>
+      <div class="metric-large">
+        <span data-key="system/0/Dc/System/Power" data-format="power-raw" id="dc-power">--</span>
+      </div>
+    </section>
+
+    <!-- ── Cameras ──────────────────────────────────────── -->
+    <section class="card cameras-card" id="cameras-section" style="display:none">
+      <h2>Cameras</h2>
+      <div id="cameras-grid"></div>
+    </section>
+
+    <!-- ── Relays ──────────────────────────────────────── -->
+    <section class="card relays-card" id="relays-section">
+      <h2>Relays</h2>
+      <div id="relays-container"></div>
+    </section>
+
+    <!-- ── Discovered Devices ─────────────────────────── -->
+    <section class="card devices-header-card" id="devices-header" style="display:none">
+      <h2>Devices</h2>
+      <p class="devices-subtitle" id="devices-subtitle">Auto-discovered via MQTT</p>
+    </section>
+  </main>
+
+  <!-- Device cards appended dynamically below main -->
+  <div id="devices-grid"></div>
+
+  <footer>
+    <span>LoxoneSwaggerHelper</span>
+    <span id="last-update">Last update: --</span>
+  </footer>
+
+  <!-- Camera popup -->
+  <div id="cam-modal" class="cam-modal" style="display:none" role="dialog" aria-modal="true">
+    <div class="cam-modal-backdrop"></div>
+    <div class="cam-modal-box">
+      <div class="cam-modal-header">
+        <span class="cam-modal-title" id="cam-modal-title"></span>
+        <button class="cam-modal-close" id="cam-modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="cam-modal-preview" id="cam-modal-preview">
+        <video class="cam-modal-video" id="cam-modal-video" autoplay playsinline muted style="display:none"></video>
+        <img  class="cam-modal-img"   id="cam-modal-img"   alt=""  style="display:none">
+        <div class="cam-modal-no-snap" id="cam-modal-no-snap" style="display:none">
+          <span class="camera-placeholder-icon">📷</span>
+          <span>No stream URL configured</span>
+        </div>
+      </div>
+      <div class="cam-modal-footer">
+        <span class="cam-modal-url" id="cam-modal-url"></span>
+        <span class="cam-modal-refresh" id="cam-modal-refresh"></span>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

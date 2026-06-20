@@ -1,0 +1,281 @@
+/* ── Layout ─────────────────────────────────────────────── */
+body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+.mqtt-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+}
+
+/* ── Header stats ───────────────────────────────────────── */
+.mqtt-header-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  padding-right: 8px;
+}
+
+.mqtt-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.mqtt-badge--connected    { background: #22c55e; color: #fff; }
+.mqtt-badge--disconnected { background: #6b7280; color: #fff; }
+
+.mqtt-stat {
+  font-size: 12px;
+  color: var(--text-muted, #9ca3af);
+}
+
+/* ── Sidebar ────────────────────────────────────────────── */
+.mqtt-sidebar {
+  width: 420px;
+  min-width: 260px;
+  max-width: 50vw;
+  border-right: 1px solid var(--border, #2d2d2d);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mqtt-search-bar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #2d2d2d);
+  flex-shrink: 0;
+}
+
+.mqtt-search-input {
+  flex: 1;
+  background: var(--input-bg, #1e1e1e);
+  border: 1px solid var(--border, #3d3d3d);
+  border-radius: 6px;
+  color: inherit;
+  padding: 6px 10px;
+  font-size: 13px;
+  outline: none;
+}
+.mqtt-search-input:focus { border-color: var(--accent, #3b82f6); }
+
+.mqtt-topic-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+/* ── Topic rows ─────────────────────────────────────────── */
+.mqtt-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  font-size: 12px;
+  user-select: none;
+  transition: background 0.1s;
+}
+.mqtt-row:hover   { background: var(--hover, rgba(255,255,255,0.05)); }
+.mqtt-row.active  { background: var(--accent-dim, rgba(59,130,246,0.18)); }
+.mqtt-row.flash   { background: rgba(34,197,94,0.15); }
+
+.mqtt-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #4b5563;
+  transition: background 0.1s;
+  flex-shrink: 0;
+}
+.mqtt-dot.pulse { background: #22c55e; }
+
+.mqtt-topic-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  color: var(--text, #e5e7eb);
+}
+
+.mqtt-value-preview {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: 11px;
+  color: #22c55e;
+  text-align: right;
+}
+
+.mqtt-row-count {
+  font-size: 10px;
+  color: var(--text-muted, #6b7280);
+  text-align: right;
+  min-width: 32px;
+}
+
+.mqtt-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-muted, #6b7280);
+  font-size: 13px;
+}
+
+/* ── Detail panel ───────────────────────────────────────── */
+.mqtt-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.mqtt-detail-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #6b7280);
+}
+
+.mqtt-detail-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mqtt-detail-header {
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid var(--border, #2d2d2d);
+  flex-shrink: 0;
+}
+
+.mqtt-detail-topic {
+  font-family: monospace;
+  font-size: 13px;
+  word-break: break-all;
+  color: var(--accent, #3b82f6);
+  margin-bottom: 4px;
+}
+
+.mqtt-detail-meta {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+}
+
+.mqtt-detail-value-box {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #2d2d2d);
+  flex-shrink: 0;
+}
+
+.mqtt-detail-value {
+  font-family: monospace;
+  font-size: 14px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #22c55e;
+  background: var(--card-bg, #1a1a1a);
+  border: 1px solid var(--border, #2d2d2d);
+  border-radius: 6px;
+  padding: 8px 12px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* ── History ────────────────────────────────────────────── */
+.mqtt-history-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.mqtt-history-header {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border, #2d2d2d);
+  position: sticky;
+  top: 0;
+  background: var(--bg, #111);
+}
+
+.mqtt-history-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 8px;
+  padding: 4px 16px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border-light, rgba(255,255,255,0.04));
+  font-family: monospace;
+}
+
+.mqtt-history-row:hover { background: var(--hover, rgba(255,255,255,0.04)); }
+
+.mqtt-history-ts   { color: var(--text-muted, #6b7280); flex-shrink: 0; }
+.mqtt-history-val  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text, #e5e7eb); }
+
+/* ── Publish form ───────────────────────────────────────── */
+.mqtt-publish-form {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border, #2d2d2d);
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.mqtt-publish-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.mqtt-publish-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mqtt-publish-label {
+  font-size: 11px;
+  color: var(--text-muted, #9ca3af);
+  min-width: 52px;
+}
+
+.mqtt-publish-input {
+  flex: 1;
+  background: var(--input-bg, #1e1e1e);
+  border: 1px solid var(--border, #3d3d3d);
+  border-radius: 6px;
+  color: inherit;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-family: monospace;
+  outline: none;
+}
+.mqtt-publish-input:focus { border-color: var(--accent, #3b82f6); }
+
+.mqtt-retain-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted, #9ca3af);
+  cursor: pointer;
+}
+
+.btn-sm { padding: 5px 12px; font-size: 12px; }

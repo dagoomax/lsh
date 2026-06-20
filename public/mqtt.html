@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MQTT Explorer – LoxoneSwaggerHelper</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="mqtt.css">
+</head>
+<body>
+  <header>
+    <h1>LoxoneSwaggerHelper</h1>
+    <nav class="header-nav">
+      <a href="/" class="nav-link">Dashboard</a>
+      <a href="/settings.html" class="nav-link">Settings</a>
+      <a href="/logs.html" class="nav-link">Logs</a>
+      <a href="/mqtt.html" class="nav-link active">MQTT</a>
+    </nav>
+    <div class="mqtt-header-stats">
+      <span id="mqtt-status-badge" class="mqtt-badge mqtt-badge--disconnected">Disconnected</span>
+      <span id="mqtt-topic-count" class="mqtt-stat">0 topics</span>
+      <span id="mqtt-rate" class="mqtt-stat">0 msg/s</span>
+    </div>
+  </header>
+
+  <div class="mqtt-layout">
+    <!-- Left: topic list -->
+    <aside class="mqtt-sidebar">
+      <div class="mqtt-search-bar">
+        <input type="search" id="mqtt-search" class="mqtt-search-input" placeholder="Filter topics…">
+        <button class="btn btn-sm" id="btn-mqtt-clear" title="Clear all retained data">Clear</button>
+      </div>
+      <div class="mqtt-topic-list" id="mqtt-topic-list">
+        <div class="mqtt-empty" id="mqtt-empty">Waiting for messages…</div>
+      </div>
+    </aside>
+
+    <!-- Right: topic detail -->
+    <main class="mqtt-detail" id="mqtt-detail">
+      <div class="mqtt-detail-placeholder">
+        <p>Select a topic to inspect</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="mqtt.js"></script>
+</body>
+</html>

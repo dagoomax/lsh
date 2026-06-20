@@ -1,0 +1,50 @@
+{
+  "mqtt": {
+    "host": "192.168.1.100",
+    "port": 1883,
+    "portalId": ""
+  },
+  "vrm": {
+    "email": "",
+    "password": "",
+    "installationId": ""
+  },
+  "solaredge": {
+    "siteId": "",
+    "apiKey": ""
+  },
+  "smartthings": {
+    "token": "",
+    "deviceIds": []
+  },
+  "satel": {
+    "host": "192.168.1.100",
+    "port": 7094,
+    "armCode": "1234",
+    "zoneCount": 32,
+    "zoneNames": { "1": "Front Door", "2": "Back Door" },
+    "partitions": [1],
+    "partitionNames": { "1": "House" }
+  },
+  "unifi": {
+    "host": "192.168.1.1",
+    "username": "admin",
+    "password": "",
+    "apiKey": ""
+  },
+  "cameras": [
+    { "name": "Front Door", "url": "rtsp://localhost:8554/FrontDoor", "snapshotUrl": "", "mjpegUrl": "", "webrtcUrl": "" }
+  ],
+  "relays": [
+    { "index": 0, "name": "Relay 1" },
+    { "index": 1, "name": "Relay 2" }
+  ],
+  "server": {
+    "port": 3000
+  },
+  "homekit": {
+    "pin": "031-45-154",
+    "port": 47128,
+    "username": "CC:22:3D:E3:CE:F6"
+  }
+}

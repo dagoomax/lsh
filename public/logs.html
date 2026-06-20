@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logs – LoxoneSwaggerHelper</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="logs.css">
+</head>
+<body>
+  <header>
+    <h1>LoxoneSwaggerHelper</h1>
+    <nav class="header-nav">
+      <a href="/" class="nav-link">Dashboard</a>
+      <a href="/settings.html" class="nav-link">Settings</a>
+      <a href="/logs.html" class="nav-link active">Logs</a>
+      <a href="/mqtt.html" class="nav-link">MQTT</a>
+    </nav>
+    <div></div>
+  </header>
+
+  <main class="logs-main">
+    <div class="logs-toolbar">
+      <div class="logs-tabs" id="logs-tabs">
+        <!-- tabs injected by JS -->
+      </div>
+      <div class="logs-controls">
+        <label class="log-auto-refresh">
+          <input type="checkbox" id="auto-refresh" checked>
+          Auto-refresh
+        </label>
+        <select id="lines-select" title="Lines to show">
+          <option value="100">100 lines</option>
+          <option value="300" selected>300 lines</option>
+          <option value="500">500 lines</option>
+          <option value="1000">1 000 lines</option>
+          <option value="2000">2 000 lines</option>
+        </select>
+        <button class="btn btn-secondary" id="btn-refresh" title="Refresh">↺ Refresh</button>
+        <button class="btn btn-secondary" id="btn-download" title="Download log file">⬇ Download</button>
+        <button class="btn btn-danger"    id="btn-clear"   title="Clear this log">✕ Clear</button>
+      </div>
+    </div>
+
+    <div class="logs-pane" id="logs-pane">
+      <div class="logs-empty" id="logs-empty" style="display:none">No log entries yet.</div>
+      <pre class="logs-output" id="logs-output"></pre>
+    </div>
+  </main>
+
+  <footer>
+    <span>LoxoneSwaggerHelper</span>
+    <span id="logs-footer-info">—</span>
+  </footer>
+
+  <script src="logs.js"></script>
+</body>
+</html>

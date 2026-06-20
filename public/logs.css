@@ -1,0 +1,126 @@
+.logs-main {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px - 40px); /* fill between header and footer */
+  padding: 0 20px 20px;
+  gap: 0;
+  box-sizing: border-box;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────────────── */
+
+.logs-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.logs-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.log-tab {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-muted, #888);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.log-tab:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.log-tab.active {
+  background: var(--accent-blue, #3498db);
+  border-color: var(--accent-blue, #3498db);
+  color: #fff;
+  font-weight: 600;
+}
+
+.logs-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.log-auto-refresh {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  color: var(--text-muted, #888);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.log-auto-refresh input { cursor: pointer; }
+
+#lines-select {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.82rem;
+  padding: 6px 10px;
+  cursor: pointer;
+  outline: none;
+}
+
+/* ── Log output ───────────────────────────────────────────────────────── */
+
+.logs-pane {
+  flex: 1;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.logs-output {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 14px 18px;
+  font-family: 'SF Mono', 'Fira Mono', 'Consolas', monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.logs-empty {
+  padding: 48px;
+  text-align: center;
+  color: var(--text-muted, #888);
+  font-size: 0.9rem;
+}
+
+/* Level coloring */
+.log-line-error { color: #e74c3c; }
+.log-line-warn  { color: #f39c12; }
+.log-line-info  { color: var(--text); }
+
+/* Timestamp dim */
+.log-ts   { color: var(--text-muted, #666); }
+.log-level { font-weight: 600; margin: 0 4px; }
+.log-msg  { }
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+
+footer { flex-shrink: 0; }

@@ -1,0 +1,15 @@
+{
+  "name": "victron-dashboard",
+  "version": "1.0.0",
+  "description": "Victron Energy dashboard with relay control and HomeKit integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "hap-nodejs": "^0.12.2",
+    "mqtt": "^5.10.0",
+    "socket.io": "^4.8.0"
+  }
+}
