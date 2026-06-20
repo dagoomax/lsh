@@ -779,6 +779,29 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     setTimeout(() => process.exit(0), 300);
   });
 
+  router.post('/admin/reset-config', (req, res) => {
+    const blank = {
+      mqtt:         { host: '', port: 1883, portalId: '' },
+      vrm:          { email: '', password: '', apiToken: '', installationId: '' },
+      solaredge:    { siteId: '', apiKey: '' },
+      smartthings:  { token: '', deviceIds: [] },
+      satel:        { host: '', port: 7094, armCode: '', zoneCount: 32, partitions: [1], zoneNames: {}, partitionNames: {} },
+      unifi:        { host: '', username: '', password: '', apiKey: '' },
+      loxone:       { host: '', port: 80, username: 'admin', password: '' },
+      shelly:       { devices: [] },
+      cameras:      [],
+      relays:       [{ index: 0, name: 'Relay 1' }, { index: 1, name: 'Relay 2' }],
+      server:       { port: 3000 },
+      homekit:      { pin: '031-45-154', port: 47128, username: 'CC:22:3D:E3:CE:F6' },
+    };
+    try {
+      writeConfigFile(blank);
+      res.json({ success: true, message: 'Configuration erased. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // ── MQTT Explorer ──────────────────────────────────────────────────────
 
   router.get('/mqtt-explorer/topics', (req, res) => {

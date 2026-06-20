@@ -946,6 +946,22 @@ document.getElementById('btn-save-shelly').addEventListener('click', async () =>
 
 // ── Restart ────────────────────────────────────────────────────────────────
 
+document.getElementById('btn-reset-config').addEventListener('click', async () => {
+  if (!confirm('This will erase ALL configuration (credentials, hosts, devices).\nThe page will reload after. Are you sure?')) return;
+  try {
+    const r    = await fetch('/api/admin/reset-config', { method: 'POST' });
+    const json = await r.json();
+    if (json.success) {
+      showSaveMsg('Config erased — reloading…', 'ok');
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      showSaveMsg('Error: ' + json.error, 'err');
+    }
+  } catch (err) {
+    showSaveMsg('Reset failed: ' + err.message, 'err');
+  }
+});
+
 document.getElementById('btn-restart').addEventListener('click', async () => {
   if (!confirm('Restart the server now? The page will reconnect automatically.')) return;
 
