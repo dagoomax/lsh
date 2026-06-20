@@ -3,6 +3,7 @@
 const WebSocket      = require('ws');
 const crypto         = require('crypto');
 const http           = require('http');
+const EventEmitter   = require('events');
 const platformStatus = require('./platform-status');
 
 // ── Control type definitions ───────────────────────────────────────────────
@@ -128,6 +129,18 @@ const T = {
   },
 };
 
+T.VideoIntercom = {
+  sensors: [
+    { path: 'bell',      label: 'Doorbell',  format: 'on-off', homekit: null },
+    { path: 'answering', label: 'Answering', format: 'on-off', homekit: null },
+  ],
+  bindings: [
+    { state: 'bell',      path: 'bell',      bool: true },
+    { state: 'answering', path: 'answering', bool: true },
+  ],
+  isCamera: true,
+};
+
 // Aliases
 T.EIBDimmer         = T.Dimmer;
 T.ColorPickerV2     = T.Switch;   // on/off only for now
@@ -137,8 +150,9 @@ T.Intercom          = T.Switch;
 
 // ── Client ─────────────────────────────────────────────────────────────────
 
-class LoxoneClient {
+class LoxoneClient extends EventEmitter {
   constructor(config, store, sensorRegistry) {
+    super();
     this._cfg      = config;
     this._store    = store;
     this._registry = sensorRegistry;
@@ -148,6 +162,7 @@ class LoxoneClient {
     this._valMap   = {};             // stateUuid → [{deviceKey, path, transform}]
     this._txtMap   = {};             // stateUuid → [{deviceKey, path, transform}]
     this._reconTimer = null;
+    this._cameras  = [];
   }
 
   async start() {
@@ -251,8 +266,9 @@ class LoxoneClient {
   }
 
   _buildMaps(structure) {
-    this._valMap = {};
-    this._txtMap = {};
+    this._valMap  = {};
+    this._txtMap  = {};
+    this._cameras = [];
 
     const rooms    = structure.rooms    || {};
     const controls = structure.controls || {};
@@ -293,7 +309,41 @@ class LoxoneClient {
       };
 
       this._registry.registerDevice(device);
+
+      // VideoIntercom controls become HomeKit cameras
+      if (def.isCamera) {
+        this._cameras.push({
+          name:          label,
+          url:           ctrl.details?.rtspUrl || null,
+          snapshotUrl:   null,
+          fetchSnapshot: () => this._fetchCameraSnapshot(uuid),
+        });
+      }
     }
+
+    if (this._cameras.length > 0) {
+      this.emit('cameras-discovered', this._cameras);
+    }
+  }
+
+  _fetchCameraSnapshot(controlUuid) {
+    const { host, port = 80, username, password } = this._cfg.loxone;
+    const auth = Buffer.from(`${username}:${password}`).toString('base64');
+    return new Promise((resolve, reject) => {
+      const req = http.get({
+        hostname: host,
+        port,
+        path:    `/dev/sps/swimage/${controlUuid}`,
+        headers: { Authorization: `Basic ${auth}` },
+        timeout: 5000,
+      }, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve(Buffer.concat(chunks)));
+      });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('Snapshot timeout')); });
+    });
   }
 
   // ── Message handling ──────────────────────────────────────────────────

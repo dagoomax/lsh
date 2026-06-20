@@ -81,13 +81,14 @@ async function main() {
   }
 
   // Start Loxone client if configured
+  let loxoneClient = null;
   if (config.loxone?.host) {
-    const loxone = new LoxoneClient(config, store, sensorRegistry);
-    loxone.start().catch((err) => console.error(`[Loxone] Start failed: ${err.message}`));
+    loxoneClient = new LoxoneClient(config, store, sensorRegistry);
+    loxoneClient.start().catch((err) => console.error(`[Loxone] Start failed: ${err.message}`));
   }
 
   try {
-    startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect });
+    startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient });
   } catch (err) {
     console.error(`[HomeKit] Start failed: ${err.message}`);
   }

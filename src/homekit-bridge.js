@@ -795,7 +795,7 @@ function addCameraToBridge(cam, bridge) {
 
 // ── Main bridge factory ────────────────────────────────────────────────────
 
-function startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect } = {}) {
+function startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient } = {}) {
   const bridge = new Bridge('Victron Energy', makeUUID('bridge'));
 
   setInfo(bridge, 'Victron Energy', 'Cerbo GX Dashboard', 'VICTRON-001');
@@ -838,7 +838,6 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
 
   // UniFi Protect cameras may not be discovered yet — add them when ready
   if (unifiProtect) {
-    // Add any already-discovered cameras (unlikely but safe)
     for (const cam of unifiProtect.getCameras()) {
       try { addCameraToBridge(cam, bridge); } catch (err) {
         console.error(`[HomeKit] UniFi camera failed (${cam.name}): ${err.message}`);
@@ -848,6 +847,17 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
       for (const cam of cameras) {
         try { addCameraToBridge(cam, bridge); } catch (err) {
           console.error(`[HomeKit] UniFi camera failed (${cam.name}): ${err.message}`);
+        }
+      }
+    });
+  }
+
+  // Loxone VideoIntercom cameras are discovered asynchronously after structure download
+  if (loxoneClient) {
+    loxoneClient.on('cameras-discovered', (cameras) => {
+      for (const cam of cameras) {
+        try { addCameraToBridge(cam, bridge); } catch (err) {
+          console.error(`[HomeKit] Loxone camera failed (${cam.name}): ${err.message}`);
         }
       }
     });
