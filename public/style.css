@@ -1176,3 +1176,265 @@ footer {
 .plat-label {
   white-space: nowrap;
 }
+
+/* ── SIP softphone ────────────────────────────────────────── */
+.sip-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.sip-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+.sip-dot-green  { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+.sip-dot-yellow { background: var(--accent-yellow); }
+.sip-dot-red    { background: var(--accent-red, #f85149); }
+
+.sip-dial-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 4px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+}
+.sip-dial-btn:hover { color: var(--accent-green); background: rgba(63,185,80,0.12); }
+
+/* ── SIP call modal ───────────────────────────────────────── */
+.sip-call-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.7);
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.sip-call-box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 32px 28px 24px;
+  text-align: center;
+  min-width: 280px;
+  max-width: 380px;
+  width: 90vw;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+.sip-call-icon {
+  font-size: 2.4rem;
+  margin-bottom: 10px;
+  animation: ring-shake 0.6s ease infinite;
+}
+
+@keyframes ring-shake {
+  0%,100% { transform: rotate(0deg); }
+  15%      { transform: rotate(-15deg); }
+  30%      { transform: rotate(15deg); }
+  45%      { transform: rotate(-10deg); }
+  60%      { transform: rotate(10deg); }
+}
+
+.sip-call-state {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.sip-call-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+  min-height: 1.5em;
+}
+
+.sip-call-uri {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-family: monospace;
+  margin-bottom: 12px;
+  word-break: break-all;
+}
+
+.sip-call-timer {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-green);
+  margin-bottom: 12px;
+}
+
+.sip-call-cam {
+  margin: 10px 0 14px;
+  border-radius: 10px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.sip-call-cam-img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.sip-call-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.sip-btn-answer {
+  background: var(--accent-green);
+  color: #0d1117;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sip-btn-answer:hover { opacity: 0.85; }
+
+.sip-btn-reject,
+.sip-btn-hangup,
+.sip-btn-cancel {
+  background: var(--accent-red, #f85149);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sip-btn-reject:hover,
+.sip-btn-hangup:hover,
+.sip-btn-cancel:hover { opacity: 0.85; }
+
+.sip-btn-unlock {
+  background: var(--accent-blue);
+  color: #0d1117;
+  border: none;
+  border-radius: 50px;
+  padding: 10px 22px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sip-btn-unlock:hover { opacity: 0.85; }
+
+.sip-btn-mute {
+  background: var(--card-border);
+  color: var(--text);
+  border: none;
+  border-radius: 50px;
+  padding: 10px 22px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.sip-btn-mute:hover { background: rgba(255,255,255,0.1); }
+
+/* ── SIP dial modal ───────────────────────────────────────── */
+.sip-dial-modal {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1999;
+  animation: fadeIn 0.15s ease;
+}
+
+.sip-dial-box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  min-width: 300px;
+}
+
+.sip-dial-title {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.sip-dial-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.95rem;
+  padding: 8px 12px;
+  outline: none;
+}
+.sip-dial-input:focus { border-color: var(--accent-blue); }
+
+.sip-dial-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sip-btn-call {
+  background: var(--accent-green);
+  color: #0d1117;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sip-btn-call:hover { opacity: 0.85; }
+
+.sip-btn-cancel-dial {
+  background: none;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.sip-btn-cancel-dial:hover { color: var(--text); border-color: var(--text-muted); }

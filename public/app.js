@@ -576,6 +576,205 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && _modalCam) closeCameraModal();
 });
 
+// ── SIP softphone ─────────────────────────────────────────────────────────────
+
+let _sipConfig    = null;
+let _loadedCameras = [];
+let _sipCamTimer  = null;
+
+// Extend loadCameras to keep a copy for SIP camera matching
+const _origLoadCameras = loadCameras;
+async function loadCameras() {
+  try {
+    const res = await fetch('/api/cameras');
+    const { data } = await res.json();
+    _loadedCameras = data || [];
+    renderCameras(_loadedCameras);
+  } catch { /* ignore */ }
+}
+
+async function _initSip() {
+  try {
+    const res = await fetch('/api/settings');
+    const { data } = await res.json();
+    const cfg = data?.sip;
+    if (!cfg?.wsUrl || !cfg?.username) return; // not configured
+    _sipConfig = cfg;
+    window.sipPhone.start(cfg);
+  } catch { /* ignore */ }
+}
+
+// SIP event handlers
+sipPhone.addEventListener('registered', () => {
+  _setSipStatus('green', 'SIP registered');
+});
+sipPhone.addEventListener('unregistered', () => {
+  _setSipStatus('yellow', 'SIP unregistered');
+});
+sipPhone.addEventListener('registrationFailed', (e) => {
+  _setSipStatus('red', 'SIP registration failed: ' + (e.detail?.cause || ''));
+});
+
+sipPhone.addEventListener('incoming', (e) => {
+  const { name, uri } = e.detail;
+  window._ringtone.start();
+  _showCallModal('incoming', name, uri);
+});
+
+sipPhone.addEventListener('calling', (e) => {
+  _showCallModal('calling', '', e.detail?.uri || '');
+});
+
+sipPhone.addEventListener('connected', () => {
+  window._ringtone.stop();
+  _switchCallActions('active');
+  document.getElementById('sip-call-state').textContent = 'Connected';
+  document.getElementById('sip-call-icon').textContent  = '📞';
+  document.getElementById('sip-call-timer').style.display = '';
+});
+
+sipPhone.addEventListener('tick', (e) => {
+  const s = e.detail.seconds;
+  const m = Math.floor(s / 60);
+  const ss = String(s % 60).padStart(2, '0');
+  document.getElementById('sip-call-timer').textContent = `${m}:${ss}`;
+});
+
+sipPhone.addEventListener('muteChanged', (e) => {
+  const btn = document.getElementById('sip-btn-mute');
+  if (btn) btn.textContent = e.detail.muted ? '🔇 Unmute' : '🎤 Mute';
+});
+
+sipPhone.addEventListener('ended', () => {
+  window._ringtone.stop();
+  clearInterval(_sipCamTimer);
+  _sipCamTimer = null;
+  document.getElementById('sip-call-modal').style.display = 'none';
+});
+
+// Button wiring
+document.getElementById('sip-btn-answer').addEventListener('click', () => sipPhone.answer());
+document.getElementById('sip-btn-reject').addEventListener('click', () => sipPhone.reject());
+document.getElementById('sip-btn-hangup').addEventListener('click', () => sipPhone.hangup());
+document.getElementById('sip-btn-cancel').addEventListener('click', () => sipPhone.hangup());
+
+document.getElementById('sip-btn-mute').addEventListener('click', () => sipPhone.toggleMute());
+
+document.getElementById('sip-btn-unlock').addEventListener('click', async () => {
+  if (_sipConfig?.dtmfUnlock) sipPhone.sendDtmf(_sipConfig.dtmfUnlock);
+  const idx = _sipConfig?.relayIndex;
+  if (idx !== undefined && idx !== null && idx !== '') {
+    await fetch(`/api/relay/${idx}/state`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ on: true }),
+    });
+    setTimeout(() => fetch(`/api/relay/${idx}/state`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ on: false }),
+    }), 2500);
+    document.getElementById('sip-btn-unlock').textContent = '✓ Unlocked';
+    setTimeout(() => { document.getElementById('sip-btn-unlock').textContent = '🔓 Unlock'; }, 3000);
+  }
+});
+
+// Keyboard shortcuts for call modal
+document.addEventListener('keydown', e => {
+  if (document.getElementById('sip-call-modal').style.display === 'none') return;
+  if (e.key === 'Enter' && sipPhone.state === 'incoming') sipPhone.answer();
+  if (e.key === 'Escape') sipPhone.hangup();
+});
+
+// Dial modal
+document.getElementById('sip-dial-btn').addEventListener('click', () => {
+  document.getElementById('sip-dial-modal').style.display = 'flex';
+  document.getElementById('sip-dial-input').focus();
+});
+document.getElementById('sip-btn-cancel-dial').addEventListener('click', () => {
+  document.getElementById('sip-dial-modal').style.display = 'none';
+});
+document.getElementById('sip-btn-call').addEventListener('click', () => {
+  const target = document.getElementById('sip-dial-input').value.trim();
+  if (!target) return;
+  document.getElementById('sip-dial-modal').style.display = 'none';
+  document.getElementById('sip-dial-input').value = '';
+  sipPhone.call(target);
+});
+document.getElementById('sip-dial-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('sip-btn-call').click();
+  if (e.key === 'Escape') document.getElementById('sip-btn-cancel-dial').click();
+});
+
+// ── SIP helpers ───────────────────────────────────────────────────────────────
+
+function _setSipStatus(color, title) {
+  const wrap = document.getElementById('sip-status');
+  const dot  = document.getElementById('sip-status-dot');
+  wrap.style.display = '';
+  dot.className = `sip-status-dot sip-dot-${color}`;
+  wrap.title = title;
+}
+
+function _findCameraForCaller(callerUri) {
+  // Extract host from sip:user@host or user@host
+  const match = callerUri.match(/@([\d.a-zA-Z.-]+)/);
+  if (!match) return null;
+  const callerHost = match[1];
+  return _loadedCameras.find(c =>
+    [c.url, c.snapshotUrl, c.mjpegUrl].some(u => u && u.includes(callerHost))
+  ) || null;
+}
+
+function _showCallModal(phase, name, uri) {
+  const modal    = document.getElementById('sip-call-modal');
+  const camWrap  = document.getElementById('sip-call-cam');
+  const camImg   = document.getElementById('sip-call-cam-img');
+  const nameEl   = document.getElementById('sip-call-name');
+  const uriEl    = document.getElementById('sip-call-uri');
+  const timerEl  = document.getElementById('sip-call-timer');
+  const stateEl  = document.getElementById('sip-call-state');
+  const iconEl   = document.getElementById('sip-call-icon');
+
+  nameEl.textContent  = name || '';
+  uriEl.textContent   = uri || '';
+  timerEl.style.display = 'none';
+  timerEl.textContent   = '0:00';
+  iconEl.textContent    = phase === 'calling' ? '📱' : '📞';
+  stateEl.textContent   = phase === 'incoming' ? 'Incoming Call'
+                        : phase === 'calling'  ? 'Calling…'
+                        : 'Connecting…';
+
+  _switchCallActions(phase);
+
+  // Auto-match camera by caller IP
+  clearInterval(_sipCamTimer);
+  const cam = _findCameraForCaller(uri);
+  if (cam?.snapshotUrl) {
+    camWrap.style.display = '';
+    camImg.src = cam.snapshotUrl;
+    _sipCamTimer = setInterval(() => { camImg.src = `${cam.snapshotUrl}?_=${Date.now()}`; }, 5000);
+  } else {
+    camWrap.style.display = 'none';
+    camImg.src = '';
+  }
+
+  modal.style.display = 'flex';
+  (phase === 'incoming'
+    ? document.getElementById('sip-btn-answer')
+    : document.getElementById('sip-btn-cancel')
+  ).focus();
+}
+
+function _switchCallActions(phase) {
+  document.getElementById('sip-actions-incoming').style.display = phase === 'incoming' ? '' : 'none';
+  document.getElementById('sip-actions-active').style.display   = phase === 'active'   ? '' : 'none';
+  document.getElementById('sip-actions-calling').style.display  = phase === 'calling'  ? '' : 'none';
+}
+
+// Init SIP after socket connects
+socket.on('connect', () => {
+  if (!_sipConfig) _initSip();
+});
+
 // ── WebRTC (WHEP) ────────────────────────────────────────────────────────────
 // Implements the WebRTC HTTP Egress Protocol (WHEP, RFC 9559).
 // Works with go2rtc, mediamtx, Frigate, and any WHEP-compliant server.

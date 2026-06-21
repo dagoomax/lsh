@@ -35,6 +35,10 @@
     <div class="connection-status-wrap">
       <div class="connection-status" id="connection-status">Connecting...</div>
       <div class="source-badge" id="source-badge" style="display:none"></div>
+      <div class="sip-status" id="sip-status" style="display:none" title="SIP">
+        <span class="sip-status-dot" id="sip-status-dot"></span>
+        <button class="sip-dial-btn" id="sip-dial-btn" title="Make a call">📞</button>
+      </div>
     </div>
   </header>
 
@@ -399,7 +403,51 @@
     </div>
   </div>
 
+  <!-- SIP incoming/active call modal -->
+  <div id="sip-call-modal" class="sip-call-modal" style="display:none" role="dialog" aria-modal="true" aria-label="SIP Call">
+    <div class="sip-call-box">
+      <div class="sip-call-icon" id="sip-call-icon">📞</div>
+      <div class="sip-call-state" id="sip-call-state">Incoming Call</div>
+      <div class="sip-call-name"  id="sip-call-name"></div>
+      <div class="sip-call-uri"   id="sip-call-uri"></div>
+      <div class="sip-call-timer" id="sip-call-timer" style="display:none">0:00</div>
+      <div class="sip-call-cam"   id="sip-call-cam"   style="display:none">
+        <img class="sip-call-cam-img" id="sip-call-cam-img" src="" alt="Door camera">
+      </div>
+      <audio id="sip-audio" autoplay></audio>
+      <!-- Incoming -->
+      <div class="sip-call-actions" id="sip-actions-incoming">
+        <button class="btn sip-btn-answer" id="sip-btn-answer">📞 Answer</button>
+        <button class="btn sip-btn-reject" id="sip-btn-reject">✗ Decline</button>
+      </div>
+      <!-- Active -->
+      <div class="sip-call-actions" id="sip-actions-active" style="display:none">
+        <button class="btn sip-btn-unlock" id="sip-btn-unlock">🔓 Unlock</button>
+        <button class="btn sip-btn-mute"   id="sip-btn-mute">🎤 Mute</button>
+        <button class="btn sip-btn-hangup" id="sip-btn-hangup">✗ Hang Up</button>
+      </div>
+      <!-- Calling out -->
+      <div class="sip-call-actions" id="sip-actions-calling" style="display:none">
+        <button class="btn sip-btn-cancel" id="sip-btn-cancel">✗ Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIP dial modal -->
+  <div id="sip-dial-modal" class="sip-dial-modal" style="display:none" role="dialog" aria-label="Dial">
+    <div class="sip-dial-box">
+      <div class="sip-dial-title">Dial</div>
+      <input class="sip-dial-input" id="sip-dial-input" type="text" placeholder="Extension or SIP URI" autocomplete="off">
+      <div class="sip-dial-actions">
+        <button class="btn sip-btn-call" id="sip-btn-call">📞 Call</button>
+        <button class="btn sip-btn-cancel-dial" id="sip-btn-cancel-dial">✗</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/lib/jssip.min.js"></script>
+  <script src="sip-phone.js"></script>
   <script src="app.js"></script>
   <script src="theme.js"></script>
 </body>

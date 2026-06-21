@@ -49,6 +49,15 @@ async function loadSettings() {
     setVal('loxone-user', data.loxone?.username || 'admin');
     setVal('loxone-pass', data.loxone?.password || '');
 
+    // SIP
+    setVal('sip-ws-url',       data.sip?.wsUrl       || '');
+    setVal('sip-username',     data.sip?.username     || '');
+    setVal('sip-domain',       data.sip?.domain       || '');
+    setVal('sip-password',     data.sip?.password ? '••••••••' : '');
+    setVal('sip-display-name', data.sip?.displayName  || '');
+    setVal('sip-dtmf-unlock',  data.sip?.dtmfUnlock   || '#');
+    setVal('sip-relay-index',  data.sip?.relayIndex   ?? '');
+
     // Dirigera
     setVal('dirigera-host',  data.dirigera?.host  || '');
     setVal('dirigera-token', data.dirigera?.token ? '••••••••' : '');
@@ -1041,6 +1050,37 @@ document.getElementById('btn-save-loxone').addEventListener('click', async () =>
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
     resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── SIP ────────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-save-sip').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-sip');
+  const resultEl = document.getElementById('sip-save-result');
+  btn.disabled   = true;
+  const password = getVal('sip-password');
+  const relayRaw = getVal('sip-relay-index');
+  try {
+    const res = await fetch('/api/settings/sip', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        wsUrl:       getVal('sip-ws-url'),
+        username:    getVal('sip-username'),
+        domain:      getVal('sip-domain'),
+        password:    password.includes('•') ? null : password,
+        displayName: getVal('sip-display-name'),
+        dtmfUnlock:  getVal('sip-dtmf-unlock') || '#',
+        relayIndex:  relayRaw !== '' ? parseInt(relayRaw) : null,
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+    if (json.success) setVal('sip-password', '••••••••');
   } catch (err) {
     resultEl.textContent = '✗ ' + err.message;
     resultEl.className = 'test-result err';

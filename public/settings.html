@@ -274,6 +274,46 @@
       </div>
     </section>
 
+    <!-- SIP / Intercom -->
+    <section class="card settings-card">
+      <h2>📞 SIP / Intercom <span class="badge">Optional</span></h2>
+      <p class="section-desc">Register as a SIP extension on UniFi Talk, Loxone, or any SIP PBX with WebSocket transport. Incoming calls (e.g. from a UniFi Access door reader) pop up with the matching camera feed and a one-tap unlock button.</p>
+
+      <div class="form-row">
+        <label for="sip-ws-url">WebSocket URL <span class="hint">wss://host:5443 (UniFi Talk) or ws://host:7778 (Loxone)</span></label>
+        <input type="text" id="sip-ws-url" placeholder="wss://192.168.1.1:5443">
+      </div>
+      <div class="form-row">
+        <label for="sip-username">Extension / Username</label>
+        <input type="text" id="sip-username" placeholder="101">
+      </div>
+      <div class="form-row">
+        <label for="sip-domain">SIP Domain <span class="hint">(leave blank to use server host from URL)</span></label>
+        <input type="text" id="sip-domain" placeholder="192.168.1.1">
+      </div>
+      <div class="form-row">
+        <label for="sip-password">Password</label>
+        <input type="password" id="sip-password" placeholder="••••••••">
+      </div>
+      <div class="form-row">
+        <label for="sip-display-name">Display Name <span class="hint">(shown to callee)</span></label>
+        <input type="text" id="sip-display-name" placeholder="LSH Dashboard">
+      </div>
+      <div class="form-row">
+        <label for="sip-dtmf-unlock">Unlock DTMF Tone <span class="hint">sent when you tap Unlock during a call (e.g. # or 0)</span></label>
+        <input type="text" id="sip-dtmf-unlock" placeholder="#" maxlength="8" style="max-width:90px">
+      </div>
+      <div class="form-row">
+        <label for="sip-relay-index">Door Relay Index <span class="hint">pulse this relay on Unlock (leave blank for DTMF-only)</span></label>
+        <input type="number" id="sip-relay-index" placeholder="0" min="0" max="9" style="max-width:90px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary"   id="btn-save-sip">Save</button>
+        <span class="test-result" id="sip-save-result"></span>
+      </div>
+    </section>
+
     <!-- IKEA Dirigera -->
     <section class="card settings-card">
       <h2>IKEA Dirigera <span class="badge">Optional</span></h2>

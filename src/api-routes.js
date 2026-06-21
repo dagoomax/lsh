@@ -601,6 +601,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.loxone?.password)  safe.loxone.password  = '••••••••';
     if (safe.dirigera?.token)   safe.dirigera.token   = '••••••••';
     if (safe.tradfri?.psk)      safe.tradfri.psk      = '••••••••';
+    if (safe.sip?.password)     safe.sip.password     = '••••••••';
     if (safe.tradfri?.securityCode) safe.tradfri.securityCode = '••••••••';
     if (safe.shelly?.devices) {
       safe.shelly.devices = safe.shelly.devices.map(d =>
@@ -877,6 +878,27 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       if (token !== null)      dirigera.token = token || current.dirigera?.token || '';
       writeConfigFile({ ...current, dirigera });
       res.json({ success: true, message: 'Dirigera settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/sip', (req, res) => {
+    const current = readConfigFile();
+    const { wsUrl, username, domain, password, displayName, dtmfUnlock, relayIndex } = req.body;
+    try {
+      const sip = { ...current.sip };
+      if (wsUrl       !== undefined) sip.wsUrl       = (wsUrl       || '').trim();
+      if (username    !== undefined) sip.username    = (username    || '').trim();
+      if (domain      !== undefined) sip.domain      = (domain      || '').trim();
+      if (displayName !== undefined) sip.displayName = (displayName || '').trim();
+      if (dtmfUnlock  !== undefined) sip.dtmfUnlock  = dtmfUnlock  || '#';
+      if (relayIndex  !== undefined) sip.relayIndex  = relayIndex;  // null means DTMF-only
+      if (password !== null && password !== undefined) {
+        sip.password = password || current.sip?.password || '';
+      }
+      writeConfigFile({ ...current, sip });
+      res.json({ success: true, message: 'SIP settings saved. Reload the dashboard to register.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
