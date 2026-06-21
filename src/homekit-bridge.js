@@ -636,6 +636,77 @@ function addContactService(accessory, name, storePath, store, activeOnValue = 1)
   return svc;
 }
 
+/**
+ * Adds an AirQualitySensor service with optional PM2.5, PM10, and VOC densities.
+ * Store paths: deviceKey/airQuality (AQI index), /fineDustLevel (PM2.5 µg/m³),
+ *   /dustLevel (PM10 µg/m³), /tvocLevel (VOC µg/m³)
+ */
+function addAirQualityService(accessory, name, deviceKey, store) {
+  const svc = accessory.addService(Service.AirQualitySensor, name);
+
+  const aqiPath  = `${deviceKey}/airQuality`;
+  const pm25Path = `${deviceKey}/fineDustLevel`;
+  const pm10Path = `${deviceKey}/dustLevel`;
+  const vocPath  = `${deviceKey}/tvocLevel`;
+
+  function aqiToHK(v) {
+    const n = Number(v) || 0;
+    if (n <= 50)  return 1; // EXCELLENT
+    if (n <= 100) return 2; // GOOD
+    if (n <= 150) return 3; // FAIR
+    if (n <= 200) return 4; // INFERIOR
+    return n > 0 ? 5 : 0;  // POOR / UNKNOWN
+  }
+
+  svc.getCharacteristic(Characteristic.AirQuality)
+    .onGet(() => aqiToHK(store.get(aqiPath)));
+
+  svc.addOptionalCharacteristic(Characteristic.PM2_5Density);
+  svc.getCharacteristic(Characteristic.PM2_5Density)
+    .onGet(() => Math.max(0, Number(store.get(pm25Path)) || 0));
+
+  svc.addOptionalCharacteristic(Characteristic.PM10Density);
+  svc.getCharacteristic(Characteristic.PM10Density)
+    .onGet(() => Math.max(0, Number(store.get(pm10Path)) || 0));
+
+  svc.addOptionalCharacteristic(Characteristic.VOCDensity);
+  svc.getCharacteristic(Characteristic.VOCDensity)
+    .onGet(() => Math.max(0, Number(store.get(vocPath)) || 0));
+
+  store.on('change', ({ key, value }) => {
+    if (key === aqiPath)  svc.getCharacteristic(Characteristic.AirQuality).updateValue(aqiToHK(value));
+    if (key === pm25Path) svc.getCharacteristic(Characteristic.PM2_5Density).updateValue(Math.max(0, Number(value) || 0));
+    if (key === pm10Path) svc.getCharacteristic(Characteristic.PM10Density).updateValue(Math.max(0, Number(value) || 0));
+    if (key === vocPath)  svc.getCharacteristic(Characteristic.VOCDensity).updateValue(Math.max(0, Number(value) || 0));
+  });
+
+  return svc;
+}
+
+/**
+ * Adds a CarbonDioxideSensor service.
+ * store value: CO₂ level in ppm. Detected threshold: 1000 ppm (ASHRAE 62.1).
+ */
+function addCO2SensorService(accessory, name, storePath, store) {
+  const svc = accessory.addService(Service.CarbonDioxideSensor, name);
+
+  svc.getCharacteristic(Characteristic.CarbonDioxideDetected)
+    .onGet(() => (Number(store.get(storePath)) || 0) > 1000 ? 1 : 0);
+
+  svc.getCharacteristic(Characteristic.CarbonDioxideLevel)
+    .onGet(() => Math.max(0, Number(store.get(storePath)) || 0));
+
+  store.on('change', ({ key, value }) => {
+    if (key === storePath) {
+      const ppm = Math.max(0, Number(value) || 0);
+      svc.getCharacteristic(Characteristic.CarbonDioxideDetected).updateValue(ppm > 1000 ? 1 : 0);
+      svc.getCharacteristic(Characteristic.CarbonDioxideLevel).updateValue(ppm);
+    }
+  });
+
+  return svc;
+}
+
 // ── Device accessory builders ──────────────────────────────────────────────
 
 function buildDeviceAccessory(device, store) {
@@ -767,6 +838,15 @@ function buildDeviceAccessory(device, store) {
     if (hkType === 'occupancy') {
       const s = device.sensors.find((s) => s.homekit === 'occupancy');
       if (s) addOccupancySensorService(acc, `${device.label} Presence`, `${device.key}/${s.path}`, store);
+    }
+
+    if (hkType === 'air-quality') {
+      addAirQualityService(acc, `${device.label} Air Quality`, device.key, store);
+    }
+
+    if (hkType === 'co2-sensor') {
+      const s = device.sensors.find((s) => s.path === 'carbonDioxide');
+      if (s) addCO2SensorService(acc, `${device.label} CO₂`, `${device.key}/${s.path}`, store);
     }
   }
 

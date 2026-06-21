@@ -15,6 +15,8 @@ const ShellyClient         = require('./src/shelly-client');
 const LoxoneClient         = require('./src/loxone-client');
 const MqttExplorer         = require('./src/mqtt-explorer');
 const BoneIOClient         = require('./src/boneio-client');
+const DirigeraClient       = require('./src/dirigera-client');
+const TradfriClient        = require('./src/tradfri-client');
 const createApiRoutes    = require('./src/api-routes');
 const setupWebSocket     = require('./src/websocket');
 const startHomekitBridge = require('./src/homekit-bridge');
@@ -79,6 +81,18 @@ async function main() {
   if (config.boneio) {
     const boneio = new BoneIOClient(config, store, sensorRegistry);
     boneio.start();
+  }
+
+  // Start Dirigera (IKEA) client if configured
+  if (config.dirigera?.host && config.dirigera?.token) {
+    const dirigera = new DirigeraClient(config, store, sensorRegistry);
+    dirigera.start().catch((err) => console.error(`[Dirigera] Start failed: ${err.message}`));
+  }
+
+  // Start Tradfri (IKEA) client if configured
+  if (config.tradfri?.host) {
+    const tradfri = new TradfriClient(config, store, sensorRegistry);
+    tradfri.start().catch((err) => console.error(`[Tradfri] Start failed: ${err.message}`));
   }
 
   // Start Shelly client if devices are configured

@@ -35,10 +35,15 @@ function resolveFormat(component, deviceClass, unit) {
   const u = (unit || '').toLowerCase();
   if (deviceClass === 'temperature' || u === '°c' || u === '°f') return { format: 'temperature', homekit: 'temperature' };
   if (deviceClass === 'humidity'    || (u === '%' && deviceClass === 'humidity')) return { format: 'percent', homekit: 'humidity' };
-  if (deviceClass === 'illuminance')  return { format: 'number',      homekit: 'lux' };
-  if (deviceClass === 'power')        return { format: 'power',        homekit: null };
-  if (deviceClass === 'energy')       return { format: 'energy',       homekit: null };
-  if (deviceClass === 'battery')      return { format: 'percent',      homekit: 'battery-level' };
+  if (deviceClass === 'illuminance')               return { format: 'number',  homekit: 'lux' };
+  if (deviceClass === 'power')                     return { format: 'power',   homekit: null };
+  if (deviceClass === 'energy')                    return { format: 'energy',  homekit: null };
+  if (deviceClass === 'battery')                   return { format: 'percent', homekit: 'battery-level' };
+  if (deviceClass === 'carbon_dioxide')            return { format: 'co2',     homekit: 'co2-sensor' };
+  if (deviceClass === 'volatile_organic_compounds') return { format: 'voc',    homekit: 'air-quality' };
+  if (deviceClass === 'pm25')                      return { format: 'pm25',    homekit: 'air-quality' };
+  if (deviceClass === 'pm10')                      return { format: 'pm10',    homekit: 'air-quality' };
+  if (deviceClass === 'aqi')                       return { format: 'aqi',     homekit: 'air-quality' };
   return { format: 'number', homekit: null };
 }
 

@@ -42,6 +42,13 @@ const CAPABILITIES = {
   lock:                        { storeAttr: 'lock',             name: 'Lock',         format: 'on-off',      controllable: true, type: 'toggle',     writeOn: 'lock',               writeOff: 'unlock',  capabilityId: 'lock' },
   doorControl:                 { storeAttr: 'door',             name: 'Door',         format: 'on-off',      controllable: true, type: 'toggle',     writeOn: 'open',               writeOff: 'close',   capabilityId: 'doorControl' },
   windowShade:                 { storeAttr: 'windowShade',      name: 'Shade',        format: 'on-off',      controllable: true, type: 'toggle',     writeOn: 'open',               writeOff: 'close',   capabilityId: 'windowShade' },
+  airQualitySensor:            { storeAttr: 'airQuality',       name: 'Air Quality',  format: 'aqi',         homekit: 'air-quality' },
+  carbonDioxideMeasurement:    { storeAttr: 'carbonDioxide',    name: 'CO₂',     format: 'co2',         homekit: 'co2-sensor' },
+  tvocMeasurement:             { storeAttr: 'tvocLevel',        name: 'TVOC',         format: 'voc',         homekit: 'air-quality' },
+  dustSensor: { multi: [
+    { storeAttr: 'fineDustLevel', name: 'PM2.5', format: 'pm25' },
+    { storeAttr: 'dustLevel',     name: 'PM10',  format: 'pm10' },
+  ]},
 };
 
 function _deriveHomekitTypes(caps) {
@@ -74,6 +81,8 @@ function _deriveHomekitTypes(caps) {
   if (caps.has('waterSensor'))                 types.push('leak');
   if (caps.has('presenceSensor'))              types.push('occupancy');
   if (caps.has('illuminanceMeasurement'))      types.push('lux');
+  if (caps.has('airQualitySensor') || caps.has('tvocMeasurement') || caps.has('dustSensor')) types.push('air-quality');
+  if (caps.has('carbonDioxideMeasurement'))    types.push('co2-sensor');
 
   return types;
 }
@@ -87,14 +96,15 @@ function deviceColor(caps) {
 }
 
 function deviceIcon(caps) {
-  if (caps.has('powerMeter') || caps.has('energyMeter')) return '⚡';
-  if (caps.has('temperatureMeasurement'))                return '🌡';
-  if (caps.has('contactSensor'))                         return '🚪';
-  if (caps.has('motionSensor'))                          return '👁';
-  if (caps.has('smokeDetector'))                         return '🔥';
-  if (caps.has('lock'))                                  return '🔒';
-  if (caps.has('switch'))                                return '💡';
-  if (caps.has('presenceSensor'))                        return '📍';
+  if (caps.has('powerMeter') || caps.has('energyMeter'))                                            return '⚡';
+  if (caps.has('airQualitySensor') || caps.has('dustSensor') || caps.has('tvocMeasurement') || caps.has('carbonDioxideMeasurement')) return '💨';
+  if (caps.has('temperatureMeasurement'))                                                            return '🌡';
+  if (caps.has('contactSensor'))                                                                     return '🚪';
+  if (caps.has('motionSensor'))                                                                      return '👁';
+  if (caps.has('smokeDetector'))                                                                     return '🔥';
+  if (caps.has('lock'))                                                                              return '🔒';
+  if (caps.has('switch'))                                                                            return '💡';
+  if (caps.has('presenceSensor'))                                                                    return '📍';
   return '📟';
 }
 
@@ -148,6 +158,11 @@ class SmartThingsClient {
           sensors.push({ path: 'hue',        name: 'Hue',        format: 'number', hidden: true });
           sensors.push({ path: 'saturation', name: 'Saturation', format: 'number', hidden: true });
           sensors.push({ path: 'color',      name: def.name,     format: 'color',  controllable: true, type: 'color', capabilityId: def.capabilityId });
+          continue;
+        }
+
+        if (def.multi) {
+          for (const m of def.multi) sensors.push({ path: m.storeAttr, name: m.name, format: m.format });
           continue;
         }
 
@@ -217,6 +232,14 @@ class SmartThingsClient {
         const sat = main[capId]?.saturation?.value;
         if (hue != null) this.store.update(`${device.key}/hue`, hue);
         if (sat != null) this.store.update(`${device.key}/saturation`, sat);
+        continue;
+      }
+
+      if (def.multi) {
+        for (const m of def.multi) {
+          const v = main[capId]?.[m.storeAttr]?.value;
+          if (v != null) this.store.update(`${device.key}/${m.storeAttr}`, v);
+        }
         continue;
       }
 

@@ -30,6 +30,16 @@
     "host": "192.168.1.100",
     "port": 1883
   },
+  "dirigera": {
+    "host": "192.168.x.x",
+    "token": ""
+  },
+  "tradfri": {
+    "host": "192.168.x.x",
+    "securityCode": "XXXX-XXXX-XXXX",
+    "identity": "",
+    "psk": ""
+  },
   "unifi": {
     "host": "192.168.1.1",
     "username": "admin",

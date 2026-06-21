@@ -141,6 +141,11 @@ function fmt(value, format) {
       const m = Math.floor((value % 3600) / 60);
       return h > 0 ? `${h}h ${m}m` : `${m}m`;
     }
+    case 'co2':           return `${Math.round(Number(value))} ppm`;
+    case 'voc':           return `${Math.round(Number(value))} µg/m³`;
+    case 'pm25':          return `${Number(value).toFixed(1)} µg/m³`;
+    case 'pm10':          return `${Number(value).toFixed(1)} µg/m³`;
+    case 'aqi':           return `AQI ${Math.round(Number(value))}`;
     case 'led':           return value === 1 ? '●' : '○';
     default:              return typeof value === 'number' ? Number(value).toFixed(1) : String(value);
   }
@@ -809,6 +814,7 @@ function hkLabel(hk) {
     'battery-level': 'Battery', motion: 'Motion', smoke: 'Smoke',
     co: 'CO', leak: 'Leak', occupancy: 'Presence', thermostat: 'Thermostat',
     lock: 'Lock', cover: 'Cover', fan: 'Fan', lux: 'Lux',
+    'air-quality': 'Air Quality', 'co2-sensor': 'CO₂',
   };
   return map[hk] || hk;
 }
