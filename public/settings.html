@@ -244,6 +244,27 @@
       </div>
     </section>
 
+    <!-- BoneIO -->
+    <section class="card settings-card">
+      <h2>BoneIO <span class="badge">Optional</span></h2>
+      <p class="section-desc">Connects to a BoneIO controller via MQTT. Relays, inputs, and sensors are auto-discovered through Home Assistant MQTT discovery. Leave host blank to use the Cerbo GX MQTT broker.</p>
+
+      <div class="form-row">
+        <label for="boneio-host">MQTT Host / IP <span class="hint">(leave blank to reuse Cerbo GX broker)</span></label>
+        <input type="text" id="boneio-host" placeholder="192.168.1.100">
+      </div>
+      <div class="form-row">
+        <label for="boneio-port">MQTT Port <span class="hint">(default 1883)</span></label>
+        <input type="number" id="boneio-port" placeholder="1883" min="1" max="65535">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-boneio">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-boneio">Save</button>
+        <span class="test-result" id="boneio-test-result"></span>
+      </div>
+    </section>
+
     <!-- Shelly -->
     <section class="card settings-card">
       <h2>Shelly <span class="badge">Optional</span></h2>

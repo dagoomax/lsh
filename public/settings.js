@@ -47,6 +47,10 @@ async function loadSettings() {
     setVal('loxone-user', data.loxone?.username || 'admin');
     setVal('loxone-pass', data.loxone?.password || '');
 
+    // BoneIO
+    setVal('boneio-host', data.boneio?.host || '');
+    setVal('boneio-port', data.boneio?.port || 1883);
+
     // Shelly
     renderShellyList(data.shelly?.devices || []);
 
@@ -834,6 +838,44 @@ document.getElementById('btn-save-loxone').addEventListener('click', async () =>
         host: getVal('loxone-host'), port: getVal('loxone-port'),
         username: getVal('loxone-user'), password: getVal('loxone-pass'),
       }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── BoneIO ─────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-test-boneio').addEventListener('click', async () => {
+  const resultEl = document.getElementById('boneio-test-result');
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result';
+  try {
+    const res = await fetch('/api/settings/test-boneio', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: getVal('boneio-host'), port: getVal('boneio-port') }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-boneio').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-boneio');
+  const resultEl = document.getElementById('boneio-test-result');
+  btn.disabled   = true;
+  try {
+    const res = await fetch('/api/settings/boneio', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: getVal('boneio-host'), port: getVal('boneio-port') }),
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;

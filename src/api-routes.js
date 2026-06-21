@@ -665,6 +665,39 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  router.post('/settings/test-boneio', async (req, res) => {
+    const mqttLib = require('mqtt');
+    const cfg     = readConfigFile();
+    const host    = req.body.host || cfg.mqtt?.host || 'localhost';
+    const port    = parseInt(req.body.port || cfg.mqtt?.port || 1883);
+    const client  = mqttLib.connect(`mqtt://${host}:${port}`, { connectTimeout: 5000, reconnectPeriod: 0 });
+    const timer   = setTimeout(() => { client.end(true); res.json({ success: false, error: `Cannot reach ${host}:${port} — connection timed out` }); }, 6000);
+    client.once('connect', () => {
+      clearTimeout(timer);
+      client.end(true);
+      res.json({ success: true, message: `Connected to ${host}:${port}` });
+    });
+    client.once('error', err => {
+      clearTimeout(timer);
+      client.end(true);
+      res.json({ success: false, error: err.message });
+    });
+  });
+
+  router.post('/settings/boneio', (req, res) => {
+    const current = readConfigFile();
+    const { host, port } = req.body;
+    try {
+      const boneio = { ...current.boneio };
+      if (host !== undefined) boneio.host = host.trim();
+      if (port)               boneio.port = parseInt(port);
+      writeConfigFile({ ...current, boneio });
+      res.json({ success: true, message: 'BoneIO settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   router.post('/settings/test-shelly', async (req, res) => {
     const { host, username, password } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host is required' });
