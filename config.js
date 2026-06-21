@@ -63,6 +63,16 @@ function loadConfig() {
       username: process.env.LOXONE_USER || fileConfig.loxone?.username || 'admin',
       password: process.env.LOXONE_PASS || fileConfig.loxone?.password || '',
     },
+    sip: {
+      enabled:    fileConfig.sip?.enabled    || false,
+      port:       parseInt(fileConfig.sip?.port || 5060),
+      domain:     fileConfig.sip?.domain      || '',
+      allowFrom:  fileConfig.sip?.allowFrom   || '',
+      cameraName: fileConfig.sip?.cameraName  || '',
+      doorRelay:  fileConfig.sip?.doorRelay ?? null,
+      doorPulseMs:parseInt(fileConfig.sip?.doorPulseMs || 3000),
+      autoAnswer: fileConfig.sip?.autoAnswer  || false,
+    },
     cameras: fileConfig.cameras || [],
     relays: fileConfig.relays || [
       { index: 0, name: 'Relay 1' },

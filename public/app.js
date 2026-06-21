@@ -47,6 +47,8 @@ socket.on('device-discovered', (device) => addOrUpdateDevice(device));
 
 socket.on('platform-status', (status) => renderPlatformBar(status));
 
+socket.on('sip-call', (state) => handleSipCall(state));
+
 // ── Value application ──────────────────────────────────────────────────────
 function applyValue(key, value) {
   // Update static DOM bindings
@@ -858,6 +860,7 @@ const PLATFORMS = [
   { key: 'shelly',       label: 'Shelly',       color: '#f0a500', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M16 10v6l4 2" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="16" r="3" fill="#fff"/></svg>' },
   { key: 'mqtt-explorer',label: 'Explorer',     color: '#7c3aed', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><circle cx="10" cy="10" r="2.5" fill="#fff"/><circle cx="22" cy="10" r="2.5" fill="#fff"/><circle cx="10" cy="22" r="2.5" fill="#fff"/><circle cx="22" cy="22" r="2.5" fill="#fff"/><path d="M12.5 10h7M10 12.5v7M22 12.5v7M12.5 22h7" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>' },
   { key: 'boneio',       label: 'BoneIO',       color: '#1a73e8', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><circle cx="10" cy="10" r="3" fill="#fff"/><circle cx="22" cy="10" r="3" fill="#fff"/><circle cx="10" cy="22" r="3" fill="#fff"/><circle cx="22" cy="22" r="3" fill="#fff"/><path d="M13 10h6M10 13v6M22 13v6M13 22h6" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>' },
+  { key: 'sip',          label: 'SIP',          color: '#34b27b', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M11 9c-1 0-2 1-2 2 0 6 6 12 12 12 1 0 2-1 2-2v-2l-3-2-2 2c-2-1-4-3-5-5l2-2-2-3z" fill="#fff"/></svg>' },
 ];
 
 const platformBar = document.getElementById('platform-bar');
@@ -876,4 +879,111 @@ function renderPlatformBar(status) {
         <span class="plat-label">${p.label}</span>
       </div>`;
   }).join('');
+}
+
+// ── SIP doorbell call panel ─────────────────────────────────────────────────
+
+const sipModal     = document.getElementById('sip-modal');
+let _sipState      = 'idle';
+let _sipCamRefresh = null;
+
+function handleSipCall(state) {
+  if (!sipModal) return;
+
+  if (state.active) {
+    if (_sipState === 'idle') openSipPanel(state);
+    updateSipPanel(state);
+    _sipState = state.state;
+  } else {
+    // ended / idle — briefly reflect "ended" then close
+    if (_sipState !== 'idle') {
+      if (state.state === 'ended') updateSipPanel(state);
+      closeSipPanel();
+    }
+    _sipState = 'idle';
+  }
+}
+
+async function openSipPanel(state) {
+  sipModal.style.display = 'flex';
+  await loadSipCamera(state.cameraName);
+}
+
+function updateSipPanel(state) {
+  document.getElementById('sip-modal-caller').textContent = state.caller || '';
+  const stateEl  = document.getElementById('sip-modal-state');
+  const answerBtn = document.getElementById('sip-btn-answer');
+  const doorBtn   = document.getElementById('sip-btn-door');
+
+  if (state.state === 'ringing')      stateEl.textContent = 'Ringing…';
+  else if (state.state === 'in-call') stateEl.textContent = 'Connected';
+  else if (state.state === 'ended')   stateEl.textContent = 'Call ended';
+
+  answerBtn.style.display = state.state === 'in-call' ? 'none' : '';
+  doorBtn.style.display   = state.canOpenDoor ? '' : 'none';
+
+  const rejectBtn = document.getElementById('sip-btn-reject');
+  rejectBtn.textContent = state.state === 'in-call' ? '✕ Hang Up' : '✕ Decline';
+}
+
+async function loadSipCamera(cameraName) {
+  const img   = document.getElementById('sip-modal-img');
+  const noCam = document.getElementById('sip-modal-no-cam');
+  if (_sipCamRefresh) { clearInterval(_sipCamRefresh); _sipCamRefresh = null; }
+  img.style.display = 'none';
+  img.src = '';
+
+  if (!cameraName) { noCam.style.display = 'flex'; return; }
+
+  try {
+    const res  = await fetch('/api/cameras');
+    const json = await res.json();
+    const cam  = (json.data || []).find(c => c.name === cameraName);
+    if (!cam) { noCam.style.display = 'flex'; return; }
+
+    if (cam.mjpegUrl && cam.mjpegUrl.trim()) {
+      img.src = cam.mjpegUrl.trim();
+      img.style.display = 'block';
+      noCam.style.display = 'none';
+    } else if (cam.snapshotUrl && cam.snapshotUrl.trim()) {
+      const url = cam.snapshotUrl.trim();
+      const refresh = () => { img.src = `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`; };
+      refresh();
+      _sipCamRefresh = setInterval(refresh, 2000);
+      img.style.display = 'block';
+      noCam.style.display = 'none';
+    } else {
+      noCam.style.display = 'flex';
+    }
+  } catch {
+    noCam.style.display = 'flex';
+  }
+}
+
+function closeSipPanel() {
+  if (_sipCamRefresh) { clearInterval(_sipCamRefresh); _sipCamRefresh = null; }
+  setTimeout(() => {
+    if (_sipState === 'idle') {
+      sipModal.style.display = 'none';
+      document.getElementById('sip-modal-img').src = '';
+    }
+  }, 1200);
+}
+
+async function sipAction(path) {
+  try {
+    await fetch(`/api/sip/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+  } catch (err) {
+    console.error('[SIP]', err.message);
+  }
+}
+
+if (sipModal) {
+  document.getElementById('sip-btn-answer').addEventListener('click', () => sipAction('answer'));
+  document.getElementById('sip-btn-reject').addEventListener('click', () => sipAction('reject'));
+  document.getElementById('sip-btn-door').addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    sipAction('open-door').finally(() => setTimeout(() => { btn.disabled = false; }, 1500));
+  });
 }

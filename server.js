@@ -14,6 +14,7 @@ const UnifiProtectClient   = require('./src/unifi-protect-client');
 const ShellyClient         = require('./src/shelly-client');
 const LoxoneClient         = require('./src/loxone-client');
 const MqttExplorer         = require('./src/mqtt-explorer');
+const SipServer            = require('./src/sip-server');
 const BoneIOClient         = require('./src/boneio-client');
 const DirigeraClient       = require('./src/dirigera-client');
 const TradfriClient        = require('./src/tradfri-client');
@@ -43,13 +44,29 @@ async function main() {
 
   const mqttExplorer = config.mqtt?.host ? new MqttExplorer(config) : null;
 
+  // SIP doorbell intercom — pulses the configured door relay on "open door"
+  let sipServer = null;
+  if (config.sip?.enabled) {
+    sipServer = new SipServer(config, {
+      onOpenDoor: async () => {
+        const idx = config.sip.doorRelay;
+        if (idx == null) throw new Error('No door relay configured');
+        await relayController.setState(idx, true);
+        const pulse = config.sip.doorPulseMs || 3000;
+        if (pulse > 0) {
+          setTimeout(() => relayController.setState(idx, false).catch(() => {}), pulse);
+        }
+      },
+    });
+  }
+
   const app = express();
   app.use(express.json());
   app.use(express.static(path.join(__dirname, 'public')));
-  app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, { unifiProtect, mqttExplorer }));
+  app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, { unifiProtect, mqttExplorer, sipServer }));
 
   const server = http.createServer(app);
-  const io = setupWebSocket(server, store, sensorRegistry, connectionMgr);
+  const io = setupWebSocket(server, store, sensorRegistry, connectionMgr, sipServer);
 
   if (mqttExplorer) {
     mqttExplorer.setIo(io);
@@ -64,6 +81,15 @@ async function main() {
   // Start the connection manager (handles MQTT → VRM fallback automatically)
   await connectionMgr.start();
   relayController.setClient(connectionMgr.getActiveClient());
+
+  // Start SIP doorbell intercom if enabled
+  if (sipServer) {
+    try {
+      sipServer.start();
+    } catch (err) {
+      console.error(`[SIP] Start failed: ${err.message}`);
+    }
+  }
 
   // Start SolarEdge client if configured (runs in parallel with Victron)
   if (config.solaredge?.siteId && config.solaredge?.apiKey) {

@@ -1,7 +1,7 @@
 const { Server }     = require('socket.io');
 const platformStatus = require('./platform-status');
 
-function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr) {
+function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, sipServer) {
   const io = new Server(httpServer, { cors: { origin: '*' } });
 
   io.on('connection', (socket) => {
@@ -14,6 +14,7 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr) {
       socket.emit('connection-status', connectionMgr.getStatus());
     }
     socket.emit('platform-status', platformStatus.getAll());
+    if (sipServer) socket.emit('sip-call', sipServer.getState());
 
     socket.on('disconnect', () => console.log(`[WS] Client disconnected (${socket.id})`));
   });
@@ -52,6 +53,11 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr) {
   platformStatus.on('change', (status) => {
     io.emit('platform-status', status);
   });
+
+  // Forward SIP doorbell call state to all browsers
+  if (sipServer) {
+    sipServer.on('call', (state) => io.emit('sip-call', state));
+  }
 
   return io;
 }

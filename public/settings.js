@@ -63,6 +63,15 @@ async function loadSettings() {
     setVal('boneio-host', data.boneio?.host || '');
     setVal('boneio-port', data.boneio?.port || 1883);
 
+    // SIP doorbell
+    document.getElementById('sip-enabled').checked    = !!data.sip?.enabled;
+    document.getElementById('sip-autoanswer').checked = !!data.sip?.autoAnswer;
+    setVal('sip-port',   data.sip?.port   || 5060);
+    setVal('sip-allow',  data.sip?.allowFrom  || '');
+    setVal('sip-camera', data.sip?.cameraName || '');
+    setVal('sip-relay',  data.sip?.doorRelay ?? '');
+    setVal('sip-pulse',  data.sip?.doorPulseMs || 3000);
+
     // Shelly
     renderShellyList(data.shelly?.devices || []);
 
@@ -1103,6 +1112,34 @@ document.getElementById('btn-save-boneio').addEventListener('click', async () =>
     const res = await fetch('/api/settings/boneio', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ host: getVal('boneio-host'), port: getVal('boneio-port') }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── SIP doorbell ────────────────────────────────────────────────────────────
+
+document.getElementById('btn-save-sip').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-sip');
+  const resultEl = document.getElementById('sip-test-result');
+  btn.disabled   = true;
+  try {
+    const res = await fetch('/api/settings/sip', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enabled:     document.getElementById('sip-enabled').checked,
+        autoAnswer:  document.getElementById('sip-autoanswer').checked,
+        port:        getVal('sip-port'),
+        allowFrom:   getVal('sip-allow'),
+        cameraName:  getVal('sip-camera'),
+        doorRelay:   getVal('sip-relay'),
+        doorPulseMs: getVal('sip-pulse'),
+      }),
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;

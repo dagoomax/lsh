@@ -344,6 +344,44 @@
       </div>
     </section>
 
+    <!-- SIP Doorbell -->
+    <section class="card settings-card">
+      <h2>SIP Doorbell <span class="badge">Optional</span></h2>
+      <p class="section-desc">Runs a lightweight SIP server so a VoIP doorbell/intercom (Grandstream, Doorbird, 2N, Akuvox…) can call this host. Incoming calls pop a panel showing the door camera with answer / decline / open-door buttons. Point your doorbell at <code>this-host:port</code>. Restart after saving.</p>
+
+      <div class="form-row">
+        <label class="checkbox-row"><input type="checkbox" id="sip-enabled"> Enable SIP doorbell server</label>
+      </div>
+      <div class="form-row">
+        <label for="sip-port">Listen Port <span class="hint">(default 5060, UDP/TCP)</span></label>
+        <input type="number" id="sip-port" placeholder="5060" min="1" max="65535">
+      </div>
+      <div class="form-row">
+        <label for="sip-allow">Allowed Caller <span class="hint">(optional — match SIP user, blank = accept all)</span></label>
+        <input type="text" id="sip-allow" placeholder="e.g. doorbell">
+      </div>
+      <div class="form-row">
+        <label for="sip-camera">Door Camera Name <span class="hint">(must match a camera name above)</span></label>
+        <input type="text" id="sip-camera" placeholder="Front Door">
+      </div>
+      <div class="form-row">
+        <label for="sip-relay">Door Relay Index <span class="hint">(pulsed on “Open Door”, blank = disabled)</span></label>
+        <input type="number" id="sip-relay" placeholder="0" min="0" max="255">
+      </div>
+      <div class="form-row">
+        <label for="sip-pulse">Door Pulse <span class="hint">(ms the relay stays on, default 3000)</span></label>
+        <input type="number" id="sip-pulse" placeholder="3000" min="0" max="60000">
+      </div>
+      <div class="form-row">
+        <label class="checkbox-row"><input type="checkbox" id="sip-autoanswer"> Auto-answer incoming calls</label>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-sip">Save</button>
+        <span class="test-result" id="sip-test-result"></span>
+      </div>
+    </section>
+
     <!-- Shelly -->
     <section class="card settings-card">
       <h2>Shelly <span class="badge">Optional</span></h2>

@@ -390,6 +390,33 @@
     </div>
   </div>
 
+  <!-- SIP doorbell call panel -->
+  <div id="sip-modal" class="sip-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Incoming call">
+    <div class="sip-modal-backdrop"></div>
+    <div class="sip-modal-box">
+      <div class="sip-modal-header">
+        <span class="sip-ring-dot"></span>
+        <div class="sip-modal-titles">
+          <span class="sip-modal-title" id="sip-modal-title">Incoming call</span>
+          <span class="sip-modal-caller" id="sip-modal-caller"></span>
+        </div>
+        <span class="sip-modal-state" id="sip-modal-state">Ringing…</span>
+      </div>
+      <div class="sip-modal-preview" id="sip-modal-preview">
+        <img class="sip-modal-img" id="sip-modal-img" alt="Door camera" style="display:none">
+        <div class="sip-modal-no-cam" id="sip-modal-no-cam">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          <span>No door camera configured</span>
+        </div>
+      </div>
+      <div class="sip-modal-actions">
+        <button class="sip-btn sip-btn-door"   id="sip-btn-door">🔓 Open Door</button>
+        <button class="sip-btn sip-btn-answer" id="sip-btn-answer">📞 Answer</button>
+        <button class="sip-btn sip-btn-reject" id="sip-btn-reject">✕ Decline</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="app.js"></script>
   <script src="theme.js"></script>

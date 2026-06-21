@@ -18,7 +18,7 @@ function writeConfigFile(data) {
 }
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
-  const { unifiProtect, mqttExplorer } = clients;
+  const { unifiProtect, mqttExplorer, sipServer } = clients;
   const router = Router();
 
   router.get('/connection', (req, res) => {
@@ -129,6 +129,38 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       : [];
 
     res.json({ success: true, data: [...(cfg.cameras || []), ...unifiCams, ...stCams] });
+  });
+
+  // ── SIP doorbell intercom ─────────────────────────────────
+
+  router.get('/sip/status', (req, res) => {
+    if (!sipServer) return res.json({ success: true, data: { active: false, state: 'disabled' } });
+    res.json({ success: true, data: sipServer.getState() });
+  });
+
+  router.post('/sip/answer', (req, res) => {
+    if (!sipServer) return res.status(503).json({ success: false, error: 'SIP server not enabled' });
+    res.json({ success: sipServer.answer() });
+  });
+
+  router.post('/sip/reject', (req, res) => {
+    if (!sipServer) return res.status(503).json({ success: false, error: 'SIP server not enabled' });
+    res.json({ success: sipServer.reject() });
+  });
+
+  router.post('/sip/hangup', (req, res) => {
+    if (!sipServer) return res.status(503).json({ success: false, error: 'SIP server not enabled' });
+    res.json({ success: sipServer.hangup() });
+  });
+
+  router.post('/sip/open-door', async (req, res) => {
+    if (!sipServer) return res.status(503).json({ success: false, error: 'SIP server not enabled' });
+    try {
+      await sipServer.openDoor();
+      res.json({ success: true });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
   });
 
   // SmartThings camera snapshot proxy — fetches the stored image URL and proxies the bytes
@@ -751,6 +783,26 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       if (port)               boneio.port = parseInt(port);
       writeConfigFile({ ...current, boneio });
       res.json({ success: true, message: 'BoneIO settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/sip', (req, res) => {
+    const current = readConfigFile();
+    const { enabled, port, domain, allowFrom, cameraName, doorRelay, doorPulseMs, autoAnswer } = req.body;
+    try {
+      const sip = { ...current.sip };
+      if (enabled    !== undefined) sip.enabled    = !!enabled;
+      if (port)                     sip.port       = parseInt(port);
+      if (domain     !== undefined) sip.domain     = String(domain).trim();
+      if (allowFrom  !== undefined) sip.allowFrom  = String(allowFrom).trim();
+      if (cameraName !== undefined) sip.cameraName = String(cameraName).trim();
+      if (doorRelay  !== undefined) sip.doorRelay  = (doorRelay === '' || doorRelay === null) ? null : parseInt(doorRelay);
+      if (doorPulseMs)              sip.doorPulseMs = parseInt(doorPulseMs);
+      if (autoAnswer !== undefined) sip.autoAnswer = !!autoAnswer;
+      writeConfigFile({ ...current, sip });
+      res.json({ success: true, message: 'SIP settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

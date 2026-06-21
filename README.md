@@ -10,6 +10,7 @@ A self-hosted home automation dashboard built on Node.js. Aggregates live data f
 - **Multi-source connection** — local MQTT (Victron Venus OS) with automatic VRM cloud fallback
 - **Integrations** — SmartThings, SolarEdge, Loxone Miniserver, Satel INTEGRA, UniFi Protect, Shelly Gen1/Gen2
 - **Camera support** — WebRTC (WHEP), MJPEG, and snapshot with live tile badges
+- **SIP doorbell intercom** — VoIP doorbells ring a live call panel with the door camera, answer/decline, and one-tap door-open (relay pulse)
 - **MQTT Explorer** — real-time topic browser, message history, publish
 - **HomeKit bridge** — exposes relays and sensors as native HomeKit accessories
 - **Logs viewer** — per-category log files with auto-refresh tabs
@@ -45,6 +46,7 @@ All settings are stored in `config.json` (gitignored). Copy `config.example.json
 | `unifi` | No | UniFi Protect host, API key or credentials |
 | `shelly` | No | Array of device hosts |
 | `cameras` | No | RTSP, snapshot, MJPEG, WebRTC URLs per camera |
+| `sip` | No | SIP doorbell server: port, door camera name, door relay index |
 | `relays` | Yes | Relay index + display name |
 | `homekit` | Yes | PIN, port, username (MAC) |
 | `server.port` | Yes | HTTP port (default 3000) |
@@ -76,6 +78,7 @@ server.js
 ├── src/unifi-protect-client.js UniFi Protect HTTPS
 ├── src/shelly-client.js        Shelly HTTP Gen1/Gen2
 ├── src/mqtt-explorer.js        MQTT topic browser (subscribes to #)
+├── src/sip-server.js           SIP doorbell intercom (UAS, door-open relay)
 ├── src/sensor-registry.js      Unified device store + commands
 ├── src/relay-controller.js     Relay commands via active connection
 ├── src/homekit-bridge.js       HAP-nodejs HomeKit bridge
@@ -100,6 +103,10 @@ All integrations report status to `platform-status.js`, which broadcasts `platfo
 | POST | `/api/device/:key/command` | Send command to a device |
 | POST | `/api/relay/:index/state` | Toggle relay `{ on: true/false }` |
 | GET | `/api/cameras` | Camera list (config + UniFi) |
+| GET | `/api/sip/status` | Current doorbell call state |
+| POST | `/api/sip/answer` | Answer the active SIP call |
+| POST | `/api/sip/reject` | Decline / hang up the active call |
+| POST | `/api/sip/open-door` | Pulse the configured door relay |
 | POST | `/api/webrtc/offer` | WHEP SDP proxy |
 | GET | `/api/mqtt-explorer/topics` | All known MQTT topics |
 | GET | `/api/mqtt-explorer/history?topic=…` | Message history |
@@ -113,7 +120,7 @@ All integrations report status to `platform-status.js`, which broadcasts `platfo
 
 ## Logs
 
-Log files are written to `logs/` (gitignored), rotated at 2 MB. Categories: `mqtt`, `vrm`, `connection`, `smartthings`, `shelly`, `satel`, `unifi`, `homekit`, `sensors`, `solaredge`, `websocket`, `server`.
+Log files are written to `logs/` (gitignored), rotated at 2 MB. Categories: `mqtt`, `vrm`, `connection`, `smartthings`, `shelly`, `satel`, `unifi`, `sip`, `homekit`, `sensors`, `solaredge`, `websocket`, `server`.
 
 ---
 
