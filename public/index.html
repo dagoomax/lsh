@@ -25,9 +25,99 @@
   </header>
 
   <main>
-    <!-- ── System Overview ──────────────────────────────── -->
+    <!-- ── Energy Flow ─────────────────────────────────── -->
+    <section class="card flow-card">
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--accent-yellow)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </span>
+          Energy Flow
+        </h2>
+        <span class="live-dot" id="flow-live-dot"></span>
+      </div>
+      <div class="flow-diagram">
+        <!-- Solar node -->
+        <div class="flow-node fn-solar">
+          <div class="fn-icon" style="color:var(--accent-solar)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+            </svg>
+          </div>
+          <div class="fn-val" id="fl-solar" style="color:var(--accent-solar)">--</div>
+          <div class="fn-lbl">Solar</div>
+        </div>
+        <!-- Connector: Solar → Battery -->
+        <div class="flow-conn-h fc-s2b" id="fc-s2b">
+          <div class="fc-line"></div>
+          <div class="fc-arrow">▶</div>
+        </div>
+        <!-- Battery node (center) -->
+        <div class="flow-node fn-bat">
+          <div class="fn-icon" id="bat-icon-wrap" style="color:var(--accent-battery)">
+            <svg viewBox="0 0 26 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="1" y="1" width="22" height="12" rx="2"/>
+              <path d="M25 4.5v5" stroke-width="2.5"/>
+              <rect id="bat-icon-fill" x="3" y="3" width="0" height="8" rx="1" fill="currentColor" stroke="none"/>
+            </svg>
+          </div>
+          <div class="fn-val fn-soc" id="fl-soc">--%</div>
+          <div class="fn-bat-bar">
+            <div class="fn-bat-fill" id="fl-bat-fill"></div>
+          </div>
+          <div class="fn-lbl" id="fl-bat-state">Battery</div>
+        </div>
+        <!-- Connector: Battery → Loads -->
+        <div class="flow-conn-h fc-b2l" id="fc-b2l">
+          <div class="fc-line"></div>
+          <div class="fc-arrow">▶</div>
+        </div>
+        <!-- Loads node -->
+        <div class="flow-node fn-loads">
+          <div class="fn-icon" style="color:var(--accent-orange)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <div class="fn-val" id="fl-loads" style="color:var(--accent-orange)">--</div>
+          <div class="fn-lbl">AC Loads</div>
+        </div>
+        <!-- Vertical connector: Grid ↕ Battery -->
+        <div class="flow-conn-v" id="fc-g2b">
+          <div class="fc-line-v"></div>
+          <span class="fc-arrow-v" id="fc-g2b-arrow">▲</span>
+        </div>
+        <!-- Grid node -->
+        <div class="flow-node fn-grid">
+          <div class="fn-icon" style="color:var(--accent-blue)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </div>
+          <div class="fn-val" id="fl-grid" style="color:var(--accent-blue)">--</div>
+          <div class="fn-lbl" id="fl-grid-lbl">Grid</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Battery ────────────────────────────────────── -->
     <section class="card battery-card">
-      <h2>Battery</h2>
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--accent-battery)">
+            <svg viewBox="0 0 26 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="1" y="1" width="22" height="12" rx="2"/>
+              <path d="M25 4.5v5" stroke-width="2.5"/>
+            </svg>
+          </span>
+          Battery
+        </h2>
+        <span class="charge-badge" id="bat-state-badge"></span>
+      </div>
       <div class="metric-large">
         <span data-key="system/0/Dc/Battery/Soc" id="battery-soc">--</span>
         <span class="unit">%</span>
@@ -55,8 +145,19 @@
       </div>
     </section>
 
+    <!-- ── Solar ─────────────────────────────────────── -->
     <section class="card solar-card">
-      <h2>Solar</h2>
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--accent-solar)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+            </svg>
+          </span>
+          Solar
+        </h2>
+      </div>
       <div class="metric-large">
         <span data-key="system/0/Dc/Pv/Power" data-format="power-raw" id="solar-power">--</span>
       </div>
@@ -72,8 +173,19 @@
       </div>
     </section>
 
+    <!-- ── Grid ──────────────────────────────────────── -->
     <section class="card grid-card">
-      <h2>Grid</h2>
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--accent-blue)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13 2 3 14h9l-1 8 10-12h-9z"/>
+            </svg>
+          </span>
+          Grid
+        </h2>
+        <span class="grid-flow-badge" id="grid-flow-badge"></span>
+      </div>
       <div class="metric-large">
         <span data-key="system/0/Ac/Grid/L1/Power" data-format="power-raw" id="grid-power">--</span>
       </div>
@@ -97,8 +209,19 @@
       </div>
     </section>
 
+    <!-- ── AC Loads ───────────────────────────────────── -->
     <section class="card loads-card">
-      <h2>AC Loads</h2>
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--accent-orange)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </span>
+          AC Loads
+        </h2>
+      </div>
       <div class="metric-large">
         <span data-key="system/0/Ac/Consumption/L1/Power" data-format="power-raw" id="ac-loads-power">--</span>
       </div>
@@ -114,28 +237,69 @@
       </div>
     </section>
 
+    <!-- ── DC System ──────────────────────────────────── -->
     <section class="card dc-card">
-      <h2>DC System</h2>
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--accent-yellow)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+              <rect x="9" y="9" width="6" height="6"/>
+              <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>
+            </svg>
+          </span>
+          DC System
+        </h2>
+      </div>
       <div class="metric-large">
         <span data-key="system/0/Dc/System/Power" data-format="power-raw" id="dc-power">--</span>
       </div>
     </section>
 
-    <!-- ── Cameras ──────────────────────────────────────── -->
+    <!-- ── Cameras ────────────────────────────────────── -->
     <section class="card cameras-card" id="cameras-section" style="display:none">
-      <h2>Cameras</h2>
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--text-muted)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2"/>
+            </svg>
+          </span>
+          Cameras
+        </h2>
+      </div>
       <div id="cameras-grid"></div>
     </section>
 
-    <!-- ── Relays ──────────────────────────────────────── -->
+    <!-- ── Relays ─────────────────────────────────────── -->
     <section class="card relays-card" id="relays-section">
-      <h2>Relays</h2>
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--accent-green)">
+            <svg viewBox="0 0 36 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <rect x="1" y="3" width="34" height="14" rx="7"/>
+              <circle cx="27" cy="10" r="5" fill="currentColor" stroke="none"/>
+            </svg>
+          </span>
+          Relays
+        </h2>
+      </div>
       <div id="relays-container"></div>
     </section>
 
     <!-- ── Discovered Devices ─────────────────────────── -->
     <section class="card devices-header-card" id="devices-header" style="display:none">
-      <h2>Devices</h2>
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--accent-blue)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </span>
+          Devices
+        </h2>
+      </div>
       <p class="devices-subtitle" id="devices-subtitle">Auto-discovered via MQTT</p>
     </section>
   </main>
@@ -160,7 +324,7 @@
         <video class="cam-modal-video" id="cam-modal-video" autoplay playsinline muted style="display:none"></video>
         <img  class="cam-modal-img"   id="cam-modal-img"   alt=""  style="display:none">
         <div class="cam-modal-no-snap" id="cam-modal-no-snap" style="display:none">
-          <span class="camera-placeholder-icon">📷</span>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
           <span>No stream URL configured</span>
         </div>
       </div>

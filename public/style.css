@@ -194,7 +194,268 @@ main {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Card header ─────────────────────────────────────── */
+.card-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 16px;
+}
+
+.card-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--ci) 14%, transparent);
+  border-radius: 8px;
+  flex-shrink: 0;
+  color: var(--ci);
+}
+
+.card-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ── Charge / flow badges ─────────────────────────────── */
+.charge-badge {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.charge-badge:empty { display: none; }
+.charge-badge.charging    { background: rgba(63,185,80,0.14); color: var(--accent-battery); }
+.charge-badge.discharging { background: rgba(240,136,62,0.14); color: var(--accent-orange); }
+.charge-badge.idle        { background: rgba(139,148,158,0.14); color: var(--text-muted); }
+
+.grid-flow-badge {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.grid-flow-badge:empty { display: none; }
+.grid-flow-badge.importing { background: rgba(248,81,73,0.12); color: var(--accent-red); }
+.grid-flow-badge.exporting { background: rgba(63,185,80,0.12); color: var(--accent-battery); }
+
+/* ── Live dot ─────────────────────────────────────────── */
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity 0.4s;
+}
+.live-dot.active {
+  opacity: 1;
+  animation: live-pulse 2s ease infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+/* ── Energy Flow Card ─────────────────────────────────── */
+.flow-card { grid-column: 1 / -1; }
+
+.flow-diagram {
+  display: grid;
+  grid-template-columns: 1fr 72px 1fr 72px 1fr;
+  grid-template-rows: auto 44px auto;
+  align-items: center;
+  padding: 8px 0 4px;
+}
+
+/* Node positions */
+.fn-solar  { grid-column: 1; grid-row: 1; }
+.fc-s2b    { grid-column: 2; grid-row: 1; align-self: center; }
+.fn-bat    { grid-column: 3; grid-row: 1; }
+.fc-b2l    { grid-column: 4; grid-row: 1; align-self: center; }
+.fn-loads  { grid-column: 5; grid-row: 1; }
+#fc-g2b    { grid-column: 3; grid-row: 2; justify-self: center; }
+.fn-grid   { grid-column: 3; grid-row: 3; }
+
+.flow-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+}
+
+.fn-bat {
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.fn-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  flex-shrink: 0;
+}
+
+.fn-icon svg { width: 26px; height: 26px; }
+
+.fn-val {
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.fn-soc {
+  font-size: 1.8rem;
+  color: var(--accent-battery);
+}
+
+.fn-lbl {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+.fn-bat-bar {
+  width: 72px;
+  height: 5px;
+  background: var(--card-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.fn-bat-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent-battery);
+  border-radius: 3px;
+  transition: width 0.5s ease, background 0.5s ease;
+}
+
+/* ── Horizontal flow connector ────────────────────────── */
+.flow-conn-h {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+}
+
+.fc-line {
+  flex: 1;
+  height: 2px;
+  background: var(--card-border);
+  border-radius: 1px;
+  transition: background 0.3s;
+}
+
+.fc-arrow {
+  font-size: 10px;
+  color: var(--card-border);
+  flex-shrink: 0;
+  transition: color 0.3s;
+  line-height: 1;
+}
+
+.flow-conn-h.fc-active .fc-line {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--fc-clr, var(--accent-blue)) 0, var(--fc-clr, var(--accent-blue)) 7px,
+    transparent 7px, transparent 14px
+  );
+  animation: march-h 0.55s linear infinite;
+}
+
+.flow-conn-h.fc-active .fc-arrow {
+  color: var(--fc-clr, var(--accent-blue));
+}
+
+@keyframes march-h {
+  from { background-position: 0 0; }
+  to   { background-position: 14px 0; }
+}
+
+/* ── Vertical flow connector (Grid ↕ Battery) ─────────── */
+.flow-conn-v {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  width: 20px;
+  gap: 2px;
+}
+
+.fc-line-v {
+  flex: 1;
+  width: 2px;
+  background: var(--card-border);
+  border-radius: 1px;
+  transition: background 0.3s;
+}
+
+.fc-arrow-v {
+  font-size: 9px;
+  color: var(--card-border);
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.3s;
+}
+
+.flow-conn-v.fc-active .fc-arrow-v { color: var(--accent-blue); }
+
+.flow-conn-v.fc-importing .fc-line-v {
+  background: repeating-linear-gradient(
+    180deg,
+    var(--accent-blue) 0, var(--accent-blue) 7px,
+    transparent 7px, transparent 14px
+  );
+  animation: march-v-up 0.55s linear infinite;
+}
+
+.flow-conn-v.fc-exporting .fc-line-v {
+  background: repeating-linear-gradient(
+    180deg,
+    var(--accent-blue) 0, var(--accent-blue) 7px,
+    transparent 7px, transparent 14px
+  );
+  animation: march-v-down 0.55s linear infinite;
+}
+
+@keyframes march-v-up   { from { background-position: 0 0; } to { background-position: 0 -14px; } }
+@keyframes march-v-down { from { background-position: 0 0; } to { background-position: 0  14px; } }
+
+@media (max-width: 640px) {
+  .flow-diagram {
+    grid-template-columns: 1fr 52px 1fr 52px 1fr;
+    grid-template-rows: auto 36px auto;
+  }
+  .fn-icon { width: 38px; height: 38px; }
+  .fn-icon svg { width: 20px; height: 20px; }
+  .fn-val  { font-size: 1.05rem; }
+  .fn-soc  { font-size: 1.4rem; }
+  .fn-bat  { padding: 10px 10px; }
 }
 
 .metric-large {
@@ -342,24 +603,6 @@ main {
   cursor: not-allowed;
 }
 
-/* Energy flow indicator */
-.flow-direction {
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  border-radius: 4px;
-  display: inline-block;
-  margin-left: 8px;
-}
-
-.flow-direction.importing {
-  background: rgba(248, 81, 73, 0.15);
-  color: var(--accent-red);
-}
-
-.flow-direction.exporting {
-  background: rgba(63, 185, 80, 0.15);
-  color: var(--accent-green);
-}
 
 /* ── Cameras ─────────────────────────────────────────────── */
 .cameras-card {
@@ -444,10 +687,6 @@ main {
   font-size: 0.78rem;
 }
 
-.camera-placeholder-icon {
-  font-size: 2rem;
-  opacity: 0.4;
-}
 
 .camera-footer {
   padding: 8px 12px;

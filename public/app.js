@@ -55,8 +55,16 @@ function applyValue(key, value) {
   });
 
   // Special handlers
-  if (key === 'system/0/Dc/Battery/Soc')    updateBatteryBar(value);
-  if (key === 'system/0/Ac/Grid/L1/Power')  updateGridFlow(value);
+  if (key === 'system/0/Dc/Battery/Soc') {
+    updateBatteryBar(value);
+    _flow.batSoc = Number(value);
+    updateFlowDiagram();
+  }
+  if (key === 'system/0/Dc/Battery/Power') { _flow.batPower = Number(value); updateFlowDiagram(); }
+  if (key === 'system/0/Dc/Battery/State') updateBatteryState(value);
+  if (key === 'system/0/Ac/Grid/L1/Power') { _flow.grid = Number(value); updateFlowDiagram(); }
+  if (key === 'system/0/Dc/Pv/Power') { _flow.solar = Number(value); updateFlowDiagram(); }
+  if (key === 'system/0/Ac/Consumption/L1/Power') { _flow.loads = Number(value); updateFlowDiagram(); }
   if (key.match(/^system\/0\/Relay\/\d+\/State$/)) {
     const idx = parseInt(key.split('/')[3]);
     updateRelayUI(idx, value === 1);
@@ -147,15 +155,100 @@ function updateBatteryBar(soc) {
   else if (soc < 50) batteryBar.classList.add('medium');
 }
 
-// ── Grid flow indicator ────────────────────────────────────────────────────
-function updateGridFlow(power) {
-  const parent = document.querySelector('.grid-card .metric-large');
-  if (!parent) return;
-  let el = parent.querySelector('.flow-direction');
-  if (!el) { el = document.createElement('span'); el.className = 'flow-direction'; parent.appendChild(el); }
-  if (power > 10)       { el.className = 'flow-direction importing'; el.textContent = 'importing'; }
-  else if (power < -10) { el.className = 'flow-direction exporting'; el.textContent = 'exporting'; }
-  else                  { el.textContent = ''; }
+// ── Battery state badge ────────────────────────────────────────────────────
+function updateBatteryState(state) {
+  const badge = document.getElementById('bat-state-badge');
+  if (!badge) return;
+  const map = { 0: ['Idle', 'idle'], 1: ['Charging', 'charging'], 2: ['Discharging', 'discharging'] };
+  const [label, cls] = map[state] || ['', ''];
+  badge.textContent = label;
+  badge.className = `charge-badge ${cls}`;
+  const stateEl = document.getElementById('fl-bat-state');
+  if (stateEl) stateEl.textContent = label || 'Battery';
+}
+
+// ── Energy flow diagram ────────────────────────────────────────────────────
+const _flow = { solar: null, grid: null, batPower: null, loads: null, batSoc: null };
+
+function _setFlowH(id, active, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('fc-active', !!active);
+  if (color) el.style.setProperty('--fc-clr', color);
+}
+
+function updateFlowDiagram() {
+  const { solar, grid, batPower, loads, batSoc } = _flow;
+
+  // Solar → Battery: active when solar producing
+  _setFlowH('fc-s2b', solar != null && solar > 10, 'var(--accent-solar)');
+
+  // Battery → Loads: active when loads drawing or battery discharging
+  const loadsOn = (loads != null && loads > 10) || (batPower != null && batPower < -10);
+  _setFlowH('fc-b2l', loadsOn, 'var(--accent-orange)');
+
+  // Grid ↕ Battery: importing vs exporting
+  const importing = grid != null && grid > 10;
+  const exporting = grid != null && grid < -10;
+  const fc = document.getElementById('fc-g2b');
+  const arrowEl = document.getElementById('fc-g2b-arrow');
+  if (fc) {
+    fc.classList.remove('fc-active', 'fc-importing', 'fc-exporting');
+    if (importing) { fc.classList.add('fc-active', 'fc-importing'); if (arrowEl) arrowEl.textContent = '▲'; }
+    else if (exporting) { fc.classList.add('fc-active', 'fc-exporting'); if (arrowEl) arrowEl.textContent = '▼'; }
+    else { if (arrowEl) arrowEl.textContent = '▲'; }
+  }
+
+  // Grid card badge
+  const gridBadge = document.getElementById('grid-flow-badge');
+  if (gridBadge) {
+    if (importing)      { gridBadge.textContent = 'Importing'; gridBadge.className = 'grid-flow-badge importing'; }
+    else if (exporting) { gridBadge.textContent = 'Exporting'; gridBadge.className = 'grid-flow-badge exporting'; }
+    else                { gridBadge.textContent = ''; gridBadge.className = 'grid-flow-badge'; }
+  }
+
+  // Grid value in flow (show absolute, label changes)
+  const gridEl = document.getElementById('fl-grid');
+  if (gridEl) gridEl.textContent = grid != null ? fmtPower(Math.abs(grid)) : '--';
+  const gridLbl = document.getElementById('fl-grid-lbl');
+  if (gridLbl) {
+    if (importing) gridLbl.textContent = 'Importing';
+    else if (exporting) gridLbl.textContent = 'Exporting';
+    else gridLbl.textContent = 'Grid';
+  }
+
+  // Flow values
+  const solEl = document.getElementById('fl-solar');
+  if (solEl) solEl.textContent = solar != null ? fmtPower(solar) : '--';
+  const loadsEl = document.getElementById('fl-loads');
+  if (loadsEl) loadsEl.textContent = loads != null ? fmtPower(loads) : '--';
+
+  // Battery SOC in flow
+  if (batSoc != null) {
+    const socEl = document.getElementById('fl-soc');
+    if (socEl) socEl.textContent = `${Math.round(batSoc)}%`;
+    const fill = document.getElementById('fl-bat-fill');
+    if (fill) {
+      fill.style.width = `${batSoc}%`;
+      fill.style.background = batSoc < 20 ? 'var(--accent-red)' : batSoc < 50 ? 'var(--accent-yellow)' : 'var(--accent-battery)';
+    }
+    // Battery icon fill (SVG rect in flow)
+    const iconFill = document.getElementById('bat-icon-fill');
+    if (iconFill) {
+      const w = Math.max(0, (batSoc / 100) * 18).toFixed(1);
+      iconFill.setAttribute('width', w);
+      iconFill.style.fill = batSoc < 20 ? 'var(--accent-red)' : batSoc < 50 ? 'var(--accent-yellow)' : 'var(--accent-battery)';
+    }
+    const wrap = document.getElementById('bat-icon-wrap');
+    if (wrap) wrap.style.color = batSoc < 20 ? 'var(--accent-red)' : batSoc < 50 ? 'var(--accent-yellow)' : 'var(--accent-battery)';
+  }
+
+  // Live dot pulses whenever flow data is present
+  const dot = document.getElementById('flow-live-dot');
+  if (dot) {
+    const hasData = solar != null || grid != null || loads != null;
+    dot.classList.toggle('active', hasData);
+  }
 }
 
 // ── Relays ─────────────────────────────────────────────────────────────────
@@ -257,7 +350,7 @@ function renderCameras(cameras) {
       cameraTimers.set(cam.name, setInterval(refresh, 10000));
     } else {
       preview.innerHTML = `<div class="camera-no-snapshot">
-        <span class="camera-placeholder-icon">📷</span>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.35"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
         <span>No snapshot</span>
       </div>`;
     }
@@ -685,10 +778,11 @@ function guessFormat(key) {
 
 function hkLabel(hk) {
   const map = {
-    temperature: '🌡 Temp', humidity: '💧 Humidity', battery: '🔋 Battery',
-    tank: '🪣 Tank', contact: '🔔 Contact', 'switch-rw': '💡 Switch',
-    'battery-level': '🔋 Battery', motion: '👁 Motion', smoke: '🔥 Smoke',
-    co: '⚠️ CO', leak: '💧 Leak', occupancy: '📍 Presence',
+    temperature: 'Temp', humidity: 'Humidity', battery: 'Battery',
+    tank: 'Tank', contact: 'Contact', 'switch-rw': 'Switch',
+    'battery-level': 'Battery', motion: 'Motion', smoke: 'Smoke',
+    co: 'CO', leak: 'Leak', occupancy: 'Presence', thermostat: 'Thermostat',
+    lock: 'Lock', cover: 'Cover', fan: 'Fan', lux: 'Lux',
   };
   return map[hk] || hk;
 }
@@ -699,10 +793,10 @@ function setSourceBadge(source) {
   if (!source) { sourceBadge.style.display = 'none'; return; }
   sourceBadge.style.display = '';
   if (source === 'mqtt') {
-    sourceBadge.textContent = '⚡ Local MQTT';
+    sourceBadge.textContent = 'Local MQTT';
     sourceBadge.className = 'source-badge source-mqtt';
   } else if (source === 'vrm') {
-    sourceBadge.textContent = '☁️ VRM Cloud';
+    sourceBadge.textContent = 'VRM Cloud';
     sourceBadge.className = 'source-badge source-vrm';
   } else {
     sourceBadge.style.display = 'none';
