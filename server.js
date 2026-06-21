@@ -14,6 +14,7 @@ const UnifiProtectClient   = require('./src/unifi-protect-client');
 const ShellyClient         = require('./src/shelly-client');
 const LoxoneClient         = require('./src/loxone-client');
 const MqttExplorer         = require('./src/mqtt-explorer');
+const BoneIOClient         = require('./src/boneio-client');
 const createApiRoutes    = require('./src/api-routes');
 const setupWebSocket     = require('./src/websocket');
 const startHomekitBridge = require('./src/homekit-bridge');
@@ -72,6 +73,12 @@ async function main() {
   if (config.smartthings?.token) {
     const smartThings = new SmartThingsClient(config, store, sensorRegistry);
     smartThings.start().catch((err) => console.error(`[SmartThings] Start failed: ${err.message}`));
+  }
+
+  // Start BoneIO client if configured
+  if (config.boneio) {
+    const boneio = new BoneIOClient(config, store, sensorRegistry);
+    boneio.start();
   }
 
   // Start Shelly client if devices are configured
