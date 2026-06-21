@@ -474,10 +474,11 @@ main {
 }
 
 .battery-card .metric-large { color: var(--accent-battery); }
-.solar-card .metric-large { color: var(--accent-solar); }
-.grid-card .metric-large { color: var(--accent-grid); }
-.loads-card .metric-large { color: var(--accent-orange); }
-.dc-card .metric-large { color: var(--accent-yellow); }
+.solar-card   .metric-large { color: var(--accent-solar); }
+.grid-card    .metric-large { color: var(--accent-grid); }
+.loads-card   .metric-large { color: var(--accent-orange); }
+.dc-card      .metric-large { color: var(--accent-yellow); }
+.se-card      .metric-large { color: var(--accent-solar); }
 
 .battery-bar-container {
   width: 100%;

@@ -62,6 +62,7 @@ function applyValue(key, value) {
   }
   if (key === 'system/0/Dc/Battery/Power') { _flow.batPower = Number(value); updateFlowDiagram(); }
   if (key === 'system/0/Dc/Battery/State') updateBatteryState(value);
+  if (key.startsWith('solaredge/')) updateSolarEdge(key, value);
   if (key === 'system/0/Ac/Grid/L1/Power') { _flow.grid = Number(value); updateFlowDiagram(); }
   if (key === 'system/0/Dc/Pv/Power') { _flow.solar = Number(value); updateFlowDiagram(); }
   if (key === 'system/0/Ac/Consumption/L1/Power') { _flow.loads = Number(value); updateFlowDiagram(); }
@@ -103,6 +104,10 @@ function fmt(value, format) {
     case 'power':
     case 'power-raw':     return fmtPower(value);
     case 'energy':        return `${Number(value).toFixed(2)} kWh`;
+    case 'energy-wh': {
+      const kwh = Number(value) / 1000;
+      return kwh >= 1000 ? `${(kwh / 1000).toFixed(2)} MWh` : `${kwh.toFixed(2)} kWh`;
+    }
     case 'capacity':      return `${Number(value).toFixed(1)} Ah`;
     case 'percent':       return `${Number(value).toFixed(1)} %`;
     case 'frequency':     return `${Number(value).toFixed(2)} Hz`;
@@ -165,6 +170,27 @@ function updateBatteryState(state) {
   badge.className = `charge-badge ${cls}`;
   const stateEl = document.getElementById('fl-bat-state');
   if (stateEl) stateEl.textContent = label || 'Battery';
+}
+
+// ── SolarEdge card ────────────────────────────────────────────────────────
+function updateSolarEdge(key, value) {
+  const section = document.getElementById('se-section');
+  if (section) section.style.display = '';
+
+  if (key === 'solaredge/gridPower') {
+    const badge = document.getElementById('se-grid-badge');
+    if (badge) {
+      const v = Number(value);
+      if (v > 10)       { badge.textContent = 'Importing'; badge.className = 'grid-flow-badge importing'; }
+      else if (v < -10) { badge.textContent = 'Exporting'; badge.className = 'grid-flow-badge exporting'; }
+      else              { badge.textContent = '';           badge.className = 'grid-flow-badge'; }
+    }
+  }
+
+  if (key === 'solaredge/batteryLevel' && value != null) {
+    const row = document.getElementById('se-battery-row');
+    if (row) row.style.display = '';
+  }
 }
 
 // ── Energy flow diagram ────────────────────────────────────────────────────

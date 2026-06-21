@@ -256,6 +256,47 @@
       </div>
     </section>
 
+    <!-- ── SolarEdge ──────────────────────────────────── -->
+    <section class="card se-card" id="se-section" style="display:none">
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--accent-solar)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+            </svg>
+          </span>
+          SolarEdge
+        </h2>
+        <span class="grid-flow-badge" id="se-grid-badge"></span>
+      </div>
+      <div class="metric-large">
+        <span data-key="solaredge/currentPower" data-format="power-raw" id="se-power">--</span>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <span class="label">Grid</span>
+          <span class="value" data-key="solaredge/gridPower" data-format="power-raw" id="se-grid">--</span>
+        </div>
+        <div class="metric">
+          <span class="label">Loads</span>
+          <span class="value" data-key="solaredge/loadPower" data-format="power-raw">--</span>
+        </div>
+        <div class="metric">
+          <span class="label">Daily Yield</span>
+          <span class="value" data-key="solaredge/dailyEnergy" data-format="energy-wh">--</span>
+        </div>
+        <div class="metric">
+          <span class="label">Lifetime</span>
+          <span class="value" data-key="solaredge/lifetimeEnergy" data-format="energy-wh">--</span>
+        </div>
+        <div class="metric" id="se-battery-row" style="display:none">
+          <span class="label">Battery</span>
+          <span class="value" data-key="solaredge/batteryLevel" data-format="percent">--</span>
+        </div>
+      </div>
+    </section>
+
     <!-- ── Cameras ────────────────────────────────────── -->
     <section class="card cameras-card" id="cameras-section" style="display:none">
       <div class="card-hdr">
