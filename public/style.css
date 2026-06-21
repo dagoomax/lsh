@@ -820,6 +820,98 @@ main {
   flex-shrink: 0;
 }
 
+.cam-modal-log {
+  border-top: 1px solid var(--card-border);
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.cam-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 6px;
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+  z-index: 1;
+}
+
+.cam-log-title {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.cam-log-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1rem;
+  padding: 0 4px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.cam-log-btn:hover { color: var(--text); }
+
+.cam-log-entries {
+  padding: 0 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cam-log-entry {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.78rem;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.cam-log-entry:last-child { border-bottom: none; }
+
+.cam-log-ts {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+.cam-log-type {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.cam-log-type.motion   { color: var(--accent-blue); }
+.cam-log-type.sound    { color: var(--accent-orange, #e3a21a); }
+.cam-log-type.snapshot { color: var(--accent-green); }
+.cam-log-type.capture-triggered { color: var(--text-muted); }
+
+.cam-log-detail {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.cam-log-empty {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
 /* ── Devices section ──────────────────────────────────────── */
 .devices-header-card {
   grid-column: 1 / -1;

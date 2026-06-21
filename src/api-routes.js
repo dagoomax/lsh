@@ -3,6 +3,7 @@ const fs   = require('fs');
 const path = require('path');
 const http = require('http');
 const { generateSetupUri, generateSetupID } = require('./homekit-uri');
+const cameraLog = require('./camera-log');
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
 
@@ -161,10 +162,20 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         body: JSON.stringify({ commands: [{ component: 'main', capability: 'imageCapture', command: 'take' }] }),
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      // Resolve camera name from registry for log
+      const dev = sensorRegistry?.getDevices?.()?.find?.(d => d.instance === deviceId);
+      cameraLog.push(dev?.label || deviceId, 'capture-triggered');
       res.json({ success: true, message: 'Capture triggered — snapshot will update within a few seconds' });
     } catch (err) {
       res.json({ success: false, error: err.message });
     }
+  });
+
+  // Camera event log
+  router.get('/camera-log', (req, res) => {
+    const camera = req.query.camera || null;
+    const limit  = Math.min(parseInt(req.query.limit) || 100, 500);
+    res.json({ success: true, data: cameraLog.getRecent(limit, camera) });
   });
 
   // UniFi Protect snapshot proxy (avoids CORS + self-signed TLS in browser)
@@ -780,6 +791,52 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       res.json({ success: root < 400, message: root < 400 ? `Camera HTTP server reachable at ${ip}` : `Camera returned HTTP ${root}` });
     } catch (err) {
       res.json({ success: false, error: `Cannot reach ${ip}: ${err.message}` });
+    }
+  });
+
+  router.post('/settings/scan-snapshot', async (req, res) => {
+    const { ip, username = '', password = '' } = req.body;
+    if (!ip) return res.status(400).json({ success: false, error: 'IP address required' });
+
+    const PATHS = [
+      '/snapshot.jpg',
+      '/snapshot',
+      '/image.jpg',
+      '/cgi-bin/snapshot.cgi',
+      '/onvif/snapshot',
+      '/Streaming/Channels/101/picture',
+      '/cgi-bin/currentpic.cgi',
+      '/axis-cgi/jpg/image.cgi',
+      '/shot.jpg',
+      '/tmpfs/auto.jpg',
+    ];
+
+    const auth = (username || password)
+      ? 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64')
+      : null;
+
+    const tryPath = (urlPath) => new Promise((resolve) => {
+      const headers = auth ? { Authorization: auth } : {};
+      const req2 = http.request(
+        { hostname: ip, port: 80, path: urlPath, method: 'HEAD', timeout: 3000, headers },
+        (r) => { r.resume(); resolve(r.statusCode === 200 ? `http://${ip}${urlPath}` : null); }
+      );
+      req2.on('error',   () => resolve(null));
+      req2.on('timeout', () => { req2.destroy(); resolve(null); });
+      req2.end();
+    });
+
+    try {
+      // Try all paths in parallel, return first successful URL
+      const results = await Promise.all(PATHS.map(tryPath));
+      const found = results.find(Boolean);
+      if (found) {
+        res.json({ success: true, url: found });
+      } else {
+        res.json({ success: false, error: `No common snapshot URL found on ${ip}` });
+      }
+    } catch (err) {
+      res.json({ success: false, error: err.message });
     }
   });
 

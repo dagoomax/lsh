@@ -8,8 +8,9 @@ const lastUpdate  = document.getElementById('last-update');
 const devicesGrid = document.getElementById('devices-grid');
 const devicesHdr  = document.getElementById('devices-header');
 
-const knownDevices = new Map();
-const cameraTimers = new Map();
+const knownDevices  = new Map();
+const cameraTimers  = new Map();
+const cameraLogCache = new Map(); // camera name → [entries...]
 
 // ── Socket events ──────────────────────────────────────────────────────────
 socket.on('connect', () => {
@@ -46,6 +47,17 @@ socket.on('devices', (devices) => {
 socket.on('device-discovered', (device) => addOrUpdateDevice(device));
 
 socket.on('platform-status', (status) => renderPlatformBar(status));
+
+socket.on('camera-event', (entry) => {
+  const list = cameraLogCache.get(entry.camera) || [];
+  list.unshift(entry);
+  if (list.length > 200) list.length = 200;
+  cameraLogCache.set(entry.camera, list);
+  // Update live if the modal is open for this camera
+  if (_modalCam && _modalCam.name === entry.camera) {
+    _prependCameraLogEntry(entry);
+  }
+});
 
 // ── Value application ──────────────────────────────────────────────────────
 function applyValue(key, value) {
@@ -472,6 +484,10 @@ function openCameraModal(cam) {
 
   document.getElementById('cam-modal').style.display = 'flex';
   document.getElementById('cam-modal-close').focus();
+
+  // Populate event log from cache, then fetch fresh from API
+  _renderCameraLog(cameraLogCache.get(cam.name) || []);
+  _loadCameraLog(cam.name);
 }
 
 function _refreshModalSnap(url) {
@@ -499,6 +515,63 @@ function closeCameraModal() {
 
 document.getElementById('cam-modal-close').addEventListener('click', closeCameraModal);
 document.querySelector('.cam-modal-backdrop').addEventListener('click', closeCameraModal);
+
+// ── Camera event log ─────────────────────────────────────────────────────────
+
+async function _loadCameraLog(cameraName) {
+  try {
+    const r = await fetch(`/api/camera-log?camera=${encodeURIComponent(cameraName)}&limit=100`);
+    const { data } = await r.json();
+    if (!data) return;
+    cameraLogCache.set(cameraName, data);
+    if (_modalCam && _modalCam.name === cameraName) _renderCameraLog(data);
+  } catch { /* ignore */ }
+}
+
+function _fmtLogTime(ts) {
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+const LOG_LABELS = {
+  motion:            '🟡 Motion detected',
+  sound:             '🔊 Sound detected',
+  snapshot:          '📸 Snapshot updated',
+  'capture-triggered': '▶ Capture triggered',
+};
+
+function _camLogEntryHTML(entry) {
+  const label = LOG_LABELS[entry.type] || entry.type;
+  const detail = entry.detail ? `<span class="cam-log-detail" title="${esc(entry.detail)}">${esc(entry.detail)}</span>` : '';
+  return `<div class="cam-log-entry">
+    <span class="cam-log-ts">${_fmtLogTime(entry.ts)}</span>
+    <span class="cam-log-type ${entry.type}">${label}</span>
+    ${detail}
+  </div>`;
+}
+
+function _renderCameraLog(entries) {
+  const el = document.getElementById('cam-log-entries');
+  if (!el) return;
+  if (!entries.length) {
+    el.innerHTML = '<span class="cam-log-empty">No events yet</span>';
+    return;
+  }
+  el.innerHTML = entries.map(_camLogEntryHTML).join('');
+}
+
+function _prependCameraLogEntry(entry) {
+  const el = document.getElementById('cam-log-entries');
+  if (!el) return;
+  const empty = el.querySelector('.cam-log-empty');
+  if (empty) empty.remove();
+  el.insertAdjacentHTML('afterbegin', _camLogEntryHTML(entry));
+}
+
+document.getElementById('cam-log-refresh').addEventListener('click', () => {
+  if (_modalCam) _loadCameraLog(_modalCam.name);
+});
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && _modalCam) closeCameraModal();
 });

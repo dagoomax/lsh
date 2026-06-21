@@ -1,5 +1,6 @@
 const { Server }     = require('socket.io');
 const platformStatus = require('./platform-status');
+const cameraLog      = require('./camera-log');
 
 function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr) {
   const io = new Server(httpServer, { cors: { origin: '*' } });
@@ -51,6 +52,11 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr) {
   // Forward platform status changes
   platformStatus.on('change', (status) => {
     io.emit('platform-status', status);
+  });
+
+  // Forward camera events
+  cameraLog.on('entry', (entry) => {
+    io.emit('camera-event', entry);
   });
 
   return io;

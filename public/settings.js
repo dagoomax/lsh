@@ -777,7 +777,10 @@ function renderCameraList(cameras) {
       <div class="camera-settings-fields">
         <input type="text" class="cam-name"     placeholder="Camera name"                       value="${escapeVal(cam.name)}">
         <input type="text" class="cam-url"      placeholder="rtsp://… (RTSP stream)"            value="${escapeVal(cam.url || '')}">
-        <input type="text" class="cam-snapshot" placeholder="http://…/snapshot.jpg (optional)" value="${escapeVal(cam.snapshotUrl || '')}">
+        <div class="cam-snapshot-row">
+          <input type="text" class="cam-snapshot" placeholder="http://…/snapshot.jpg (optional)" value="${escapeVal(cam.snapshotUrl || '')}">
+          <button class="btn btn-secondary btn-sm cam-scan" title="Auto-detect snapshot URL from RTSP URL">Scan</button>
+        </div>
         <input type="text" class="cam-mjpeg"    placeholder="http://…/mjpeg (MJPEG stream)"     value="${escapeVal(cam.mjpegUrl || '')}">
         <input type="text" class="cam-webrtc"   placeholder="http://…/whep (WebRTC / WHEP endpoint — e.g. go2rtc)" value="${escapeVal(cam.webrtcUrl || '')}" style="grid-column:1/-1">
       </div>
@@ -785,6 +788,50 @@ function renderCameraList(cameras) {
     row.querySelector('.cam-remove').addEventListener('click', () => {
       currentCameras.splice(i, 1);
       renderCameraList(currentCameras);
+    });
+    row.querySelector('.cam-scan').addEventListener('click', async () => {
+      const urlField  = row.querySelector('.cam-url');
+      const snapField = row.querySelector('.cam-snapshot');
+      const btn       = row.querySelector('.cam-scan');
+      const rtspUrl   = urlField.value.trim();
+
+      // Parse IP and credentials from RTSP URL
+      let ip = '', username = '', password = '';
+      try {
+        const u = new URL(rtspUrl.replace(/^rtsps?:\/\//i, 'http://'));
+        ip       = u.hostname;
+        username = u.username || '';
+        password = u.password || '';
+      } catch { /* if URL parsing fails, leave ip empty */ }
+
+      if (!ip) {
+        alert('Enter an RTSP URL first so we can extract the camera IP.');
+        return;
+      }
+
+      btn.disabled    = true;
+      btn.textContent = '…';
+      try {
+        const r    = await fetch('/api/settings/scan-snapshot', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ ip, username, password }),
+        });
+        const data = await r.json();
+        if (data.success) {
+          snapField.value = data.url;
+          btn.textContent = '✓';
+          setTimeout(() => { btn.textContent = 'Scan'; btn.disabled = false; }, 1500);
+        } else {
+          btn.textContent = '✗';
+          setTimeout(() => { btn.textContent = 'Scan'; btn.disabled = false; }, 1500);
+          alert('No snapshot URL found: ' + (data.error || 'unknown'));
+        }
+      } catch (err) {
+        btn.textContent = '✗';
+        setTimeout(() => { btn.textContent = 'Scan'; btn.disabled = false; }, 1500);
+        alert('Scan failed: ' + err.message);
+      }
     });
     container.appendChild(row);
   });

@@ -9,6 +9,7 @@
  */
 
 const platformStatus = require('./platform-status');
+const cameraLog      = require('./camera-log');
 
 const BASE_URL = 'https://api.smartthings.com/v1';
 const POLL_INTERVAL_MS = 30000;
@@ -113,12 +114,13 @@ function deviceIcon(caps) {
 
 class SmartThingsClient {
   constructor(config, store, sensorRegistry) {
-    this.config          = config;
-    this.store           = store;
-    this.sensorRegistry  = sensorRegistry;
-    this.pollTimer       = null;
-    this.connected       = false;
-    this.devices         = []; // discovered device descriptors
+    this.config           = config;
+    this.store            = store;
+    this.sensorRegistry   = sensorRegistry;
+    this.pollTimer        = null;
+    this.connected        = false;
+    this.devices          = []; // discovered device descriptors
+    this._prevCamState    = new Map(); // tracks prev value for change-detection on camera devices
   }
 
   async start() {
@@ -189,15 +191,16 @@ class SmartThingsClient {
 
       const deviceId = item.deviceId;
       const device = {
-        key:      `smartthings/${deviceId}`,
-        type:     'smartthings',
-        instance: deviceId,
-        label:    item.label || item.name || deviceId,
-        icon:     deviceIcon(caps),
-        color:    deviceColor(caps),
+        key:       `smartthings/${deviceId}`,
+        type:      'smartthings',
+        instance:  deviceId,
+        label:     item.label || item.name || deviceId,
+        icon:      deviceIcon(caps),
+        color:     deviceColor(caps),
         sensors,
-        homekit:  homekitTypes,
-        _caps:    caps,
+        homekit:   homekitTypes,
+        _caps:     caps,
+        _isCamera: caps.has('imageCapture'),
         _writeCapability: (capId, command, args = []) => this._writeDevice(deviceId, capId, command, args),
       };
 
@@ -260,6 +263,20 @@ class SmartThingsClient {
       }
 
       this.store.update(`${device.key}/${def.storeAttr}`, value);
+
+      // Push camera events on state transitions (0→1 for motion/sound, URL change for snapshot)
+      if (device._isCamera) {
+        const stateKey = `${device.key}/${def.storeAttr}`;
+        const prev     = this._prevCamState.get(stateKey);
+        if (value !== prev) {
+          this._prevCamState.set(stateKey, value);
+          if (value === 1 && def.storeAttr === 'motion') cameraLog.push(device.label, 'motion');
+          if (value === 1 && def.storeAttr === 'sound')  cameraLog.push(device.label, 'sound');
+          if (def.storeAttr === 'image' && typeof value === 'string' && value.startsWith('http')) {
+            cameraLog.push(device.label, 'snapshot', value);
+          }
+        }
+      }
     }
   }
 
