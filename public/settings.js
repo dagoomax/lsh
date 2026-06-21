@@ -34,6 +34,8 @@ async function loadSettings() {
     setVal('satel-code', data.satel?.armCode || '');
     setVal('satel-zone-count', data.satel?.zoneCount || 32);
     setVal('satel-partitions', (data.satel?.partitions || [1]).join(', '));
+    renderNamesList('satel-zone-names-list', data.satel?.zoneNames || {}, 1, 128, 'Zone');
+    renderNamesList('satel-partition-names-list', data.satel?.partitionNames || {}, 1, 32, 'Partition');
 
     // UniFi Protect
     setVal('unifi-host', data.unifi?.host || '');
@@ -507,6 +509,58 @@ document.getElementById('btn-save-smartthings').addEventListener('click', async 
 
 // ── Satel ──────────────────────────────────────────────────────────────────
 
+// ── Satel zone / partition name helpers ────────────────────────────────────
+
+function renderNamesList(containerId, namesObj, minNum, maxNum, label) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+
+  const entries = Object.entries(namesObj).sort((a, b) => Number(a[0]) - Number(b[0]));
+  if (!entries.length) {
+    container.innerHTML = `<p class="hint names-empty">No ${label.toLowerCase()} names configured.</p>`;
+    return;
+  }
+
+  entries.forEach(([num, name]) => {
+    container.appendChild(makeNameRow(containerId, num, name, minNum, maxNum, label));
+  });
+}
+
+function makeNameRow(containerId, num, name, minNum, maxNum, label) {
+  const row = document.createElement('div');
+  row.className = 'names-row';
+  row.innerHTML = `
+    <input type="number" class="names-num" min="${minNum}" max="${maxNum}" placeholder="#" value="${escapeVal(String(num))}">
+    <input type="text"   class="names-val" placeholder="${label} name" value="${escapeVal(name)}">
+    <button class="btn btn-remove names-remove" title="Remove">✕</button>`;
+  row.querySelector('.names-remove').addEventListener('click', () => row.remove());
+  return row;
+}
+
+function collectNamesList(containerId) {
+  const result = {};
+  document.querySelectorAll(`#${containerId} .names-row`).forEach(row => {
+    const num  = parseInt(row.querySelector('.names-num').value.trim());
+    const name = row.querySelector('.names-val').value.trim();
+    if (num && name) result[num] = name;
+  });
+  return result;
+}
+
+document.getElementById('btn-add-zone-name').addEventListener('click', () => {
+  const container = document.getElementById('satel-zone-names-list');
+  const empty = container.querySelector('.names-empty');
+  if (empty) empty.remove();
+  container.appendChild(makeNameRow('satel-zone-names-list', '', '', 1, 128, 'Zone'));
+});
+
+document.getElementById('btn-add-partition-name').addEventListener('click', () => {
+  const container = document.getElementById('satel-partition-names-list');
+  const empty = container.querySelector('.names-empty');
+  if (empty) empty.remove();
+  container.appendChild(makeNameRow('satel-partition-names-list', '', '', 1, 32, 'Partition'));
+});
+
 document.getElementById('btn-test-satel').addEventListener('click', async () => {
   const resultEl = document.getElementById('satel-test-result');
   resultEl.textContent = 'Testing…';
@@ -535,11 +589,13 @@ document.getElementById('btn-save-satel').addEventListener('click', async () => 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        host:      getVal('satel-host'),
-        port:      getVal('satel-port'),
-        armCode:   getVal('satel-code'),
-        zoneCount: getVal('satel-zone-count'),
-        partitions: getVal('satel-partitions'),
+        host:           getVal('satel-host'),
+        port:           getVal('satel-port'),
+        armCode:        getVal('satel-code'),
+        zoneCount:      getVal('satel-zone-count'),
+        partitions:     getVal('satel-partitions'),
+        zoneNames:      collectNamesList('satel-zone-names-list'),
+        partitionNames: collectNamesList('satel-partition-names-list'),
       }),
     });
     const json = await res.json();

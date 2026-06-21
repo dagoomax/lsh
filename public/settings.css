@@ -514,3 +514,75 @@
   color: var(--accent-red);
   background: rgba(248, 81, 73, 0.1);
 }
+
+/* ── Satel zone / partition name editor ─────────── */
+.names-section {
+  margin: 16px 0 4px;
+}
+
+.names-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.names-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.names-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.names-empty {
+  margin: 0 !important;
+  font-size: 0.8rem;
+}
+
+.names-row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.names-num,
+.names-val {
+  background: var(--input-bg, var(--bg));
+  border: 1px solid var(--border, var(--card-border));
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  outline: none;
+  width: 100%;
+}
+
+.names-num:focus,
+.names-val:focus {
+  border-color: var(--accent-blue);
+}
+
+.names-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.names-remove:hover {
+  color: var(--accent-red, #f85149);
+  background: rgba(248, 81, 73, 0.1);
+}
