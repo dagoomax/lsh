@@ -274,6 +274,55 @@
       </div>
     </section>
 
+    <!-- IKEA Dirigera -->
+    <section class="card settings-card">
+      <h2>IKEA Dirigera <span class="badge">Optional</span></h2>
+      <p class="section-desc">Connects to an IKEA Dirigera hub (2022+). Discovers lights, outlets, blinds, motion sensors, and VINDSTYRKA air quality sensors. Requires a bearer token obtained once via <code>node scripts/dirigera-auth.js &lt;hub-ip&gt;</code> — press the button on the hub when prompted.</p>
+
+      <div class="form-row">
+        <label for="dirigera-host">Hub Host / IP</label>
+        <input type="text" id="dirigera-host" placeholder="192.168.x.x">
+      </div>
+      <div class="form-row">
+        <label for="dirigera-token">Bearer Token <span class="hint">(from dirigera-auth.js)</span></label>
+        <input type="password" id="dirigera-token" placeholder="••••••••••••••••••••••••••••••••">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-dirigera">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-dirigera">Save</button>
+        <span class="test-result" id="dirigera-test-result"></span>
+      </div>
+    </section>
+
+    <!-- IKEA Tradfri -->
+    <section class="card settings-card">
+      <h2>IKEA Tradfri <span class="badge">Optional</span></h2>
+      <p class="section-desc">Connects to an older IKEA Tradfri gateway via CoAP/DTLS. Requires <code>npm install node-tradfri-client</code>. First run: enter the security code from the sticker on the gateway — generated identity and PSK are printed to the server log. Subsequent runs: leave the code blank and fill in identity + PSK.</p>
+
+      <div class="form-row">
+        <label for="tradfri-host">Gateway Host / IP</label>
+        <input type="text" id="tradfri-host" placeholder="192.168.x.x">
+      </div>
+      <div class="form-row">
+        <label for="tradfri-code">Security Code <span class="hint">(sticker on gateway — first run only)</span></label>
+        <input type="password" id="tradfri-code" placeholder="XXXX-XXXX-XXXX">
+      </div>
+      <div class="form-row">
+        <label for="tradfri-identity">Identity <span class="hint">(generated on first run)</span></label>
+        <input type="text" id="tradfri-identity" placeholder="lsh-xxxxxxxx">
+      </div>
+      <div class="form-row">
+        <label for="tradfri-psk">PSK <span class="hint">(generated on first run)</span></label>
+        <input type="password" id="tradfri-psk" placeholder="••••••••••••••••">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-tradfri">Save</button>
+        <span class="test-result" id="tradfri-save-result"></span>
+      </div>
+    </section>
+
     <!-- BoneIO -->
     <section class="card settings-card">
       <h2>BoneIO <span class="badge">Optional</span></h2>

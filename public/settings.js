@@ -49,6 +49,16 @@ async function loadSettings() {
     setVal('loxone-user', data.loxone?.username || 'admin');
     setVal('loxone-pass', data.loxone?.password || '');
 
+    // Dirigera
+    setVal('dirigera-host',  data.dirigera?.host  || '');
+    setVal('dirigera-token', data.dirigera?.token ? '••••••••' : '');
+
+    // Tradfri
+    setVal('tradfri-host',     data.tradfri?.host     || '');
+    setVal('tradfri-code',     '');
+    setVal('tradfri-identity', data.tradfri?.identity || '');
+    setVal('tradfri-psk',      data.tradfri?.psk ? '••••••••' : '');
+
     // BoneIO
     setVal('boneio-host', data.boneio?.host || '');
     setVal('boneio-port', data.boneio?.port || 1883);
@@ -893,6 +903,81 @@ document.getElementById('btn-save-loxone').addEventListener('click', async () =>
       body: JSON.stringify({
         host: getVal('loxone-host'), port: getVal('loxone-port'),
         username: getVal('loxone-user'), password: getVal('loxone-pass'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── IKEA Dirigera ──────────────────────────────────────────────────────────
+
+document.getElementById('btn-test-dirigera').addEventListener('click', async () => {
+  const resultEl = document.getElementById('dirigera-test-result');
+  const host  = getVal('dirigera-host');
+  const token = getVal('dirigera-token');
+  if (!host || !token || token.includes('•')) {
+    resultEl.textContent = 'Enter host and token first';
+    resultEl.className = 'test-result err';
+    return;
+  }
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result loading';
+  try {
+    const res = await fetch('/api/settings/test-dirigera', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host, token }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-dirigera').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-dirigera');
+  const resultEl = document.getElementById('dirigera-test-result');
+  btn.disabled   = true;
+  const token = getVal('dirigera-token');
+  try {
+    const res = await fetch('/api/settings/dirigera', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host:  getVal('dirigera-host'),
+        token: token.includes('•') ? null : token,
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── IKEA Tradfri ───────────────────────────────────────────────────────────
+
+document.getElementById('btn-save-tradfri').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-tradfri');
+  const resultEl = document.getElementById('tradfri-save-result');
+  btn.disabled   = true;
+  const psk = getVal('tradfri-psk');
+  try {
+    const res = await fetch('/api/settings/tradfri', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host:         getVal('tradfri-host'),
+        securityCode: getVal('tradfri-code') || null,
+        identity:     getVal('tradfri-identity') || null,
+        psk:          (psk && !psk.includes('•')) ? psk : null,
       }),
     });
     const json = await res.json();

@@ -532,7 +532,10 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.satel?.armCode) safe.satel.armCode = '••••••••';
     if (safe.unifi?.password) safe.unifi.password = '••••••••';
     if (safe.unifi?.apiKey) safe.unifi.apiKey = '••••••••';
-    if (safe.loxone?.password) safe.loxone.password = '••••••••';
+    if (safe.loxone?.password)  safe.loxone.password  = '••••••••';
+    if (safe.dirigera?.token)   safe.dirigera.token   = '••••••••';
+    if (safe.tradfri?.psk)      safe.tradfri.psk      = '••••••••';
+    if (safe.tradfri?.securityCode) safe.tradfri.securityCode = '••••••••';
     if (safe.shelly?.devices) {
       safe.shelly.devices = safe.shelly.devices.map(d =>
         d.password ? { ...d, password: '••••••••' } : d
@@ -693,6 +696,64 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       if (port)               boneio.port = parseInt(port);
       writeConfigFile({ ...current, boneio });
       res.json({ success: true, message: 'BoneIO settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/test-dirigera', async (req, res) => {
+    const { host, token } = req.body;
+    if (!host || !token) return res.status(400).json({ success: false, error: 'host and token required' });
+    const https = require('https');
+    const agent = new https.Agent({ rejectUnauthorized: false });
+    try {
+      const result = await new Promise((resolve, reject) => {
+        const req2 = https.request({ hostname: host, port: 8443, path: '/v1/devices', method: 'GET', agent,
+          headers: { Authorization: `Bearer ${token}` } }, (r) => {
+          let d = '';
+          r.on('data', c => d += c);
+          r.on('end', () => {
+            if (r.statusCode === 401) return reject(new Error('Invalid token'));
+            if (r.statusCode >= 400) return reject(new Error(`HTTP ${r.statusCode}`));
+            try { resolve(JSON.parse(d)); } catch { reject(new Error('Non-JSON response')); }
+          });
+        });
+        req2.setTimeout(8000, () => { req2.destroy(); reject(new Error('Timeout')); });
+        req2.on('error', reject);
+        req2.end();
+      });
+      const count = Array.isArray(result) ? result.length : '?';
+      res.json({ success: true, message: `Connected — ${count} device(s) found` });
+    } catch (err) {
+      res.json({ success: false, error: `Cannot reach ${host}: ${err.message}` });
+    }
+  });
+
+  router.post('/settings/dirigera', (req, res) => {
+    const current = readConfigFile();
+    const { host, token } = req.body;
+    try {
+      const dirigera = { ...current.dirigera };
+      if (host  !== undefined) dirigera.host  = (host || '').trim();
+      if (token !== null)      dirigera.token = token || current.dirigera?.token || '';
+      writeConfigFile({ ...current, dirigera });
+      res.json({ success: true, message: 'Dirigera settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/tradfri', (req, res) => {
+    const current = readConfigFile();
+    const { host, securityCode, identity, psk } = req.body;
+    try {
+      const tradfri = { ...current.tradfri };
+      if (host         !== undefined) tradfri.host         = (host || '').trim();
+      if (securityCode)               tradfri.securityCode = securityCode.trim();
+      if (identity)                   tradfri.identity     = identity.trim();
+      if (psk !== null && psk !== undefined) tradfri.psk   = psk || current.tradfri?.psk || '';
+      writeConfigFile({ ...current, tradfri });
+      res.json({ success: true, message: 'Tradfri settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
