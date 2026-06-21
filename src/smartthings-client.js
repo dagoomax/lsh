@@ -49,6 +49,8 @@ const CAPABILITIES = {
     { storeAttr: 'fineDustLevel', name: 'PM2.5', format: 'pm25' },
     { storeAttr: 'dustLevel',     name: 'PM10',  format: 'pm10' },
   ]},
+  soundSensor:  { storeAttr: 'sound',  name: 'Sound Detection', format: 'on-off' },
+  imageCapture: { storeAttr: 'image',  name: 'Snapshot URL',    format: 'string', raw: true, isCamera: true },
 };
 
 function _deriveHomekitTypes(caps) {
@@ -96,6 +98,7 @@ function deviceColor(caps) {
 }
 
 function deviceIcon(caps) {
+  if (caps.has('imageCapture'))                                                                      return '📷';
   if (caps.has('powerMeter') || caps.has('energyMeter'))                                            return '⚡';
   if (caps.has('airQualitySensor') || caps.has('dustSensor') || caps.has('tvocMeasurement') || caps.has('carbonDioxideMeasurement')) return '💨';
   if (caps.has('temperatureMeasurement'))                                                            return '🌡';
@@ -253,7 +256,7 @@ class SmartThingsClient {
       // Normalise string state values to 1/0 (skip raw: true attributes like thermostat mode)
       if (!def.raw && typeof value === 'string') {
         if (['on', 'open', 'active', 'present', 'unlocked', 'detected'].includes(value)) value = 1;
-        else if (['off', 'closed', 'inactive', 'not present', 'locked', 'clear'].includes(value)) value = 0;
+        else if (['off', 'closed', 'inactive', 'not present', 'locked', 'clear', 'not detected'].includes(value)) value = 0;
       }
 
       this.store.update(`${device.key}/${def.storeAttr}`, value);

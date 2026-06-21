@@ -109,7 +109,62 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   router.get('/cameras', (req, res) => {
     const cfg = readConfigFile();
     const unifiCams = unifiProtect ? unifiProtect.getCameras() : [];
-    res.json({ success: true, data: [...(cfg.cameras || []), ...unifiCams] });
+
+    // Auto-include SmartThings cameras (devices with imageCapture capability)
+    const stCams = sensorRegistry
+      ? sensorRegistry.getDevices()
+          .filter((d) => d.type === 'smartthings' && d.sensors.some((s) => s.path === 'image'))
+          .map((d) => {
+            const deviceId = d.key.replace('smartthings/', '');
+            return {
+              name:        d.label,
+              url:         '',
+              snapshotUrl: `/api/smartthings-camera/${deviceId}/snapshot`,
+              mjpegUrl:    '',
+              webrtcUrl:   '',
+              _smartthings: true,
+              _deviceId:   deviceId,
+            };
+          })
+      : [];
+
+    res.json({ success: true, data: [...(cfg.cameras || []), ...unifiCams, ...stCams] });
+  });
+
+  // SmartThings camera snapshot proxy — fetches the stored image URL and proxies the bytes
+  router.get('/smartthings-camera/:deviceId/snapshot', async (req, res) => {
+    const { deviceId } = req.params;
+    const imageUrl = store.get(`smartthings/${deviceId}/image`);
+    if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
+      return res.status(404).send('No snapshot available — trigger a capture first');
+    }
+    try {
+      const imgRes = await fetch(imageUrl);
+      if (!imgRes.ok) return res.status(502).send(`Upstream error: HTTP ${imgRes.status}`);
+      res.set('Content-Type', imgRes.headers.get('content-type') || 'image/jpeg');
+      res.set('Cache-Control', 'no-cache');
+      res.send(Buffer.from(await imgRes.arrayBuffer()));
+    } catch (err) {
+      res.status(502).send('Snapshot fetch failed: ' + err.message);
+    }
+  });
+
+  // Trigger SmartThings imageCapture.take command
+  router.post('/smartthings-camera/:deviceId/take', async (req, res) => {
+    const { deviceId } = req.params;
+    const token = readConfigFile().smartthings?.token;
+    if (!token) return res.status(401).json({ success: false, error: 'No SmartThings token configured' });
+    try {
+      const r = await fetch(`https://api.smartthings.com/v1/devices/${deviceId}/commands`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commands: [{ component: 'main', capability: 'imageCapture', command: 'take' }] }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      res.json({ success: true, message: 'Capture triggered — snapshot will update within a few seconds' });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
   });
 
   // UniFi Protect snapshot proxy (avoids CORS + self-signed TLS in browser)
@@ -698,6 +753,33 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       res.json({ success: true, message: 'BoneIO settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/test-aeotec', async (req, res) => {
+    const { ip, username = 'admin', password = '' } = req.body;
+    if (!ip) return res.status(400).json({ success: false, error: 'IP address required' });
+    const http = require('http');
+    const auth = Buffer.from(`${username}:${password}`).toString('base64');
+    const tryPath = (path) => new Promise((resolve, reject) => {
+      const r = http.request({ hostname: ip, port: 80, path, method: 'GET', timeout: 6000,
+        headers: { Authorization: `Basic ${auth}` } }, (res2) => {
+        res2.resume();
+        resolve(res2.statusCode);
+      });
+      r.on('error', reject);
+      r.on('timeout', () => { r.destroy(); reject(new Error('Timeout')); });
+      r.end();
+    });
+    try {
+      const status = await tryPath('/snapshot.jpg');
+      if (status === 200)  return res.json({ success: true,  message: `Camera reachable at ${ip} — snapshot endpoint OK` });
+      if (status === 401)  return res.json({ success: false, error:   'Authentication failed — check username/password' });
+      // Fallback: try root
+      const root = await tryPath('/');
+      res.json({ success: root < 400, message: root < 400 ? `Camera HTTP server reachable at ${ip}` : `Camera returned HTTP ${root}` });
+    } catch (err) {
+      res.json({ success: false, error: `Cannot reach ${ip}: ${err.message}` });
     }
   });
 

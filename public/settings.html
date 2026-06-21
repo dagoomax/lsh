@@ -358,6 +358,50 @@
       </div>
     </section>
 
+    <!-- Aeotec 360 Camera -->
+    <section class="card settings-card">
+      <h2>Aeotec 360 Camera <span class="badge">Optional</span></h2>
+      <p class="section-desc">Add an Aeotec Indoor Camera 360° by local IP. Sensor data (motion, sound) flows via SmartThings; the local RTSP stream is added to your Cameras list for live video. Credentials are the ones you set in the Aeotec app.</p>
+
+      <div class="form-row">
+        <label for="aeotec-name">Camera Name</label>
+        <input type="text" id="aeotec-name" placeholder="Living Room">
+      </div>
+      <div class="form-row">
+        <label for="aeotec-ip">Camera IP Address</label>
+        <input type="text" id="aeotec-ip" placeholder="192.168.x.x">
+      </div>
+      <div class="form-row">
+        <label for="aeotec-user">Username <span class="hint">(default: admin)</span></label>
+        <input type="text" id="aeotec-user" placeholder="admin" value="admin">
+      </div>
+      <div class="form-row">
+        <label for="aeotec-pass">Password</label>
+        <input type="password" id="aeotec-pass" placeholder="••••••••">
+      </div>
+
+      <div class="aeotec-urls" id="aeotec-urls" style="display:none">
+        <div class="form-row">
+          <label>RTSP (main stream)</label>
+          <code class="url-preview" id="aeotec-rtsp"></code>
+        </div>
+        <div class="form-row">
+          <label>RTSP (sub stream)</label>
+          <code class="url-preview" id="aeotec-rtsp-sub"></code>
+        </div>
+        <div class="form-row">
+          <label>Snapshot URL</label>
+          <code class="url-preview" id="aeotec-snapshot"></code>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-aeotec">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-add-aeotec">Add to Cameras</button>
+        <span class="test-result" id="aeotec-result"></span>
+      </div>
+    </section>
+
     <!-- Cameras -->
     <section class="card settings-card">
       <h2>Cameras</h2>

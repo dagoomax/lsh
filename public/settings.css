@@ -586,3 +586,22 @@
   color: var(--accent-red, #f85149);
   background: rgba(248, 81, 73, 0.1);
 }
+
+.url-preview {
+  display: block;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  word-break: break-all;
+  user-select: all;
+}
+
+.aeotec-urls {
+  margin: 4px 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

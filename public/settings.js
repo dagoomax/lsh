@@ -663,6 +663,92 @@ document.getElementById('btn-save-unifi').addEventListener('click', async () => 
   } finally { btn.disabled = false; }
 });
 
+// ── Aeotec 360 Camera ──────────────────────────────────────────────────────
+
+function aeotecUrls() {
+  const ip   = getVal('aeotec-ip');
+  const user = getVal('aeotec-user') || 'admin';
+  const pass = document.getElementById('aeotec-pass').value;
+  const cred = pass ? `${user}:${pass}@` : `${user}@`;
+  return {
+    rtsp:     `rtsp://${cred}${ip}:554/stream1`,
+    rtspSub:  `rtsp://${cred}${ip}:554/stream2`,
+    snapshot: `http://${cred}${ip}/snapshot.jpg`,
+  };
+}
+
+function aeotecUpdatePreview() {
+  const ip = getVal('aeotec-ip');
+  const urlBox = document.getElementById('aeotec-urls');
+  if (!ip) { urlBox.style.display = 'none'; return; }
+  urlBox.style.display = '';
+  const u = aeotecUrls();
+  document.getElementById('aeotec-rtsp').textContent     = u.rtsp;
+  document.getElementById('aeotec-rtsp-sub').textContent = u.rtspSub;
+  document.getElementById('aeotec-snapshot').textContent = u.snapshot;
+}
+
+['aeotec-ip', 'aeotec-user', 'aeotec-pass'].forEach((id) => {
+  document.getElementById(id)?.addEventListener('input', aeotecUpdatePreview);
+});
+
+document.getElementById('btn-test-aeotec').addEventListener('click', async () => {
+  const resultEl = document.getElementById('aeotec-result');
+  const ip   = getVal('aeotec-ip');
+  const user = getVal('aeotec-user') || 'admin';
+  const pass = document.getElementById('aeotec-pass').value;
+  if (!ip) { resultEl.textContent = 'Enter an IP address first'; resultEl.className = 'test-result err'; return; }
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result loading';
+  try {
+    const res = await fetch('/api/settings/test-aeotec', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip, username: user, password: pass }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-add-aeotec').addEventListener('click', async () => {
+  const resultEl = document.getElementById('aeotec-result');
+  const ip   = getVal('aeotec-ip');
+  const name = getVal('aeotec-name') || `Aeotec ${ip}`;
+  if (!ip) { resultEl.textContent = 'Enter an IP address first'; resultEl.className = 'test-result err'; return; }
+  const u = aeotecUrls();
+
+  // Reload current cameras, add Aeotec entry, save
+  try {
+    const res = await fetch('/api/cameras');
+    const { data } = await res.json();
+    const existing = (data || []).filter((c) => !c._smartthings); // exclude auto-discovered ST cameras
+    // Remove any existing entry with same IP to avoid duplicates
+    const filtered = existing.filter((c) => !c.url?.includes(ip) && !c.snapshotUrl?.includes(ip));
+    filtered.push({ name, url: u.rtsp, snapshotUrl: u.snapshot, mjpegUrl: '', webrtcUrl: '' });
+
+    const saveRes = await fetch('/api/settings/cameras', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(filtered),
+    });
+    const saveJson = await saveRes.json();
+    if (saveJson.success) {
+      resultEl.textContent = `✓ "${name}" added to Cameras — scroll down to see it`;
+      resultEl.className = 'test-result ok';
+      await loadCameras(); // refresh the cameras list below
+    } else {
+      resultEl.textContent = '✗ ' + saveJson.error;
+      resultEl.className = 'test-result err';
+    }
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
 // ── Cameras ────────────────────────────────────────────────────────────────
 
 async function loadCameras() {
