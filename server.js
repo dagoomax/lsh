@@ -62,6 +62,25 @@ async function main() {
     if (MqttExplorer) mqttExplorer = new MqttExplorer(config);
   }
 
+  // SIP doorbell intercom — pulses the configured door relay on "open door"
+  let sipServer = null;
+  if (config.sip?.enabled) {
+    const SipServer = tryRequire('./src/sip-server', 'run: npm install sip');
+    if (SipServer) {
+      sipServer = new SipServer(config, {
+        onOpenDoor: async () => {
+          const idx = config.sip.doorRelay;
+          if (idx == null) throw new Error('No door relay configured');
+          await relayController.setState(idx, true);
+          const pulse = config.sip.doorPulseMs || 3000;
+          if (pulse > 0) {
+            setTimeout(() => relayController.setState(idx, false).catch(() => {}), pulse);
+          }
+        },
+      });
+    }
+  }
+
   // ── Determine HTTPS mode ─────────────────────────────────────────────────
   const leEnabled     = !!(config.server?.letsEncrypt?.enabled);
   const httpsEnabled  = !!(config.server?.https?.enabled);
@@ -93,7 +112,7 @@ async function main() {
   const AutomationEngine = tryRequire('./src/automation-engine');
   if (AutomationEngine) automation = new AutomationEngine(store, sensorRegistry, relayController);
 
-  const apiClients = { unifiProtect, reolink, mqttExplorer, auth, isSecure, ffmpegRtsp, automation };
+  const apiClients = { unifiProtect, reolink, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────
@@ -150,7 +169,7 @@ async function main() {
     mainPort   = config.server?.port || 3001;
   }
 
-  const io = setupWebSocket(mainServer, store, sensorRegistry, connectionMgr, auth);
+  const io = setupWebSocket(mainServer, store, sensorRegistry, connectionMgr, auth, sipServer);
 
   if (automation) {
     automation.setIo(io);
@@ -170,6 +189,15 @@ async function main() {
   // Start the connection manager (handles MQTT → VRM fallback automatically)
   await connectionMgr.start();
   relayController.setClient(connectionMgr.getActiveClient());
+
+  // Start SIP doorbell intercom if enabled
+  if (sipServer) {
+    try {
+      sipServer.start();
+    } catch (err) {
+      console.error(`[SIP] Start failed: ${err.message}`);
+    }
+  }
 
   // Start SolarEdge client if configured
   if (config.solaredge?.siteId && config.solaredge?.apiKey) {

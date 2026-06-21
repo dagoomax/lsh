@@ -16,6 +16,7 @@ const PREFIX_MAP = {
   'satel':         'satel',
   'unifi protect': 'unifi',
   'unifi':         'unifi',
+  'sip':           'sip',
   'homekit':       'homekit',
   'server':        'server',
   'sensors':       'sensors',

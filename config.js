@@ -71,6 +71,19 @@ function loadConfig() {
       username: process.env.LOXONE_USER || fileConfig.loxone?.username || 'admin',
       password: process.env.LOXONE_PASS || fileConfig.loxone?.password || '',
     },
+    sip: {
+      // Browser softphone (registers to UniFi Talk / a SIP PBX) — passed through as-is
+      ...fileConfig.sip,
+      // Server-side doorbell intercom (SIP UAS in src/sip-server.js) — normalized defaults
+      enabled:    fileConfig.sip?.enabled    || false,
+      port:       parseInt(fileConfig.sip?.port || 5060),
+      domain:     fileConfig.sip?.domain      || '',
+      allowFrom:  fileConfig.sip?.allowFrom   || '',
+      cameraName: fileConfig.sip?.cameraName  || '',
+      doorRelay:  fileConfig.sip?.doorRelay ?? null,
+      doorPulseMs:parseInt(fileConfig.sip?.doorPulseMs || 3000),
+      autoAnswer: fileConfig.sip?.autoAnswer  || false,
+    },
     cameras: fileConfig.cameras || [],
     reolink: { cameras: fileConfig.reolink?.cameras || [] },
     relays: fileConfig.relays || [

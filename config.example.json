@@ -143,7 +143,14 @@
     "password":    "",
     "displayName": "LSH Dashboard",
     "dtmfUnlock":  "#",
-    "relayIndex":  null
+    "relayIndex":  null,
+    "enabled":     false,
+    "port":        5060,
+    "allowFrom":   "",
+    "cameraName":  "Front Door",
+    "doorRelay":   0,
+    "doorPulseMs": 3000,
+    "autoAnswer":  false
   },
   "cameras": [
     { "name": "Front Door", "url": "rtsp://localhost:8554/FrontDoor", "snapshotUrl": "", "mjpegUrl": "", "webrtcUrl": "" }

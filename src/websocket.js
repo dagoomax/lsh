@@ -2,7 +2,7 @@ const { Server }     = require('socket.io');
 const platformStatus = require('./platform-status');
 const cameraLog      = require('./camera-log');
 
-function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth) {
+function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, sipServer) {
   const io = new Server(httpServer, { cors: { origin: '*' } });
 
   // Socket.io auth middleware
@@ -37,6 +37,7 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth) 
       socket.emit('connection-status', connectionMgr.getStatus());
     }
     socket.emit('platform-status', platformStatus.getAll());
+    if (sipServer) socket.emit('sip-call', sipServer.getState());
 
     socket.on('disconnect', () => console.log(`[WS] Client disconnected (${socket.id})`));
   });
@@ -80,6 +81,11 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth) 
   cameraLog.on('entry', (entry) => {
     io.emit('camera-event', entry);
   });
+
+  // Forward SIP doorbell call state to all browsers
+  if (sipServer) {
+    sipServer.on('call', (state) => io.emit('sip-call', state));
+  }
 
   return io;
 }
