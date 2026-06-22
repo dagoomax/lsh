@@ -110,6 +110,14 @@ async function loadSettings() {
     // Waveshare
     renderWaveshareList(data.waveshare?.devices || []);
 
+    // FFmpeg RTSP proxy
+    const ffrtspEnabled = !!(data.ffmpegRtsp?.enabled);
+    const ffrtspEnabledEl = document.getElementById('ffrtsp-enabled');
+    if (ffrtspEnabledEl) ffrtspEnabledEl.checked = ffrtspEnabled;
+    setVal('ffrtsp-base-port', data.ffmpegRtsp?.basePort || 8554);
+    setVal('ffrtsp-path',      data.ffmpegRtsp?.ffmpegPath || 'ffmpeg');
+    if (ffrtspEnabled) loadFFmpegRTSPStreams();
+
     // Cameras — fetched separately so settings API doesn't need to include them
     await loadCameras();
 
@@ -2315,6 +2323,51 @@ document.getElementById('btn-save-fibaro').addEventListener('click', async () =>
 
 // Init
 loadSettings();
+
+// ── FFmpeg RTSP Proxy ──────────────────────────────────────────────────────
+
+async function loadFFmpegRTSPStreams() {
+  try {
+    const res  = await fetch('/api/rtsp-proxy');
+    const json = await res.json();
+    const wrap = document.getElementById('ffrtsp-streams');
+    const body = document.getElementById('ffrtsp-streams-body');
+    if (!json.enabled || !json.streams?.length) { wrap.style.display = 'none'; return; }
+    body.innerHTML = json.streams.map(s => `
+      <tr>
+        <td>${s.name}</td>
+        <td><code>rtsp://&lt;host&gt;:${s.port}/${s.slug}</code></td>
+        <td><span style="color:${s.active ? 'var(--ok)' : 'var(--text-muted)'}">${s.active ? '● Live' : '◌ Waiting'}</span></td>
+      </tr>`).join('');
+    wrap.style.display = '';
+  } catch { /* ignore */ }
+}
+
+document.getElementById('btn-save-ffrtsp').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-ffrtsp');
+  const resultEl = document.getElementById('ffrtsp-save-result');
+  btn.disabled   = true;
+  resultEl.textContent = 'Saving…';
+  resultEl.className   = 'test-result';
+  try {
+    const res  = await fetch('/api/settings/ffmpeg-rtsp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enabled:    document.getElementById('ffrtsp-enabled').checked,
+        basePort:   parseInt(getVal('ffrtsp-base-port')) || 8554,
+        ffmpegPath: getVal('ffrtsp-path') || 'ffmpeg',
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+    if (json.success && document.getElementById('ffrtsp-enabled').checked) loadFFmpegRTSPStreams();
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally { btn.disabled = false; }
+});
 
 // ── Settings filter & category ─────────────────────────────────────────────
 

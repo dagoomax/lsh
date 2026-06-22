@@ -19,7 +19,7 @@ function writeConfigFile(data) {
 }
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
-  const { unifiProtect, mqttExplorer, auth, isSecure } = clients;
+  const { unifiProtect, mqttExplorer, auth, isSecure, ffmpegRtsp } = clients;
   const router = Router();
 
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -1662,6 +1662,31 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     proxyReq.on('timeout', ()  => { proxyReq.destroy(); res.status(504).json({ error: 'WHEP timeout' }); });
     proxyReq.write(body);
     proxyReq.end();
+  });
+
+  // ── FFmpeg RTSP proxy ──────────────────────────────────────────────────
+
+  router.get('/rtsp-proxy', (req, res) => {
+    if (!ffmpegRtsp) return res.json({ success: true, enabled: false, streams: [] });
+    res.json({ success: true, enabled: true, streams: ffmpegRtsp.getStreams() });
+  });
+
+  router.post('/settings/ffmpeg-rtsp', (req, res) => {
+    const current = readConfigFile();
+    const { enabled, basePort, ffmpegPath } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        ffmpegRtsp: {
+          enabled:    !!enabled,
+          basePort:   parseInt(basePort)  || 8554,
+          ffmpegPath: (ffmpegPath || 'ffmpeg').trim(),
+        },
+      });
+      res.json({ success: true, message: 'FFmpeg RTSP settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   // ── Logs ───────────────────────────────────────────────────────────────

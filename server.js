@@ -62,7 +62,16 @@ async function main() {
   app.use(auth.middleware(isSecure));
   app.use(express.json());
   app.use(express.static(path.join(__dirname, 'public')));
-  const apiClients = { unifiProtect, mqttExplorer, auth, isSecure };
+  let ffmpegRtsp = null;
+  if (config.ffmpegRtsp?.enabled) {
+    const FFmpegRTSP = tryRequire('./src/ffmpeg-rtsp');
+    if (FFmpegRTSP) {
+      ffmpegRtsp = new FFmpegRTSP(config);
+      ffmpegRtsp.start();
+    }
+  }
+
+  const apiClients = { unifiProtect, mqttExplorer, auth, isSecure, ffmpegRtsp };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────

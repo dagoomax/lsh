@@ -664,6 +664,43 @@
       </div>
     </section>
 
+    <!-- FFmpeg RTSP Proxy -->
+    <section class="card settings-card" data-category="cameras" data-title="FFmpeg RTSP proxy Loxone restream cameras">
+      <h2>FFmpeg RTSP Proxy <span class="badge">Optional</span></h2>
+      <p class="section-desc">Re-streams each camera's RTSP URL through a built-in RTSP server so Loxone (or any RTSP client) can connect to a single clean URL. Requires <code>ffmpeg</code> installed on the server. Each camera gets a dedicated port starting at Base Port.</p>
+
+      <div class="form-row">
+        <label>Enable RTSP Proxy</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ffrtsp-enabled">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Base Port</label>
+        <input type="number" id="ffrtsp-base-port" placeholder="8554" min="1024" max="65000" style="width:120px">
+      </div>
+      <div class="form-row">
+        <label>FFmpeg Path</label>
+        <input type="text" id="ffrtsp-path" placeholder="ffmpeg" style="width:240px">
+        <span class="field-hint">Leave as <code>ffmpeg</code> if it's on your PATH</span>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-ffrtsp">Save</button>
+        <span class="test-result" id="ffrtsp-save-result"></span>
+      </div>
+
+      <div id="ffrtsp-streams" style="margin-top:16px;display:none">
+        <h3 style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px">RTSP URLs for Loxone</h3>
+        <table class="data-table" style="width:100%">
+          <thead><tr><th>Camera</th><th>RTSP URL</th><th>Status</th></tr></thead>
+          <tbody id="ffrtsp-streams-body"></tbody>
+        </table>
+        <p class="field-hint" style="margin-top:8px">Replace <code>&lt;host&gt;</code> with this server's IP address.</p>
+      </div>
+    </section>
+
     <!-- Relays -->
     <section class="card settings-card" data-category="system" data-title="Relays Cerbo GX switches">
       <h2><span data-i18n="s.relays_title">Relays</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
