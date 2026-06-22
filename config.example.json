@@ -63,7 +63,21 @@
     { "index": 1, "name": "Relay 2" }
   ],
   "server": {
-    "port": 3000
+    "port": 3000,
+    "https": {
+      "enabled": false,
+      "port": 3443,
+      "certFile": "./certs/cert.pem",
+      "keyFile":  "./certs/key.pem"
+    },
+    "letsEncrypt": {
+      "enabled":  false,
+      "domain":   "dashboard.example.com",
+      "email":    "admin@example.com",
+      "port":     443,
+      "certsDir": "./certs",
+      "staging":  false
+    }
   },
   "homekit": {
     "pin": "031-45-154",

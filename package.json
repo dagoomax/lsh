@@ -7,8 +7,12 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "acme-client": "^5.4.0",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "express": "^4.21.0",
     "hap-nodejs": "^0.12.2",
+    "jsonwebtoken": "^9.0.3",
     "jssip": "^3.13.8",
     "mqtt": "^4.1.0",
     "node-tradfri-client": "^3.2.0",

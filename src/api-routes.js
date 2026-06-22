@@ -19,8 +19,131 @@ function writeConfigFile(data) {
 }
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
-  const { unifiProtect, mqttExplorer } = clients;
+  const { unifiProtect, mqttExplorer, auth, isSecure } = clients;
   const router = Router();
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+
+  router.post('/auth/setup', async (req, res) => {
+    if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
+    if (auth.hasUsers()) return res.status(409).json({ success: false, error: 'Already set up. Go to /login.html' });
+    const { adminUsername, adminPassword } = req.body;
+    if (!adminUsername || !adminPassword) {
+      return res.status(400).json({ success: false, error: 'adminUsername and adminPassword required' });
+    }
+    if (adminPassword.length < 8) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+    }
+    try {
+      const user  = await auth.createUser(adminUsername.trim(), adminPassword, 'admin');
+      const token = auth.signToken(user);
+      auth.setCookie(res, token, isSecure);
+      res.json({ success: true, user });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/auth/login', async (req, res) => {
+    if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, error: 'username and password required' });
+    }
+    const user = await auth.authenticate(username, password);
+    if (!user) return res.status(401).json({ success: false, error: 'Invalid username or password' });
+    const token = auth.signToken(user);
+    auth.setCookie(res, token, isSecure);
+    res.json({ success: true, user });
+  });
+
+  router.post('/auth/logout', (req, res) => {
+    if (auth) auth.clearCookie(res);
+    res.json({ success: true });
+  });
+
+  router.get('/auth/me', (req, res) => {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    res.json({ success: true, data: req.user });
+  });
+
+  router.post('/auth/change-password', async (req, res) => {
+    if (!auth || !req.user) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: 'currentPassword and newPassword required' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 8 characters' });
+    }
+    const ok = await auth.authenticate(req.user.username, currentPassword);
+    if (!ok) return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+    try {
+      await auth.changePassword(req.user.id, newPassword);
+      res.json({ success: true, message: 'Password changed successfully' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.get('/auth/users', (req, res) => {
+    if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
+    if (req.user?.role !== 'admin') return res.status(403).json({ success: false, error: 'Admin access required' });
+    res.json({ success: true, data: auth.getUsers() });
+  });
+
+  router.post('/auth/users', async (req, res) => {
+    if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
+    if (req.user?.role !== 'admin') return res.status(403).json({ success: false, error: 'Admin access required' });
+    const { username, password, role = 'viewer' } = req.body;
+    if (!username || !password) return res.status(400).json({ success: false, error: 'username and password required' });
+    if (password.length < 8) return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+    if (!['admin', 'viewer'].includes(role)) return res.status(400).json({ success: false, error: 'role must be admin or viewer' });
+    try {
+      const user = await auth.createUser(username, password, role);
+      res.json({ success: true, data: user });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  router.delete('/auth/users/:id', (req, res) => {
+    if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
+    if (req.user?.role !== 'admin') return res.status(403).json({ success: false, error: 'Admin access required' });
+    try {
+      auth.deleteUser(req.params.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  router.get('/auth/tokens', (req, res) => {
+    if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
+    res.json({ success: true, data: auth.getApiTokens() });
+  });
+
+  router.post('/auth/tokens', (req, res) => {
+    if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
+    const { name } = req.body;
+    if (!name?.trim()) return res.status(400).json({ success: false, error: 'Token name required' });
+    try {
+      const token = auth.createApiToken(name);
+      res.json({ success: true, token });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.delete('/auth/tokens/:id', (req, res) => {
+    if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
+    try {
+      auth.deleteApiToken(req.params.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
 
   router.get('/connection', (req, res) => {
     res.json({ success: true, data: connectionMgr ? connectionMgr.getStatus() : { source: null } });
@@ -608,6 +731,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         d.password ? { ...d, password: '••••••••' } : d
       );
     }
+    delete safe.jwtSecret; // never expose JWT signing secret
     res.json({ success: true, data: safe });
   });
 
@@ -1099,6 +1223,47 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (!mqttExplorer) return res.status(503).json({ success: false, error: 'MQTT explorer not available' });
     mqttExplorer.clear();
     res.json({ success: true });
+  });
+
+  // ── HTTPS / TLS settings ───────────────────────────────────────────────────
+
+  router.post('/settings/https', (req, res) => {
+    const current = readConfigFile();
+    const {
+      httpsEnabled, httpsPort, certFile, keyFile,
+      leEnabled, lePort, leDomain, leEmail, leStaging, leCertsDir,
+    } = req.body;
+
+    const server = { ...current.server };
+
+    if (httpsEnabled !== undefined) {
+      server.https = {
+        ...(server.https || {}),
+        enabled:  !!httpsEnabled,
+        port:     parseInt(httpsPort  || server.https?.port  || 3443),
+        certFile: (certFile ?? server.https?.certFile ?? '').trim(),
+        keyFile:  (keyFile  ?? server.https?.keyFile  ?? '').trim(),
+      };
+    }
+
+    if (leEnabled !== undefined) {
+      server.letsEncrypt = {
+        ...(server.letsEncrypt || {}),
+        enabled:  !!leEnabled,
+        port:     parseInt(lePort     || server.letsEncrypt?.port     || 443),
+        domain:   (leDomain   ?? server.letsEncrypt?.domain   ?? '').trim(),
+        email:    (leEmail    ?? server.letsEncrypt?.email    ?? '').trim(),
+        staging:  leStaging !== undefined ? !!leStaging : !!(server.letsEncrypt?.staging),
+        certsDir: (leCertsDir ?? server.letsEncrypt?.certsDir ?? './certs').trim(),
+      };
+    }
+
+    try {
+      writeConfigFile({ ...current, server });
+      res.json({ success: true, message: 'HTTPS settings saved. Restart server to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   return router;

@@ -1,8 +1,12 @@
-const http = require('http');
-const express = require('express');
-const path = require('path');
+const http         = require('http');
+const https        = require('https');
+const express      = require('express');
+const path         = require('path');
+const cookieParser = require('cookie-parser');
 require('./src/logger').install(); // must be first — patches console before any other module logs
 const loadConfig         = require('./config');
+const auth               = require('./src/auth');
+const acme               = require('./src/acme');
 const DataStore          = require('./src/data-store');
 const ConnectionManager  = require('./src/connection-manager');
 const RelayController    = require('./src/relay-controller');
@@ -43,13 +47,75 @@ async function main() {
 
   const mqttExplorer = config.mqtt?.host ? new MqttExplorer(config) : null;
 
+  // ── Determine HTTPS mode ─────────────────────────────────────────────────
+  const leEnabled     = !!(config.server?.letsEncrypt?.enabled);
+  const httpsEnabled  = !!(config.server?.https?.enabled);
+  const isSecure      = leEnabled || httpsEnabled;
+
+  // ── Express app ──────────────────────────────────────────────────────────
   const app = express();
+  app.use(cookieParser());
+  app.use(auth.middleware(isSecure));
   app.use(express.json());
   app.use(express.static(path.join(__dirname, 'public')));
-  app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, { unifiProtect, mqttExplorer }));
+  app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr,
+    { unifiProtect, mqttExplorer, auth, isSecure }));
 
-  const server = http.createServer(app);
-  const io = setupWebSocket(server, store, sensorRegistry, connectionMgr);
+  // ── Build HTTP/HTTPS server ───────────────────────────────────────────────
+  let mainServer;
+  let mainPort;
+
+  if (leEnabled) {
+    // Let's Encrypt: obtain cert first, then start HTTPS + redirect
+    let certs = null;
+    try {
+      certs = await acme.acquireCert(config);
+    } catch (err) {
+      console.error(`[ACME] Certificate acquisition failed: ${err.message} — falling back to HTTP`);
+    }
+    if (certs) {
+      mainServer = https.createServer({ cert: certs.cert, key: certs.key }, app);
+      mainPort   = config.server?.letsEncrypt?.port || 443;
+      acme.startRedirectServer(mainPort);
+      acme.scheduleRenewal(config, (renewed) => {
+        mainServer.setSecureContext({ cert: renewed.cert, key: renewed.key });
+        console.log('[ACME] Certificate renewed and hot-reloaded');
+      });
+    } else {
+      mainServer = http.createServer(app);
+      mainPort   = config.server?.port || 3001;
+    }
+  } else if (httpsEnabled) {
+    // Manual cert files
+    const httpsServer = acme.createHttpsServerFromConfig(app, config);
+    if (httpsServer) {
+      mainServer = httpsServer;
+      mainPort   = config.server?.https?.port || 3443;
+      // Optional HTTP redirect on the plain port
+      const plainPort = config.server?.port;
+      if (plainPort && plainPort !== mainPort) {
+        const redirect = http.createServer((req, res) => {
+          const host = (req.headers.host || '').split(':')[0];
+          const dest = mainPort === 443
+            ? `https://${host}${req.url}`
+            : `https://${host}:${mainPort}${req.url}`;
+          res.writeHead(301, { Location: dest }).end();
+        });
+        redirect.listen(plainPort, () =>
+          console.log(`[Server] HTTP redirect on :${plainPort} → HTTPS :${mainPort}`)
+        );
+      }
+    } else {
+      console.warn('[Server] HTTPS configured but could not create HTTPS server — falling back to HTTP');
+      mainServer = http.createServer(app);
+      mainPort   = config.server?.port || 3001;
+    }
+  } else {
+    mainServer = http.createServer(app);
+    mainPort   = config.server?.port || 3001;
+  }
+
+  const io = setupWebSocket(mainServer, store, sensorRegistry, connectionMgr, auth);
 
   if (mqttExplorer) {
     mqttExplorer.setIo(io);
@@ -114,8 +180,12 @@ async function main() {
     console.error(`[HomeKit] Start failed: ${err.message}`);
   }
 
-  server.listen(config.server.port, () => {
-    console.log(`[Server] http://localhost:${config.server.port}`);
+  const protocol = (mainServer instanceof https.Server) ? 'https' : 'http';
+  mainServer.listen(mainPort, () => {
+    console.log(`[Server] ${protocol}://localhost:${mainPort}`);
+    if (!auth.hasUsers()) {
+      console.log('[Server] No users configured — visit /setup.html to create your admin account');
+    }
   });
 }
 

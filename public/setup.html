@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>First-Run Setup – LoxoneSwaggerHelper</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="auth.css">
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('lsh-theme')||'dark')</script>
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <svg class="auth-logo-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="ag" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#3fb950"/><stop offset="1" stop-color="#58a6ff"/>
+          </linearGradient>
+        </defs>
+        <rect width="40" height="40" rx="10" fill="url(#ag)"/>
+        <path fill-rule="evenodd" fill="white"
+          d="M6 21L20 8L34 21V35H6Z M21 10L11 22H20L19 30L29 18H20Z"/>
+      </svg>
+      <h1 class="auth-title">Welcome to LSH</h1>
+      <p class="auth-sub">Create an admin account to secure your dashboard</p>
+    </div>
+    <div id="setup-error" class="auth-error" style="display:none"></div>
+    <form id="setup-form">
+      <div class="form-row">
+        <label for="admin-username">Admin Username</label>
+        <input type="text" id="admin-username" name="adminUsername"
+          autocomplete="username" autofocus required>
+      </div>
+      <div class="form-row">
+        <label for="admin-password">Password <span class="hint">(min. 8 characters)</span></label>
+        <input type="password" id="admin-password" name="adminPassword"
+          autocomplete="new-password" required minlength="8">
+      </div>
+      <div class="form-row">
+        <label for="admin-password2">Confirm Password</label>
+        <input type="password" id="admin-password2" name="adminPassword2"
+          autocomplete="new-password" required minlength="8">
+      </div>
+      <button type="submit" class="btn btn-primary auth-submit" id="btn-setup">
+        Create Account &amp; Sign In
+      </button>
+    </form>
+  </div>
+  <script src="setup.js"></script>
+  <script src="theme.js"></script>
+</body>
+</html>

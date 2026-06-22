@@ -91,8 +91,27 @@ async function loadSettings() {
     // Server
     setVal('server-port', data.server?.port || 3000);
 
+    // HTTPS
+    const https = data.server?.https || {};
+    const le    = data.server?.letsEncrypt || {};
+    document.getElementById('https-enabled').checked = !!https.enabled;
+    document.getElementById('https-fields').style.display = https.enabled ? '' : 'none';
+    setVal('https-port', https.port || 3443);
+    setVal('https-cert', https.certFile || '');
+    setVal('https-key',  https.keyFile  || '');
+    document.getElementById('le-enabled').checked = !!le.enabled;
+    document.getElementById('le-fields').style.display = le.enabled ? '' : 'none';
+    setVal('le-domain',    le.domain   || '');
+    setVal('le-email',     le.email    || '');
+    setVal('le-port',      le.port     || 443);
+    setVal('le-certs-dir', le.certsDir || './certs');
+    document.getElementById('le-staging').checked = !!le.staging;
+
     // QR code — fetch URI from backend (has the correct setupID)
     await refreshQrCode();
+
+    // Security: load users & tokens
+    await loadSecurityLists();
   } catch (err) {
     showSaveMsg('Failed to load settings: ' + err.message, 'err');
   }
@@ -1357,6 +1376,211 @@ document.getElementById('btn-restart').addEventListener('click', async () => {
 
   // Safety: force reload after 60s regardless
   setTimeout(() => location.reload(), 60000);
+});
+
+// ── Security & Auth ────────────────────────────────────────────────────────
+
+async function loadSecurityLists() {
+  await Promise.all([loadUsersList(), loadTokensList()]);
+}
+
+async function loadUsersList() {
+  const el = document.getElementById('users-list');
+  try {
+    const res  = await fetch('/api/auth/users');
+    const data = await res.json();
+    if (!data.success) { el.innerHTML = `<span class="token-empty">${data.error}</span>`; return; }
+    if (!data.data.length) { el.innerHTML = '<span class="token-empty">No users</span>'; return; }
+    el.innerHTML = data.data.map(u => `
+      <div class="token-row">
+        <span class="token-row-name">${escHtml(u.username)}</span>
+        <span class="token-row-badge ${u.role === 'viewer' ? 'role-viewer' : ''}">${u.role}</span>
+        <span class="token-row-meta">${new Date(u.createdAt).toLocaleDateString()}</span>
+        <button class="token-row-del" data-id="${u.id}" title="Delete user">✕</button>
+      </div>`).join('');
+    el.querySelectorAll('.token-row-del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm(`Delete user "${btn.closest('.token-row').querySelector('.token-row-name').textContent}"?`)) return;
+        const r = await fetch(`/api/auth/users/${btn.dataset.id}`, { method: 'DELETE' });
+        const d = await r.json();
+        document.getElementById('add-user-result').textContent = d.success ? '✓ User deleted' : '✗ ' + d.error;
+        document.getElementById('add-user-result').className = 'test-result ' + (d.success ? 'ok' : 'err');
+        if (d.success) loadUsersList();
+      });
+    });
+  } catch (err) {
+    el.innerHTML = `<span class="token-empty">Error: ${err.message}</span>`;
+  }
+}
+
+async function loadTokensList() {
+  const el = document.getElementById('tokens-list');
+  try {
+    const res  = await fetch('/api/auth/tokens');
+    const data = await res.json();
+    if (!data.success) { el.innerHTML = `<span class="token-empty">${data.error}</span>`; return; }
+    if (!data.data.length) { el.innerHTML = '<span class="token-empty">No API tokens yet</span>'; return; }
+    el.innerHTML = data.data.map(t => `
+      <div class="token-row">
+        <span class="token-row-name">${escHtml(t.name)}</span>
+        <span class="token-row-meta">${new Date(t.createdAt).toLocaleDateString()}</span>
+        <button class="token-row-del" data-id="${t.id}" title="Revoke token">✕</button>
+      </div>`).join('');
+    el.querySelectorAll('.token-row-del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm(`Revoke token "${btn.closest('.token-row').querySelector('.token-row-name').textContent}"?`)) return;
+        const r = await fetch(`/api/auth/tokens/${btn.dataset.id}`, { method: 'DELETE' });
+        const d = await r.json();
+        document.getElementById('token-result').textContent = d.success ? '✓ Token revoked' : '✗ ' + d.error;
+        document.getElementById('token-result').className = 'test-result ' + (d.success ? 'ok' : 'err');
+        if (d.success) loadTokensList();
+      });
+    });
+  } catch (err) {
+    el.innerHTML = `<span class="token-empty">Error: ${err.message}</span>`;
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Change password
+document.getElementById('btn-change-pw').addEventListener('click', async () => {
+  const btn    = document.getElementById('btn-change-pw');
+  const result = document.getElementById('change-pw-result');
+  const cur    = document.getElementById('sec-current-pw').value;
+  const nw     = document.getElementById('sec-new-pw').value;
+  const nw2    = document.getElementById('sec-new-pw2').value;
+  if (!cur || !nw) { result.textContent = '✗ Fill in all fields'; result.className = 'test-result err'; return; }
+  if (nw !== nw2)  { result.textContent = '✗ Passwords do not match'; result.className = 'test-result err'; return; }
+  btn.disabled = true;
+  try {
+    const res  = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: cur, newPassword: nw }),
+    });
+    const data = await res.json();
+    result.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.error;
+    result.className = 'test-result ' + (data.success ? 'ok' : 'err');
+    if (data.success) {
+      document.getElementById('sec-current-pw').value = '';
+      document.getElementById('sec-new-pw').value = '';
+      document.getElementById('sec-new-pw2').value = '';
+    }
+  } catch (err) {
+    result.textContent = '✗ ' + err.message;
+    result.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// Add user
+document.getElementById('btn-add-user').addEventListener('click', async () => {
+  const btn    = document.getElementById('btn-add-user');
+  const result = document.getElementById('add-user-result');
+  const name   = getVal('new-user-name');
+  const pw     = document.getElementById('new-user-pw').value;
+  const role   = getVal('new-user-role');
+  if (!name || !pw) { result.textContent = '✗ Username and password required'; result.className = 'test-result err'; return; }
+  btn.disabled = true;
+  try {
+    const res  = await fetch('/api/auth/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: name, password: pw, role }),
+    });
+    const data = await res.json();
+    result.textContent = data.success ? `✓ User "${data.data.username}" created` : '✗ ' + data.error;
+    result.className = 'test-result ' + (data.success ? 'ok' : 'err');
+    if (data.success) {
+      setVal('new-user-name', '');
+      document.getElementById('new-user-pw').value = '';
+      loadUsersList();
+    }
+  } catch (err) {
+    result.textContent = '✗ ' + err.message;
+    result.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// Create API token
+document.getElementById('btn-create-token').addEventListener('click', async () => {
+  const btn     = document.getElementById('btn-create-token');
+  const result  = document.getElementById('token-result');
+  const reveal  = document.getElementById('new-token-reveal');
+  const tokenEl = document.getElementById('new-token-text');
+  const name    = getVal('new-token-name');
+  if (!name) { result.textContent = '✗ Token name required'; result.className = 'test-result err'; return; }
+  btn.disabled = true;
+  try {
+    const res  = await fetch('/api/auth/tokens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      result.textContent = '';
+      tokenEl.textContent = data.token;
+      reveal.style.display = '';
+      setVal('new-token-name', '');
+      loadTokensList();
+    } else {
+      result.textContent = '✗ ' + data.error;
+      result.className = 'test-result err';
+    }
+  } catch (err) {
+    result.textContent = '✗ ' + err.message;
+    result.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+document.getElementById('btn-copy-token').addEventListener('click', () => {
+  const text = document.getElementById('new-token-text').textContent;
+  navigator.clipboard?.writeText(text).then(() => {
+    document.getElementById('btn-copy-token').textContent = 'Copied!';
+    setTimeout(() => { document.getElementById('btn-copy-token').textContent = 'Copy'; }, 1500);
+  });
+});
+
+// HTTPS checkbox toggles
+document.getElementById('https-enabled').addEventListener('change', function () {
+  document.getElementById('https-fields').style.display = this.checked ? '' : 'none';
+});
+document.getElementById('le-enabled').addEventListener('change', function () {
+  document.getElementById('le-fields').style.display = this.checked ? '' : 'none';
+});
+
+// Save HTTPS settings
+document.getElementById('btn-save-https').addEventListener('click', async () => {
+  const btn    = document.getElementById('btn-save-https');
+  const result = document.getElementById('https-result');
+  btn.disabled = true;
+  try {
+    const res  = await fetch('/api/settings/https', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        httpsEnabled: document.getElementById('https-enabled').checked,
+        httpsPort:    getVal('https-port'),
+        certFile:     getVal('https-cert'),
+        keyFile:      getVal('https-key'),
+        leEnabled:    document.getElementById('le-enabled').checked,
+        lePort:       getVal('le-port'),
+        leDomain:     getVal('le-domain'),
+        leEmail:      getVal('le-email'),
+        leStaging:    document.getElementById('le-staging').checked,
+        leCertsDir:   getVal('le-certs-dir'),
+      }),
+    });
+    const data = await res.json();
+    result.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.error;
+    result.className = 'test-result ' + (data.success ? 'ok' : 'err');
+  } catch (err) {
+    result.textContent = '✗ ' + err.message;
+    result.className = 'test-result err';
+  } finally { btn.disabled = false; }
 });
 
 // Init

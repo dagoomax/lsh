@@ -2,8 +2,30 @@ const { Server }     = require('socket.io');
 const platformStatus = require('./platform-status');
 const cameraLog      = require('./camera-log');
 
-function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr) {
+function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth) {
   const io = new Server(httpServer, { cors: { origin: '*' } });
+
+  // Socket.io auth middleware
+  if (auth) {
+    io.use((socket, next) => {
+      // First-run: no users configured yet — allow all connections
+      if (!auth.hasUsers()) return next();
+
+      // Bearer token in handshake auth
+      const bearer = socket.handshake.auth?.token;
+      if (bearer) {
+        if (auth.verifyApiToken(bearer)) return next();
+        if (auth.verifyToken(bearer)) return next();
+      }
+
+      // JWT from session cookie
+      const cookieHeader = socket.handshake.headers.cookie || '';
+      const payload = auth.verifyFromCookieHeader(cookieHeader);
+      if (payload) { socket.user = payload; return next(); }
+
+      next(new Error('Unauthorized'));
+    });
+  }
 
   io.on('connection', (socket) => {
     console.log(`[WS] Client connected (${socket.id})`);

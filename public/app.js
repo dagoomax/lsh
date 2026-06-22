@@ -26,6 +26,12 @@ socket.on('disconnect', () => {
   setSourceBadge(null);
 });
 
+socket.on('connect_error', (err) => {
+  if (err.message === 'Unauthorized') {
+    window.location.href = '/login.html';
+  }
+});
+
 socket.on('connection-status', (status) => {
   setSourceBadge(status.source);
 });

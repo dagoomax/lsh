@@ -6,6 +6,7 @@
   <title>Settings – LoxoneSwaggerHelper</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="settings.css">
+  <link rel="stylesheet" href="auth.css">
   <link rel="icon" type="image/svg+xml" href="/logo.svg">
   <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('lsh-theme')||'dark')</script>
 </head>
@@ -509,6 +510,135 @@
       </div>
     </section>
 
+    <!-- Security & Authentication -->
+    <section class="card settings-card">
+      <h2>Security &amp; Authentication</h2>
+      <p class="section-desc">Manage users, API tokens, and HTTPS/TLS encryption.</p>
+
+      <!-- Change Password -->
+      <h3 class="settings-sub">Change Password</h3>
+      <div class="form-row">
+        <label for="sec-current-pw">Current Password</label>
+        <input type="password" id="sec-current-pw" autocomplete="current-password">
+      </div>
+      <div class="form-row">
+        <label for="sec-new-pw">New Password <span class="hint">(min. 8 characters)</span></label>
+        <input type="password" id="sec-new-pw" autocomplete="new-password">
+      </div>
+      <div class="form-row">
+        <label for="sec-new-pw2">Confirm New Password</label>
+        <input type="password" id="sec-new-pw2" autocomplete="new-password">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-change-pw">Change Password</button>
+        <span class="test-result" id="change-pw-result"></span>
+      </div>
+
+      <!-- Users (admin only) -->
+      <h3 class="settings-sub">Users</h3>
+      <div id="users-list" class="token-list"><span class="token-empty">Loading…</span></div>
+      <div class="form-row">
+        <label for="new-user-name">New Username</label>
+        <input type="text" id="new-user-name" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="new-user-pw">Password</label>
+        <input type="password" id="new-user-pw" autocomplete="new-password">
+      </div>
+      <div class="form-row">
+        <label for="new-user-role">Role</label>
+        <select id="new-user-role">
+          <option value="admin">Admin – full access</option>
+          <option value="viewer" selected>Viewer – read-only</option>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-add-user">Add User</button>
+        <span class="test-result" id="add-user-result"></span>
+      </div>
+
+      <!-- API Tokens -->
+      <h3 class="settings-sub">API Tokens</h3>
+      <p class="hint">Bearer tokens for scripts &amp; integrations (e.g. Home Assistant).<br>
+        Use in HTTP header: <code>Authorization: Bearer &lt;token&gt;</code></p>
+      <div id="tokens-list" class="token-list"><span class="token-empty">Loading…</span></div>
+      <div class="form-row" style="margin-top:10px">
+        <label for="new-token-name">Token Name</label>
+        <input type="text" id="new-token-name" placeholder="e.g. Home Assistant">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-create-token">Create Token</button>
+        <span class="test-result" id="token-result"></span>
+      </div>
+      <div id="new-token-reveal" class="token-reveal" style="display:none">
+        <span class="hint">Save this token — it will <strong>not</strong> be shown again:</span>
+        <div class="token-value-box" style="margin-top:6px">
+          <code id="new-token-text"></code>
+          <button class="btn btn-sm btn-secondary" id="btn-copy-token">Copy</button>
+        </div>
+      </div>
+
+      <!-- HTTPS / TLS -->
+      <h3 class="settings-sub">HTTPS / TLS</h3>
+      <div class="form-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="https-enabled">
+          <span>Enable HTTPS with custom certificate</span>
+        </label>
+      </div>
+      <div id="https-fields" class="https-fields" style="display:none">
+        <div class="form-row">
+          <label for="https-port">HTTPS Port</label>
+          <input type="number" id="https-port" placeholder="3443" min="1" max="65535">
+        </div>
+        <div class="form-row">
+          <label for="https-cert">Certificate File Path</label>
+          <input type="text" id="https-cert" placeholder="/etc/ssl/certs/cert.pem">
+        </div>
+        <div class="form-row">
+          <label for="https-key">Private Key File Path</label>
+          <input type="text" id="https-key" placeholder="/etc/ssl/private/key.pem">
+        </div>
+      </div>
+
+      <!-- Let's Encrypt -->
+      <div class="form-row" style="margin-top:10px">
+        <label class="toggle-label">
+          <input type="checkbox" id="le-enabled">
+          <span>Enable Let's Encrypt (auto certificate)</span>
+        </label>
+      </div>
+      <div id="le-fields" class="https-fields" style="display:none">
+        <p class="hint">⚠ Requires port 80 accessible from the internet for HTTP-01 challenge.</p>
+        <div class="form-row">
+          <label for="le-domain">Domain</label>
+          <input type="text" id="le-domain" placeholder="dashboard.example.com">
+        </div>
+        <div class="form-row">
+          <label for="le-email">Email (Let's Encrypt account)</label>
+          <input type="email" id="le-email" placeholder="admin@example.com">
+        </div>
+        <div class="form-row">
+          <label for="le-port">HTTPS Port</label>
+          <input type="number" id="le-port" placeholder="443" min="1" max="65535">
+        </div>
+        <div class="form-row">
+          <label for="le-certs-dir">Certs Directory</label>
+          <input type="text" id="le-certs-dir" placeholder="./certs">
+        </div>
+        <div class="form-row">
+          <label class="toggle-label">
+            <input type="checkbox" id="le-staging">
+            <span>Use Let's Encrypt staging (for testing — won't issue trusted certs)</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:12px">
+        <button class="btn btn-secondary" id="btn-save-https">Save HTTPS Settings</button>
+        <span class="test-result" id="https-result"></span>
+      </div>
+    </section>
+
     <!-- Backup & Restore -->
     <section class="card settings-card">
       <h2>Backup &amp; Restore</h2>
@@ -582,5 +712,6 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="settings.js"></script>
   <script src="theme.js"></script>
+  <script src="common.js"></script>
 </body>
 </html>
