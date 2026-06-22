@@ -84,6 +84,11 @@ function loadConfig() {
       country: fileConfig.lgthinq.country || 'US',
       lang:    fileConfig.lgthinq.lang    || 'en-US',
     } : undefined,
+    knx: fileConfig.knx?.host ? {
+      host:           fileConfig.knx.host,
+      port:           parseInt(fileConfig.knx.port) || 3671,
+      groupAddresses: fileConfig.knx.groupAddresses || [],
+    } : undefined,
     ffmpegRtsp: {
       enabled:    !!(fileConfig.ffmpegRtsp?.enabled),
       basePort:   parseInt(fileConfig.ffmpegRtsp?.basePort   || 8554),

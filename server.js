@@ -244,6 +244,15 @@ async function main() {
     }
   }
 
+  // Start KNX client if configured
+  if (config.knx?.host) {
+    const KNXClient = tryRequire('./src/knx-client', 'npm install knx');
+    if (KNXClient) {
+      const knxClient = new KNXClient(config, store, sensorRegistry);
+      knxClient.start().catch((err) => console.error(`[KNX] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Fibaro Home Center client if configured
   if (config.fibaro?.host) {
     const FibaroClient = tryRequire('./src/fibaro-client');

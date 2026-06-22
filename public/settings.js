@@ -97,6 +97,11 @@ async function loadSettings() {
     setVal('lgthinq-user-number',   data.lgthinq?.userNumber || '');
     setVal('lgthinq-country', data.lgthinq?.country || 'EU');
 
+    // KNX
+    setVal('knx-host', data.knx?.host || '');
+    setVal('knx-port', data.knx?.port || 3671);
+    renderKNXGAList(data.knx?.groupAddresses || []);
+
     // Fibaro
     setVal('fibaro-host', data.fibaro?.host || '');
     setVal('fibaro-port', data.fibaro?.port || 80);
@@ -2323,6 +2328,91 @@ document.getElementById('btn-save-fibaro').addEventListener('click', async () =>
 
 // Init
 loadSettings();
+
+// ── KNX ───────────────────────────────────────────────────────────────────
+
+const KNX_DPTS = ['DPT1','DPT5','DPT9','DPT14'];
+const KNX_HK   = ['','Switch','TemperatureSensor','HumiditySensor','LightSensor','OccupancySensor','ContactSensor'];
+
+function renderKNXGAList(gas) {
+  const container = document.getElementById('knx-ga-list');
+  if (!container) return;
+  container.innerHTML = gas.map((ga, i) => knxGARow(ga, i)).join('');
+}
+
+function knxGARow(ga = {}, i = Date.now()) {
+  const dptOpts  = KNX_DPTS.map(d => `<option${ga.dpt === d ? ' selected' : ''}>${d}</option>`).join('');
+  const hkOpts   = KNX_HK.map(h => `<option${ga.homekitType === h ? ' selected' : ''}>${h}</option>`).join('');
+  return `<div class="shelly-row" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px" data-knx-row>
+    <input type="text"   class="knx-addr" placeholder="1/1/1"  value="${ga.address||''}" style="width:80px" title="Group Address">
+    <input type="text"   class="knx-name" placeholder="Name"   value="${ga.name||''}"    style="flex:1;min-width:120px">
+    <select class="knx-dpt" title="DPT type" style="width:90px">${dptOpts}</select>
+    <input type="text"   class="knx-unit" placeholder="unit"   value="${ga.unit||''}"    style="width:60px" title="Unit (optional)">
+    <label title="Readable" style="font-size:0.8rem;white-space:nowrap"><input type="checkbox" class="knx-read" ${ga.readable!==false?'checked':''}> R</label>
+    <label title="Writable" style="font-size:0.8rem;white-space:nowrap"><input type="checkbox" class="knx-write" ${ga.writable?'checked':''}> W</label>
+    <select class="knx-hk" title="HomeKit type (optional)" style="width:130px">${hkOpts}</select>
+    <button class="btn btn-icon" onclick="this.closest('[data-knx-row]').remove()" title="Remove">✕</button>
+  </div>`;
+}
+
+function collectKNXGAs() {
+  return Array.from(document.querySelectorAll('[data-knx-row]')).map(row => ({
+    address:     row.querySelector('.knx-addr').value.trim(),
+    name:        row.querySelector('.knx-name').value.trim(),
+    dpt:         row.querySelector('.knx-dpt').value,
+    unit:        row.querySelector('.knx-unit').value.trim() || undefined,
+    readable:    row.querySelector('.knx-read').checked,
+    writable:    row.querySelector('.knx-write').checked,
+    homekitType: row.querySelector('.knx-hk').value  || undefined,
+  })).filter(ga => ga.address);
+}
+
+document.getElementById('btn-add-knx-ga').addEventListener('click', () => {
+  const container = document.getElementById('knx-ga-list');
+  const div = document.createElement('div');
+  div.innerHTML = knxGARow();
+  container.appendChild(div.firstElementChild);
+});
+
+document.getElementById('btn-test-knx').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-test-knx');
+  const resultEl = document.getElementById('knx-test-result');
+  btn.disabled   = true;
+  resultEl.textContent = 'Testing…';
+  resultEl.className   = 'test-result';
+  try {
+    const res  = await fetch('/api/settings/test-knx', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: getVal('knx-host'), port: parseInt(getVal('knx-port')) || 3671 }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+document.getElementById('btn-save-knx').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-knx');
+  const resultEl = document.getElementById('knx-test-result');
+  btn.disabled   = true;
+  resultEl.textContent = 'Saving…';
+  resultEl.className   = 'test-result';
+  try {
+    const res  = await fetch('/api/settings/knx', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: getVal('knx-host'), port: parseInt(getVal('knx-port')) || 3671, groupAddresses: collectKNXGAs() }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally { btn.disabled = false; }
+});
 
 // ── FFmpeg RTSP Proxy ──────────────────────────────────────────────────────
 

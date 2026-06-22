@@ -352,6 +352,31 @@
       </div>
     </section>
 
+    <!-- KNX -->
+    <section class="card settings-card" data-category="controllers" data-title="KNX bus building automation group addresses">
+      <h2>KNX <span class="badge">Optional</span></h2>
+      <p class="section-desc">Connects to a KNXnet/IP gateway or IP router over TCP/IP. Group addresses are mapped to dashboard device cards with read/write support. Requires <code>npm install knx</code>.</p>
+
+      <div class="form-row">
+        <label for="knx-host">Gateway Host / IP</label>
+        <input type="text" id="knx-host" placeholder="192.168.1.100">
+      </div>
+      <div class="form-row">
+        <label for="knx-port">Port <span class="hint">(default 3671)</span></label>
+        <input type="number" id="knx-port" placeholder="3671" min="1" max="65535" style="width:120px">
+      </div>
+
+      <h3 style="font-size:0.85rem;color:var(--text-muted);margin:16px 0 8px">Group Addresses</h3>
+      <div id="knx-ga-list"></div>
+      <button class="btn btn-secondary" id="btn-add-knx-ga" style="margin-top:8px">+ Add Group Address</button>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-secondary" id="btn-test-knx">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-knx">Save</button>
+        <span class="test-result" id="knx-test-result"></span>
+      </div>
+    </section>
+
     <!-- SIP / Intercom -->
     <section class="card settings-card" data-category="communication" data-title="SIP Intercom phone doorbell">
       <h2><span data-i18n="s.sip_title">📞 SIP / Intercom</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
