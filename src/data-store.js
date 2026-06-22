@@ -4,7 +4,7 @@ class DataStore extends EventEmitter {
   constructor() {
     super();
     this.data = {};
-    this.setMaxListeners(50);
+    this.setMaxListeners(200);
   }
 
   update(key, value) {
