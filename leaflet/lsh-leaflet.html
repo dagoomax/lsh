@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LSH — Local Smart Home</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg:      #0d1117;
+    --surf:    #161b22;
+    --surf2:   #1c2128;
+    --border:  #30363d;
+    --border2: #21262d;
+    --text:    #e6edf3;
+    --muted:   #8b949e;
+    --dim:     #484f58;
+    --green:   #3fb950;
+    --blue:    #58a6ff;
+    --purple:  #bc8cff;
+    --orange:  #f0883e;
+    --red:     #f85149;
+    --teal:    #39d353;
+  }
+
+  html, body {
+    width: 210mm;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 9.5pt;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  code, .mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.5pt;
+    background: rgba(255,255,255,.07);
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--blue);
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 11mm 12mm 10mm;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    page-break-after: always;
+    overflow: hidden;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  /* ── HEADER ─────────────────────────────────────────────────────────────── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 22px;
+    background: var(--surf);
+    border-radius: 13px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 90% 140% at -5% 50%,
+      rgba(63,185,80,.16) 0%, rgba(88,166,255,.09) 45%, transparent 68%);
+    pointer-events: none;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 13px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(63,185,80,.55) 0%, rgba(88,166,255,.25) 50%, transparent 80%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .logo-group { display: flex; align-items: center; gap: 13px; position: relative; z-index: 1; }
+  .logo-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: linear-gradient(135deg, #3fb950 0%, #58a6ff 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 0 22px rgba(63,185,80,.32), 0 4px 10px rgba(0,0,0,.4);
+    flex-shrink: 0;
+  }
+  .logo-text h1 {
+    font-size: 24pt; font-weight: 900; letter-spacing: -1px; line-height: 1;
+    background: linear-gradient(90deg, #3fb950 0%, #58a6ff 55%, #bc8cff 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .logo-text p { font-size: 8.5pt; color: var(--muted); margin-top: 3px; letter-spacing: .02em; }
+  .header-right { text-align: right; position: relative; z-index: 1; }
+  .header-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(63,185,80,.18), rgba(88,166,255,.12));
+    border: 1px solid rgba(63,185,80,.38);
+    border-radius: 20px; padding: 3px 12px;
+    font-size: 7.5pt; font-weight: 700; color: var(--green);
+    letter-spacing: .05em; text-transform: uppercase; margin-bottom: 5px;
+  }
+  .header-tagline { font-size: 8pt; color: var(--muted); max-width: 160px; line-height: 1.45; }
+
+  /* ── SECTION LABEL ─────────────────────────────────────────────────────── */
+  .slabel {
+    font-size: 7pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--muted); margin-bottom: 7px;
+  }
+
+  /* ── HERO ───────────────────────────────────────────────────────────────── */
+  .hero {
+    background: var(--surf); border: 1px solid var(--border);
+    border-radius: 11px; padding: 14px 20px; text-align: center; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 65% 110% at 50% 110%, rgba(88,166,255,.11) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .hero h2 { font-size: 14pt; font-weight: 800; letter-spacing: -.4px; position: relative; }
+  .hero p  { margin-top: 5px; font-size: 9pt; color: var(--muted); max-width: 430px; margin-left:auto; margin-right:auto; position: relative; line-height: 1.55; }
+
+  /* ── USP ROW ────────────────────────────────────────────────────────────── */
+  .usp-row { display: flex; gap: 7px; }
+  .usp-item {
+    flex: 1; background: var(--surf); border: 1px solid var(--border);
+    border-radius: 10px; padding: 11px 13px;
+    display: flex; align-items: flex-start; gap: 9px;
+  }
+  .usp-icon { font-size: 19px; flex-shrink: 0; margin-top: 1px; }
+  .usp-item h4 { font-size: 8.5pt; font-weight: 700; margin-bottom: 2px; }
+  .usp-item p  { font-size: 7.5pt; color: var(--muted); line-height: 1.45; }
+
+  /* ── FEATURE GRID ───────────────────────────────────────────────────────── */
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+
+  .feat-card {
+    background: var(--surf); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 13px; position: relative; overflow: hidden;
+  }
+  .feat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    border-radius: 10px 10px 0 0;
+    background: var(--fc-color, linear-gradient(90deg, var(--green), var(--blue)));
+  }
+  .feat-icon { font-size: 18px; margin-bottom: 6px; display: block; }
+  .feat-card h3 { font-size: 9pt; font-weight: 700; margin-bottom: 4px; }
+  .feat-card p  { font-size: 7.5pt; color: var(--muted); line-height: 1.5; }
+  .feat-card ul { padding-left: 12px; margin-top: 5px; }
+  .feat-card ul li { font-size: 7.5pt; color: var(--muted); line-height: 1.55; }
+
+  /* ── INTEGRATION SECTION ────────────────────────────────────────────────── */
+  .int-section {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px;
+  }
+  .int-grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .int-pill {
+    background: rgba(255,255,255,.03); border: 1px solid var(--border2);
+    border-radius: 7px; padding: 5px 8px; font-size: 7.5pt; font-weight: 500;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: var(--green); }
+  .dot.b { background: var(--blue); }
+  .dot.p { background: var(--purple); }
+  .dot.o { background: var(--orange); }
+  .dot.r { background: var(--red); }
+
+  /* ── INTEGRATION TABLE ──────────────────────────────────────────────────── */
+  .int-table { width: 100%; border-collapse: collapse; font-size: 7.8pt; }
+  .int-table th {
+    text-align: left; font-size: 7pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--muted); padding: 5px 10px 7px;
+    border-bottom: 1px solid var(--border);
+  }
+  .int-table td { padding: 6px 10px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  .int-table tr:last-child td { border-bottom: none; }
+  .int-table tr:hover td { background: rgba(255,255,255,.015); }
+  .int-table .cat-head td {
+    background: rgba(255,255,255,.025); font-size: 7pt; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .07em; color: var(--dim);
+    padding: 4px 10px; border-bottom: 1px solid var(--border2);
+  }
+  .tag {
+    display: inline-block; background: rgba(88,166,255,.12); border: 1px solid rgba(88,166,255,.25);
+    border-radius: 4px; padding: 1px 6px; font-size: 6.8pt; font-weight: 600;
+    color: var(--blue); margin-right: 3px; white-space: nowrap;
+  }
+  .tag.g { background: rgba(63,185,80,.12); border-color: rgba(63,185,80,.25); color: var(--green); }
+  .tag.p { background: rgba(188,140,255,.12); border-color: rgba(188,140,255,.25); color: var(--purple); }
+  .tag.o { background: rgba(240,136,62,.12); border-color: rgba(240,136,62,.25); color: var(--orange); }
+  .tag.r { background: rgba(248,81,73,.12); border-color: rgba(248,81,73,.25); color: var(--red); }
+  .int-name { font-weight: 600; white-space: nowrap; }
+  .int-desc { color: var(--muted); font-size: 7.5pt; line-height: 1.45; }
+
+  /* ── ARCH DIAGRAM ──────────────────────────────────────────────────────── */
+  .arch-section {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px;
+  }
+  .arch-row { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+  .arch-node {
+    background: var(--surf2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 11px; text-align: center; flex-shrink: 0;
+  }
+  .arch-node .an-icon { font-size: 15px; display: block; margin-bottom: 2px; }
+  .arch-node .an-label { font-size: 7pt; font-weight: 600; color: var(--text); line-height: 1.2; }
+  .arch-node .an-sub   { font-size: 6.5pt; color: var(--muted); }
+  .arch-arrow { color: var(--dim); font-size: 12pt; font-weight: 300; }
+  .arch-center {
+    background: linear-gradient(135deg, rgba(63,185,80,.12), rgba(88,166,255,.1));
+    border: 1px solid rgba(63,185,80,.3); border-radius: 10px;
+    padding: 10px 18px; text-align: center;
+    box-shadow: 0 0 18px rgba(63,185,80,.12);
+  }
+  .arch-center .an-icon { font-size: 22px; display: block; margin-bottom: 3px; }
+  .arch-center .an-label { font-size: 9pt; font-weight: 800; color: var(--green); }
+  .arch-center .an-sub   { font-size: 7pt; color: var(--muted); }
+
+  /* ── SPEC TABLE ─────────────────────────────────────────────────────────── */
+  .spec-section {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px;
+  }
+  .spec-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+  .spec-table th {
+    text-align: left; font-size: 7pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--muted); padding: 4px 10px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .spec-table td { padding: 5px 10px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  .spec-table tr:last-child td { border-bottom: none; }
+  .spec-table .sk { color: var(--muted); width: 120px; font-size: 7.5pt; }
+  .spec-table .sv { font-weight: 500; }
+  .spec-table .sv .dim { color: var(--muted); font-weight: 400; font-size: 7.5pt; }
+
+  /* ── API TABLE ──────────────────────────────────────────────────────────── */
+  .api-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+  .api-table th {
+    text-align: left; font-size: 6.8pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--muted); padding: 4px 8px 5px;
+    border-bottom: 1px solid var(--border);
+  }
+  .api-table td { padding: 4px 8px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  .api-table tr:last-child td { border-bottom: none; }
+  .method {
+    display: inline-block; border-radius: 3px; padding: 1px 5px;
+    font-size: 6.5pt; font-weight: 700; letter-spacing: .03em; white-space: nowrap;
+  }
+  .get  { background: rgba(63,185,80,.15);  color: var(--green);  border: 1px solid rgba(63,185,80,.25); }
+  .post { background: rgba(88,166,255,.15); color: var(--blue);   border: 1px solid rgba(88,166,255,.25); }
+  .put  { background: rgba(240,136,62,.15); color: var(--orange); border: 1px solid rgba(240,136,62,.25); }
+  .api-path { font-family: 'JetBrains Mono', monospace; color: var(--text); }
+  .api-desc { color: var(--muted); font-size: 7.2pt; }
+
+  /* ── CONFIG BOX ─────────────────────────────────────────────────────────── */
+  .code-block {
+    background: var(--bg); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px 14px; font-family: 'JetBrains Mono', monospace; font-size: 7pt;
+    line-height: 1.7; overflow: hidden;
+  }
+  .code-block .kw  { color: var(--blue); }
+  .code-block .str { color: var(--green); }
+  .code-block .num { color: var(--orange); }
+  .code-block .cmt { color: var(--dim); font-style: italic; }
+  .code-block .key { color: var(--purple); }
+
+  /* ── MOCK DASHBOARD ─────────────────────────────────────────────────────── */
+  .preview-section {
+    background: var(--surf); border: 1px solid var(--border);
+    border-radius: 11px; padding: 12px 16px;
+  }
+  .preview-bar { display: flex; align-items: center; gap: 5px; margin-bottom: 9px; }
+  .preview-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .preview-bar .url { font-size: 7pt; color: var(--muted); margin-left: auto; font-family: 'JetBrains Mono', monospace; }
+
+  .mock-db {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px;
+    display: grid; grid-template-columns: repeat(4,1fr); gap: 6px;
+  }
+  .mc { background: var(--surf); border: 1px solid var(--border2); border-radius: 7px; padding: 8px 10px; position: relative; overflow: hidden; }
+  .mc::before { content:''; position:absolute; top:0;left:0;right:0;height:1.5px; background: var(--mc-c,var(--border)); }
+  .mc .mcl { font-size: 6.5pt; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom:2px; }
+  .mc .mcv { font-size: 13pt; font-weight: 700; line-height:1.1; font-variant-numeric: tabular-nums; }
+  .mc .mcs { font-size: 6.5pt; color: var(--muted); margin-top:1px; }
+  .mc-wide { grid-column: span 2; }
+  .mc-g { --mc-c: var(--green); color: var(--green); }
+  .mc-b { --mc-c: var(--blue); color: var(--blue); }
+  .mc-o { --mc-c: var(--orange); color: var(--orange); }
+  .mc-p { --mc-c: var(--purple); color: var(--purple); }
+
+  .relay-row { display:flex; align-items:center; justify-content:space-between; padding:3px 0; font-size:7pt; border-bottom:1px solid var(--border2); }
+  .relay-row:last-child { border-bottom: none; }
+  .mtoggle { width:22px;height:12px;border-radius:6px;display:inline-block;position:relative;flex-shrink:0; }
+  .mtoggle.on  { background: var(--green); }
+  .mtoggle.off { background: var(--border); }
+  .mtoggle::after {
+    content:'';position:absolute;width:8px;height:8px;border-radius:50%;background:#fff;top:2px;
+    box-shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+  .mtoggle.on::after { right:2px; }
+  .mtoggle.off::after { left:2px; }
+
+  /* ── HOW IT WORKS ───────────────────────────────────────────────────────── */
+  .how-section {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px;
+  }
+  .how-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
+  .how-step { display:flex; align-items:flex-start; gap:9px; }
+  .how-num {
+    width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:11pt;font-weight:800;color:#fff;flex-shrink:0;
+    background: var(--hn-bg, linear-gradient(135deg,#3fb950,#1a8c40));
+  }
+  .how-step h4 { font-size:8.5pt; font-weight:700; margin-bottom:3px; }
+  .how-step p  { font-size:7.2pt; color:var(--muted); line-height:1.5; }
+
+  /* ── FOOTER ─────────────────────────────────────────────────────────────── */
+  .footer {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:9px 16px; background:var(--surf); border:1px solid var(--border);
+    border-radius:9px; flex-shrink:0;
+  }
+  .footer-brand {
+    font-size:11pt;font-weight:900;letter-spacing:-.5px;
+    background:linear-gradient(90deg,#3fb950,#58a6ff);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .footer p   { font-size:7pt; color:var(--muted); }
+  .footer a   { color:var(--blue); text-decoration:none; font-size:7.5pt; }
+  .footer-right { text-align:right; line-height:1.6; }
+
+  /* ── METRICS STRIP ──────────────────────────────────────────────────────── */
+  .metrics-strip {
+    display:flex; gap:7px;
+  }
+  .metric-item {
+    flex:1; background:var(--surf); border:1px solid var(--border); border-radius:10px;
+    padding:10px 13px; text-align:center;
+  }
+  .metric-item .mv { font-size:16pt; font-weight:800; line-height:1.1; }
+  .metric-item .ml { font-size:7.5pt; color:var(--muted); margin-top:2px; }
+  .mv-g { color:var(--green); }
+  .mv-b { color:var(--blue); }
+  .mv-p { color:var(--purple); }
+  .mv-o { color:var(--orange); }
+
+  @media print {
+    @page { size: A4; margin: 0; }
+    html, body { background: var(--bg); }
+    .page { page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════ PAGE 1 — OVERVIEW ════════════ -->
+<div class="page">
+
+  <div class="header">
+    <div class="logo-group">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">
+        <h1>LSH</h1>
+        <p>Local Smart Home — Unified Automation Dashboard</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">Self-hosted · Open Platform</div>
+      <p class="header-tagline">Works fully offline · Zero cloud dependency · Apple HomeKit native</p>
+    </div>
+  </div>
+
+  <div class="hero">
+    <h2>One dashboard. Every device. No cloud required.</h2>
+    <p>LSH is a self-hosted Node.js platform that unifies Victron Energy, KNX bus, IP cameras, HVAC, lighting, alarms, and 20+ smart home ecosystems into a single, real-time web interface — with native Apple HomeKit bridge, on-demand RTSP streaming, and full REST API included.</p>
+  </div>
+
+  <div class="usp-row">
+    <div class="usp-item">
+      <div class="usp-icon">🔒</div>
+      <div>
+        <h4>100 % local by default</h4>
+        <p>All data stays inside your LAN. MQTT and Modbus run directly — no relay server, no account required. Optional VRM cloud fallback for remote access when you need it.</p>
+      </div>
+    </div>
+    <div class="usp-item">
+      <div class="usp-icon">🔌</div>
+      <div>
+        <h4>Protocol-agnostic architecture</h4>
+        <p>MQTT, KNXnet/IP, Modbus TCP, REST, WebSocket, RTSP — add any device using standard protocols. New integrations are pluggable Node.js modules.</p>
+      </div>
+    </div>
+    <div class="usp-item">
+      <div class="usp-icon">🍎</div>
+      <div>
+        <h4>Native Apple HomeKit</h4>
+        <p>Every sensor, switch, camera, thermostat, and relay is automatically exposed to the Apple Home app. Control your entire home from Siri or your iPhone.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Architecture -->
+  <div class="arch-section">
+    <div class="slabel">Architecture at a glance</div>
+    <div class="arch-row" style="margin-bottom:8px;">
+      <div class="arch-node"><span class="an-icon">🔋</span><span class="an-label">Victron</span><span class="an-sub">MQTT / VRM</span></div>
+      <div class="arch-node"><span class="an-icon">🏠</span><span class="an-label">KNX bus</span><span class="an-sub">KNXnet/IP</span></div>
+      <div class="arch-node"><span class="an-icon">📡</span><span class="an-label">ESPHome</span><span class="an-sub">Native API</span></div>
+      <div class="arch-node"><span class="an-icon">💡</span><span class="an-label">Zigbee/Z-Wave</span><span class="an-sub">SmartThings</span></div>
+      <div class="arch-node"><span class="an-icon">📷</span><span class="an-label">IP Cameras</span><span class="an-sub">RTSP / UniFi</span></div>
+      <div class="arch-node"><span class="an-icon">🌡️</span><span class="an-label">HVAC / LG</span><span class="an-sub">ThinQ cloud</span></div>
+    </div>
+    <div class="arch-row">
+      <div class="arch-arrow">↓</div>
+      <div class="arch-center" style="margin:0 20px;">
+        <span class="an-icon">⚡</span>
+        <span class="an-label">LSH Server</span>
+        <span class="an-sub">Node.js · Socket.IO · MQTT · REST API</span>
+      </div>
+      <div class="arch-arrow">↓</div>
+    </div>
+    <div class="arch-row" style="margin-top:8px;">
+      <div class="arch-node"><span class="an-icon">🌐</span><span class="an-label">Web UI</span><span class="an-sub">Any browser</span></div>
+      <div class="arch-node"><span class="an-icon">🍎</span><span class="an-label">Apple HomeKit</span><span class="an-sub">HAP bridge</span></div>
+      <div class="arch-node"><span class="an-icon">📱</span><span class="an-label">REST API</span><span class="an-sub">Automations</span></div>
+      <div class="arch-node"><span class="an-icon">🎬</span><span class="an-label">RTSP proxy</span><span class="an-sub">Loxone / VLC</span></div>
+      <div class="arch-node"><span class="an-icon">📞</span><span class="an-label">SIP softphone</span><span class="an-sub">VoIP browser</span></div>
+    </div>
+  </div>
+
+  <!-- Core features -->
+  <div class="grid-3">
+    <div class="feat-card" style="--fc-color:linear-gradient(90deg,#3fb950,#1a8c40)">
+      <span class="feat-icon">⚡</span>
+      <h3>Victron Energy Hub</h3>
+      <p>Deep integration with Victron CCGX/Venus OS via local MQTT. Monitor solar MPPT chargers, battery bank SoC, grid import/export, AC/DC loads, and inverter state in real time. Relay outputs controlled directly from the dashboard — trigger based on SoC thresholds or manual override.</p>
+      <ul>
+        <li>Live kW/kWh metrics with trend arrows</li>
+        <li>MQTT → VRM cloud automatic failover</li>
+        <li>SolarEdge production data overlay</li>
+      </ul>
+    </div>
+    <div class="feat-card" style="--fc-color:linear-gradient(90deg,#58a6ff,#0d63c9)">
+      <span class="feat-icon">📷</span>
+      <h3>Camera &amp; Video</h3>
+      <p>UniFi Protect cameras are automatically discovered and displayed as live thumbnails. Any RTSP camera (Hikvision, Dahua, Reolink…) can be re-streamed on-demand via the built-in FFmpeg RTSP proxy — each camera gets its own port, stream starts only when a client connects.</p>
+      <ul>
+        <li>On-demand FFmpeg re-streaming (no idle bandwidth)</li>
+        <li>Loxone Intercom &amp; camera app compatible</li>
+        <li>UniFi Protect motion event push</li>
+      </ul>
+    </div>
+    <div class="feat-card" style="--fc-color:linear-gradient(90deg,#bc8cff,#7a3fb5)">
+      <span class="feat-icon">🏠</span>
+      <h3>Rooms &amp; Sensors</h3>
+      <p>Group sensors, lights, and switches into rooms with a drag-and-drop editor. Temperature, humidity, CO₂, motion, occupancy, door/window contacts, and air quality all appear in a unified timeline. Room cards update in real time via Socket.IO — no page refresh needed.</p>
+      <ul>
+        <li>Room modal editor — assign any sensor to any room</li>
+        <li>Live value badges with color-coded thresholds</li>
+        <li>Historical mini-charts for temperature / humidity</li>
+      </ul>
+    </div>
+    <div class="feat-card" style="--fc-color:linear-gradient(90deg,#f0883e,#c45f10)">
+      <span class="feat-icon">🔆</span>
+      <h3>Lighting &amp; Switches</h3>
+      <p>Control IKEA, Shelly, Zigbee, KNX, ESPHome, and BoneIO lights and switches from a single panel. Dimmers, color temperature, RGB, scenes — all surfaced as HomeKit accessories automatically. Tactile feedback and instant state sync via MQTT or native API.</p>
+      <ul>
+        <li>Brightness + color temperature sliders</li>
+        <li>SmartThings, Dirigera &amp; Trådfri supported</li>
+        <li>BroadLink IR/RF scene macros</li>
+      </ul>
+    </div>
+    <div class="feat-card" style="--fc-color:linear-gradient(90deg,#3fb950,#58a6ff)">
+      <span class="feat-icon">📡</span>
+      <h3>MQTT Explorer</h3>
+      <p>Built-in live MQTT topic browser with subscribe and publish panels. Inspect any topic value as it updates, send test commands, and onboard custom DIY devices without leaving the dashboard. Separate connection from the Victron bus — safe to use simultaneously.</p>
+      <ul>
+        <li>Topic tree with live value display</li>
+        <li>Retained message inspection</li>
+        <li>SmartBob &amp; DIY MQTT device support</li>
+      </ul>
+    </div>
+    <div class="feat-card" style="--fc-color:linear-gradient(90deg,#f85149,#bc8cff)">
+      <span class="feat-icon">🔐</span>
+      <h3>Security &amp; Access</h3>
+      <p>Built-in user management with bcrypt password hashing. Automatic Let's Encrypt TLS with hot certificate renewal — no restarts. Satel Integra alarm panel integration for zone status, arm/disarm, and sensor display. Optional HTTP → HTTPS redirect on the standard port.</p>
+      <ul>
+        <li>Let's Encrypt auto-renew with ACME HTTP-01</li>
+        <li>Manual cert / self-signed TLS supported</li>
+        <li>Satel Integra alarm zones &amp; partitions</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Metrics strip -->
+  <div class="metrics-strip">
+    <div class="metric-item"><div class="mv mv-g">20+</div><div class="ml">Integrations</div></div>
+    <div class="metric-item"><div class="mv mv-b">15+</div><div class="ml">IoT protocols</div></div>
+    <div class="metric-item"><div class="mv mv-p">∞</div><div class="ml">HomeKit accessories</div></div>
+    <div class="metric-item"><div class="mv mv-o">0</div><div class="ml">Cloud dependencies</div></div>
+    <div class="metric-item"><div class="mv mv-g">< 60s</div><div class="ml">Setup to live data</div></div>
+  </div>
+
+  <div class="footer">
+    <div><div class="footer-brand">LSH</div><p>Local Smart Home Platform</p></div>
+    <p style="font-size:7pt;color:var(--muted);text-align:center;">Node.js 18+ · Raspberry Pi 4 / Linux x64<br>No subscription · No cloud lock-in · Page 1 of 3</p>
+    <div class="footer-right"><a href="mailto:dagoomax@gmail.com">dagoomax@gmail.com</a></div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════ PAGE 2 — INTEGRATIONS ════════════ -->
+<div class="page">
+
+  <div class="header">
+    <div class="logo-group">
+      <div class="logo-icon">🔌</div>
+      <div class="logo-text">
+        <h1>LSH</h1>
+        <p>Integration Reference — All supported devices &amp; protocols</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">20 + integrations</div>
+      <p class="header-tagline">Energy · Security · Lighting · Climate · Cameras · Buses</p>
+    </div>
+  </div>
+
+  <!-- Dashboard mockup -->
+  <div class="preview-section">
+    <div class="preview-bar">
+      <div class="preview-dot" style="background:#f85149"></div>
+      <div class="preview-dot" style="background:#f0883e"></div>
+      <div class="preview-dot" style="background:#3fb950"></div>
+      <span class="url">https://lsh.home:3001 — Live Dashboard</span>
+    </div>
+    <div class="mock-db">
+      <div class="mc mc-o"><div class="mcl">Solar MPPT</div><div class="mcv" style="color:var(--orange)">3.4 kW</div><div class="mcs">↑ generating · 108 Voc</div></div>
+      <div class="mc mc-g"><div class="mcl">Battery SoC</div><div class="mcv" style="color:var(--green)">87 %</div><div class="mcs">Charging · 42.1 V · +38 A</div></div>
+      <div class="mc mc-b"><div class="mcl">Grid</div><div class="mcv" style="color:var(--blue)">−0.8 kW</div><div class="mcs">Exporting surplus</div></div>
+      <div class="mc"><div class="mcl">AC Load</div><div class="mcv">1.2 kW</div><div class="mcs">5 circuits active</div></div>
+      <div class="mc mc-wide" style="--mc-c:var(--green)">
+        <div class="mcl">Relay control</div>
+        <div class="relay-row"><span>Heat pump</span><span class="mtoggle on"></span></div>
+        <div class="relay-row"><span>EV Charger (11 kW)</span><span class="mtoggle off"></span></div>
+        <div class="relay-row"><span>Garden irrigation</span><span class="mtoggle off"></span></div>
+      </div>
+      <div class="mc mc-b"><div class="mcl">Living Room</div><div class="mcv" style="color:var(--blue)">21.4°C</div><div class="mcs">68 % RH · CO₂ 612 ppm</div></div>
+      <div class="mc mc-p"><div class="mcl">Bedroom</div><div class="mcv" style="color:var(--purple)">19.8°C</div><div class="mcs">55 % RH · 🌙 occupancy</div></div>
+      <div class="mc mc-wide" style="--mc-c:var(--orange)">
+        <div class="mcl">Cameras — 3 online · RTSP proxy active</div>
+        <div style="margin-top:5px;display:flex;gap:5px;">
+          <div style="flex:1;background:var(--bg);border-radius:4px;height:32px;display:flex;align-items:center;justify-content:center;font-size:6.5pt;color:var(--muted);">🔴 Front Door</div>
+          <div style="flex:1;background:var(--bg);border-radius:4px;height:32px;display:flex;align-items:center;justify-content:center;font-size:6.5pt;color:var(--muted);">🔴 Garden</div>
+          <div style="flex:1;background:var(--bg);border-radius:4px;height:32px;display:flex;align-items:center;justify-content:center;font-size:6.5pt;color:var(--muted);">🔴 Garage</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Integration table -->
+  <div class="int-section">
+    <div class="slabel">Complete integration reference</div>
+    <table class="int-table">
+      <thead>
+        <tr>
+          <th style="width:110px">Integration</th>
+          <th style="width:75px">Protocol</th>
+          <th>What you get</th>
+          <th style="width:130px">HomeKit types</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="cat-head"><td colspan="4">⚡ Energy &amp; Solar</td></tr>
+        <tr>
+          <td><span class="int-name">Victron CCGX</span></td>
+          <td><span class="tag g">MQTT</span></td>
+          <td class="int-desc">Real-time solar, battery, grid, AC/DC load data. Relay 1 &amp; 2 control. Automatic VRM cloud fallback when local MQTT unreachable.</td>
+          <td><span class="tag g">Temperature</span> <span class="tag">Switch</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">Victron VRM</span></td>
+          <td><span class="tag b">HTTPS REST</span></td>
+          <td class="int-desc">Cloud fallback: live values polled from VRM portal when MQTT broker at 192.168.x.x is unreachable. No extra config needed.</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td><span class="int-name">SolarEdge</span></td>
+          <td><span class="tag b">REST API</span></td>
+          <td class="int-desc">PV production data from SolarEdge cloud API. Site overview, inverter power, energy today/this month. Polled every 15 min.</td>
+          <td><span class="tag">Sensor</span></td>
+        </tr>
+
+        <tr class="cat-head"><td colspan="4">🏠 Smart Home Hubs</td></tr>
+        <tr>
+          <td><span class="int-name">Samsung SmartThings</span></td>
+          <td><span class="tag b">REST API</span></td>
+          <td class="int-desc">All paired devices: lights, switches, sensors, thermostats, locks, cameras, presence detection. Polled every 30 s with live push.</td>
+          <td><span class="tag g">Switch</span> <span class="tag g">Light</span> <span class="tag p">Motion</span> <span class="tag">Thermostat</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">IKEA Dirigera</span></td>
+          <td><span class="tag b">WebSocket</span></td>
+          <td class="int-desc">IKEA smart home hub — lights (on/off, brightness, CCT, RGB), remotes, motion sensors, air quality sensors via local WebSocket API.</td>
+          <td><span class="tag g">Light</span> <span class="tag p">Motion</span> <span class="tag">Air Quality</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">IKEA Trådfri</span></td>
+          <td><span class="tag o">CoAP/DTLS</span></td>
+          <td class="int-desc">Legacy IKEA Trådfri gateway. Lights, remotes, motion sensors via CoAP. Requires node-tradfri-client npm package.</td>
+          <td><span class="tag g">Light</span> <span class="tag p">Motion</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">Homey</span></td>
+          <td><span class="tag b">REST + WS</span></td>
+          <td class="int-desc">Athom Homey Pro — all Homey devices including Z-Wave, Zigbee, 433 MHz, and cloud bridges. Real-time updates via Homey Web API.</td>
+          <td><span class="tag g">Switch</span> <span class="tag g">Light</span> <span class="tag p">Motion</span> <span class="tag">Sensor</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">Fibaro Home Center</span></td>
+          <td><span class="tag b">REST API</span></td>
+          <td class="int-desc">Fibaro HC2/HC3 — scenes, devices, room assignments. Z-Wave devices polled via local LAN REST API with live value updates.</td>
+          <td><span class="tag g">Switch</span> <span class="tag g">Light</span> <span class="tag">Sensor</span></td>
+        </tr>
+
+        <tr class="cat-head"><td colspan="4">🔌 Buses &amp; Controllers</td></tr>
+        <tr>
+          <td><span class="int-name">KNX / KNXnet-IP</span></td>
+          <td><span class="tag o">KNXnet/IP UDP</span></td>
+          <td class="int-desc">Full KNX bus integration over IP gateway. Configure group addresses with DPT type (DPT1 boolean, DPT5 1-byte, DPT9 2-byte float, DPT14 IEEE). Read on connect + live GroupValue_Write events. Write commands back to bus.</td>
+          <td><span class="tag g">Switch</span> <span class="tag">Sensor</span> <span class="tag g">Light</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">Loxone Miniserver</span></td>
+          <td><span class="tag b">WebSocket</span></td>
+          <td class="int-desc">Loxone Miniserver local API — virtual inputs/outputs, rooms, sensors, lighting scenes. Full bidirectional control. RTSP proxy streams Loxone-compatible camera URLs.</td>
+          <td><span class="tag g">Switch</span> <span class="tag g">Light</span> <span class="tag">Sensor</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">BoneIO</span></td>
+          <td><span class="tag g">MQTT</span></td>
+          <td class="int-desc">Polish I/O controller over MQTT. Digital inputs, relay outputs, analog sensors. Per-entity topic mapping — registers each I/O as an individual sensor/switch.</td>
+          <td><span class="tag g">Switch</span> <span class="tag">Sensor</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">Waveshare Modbus</span></td>
+          <td><span class="tag o">Modbus TCP</span></td>
+          <td class="int-desc">Waveshare relay board and I/O expansion modules. Reads coils and registers over Modbus TCP. Multiple device support with configurable register maps.</td>
+          <td><span class="tag g">Switch</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">SmartBob</span></td>
+          <td><span class="tag g">MQTT</span></td>
+          <td class="int-desc">Generic MQTT controller — configurable per-entity state and command topics. Supports switches, lights, temperature, humidity, numeric, and boolean sensor types with optional MQTT broker auth.</td>
+          <td><span class="tag g">Switch</span> <span class="tag g">Light</span> <span class="tag">Sensor</span></td>
+        </tr>
+
+        <tr class="cat-head"><td colspan="4">🌡️ Climate &amp; Appliances</td></tr>
+        <tr>
+          <td><span class="int-name">LG ThinQ</span></td>
+          <td><span class="tag b">ThinQ REST</span></td>
+          <td class="int-desc">LG smart appliances — air conditioners, heat pumps, washing machines, dryers, dishwashers. Real-time status via LG ThinQ cloud API with token refresh.</td>
+          <td><span class="tag">Thermostat</span> <span class="tag">Sensor</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">ESPHome</span></td>
+          <td><span class="tag b">Native API</span></td>
+          <td class="int-desc">ESPHome DIY devices over local native API (TCP). Sensors, switches, lights, binary sensors, climate entities auto-discovered. No MQTT broker needed.</td>
+          <td><span class="tag g">Switch</span> <span class="tag g">Light</span> <span class="tag">Sensor</span> <span class="tag">Thermostat</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">Dreame</span></td>
+          <td><span class="tag b">Miio LAN</span></td>
+          <td class="int-desc">Dreame robot vacuum cleaners over local Miio protocol. Status, battery, room cleaning zones. Start/stop/dock commands via dashboard.</td>
+          <td><span class="tag">Sensor</span></td>
+        </tr>
+
+        <tr class="cat-head"><td colspan="4">🔒 Security</td></tr>
+        <tr>
+          <td><span class="int-name">Satel Integra</span></td>
+          <td><span class="tag o">ETHM TCP</span></td>
+          <td class="int-desc">Satel Integra alarm panel via ETHM-1 Plus Ethernet module. Zone states (triggered, tamper, masked), partition arm/disarm with code, zone names configurable.</td>
+          <td><span class="tag r">Motion</span> <span class="tag r">Contact</span> <span class="tag">Security</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">UniFi Protect</span></td>
+          <td><span class="tag b">WebSocket</span></td>
+          <td class="int-desc">Ubiquiti UniFi Protect NVR — camera live thumbnails, motion events, smart detection (person/vehicle/package). Cameras appear as HomeKit Secure Video sources.</td>
+          <td><span class="tag p">Camera</span> <span class="tag r">Motion</span></td>
+        </tr>
+
+        <tr class="cat-head"><td colspan="4">🎬 Cameras &amp; AV</td></tr>
+        <tr>
+          <td><span class="int-name">FFmpeg RTSP Proxy</span></td>
+          <td><span class="tag o">RTSP</span></td>
+          <td class="int-desc">On-demand FFmpeg re-streaming for any RTSP source. Each camera gets a dedicated port (base+N). Stream starts only when a client connects — zero idle bandwidth. Loxone Intercom compatible.</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td><span class="int-name">Shelly</span></td>
+          <td><span class="tag g">MQTT / HTTP</span></td>
+          <td class="int-desc">Shelly Gen1/Gen2 relay modules, dimmers, and plugs. Real-time MQTT state updates and HTTP control. Power monitoring where available.</td>
+          <td><span class="tag g">Switch</span> <span class="tag g">Light</span></td>
+        </tr>
+        <tr>
+          <td><span class="int-name">BroadLink</span></td>
+          <td><span class="tag o">RF/IR LAN</span></td>
+          <td class="int-desc">BroadLink RM4 Pro / RM Mini — IR and 433 MHz RF scene control. Pre-learned codes sent as scenes or automation triggers from the dashboard.</td>
+          <td><span class="tag">Switch</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <div><div class="footer-brand">LSH</div><p>Local Smart Home Platform</p></div>
+    <p style="font-size:7pt;color:var(--muted);text-align:center;">All integrations auto-register to HomeKit · Settings UI — no YAML required<br>Page 2 of 3</p>
+    <div class="footer-right"><a href="mailto:dagoomax@gmail.com">dagoomax@gmail.com</a></div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════ PAGE 3 — TECHNICAL ════════════ -->
+<div class="page">
+
+  <div class="header">
+    <div class="logo-group">
+      <div class="logo-icon">🛠️</div>
+      <div class="logo-text">
+        <h1>LSH</h1>
+        <p>Technical Reference — REST API, Config, Deployment</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">Developer Reference</div>
+      <p class="header-tagline">REST API · HomeKit · TLS · Config schema</p>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="how-section">
+    <div class="slabel">Getting started in 3 steps</div>
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="how-num" style="--hn-bg:linear-gradient(135deg,#3fb950,#1a8c40)">1</div>
+        <div>
+          <h4>Clone &amp; Configure</h4>
+          <p>Copy <code>config.example.json</code> → <code>config.json</code>. Fill in your MQTT broker address and/or VRM credentials. Set your HomeKit PIN. Run <code>node server.js</code> — live data appears within seconds.</p>
+        </div>
+      </div>
+      <div class="how-step">
+        <div class="how-num" style="--hn-bg:linear-gradient(135deg,#58a6ff,#0d63c9)">2</div>
+        <div>
+          <h4>Connect Integrations</h4>
+          <p>Open <code>/settings.html</code> in your browser. Each integration has a dedicated card with a one-click connectivity test. No config file editing — fill in the form and click Save. New devices appear in the dashboard immediately.</p>
+        </div>
+      </div>
+      <div class="how-step">
+        <div class="how-num" style="--hn-bg:linear-gradient(135deg,#bc8cff,#7a3fb5)">3</div>
+        <div>
+          <h4>Add to Apple Home</h4>
+          <p>Open the HomeKit QR code from Settings. Scan with your iPhone — all connected devices instantly appear in Apple Home. Control them via Siri, automations, or the Home app. Bridge survives server restarts — no re-pairing.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Config example -->
+    <div class="spec-section">
+      <div class="slabel">Minimal config.json</div>
+      <div class="code-block">
+<span class="kw">{</span>
+  <span class="key">"mqtt"</span>: <span class="kw">{</span>
+    <span class="key">"host"</span>: <span class="str">"192.168.1.109"</span>,
+    <span class="key">"portalId"</span>: <span class="str">"abc123"</span>
+  <span class="kw">}</span>,
+  <span class="key">"vrm"</span>: <span class="kw">{</span>
+    <span class="key">"email"</span>: <span class="str">"user@email.com"</span>,
+    <span class="key">"installationId"</span>: <span class="num">12345</span>
+  <span class="kw">}</span>,
+  <span class="key">"knx"</span>: <span class="kw">{</span>
+    <span class="key">"host"</span>: <span class="str">"192.168.1.50"</span>,
+    <span class="key">"groupAddresses"</span>: <span class="kw">[</span>
+      <span class="kw">{</span> <span class="key">"address"</span>: <span class="str">"1/1/1"</span>, <span class="key">"dpt"</span>: <span class="str">"DPT9"</span>,
+        <span class="key">"label"</span>: <span class="str">"Living Temp"</span> <span class="kw">}</span>
+    <span class="kw">]</span>
+  <span class="kw">}</span>,
+  <span class="key">"ffmpegRtsp"</span>: <span class="kw">{</span>
+    <span class="key">"enabled"</span>: <span class="kw">true</span>,
+    <span class="key">"basePort"</span>: <span class="num">8554</span>
+  <span class="kw">}</span>,
+  <span class="key">"homekit"</span>: <span class="kw">{</span>
+    <span class="key">"pin"</span>: <span class="str">"031-45-154"</span>
+  <span class="kw">}</span>,
+  <span class="key">"server"</span>: <span class="kw">{</span>
+    <span class="key">"port"</span>: <span class="num">3001</span>,
+    <span class="key">"letsEncrypt"</span>: <span class="kw">{</span>
+      <span class="key">"enabled"</span>: <span class="kw">true</span>,
+      <span class="key">"domain"</span>: <span class="str">"lsh.yourdomain.com"</span>
+    <span class="kw">}</span>
+  <span class="kw">}</span>
+<span class="kw">}</span></div>
+    </div>
+
+    <!-- Tech specs -->
+    <div class="spec-section">
+      <div class="slabel">Technical specifications</div>
+      <table class="spec-table">
+        <thead><tr><th>Property</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td class="sk">Runtime</td><td class="sv">Node.js 18 LTS or newer</td></tr>
+          <tr><td class="sk">Hardware</td><td class="sv">Raspberry Pi 4 (1 GB+) <span class="dim">/ any Linux x64</span></td></tr>
+          <tr><td class="sk">RAM footprint</td><td class="sv">≈ 120 MB idle <span class="dim">/ &lt; 250 MB under load</span></td></tr>
+          <tr><td class="sk">Disk</td><td class="sv">~50 MB app + ~10 MB HomeKit persist</td></tr>
+          <tr><td class="sk">Real-time</td><td class="sv">Socket.IO 4 push <span class="dim">— sub-100 ms UI updates</span></td></tr>
+          <tr><td class="sk">TLS</td><td class="sv">Let's Encrypt ACME (auto-renew) <span class="dim">or manual cert</span></td></tr>
+          <tr><td class="sk">HomeKit</td><td class="sv">HAP-nodejs <span class="dim">— unlimited accessories</span></td></tr>
+          <tr><td class="sk">MQTT</td><td class="sv">MQTT.js v5 <span class="dim">— reconnect, retained, QoS</span></td></tr>
+          <tr><td class="sk">Modbus</td><td class="sv">modbus-serial TCP <span class="dim">— multiple devices</span></td></tr>
+          <tr><td class="sk">KNX</td><td class="sv">knx npm <span class="dim">— DPT1/5/9/14 encode+decode</span></td></tr>
+          <tr><td class="sk">RTSP proxy</td><td class="sv">FFmpeg re-stream <span class="dim">— on-demand, per-camera</span></td></tr>
+          <tr><td class="sk">Auth</td><td class="sv">bcrypt hashed users <span class="dim">— setup wizard on first run</span></td></tr>
+          <tr><td class="sk">Config</td><td class="sv">config.json <span class="dim">+ Settings UI — no YAML</span></td></tr>
+          <tr><td class="sk">Persistence</td><td class="sv">HomeKit state in <code>persist/</code> <span class="dim">— survives restarts</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- REST API -->
+  <div class="spec-section">
+    <div class="slabel">REST API — selected endpoints</div>
+    <table class="api-table">
+      <thead>
+        <tr><th style="width:50px">Method</th><th style="width:165px">Path</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="method get">GET</span></td><td class="api-path">/api/status</td><td class="api-desc">Full snapshot: connection source (MQTT/VRM), relay states, sensor values, platform list</td></tr>
+        <tr><td><span class="method get">GET</span></td><td class="api-path">/api/sensors</td><td class="api-desc">All registered sensor entities with current values, units, HomeKit type, and controllable flag</td></tr>
+        <tr><td><span class="method post">POST</span></td><td class="api-path">/api/relay/:index</td><td class="api-desc">Toggle relay 0 or 1. Body: <code>{"state": true|false}</code>. Works over MQTT or VRM.</td></tr>
+        <tr><td><span class="method post">POST</span></td><td class="api-path">/api/sensor/:key/command</td><td class="api-desc">Send a command to any controllable sensor (switch, light, thermostat). Body: <code>{"value": …}</code></td></tr>
+        <tr><td><span class="method get">GET</span></td><td class="api-path">/api/rtsp-proxy</td><td class="api-desc">List FFmpeg RTSP proxy streams: name, port, slug, source URL, active status</td></tr>
+        <tr><td><span class="method get">GET</span></td><td class="api-path">/api/cameras</td><td class="api-desc">UniFi Protect camera list with snapshot URLs and motion event feed</td></tr>
+        <tr><td><span class="method post">POST</span></td><td class="api-path">/settings/mqtt</td><td class="api-desc">Save Victron MQTT broker settings (host, port, portalId)</td></tr>
+        <tr><td><span class="method post">POST</span></td><td class="api-path">/settings/knx</td><td class="api-desc">Save KNX gateway config and group address list with DPT types</td></tr>
+        <tr><td><span class="method post">POST</span></td><td class="api-path">/settings/smartbob</td><td class="api-desc">Save SmartBob MQTT broker and entity definitions (topic, type, label)</td></tr>
+        <tr><td><span class="method post">POST</span></td><td class="api-path">/settings/test-*</td><td class="api-desc">TCP connectivity test for any integration before saving (returns latency ms or error)</td></tr>
+        <tr><td><span class="method post">POST</span></td><td class="api-path">/settings/ffmpeg-rtsp</td><td class="api-desc">Enable/disable FFmpeg proxy, set base port and ffmpeg binary path</td></tr>
+        <tr><td><span class="method post">POST</span></td><td class="api-path">/api/rooms</td><td class="api-desc">Save room definitions — name, icon, and list of sensor/device keys assigned to each room</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Deployment options -->
+  <div class="grid-2">
+    <div class="feat-card" style="--fc-color:linear-gradient(90deg,#3fb950,#58a6ff)">
+      <span class="feat-icon">🐧</span>
+      <h3>Deployment Options</h3>
+      <ul style="list-style:none;padding:0;">
+        <li style="display:flex;align-items:flex-start;gap:7px;padding:4px 0;border-bottom:1px solid var(--border2);font-size:7.5pt;">
+          <span style="color:var(--green);font-weight:700;flex-shrink:0;">Bare metal</span>
+          <span style="color:var(--muted);">Raspberry Pi 4 running Raspberry Pi OS Lite — recommended for energy monitoring close to Victron hardware</span>
+        </li>
+        <li style="display:flex;align-items:flex-start;gap:7px;padding:4px 0;border-bottom:1px solid var(--border2);font-size:7.5pt;">
+          <span style="color:var(--blue);font-weight:700;flex-shrink:0;">Docker</span>
+          <span style="color:var(--muted);">Single container — mount <code>config.json</code> and <code>persist/</code> as volumes; expose ports 3001 + HomeKit HAP port</span>
+        </li>
+        <li style="display:flex;align-items:flex-start;gap:7px;padding:4px 0;border-bottom:1px solid var(--border2);font-size:7.5pt;">
+          <span style="color:var(--purple);font-weight:700;flex-shrink:0;">NAS / VM</span>
+          <span style="color:var(--muted);">Synology DSM, Proxmox LXC, TrueNAS Jail — any Linux environment with Node.js and network access to MQTT broker</span>
+        </li>
+        <li style="display:flex;align-items:flex-start;gap:7px;padding:4px 0;font-size:7.5pt;">
+          <span style="color:var(--orange);font-weight:700;flex-shrink:0;">systemd service</span>
+          <span style="color:var(--muted);">Auto-start on boot, journal logging, automatic restart on crash — one-command service install included</span>
+        </li>
+      </ul>
+    </div>
+    <div class="feat-card" style="--fc-color:linear-gradient(90deg,#bc8cff,#f85149)">
+      <span class="feat-icon">🔮</span>
+      <h3>What Makes LSH Different</h3>
+      <ul>
+        <li><strong>No Home Assistant dependency</strong> — standalone Node.js, minimal attack surface</li>
+        <li><strong>Victron-first</strong> — designed for off-grid / solar installations, not just consumer IoT</li>
+        <li><strong>MQTT bus explorer</strong> built in — no separate MQTT.fx or MQTT Explorer needed</li>
+        <li><strong>On-demand RTSP proxy</strong> — no bandwidth wasted when no one is watching cameras</li>
+        <li><strong>KNX bus native</strong> — first-class KNXnet/IP support with per-address DPT config</li>
+        <li><strong>Settings UI</strong> — add devices through browser forms, not YAML or Python scripts</li>
+        <li><strong>SIP softphone</strong> — browser-based VoIP so you can answer the door intercom from the dashboard</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div><div class="footer-brand">LSH</div><p>Local Smart Home Platform</p></div>
+    <p style="font-size:7pt;color:var(--muted);text-align:center;">Open integration platform · Node.js 18+ · Raspberry Pi 4 / Linux<br>Page 3 of 3</p>
+    <div class="footer-right">
+      <a href="mailto:dagoomax@gmail.com">dagoomax@gmail.com</a><br>
+      <span style="font-size:6.5pt;color:var(--dim);">© 2026 LSH Local Smart Home</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
