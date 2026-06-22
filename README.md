@@ -1361,6 +1361,14 @@ curl -b cookies.txt -X POST http://localhost:3001/api/auth/tokens \
 | `POST` | `/api/settings` | Deep-merge a config patch and save |
 | `GET` | `/api/settings/export` | Download raw `config.json` |
 | `POST` | `/api/settings/import` | Restore config from a JSON file upload |
+| `POST` | `/api/settings/test-knx` | Test TCP connectivity to KNX gateway `{ host, port }` |
+| `POST` | `/api/settings/knx` | Save KNX gateway + group address list |
+| `POST` | `/api/settings/test-esphome` | Test ESPHome device reachability `{ host, port, password }` |
+| `POST` | `/api/settings/esphome` | Save ESPHome device list |
+| `POST` | `/api/settings/lgthinq-login` | One-time LG OAuth flow — fetches tokens + user number (credentials not stored) |
+| `POST` | `/api/settings/lgthinq` | Save LG ThinQ tokens to `persist/lgthinq-tokens.json` |
+| `POST` | `/api/settings/ffmpeg-rtsp` | Save FFmpeg RTSP proxy settings (enabled, basePort, ffmpegPath) |
+| `GET` | `/api/rtsp-proxy` | List RTSP proxy streams with per-camera port, slug, and active status |
 
 `POST /api/settings` accepts a partial object — only keys present in the body are updated:
 
