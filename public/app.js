@@ -7,6 +7,7 @@ const batteryBar  = document.getElementById('battery-bar');
 const lastUpdate  = document.getElementById('last-update');
 const devicesGrid = document.getElementById('devices-grid');
 const devicesHdr  = document.getElementById('devices-header');
+const roomsGrid   = document.getElementById('rooms-grid');
 
 const knownDevices  = new Map();
 const cameraTimers  = new Map();
@@ -1018,6 +1019,15 @@ function addOrUpdateDevice(device) {
   const savedSize = localStorage.getItem(`card-size-${device.key}`) || 'normal';
   applyCardSize(card, savedSize);
   card.querySelector('.card-size-btn').addEventListener('click', () => cycleCardSize(card, device.key));
+
+  updateTabCounts();
+
+  if (activeTab === 'rooms' && !roomsBuilt.has(device.key)) {
+    roomsBuilt.add(device.key);
+    const emptyEl = roomsGrid?.querySelector('.rooms-empty');
+    if (emptyEl) emptyEl.remove();
+    roomsGrid?.appendChild(buildRoomCard(device));
+  }
 }
 
 // ── Device control events (toggle, range, color) ──────────────────────────
@@ -1067,7 +1077,7 @@ devicesGrid.addEventListener('input', (e) => {
     const deviceKey  = input.dataset.deviceKey;
     const sensorPath = input.dataset.sensorPath;
     const val = parseFloat(input.value);
-    const dispEl = devicesGrid.querySelector(`.sensor-range-val[data-sensor-key="${CSS.escape(input.dataset.sensorKey)}"]`);
+    const dispEl = document.querySelector(`.sensor-range-val[data-sensor-key="${CSS.escape(input.dataset.sensorKey)}"]`);
     if (dispEl) dispEl.textContent = formatRangeDisplay(dispEl.dataset.rangeFormat, val);
     debounce(`range-${deviceKey}-${sensorPath}`, () => sendDeviceCommand(deviceKey, sensorPath, val));
     return;
@@ -1174,7 +1184,125 @@ const PLATFORMS = [
   { key: 'lgthinq',     label: 'LG ThinQ',    color: '#a50034', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><text x="16" y="21" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="11" fill="#fff">LG</text></svg>' },
 ];
 
-const platformBar = document.getElementById('platform-bar');
+const platformBar  = document.getElementById('platform-bar');
+const mainTabBar   = document.getElementById('main-tab-bar');
+const tabCountDevices = document.getElementById('tab-count-devices');
+const tabCountRooms   = document.getElementById('tab-count-rooms');
+
+let activeTab  = 'energy';
+const roomsBuilt = new Set();
+
+function updateTabCounts() {
+  const n = knownDevices.size;
+  if (tabCountDevices) tabCountDevices.textContent = n;
+  if (tabCountRooms)   tabCountRooms.textContent   = n;
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('tab-active'));
+  document.querySelectorAll('.main-tab-btn').forEach(b => b.classList.remove('active'));
+  const pane = document.getElementById(`tab-pane-${tabId}`);
+  const btn  = mainTabBar?.querySelector(`.main-tab-btn[data-tab="${tabId}"]`);
+  if (pane) pane.classList.add('tab-active');
+  if (btn)  btn.classList.add('active');
+  activeTab = tabId;
+  if (tabId === 'rooms') renderRoomsTab();
+}
+
+mainTabBar?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.main-tab-btn');
+  if (btn && btn.dataset.tab) switchTab(btn.dataset.tab);
+});
+
+function buildRoomCard(device) {
+  const el = document.createElement('div');
+  el.className = `room-card room-${device.color || 'blue'}`;
+  el.dataset.roomKey = device.key;
+
+  const source   = device.key.split('/')[0];
+  const readings = device.readings || {};
+  const sensorRows = (device.sensors || []).map(s => buildSensorRow(s, readings, device.key)).join('');
+
+  el.innerHTML = `
+    <div class="room-card-header">
+      <span class="room-card-icon">${device.icon || '📡'}</span>
+      <span class="room-card-name">${esc(device.label)}</span>
+      <span class="room-source-badge">${esc(source)}</span>
+    </div>
+    <div class="room-card-body">
+      <div class="sensor-list">${sensorRows || '<span style="font-size:0.78rem;color:var(--text-muted)">No sensors</span>'}</div>
+    </div>`;
+  return el;
+}
+
+function renderRoomsTab() {
+  if (!roomsGrid) return;
+  for (const [key, device] of knownDevices) {
+    if (!roomsBuilt.has(key)) {
+      roomsBuilt.add(key);
+      roomsGrid.appendChild(buildRoomCard(device));
+    }
+  }
+  if (knownDevices.size === 0 && !roomsGrid.querySelector('.rooms-empty')) {
+    roomsGrid.innerHTML = `<div class="rooms-empty"><span class="rooms-empty-icon">🏠</span>No devices discovered yet.<br>Configure an integration in Settings to get started.</div>`;
+  }
+}
+
+// ── Rooms grid event delegation (mirrors devicesGrid handlers) ──────────────
+roomsGrid?.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.sensor-trigger-btn');
+  if (!btn || btn.disabled) return;
+  const deviceKey  = btn.dataset.deviceKey;
+  const sensorPath = btn.dataset.sensorPath;
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '…';
+  try {
+    const res = await fetch(`/api/device/${deviceKey}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor: sensorPath, value: true }),
+    });
+    btn.textContent = res.ok ? '✓' : '✗';
+  } catch { btn.textContent = '✗'; }
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+});
+
+roomsGrid?.addEventListener('change', async (e) => {
+  const input = e.target;
+  if (!input.classList.contains('sensor-toggle')) return;
+  const deviceKey  = input.dataset.deviceKey;
+  const sensorPath = input.dataset.sensorPath;
+  const value = input.checked;
+  input.disabled = true;
+  try {
+    const res = await fetch(`/api/device/${deviceKey}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor: sensorPath, value }),
+    });
+    if (!res.ok) input.checked = !value;
+  } catch { input.checked = !value; }
+  finally   { input.disabled = false; }
+});
+
+roomsGrid?.addEventListener('input', (e) => {
+  const input = e.target;
+  if (input.classList.contains('sensor-range')) {
+    const deviceKey  = input.dataset.deviceKey;
+    const sensorPath = input.dataset.sensorPath;
+    const val = parseFloat(input.value);
+    const dispEl = document.querySelector(`.sensor-range-val[data-sensor-key="${CSS.escape(input.dataset.sensorKey)}"]`);
+    if (dispEl) dispEl.textContent = formatRangeDisplay(dispEl.dataset.rangeFormat, val);
+    debounce(`range-${deviceKey}-${sensorPath}`, () => sendDeviceCommand(deviceKey, sensorPath, val));
+  }
+  if (input.classList.contains('sensor-color')) {
+    const deviceKey  = input.dataset.deviceKey;
+    const sensorPath = input.dataset.sensorPath;
+    const color = hexToHsv(input.value);
+    debounce(`color-${deviceKey}`, () => sendDeviceCommand(deviceKey, sensorPath, color));
+  }
+});
 
 function renderPlatformBar(status) {
   if (!platformBar) return;

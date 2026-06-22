@@ -43,6 +43,25 @@
     </div>
   </header>
 
+  <!-- ── Main tab bar ──────────────────────────────────────── -->
+  <div class="main-tab-bar" id="main-tab-bar">
+    <button class="main-tab-btn active" data-tab="energy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Energy
+    </button>
+    <button class="main-tab-btn" data-tab="devices">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      Devices
+      <span class="tab-count" id="tab-count-devices">0</span>
+    </button>
+    <button class="main-tab-btn" data-tab="rooms">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Rooms
+      <span class="tab-count" id="tab-count-rooms">0</span>
+    </button>
+  </div>
+
+  <div id="tab-pane-energy" class="tab-pane tab-active">
   <main>
     <!-- ── Energy Flow ─────────────────────────────────── -->
     <section class="card flow-card">
@@ -348,24 +367,33 @@
       <div id="relays-container"></div>
     </section>
 
-    <!-- ── Discovered Devices ─────────────────────────── -->
-    <section class="card devices-header-card" id="devices-header" style="display:none">
-      <div class="card-hdr">
-        <h2>
-          <span class="card-icon" style="--ci:var(--accent-blue)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-          </span>
-          <span data-i18n="card.devices">Devices</span>
-        </h2>
-      </div>
-      <p class="devices-subtitle" id="devices-subtitle">Auto-discovered via MQTT</p>
-    </section>
   </main>
+  </div><!-- end #tab-pane-energy -->
 
-  <!-- Device cards appended dynamically below main -->
-  <div id="devices-grid"></div>
+  <!-- ── Devices tab ───────────────────────────────────────── -->
+  <div id="tab-pane-devices" class="tab-pane">
+    <div class="tab-pane-inner">
+      <section class="card devices-header-card" id="devices-header" style="display:none">
+        <div class="card-hdr">
+          <h2>
+            <span class="card-icon" style="--ci:var(--accent-blue)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </span>
+            <span data-i18n="card.devices">Devices</span>
+          </h2>
+        </div>
+        <p class="devices-subtitle" id="devices-subtitle">Auto-discovered via integrations</p>
+      </section>
+    </div>
+    <div id="devices-grid"></div>
+  </div>
+
+  <!-- ── Rooms tab ─────────────────────────────────────────── -->
+  <div id="tab-pane-rooms" class="tab-pane">
+    <div id="rooms-grid"></div>
+  </div>
 
   <footer>
     <span>LoxoneSwaggerHelper</span>
