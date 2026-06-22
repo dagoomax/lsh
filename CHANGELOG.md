@@ -8,6 +8,14 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-06-22 (3)
+
+### Added
+- **Ukrainian language (UA)** — full translation of all UI strings.
+- **Italian language (IT)** — full translation of all UI strings.
+
+---
+
 ## 2026-06-22 (2)
 
 ### Added
