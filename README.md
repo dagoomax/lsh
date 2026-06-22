@@ -864,98 +864,394 @@ Certificates are auto-renewed when fewer than 30 days remain. Requires `npm inst
 
 ## REST API
 
-All endpoints require authentication (cookie or `Authorization: Bearer <token>`) unless listed as public.
+LSH exposes a JSON REST API at `/api/*`. This section is a developer reference — it covers authentication, the response envelope, every endpoint, example `curl` calls, and the real-time Socket.IO event stream.
 
-### Data
+### Authentication
+
+Every endpoint requires authentication **except** `POST /api/auth/login` and `POST /api/auth/setup`.
+
+Two methods are supported and can be used interchangeably:
+
+#### 1 — Session cookie (browser / interactive)
+
+```bash
+# Log in — the server sets an HttpOnly cookie `lsh-session`
+curl -c cookies.txt -X POST http://localhost:3001/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"secret"}'
+
+# Use the cookie in subsequent requests
+curl -b cookies.txt http://localhost:3001/api/relays
+```
+
+#### 2 — Bearer token (scripts / Home Assistant / automation)
+
+Create a long-lived API token in **Settings → API Tokens** (or via the API itself). Tokens do not expire unless revoked.
+
+```bash
+# Create a token (requires an active session or another token)
+curl -b cookies.txt -X POST http://localhost:3001/api/auth/tokens \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"my-script"}'
+# → { "success": true, "data": { "id": "...", "token": "lsh_xxxx...", "name": "my-script" } }
+
+# Use the token in any request
+curl -H 'Authorization: Bearer lsh_xxxx...' http://localhost:3001/api/relays
+```
+
+### Response envelope
+
+All responses follow the same shape:
+
+```json
+{ "success": true,  "data": { ... } }   // 2xx
+{ "success": false, "error": "..." }    // 4xx / 5xx
+```
+
+---
+
+### Live energy data
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/status` | All live Victron metrics |
-| `GET` | `/api/devices` | All registered sensor devices |
-| `POST` | `/api/device/:key/command` | Send command `{ sensor, value }` to a device |
-| `GET` | `/api/sources` | Active data source (`mqtt` / `vrm` / `null`) |
+| `GET` | `/api/status` | All live Victron metrics grouped by category |
+| `GET` | `/api/battery` | Battery SOC, voltage, current, power, time-to-go |
+| `GET` | `/api/solar` | PV power and daily yield |
+| `GET` | `/api/grid` | Grid voltage, current, power, frequency, status |
+| `GET` | `/api/loads` | AC and DC load power |
+| `GET` | `/api/connection` | Active data source (`mqtt` / `vrm` / `null`) |
+
+**Example — read battery state:**
+
+```bash
+curl -H 'Authorization: Bearer lsh_xxxx...' http://localhost:3001/api/battery
+```
+
+```json
+{
+  "success": true,
+  "data": {
+    "soc": 82,
+    "voltage": 51.4,
+    "current": -3.1,
+    "power": -159,
+    "timeToGo": 28800
+  }
+}
+```
+
+---
 
 ### Relays
 
+| Method | Path | Body | Description |
+|---|---|---|---|
+| `GET` | `/api/relays` | — | List all relays with their current on/off state |
+| `POST` | `/api/relay/:index/state` | `{ "on": true }` | Set relay on (`true`) or off (`false`) |
+
+`:index` is the 0-based relay position defined in `config.json`.
+
+**Example — turn relay 0 on:**
+
+```bash
+curl -X POST http://localhost:3001/api/relay/0/state \
+  -H 'Authorization: Bearer lsh_xxxx...' \
+  -H 'Content-Type: application/json' \
+  -d '{"on": true}'
+```
+
+```json
+{ "success": true, "data": { "index": 0, "on": true } }
+```
+
+**Example — read all relays:**
+
+```bash
+curl -H 'Authorization: Bearer lsh_xxxx...' http://localhost:3001/api/relays
+```
+
+```json
+{
+  "success": true,
+  "data": [
+    { "index": 0, "name": "Gate", "on": true },
+    { "index": 1, "name": "Pool Pump", "on": false }
+  ]
+}
+```
+
+---
+
+### Integration devices
+
+Every device registered from any integration (SmartThings, Shelly, Loxone, Fibaro, LG ThinQ, etc.) is accessible here.
+
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/relays` | Relay list with current state |
-| `POST` | `/api/relay/:index/state` | Toggle relay `{ on: true \| false }` |
+| `GET` | `/api/devices` | All registered devices with live sensor readings |
+| `GET` | `/api/devices/:key` | Single device by its key (e.g. `shelly/192.168.1.10`) |
+| `POST` | `/api/device/:key/command` | Send a command to a device sensor |
+
+The `:key` uses `/` separators — use the exact key returned by `GET /api/devices`.
+
+**Device key format:**
+
+| Integration | Key format | Example |
+|---|---|---|
+| Shelly | `shelly/<host>` | `shelly/192.168.1.10` |
+| SmartThings | `smartthings/<deviceId>` | `smartthings/abc-123` |
+| Loxone | `loxone/<uuid>` | `loxone/0f1e2d3c-...` |
+| Fibaro | `fibaro/<room>/<id>` | `fibaro/Living Room/12` |
+| LG ThinQ | `lgthinq/<deviceId>` | `lgthinq/ABC123456` |
+| Homey | `homey/<id>` | `homey/de1a2b3c` |
+| BoneIO | `boneio/<host>` | `boneio/boneio-1234` |
+| Dirigera | `dirigera/<id>` | `dirigera/outlet_abc` |
+| Waveshare | `waveshare/<host>` | `waveshare/192.168.1.50` |
+
+**Example — list all devices:**
+
+```bash
+curl -H 'Authorization: Bearer lsh_xxxx...' http://localhost:3001/api/devices
+```
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "key": "shelly/192.168.1.10",
+      "label": "Living Room Switch",
+      "type": "shelly",
+      "readings": { "relay0": true, "power0": 142.3 },
+      "sensors": [
+        { "path": "relay0", "name": "Relay 1", "type": "boolean", "controllable": true }
+      ]
+    }
+  ]
+}
+```
+
+**Example — read one device:**
+
+```bash
+curl -H 'Authorization: Bearer lsh_xxxx...' \
+  'http://localhost:3001/api/devices/shelly%2F192.168.1.10'
+```
+
+**Command body format:**
+
+```json
+{ "sensor": "<sensor-path>", "value": <any> }
+```
+
+`sensor` is the `path` field from the sensor descriptor. `value` type depends on sensor type:
+
+| Sensor type | Value |
+|---|---|
+| `boolean` (toggle/switch) | `true` or `false` |
+| `range` (dimmer, thermostat, shutter) | number within `min`–`max` |
+| `trigger` (BroadLink code, one-shot) | `true` |
+| Color (RGB) | `{ hue, saturation, value }` |
+
+**Example — toggle a Shelly relay:**
+
+```bash
+curl -X POST http://localhost:3001/api/device/shelly%2F192.168.1.10/command \
+  -H 'Authorization: Bearer lsh_xxxx...' \
+  -H 'Content-Type: application/json' \
+  -d '{"sensor": "relay0", "value": true}'
+```
+
+**Example — set AC target temperature (LG ThinQ):**
+
+```bash
+curl -X POST 'http://localhost:3001/api/device/lgthinq%2FABC123/command' \
+  -H 'Authorization: Bearer lsh_xxxx...' \
+  -H 'Content-Type: application/json' \
+  -d '{"sensor": "targetTemp", "value": 22}'
+```
+
+**Example — set dimmer level (Fibaro / Loxone):**
+
+```bash
+curl -X POST 'http://localhost:3001/api/device/fibaro%2FLiving%20Room%2F42/command' \
+  -H 'Authorization: Bearer lsh_xxxx...' \
+  -H 'Content-Type: application/json' \
+  -d '{"sensor": "level", "value": 75}'
+```
+
+> **Note:** Forward slashes in device keys must be URL-encoded as `%2F`.
+
+---
 
 ### Cameras
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/cameras` | Camera list (manual + UniFi) |
-| `POST` | `/api/webrtc/offer` | WHEP SDP proxy `{ url, sdp }` |
-| `GET` | `/api/camera-log` | Recent camera events `?camera=name&limit=100` |
+| `GET` | `/api/cameras` | All cameras (manual config + UniFi Protect + SmartThings) |
+| `GET` | `/api/camera-log` | Recent camera events (`?camera=Front+Door&limit=100`) |
 | `POST` | `/api/camera-log` | Push a camera event `{ camera, type, detail }` |
+| `GET` | `/api/smartthings-camera/:deviceId/snapshot` | Proxy the latest SmartThings snapshot image |
+| `POST` | `/api/smartthings-camera/:deviceId/take` | Trigger a SmartThings `imageCapture.take` command |
+| `GET` | `/api/unifi/snapshot/:cameraId` | Proxy a UniFi Protect snapshot |
+| `POST` | `/api/webrtc/offer` | WHEP SDP offer proxy `{ url, sdp }` |
+
+---
 
 ### MQTT Explorer
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/mqtt-explorer/topics` | All known topics with last value and timestamp |
-| `GET` | `/api/mqtt-explorer/history?topic=…` | Message ring-buffer for a topic |
-| `POST` | `/api/mqtt-explorer/publish` | Publish `{ topic, payload, retain }` |
+| `GET` | `/api/mqtt-explorer/topics` | Map of all seen topics → `{ value, ts, count }` |
+| `GET` | `/api/mqtt-explorer/history?topic=…` | Ring-buffer of last 100 messages for a topic |
+| `POST` | `/api/mqtt-explorer/publish` | Publish `{ topic, payload, retain }` to the broker |
 
-### Logs
+---
+
+### BroadLink IR/RF
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/logs` | List available log categories |
-| `GET` | `/api/logs/:name` | Last N lines `?lines=300` |
-| `DELETE` | `/api/logs/:name` | Clear a log file |
-| `GET` | `/api/logs/:name/download` | Download raw log file |
+| `GET` | `/api/broadlink/codes` | All learned codes (`?host=…` to filter by device) |
+| `POST` | `/api/broadlink/learn/ir` | Start 20 s IR learn window — streams NDJSON status |
+| `POST` | `/api/broadlink/learn/rf` | Start RF frequency sweep + learn — streams NDJSON status |
+| `POST` | `/api/broadlink/send` | Send a named code `{ host, name }` |
+| `DELETE` | `/api/broadlink/codes` | Delete a code `{ host, name }` |
+
+---
+
+### User & token management
+
+| Method | Path | Body / Notes | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | `{ username, password }` | Log in — sets `lsh-session` cookie (public) |
+| `POST` | `/api/auth/logout` | — | Clear session cookie |
+| `POST` | `/api/auth/setup` | `{ adminUsername, adminPassword }` | First-run admin creation (public, errors if already set up) |
+| `GET` | `/api/auth/me` | — | Current user `{ id, username, role }` |
+| `POST` | `/api/auth/change-password` | `{ currentPassword, newPassword }` | Change own password (min 8 chars) |
+| `GET` | `/api/auth/users` | admin only | List all users |
+| `POST` | `/api/auth/users` | `{ username, password, role }` | Create user — role: `admin` or `viewer` |
+| `DELETE` | `/api/auth/users/:id` | admin only | Delete a user |
+| `GET` | `/api/auth/tokens` | — | List API tokens (secrets not returned after creation) |
+| `POST` | `/api/auth/tokens` | `{ name }` | Create a named token — returns the token value once |
+| `DELETE` | `/api/auth/tokens/:id` | — | Revoke a token |
+
+**Example — create an API token:**
+
+```bash
+curl -b cookies.txt -X POST http://localhost:3001/api/auth/tokens \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"home-assistant"}'
+```
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "tkn_abc123",
+    "name": "home-assistant",
+    "token": "lsh_xxxxxxxxxxxxxxxxxxxxxxxx",
+    "createdAt": "2026-06-22T10:00:00.000Z"
+  }
+}
+```
+
+> Store the `token` value now — it is only returned at creation time.
+
+---
 
 ### Settings
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/settings` | Current config (secrets masked) |
-| `POST` | `/api/settings` | Save config patch |
-| `GET` | `/api/settings/export` | Download full `config.json` |
-| `POST` | `/api/settings/import` | Restore from uploaded config |
+| `GET` | `/api/settings` | Full config with secrets masked |
+| `POST` | `/api/settings` | Deep-merge a config patch and save |
+| `GET` | `/api/settings/export` | Download raw `config.json` |
+| `POST` | `/api/settings/import` | Restore config from a JSON file upload |
 
-### Authentication
+`POST /api/settings` accepts a partial object — only keys present in the body are updated:
+
+```bash
+curl -X POST http://localhost:3001/api/settings \
+  -H 'Authorization: Bearer lsh_xxxx...' \
+  -H 'Content-Type: application/json' \
+  -d '{"homekit": {"enabled": false}}'
+```
+
+---
+
+### Logs
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/auth/login` | `{ username, password }` → sets session cookie |
-| `POST` | `/api/auth/logout` | Clears session cookie |
-| `POST` | `/api/auth/setup` | First-run admin creation `{ username, password }` |
-| `GET` | `/api/auth/me` | Current user info |
-| `POST` | `/api/auth/change-password` | `{ currentPassword, newPassword }` |
-| `GET` | `/api/auth/users` | List users (admin only) |
-| `POST` | `/api/auth/users` | Create user `{ username, password, role }` |
-| `DELETE` | `/api/auth/users/:id` | Delete user |
-| `GET` | `/api/auth/tokens` | List API tokens |
-| `POST` | `/api/auth/tokens` | Create token `{ name }` |
-| `DELETE` | `/api/auth/tokens/:id` | Revoke token |
+| `GET` | `/api/logs` | List available log category names |
+| `GET` | `/api/logs/:name` | Last N lines of a log file (`?lines=300`, default 200) |
+| `DELETE` | `/api/logs/:name` | Clear a log file |
+| `GET` | `/api/logs/:name/download` | Download the raw log file |
+
+---
 
 ### Admin
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/admin/restart` | Restart the Node.js process |
-| `POST` | `/api/admin/reset-config` | Erase config and restart |
-| `GET` | `/api/admin/homekit-uri` | HomeKit setup URI for QR generation |
+| `GET` | `/api/homekit/setup-uri` | HomeKit `X-HM://` URI for QR code rendering |
+| `POST` | `/api/admin/restart` | Restart the Node.js process (exit 0 — expects a process manager) |
+| `POST` | `/api/admin/reset-config` | Erase `config.json` to factory defaults |
 
-### Integration test endpoints
+---
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/test/mqtt` | Test MQTT connection with supplied credentials |
-| `POST` | `/api/test/vrm` | Test VRM login |
-| `POST` | `/api/test/vrm-live` | Fetch one live data point from VRM |
-| `POST` | `/api/test/solaredge` | Test SolarEdge API key |
-| `POST` | `/api/test/smartthings` | Test SmartThings token |
-| `POST` | `/api/test/homey` | Test Homey credentials |
-| `POST` | `/api/test/unifi` | Test UniFi credentials |
-| `POST` | `/api/test/satel` | Test Satel TCP connection |
-| `POST` | `/api/test/loxone` | Test Loxone credentials |
-| `POST` | `/api/test/shelly` | Test Shelly device HTTP |
-| `POST` | `/api/test/sip` | Validate SIP config structure |
+### Real-time events (Socket.IO)
+
+The dashboard uses Socket.IO for push updates. Connect to the server root and listen for these events:
+
+```javascript
+import { io } from 'socket.io-client';
+const socket = io('http://localhost:3001', {
+  extraHeaders: { Authorization: 'Bearer lsh_xxxx...' },
+});
+
+socket.on('data-update',     (data) => { /* { key, value } — single sensor value changed */ });
+socket.on('relay-state',     (data) => { /* { index, on, name } */ });
+socket.on('source-changed',  (data) => { /* { source: 'mqtt'|'vrm'|null } */ });
+socket.on('platform-status', (data) => { /* { [integrationKey]: true|false } */ });
+socket.on('camera-event',    (data) => { /* { camera, type, detail, ts } */ });
+socket.on('device-update',   (data) => { /* full device descriptor from sensorRegistry */ });
+```
+
+**`data-update` key format:** `system/0/Dc/Battery/Soc`, `shelly/192.168.1.10/relay0`, etc. — the same keys used by `GET /api/devices`.
+
+---
+
+### Home Assistant integration example
+
+```yaml
+# configuration.yaml — read battery SOC via REST sensor
+sensor:
+  - platform: rest
+    name: LSH Battery SOC
+    resource: http://192.168.1.50:3001/api/battery
+    headers:
+      Authorization: "Bearer lsh_xxxx..."
+    value_template: "{{ value_json.data.soc }}"
+    unit_of_measurement: "%"
+    scan_interval: 30
+
+# Switch — control a relay
+switch:
+  - platform: rest
+    name: Gate
+    resource: http://192.168.1.50:3001/api/relay/0/state
+    headers:
+      Authorization: "Bearer lsh_xxxx..."
+      Content-Type: application/json
+    body_on:  '{"on": true}'
+    body_off: '{"on": false}'
+    is_on_template: >
+      {% set r = value_json.data %}
+      {% if r is iterable %}{{ (r | selectattr('index','eq',0) | first).on }}{% endif %}
+    scan_interval: 10
+```
 
 ---
 
