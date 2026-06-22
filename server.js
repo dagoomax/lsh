@@ -217,6 +217,15 @@ async function main() {
     }
   }
 
+  // Start Fibaro Home Center client if configured
+  if (config.fibaro?.host) {
+    const FibaroClient = tryRequire('./src/fibaro-client');
+    if (FibaroClient) {
+      const fibaro = new FibaroClient(config, store, sensorRegistry);
+      fibaro.start().catch((err) => console.error(`[Fibaro] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Homey client if configured
   if (config.homey?.token && (config.homey?.host || config.homey?.homeyId)) {
     const HomeyClient = tryRequire('./src/homey-client');

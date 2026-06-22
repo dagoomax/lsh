@@ -88,6 +88,12 @@ async function loadSettings() {
     // Shelly
     renderShellyList(data.shelly?.devices || []);
 
+    // Fibaro
+    setVal('fibaro-host', data.fibaro?.host || '');
+    setVal('fibaro-port', data.fibaro?.port || 80);
+    setVal('fibaro-user', data.fibaro?.username || 'admin');
+    setVal('fibaro-pass', data.fibaro?.password ? '••••••••' : '');
+
     // BroadLink
     renderBroadlinkList(data.broadlink?.devices || []);
     loadBroadlinkCodes();
@@ -2096,6 +2102,56 @@ document.getElementById('btn-save-https').addEventListener('click', async () => 
   } catch (err) {
     result.textContent = '✗ ' + err.message;
     result.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── Fibaro Home Center ─────────────────────────────────────────────────────
+
+document.getElementById('btn-test-fibaro').addEventListener('click', async () => {
+  const resultEl = document.getElementById('fibaro-test-result');
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result';
+  try {
+    const res = await fetch('/api/settings/test-fibaro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host:     getVal('fibaro-host'),
+        port:     getVal('fibaro-port'),
+        username: getVal('fibaro-user'),
+        password: getVal('fibaro-pass'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-fibaro').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-fibaro');
+  const resultEl = document.getElementById('fibaro-test-result');
+  btn.disabled   = true;
+  try {
+    const res = await fetch('/api/settings/fibaro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host:     getVal('fibaro-host'),
+        port:     getVal('fibaro-port'),
+        username: getVal('fibaro-user'),
+        password: getVal('fibaro-pass'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
   } finally { btn.disabled = false; }
 });
 

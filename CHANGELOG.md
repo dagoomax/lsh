@@ -8,6 +8,13 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-06-22 (6)
+
+### Added
+- **Fibaro Home Center support** — local REST API integration for Home Center 2 and Home Center 3 (Lite). Devices are auto-discovered and grouped by room into dashboard cards. Supported types: binary switches (controllable toggles), dimmers (range 0–99), roller shutters via FGRM/FGR (range 0–100), plus read-only sensors: temperature, humidity, light (lux), power/energy, door, window, motion, smoke, and flood. Live state delivered via long-polling `/api/refreshStates`. Settings card with host, port, username, and password; Test Connection probes `/api/loginStatus`. Platform badge in the dashboard header. Translated in all 7 languages.
+
+---
+
 ## 2026-06-22 (5)
 
 ### Added

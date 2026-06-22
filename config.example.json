@@ -42,6 +42,12 @@
     "host": "192.168.1.100",
     "port": 1883
   },
+  "fibaro": {
+    "host": "192.168.1.x",
+    "port": 80,
+    "username": "admin",
+    "password": ""
+  },
   "broadlink": {
     "devices": [
       { "name": "Living Room", "host": "192.168.1.x", "mac": "AA:BB:CC:DD:EE:FF" }
