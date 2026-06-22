@@ -1,5 +1,7 @@
 # LSH — LoxoneSwaggerHelper
 
+📄 **[Product leaflet (PDF)](leaflet/lsh-leaflet.pdf)** — 3-page overview of all features, integrations, and REST API.
+
 A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), and KNX into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 ---
