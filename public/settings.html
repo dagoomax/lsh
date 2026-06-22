@@ -395,15 +395,15 @@
     <!-- LG ThinQ -->
     <section class="card settings-card" data-category="smarthome" data-title="LG ThinQ smart appliances air conditioner washing machine">
       <h2><span data-i18n="s.lgthinq_title">LG ThinQ</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to your LG account via the ThinQ v2 cloud API. Discovers air conditioners, air purifiers, washing machines, dryers, dishwashers, refrigerators, humidifiers, and dehumidifiers. Requires your LG account (same credentials as the LG ThinQ app).</p>
+      <p class="section-desc">Connects to your LG ThinQ account via the v2 cloud API. Paste your OAuth access token and refresh token (obtain them from the LG ThinQ app or a token extractor tool). Discovers air conditioners, air purifiers, washing machines, dryers, dishwashers, refrigerators, humidifiers, and dehumidifiers.</p>
 
       <div class="form-row">
-        <label for="lgthinq-user" data-i18n="s.lgthinq_user">LG Account Email</label>
-        <input type="email" id="lgthinq-user" placeholder="you@example.com">
+        <label for="lgthinq-access-token">Access Token</label>
+        <input type="password" id="lgthinq-access-token" placeholder="••••••••••••••••••••••••••••••••">
       </div>
       <div class="form-row">
-        <label for="lgthinq-pass" data-i18n="s.lgthinq_pass">Password</label>
-        <input type="password" id="lgthinq-pass" placeholder="••••••••">
+        <label for="lgthinq-refresh-token">Refresh Token</label>
+        <input type="password" id="lgthinq-refresh-token" placeholder="••••••••••••••••••••••••••••••••">
       </div>
       <div class="form-row">
         <label for="lgthinq-country"><span data-i18n="s.lgthinq_country">Country</span> <span class="hint" data-i18n="s.lgthinq_country_hint">(match your LG account region)</span></label>

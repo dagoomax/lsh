@@ -738,6 +738,13 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       );
     }
     delete safe.jwtSecret; // never expose JWT signing secret
+    // Indicate whether LG tokens are persisted without exposing them
+    if (safe.lgthinq) {
+      const tokFile = path.join(__dirname, '..', 'persist', 'lgthinq-tokens.json');
+      try { safe.lgthinq.hasTokens = !!(JSON.parse(fs.readFileSync(tokFile, 'utf8')).access_token); } catch { safe.lgthinq.hasTokens = false; }
+      delete safe.lgthinq.username;
+      delete safe.lgthinq.password;
+    }
     res.json({ success: true, data: safe });
   });
 
@@ -1361,8 +1368,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // ── LG ThinQ ─────────────────────────────────────────────────────────
 
   router.post('/settings/test-lgthinq', async (req, res) => {
-    const { username, password, country = 'US', lang } = req.body;
-    if (!username || !password) return res.status(400).json({ success: false, error: 'username and password required' });
+    const { country = 'US', lang } = req.body;
     // Probe the LG gateway — no credentials needed, just verify connectivity
     const https   = require('https');
     const headers = {
@@ -1403,19 +1409,31 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   router.post('/settings/lgthinq', (req, res) => {
     const current = readConfigFile();
-    const { username, password, country, lang } = req.body;
+    const { access_token, refresh_token, country, lang } = req.body;
     try {
       const prev = current.lgthinq || {};
+      const resolvedCountry = (country || prev.country || 'US').trim().toUpperCase();
+      const resolvedLang    = (lang    || prev.lang    || 'en-US').trim();
+
+      // Persist tokens to the tokens file if provided
+      if (access_token && !access_token.includes('•') && refresh_token && !refresh_token.includes('•')) {
+        const EMP_HOSTS = { US: 'us.m.lgaccount.com', EU: 'eu.m.lgaccount.com', KR: 'kr.m.lgaccount.com', AU: 'au.m.lgaccount.com', CA: 'ca.m.lgaccount.com', JP: 'jp.m.lgaccount.com' };
+        const tokFile = path.join(__dirname, '..', 'persist', 'lgthinq-tokens.json');
+        const tokData = {
+          access_token,
+          refresh_token,
+          thinq2Host: `${resolvedCountry.toLowerCase()}.api.lge.com`,
+          empHost:    EMP_HOSTS[resolvedCountry] || 'm.lgaccount.com',
+        };
+        fs.mkdirSync(path.dirname(tokFile), { recursive: true });
+        fs.writeFileSync(tokFile, JSON.stringify(tokData, null, 2), 'utf8');
+      }
+
       writeConfigFile({
         ...current,
-        lgthinq: {
-          username: (username || prev.username || '').trim(),
-          password: (password && !password.includes('•')) ? password : (prev.password || ''),
-          country:  (country  || prev.country  || 'US').trim(),
-          lang:     (lang     || prev.lang     || 'en-US').trim(),
-        },
+        lgthinq: { country: resolvedCountry, lang: resolvedLang },
       });
-      res.json({ success: true, message: 'LG ThinQ settings saved. Restart to apply.' });
+      res.json({ success: true, message: 'LG ThinQ tokens saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

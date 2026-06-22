@@ -89,9 +89,9 @@ async function loadSettings() {
     renderShellyList(data.shelly?.devices || []);
 
     // LG ThinQ
-    setVal('lgthinq-user',    data.lgthinq?.username || '');
-    setVal('lgthinq-pass',    data.lgthinq?.password ? '••••••••' : '');
-    setVal('lgthinq-country', data.lgthinq?.country  || 'EU');
+    setVal('lgthinq-access-token',  data.lgthinq?.hasTokens ? '••••••••' : '');
+    setVal('lgthinq-refresh-token', data.lgthinq?.hasTokens ? '••••••••' : '');
+    setVal('lgthinq-country', data.lgthinq?.country || 'EU');
 
     // Fibaro
     setVal('fibaro-host', data.fibaro?.host || '');
@@ -2121,9 +2121,7 @@ document.getElementById('btn-test-lgthinq').addEventListener('click', async () =
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        username: getVal('lgthinq-user'),
-        password: getVal('lgthinq-pass'),
-        country:  getVal('lgthinq-country'),
+        country: getVal('lgthinq-country'),
       }),
     });
     const json = await res.json();
@@ -2144,9 +2142,9 @@ document.getElementById('btn-save-lgthinq').addEventListener('click', async () =
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        username: getVal('lgthinq-user'),
-        password: getVal('lgthinq-pass'),
-        country:  getVal('lgthinq-country'),
+        access_token:  getVal('lgthinq-access-token'),
+        refresh_token: getVal('lgthinq-refresh-token'),
+        country:       getVal('lgthinq-country'),
       }),
     });
     const json = await res.json();
