@@ -62,8 +62,8 @@ async function main() {
   app.use(auth.middleware(isSecure));
   app.use(express.json());
   app.use(express.static(path.join(__dirname, 'public')));
-  app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr,
-    { unifiProtect, mqttExplorer, auth, isSecure }));
+  const apiClients = { unifiProtect, mqttExplorer, auth, isSecure };
+  app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────
   let mainServer;
@@ -195,6 +195,16 @@ async function main() {
     if (DreameClient) {
       const dreame = new DreameClient(config, store, sensorRegistry);
       dreame.start().catch((err) => console.error(`[Dreame] Start failed: ${err.message}`));
+    }
+  }
+
+  // Start BroadLink IR/RF client if configured
+  if (config.broadlink?.devices?.length) {
+    const BroadlinkClient = tryRequire('./src/broadlink-client');
+    if (BroadlinkClient) {
+      const broadlink = new BroadlinkClient(config, store, sensorRegistry);
+      apiClients.broadlink = broadlink;
+      broadlink.start().catch((err) => console.error(`[Broadlink] Start failed: ${err.message}`));
     }
   }
 

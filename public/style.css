@@ -649,6 +649,22 @@ main {
   cursor: not-allowed;
 }
 
+.sensor-trigger-btn {
+  background: var(--accent-blue);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.sensor-trigger-btn:hover   { opacity: 0.8; }
+.sensor-trigger-btn:disabled { opacity: 0.5; cursor: default; }
+
 
 /* ── Cameras ─────────────────────────────────────────────── */
 .cameras-card {

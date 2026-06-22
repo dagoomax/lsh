@@ -944,6 +944,14 @@ function buildSensorRow(sensor, readings, deviceKey) {
     </div>`;
   }
 
+  if (sensor.controllable && sensor.type === 'trigger') {
+    return `<div class="sensor-row sensor-row-ctrl">
+      <span class="sensor-label">${esc(sensor.name)}</span>
+      <button class="sensor-trigger-btn"
+        data-sensor-key="${fullKey}" data-device-key="${deviceKey}" data-sensor-path="${sensor.path}">&#9654; Send</button>
+    </div>`;
+  }
+
   if (sensor.controllable) {
     const checked = reading && reading.value === 1 ? ' checked' : '';
     return `<div class="sensor-row sensor-row-ctrl">
@@ -1010,6 +1018,27 @@ function addOrUpdateDevice(device) {
 }
 
 // ── Device control events (toggle, range, color) ──────────────────────────
+devicesGrid.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.sensor-trigger-btn');
+  if (!btn || btn.disabled) return;
+  const deviceKey  = btn.dataset.deviceKey;
+  const sensorPath = btn.dataset.sensorPath;
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '…';
+  try {
+    const res = await fetch(`/api/device/${deviceKey}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor: sensorPath, value: true }),
+    });
+    btn.textContent = res.ok ? '✓' : '✗';
+  } catch {
+    btn.textContent = '✗';
+  }
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+});
+
 devicesGrid.addEventListener('change', async (e) => {
   const input = e.target;
   if (!input.classList.contains('sensor-toggle')) return;

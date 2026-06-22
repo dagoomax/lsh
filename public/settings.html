@@ -457,6 +457,26 @@
       </div>
     </section>
 
+    <!-- BroadLink RM4 IR/RF -->
+    <section class="card settings-card">
+      <h2><span data-i18n="s.broadlink_title">BroadLink RM4 IR/RF</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Control BroadLink RM4 Pro / RM4 Mini IR blasters and RF radio transmitters. Learn IR and RF codes by name, store them locally, and trigger them from the dashboard or via API. MAC address is printed on the device label.</p>
+
+      <div id="broadlink-devices-list"></div>
+      <button class="btn btn-secondary" id="btn-add-broadlink" data-i18n="s.broadlink_add">+ Add Device</button>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-primary" id="btn-save-broadlink" data-i18n="common.save_devices">Save Devices</button>
+        <span class="test-result" id="broadlink-save-result"></span>
+      </div>
+
+      <!-- Code Library -->
+      <div id="broadlink-code-manager" style="margin-top:28px;display:none">
+        <h3 style="margin:0 0 12px;font-size:0.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em" data-i18n="s.broadlink_codes">Code Library</h3>
+        <div id="broadlink-code-sections"></div>
+      </div>
+    </section>
+
     <!-- Waveshare Modbus TCP -->
     <section class="card settings-card">
       <h2><span data-i18n="s.waveshare_title">Waveshare Modbus TCP</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>

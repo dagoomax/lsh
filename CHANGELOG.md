@@ -8,6 +8,14 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-06-22 (5)
+
+### Added
+- **BroadLink RM4 IR/RF support** — pure Node.js UDP protocol client for BroadLink RM4 Pro, RM4 Mini, and RM4C Mini devices. Supports IR code learning (20 s window), RF code learning (frequency sweep + learn), and named code storage in `persist/broadlink-codes.json`. Learned codes appear as trigger buttons on device cards in the dashboard. Settings page includes device management (host, MAC) and a live code library per device with Learn IR, Learn RF, Test Send, and Delete. Streaming NDJSON responses give real-time status during learning. All translated in 7 languages.
+- **`trigger` sensor type** — new dashboard sensor variant: renders as a "▶ Send" button instead of a toggle. Clicking fires a command with `value: true` and shows brief ✓/✗ feedback. Used by BroadLink codes; available for any future push-type sensor.
+
+---
+
 ## 2026-06-22 (4)
 
 ### Added

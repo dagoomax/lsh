@@ -88,6 +88,10 @@ async function loadSettings() {
     // Shelly
     renderShellyList(data.shelly?.devices || []);
 
+    // BroadLink
+    renderBroadlinkList(data.broadlink?.devices || []);
+    loadBroadlinkCodes();
+
     // Waveshare
     renderWaveshareList(data.waveshare?.devices || []);
 
@@ -1502,6 +1506,239 @@ document.getElementById('btn-save-shelly').addEventListener('click', async () =>
 // ── Waveshare Modbus TCP ───────────────────────────────────────────────────
 
 let currentWaveshareDevices = [];
+
+// ── BroadLink ─────────────────────────────────────────────────────────────
+
+let currentBroadlinkDevices = [];
+
+function renderBroadlinkList(devices) {
+  currentBroadlinkDevices = devices;
+  const container = document.getElementById('broadlink-devices-list');
+  container.innerHTML = '';
+
+  if (!devices.length) {
+    container.innerHTML = '<p class="hint" style="margin-bottom:12px">No BroadLink devices configured yet.</p>';
+    return;
+  }
+
+  devices.forEach((dev, i) => {
+    const row = document.createElement('div');
+    row.className = 'shelly-row';
+    row.dataset.index = i;
+    row.innerHTML = `
+      <div class="shelly-row-fields" style="grid-template-columns:1fr 1fr 1fr auto">
+        <input type="text" class="bl-host" placeholder="192.168.1.x" value="${escapeVal(dev.host || '')}">
+        <input type="text" class="bl-name" placeholder="Name" value="${escapeVal(dev.name || '')}">
+        <input type="text" class="bl-mac"  placeholder="AA:BB:CC:DD:EE:FF" value="${escapeVal(dev.mac || '')}">
+      </div>
+      <button class="btn btn-remove bl-remove" title="Remove">✕</button>`;
+    row.querySelector('.bl-remove').addEventListener('click', () => {
+      currentBroadlinkDevices = collectBroadlinkDevices();
+      currentBroadlinkDevices.splice(i, 1);
+      renderBroadlinkList(currentBroadlinkDevices);
+    });
+    const testBtn = document.createElement('button');
+    testBtn.className = 'btn btn-secondary';
+    testBtn.textContent = 'Test';
+    testBtn.style.marginTop = '4px';
+    testBtn.addEventListener('click', async () => {
+      const host = row.querySelector('.bl-host').value.trim();
+      if (!host) return;
+      testBtn.disabled = true; testBtn.textContent = '…';
+      try {
+        const r    = await fetch('/api/settings/test-broadlink', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ host }) });
+        const json = await r.json();
+        testBtn.textContent = json.success ? '✓' : '✗';
+        testBtn.title = json.message || json.error || '';
+        setTimeout(() => { testBtn.textContent = 'Test'; testBtn.title = ''; }, 3000);
+      } catch (err) {
+        testBtn.textContent = '✗'; testBtn.title = err.message;
+        setTimeout(() => { testBtn.textContent = 'Test'; testBtn.title = ''; }, 3000);
+      } finally { testBtn.disabled = false; }
+    });
+    row.querySelector('.shelly-row-fields').after(testBtn);
+    container.appendChild(row);
+  });
+}
+
+function collectBroadlinkDevices() {
+  return Array.from(document.querySelectorAll('#broadlink-devices-list .shelly-row')).map(row => ({
+    host: row.querySelector('.bl-host').value.trim(),
+    name: row.querySelector('.bl-name').value.trim(),
+    mac:  row.querySelector('.bl-mac').value.trim(),
+  })).filter(d => d.host);
+}
+
+document.getElementById('btn-add-broadlink').addEventListener('click', () => {
+  currentBroadlinkDevices = collectBroadlinkDevices();
+  currentBroadlinkDevices.push({ host: '', name: '', mac: '' });
+  renderBroadlinkList(currentBroadlinkDevices);
+  const rows = document.querySelectorAll('#broadlink-devices-list .shelly-row');
+  rows[rows.length - 1]?.querySelector('.bl-host')?.focus();
+});
+
+document.getElementById('btn-save-broadlink').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-broadlink');
+  const resultEl = document.getElementById('broadlink-save-result');
+  btn.disabled   = true;
+  try {
+    const devices = collectBroadlinkDevices();
+    const res  = await fetch('/api/settings/broadlink', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(devices) });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+    if (json.success) { currentBroadlinkDevices = devices; renderBroadlinkList(devices); loadBroadlinkCodes(); }
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── Code Library ─────────────────────────────────────────────────────────────
+
+async function loadBroadlinkCodes() {
+  const mgr = document.getElementById('broadlink-code-manager');
+  const sec = document.getElementById('broadlink-code-sections');
+  const devices = collectBroadlinkDevices().length
+    ? collectBroadlinkDevices()
+    : currentBroadlinkDevices;
+
+  if (!devices.length) { mgr.style.display = 'none'; return; }
+  mgr.style.display = '';
+
+  let allCodes = {};
+  try {
+    const r = await fetch('/api/broadlink/codes');
+    if (r.ok) allCodes = await r.json();
+  } catch { /* offline */ }
+
+  sec.innerHTML = '';
+  for (const dev of devices) {
+    if (!dev.host) continue;
+    const codes  = allCodes[dev.host] || {};
+    const label  = dev.name || dev.host;
+    const block  = document.createElement('div');
+    block.className = 'bl-device-block';
+    block.style.cssText = 'margin-bottom:20px;padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px';
+
+    const title = document.createElement('div');
+    title.style.cssText = 'font-weight:600;font-size:0.88rem;margin-bottom:10px;color:var(--text)';
+    title.textContent = label + ' — ' + dev.host;
+    block.appendChild(title);
+
+    // Existing codes list
+    const codeList = document.createElement('div');
+    codeList.className = 'bl-codes-list';
+    codeList.style.marginBottom = '10px';
+
+    const renderCodes = (codes) => {
+      codeList.innerHTML = '';
+      const entries = Object.entries(codes);
+      if (!entries.length) {
+        codeList.innerHTML = '<p class="hint" style="margin:4px 0 8px">No codes learned yet. Point the remote at the RM4 device and click Learn IR.</p>';
+        return;
+      }
+      entries.forEach(([name, entry]) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--card-border)';
+        row.innerHTML = `
+          <span style="flex:1;font-size:0.85rem">${escapeVal(name)}</span>
+          <span class="badge" style="font-size:0.65rem">${entry.type || 'ir'}</span>
+          <button class="btn btn-secondary" style="padding:2px 10px;font-size:0.75rem" data-send="${escapeVal(name)}">&#9654;</button>
+          <button class="btn btn-remove" style="padding:2px 8px;font-size:0.75rem" data-del="${escapeVal(name)}">✕</button>`;
+        row.querySelector('[data-send]').addEventListener('click', async (e) => {
+          const btn = e.currentTarget;
+          btn.disabled = true; btn.textContent = '…';
+          try {
+            await fetch('/api/broadlink/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ host: dev.host, name }) });
+            btn.textContent = '✓';
+          } catch { btn.textContent = '✗'; }
+          setTimeout(() => { btn.textContent = '▶'; btn.disabled = false; }, 1500);
+        });
+        row.querySelector('[data-del]').addEventListener('click', async () => {
+          if (!confirm(`Delete code "${name}"?`)) return;
+          await fetch('/api/broadlink/codes', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ host: dev.host, name }) });
+          delete codes[name];
+          renderCodes(codes);
+        });
+        codeList.appendChild(row);
+      });
+    };
+    renderCodes(codes);
+    block.appendChild(codeList);
+
+    // Learn form
+    const form = document.createElement('div');
+    form.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text'; nameInput.placeholder = 'Code name (e.g. TV On)';
+    nameInput.style.cssText = 'flex:1;min-width:140px';
+
+    const statusEl = document.createElement('span');
+    statusEl.style.cssText = 'font-size:0.78rem;color:var(--text-muted);flex-basis:100%;min-height:1.2em';
+
+    const makeLearnBtn = (label, endpoint) => {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-secondary';
+      btn.style.cssText = 'font-size:0.78rem;padding:5px 12px';
+      btn.textContent = label;
+      btn.addEventListener('click', async () => {
+        const name = nameInput.value.trim();
+        if (!name) { nameInput.focus(); return; }
+        btn.disabled = true; statusEl.textContent = 'Starting…';
+        try {
+          const res = await fetch(`/api/broadlink/learn/${endpoint}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ host: dev.host, name }),
+          });
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            const lines = buf.split('\n');
+            buf = lines.pop();
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              const obj = JSON.parse(line);
+              if (obj.status) {
+                if (obj.status === 'learning') statusEl.textContent = 'Point remote at RM4 and press button…';
+                else if (obj.status === 'rf_sweep') statusEl.textContent = 'Hold RF button now (frequency sweep)…';
+                else if (obj.status === 'rf_learn') statusEl.textContent = 'Frequency found! Press RF button once…';
+                else if (obj.status?.startsWith('waiting:')) statusEl.textContent = `Waiting… ${obj.status.split(':')[1]}s`;
+              } else if (obj.success) {
+                statusEl.textContent = `✓ "${name}" saved (${obj.bytes} bytes)`;
+                nameInput.value = '';
+                codes[name] = { type: endpoint, data: '' };
+                // Refresh from server
+                try { const r = await fetch('/api/broadlink/codes'); if (r.ok) { const all = await r.json(); renderCodes(all[dev.host] || {}); } } catch {}
+              } else {
+                statusEl.textContent = '✗ ' + obj.error;
+              }
+            }
+          }
+        } catch (err) {
+          statusEl.textContent = '✗ ' + err.message;
+        } finally {
+          btn.disabled = false;
+          setTimeout(() => { if (statusEl.textContent.startsWith('✓') || statusEl.textContent.startsWith('✗')) statusEl.textContent = ''; }, 5000);
+        }
+      });
+      return btn;
+    };
+
+    form.appendChild(nameInput);
+    form.appendChild(makeLearnBtn('Learn IR', 'ir'));
+    form.appendChild(makeLearnBtn('Learn RF', 'rf'));
+    form.appendChild(statusEl);
+    block.appendChild(form);
+    sec.appendChild(block);
+  }
+}
+
+// ── Waveshare ─────────────────────────────────────────────────────────────
 
 function renderWaveshareList(devices) {
   currentWaveshareDevices = devices;
