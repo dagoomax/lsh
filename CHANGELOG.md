@@ -8,6 +8,13 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-06-22 (2)
+
+### Added
+- **Spanish language (ES)** — full translation of all UI strings across dashboard, settings, logs, MQTT explorer, login, and setup pages.
+
+---
+
 ## 2026-06-22
 
 ### Added

@@ -1,7 +1,7 @@
 // i18n engine — must be the first script loaded on every page
 (function () {
-  const SUPPORTED = ['en', 'pl', 'fr', 'de'];
-  const LABELS    = { en: 'EN', pl: 'PL', fr: 'FR', de: 'DE' };
+  const SUPPORTED = ['en', 'pl', 'fr', 'de', 'es'];
+  const LABELS    = { en: 'EN', pl: 'PL', fr: 'FR', de: 'DE', es: 'ES' };
   let _t = {};
   let _lang = 'en';
 
