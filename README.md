@@ -1,6 +1,6 @@
 # LSH — LoxoneSwaggerHelper
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, and IKEA Tradfri into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, and ESPHome (ESP32/ESP8266) into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, and multi-language support.
 
 ---
 
@@ -60,11 +60,13 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 | `homey` | No | Homey Pro (local or cloud) |
 | `dirigera` | No | IKEA Dirigera smart-home hub |
 | `tradfri` | No | IKEA Tradfri gateway |
+| `lgthinq` | No | LG ThinQ appliances (token-based auth, v1 API) |
+| `esphome` | No | ESPHome ESP32/ESP8266 devices (HTTP REST API) |
 | `sip` | No | SIP softphone (WebSocket transport) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
-| `relays` | Yes | Victron relay index + display name |
+| `relays` | No | Victron relay index + display name |
 | `homekit` | No | HomeKit bridge — requires `hap-nodejs` npm package |
-| `server` | Yes | HTTP port, HTTPS, and Let's Encrypt |
+| `server` | No | HTTP port, HTTPS, and Let's Encrypt |
 
 ### `mqtt`
 
@@ -227,6 +229,48 @@ One-time pairing: press the action button on the hub, then immediately run `node
 ```
 
 First run: set `securityCode` from the sticker on the gateway back. The server generates and logs `identity` and `psk` — copy those back into config and remove `securityCode`.
+
+### `lgthinq`
+
+```json
+"lgthinq": {
+  "country": "EU",
+  "lang": "en-US"
+}
+```
+
+`country` and `lang` select the correct LG API regional host. Common country values: `EU`, `US`, `KR`.
+
+Authentication uses tokens stored in `persist/lgthinq-tokens.json` — no credentials are kept in `config.json`. To authenticate:
+
+1. Click **Fetch Tokens & User Number** in **Settings → Controllers → LG ThinQ**
+2. Enter your LG account email and password once — they are used only to obtain an OAuth token and are never saved
+3. The server extracts the user number from the JWT and saves the tokens to `persist/lgthinq-tokens.json`
+
+Alternatively, paste a **Personal Access Token** (PAT — starts with `thinqpat_`) directly into the Manual Token field. PATs do not expire.
+
+Token file schema (`persist/lgthinq-tokens.json`):
+```json
+{
+  "access_token": "thinqpat_...",
+  "refresh_token": "thinqpat_...",
+  "user_number": "1234567890",
+  "apiHost": "eu.api.lge.com",
+  "empHost": "eu.m.lgaccount.com"
+}
+```
+
+### `esphome`
+
+```json
+"esphome": {
+  "devices": [
+    { "name": "Living Room ESP32", "host": "192.168.1.80", "port": 80, "password": "optional" }
+  ]
+}
+```
+
+Each device must have `web_server:` enabled in its ESPHome YAML configuration. The `password` field is optional and matches the `web_server.auth.password` setting. Multiple devices are supported.
 
 ### `sip`
 
@@ -683,6 +727,53 @@ npm install node-tradfri-client   # optional dependency
 
 ---
 
+### `src/lgthinq-client.js`
+
+Integrates **LG ThinQ** appliances (air conditioners, washers, dryers, dishwashers, refrigerators, etc.) via the **LG v1 REST API** (`<country>.api.lge.com`).
+
+**Authentication:** Token-based only. Tokens are loaded from `persist/lgthinq-tokens.json` at startup. If no tokens are present the client skips start silently. PATs (Personal Access Tokens, prefix `thinqpat_`) are treated as non-expiring; OAuth access tokens are refreshed automatically using the stored refresh token.
+
+**Auth headers used:**
+- `x-emp-token` — access token
+- `x-thinq-user-no` — user number (required for all v1 API calls)
+
+**Discovery:** `GET /v1/service/homes` returns all home groups. Falls back to `GET /v1/service/application/dashboard` if no homes are found. Each device is registered in the sensor registry. Device state is polled every 30 s via `GET /v1/service/devices/:id/status`.
+
+**Supported device types:** AC (on/off, mode, target temperature, fan speed), washer, dryer, dishwasher, refrigerator. Commands are sent via `POST /v1/service/devices/:id/control`.
+
+**One-time user number setup:** Use **Settings → Controllers → LG ThinQ → Fetch Tokens & User Number** with your LG email/password. The server runs the LG OAuth pre-login flow (`eu.m.lgaccount.com`), extracts the user number from the JWT `sub` claim, and stores everything in `persist/lgthinq-tokens.json`. Credentials are not stored.
+
+**Config:** See [`lgthinq`](#lgthinq) config section above.
+
+---
+
+### `src/esphome-client.js`
+
+Integrates **ESPHome** ESP32/ESP8266 devices via their built-in **HTTP REST API** (the `web_server:` ESPHome component).
+
+**Entity discovery:** On startup, connects to the SSE stream at `http://<host>/events` and collects all entity state events for 4 seconds. Each entity becomes a sensor in the registry. Discovery is re-run on every restart.
+
+**Supported entity domains:**
+
+| ESPHome domain | HomeKit service |
+|---|---|
+| `sensor` | Temperature / Humidity / Lux / CO₂ (auto-detected) |
+| `binary_sensor` | Motion / Contact / generic switch |
+| `switch` | Switch |
+| `light` | Lightbulb |
+| `climate` | Thermostat |
+| `cover` | Window Covering |
+
+**Polling:** Entity state is refreshed every 30 s via `GET /<domain>/<id>`.
+
+**Commands:** Sent as HTTP POST to `/<domain>/<id>/turn_on`, `turn_off`, `open`, `close`, `set` (for climate/cover).
+
+**Authentication:** Optional HTTP Basic auth — the ESPHome `web_server` password is sent as `:<password>` (empty username).
+
+**Config:** See [`esphome`](#esphome) config section above.
+
+---
+
 ## Security & Auth
 
 ### User Accounts
@@ -1007,6 +1098,7 @@ The `:key` uses `/` separators — use the exact key returned by `GET /api/devic
 | BoneIO | `boneio/<host>` | `boneio/boneio-1234` |
 | Dirigera | `dirigera/<id>` | `dirigera/outlet_abc` |
 | Waveshare | `waveshare/<host>` | `waveshare/192.168.1.50` |
+| ESPHome | `esphome/<host>` | `esphome/192.168.1.80` |
 
 **Example — list all devices:**
 
