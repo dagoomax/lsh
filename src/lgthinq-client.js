@@ -66,8 +66,7 @@ class LGThinQClient {
     const saved = this._loadTokens();
     if (!saved?.access_token) throw new Error('No LG ThinQ tokens configured');
     this._tokens = saved;
-    if (saved.thinq2Host) this._thinq2Host = saved.thinq2Host;
-    // No expires_at = PAT or manually-set token; use as-is
+    // No expires_at = PAT or manually-set token; use as-is without refreshing
     if (!saved.expires_at) return;
     if (saved.expires_at > Date.now() + 60000) return;
     if (saved.refresh_token && saved.refresh_token !== saved.access_token) {
@@ -162,14 +161,14 @@ class LGThinQClient {
     const country = (cfg.country || 'US').toUpperCase();
     const lang    = cfg.lang || _defaultLang(country);
 
-    // Try home API; fall back to dashboard endpoint
+    // v1 API: /v1/service/homes returns array of homes
     let homeList = [];
     try {
-      const resp  = await this._thinqGet('/service/users/home', country, lang);
-      homeList    = Array.isArray(resp) ? resp : (resp.result || resp.item || []);
+      const resp = await this._thinqGet('/v1/service/homes', country, lang);
+      homeList   = Array.isArray(resp) ? resp : (resp.result || resp.item || []);
     } catch {
-      const resp  = await this._thinqGet('/service/application/dashboard', country, lang);
-      homeList    = Array.isArray(resp) ? resp : (resp.result || resp.item || []);
+      const resp = await this._thinqGet('/v1/service/application/dashboard', country, lang);
+      homeList   = Array.isArray(resp) ? resp : (resp.result || resp.item || []);
     }
 
     for (const home of homeList) {
@@ -192,7 +191,7 @@ class LGThinQClient {
 
     let snapshot = dev.snapshot || {};
     try {
-      const st = await this._thinqGet(`/service/devices/${deviceId}/status`, country, lang);
+      const st = await this._thinqGet(`/v1/service/devices/${deviceId}/status`, country, lang);
       snapshot  = st.result || st.snapshot || st || snapshot;
     } catch { /* use dev.snapshot */ }
 
@@ -226,7 +225,7 @@ class LGThinQClient {
     } else {
       payload = { dataKey: capId, dataValue: String(command) };
     }
-    await this._thinqPost(`/service/devices/${deviceId}/state`, { lge: [payload] }, country, lang);
+    await this._thinqPost(`/v1/service/devices/${deviceId}/state`, { lge: [payload] }, country, lang);
   }
 
   // ── Polling ───────────────────────────────────────────────────────────
@@ -249,7 +248,7 @@ class LGThinQClient {
 
     for (const [deviceId, info] of Object.entries(this._deviceMap)) {
       try {
-        const st       = await this._thinqGet(`/service/devices/${deviceId}/status`, country, lang);
+        const st       = await this._thinqGet(`/v1/service/devices/${deviceId}/status`, country, lang);
         const snapshot = st.result || st.snapshot || st;
         _applySnapshot(this._store, info.deviceKey, info.type, snapshot);
       } catch (err) {
@@ -262,20 +261,24 @@ class LGThinQClient {
   // ── ThinQ2 API helpers ────────────────────────────────────────────────
 
   _apiHeaders(country, lang) {
-    return {
+    const hdrs = {
       ...this._commonHeaders(country, lang),
-      'Authorization': `Bearer ${this._tokens.access_token}`,
+      'x-emp-token': this._tokens.access_token,
     };
+    if (this._tokens.user_number) hdrs['x-thinq-user-no'] = this._tokens.user_number;
+    return hdrs;
+  }
+
+  _apiHost(country) {
+    return this._tokens?.apiHost || `${country.toLowerCase()}.api.lge.com`;
   }
 
   async _thinqGet(apiPath, country, lang) {
-    const host = this._thinq2Host || `${country.toLowerCase()}.api.lge.com`;
-    return this._httpsReq('GET', host, apiPath, null, this._apiHeaders(country, lang));
+    return this._httpsReq('GET', this._apiHost(country), apiPath, null, this._apiHeaders(country, lang));
   }
 
   async _thinqPost(apiPath, body, country, lang) {
-    const host = this._thinq2Host || `${country.toLowerCase()}.api.lge.com`;
-    return this._httpsReq('POST', host, apiPath, body, this._apiHeaders(country, lang));
+    return this._httpsReq('POST', this._apiHost(country), apiPath, body, this._apiHeaders(country, lang));
   }
 
   _commonHeaders(country, lang) {

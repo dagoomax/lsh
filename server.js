@@ -180,6 +180,15 @@ async function main() {
     }
   }
 
+  // Start ESPHome client if devices are configured
+  if (config.esphome?.devices?.length) {
+    const ESPHomeClient = tryRequire('./src/esphome-client');
+    if (ESPHomeClient) {
+      const esphome = new ESPHomeClient(config, store, sensorRegistry);
+      esphome.start().catch((err) => console.error(`[ESPHome] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Shelly client if devices are configured
   if (config.shelly?.devices?.length) {
     const ShellyClient = tryRequire('./src/shelly-client');

@@ -85,12 +85,16 @@ async function loadSettings() {
     setVal('boneio-host', data.boneio?.host || '');
     setVal('boneio-port', data.boneio?.port || 1883);
 
+    // ESPHome
+    renderESPHomeList(data.esphome?.devices || []);
+
     // Shelly
     renderShellyList(data.shelly?.devices || []);
 
     // LG ThinQ
     setVal('lgthinq-access-token',  data.lgthinq?.hasTokens ? '••••••••' : '');
     setVal('lgthinq-refresh-token', data.lgthinq?.hasTokens ? '••••••••' : '');
+    setVal('lgthinq-user-number',   data.lgthinq?.userNumber || '');
     setVal('lgthinq-country', data.lgthinq?.country || 'EU');
 
     // Fibaro
@@ -2110,27 +2114,129 @@ document.getElementById('btn-save-https').addEventListener('click', async () => 
   } finally { btn.disabled = false; }
 });
 
-// ── LG ThinQ ──────────────────────────────────────────────────────────────
+// ── ESPHome ───────────────────────────────────────────────────────────────
 
-document.getElementById('btn-test-lgthinq').addEventListener('click', async () => {
-  const resultEl = document.getElementById('lgthinq-test-result');
-  resultEl.textContent = 'Testing…';
-  resultEl.className = 'test-result';
+let currentESPHomeDevices = [];
+
+function renderESPHomeList(devices) {
+  currentESPHomeDevices = devices;
+  const container = document.getElementById('esphome-devices-list');
+  container.innerHTML = '';
+  devices.forEach((dev, i) => addESPHomeRow(dev));
+}
+
+function addESPHomeRow(dev = {}) {
+  const container = document.getElementById('esphome-devices-list');
+  const row = document.createElement('div');
+  row.className = 'shelly-row';
+  row.innerHTML = `
+    <div class="shelly-row-fields" style="grid-template-columns:1fr 80px 1fr 1fr auto">
+      <input type="text"     class="esp-host" placeholder="192.168.1.200" value="${escapeVal(dev.host || '')}">
+      <input type="number"   class="esp-port" placeholder="80" min="1" max="65535" value="${escapeVal(dev.port || 80)}">
+      <input type="text"     class="esp-name" placeholder="Name (optional)" value="${escapeVal(dev.name || '')}">
+      <input type="password" class="esp-pass" placeholder="Password (optional)" value="${escapeVal(dev.password ? '••••••••' : '')}">
+    </div>
+    <button class="btn btn-remove esp-remove" title="Remove">✕</button>`;
+  row.querySelector('.esp-remove').addEventListener('click', () => { row.remove(); });
+
+  const testBtn = document.createElement('button');
+  testBtn.className = 'btn btn-secondary esp-test-one';
+  testBtn.style.cssText = 'margin-top:6px;font-size:.8rem';
+  testBtn.textContent = 'Test';
+  testBtn.addEventListener('click', async () => {
+    const host = row.querySelector('.esp-host').value.trim();
+    const port = parseInt(row.querySelector('.esp-port').value) || 80;
+    const pass = row.querySelector('.esp-pass').value;
+    if (!host) return;
+    testBtn.disabled = true;
+    testBtn.textContent = 'Testing…';
+    try {
+      const r = await fetch('/api/settings/test-esphome', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, port, password: pass }),
+      });
+      const j = await r.json();
+      testBtn.textContent = j.success ? '✓ ' + j.message : '✗ ' + j.error;
+    } catch (e) { testBtn.textContent = '✗ ' + e.message; }
+    finally { testBtn.disabled = false; setTimeout(() => { testBtn.textContent = 'Test'; }, 5000); }
+  });
+  row.querySelector('.shelly-row-fields').after(testBtn);
+  container.appendChild(row);
+}
+
+function collectESPHomeDevices() {
+  return Array.from(document.querySelectorAll('#esphome-devices-list .shelly-row')).map(row => ({
+    host:     row.querySelector('.esp-host').value.trim(),
+    port:     parseInt(row.querySelector('.esp-port').value) || 80,
+    name:     row.querySelector('.esp-name').value.trim(),
+    password: row.querySelector('.esp-pass').value,
+  })).filter(d => d.host);
+}
+
+document.getElementById('btn-add-esphome').addEventListener('click', () => {
+  addESPHomeRow({});
+  document.querySelector('#esphome-devices-list .shelly-row:last-child .esp-host')?.focus();
+});
+
+document.getElementById('btn-save-esphome').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-esphome');
+  const resultEl = document.getElementById('esphome-save-result');
+  btn.disabled   = true;
   try {
-    const res = await fetch('/api/settings/test-lgthinq', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        country: getVal('lgthinq-country'),
-      }),
+    const devices = collectESPHomeDevices();
+    const res = await fetch('/api/settings/esphome', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(devices),
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
     resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+    if (json.success) renderESPHomeList(devices);
   } catch (err) {
     resultEl.textContent = '✗ ' + err.message;
     resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── LG ThinQ ──────────────────────────────────────────────────────────────
+
+document.getElementById('btn-fetch-lgthinq').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-fetch-lgthinq');
+  const resultEl = document.getElementById('lgthinq-fetch-result');
+  const email    = getVal('lgthinq-login-email');
+  const pass     = getVal('lgthinq-login-pass');
+  if (!email || !pass) {
+    resultEl.textContent = '✗ Enter email and password first';
+    resultEl.className = 'test-result err';
+    return;
   }
+  btn.disabled = true;
+  resultEl.textContent = 'Fetching…';
+  resultEl.className = 'test-result';
+  try {
+    const res = await fetch('/api/settings/lgthinq-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: email, password: pass, country: getVal('lgthinq-country') }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      if (json.access_token)  document.getElementById('lgthinq-access-token').value  = json.access_token;
+      if (json.refresh_token) document.getElementById('lgthinq-refresh-token').value = json.refresh_token;
+      if (json.user_number)   document.getElementById('lgthinq-user-number').value   = json.user_number;
+      // Open the manual section so user can see the filled values
+      const details = document.querySelector('#btn-fetch-lgthinq').closest('section').querySelector('details');
+      if (details) details.open = true;
+      resultEl.textContent = '✓ ' + (json.message || 'Tokens fetched — review and save');
+      resultEl.className = 'test-result ok';
+    } else {
+      resultEl.textContent = '✗ ' + json.error;
+      resultEl.className = 'test-result err';
+    }
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
 });
 
 document.getElementById('btn-save-lgthinq').addEventListener('click', async () => {
@@ -2144,6 +2250,7 @@ document.getElementById('btn-save-lgthinq').addEventListener('click', async () =
       body: JSON.stringify({
         access_token:  getVal('lgthinq-access-token'),
         refresh_token: getVal('lgthinq-refresh-token'),
+        user_number:   getVal('lgthinq-user-number'),
         country:       getVal('lgthinq-country'),
       }),
     });

@@ -732,6 +732,11 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         d.token ? { ...d, token: '••••••••' } : d
       );
     }
+    if (safe.esphome?.devices) {
+      safe.esphome.devices = safe.esphome.devices.map(d =>
+        d.password ? { ...d, password: '••••••••' } : d
+      );
+    }
     if (safe.shelly?.devices) {
       safe.shelly.devices = safe.shelly.devices.map(d =>
         d.password ? { ...d, password: '••••••••' } : d
@@ -741,7 +746,11 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     // Indicate whether LG tokens are persisted without exposing them
     if (safe.lgthinq) {
       const tokFile = path.join(__dirname, '..', 'persist', 'lgthinq-tokens.json');
-      try { safe.lgthinq.hasTokens = !!(JSON.parse(fs.readFileSync(tokFile, 'utf8')).access_token); } catch { safe.lgthinq.hasTokens = false; }
+      try {
+        const tok = JSON.parse(fs.readFileSync(tokFile, 'utf8'));
+        safe.lgthinq.hasTokens  = !!tok.access_token;
+        safe.lgthinq.userNumber = tok.user_number || '';
+      } catch { safe.lgthinq.hasTokens = false; safe.lgthinq.userNumber = ''; }
       delete safe.lgthinq.username;
       delete safe.lgthinq.password;
     }
@@ -1365,7 +1374,132 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // ── ESPHome ──────────────────────────────────────────────────────────
+
+  router.post('/settings/test-esphome', async (req, res) => {
+    const { host, port = 80, password } = req.body;
+    if (!host) return res.status(400).json({ success: false, error: 'host required' });
+    const headers = { 'Accept': 'text/event-stream' };
+    if (password) headers['Authorization'] = 'Basic ' + Buffer.from(`:${password}`).toString('base64');
+    const http2 = require('http');
+    let done = false;
+    const req2 = http2.get({ hostname: host, port, path: '/events', timeout: 6000, headers }, r => {
+      let count = 0;
+      r.on('data', chunk => {
+        const text = chunk.toString();
+        count += (text.match(/event:\s*state/g) || []).length;
+        if (count >= 1 && !done) {
+          done = true;
+          req2.destroy();
+          if (!res.headersSent) res.json({ success: true, message: `ESPHome device reachable — ${count}+ entity event(s) detected` });
+        }
+      });
+      r.on('end', () => { if (!done && !res.headersSent) res.json({ success: r.statusCode < 300, message: 'Device reachable (no entity events)' }); });
+    });
+    req2.on('error', err => { if (!res.headersSent) res.json({ success: false, error: err.message }); });
+    req2.on('timeout', () => { req2.destroy(); if (!res.headersSent) res.json({ success: false, error: `Cannot reach ${host}:${port}` }); });
+  });
+
+  router.post('/settings/esphome', (req, res) => {
+    const current = readConfigFile();
+    const devices = req.body;
+    if (!Array.isArray(devices)) return res.status(400).json({ success: false, error: 'Expected array' });
+    const sanitized = devices.map(d => ({
+      host:     (d.host || '').trim(),
+      port:     parseInt(d.port) || 80,
+      name:     (d.name || '').trim(),
+      password: (d.password && !d.password.includes('•')) ? d.password : (
+        (current.esphome?.devices || []).find(x => x.host === d.host)?.password || ''
+      ),
+    })).filter(d => d.host);
+    try {
+      writeConfigFile({ ...current, esphome: { devices: sanitized } });
+      res.json({ success: true, message: `${sanitized.length} device(s) saved. Restart to apply.` });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // ── LG ThinQ ─────────────────────────────────────────────────────────
+
+  // One-time login to fetch tokens + user number (password never stored)
+  router.post('/settings/lgthinq-login', async (req, res) => {
+    const { username, password, country = 'EU' } = req.body;
+    if (!username || !password) return res.status(400).json({ success: false, error: 'Email and password required' });
+
+    const crypto   = require('crypto');
+    const https    = require('https');
+    const APP_ID   = 'LGAO221A02';
+    const OAUTH_ID = 'LGAO221A02';
+    const OAUTH_SECRET = 'c053c2a6ddeb7ad97cb0eed0dcb31cf8';
+    const REDIRECT_URI = 'lgaccount.lgsmartthinq://';
+    const countryUp = country.toUpperCase();
+    const EMP_HOSTS = { US: 'us.m.lgaccount.com', EU: 'eu.m.lgaccount.com', KR: 'kr.m.lgaccount.com', AU: 'au.m.lgaccount.com', CA: 'ca.m.lgaccount.com', JP: 'jp.m.lgaccount.com' };
+    const empHost = EMP_HOSTS[countryUp] || 'eu.m.lgaccount.com';
+
+    function httpsReq(method, hostname, reqPath, body, headers = {}) {
+      return new Promise((resolve, reject) => {
+        let payload = null;
+        if (body != null) {
+          payload = Buffer.from(typeof body === 'string' ? body : JSON.stringify(body), 'utf8');
+          if (!headers['Content-Type']) headers['Content-Type'] = typeof body === 'string' ? 'application/x-www-form-urlencoded' : 'application/json';
+          headers['Content-Length'] = payload.length;
+        }
+        const req2 = https.request({ hostname, path: reqPath, method, timeout: 12000, headers }, r => {
+          const chunks = [];
+          r.on('data', d => chunks.push(d));
+          r.on('end', () => {
+            const text = Buffer.concat(chunks).toString();
+            if (r.statusCode >= 300) return reject(new Error(`HTTP ${r.statusCode}: ${text.slice(0, 300)}`));
+            try { resolve(JSON.parse(text)); } catch { reject(new Error(`Non-JSON: ${text.slice(0, 200)}`)); }
+          });
+        });
+        req2.on('error', reject);
+        req2.on('timeout', () => { req2.destroy(); reject(new Error('Timeout')); });
+        if (payload) req2.write(payload);
+        req2.end();
+      });
+    }
+
+    try {
+      const state  = crypto.randomBytes(4).toString('hex');
+      const b64pw  = Buffer.from(password).toString('base64');
+      const pre = await httpsReq('POST', empHost, `/spx/common/oauthapps/${APP_ID}/preLogin`, {
+        user_auth2: b64pw, redirect_uri: REDIRECT_URI, state, username,
+        log_param: `login request / redirect_uri=${REDIRECT_URI} / user_auth2=${b64pw} / state=${state}`,
+      }, { 'Content-Type': 'application/json' });
+
+      const redir = pre.redirect_uri || pre.redirectUri || '';
+      const codeMatch = redir.match(/[?&]code=([^&]+)/);
+      if (!codeMatch) return res.json({ success: false, error: `Login failed — no auth code returned. Response: ${JSON.stringify(pre).slice(0, 200)}` });
+      const code = decodeURIComponent(codeMatch[1]);
+
+      const creds  = Buffer.from(`${OAUTH_ID}:${OAUTH_SECRET}`).toString('base64');
+      const tokens = await httpsReq('POST', empHost, '/oauth2/token',
+        `grant_type=authorization_code&code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`,
+        { 'Authorization': `Basic ${creds}`, 'Content-Type': 'application/x-www-form-urlencoded' }
+      );
+
+      // Extract user number: may be in token response or decodable from JWT
+      let userNumber = tokens.user_number || tokens.userNumber || tokens.sub || '';
+      if (!userNumber && tokens.access_token && tokens.access_token.includes('.')) {
+        try {
+          const payload = JSON.parse(Buffer.from(tokens.access_token.split('.')[1], 'base64').toString());
+          userNumber = payload.sub || payload.user_number || payload.userNumber || '';
+        } catch {}
+      }
+
+      res.json({
+        success: true,
+        message: `Logged in${userNumber ? ` — user number: ${userNumber}` : ' — check token fields'}`,
+        access_token:  tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        user_number:   userNumber,
+      });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
 
   router.post('/settings/test-lgthinq', async (req, res) => {
     const { country = 'US', lang } = req.body;
@@ -1409,25 +1543,27 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   router.post('/settings/lgthinq', (req, res) => {
     const current = readConfigFile();
-    const { access_token, refresh_token, country, lang } = req.body;
+    const { access_token, refresh_token, user_number, country, lang } = req.body;
     try {
       const prev = current.lgthinq || {};
       const resolvedCountry = (country || prev.country || 'US').trim().toUpperCase();
       const resolvedLang    = (lang    || prev.lang    || 'en-US').trim();
 
       // Persist tokens to the tokens file if provided
-      if (access_token && !access_token.includes('•') && refresh_token && !refresh_token.includes('•')) {
-        const EMP_HOSTS = { US: 'us.m.lgaccount.com', EU: 'eu.m.lgaccount.com', KR: 'kr.m.lgaccount.com', AU: 'au.m.lgaccount.com', CA: 'ca.m.lgaccount.com', JP: 'jp.m.lgaccount.com' };
-        const tokFile = path.join(__dirname, '..', 'persist', 'lgthinq-tokens.json');
-        const tokData = {
-          access_token,
-          refresh_token,
-          thinq2Host: `${resolvedCountry.toLowerCase()}.api.lge.com`,
-          empHost:    EMP_HOSTS[resolvedCountry] || 'm.lgaccount.com',
-        };
-        fs.mkdirSync(path.dirname(tokFile), { recursive: true });
-        fs.writeFileSync(tokFile, JSON.stringify(tokData, null, 2), 'utf8');
-      }
+      const tokFile = path.join(__dirname, '..', 'persist', 'lgthinq-tokens.json');
+      let existing = {};
+      try { existing = JSON.parse(fs.readFileSync(tokFile, 'utf8')); } catch {}
+      const EMP_HOSTS = { US: 'us.m.lgaccount.com', EU: 'eu.m.lgaccount.com', KR: 'kr.m.lgaccount.com', AU: 'au.m.lgaccount.com', CA: 'ca.m.lgaccount.com', JP: 'jp.m.lgaccount.com' };
+      const tokData = {
+        ...existing,
+        ...(access_token  && !access_token.includes('•')  ? { access_token }  : {}),
+        ...(refresh_token && !refresh_token.includes('•') ? { refresh_token } : {}),
+        user_number: (user_number || existing.user_number || '').trim(),
+        apiHost: `${resolvedCountry.toLowerCase()}.api.lge.com`,
+        empHost: EMP_HOSTS[resolvedCountry] || 'm.lgaccount.com',
+      };
+      fs.mkdirSync(path.dirname(tokFile), { recursive: true });
+      fs.writeFileSync(tokFile, JSON.stringify(tokData, null, 2), 'utf8');
 
       writeConfigFile({
         ...current,

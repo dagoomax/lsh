@@ -395,18 +395,10 @@
     <!-- LG ThinQ -->
     <section class="card settings-card" data-category="smarthome" data-title="LG ThinQ smart appliances air conditioner washing machine">
       <h2><span data-i18n="s.lgthinq_title">LG ThinQ</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to your LG ThinQ account via the v2 cloud API. Paste your OAuth access token and refresh token (obtain them from the LG ThinQ app or a token extractor tool). Discovers air conditioners, air purifiers, washing machines, dryers, dishwashers, refrigerators, humidifiers, and dehumidifiers.</p>
+      <p class="section-desc">Connects to your LG ThinQ account via the v1 cloud API. Use your LG account email and password to fetch tokens and user number automatically, or paste them manually. Password is never stored.</p>
 
       <div class="form-row">
-        <label for="lgthinq-access-token">Access Token</label>
-        <input type="password" id="lgthinq-access-token" placeholder="••••••••••••••••••••••••••••••••">
-      </div>
-      <div class="form-row">
-        <label for="lgthinq-refresh-token">Refresh Token</label>
-        <input type="password" id="lgthinq-refresh-token" placeholder="••••••••••••••••••••••••••••••••">
-      </div>
-      <div class="form-row">
-        <label for="lgthinq-country"><span data-i18n="s.lgthinq_country">Country</span> <span class="hint" data-i18n="s.lgthinq_country_hint">(match your LG account region)</span></label>
+        <label for="lgthinq-country"><span data-i18n="s.lgthinq_country">Country</span> <span class="hint">(match your LG account region)</span></label>
         <select id="lgthinq-country">
           <option value="US">US — United States</option>
           <option value="EU">EU — Europe</option>
@@ -416,10 +408,37 @@
           <option value="JP">JP — Japan</option>
         </select>
       </div>
+      <div class="form-row">
+        <label for="lgthinq-login-email">LG Account Email <span class="hint">(used once to fetch tokens — never stored)</span></label>
+        <input type="email" id="lgthinq-login-email" placeholder="you@example.com" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="lgthinq-login-pass">LG Account Password <span class="hint">(used once — never stored)</span></label>
+        <input type="password" id="lgthinq-login-pass" placeholder="••••••••" autocomplete="off">
+      </div>
+      <div class="form-actions" style="margin-bottom:12px">
+        <button class="btn btn-secondary" id="btn-fetch-lgthinq">Fetch Tokens &amp; User Number</button>
+        <span class="test-result" id="lgthinq-fetch-result"></span>
+      </div>
+
+      <details style="margin-bottom:12px">
+        <summary style="cursor:pointer;color:var(--text-muted,#888);font-size:.85em">Or paste tokens manually</summary>
+        <div class="form-row" style="margin-top:8px">
+          <label for="lgthinq-access-token">Access Token</label>
+          <input type="password" id="lgthinq-access-token" placeholder="••••••••••••••••••••••••••••••••">
+        </div>
+        <div class="form-row">
+          <label for="lgthinq-refresh-token">Refresh Token</label>
+          <input type="password" id="lgthinq-refresh-token" placeholder="••••••••••••••••••••••••••••••••">
+        </div>
+        <div class="form-row">
+          <label for="lgthinq-user-number">User Number <span class="hint">(e.g. EU0123456789)</span></label>
+          <input type="text" id="lgthinq-user-number" placeholder="EU0123456789">
+        </div>
+      </details>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-lgthinq" data-i18n="common.test">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-save-lgthinq" data-i18n="common.save">Save</button>
+        <button class="btn btn-primary" id="btn-save-lgthinq" data-i18n="common.save">Save</button>
         <span class="test-result" id="lgthinq-test-result"></span>
       </div>
     </section>
@@ -491,6 +510,21 @@
         <button class="btn btn-secondary" id="btn-test-boneio" data-i18n="common.test">Test Connection</button>
         <button class="btn btn-primary"   id="btn-save-boneio" data-i18n="common.save">Save</button>
         <span class="test-result" id="boneio-test-result"></span>
+      </div>
+    </section>
+
+    <!-- Shelly -->
+    <!-- ESPHome -->
+    <section class="card settings-card" data-category="controllers" data-title="ESPHome ESP32 ESP8266 sensors switches smart home">
+      <h2>ESPHome <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Connects to ESP32/ESP8266 devices running ESPHome with the <code>web_server:</code> component enabled. Sensors, switches, binary sensors, lights, and covers are auto-discovered via the device event stream.</p>
+
+      <div id="esphome-devices-list"></div>
+      <button class="btn btn-secondary" id="btn-add-esphome">+ Add Device</button>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-primary" id="btn-save-esphome">Save Devices</button>
+        <span class="test-result" id="esphome-save-result"></span>
       </div>
     </section>
 
