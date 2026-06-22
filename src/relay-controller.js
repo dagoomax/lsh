@@ -14,7 +14,7 @@ class RelayController {
   }
 
   getAll() {
-    return this.config.relays.map((relay) => ({
+    return (this.config.relays || []).map((relay) => ({
       index: relay.index,
       name: relay.name,
       on: this.getState(relay.index),

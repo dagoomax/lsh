@@ -676,7 +676,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   router.post('/settings/import', (req, res) => {
     const body = req.body;
     // Basic structure validation
-    const required = ['mqtt', 'vrm', 'relays', 'server', 'homekit'];
+    const required = ['mqtt', 'vrm', 'server', 'homekit'];
     const missing = required.filter((k) => !(k in body));
     if (missing.length) {
       return res.status(400).json({
@@ -684,7 +684,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         error: `Invalid config file — missing keys: ${missing.join(', ')}`,
       });
     }
-    if (!Array.isArray(body.relays)) {
+    if ('relays' in body && !Array.isArray(body.relays)) {
       return res.status(400).json({ success: false, error: '"relays" must be an array' });
     }
     try {

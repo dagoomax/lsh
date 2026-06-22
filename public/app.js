@@ -310,6 +310,8 @@ async function loadRelays() {
 }
 
 function renderRelays(relays) {
+  const relaysSection = document.getElementById('relays-section');
+  if (relaysSection) relaysSection.style.display = relays.length ? '' : 'none';
   relaysCon.innerHTML = '';
   for (const relay of relays) {
     const item = document.createElement('div');
