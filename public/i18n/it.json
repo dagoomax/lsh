@@ -294,6 +294,15 @@
     "restart_server": "Riavvia server",
     "save_settings": "Salva impostazioni",
     "restarting": "Riavvio…",
-    "restart_sub": "Il server si sta riavviando. Riconnessione tra"
+    "restart_sub": "Il server si sta riavviando. Riconnessione tra",
+    "waveshare_title": "Waveshare Modbus TCP",
+    "waveshare_add": "+ Aggiungi scheda",
+    "waveshare_host": "Host / IP",
+    "waveshare_port": "Porta",
+    "waveshare_port_hint": "(predefinito 502)",
+    "waveshare_slave": "Slave ID",
+    "waveshare_slave_hint": "(predefinito 1)",
+    "waveshare_count": "Numero di relè",
+    "waveshare_count_hint": "(numero di relè sulla scheda)"
   }
 }

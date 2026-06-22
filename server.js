@@ -198,6 +198,15 @@ async function main() {
     }
   }
 
+  // Start Waveshare Modbus TCP client if configured
+  if (config.waveshare?.devices?.length) {
+    const WaveshareClient = tryRequire('./src/waveshare-modbus-client');
+    if (WaveshareClient) {
+      const waveshare = new WaveshareClient(config, store, sensorRegistry);
+      waveshare.start().catch((err) => console.error(`[Waveshare] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Homey client if configured
   if (config.homey?.token && (config.homey?.host || config.homey?.homeyId)) {
     const HomeyClient = tryRequire('./src/homey-client');

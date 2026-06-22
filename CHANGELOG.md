@@ -8,6 +8,13 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-06-22 (4)
+
+### Added
+- **Waveshare Modbus TCP relay board support** — pure Node.js Modbus TCP client (no external library). Connects to Waveshare relay boards over TCP port 502. Multiple boards supported, each appears as a device card with individual relay toggles. Auto-reconnects after 15 s on connection loss, polls relay states every 5 s. Relay control via standard dashboard toggle or `POST /api/device/:key/command`. Settings card with per-board host, port, slave ID, and relay count. Test connection button sends FC01 to probe the slave. Translated in all 7 languages.
+
+---
+
 ## 2026-06-22 (3)
 
 ### Added

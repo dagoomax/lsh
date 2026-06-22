@@ -294,6 +294,15 @@
     "restart_server": "Server neu starten",
     "save_settings": "Einstellungen speichern",
     "restarting": "Neustart…",
-    "restart_sub": "Der Server wird neu gestartet. Erneute Verbindung in"
+    "restart_sub": "Der Server wird neu gestartet. Erneute Verbindung in",
+    "waveshare_title": "Waveshare Modbus TCP",
+    "waveshare_add": "+ Board hinzufügen",
+    "waveshare_host": "Host / IP",
+    "waveshare_port": "Port",
+    "waveshare_port_hint": "(Standard 502)",
+    "waveshare_slave": "Slave-ID",
+    "waveshare_slave_hint": "(Standard 1)",
+    "waveshare_count": "Anzahl Relais",
+    "waveshare_count_hint": "(Anzahl der Relais auf dem Board)"
   }
 }

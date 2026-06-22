@@ -294,6 +294,15 @@
     "restart_server": "Redémarrer le serveur",
     "save_settings": "Enregistrer les paramètres",
     "restarting": "Redémarrage…",
-    "restart_sub": "Le serveur redémarre. Reconnexion dans"
+    "restart_sub": "Le serveur redémarre. Reconnexion dans",
+    "waveshare_title": "Waveshare Modbus TCP",
+    "waveshare_add": "+ Ajouter une carte",
+    "waveshare_host": "Hôte / IP",
+    "waveshare_port": "Port",
+    "waveshare_port_hint": "(par défaut 502)",
+    "waveshare_slave": "ID esclave",
+    "waveshare_slave_hint": "(par défaut 1)",
+    "waveshare_count": "Nombre de relais",
+    "waveshare_count_hint": "(nombre de relais sur la carte)"
   }
 }

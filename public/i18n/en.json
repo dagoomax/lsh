@@ -294,6 +294,15 @@
     "restart_server": "Restart Server",
     "save_settings": "Save Settings",
     "restarting": "Restarting…",
-    "restart_sub": "The server is restarting. Reconnecting in"
+    "restart_sub": "The server is restarting. Reconnecting in",
+    "waveshare_title": "Waveshare Modbus TCP",
+    "waveshare_add": "+ Add Board",
+    "waveshare_host": "Host / IP",
+    "waveshare_port": "Port",
+    "waveshare_port_hint": "(default 502)",
+    "waveshare_slave": "Slave ID",
+    "waveshare_slave_hint": "(default 1)",
+    "waveshare_count": "Relay Count",
+    "waveshare_count_hint": "(number of relays on the board)"
   }
 }

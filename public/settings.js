@@ -88,6 +88,9 @@ async function loadSettings() {
     // Shelly
     renderShellyList(data.shelly?.devices || []);
 
+    // Waveshare
+    renderWaveshareList(data.waveshare?.devices || []);
+
     // Cameras — fetched separately so settings API doesn't need to include them
     await loadCameras();
 
@@ -1490,6 +1493,105 @@ document.getElementById('btn-save-shelly').addEventListener('click', async () =>
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
     resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
     if (json.success) { currentShellyDevices = devices; renderShellyList(devices); }
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── Waveshare Modbus TCP ───────────────────────────────────────────────────
+
+let currentWaveshareDevices = [];
+
+function renderWaveshareList(devices) {
+  currentWaveshareDevices = devices;
+  const container = document.getElementById('waveshare-devices-list');
+  container.innerHTML = '';
+
+  if (!devices.length) {
+    container.innerHTML = '<p class="hint" style="margin-bottom:12px">No Waveshare boards configured yet.</p>';
+    return;
+  }
+
+  devices.forEach((dev, i) => {
+    const row = document.createElement('div');
+    row.className = 'shelly-row';
+    row.dataset.index = i;
+    row.innerHTML = `
+      <div class="shelly-row-fields" style="grid-template-columns:1fr 1fr 80px 70px 80px auto">
+        <input type="text"   class="ws-host"  placeholder="192.168.1.x"  value="${escapeVal(dev.host || '')}">
+        <input type="text"   class="ws-name"  placeholder="Name"          value="${escapeVal(dev.name || '')}">
+        <input type="number" class="ws-port"  placeholder="502"           value="${escapeVal(dev.port || 502)}" min="1" max="65535">
+        <input type="number" class="ws-slave" placeholder="1"             value="${escapeVal(dev.slaveId || 1)}" min="1" max="247">
+        <input type="number" class="ws-count" placeholder="8"             value="${escapeVal(dev.relayCount || 8)}" min="1" max="64">
+      </div>
+      <button class="btn btn-remove ws-remove" title="Remove">✕</button>`;
+    row.querySelector('.ws-remove').addEventListener('click', () => {
+      currentWaveshareDevices = collectWaveshareDevices();
+      currentWaveshareDevices.splice(i, 1);
+      renderWaveshareList(currentWaveshareDevices);
+    });
+    const testBtn = document.createElement('button');
+    testBtn.className = 'btn btn-secondary';
+    testBtn.textContent = 'Test';
+    testBtn.style.marginTop = '4px';
+    testBtn.addEventListener('click', async () => {
+      const host    = row.querySelector('.ws-host').value.trim();
+      const port    = row.querySelector('.ws-port').value || 502;
+      const slaveId = row.querySelector('.ws-slave').value || 1;
+      if (!host) return;
+      testBtn.disabled = true; testBtn.textContent = '…';
+      try {
+        const r = await fetch('/api/settings/test-waveshare', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host, port: parseInt(port), slaveId: parseInt(slaveId) }),
+        });
+        const json = await r.json();
+        testBtn.textContent = json.success ? '✓' : '✗';
+        testBtn.title = json.message || json.error || '';
+        setTimeout(() => { testBtn.textContent = 'Test'; testBtn.title = ''; }, 3000);
+      } catch (err) {
+        testBtn.textContent = '✗'; testBtn.title = err.message;
+        setTimeout(() => { testBtn.textContent = 'Test'; testBtn.title = ''; }, 3000);
+      } finally { testBtn.disabled = false; }
+    });
+    row.querySelector('.shelly-row-fields').after(testBtn);
+    container.appendChild(row);
+  });
+}
+
+function collectWaveshareDevices() {
+  return Array.from(document.querySelectorAll('#waveshare-devices-list .shelly-row')).map(row => ({
+    host:       row.querySelector('.ws-host').value.trim(),
+    name:       row.querySelector('.ws-name').value.trim(),
+    port:       parseInt(row.querySelector('.ws-port').value) || 502,
+    slaveId:    parseInt(row.querySelector('.ws-slave').value) || 1,
+    relayCount: parseInt(row.querySelector('.ws-count').value) || 8,
+  })).filter(d => d.host);
+}
+
+document.getElementById('btn-add-waveshare').addEventListener('click', () => {
+  currentWaveshareDevices = collectWaveshareDevices();
+  currentWaveshareDevices.push({ host: '', name: '', port: 502, slaveId: 1, relayCount: 8 });
+  renderWaveshareList(currentWaveshareDevices);
+  const rows = document.querySelectorAll('#waveshare-devices-list .shelly-row');
+  rows[rows.length - 1]?.querySelector('.ws-host')?.focus();
+});
+
+document.getElementById('btn-save-waveshare').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-waveshare');
+  const resultEl = document.getElementById('waveshare-save-result');
+  btn.disabled   = true;
+  try {
+    const devices = collectWaveshareDevices();
+    const res = await fetch('/api/settings/waveshare', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(devices),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+    if (json.success) { currentWaveshareDevices = devices; renderWaveshareList(devices); }
   } catch (err) {
     resultEl.textContent = '✗ ' + err.message;
     resultEl.className = 'test-result err';

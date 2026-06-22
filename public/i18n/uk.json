@@ -294,6 +294,15 @@
     "restart_server": "Перезапустити сервер",
     "save_settings": "Зберегти налаштування",
     "restarting": "Перезапуск…",
-    "restart_sub": "Сервер перезапускається. Повторне підключення через"
+    "restart_sub": "Сервер перезапускається. Повторне підключення через",
+    "waveshare_title": "Waveshare Modbus TCP",
+    "waveshare_add": "+ Додати плату",
+    "waveshare_host": "Хост / IP",
+    "waveshare_port": "Порт",
+    "waveshare_port_hint": "(за замовчуванням 502)",
+    "waveshare_slave": "Slave ID",
+    "waveshare_slave_hint": "(за замовчуванням 1)",
+    "waveshare_count": "Кількість реле",
+    "waveshare_count_hint": "(кількість реле на платі)"
   }
 }

@@ -294,6 +294,15 @@
     "restart_server": "Uruchom ponownie serwer",
     "save_settings": "Zapisz ustawienia",
     "restarting": "Ponowne uruchamianie…",
-    "restart_sub": "Serwer restartuje się. Ponowne połączenie za"
+    "restart_sub": "Serwer restartuje się. Ponowne połączenie za",
+    "waveshare_title": "Waveshare Modbus TCP",
+    "waveshare_add": "+ Dodaj kartę",
+    "waveshare_host": "Host / IP",
+    "waveshare_port": "Port",
+    "waveshare_port_hint": "(domyślnie 502)",
+    "waveshare_slave": "Slave ID",
+    "waveshare_slave_hint": "(domyślnie 1)",
+    "waveshare_count": "Liczba przekaźników",
+    "waveshare_count_hint": "(liczba przekaźników na karcie)"
   }
 }

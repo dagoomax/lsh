@@ -457,6 +457,20 @@
       </div>
     </section>
 
+    <!-- Waveshare Modbus TCP -->
+    <section class="card settings-card">
+      <h2><span data-i18n="s.waveshare_title">Waveshare Modbus TCP</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Control Waveshare relay boards over Modbus TCP (port 502). Supports any Waveshare relay module with Ethernet or a serial-to-Ethernet converter. Each board appears as a device card with individual relay toggles.</p>
+
+      <div id="waveshare-devices-list"></div>
+      <button class="btn btn-secondary" id="btn-add-waveshare" data-i18n="s.waveshare_add">+ Add Board</button>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-primary" id="btn-save-waveshare" data-i18n="common.save_devices">Save Devices</button>
+        <span class="test-result" id="waveshare-save-result"></span>
+      </div>
+    </section>
+
     <!-- Aeotec 360 Camera -->
     <section class="card settings-card">
       <h2><span data-i18n="s.aeotec_title">Aeotec 360 Camera</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>

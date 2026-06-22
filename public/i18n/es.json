@@ -294,6 +294,15 @@
     "restart_server": "Reiniciar servidor",
     "save_settings": "Guardar ajustes",
     "restarting": "Reiniciando…",
-    "restart_sub": "El servidor se está reiniciando. Reconectando en"
+    "restart_sub": "El servidor se está reiniciando. Reconectando en",
+    "waveshare_title": "Waveshare Modbus TCP",
+    "waveshare_add": "+ Añadir placa",
+    "waveshare_host": "Host / IP",
+    "waveshare_port": "Puerto",
+    "waveshare_port_hint": "(por defecto 502)",
+    "waveshare_slave": "ID esclavo",
+    "waveshare_slave_hint": "(por defecto 1)",
+    "waveshare_count": "Número de relés",
+    "waveshare_count_hint": "(número de relés en la placa)"
   }
 }
