@@ -1,3 +1,93 @@
+/* ── Settings toolbar ──────────────────────────────────────────────────── */
+.settings-toolbar {
+  position: sticky;
+  top: 60px;
+  z-index: 20;
+  background: var(--bg);
+  border-bottom: 1px solid var(--card-border);
+  padding: 12px 20px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 9px;
+  padding: 0 12px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  transition: border-color .15s;
+}
+.settings-filter-wrap:focus-within { border-color: var(--accent-green); }
+
+.settings-filter-wrap input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 0.88rem;
+  padding: 9px 0;
+}
+.settings-filter-wrap input::placeholder { color: var(--text-muted); }
+
+#btn-clear-search {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 4px;
+}
+#btn-clear-search:hover { color: var(--text); }
+
+.settings-cats {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  padding-bottom: 2px;
+}
+.settings-cats::-webkit-scrollbar { display: none; }
+
+.cat-btn {
+  background: none;
+  border: 1px solid var(--card-border);
+  color: var(--text-muted);
+  padding: 5px 13px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .15s, background .15s, border-color .15s;
+  flex-shrink: 0;
+}
+.cat-btn:hover { color: var(--text); border-color: var(--text-muted); }
+.cat-btn.active { background: var(--accent-green); color: #fff; border-color: var(--accent-green); }
+
+.settings-no-results {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 40px 0;
+}
+
+.settings-section-hidden { display: none !important; }
+
+/* ── Main layout ─────────────────────────────────────────────────────────── */
 .settings-main {
   max-width: 800px;
   margin: 0 auto;

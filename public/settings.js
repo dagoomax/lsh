@@ -2101,3 +2101,55 @@ document.getElementById('btn-save-https').addEventListener('click', async () => 
 
 // Init
 loadSettings();
+
+// ── Settings filter & category ─────────────────────────────────────────────
+
+(function () {
+  const sections   = Array.from(document.querySelectorAll('.settings-card'));
+  const noResults  = document.getElementById('settings-no-results');
+  const searchEl   = document.getElementById('settings-search');
+  const clearBtn   = document.getElementById('btn-clear-search');
+  const catBtns    = Array.from(document.querySelectorAll('.cat-btn'));
+
+  let activeCat  = 'all';
+  let searchTerm = '';
+
+  function applyFilter() {
+    const q = searchTerm.toLowerCase().trim();
+    let visible = 0;
+    sections.forEach(sec => {
+      const cat   = sec.dataset.category || '';
+      const title = (sec.dataset.title || '') + ' ' + (sec.textContent || '');
+      const catOk  = activeCat === 'all' || cat === activeCat;
+      const textOk = !q || title.toLowerCase().includes(q);
+      const show   = catOk && textOk;
+      sec.classList.toggle('settings-section-hidden', !show);
+      if (show) visible++;
+    });
+    noResults.style.display = visible === 0 ? '' : 'none';
+  }
+
+  // Category buttons
+  catBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      catBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeCat = btn.dataset.cat;
+      applyFilter();
+    });
+  });
+
+  // Search input
+  searchEl.addEventListener('input', () => {
+    searchTerm = searchEl.value;
+    clearBtn.style.display = searchTerm ? '' : 'none';
+    applyFilter();
+  });
+  clearBtn.addEventListener('click', () => {
+    searchEl.value = '';
+    searchTerm     = '';
+    clearBtn.style.display = 'none';
+    searchEl.focus();
+    applyFilter();
+  });
+})();
