@@ -217,8 +217,8 @@ async function main() {
     }
   }
 
-  // Start LG ThinQ client if configured
-  if (config.lgthinq?.username && config.lgthinq?.password) {
+  // Start LG ThinQ client if configured (token-based — no credentials needed)
+  if (config.lgthinq) {
     const LGThinQClient = tryRequire('./src/lgthinq-client');
     if (LGThinQClient) {
       const lgthinq = new LGThinQClient(config, store, sensorRegistry);

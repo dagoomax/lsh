@@ -67,8 +67,10 @@ class LGThinQClient {
     if (!saved?.access_token) throw new Error('No LG ThinQ tokens configured');
     this._tokens = saved;
     if (saved.thinq2Host) this._thinq2Host = saved.thinq2Host;
-    if (saved.expires_at && saved.expires_at > Date.now() + 60000) return;
-    if (saved.refresh_token) {
+    // No expires_at = PAT or manually-set token; use as-is
+    if (!saved.expires_at) return;
+    if (saved.expires_at > Date.now() + 60000) return;
+    if (saved.refresh_token && saved.refresh_token !== saved.access_token) {
       const empHost = saved.empHost || EMP_HOSTS[(this._config.lgthinq?.country || 'US').toUpperCase()] || DEFAULT_EMP;
       await this._refreshTokens(empHost);
     }

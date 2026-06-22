@@ -77,6 +77,10 @@ function loadConfig() {
       username: fileConfig.homekit?.username || 'CC:22:3D:E3:CE:F6',
       setupID: fileConfig.homekit?.setupID || 'HEJX',
     },
+    lgthinq: fileConfig.lgthinq ? {
+      country: fileConfig.lgthinq.country || 'US',
+      lang:    fileConfig.lgthinq.lang    || 'en-US',
+    } : undefined,
   };
 }
 
