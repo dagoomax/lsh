@@ -5,7 +5,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
 echo "╔══════════════════════════════════════════╗"
-echo "║     Victron Energy Dashboard – Start     ║"
+echo "║           LSHServer – Start              ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 
