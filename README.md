@@ -1,6 +1,6 @@
 # LSH — LoxoneSwaggerHelper
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, and ESPHome (ESP32/ESP8266) into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), and KNX into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 ---
 
@@ -62,6 +62,8 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 | `tradfri` | No | IKEA Tradfri gateway |
 | `lgthinq` | No | LG ThinQ appliances (token-based auth, v1 API) |
 | `esphome` | No | ESPHome ESP32/ESP8266 devices (HTTP REST API) |
+| `knx` | No | KNX bus via KNXnet/IP gateway (group address mapping) |
+| `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
 | `relays` | No | Victron relay index + display name |
@@ -271,6 +273,62 @@ Token file schema (`persist/lgthinq-tokens.json`):
 ```
 
 Each device must have `web_server:` enabled in its ESPHome YAML configuration. The `password` field is optional and matches the `web_server.auth.password` setting. Multiple devices are supported.
+
+### `knx`
+
+```json
+"knx": {
+  "host": "192.168.1.100",
+  "port": 3671,
+  "groupAddresses": [
+    { "address": "1/1/1", "name": "Living Room Light", "dpt": "DPT1", "writable": true },
+    { "address": "1/2/1", "name": "Room Temperature",  "dpt": "DPT9", "unit": "°C" },
+    { "address": "1/3/1", "name": "Blinds",            "dpt": "DPT5", "writable": true, "homekitType": "WindowCovering" }
+  ]
+}
+```
+
+Connects to a KNXnet/IP gateway or IP router. Requires `npm install knx`.
+
+**Group address fields:**
+
+| Field | Required | Description |
+|---|---|---|
+| `address` | Yes | KNX group address in `x/y/z` format |
+| `name` | Yes | Display name on the dashboard |
+| `dpt` | Yes | Data point type: `DPT1`, `DPT5`, `DPT9`, `DPT14` |
+| `unit` | No | Display unit (e.g. `°C`, `%`, `lx`) |
+| `readable` | No | Issue read request on connect (default `true`) |
+| `writable` | No | Allow write commands from the dashboard / HomeKit |
+| `homekitType` | No | Override HomeKit service type (e.g. `Switch`, `TemperatureSensor`, `HumiditySensor`) |
+
+**Supported DPT types:**
+
+| DPT | Size | Range | Typical use |
+|---|---|---|---|
+| `DPT1` | 1 bit | `true` / `false` | Switch, on/off |
+| `DPT5` | 1 byte | 0–255 | Dimmer, percentage, counter |
+| `DPT9` | 2 bytes | KNX float | Temperature, humidity, lux |
+| `DPT14` | 4 bytes | IEEE 754 float | Power, energy, general |
+
+### `ffmpegRtsp`
+
+```json
+"ffmpegRtsp": {
+  "enabled": true,
+  "basePort": 8554,
+  "ffmpegPath": "ffmpeg"
+}
+```
+
+Re-streams each camera's RTSP URL through a built-in per-camera RTSP server so Loxone (or any other RTSP client) can connect to a stable local URL. Requires `ffmpeg` installed on the server.
+
+- `basePort` — first port in the range; camera 0 → `basePort`, camera 1 → `basePort + 1`, etc.
+- `ffmpegPath` — full path to the `ffmpeg` binary, or just `"ffmpeg"` if it is on `$PATH`
+- Each camera stream is available at `rtsp://<host>:<port>/<camera-slug>`
+- FFmpeg runs in listen mode per camera and restarts automatically after each client disconnects (truly on-demand)
+
+The **Settings → Cameras → FFmpeg RTSP Proxy** section shows the ready-to-paste RTSP URLs for each camera.
 
 ### `sip`
 
@@ -774,6 +832,48 @@ Integrates **ESPHome** ESP32/ESP8266 devices via their built-in **HTTP REST API*
 
 ---
 
+### `src/knx-client.js`
+
+Integrates **KNX** bus devices via a **KNXnet/IP gateway or IP router** over the local network.
+
+**Protocol:** Uses the `knx` npm package (`npm install knx`) which connects to the gateway via KNXnet/IP UDP tunneling. The gateway host and port (`3671`) are configured in `config.json`.
+
+**Group address lifecycle:**
+1. On connect, issues a read request for every group address with `readable: true`
+2. Listens for `GroupValue_Write` and `GroupValue_Response` telegrams from the bus
+3. Decodes raw KNX bytes to JavaScript values using the configured DPT
+4. Updates the sensor registry so values appear on the dashboard in real time
+
+**DPT decoding:**
+- `DPT1` — 1-bit boolean
+- `DPT5` — 1-byte unsigned integer (0–255)
+- `DPT9` — 2-byte KNX float (sign + 4-bit exponent + 11-bit mantissa, 0.01 resolution)
+- `DPT14` — 4-byte IEEE 754 big-endian float
+
+**Write commands:** Writable group addresses accept commands via `POST /api/device/knx%2F<host>/command`. Values are re-encoded to KNX wire format before sending.
+
+**Config:** See [`knx`](#knx) config section above.
+
+---
+
+### `src/ffmpeg-rtsp.js`
+
+Runs a per-camera **FFmpeg RTSP proxy** so Loxone, VLC, or any RTSP client can connect to a stable local URL without needing access to the original camera credentials or stream format.
+
+**How it works:**
+1. For each camera entry in `config.cameras` that has a `url` (RTSP source), an FFmpeg process is spawned on `basePort + cameraIndex`
+2. FFmpeg uses `-rtsp_flags listen` — it waits passively for a client to connect before opening the source stream (truly on-demand, no wasted bandwidth)
+3. When the client disconnects FFmpeg exits; the module restarts it after 2 s so it's ready for the next connection
+4. The proxy URL follows the pattern `rtsp://<server-ip>:<port>/<camera-slug>` where `slug` is the camera name lowercased and hyphenated
+
+**Status:** The Settings page **Cameras → FFmpeg RTSP Proxy** table shows each camera's URL and whether the FFmpeg process is currently active (client connected) or waiting.
+
+**Requires:** `ffmpeg` binary on `$PATH`, or set `ffmpegRtsp.ffmpegPath` to the absolute path.
+
+**Config:** See [`ffmpegRtsp`](#ffmpegrtsp) config section above.
+
+---
+
 ## Security & Auth
 
 ### User Accounts
@@ -1099,6 +1199,7 @@ The `:key` uses `/` separators — use the exact key returned by `GET /api/devic
 | Dirigera | `dirigera/<id>` | `dirigera/outlet_abc` |
 | Waveshare | `waveshare/<host>` | `waveshare/192.168.1.50` |
 | ESPHome | `esphome/<host>` | `esphome/192.168.1.80` |
+| KNX | `knx/<host>` | `knx/192.168.1.100` |
 
 **Example — list all devices:**
 
@@ -1377,3 +1478,6 @@ Log files are written to `logs/` (gitignored). Each category has its own file pl
 - Optional npm packages (install separately if needed):
   - `acme-client` — Let's Encrypt support
   - `node-tradfri-client` — IKEA Tradfri gateway support
+  - `knx` — KNX bus integration (`npm install knx`)
+- Optional system tools (install separately):
+  - `ffmpeg` — FFmpeg RTSP proxy for Loxone / RTSP clients
