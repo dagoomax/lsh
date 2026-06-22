@@ -17,6 +17,13 @@
     "token": "",
     "deviceIds": []
   },
+  "homey": {
+    "mode": "local",
+    "host": "192.168.1.x",
+    "homeyId": "",
+    "token": "",
+    "pollInterval": 10
+  },
   "satel": {
     "host": "192.168.1.100",
     "port": 7094,

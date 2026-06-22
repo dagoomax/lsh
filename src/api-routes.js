@@ -726,6 +726,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.tradfri?.psk)      safe.tradfri.psk      = '••••••••';
     if (safe.sip?.password)     safe.sip.password     = '••••••••';
     if (safe.tradfri?.securityCode) safe.tradfri.securityCode = '••••••••';
+    if (safe.homey?.token)          safe.homey.token          = '••••••••';
     if (safe.shelly?.devices) {
       safe.shelly.devices = safe.shelly.devices.map(d =>
         d.password ? { ...d, password: '••••••••' } : d
@@ -810,6 +811,55 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       client.end(true);
       res.json({ success: false, error: err.message });
     });
+  });
+
+  // ── Homey ──────────────────────────────────────────────────────────────
+
+  router.post('/settings/test-homey', async (req, res) => {
+    const { mode = 'local', host, homeyId, token } = req.body;
+    if (!token) return res.status(400).json({ success: false, error: 'token is required' });
+
+    let baseUrl;
+    if (mode === 'cloud') {
+      if (!homeyId) return res.status(400).json({ success: false, error: 'homeyId is required for cloud mode' });
+      baseUrl = `https://${homeyId}.connect.athom.com`;
+    } else {
+      if (!host) return res.status(400).json({ success: false, error: 'host is required for local mode' });
+      baseUrl = `http://${host}`;
+    }
+
+    try {
+      const r = await fetch(`${baseUrl}/api/manager/devices/device`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) return res.json({ success: false, error: `HTTP ${r.status} — check host and token` });
+      const data = await r.json();
+      const count = Array.isArray(data) ? data.length : Object.keys(data).length;
+      res.json({ success: true, message: `Connected — ${count} device(s) found` });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/homey', (req, res) => {
+    const current = readConfigFile();
+    const { mode, host, homeyId, token, pollInterval } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        homey: {
+          mode:         mode         || current.homey?.mode         || 'local',
+          host:         host         || current.homey?.host         || '',
+          homeyId:      homeyId      || current.homey?.homeyId      || '',
+          token:        (token && !token.includes('•')) ? token : (current.homey?.token || ''),
+          pollInterval: pollInterval != null ? parseInt(pollInterval) : (current.homey?.pollInterval ?? 10),
+        },
+      });
+      res.json({ success: true, message: 'Homey settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   // ── Loxone ─────────────────────────────────────────────────────────────

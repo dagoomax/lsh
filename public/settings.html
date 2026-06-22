@@ -168,6 +168,49 @@
       </div>
     </section>
 
+    <!-- Homey -->
+    <section class="card settings-card">
+      <h2>Homey <span class="badge">Optional</span></h2>
+      <p class="section-desc">Connects to Athom Homey Pro 2023+ or Homey Cloud. All devices (lights, switches, sensors, thermostats, locks) are auto-discovered and appear in the dashboard with full control.</p>
+
+      <div class="form-row">
+        <label for="homey-mode">Connection Mode</label>
+        <select id="homey-mode" style="background:var(--bg);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:.95rem;padding:10px 14px;outline:none;width:100%;transition:border-color .15s">
+          <option value="local">Local (Homey Pro — same network)</option>
+          <option value="cloud">Cloud (Homey Cloud / remote)</option>
+        </select>
+      </div>
+
+      <div id="homey-local-fields">
+        <div class="form-row">
+          <label for="homey-host">Homey IP Address <span class="hint">(Settings → General → IP Address in the Homey app)</span></label>
+          <input type="text" id="homey-host" placeholder="192.168.1.x">
+        </div>
+      </div>
+
+      <div id="homey-cloud-fields" style="display:none">
+        <div class="form-row">
+          <label for="homey-id">Homey Cloud ID <span class="hint">(from my.homey.app → your Homey → Settings → API)</span></label>
+          <input type="text" id="homey-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label for="homey-token">Personal Access Token <span class="hint">(my.homey.app → Account → Security → Tokens)</span></label>
+        <input type="password" id="homey-token" placeholder="••••••••••••••••••••••••••••••••">
+      </div>
+      <div class="form-row">
+        <label for="homey-poll">Poll Interval <span class="hint">(seconds, default 10)</span></label>
+        <input type="number" id="homey-poll" placeholder="10" min="5" max="300" style="max-width:120px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-homey">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-homey">Save</button>
+        <span class="test-result" id="homey-test-result"></span>
+      </div>
+    </section>
+
     <!-- Satel -->
     <section class="card settings-card">
       <h2>Satel INTEGRA <span class="badge">Optional</span></h2>

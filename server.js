@@ -189,6 +189,15 @@ async function main() {
     }
   }
 
+  // Start Homey client if configured
+  if (config.homey?.token && (config.homey?.host || config.homey?.homeyId)) {
+    const HomeyClient = tryRequire('./src/homey-client');
+    if (HomeyClient) {
+      const homey = new HomeyClient(config, store, sensorRegistry);
+      homey.start().catch((err) => console.error(`[Homey] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Loxone client if configured
   let loxoneClient = null;
   if (config.loxone?.host) {

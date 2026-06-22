@@ -28,6 +28,16 @@ async function loadSettings() {
     setVal('st-token', data.smartthings?.token || '');
     setVal('st-device-ids', (data.smartthings?.deviceIds || []).join(', '));
 
+    // Homey
+    const homeyMode = data.homey?.mode || 'local';
+    setVal('homey-mode', homeyMode);
+    setVal('homey-host', data.homey?.host || '');
+    setVal('homey-id',   data.homey?.homeyId || '');
+    setVal('homey-token',data.homey?.token ? '••••••••' : '');
+    setVal('homey-poll', data.homey?.pollInterval ?? 10);
+    document.getElementById('homey-local-fields').style.display = homeyMode === 'cloud' ? 'none' : '';
+    document.getElementById('homey-cloud-fields').style.display = homeyMode === 'cloud' ? ''     : 'none';
+
     // Satel
     setVal('satel-host', data.satel?.host || '');
     setVal('satel-port', data.satel?.port || 7094);
@@ -533,6 +543,67 @@ document.getElementById('btn-save-smartthings').addEventListener('click', async 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: getVal('st-token'), deviceIds }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Homey test + save ─────────────────────────────────────────────────────
+
+document.getElementById('homey-mode').addEventListener('change', (e) => {
+  const cloud = e.target.value === 'cloud';
+  document.getElementById('homey-local-fields').style.display = cloud ? 'none' : '';
+  document.getElementById('homey-cloud-fields').style.display = cloud ? ''     : 'none';
+});
+
+document.getElementById('btn-test-homey').addEventListener('click', async () => {
+  const resultEl = document.getElementById('homey-test-result');
+  const mode  = getVal('homey-mode');
+  const token = getVal('homey-token');
+  if (!token || token.includes('•')) {
+    resultEl.textContent = 'Enter a valid token first';
+    resultEl.className = 'test-result err';
+    return;
+  }
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result loading';
+  try {
+    const res = await fetch('/api/settings/test-homey', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, host: getVal('homey-host'), homeyId: getVal('homey-id'), token }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-homey').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-homey');
+  const resultEl = document.getElementById('homey-test-result');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/settings/homey', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode:         getVal('homey-mode'),
+        host:         getVal('homey-host'),
+        homeyId:      getVal('homey-id'),
+        token:        getVal('homey-token'),
+        pollInterval: parseInt(getVal('homey-poll') || '10'),
+      }),
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
