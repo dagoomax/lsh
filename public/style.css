@@ -320,7 +320,7 @@ main {
 
 .flow-diagram {
   display: grid;
-  grid-template-columns: 1fr 72px 1fr 72px 1fr;
+  grid-template-columns: 1fr 88px 1fr 88px 1fr;
   grid-template-rows: auto 44px auto;
   align-items: center;
   padding: 8px 0 4px;
@@ -400,100 +400,120 @@ main {
   transition: width 0.5s ease, background 0.5s ease;
 }
 
-/* ── Horizontal flow connector ────────────────────────── */
+/* ── Flow connectors (curved SVG) ─────────────────────── */
 .flow-conn-h {
-  display: flex;
-  align-items: center;
-  gap: 0;
+  align-self: center;
   width: 100%;
+  height: 42px;
 }
 
-.fc-line {
-  flex: 1;
-  height: 2px;
-  background: var(--card-border);
-  border-radius: 1px;
-  transition: background 0.3s;
-}
-
-.fc-arrow {
-  font-size: 10px;
-  color: var(--card-border);
-  flex-shrink: 0;
-  transition: color 0.3s;
-  line-height: 1;
-}
-
-.flow-conn-h.fc-active .fc-line {
-  background: repeating-linear-gradient(
-    90deg,
-    var(--fc-clr, var(--accent-blue)) 0, var(--fc-clr, var(--accent-blue)) 7px,
-    transparent 7px, transparent 14px
-  );
-  animation: march-h 0.55s linear infinite;
-}
-
-.flow-conn-h.fc-active .fc-arrow {
-  color: var(--fc-clr, var(--accent-blue));
-}
-
-@keyframes march-h {
-  from { background-position: 0 0; }
-  to   { background-position: 14px 0; }
-}
-
-/* ── Vertical flow connector (Grid ↕ Battery) ─────────── */
 .flow-conn-v {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  width: 24px;
   height: 100%;
-  width: 20px;
-  gap: 2px;
+  justify-self: center;
 }
 
-.fc-line-v {
-  flex: 1;
-  width: 2px;
-  background: var(--card-border);
-  border-radius: 1px;
-  transition: background 0.3s;
+.fc-svg, .fc-svg-v {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.fc-arrow-v {
-  font-size: 9px;
-  color: var(--card-border);
-  line-height: 1;
-  flex-shrink: 0;
-  transition: color 0.3s;
+/* Track — subtle static curve */
+.fc-track {
+  stroke: rgba(255,255,255,0.07);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  fill: none;
+  transition: stroke 0.4s;
 }
 
-.flow-conn-v.fc-active .fc-arrow-v { color: var(--accent-blue); }
-
-.flow-conn-v.fc-importing .fc-line-v {
-  background: repeating-linear-gradient(
-    180deg,
-    var(--accent-blue) 0, var(--accent-blue) 7px,
-    transparent 7px, transparent 14px
-  );
-  animation: march-v-up 0.55s linear infinite;
+/* Arrowhead chevrons (vertical connector only) */
+.fc-arrowhead-v {
+  stroke: rgba(255,255,255,0.18);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  transition: stroke 0.4s;
 }
 
-.flow-conn-v.fc-exporting .fc-line-v {
-  background: repeating-linear-gradient(
-    180deg,
-    var(--accent-blue) 0, var(--accent-blue) 7px,
-    transparent 7px, transparent 14px
-  );
-  animation: march-v-down 0.55s linear infinite;
+/* Animated flow curve */
+.fc-flow {
+  stroke: var(--fc-clr, var(--accent-blue));
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  fill: none;
+  opacity: 0;
+  stroke-dasharray: 6 8;
+  transition: opacity 0.35s;
 }
 
-@keyframes march-v-up   { from { background-position: 0 0; } to { background-position: 0 -14px; } }
-@keyframes march-v-down { from { background-position: 0 0; } to { background-position: 0  14px; } }
+.fc-flow-v {
+  stroke: var(--accent-blue);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  fill: none;
+  opacity: 0;
+  stroke-dasharray: 6 8;
+  transition: opacity 0.35s;
+}
+
+/* Up/down arrowhead toggle */
+.fc-arrow-up   { display: block; }
+.fc-arrow-down { display: none; }
+.flow-conn-v.fc-exporting .fc-arrow-up   { display: none; }
+.flow-conn-v.fc-exporting .fc-arrow-down { display: block; }
+
+/* ── Active horizontal ──────────────────────────────── */
+.flow-conn-h.fc-active .fc-track {
+  stroke: color-mix(in srgb, var(--fc-clr, var(--accent-blue)) 22%, transparent);
+  stroke-width: 2;
+}
+.flow-conn-h.fc-active .fc-flow {
+  opacity: 1;
+  animation: flowH 0.85s linear infinite;
+  filter:
+    drop-shadow(0 0 3px var(--fc-clr, var(--accent-blue)))
+    drop-shadow(0 0 10px var(--fc-clr, var(--accent-blue)));
+}
+
+@keyframes flowH {
+  from { stroke-dashoffset: 14; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* ── Active vertical ────────────────────────────────── */
+.flow-conn-v.fc-active .fc-track {
+  stroke: color-mix(in srgb, var(--accent-blue) 22%, transparent);
+  stroke-width: 2;
+}
+.flow-conn-v.fc-active .fc-arrowhead-v {
+  stroke: var(--accent-blue);
+  filter: drop-shadow(0 0 4px var(--accent-blue));
+}
+.flow-conn-v.fc-importing .fc-flow-v {
+  opacity: 1;
+  animation: flowVUp 0.85s linear infinite;
+  filter:
+    drop-shadow(0 0 3px var(--accent-blue))
+    drop-shadow(0 0 10px var(--accent-blue));
+}
+.flow-conn-v.fc-exporting .fc-flow-v {
+  opacity: 1;
+  animation: flowVDown 0.85s linear infinite;
+  filter:
+    drop-shadow(0 0 3px var(--accent-blue))
+    drop-shadow(0 0 10px var(--accent-blue));
+}
+
+@keyframes flowVUp   { from { stroke-dashoffset: 14; } to { stroke-dashoffset: 0; } }
+@keyframes flowVDown { from { stroke-dashoffset: 0;  } to { stroke-dashoffset: 14; } }
 
 @media (max-width: 640px) {
   .flow-diagram {
-    grid-template-columns: 1fr 52px 1fr 52px 1fr;
+    grid-template-columns: 1fr 60px 1fr 60px 1fr;
     grid-template-rows: auto 36px auto;
   }
   .fn-icon { width: 38px; height: 38px; }
@@ -501,6 +521,7 @@ main {
   .fn-val  { font-size: 1.05rem; }
   .fn-soc  { font-size: 1.4rem; }
   .fn-bat  { padding: 10px 10px; }
+  .flow-conn-h { height: 32px; }
 }
 
 .metric-large {

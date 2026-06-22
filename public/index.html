@@ -90,8 +90,10 @@
         </div>
         <!-- Connector: Solar → Battery -->
         <div class="flow-conn-h fc-s2b" id="fc-s2b">
-          <div class="fc-line"></div>
-          <div class="fc-arrow">▶</div>
+          <svg class="fc-svg" viewBox="0 0 72 38" xmlns="http://www.w3.org/2000/svg">
+            <path class="fc-track" d="M 1,30 C 20,30 52,8 71,30"/>
+            <path class="fc-flow"  d="M 1,30 C 20,30 52,8 71,30"/>
+          </svg>
         </div>
         <!-- Battery node (center) -->
         <div class="flow-node fn-bat">
@@ -110,8 +112,10 @@
         </div>
         <!-- Connector: Battery → Loads -->
         <div class="flow-conn-h fc-b2l" id="fc-b2l">
-          <div class="fc-line"></div>
-          <div class="fc-arrow">▶</div>
+          <svg class="fc-svg" viewBox="0 0 72 38" xmlns="http://www.w3.org/2000/svg">
+            <path class="fc-track" d="M 1,30 C 20,30 52,8 71,30"/>
+            <path class="fc-flow"  d="M 1,30 C 20,30 52,8 71,30"/>
+          </svg>
         </div>
         <!-- Loads node -->
         <div class="flow-node fn-loads">
@@ -126,8 +130,12 @@
         </div>
         <!-- Vertical connector: Grid ↕ Battery -->
         <div class="flow-conn-v" id="fc-g2b">
-          <div class="fc-line-v"></div>
-          <span class="fc-arrow-v" id="fc-g2b-arrow">▲</span>
+          <svg class="fc-svg-v" viewBox="0 0 20 44" xmlns="http://www.w3.org/2000/svg">
+            <path class="fc-track"   d="M 10,3 Q 17,22 10,41"/>
+            <path class="fc-flow-v"  d="M 10,3 Q 17,22 10,41"/>
+            <polyline class="fc-arrowhead-v fc-arrow-up"   points="5,11 10,3 15,11"/>
+            <polyline class="fc-arrowhead-v fc-arrow-down" points="5,33 10,41 15,33"/>
+          </svg>
         </div>
         <!-- Grid node -->
         <div class="flow-node fn-grid">
