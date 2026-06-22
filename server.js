@@ -189,6 +189,15 @@ async function main() {
     }
   }
 
+  // Start Dreame client if configured
+  if (config.dreame?.devices?.length) {
+    const DreameClient = tryRequire('./src/dreame-client');
+    if (DreameClient) {
+      const dreame = new DreameClient(config, store, sensorRegistry);
+      dreame.start().catch((err) => console.error(`[Dreame] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Homey client if configured
   if (config.homey?.token && (config.homey?.host || config.homey?.homeyId)) {
     const HomeyClient = tryRequire('./src/homey-client');

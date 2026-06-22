@@ -17,6 +17,11 @@
     "token": "",
     "deviceIds": []
   },
+  "dreame": {
+    "devices": [
+      { "name": "L10S Vacuum", "host": "192.168.1.x", "token": "00000000000000000000000000000000", "type": "vacuum" }
+    ]
+  },
   "homey": {
     "mode": "local",
     "host": "192.168.1.x",

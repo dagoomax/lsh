@@ -28,6 +28,9 @@ async function loadSettings() {
     setVal('st-token', data.smartthings?.token || '');
     setVal('st-device-ids', (data.smartthings?.deviceIds || []).join(', '));
 
+    // Dreame
+    renderDreameList(data.dreame?.devices || []);
+
     // Homey
     const homeyMode = data.homey?.mode || 'local';
     setVal('homey-mode', homeyMode);
@@ -553,6 +556,109 @@ document.getElementById('btn-save-smartthings').addEventListener('click', async 
   } finally {
     btn.disabled = false;
   }
+});
+
+// ── Dreame device list ────────────────────────────────────────────────────
+
+let currentDreameDevices = [];
+
+function renderDreameList(devices) {
+  currentDreameDevices = devices;
+  const container = document.getElementById('dreame-devices-list');
+  container.innerHTML = '';
+
+  if (!devices.length) {
+    container.innerHTML = '<p class="hint" style="margin-bottom:12px">No Dreame devices configured yet.</p>';
+    return;
+  }
+
+  devices.forEach((dev, i) => {
+    const row = document.createElement('div');
+    row.className = 'shelly-row';  // reuse same row layout
+    row.dataset.index = i;
+    row.innerHTML = `
+      <div class="shelly-row-fields" style="grid-template-columns:1fr 1fr 1fr auto">
+        <input type="text"     class="dreame-name"  placeholder="Name (optional)"     value="${escapeVal(dev.name  || '')}">
+        <input type="text"     class="dreame-host"  placeholder="192.168.1.x"         value="${escapeVal(dev.host  || '')}">
+        <input type="password" class="dreame-token" placeholder="32-char hex token"   value="${escapeVal(dev.token ? '••••••••' : '')}">
+        <select class="dreame-type" style="background:var(--bg);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:.85rem;padding:8px 10px;outline:none">
+          <option value="vacuum"   ${dev.type !== 'purifier' ? 'selected' : ''}>Robot Vacuum</option>
+          <option value="purifier" ${dev.type === 'purifier' ? 'selected' : ''}>Air Purifier</option>
+        </select>
+      </div>
+      <button class="btn btn-remove shelly-remove" title="Remove">✕</button>`;
+
+    row.querySelector('.shelly-remove').addEventListener('click', () => {
+      currentDreameDevices = collectDreameDevices();
+      currentDreameDevices.splice(i, 1);
+      renderDreameList(currentDreameDevices);
+    });
+
+    const testBtn = document.createElement('button');
+    testBtn.className = 'btn btn-secondary shelly-test-one';
+    testBtn.textContent = 'Test';
+    testBtn.style.marginTop = '4px';
+    testBtn.addEventListener('click', async () => {
+      const host  = row.querySelector('.dreame-host').value.trim();
+      const token = row.querySelector('.dreame-token').value.trim();
+      if (!host || !token || token.includes('•')) return;
+      testBtn.disabled = true;
+      testBtn.textContent = '…';
+      try {
+        const r = await fetch('/api/settings/test-dreame', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host, token }),
+        });
+        const json = await r.json();
+        testBtn.textContent = json.success ? '✓' : '✗';
+        testBtn.title = json.message || json.error || '';
+        setTimeout(() => { testBtn.textContent = 'Test'; testBtn.title = ''; }, 3000);
+      } catch (err) {
+        testBtn.textContent = '✗';
+        testBtn.title = err.message;
+        setTimeout(() => { testBtn.textContent = 'Test'; testBtn.title = ''; }, 3000);
+      } finally { testBtn.disabled = false; }
+    });
+    row.querySelector('.shelly-row-fields').after(testBtn);
+    container.appendChild(row);
+  });
+}
+
+function collectDreameDevices() {
+  return Array.from(document.querySelectorAll('#dreame-devices-list .shelly-row')).map(row => ({
+    name:  row.querySelector('.dreame-name').value.trim(),
+    host:  row.querySelector('.dreame-host').value.trim(),
+    token: row.querySelector('.dreame-token').value.trim(),
+    type:  row.querySelector('.dreame-type').value,
+  })).filter(d => d.host);
+}
+
+document.getElementById('btn-add-dreame').addEventListener('click', () => {
+  currentDreameDevices = collectDreameDevices();
+  currentDreameDevices.push({ name: '', host: '', token: '', type: 'vacuum' });
+  renderDreameList(currentDreameDevices);
+  const rows = document.querySelectorAll('#dreame-devices-list .shelly-row');
+  rows[rows.length - 1]?.querySelector('.dreame-host')?.focus();
+});
+
+document.getElementById('btn-save-dreame').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-dreame');
+  const resultEl = document.getElementById('dreame-save-result');
+  btn.disabled   = true;
+  try {
+    const devices = collectDreameDevices();
+    const res = await fetch('/api/settings/dreame', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(devices),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+    if (json.success) { currentDreameDevices = devices; renderDreameList(devices); }
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
 });
 
 // ── Homey test + save ─────────────────────────────────────────────────────
