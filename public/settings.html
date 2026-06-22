@@ -27,9 +27,9 @@
       <span class="logo-text">LoxoneSwaggerHelper</span>
     </div>
     <nav class="header-nav">
-      <a href="/" class="nav-link">Dashboard</a>
-      <a href="/settings.html" class="nav-link active">Settings</a>
-      <a href="/logs.html" class="nav-link">Logs</a>
+      <a href="/" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
+      <a href="/settings.html" class="nav-link active" data-i18n="nav.settings">Settings</a>
+      <a href="/logs.html" class="nav-link" data-i18n="nav.logs">Logs</a>
       <a href="/mqtt.html" class="nav-link">MQTT</a>
     </nav>
     <button class="theme-toggle" id="btn-theme"></button>
@@ -39,54 +39,54 @@
 
     <!-- MQTT -->
     <section class="card settings-card">
-      <h2>Cerbo GX – MQTT Connection</h2>
+      <h2 data-i18n="s.mqtt_title">Cerbo GX – MQTT Connection</h2>
       <p class="section-desc">Direct local connection to your Cerbo GX (recommended).</p>
 
       <div class="form-row">
-        <label for="mqtt-host">Host / IP Address</label>
+        <label for="mqtt-host" data-i18n="s.mqtt_host">Host / IP Address</label>
         <input type="text" id="mqtt-host" placeholder="192.168.1.100">
       </div>
       <div class="form-row">
-        <label for="mqtt-port">Port</label>
+        <label for="mqtt-port" data-i18n="s.mqtt_port">Port</label>
         <input type="number" id="mqtt-port" placeholder="1883" min="1" max="65535">
       </div>
       <div class="form-row">
-        <label for="mqtt-portal">Portal ID <span class="hint">(leave blank to auto-discover)</span></label>
+        <label for="mqtt-portal"><span data-i18n="s.mqtt_portal">Portal ID</span> <span class="hint" data-i18n="s.mqtt_portal_hint">(leave blank to auto-discover)</span></label>
         <input type="text" id="mqtt-portal" placeholder="e0ff50a097c0">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-mqtt">Test Connection</button>
+        <button class="btn btn-secondary" id="btn-test-mqtt" data-i18n="common.test">Test Connection</button>
         <span class="test-result" id="mqtt-test-result"></span>
       </div>
     </section>
 
     <!-- VRM -->
     <section class="card settings-card">
-      <h2>VRM Cloud API <span class="badge">Fallback</span></h2>
+      <h2><span data-i18n="s.vrm_title">VRM Cloud API</span> <span class="badge" data-i18n="common.fallback">Fallback</span></h2>
       <p class="section-desc">Used when local MQTT is unavailable.</p>
 
       <div class="form-row">
-        <label for="vrm-api-token">API Token <span class="hint">(preferred — leave blank to use email/password)</span></label>
+        <label for="vrm-api-token"><span data-i18n="s.vrm_token">API Token</span> <span class="hint" data-i18n="s.vrm_token_hint">(preferred — leave blank to use email/password)</span></label>
         <input type="password" id="vrm-api-token" placeholder="eyJ0eXAiOiJKV1QiLCJhbGciOi…">
       </div>
       <div class="form-row">
-        <label for="vrm-email">VRM Email</label>
+        <label for="vrm-email" data-i18n="s.vrm_email">VRM Email</label>
         <input type="email" id="vrm-email" placeholder="you@example.com">
       </div>
       <div class="form-row">
-        <label for="vrm-password">VRM Password</label>
+        <label for="vrm-password" data-i18n="s.vrm_password">VRM Password</label>
         <input type="password" id="vrm-password" placeholder="••••••••">
       </div>
       <div class="form-row">
-        <label for="vrm-id">Installation ID</label>
+        <label for="vrm-id" data-i18n="s.vrm_id">Installation ID</label>
         <input type="text" id="vrm-id" placeholder="12345">
       </div>
 
       <div class="form-actions vrm-actions">
-        <button class="btn btn-secondary" id="btn-test-vrm">Test Credentials</button>
-        <button class="btn btn-secondary" id="btn-test-vrm-live">Test Live Data</button>
-        <button class="btn btn-primary"   id="btn-save-vrm">Save</button>
+        <button class="btn btn-secondary" id="btn-test-vrm" data-i18n="common.test_creds">Test Credentials</button>
+        <button class="btn btn-secondary" id="btn-test-vrm-live" data-i18n="common.test_live">Test Live Data</button>
+        <button class="btn btn-primary"   id="btn-save-vrm" data-i18n="common.save">Save</button>
       </div>
       <div class="test-result" id="vrm-test-result"></div>
 
@@ -94,31 +94,31 @@
       <div id="vrm-live-panel" class="vrm-live-panel" style="display:none">
         <div class="vrm-live-title">
           <span id="vrm-inst-name">—</span>
-          <span class="vrm-live-badge">Live via Cloud</span>
+          <span class="vrm-live-badge" data-i18n="s.vrm_live_badge">Live via Cloud</span>
         </div>
         <div class="vrm-live-grid">
           <div class="vrm-live-item">
-            <span class="vrm-live-label">Battery SOC</span>
+            <span class="vrm-live-label" data-i18n="s.vrm_live_soc">Battery SOC</span>
             <span class="vrm-live-value" id="vl-soc">--</span>
           </div>
           <div class="vrm-live-item">
-            <span class="vrm-live-label">Battery Voltage</span>
+            <span class="vrm-live-label" data-i18n="s.vrm_live_voltage">Battery Voltage</span>
             <span class="vrm-live-value" id="vl-voltage">--</span>
           </div>
           <div class="vrm-live-item">
-            <span class="vrm-live-label">Solar Power</span>
+            <span class="vrm-live-label" data-i18n="s.vrm_live_solar">Solar Power</span>
             <span class="vrm-live-value" id="vl-solar">--</span>
           </div>
           <div class="vrm-live-item">
-            <span class="vrm-live-label">Grid Power</span>
+            <span class="vrm-live-label" data-i18n="s.vrm_live_grid">Grid Power</span>
             <span class="vrm-live-value" id="vl-grid">--</span>
           </div>
           <div class="vrm-live-item">
-            <span class="vrm-live-label">AC Consumption</span>
+            <span class="vrm-live-label" data-i18n="s.vrm_live_consumption">AC Consumption</span>
             <span class="vrm-live-value" id="vl-consumption">--</span>
           </div>
           <div class="vrm-live-item">
-            <span class="vrm-live-label">System State</span>
+            <span class="vrm-live-label" data-i18n="s.vrm_live_state">System State</span>
             <span class="vrm-live-value" id="vl-state">--</span>
           </div>
         </div>
@@ -128,429 +128,429 @@
 
     <!-- SolarEdge -->
     <section class="card settings-card">
-      <h2>SolarEdge <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.se_title">SolarEdge</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Adds real-time solar production data from the SolarEdge Monitoring API. Runs alongside Victron data sources.</p>
 
       <div class="form-row">
-        <label for="se-site-id">Site ID</label>
+        <label for="se-site-id" data-i18n="s.se_site_id">Site ID</label>
         <input type="text" id="se-site-id" placeholder="12345">
       </div>
       <div class="form-row">
-        <label for="se-api-key">API Key</label>
+        <label for="se-api-key" data-i18n="s.se_api_key">API Key</label>
         <input type="password" id="se-api-key" placeholder="••••••••••••••••••••••••••••••••">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-solaredge">Test Connection</button>
-        <button class="btn btn-primary" id="btn-save-solaredge">Save</button>
+        <button class="btn btn-secondary" id="btn-test-solaredge" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary" id="btn-save-solaredge" data-i18n="common.save">Save</button>
         <span class="test-result" id="se-test-result"></span>
       </div>
     </section>
 
     <!-- SmartThings -->
     <section class="card settings-card">
-      <h2>Samsung SmartThings <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.st_title">Samsung SmartThings</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Adds SmartThings devices (switches, power meters, sensors) to the dashboard. Get a Personal Access Token from <strong>account.smartthings.com/tokens</strong>.</p>
 
       <div class="form-row">
-        <label for="st-token">Personal Access Token</label>
+        <label for="st-token" data-i18n="s.st_token">Personal Access Token</label>
         <input type="password" id="st-token" placeholder="••••••••••••••••••••••••••••••••••••">
       </div>
       <div class="form-row">
-        <label for="st-device-ids">Device IDs to sync <span class="hint">(comma-separated — leave blank for all devices)</span></label>
+        <label for="st-device-ids"><span data-i18n="s.st_device_ids">Device IDs to sync</span> <span class="hint" data-i18n="s.st_device_ids_hint">(comma-separated — leave blank for all devices)</span></label>
         <input type="text" id="st-device-ids" placeholder="abc123-..., def456-...">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-smartthings">Test Connection</button>
-        <button class="btn btn-primary" id="btn-save-smartthings">Save</button>
+        <button class="btn btn-secondary" id="btn-test-smartthings" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary" id="btn-save-smartthings" data-i18n="common.save">Save</button>
         <span class="test-result" id="st-test-result"></span>
       </div>
     </section>
 
     <!-- Homey -->
     <section class="card settings-card">
-      <h2>Homey <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.homey_title">Homey</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connects to Athom Homey Pro 2023+ or Homey Cloud. All devices (lights, switches, sensors, thermostats, locks) are auto-discovered and appear in the dashboard with full control.</p>
 
       <div class="form-row">
-        <label for="homey-mode">Connection Mode</label>
+        <label for="homey-mode" data-i18n="s.homey_mode">Connection Mode</label>
         <select id="homey-mode" style="background:var(--bg);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:.95rem;padding:10px 14px;outline:none;width:100%;transition:border-color .15s">
-          <option value="local">Local (Homey Pro — same network)</option>
-          <option value="cloud">Cloud (Homey Cloud / remote)</option>
+          <option value="local" data-i18n="s.homey_mode_local">Local (Homey Pro — same network)</option>
+          <option value="cloud" data-i18n="s.homey_mode_cloud">Cloud (Homey Cloud / remote)</option>
         </select>
       </div>
 
       <div id="homey-local-fields">
         <div class="form-row">
-          <label for="homey-host">Homey IP Address <span class="hint">(Settings → General → IP Address in the Homey app)</span></label>
+          <label for="homey-host"><span data-i18n="s.homey_host">Homey IP Address</span> <span class="hint" data-i18n="s.homey_host_hint">(Settings → General → IP Address in the Homey app)</span></label>
           <input type="text" id="homey-host" placeholder="192.168.1.x">
         </div>
       </div>
 
       <div id="homey-cloud-fields" style="display:none">
         <div class="form-row">
-          <label for="homey-id">Homey Cloud ID <span class="hint">(from my.homey.app → your Homey → Settings → API)</span></label>
+          <label for="homey-id"><span data-i18n="s.homey_id">Homey Cloud ID</span> <span class="hint" data-i18n="s.homey_id_hint">(from my.homey.app → your Homey → Settings → API)</span></label>
           <input type="text" id="homey-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
         </div>
       </div>
 
       <div class="form-row">
-        <label for="homey-token">Personal Access Token <span class="hint">(my.homey.app → Account → Security → Tokens)</span></label>
+        <label for="homey-token"><span data-i18n="s.homey_token">Personal Access Token</span> <span class="hint" data-i18n="s.homey_token_hint">(my.homey.app → Account → Security → Tokens)</span></label>
         <input type="password" id="homey-token" placeholder="••••••••••••••••••••••••••••••••">
       </div>
       <div class="form-row">
-        <label for="homey-poll">Poll Interval <span class="hint">(seconds, default 10)</span></label>
+        <label for="homey-poll"><span data-i18n="s.homey_poll">Poll Interval</span> <span class="hint" data-i18n="s.homey_poll_hint">(seconds, default 10)</span></label>
         <input type="number" id="homey-poll" placeholder="10" min="5" max="300" style="max-width:120px">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-homey">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-save-homey">Save</button>
+        <button class="btn btn-secondary" id="btn-test-homey" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-homey" data-i18n="common.save">Save</button>
         <span class="test-result" id="homey-test-result"></span>
       </div>
     </section>
 
     <!-- Dreame -->
     <section class="card settings-card">
-      <h2>Dreame <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.dreame_title">Dreame</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connects to Dreame robot vacuums and air purifiers locally via the Mi Home (miio) protocol. Each device needs its local IP and 32-char hex token — enable <strong>Developer mode</strong> in Mi Home, go to the device detail page, tap the three-dot menu → Share Device → 拷贝到剪贴板 to see the token, or use a third-party token extractor.</p>
 
       <div id="dreame-devices-list"></div>
 
-      <button class="btn btn-secondary btn-sm" id="btn-add-dreame" style="margin-top:10px">+ Add Device</button>
+      <button class="btn btn-secondary btn-sm" id="btn-add-dreame" style="margin-top:10px" data-i18n="common.add_device">+ Add Device</button>
 
       <div class="form-actions" style="margin-top:16px">
-        <button class="btn btn-primary" id="btn-save-dreame">Save Devices</button>
+        <button class="btn btn-primary" id="btn-save-dreame" data-i18n="common.save_devices">Save Devices</button>
         <span class="test-result" id="dreame-save-result"></span>
       </div>
     </section>
 
     <!-- Satel -->
     <section class="card settings-card">
-      <h2>Satel INTEGRA <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.satel_title">Satel INTEGRA</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connect to a Satel INTEGRA alarm panel via ETHM-1 Plus module (TCP port 7094). Zones and partitions appear as dashboard sensors.</p>
 
       <div class="form-row">
-        <label for="satel-host">ETHM-1 Plus Host / IP</label>
+        <label for="satel-host" data-i18n="s.satel_host">ETHM-1 Plus Host / IP</label>
         <input type="text" id="satel-host" placeholder="192.168.1.100">
       </div>
       <div class="form-row">
-        <label for="satel-port">Port <span class="hint">(default 7094)</span></label>
+        <label for="satel-port"><span data-i18n="s.satel_port">Port</span> <span class="hint" data-i18n="s.satel_port_hint">(default 7094)</span></label>
         <input type="number" id="satel-port" placeholder="7094" min="1" max="65535">
       </div>
       <div class="form-row">
-        <label for="satel-code">Arm / Disarm Code <span class="hint">(PIN for arming/disarming partitions)</span></label>
+        <label for="satel-code"><span data-i18n="s.satel_code">Arm / Disarm Code</span> <span class="hint" data-i18n="s.satel_code_hint">(PIN for arming/disarming partitions)</span></label>
         <input type="password" id="satel-code" placeholder="••••">
       </div>
       <div class="form-row">
-        <label for="satel-zone-count">Zone count <span class="hint">(how many zones to monitor)</span></label>
+        <label for="satel-zone-count"><span data-i18n="s.satel_zone_count">Zone count</span> <span class="hint" data-i18n="s.satel_zone_count_hint">(how many zones to monitor)</span></label>
         <input type="number" id="satel-zone-count" placeholder="32" min="1" max="128">
       </div>
       <div class="form-row">
-        <label for="satel-partitions">Partitions <span class="hint">(comma-separated, e.g. 1,2)</span></label>
+        <label for="satel-partitions"><span data-i18n="s.satel_partitions">Partitions</span> <span class="hint" data-i18n="s.satel_partitions_hint">(comma-separated, e.g. 1,2)</span></label>
         <input type="text" id="satel-partitions" placeholder="1">
       </div>
 
       <div class="names-section">
         <div class="names-header">
-          <span class="names-title">Zone Names</span>
-          <button class="btn btn-secondary btn-sm" id="btn-add-zone-name">+ Add</button>
+          <span class="names-title" data-i18n="s.satel_zone_names">Zone Names</span>
+          <button class="btn btn-secondary btn-sm" id="btn-add-zone-name" data-i18n="common.add">+ Add</button>
         </div>
         <div id="satel-zone-names-list" class="names-list"></div>
       </div>
 
       <div class="names-section">
         <div class="names-header">
-          <span class="names-title">Partition Names</span>
-          <button class="btn btn-secondary btn-sm" id="btn-add-partition-name">+ Add</button>
+          <span class="names-title" data-i18n="s.satel_partition_names">Partition Names</span>
+          <button class="btn btn-secondary btn-sm" id="btn-add-partition-name" data-i18n="common.add">+ Add</button>
         </div>
         <div id="satel-partition-names-list" class="names-list"></div>
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-satel">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-save-satel">Save</button>
+        <button class="btn btn-secondary" id="btn-test-satel" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-satel" data-i18n="common.save">Save</button>
         <span class="test-result" id="satel-test-result"></span>
       </div>
     </section>
 
     <!-- UniFi Protect -->
     <section class="card settings-card">
-      <h2>UniFi Protect <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.unifi_title">UniFi Protect</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Auto-discovers cameras (shown in dashboard) and sensors (door, motion, temperature, humidity) from a UniFi Dream Machine or UNVR.</p>
 
       <div class="form-row">
-        <label for="unifi-host">Console Host / IP</label>
+        <label for="unifi-host" data-i18n="s.unifi_host">Console Host / IP</label>
         <input type="text" id="unifi-host" placeholder="192.168.1.1">
       </div>
       <div class="form-row">
-        <label for="unifi-apikey">API Key <span class="hint">(preferred — from UniFi OS → Control Plane → API Keys)</span></label>
+        <label for="unifi-apikey"><span data-i18n="s.unifi_apikey">API Key</span> <span class="hint" data-i18n="s.unifi_apikey_hint">(preferred — from UniFi OS → Control Plane → API Keys)</span></label>
         <input type="password" id="unifi-apikey" placeholder="••••••••••••••••••••••••••••••••">
       </div>
       <div class="form-row">
-        <label for="unifi-user">Username <span class="hint">(fallback when no API key)</span></label>
+        <label for="unifi-user"><span data-i18n="s.unifi_user">Username</span> <span class="hint" data-i18n="s.unifi_user_hint">(fallback when no API key)</span></label>
         <input type="text" id="unifi-user" placeholder="admin">
       </div>
       <div class="form-row">
-        <label for="unifi-pass">Password</label>
+        <label for="unifi-pass" data-i18n="s.unifi_pass">Password</label>
         <input type="password" id="unifi-pass" placeholder="••••••••">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-unifi">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-save-unifi">Save</button>
+        <button class="btn btn-secondary" id="btn-test-unifi" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-unifi" data-i18n="common.save">Save</button>
         <span class="test-result" id="unifi-test-result"></span>
       </div>
     </section>
 
     <!-- Loxone -->
     <section class="card settings-card">
-      <h2>Loxone Miniserver <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.loxone_title">Loxone Miniserver</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connects to a Loxone Miniserver via WebSocket. All rooms, switches, dimmers, blinds, thermostats, and sensors are auto-discovered from the structure file.</p>
 
       <div class="form-row">
-        <label for="loxone-host">Miniserver Host / IP</label>
+        <label for="loxone-host" data-i18n="s.loxone_host">Miniserver Host / IP</label>
         <input type="text" id="loxone-host" placeholder="192.168.1.100">
       </div>
       <div class="form-row">
-        <label for="loxone-port">Port <span class="hint">(default 80)</span></label>
+        <label for="loxone-port"><span data-i18n="s.loxone_port">Port</span> <span class="hint" data-i18n="s.loxone_port_hint">(default 80)</span></label>
         <input type="number" id="loxone-port" placeholder="80" min="1" max="65535">
       </div>
       <div class="form-row">
-        <label for="loxone-user">Username</label>
+        <label for="loxone-user" data-i18n="s.loxone_user">Username</label>
         <input type="text" id="loxone-user" placeholder="admin">
       </div>
       <div class="form-row">
-        <label for="loxone-pass">Password</label>
+        <label for="loxone-pass" data-i18n="s.loxone_pass">Password</label>
         <input type="password" id="loxone-pass" placeholder="••••••••">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-loxone">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-save-loxone">Save</button>
+        <button class="btn btn-secondary" id="btn-test-loxone" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-loxone" data-i18n="common.save">Save</button>
         <span class="test-result" id="loxone-test-result"></span>
       </div>
     </section>
 
     <!-- SIP / Intercom -->
     <section class="card settings-card">
-      <h2>📞 SIP / Intercom <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.sip_title">📞 SIP / Intercom</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Register as a SIP extension on UniFi Talk, Loxone, or any SIP PBX with WebSocket transport. Incoming calls (e.g. from a UniFi Access door reader) pop up with the matching camera feed and a one-tap unlock button.</p>
 
       <div class="form-row">
-        <label for="sip-ws-url">WebSocket URL <span class="hint">wss://host:5443 (UniFi Talk) or ws://host:7778 (Loxone)</span></label>
+        <label for="sip-ws-url"><span data-i18n="s.sip_ws_url">WebSocket URL</span> <span class="hint">wss://host:5443 (UniFi Talk) or ws://host:7778 (Loxone)</span></label>
         <input type="text" id="sip-ws-url" placeholder="wss://192.168.1.1:5443">
       </div>
       <div class="form-row">
-        <label for="sip-username">Extension / Username</label>
+        <label for="sip-username" data-i18n="s.sip_username">Extension / Username</label>
         <input type="text" id="sip-username" placeholder="101">
       </div>
       <div class="form-row">
-        <label for="sip-domain">SIP Domain <span class="hint">(leave blank to use server host from URL)</span></label>
+        <label for="sip-domain"><span data-i18n="s.sip_domain">SIP Domain</span> <span class="hint" data-i18n="s.sip_domain_hint">(leave blank to use server host from URL)</span></label>
         <input type="text" id="sip-domain" placeholder="192.168.1.1">
       </div>
       <div class="form-row">
-        <label for="sip-password">Password</label>
+        <label for="sip-password" data-i18n="s.sip_pass">Password</label>
         <input type="password" id="sip-password" placeholder="••••••••">
       </div>
       <div class="form-row">
-        <label for="sip-display-name">Display Name <span class="hint">(shown to callee)</span></label>
+        <label for="sip-display-name"><span data-i18n="s.sip_display_name">Display Name</span> <span class="hint" data-i18n="s.sip_display_hint">(shown to callee)</span></label>
         <input type="text" id="sip-display-name" placeholder="LSH Dashboard">
       </div>
       <div class="form-row">
-        <label for="sip-dtmf-unlock">Unlock DTMF Tone <span class="hint">sent when you tap Unlock during a call (e.g. # or 0)</span></label>
+        <label for="sip-dtmf-unlock"><span data-i18n="s.sip_dtmf">Unlock DTMF Tone</span> <span class="hint" data-i18n="s.sip_dtmf_hint">(sent when you tap Unlock during a call)</span></label>
         <input type="text" id="sip-dtmf-unlock" placeholder="#" maxlength="8" style="max-width:90px">
       </div>
       <div class="form-row">
-        <label for="sip-relay-index">Door Relay Index <span class="hint">pulse this relay on Unlock (leave blank for DTMF-only)</span></label>
+        <label for="sip-relay-index"><span data-i18n="s.sip_relay">Door Relay Index</span> <span class="hint" data-i18n="s.sip_relay_hint">(pulse this relay on Unlock — leave blank for DTMF-only)</span></label>
         <input type="number" id="sip-relay-index" placeholder="0" min="0" max="9" style="max-width:90px">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-primary"   id="btn-save-sip">Save</button>
+        <button class="btn btn-primary"   id="btn-save-sip" data-i18n="common.save">Save</button>
         <span class="test-result" id="sip-save-result"></span>
       </div>
     </section>
 
     <!-- IKEA Dirigera -->
     <section class="card settings-card">
-      <h2>IKEA Dirigera <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.dirigera_title">IKEA Dirigera</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connects to an IKEA Dirigera hub (2022+). Discovers lights, outlets, blinds, motion sensors, and VINDSTYRKA air quality sensors. Requires a bearer token obtained once via <code>node scripts/dirigera-auth.js &lt;hub-ip&gt;</code> — press the button on the hub when prompted.</p>
 
       <div class="form-row">
-        <label for="dirigera-host">Hub Host / IP</label>
+        <label for="dirigera-host" data-i18n="s.dirigera_host">Hub Host / IP</label>
         <input type="text" id="dirigera-host" placeholder="192.168.x.x">
       </div>
       <div class="form-row">
-        <label for="dirigera-token">Bearer Token <span class="hint">(from dirigera-auth.js)</span></label>
+        <label for="dirigera-token"><span data-i18n="s.dirigera_token">Bearer Token</span> <span class="hint" data-i18n="s.dirigera_token_hint">(from dirigera-auth.js)</span></label>
         <input type="password" id="dirigera-token" placeholder="••••••••••••••••••••••••••••••••">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-dirigera">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-save-dirigera">Save</button>
+        <button class="btn btn-secondary" id="btn-test-dirigera" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-dirigera" data-i18n="common.save">Save</button>
         <span class="test-result" id="dirigera-test-result"></span>
       </div>
     </section>
 
     <!-- IKEA Tradfri -->
     <section class="card settings-card">
-      <h2>IKEA Tradfri <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.tradfri_title">IKEA Tradfri</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connects to an older IKEA Tradfri gateway via CoAP/DTLS. Requires <code>npm install node-tradfri-client</code>. First run: enter the security code from the sticker on the gateway — generated identity and PSK are printed to the server log. Subsequent runs: leave the code blank and fill in identity + PSK.</p>
 
       <div class="form-row">
-        <label for="tradfri-host">Gateway Host / IP</label>
+        <label for="tradfri-host" data-i18n="s.tradfri_host">Gateway Host / IP</label>
         <input type="text" id="tradfri-host" placeholder="192.168.x.x">
       </div>
       <div class="form-row">
-        <label for="tradfri-code">Security Code <span class="hint">(sticker on gateway — first run only)</span></label>
+        <label for="tradfri-code"><span data-i18n="s.tradfri_code">Security Code</span> <span class="hint" data-i18n="s.tradfri_code_hint">(sticker on gateway — first run only)</span></label>
         <input type="password" id="tradfri-code" placeholder="XXXX-XXXX-XXXX">
       </div>
       <div class="form-row">
-        <label for="tradfri-identity">Identity <span class="hint">(generated on first run)</span></label>
+        <label for="tradfri-identity"><span data-i18n="s.tradfri_identity">Identity</span> <span class="hint" data-i18n="s.tradfri_identity_hint">(generated on first run)</span></label>
         <input type="text" id="tradfri-identity" placeholder="lsh-xxxxxxxx">
       </div>
       <div class="form-row">
-        <label for="tradfri-psk">PSK <span class="hint">(generated on first run)</span></label>
+        <label for="tradfri-psk"><span data-i18n="s.tradfri_psk">PSK</span> <span class="hint" data-i18n="s.tradfri_psk_hint">(generated on first run)</span></label>
         <input type="password" id="tradfri-psk" placeholder="••••••••••••••••">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-primary" id="btn-save-tradfri">Save</button>
+        <button class="btn btn-primary" id="btn-save-tradfri" data-i18n="common.save">Save</button>
         <span class="test-result" id="tradfri-save-result"></span>
       </div>
     </section>
 
     <!-- BoneIO -->
     <section class="card settings-card">
-      <h2>BoneIO <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.boneio_title">BoneIO</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connects to a BoneIO controller via MQTT. Relays, inputs, and sensors are auto-discovered through Home Assistant MQTT discovery. Leave host blank to use the Cerbo GX MQTT broker.</p>
 
       <div class="form-row">
-        <label for="boneio-host">MQTT Host / IP <span class="hint">(leave blank to reuse Cerbo GX broker)</span></label>
+        <label for="boneio-host"><span data-i18n="s.boneio_host">MQTT Host / IP</span> <span class="hint" data-i18n="s.boneio_host_hint">(leave blank to reuse Cerbo GX broker)</span></label>
         <input type="text" id="boneio-host" placeholder="192.168.1.100">
       </div>
       <div class="form-row">
-        <label for="boneio-port">MQTT Port <span class="hint">(default 1883)</span></label>
+        <label for="boneio-port"><span data-i18n="s.boneio_port">MQTT Port</span> <span class="hint" data-i18n="s.boneio_port_hint">(default 1883)</span></label>
         <input type="number" id="boneio-port" placeholder="1883" min="1" max="65535">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-boneio">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-save-boneio">Save</button>
+        <button class="btn btn-secondary" id="btn-test-boneio" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-boneio" data-i18n="common.save">Save</button>
         <span class="test-result" id="boneio-test-result"></span>
       </div>
     </section>
 
     <!-- Shelly -->
     <section class="card settings-card">
-      <h2>Shelly <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.shelly_title">Shelly</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Add Shelly Gen1 and Gen2 smart devices by IP address. Switches, dimmers, plugs, and sensors are auto-detected and polled every 30 s.</p>
 
       <div id="shelly-devices-list"></div>
-      <button class="btn btn-secondary" id="btn-add-shelly">+ Add Device</button>
+      <button class="btn btn-secondary" id="btn-add-shelly" data-i18n="common.add_device">+ Add Device</button>
 
       <div class="form-actions" style="margin-top:16px">
-        <button class="btn btn-primary" id="btn-save-shelly">Save Devices</button>
+        <button class="btn btn-primary" id="btn-save-shelly" data-i18n="common.save_devices">Save Devices</button>
         <span class="test-result" id="shelly-save-result"></span>
       </div>
     </section>
 
     <!-- Aeotec 360 Camera -->
     <section class="card settings-card">
-      <h2>Aeotec 360 Camera <span class="badge">Optional</span></h2>
+      <h2><span data-i18n="s.aeotec_title">Aeotec 360 Camera</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Add an Aeotec Indoor Camera 360° by local IP. Sensor data (motion, sound) flows via SmartThings; the local RTSP stream is added to your Cameras list for live video. Credentials are the ones you set in the Aeotec app.</p>
 
       <div class="form-row">
-        <label for="aeotec-name">Camera Name</label>
+        <label for="aeotec-name" data-i18n="s.aeotec_name">Camera Name</label>
         <input type="text" id="aeotec-name" placeholder="Living Room">
       </div>
       <div class="form-row">
-        <label for="aeotec-ip">Camera IP Address</label>
+        <label for="aeotec-ip" data-i18n="s.aeotec_ip">Camera IP Address</label>
         <input type="text" id="aeotec-ip" placeholder="192.168.x.x">
       </div>
       <div class="form-row">
-        <label for="aeotec-user">Username <span class="hint">(default: admin)</span></label>
+        <label for="aeotec-user"><span data-i18n="s.aeotec_user">Username</span> <span class="hint" data-i18n="s.aeotec_user_hint">(default: admin)</span></label>
         <input type="text" id="aeotec-user" placeholder="admin" value="admin">
       </div>
       <div class="form-row">
-        <label for="aeotec-pass">Password</label>
+        <label for="aeotec-pass" data-i18n="s.aeotec_pass">Password</label>
         <input type="password" id="aeotec-pass" placeholder="••••••••">
       </div>
 
       <div class="aeotec-urls" id="aeotec-urls" style="display:none">
         <div class="form-row">
-          <label>RTSP (main stream)</label>
+          <label data-i18n="s.rtsp_main">RTSP (main stream)</label>
           <code class="url-preview" id="aeotec-rtsp"></code>
         </div>
         <div class="form-row">
-          <label>RTSP (sub stream)</label>
+          <label data-i18n="s.rtsp_sub">RTSP (sub stream)</label>
           <code class="url-preview" id="aeotec-rtsp-sub"></code>
         </div>
         <div class="form-row">
-          <label>Snapshot URL</label>
+          <label data-i18n="s.snapshot_url">Snapshot URL</label>
           <code class="url-preview" id="aeotec-snapshot"></code>
         </div>
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-aeotec">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-add-aeotec">Add to Cameras</button>
+        <button class="btn btn-secondary" id="btn-test-aeotec" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-add-aeotec" data-i18n="s.add_to_cameras">Add to Cameras</button>
         <span class="test-result" id="aeotec-result"></span>
       </div>
     </section>
 
     <!-- Cameras -->
     <section class="card settings-card">
-      <h2>Cameras</h2>
+      <h2 data-i18n="s.cameras_title">Cameras</h2>
       <p class="section-desc">Cameras shown on the dashboard. Provide an RTSP URL and optionally a snapshot URL (HTTP JPEG endpoint) for live preview.</p>
 
       <div id="cameras-settings-list"></div>
 
-      <button class="btn btn-secondary" id="btn-add-camera">+ Add Camera</button>
+      <button class="btn btn-secondary" id="btn-add-camera" data-i18n="common.add_camera">+ Add Camera</button>
 
       <div class="form-actions" style="margin-top:16px">
-        <button class="btn btn-primary" id="btn-save-cameras">Save Cameras</button>
+        <button class="btn btn-primary" id="btn-save-cameras" data-i18n="common.save_cameras">Save Cameras</button>
         <span class="test-result" id="cameras-save-result"></span>
       </div>
     </section>
 
     <!-- Relays -->
     <section class="card settings-card">
-      <h2>Relays</h2>
+      <h2 data-i18n="s.relays_title">Relays</h2>
       <p class="section-desc">Name and enable the relays on your Cerbo GX.</p>
 
       <div id="relays-settings-list"></div>
 
-      <button class="btn btn-secondary" id="btn-add-relay">+ Add Relay</button>
+      <button class="btn btn-secondary" id="btn-add-relay" data-i18n="common.add_relay">+ Add Relay</button>
     </section>
 
     <!-- HomeKit -->
     <section class="card settings-card">
-      <h2>HomeKit Integration</h2>
+      <h2 data-i18n="s.hk_title">HomeKit Integration</h2>
       <p class="section-desc">Pair the relay bridge in Apple Home using the PIN below.</p>
 
       <div class="form-row">
-        <label for="hk-pin">Pairing PIN</label>
+        <label for="hk-pin" data-i18n="s.hk_pin">Pairing PIN</label>
         <input type="text" id="hk-pin" placeholder="031-45-154" maxlength="10">
       </div>
       <div class="form-row">
-        <label for="hk-port">Bridge Port</label>
+        <label for="hk-port" data-i18n="s.hk_port">Bridge Port</label>
         <input type="number" id="hk-port" placeholder="47128" min="1024" max="65535">
       </div>
       <div class="form-row">
-        <label for="hk-username">Bridge MAC</label>
+        <label for="hk-username" data-i18n="s.hk_username">Bridge MAC</label>
         <input type="text" id="hk-username" placeholder="CC:22:3D:E3:CE:F6">
       </div>
 
       <div class="homekit-qr">
         <div class="qr-box">
           <div id="homekit-qrcode"></div>
-          <div class="qr-loading" id="qr-loading">Generating…</div>
+          <div class="qr-loading" id="qr-loading" data-i18n="s.hk_generating">Generating…</div>
         </div>
         <div class="qr-info">
-          <div class="qr-pin-label">PIN Code</div>
+          <div class="qr-pin-label" data-i18n="s.hk_pin_code">PIN Code</div>
           <div class="qr-pin-value" id="hk-pin-big">--</div>
           <p class="hint" style="margin-top:10px">Scan with iPhone Camera or open <strong>Home → Add Accessory</strong> and scan this code.</p>
           <p class="hint" style="margin-top:6px">Or choose <strong>More Options</strong> and enter the PIN manually.</p>
@@ -561,100 +561,100 @@
 
     <!-- Server -->
     <section class="card settings-card">
-      <h2>Server</h2>
+      <h2 data-i18n="s.server_title">Server</h2>
       <div class="form-row">
-        <label for="server-port">HTTP Port</label>
+        <label for="server-port" data-i18n="s.server_port">HTTP Port</label>
         <input type="number" id="server-port" placeholder="3000" min="1024" max="65535">
       </div>
     </section>
 
     <!-- Security & Authentication -->
     <section class="card settings-card">
-      <h2>Security &amp; Authentication</h2>
+      <h2 data-i18n="s.security_title">Security &amp; Authentication</h2>
       <p class="section-desc">Manage users, API tokens, and HTTPS/TLS encryption.</p>
 
       <!-- Change Password -->
-      <h3 class="settings-sub">Change Password</h3>
+      <h3 class="settings-sub" data-i18n="s.change_pw">Change Password</h3>
       <div class="form-row">
-        <label for="sec-current-pw">Current Password</label>
+        <label for="sec-current-pw" data-i18n="s.current_pw">Current Password</label>
         <input type="password" id="sec-current-pw" autocomplete="current-password">
       </div>
       <div class="form-row">
-        <label for="sec-new-pw">New Password <span class="hint">(min. 8 characters)</span></label>
+        <label for="sec-new-pw"><span data-i18n="s.new_pw">New Password</span> <span class="hint" data-i18n="s.new_pw_hint">(min. 8 characters)</span></label>
         <input type="password" id="sec-new-pw" autocomplete="new-password">
       </div>
       <div class="form-row">
-        <label for="sec-new-pw2">Confirm New Password</label>
+        <label for="sec-new-pw2" data-i18n="s.confirm_new_pw">Confirm New Password</label>
         <input type="password" id="sec-new-pw2" autocomplete="new-password">
       </div>
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-change-pw">Change Password</button>
+        <button class="btn btn-secondary" id="btn-change-pw" data-i18n="s.btn_change_pw">Change Password</button>
         <span class="test-result" id="change-pw-result"></span>
       </div>
 
       <!-- Users (admin only) -->
-      <h3 class="settings-sub">Users</h3>
+      <h3 class="settings-sub" data-i18n="s.users">Users</h3>
       <div id="users-list" class="token-list"><span class="token-empty">Loading…</span></div>
       <div class="form-row">
-        <label for="new-user-name">New Username</label>
+        <label for="new-user-name" data-i18n="s.new_username">New Username</label>
         <input type="text" id="new-user-name" autocomplete="off">
       </div>
       <div class="form-row">
-        <label for="new-user-pw">Password</label>
+        <label for="new-user-pw" data-i18n="s.new_user_pw">Password</label>
         <input type="password" id="new-user-pw" autocomplete="new-password">
       </div>
       <div class="form-row">
-        <label for="new-user-role">Role</label>
+        <label for="new-user-role" data-i18n="s.new_user_role">Role</label>
         <select id="new-user-role">
-          <option value="admin">Admin – full access</option>
-          <option value="viewer" selected>Viewer – read-only</option>
+          <option value="admin" data-i18n="s.role_admin">Admin – full access</option>
+          <option value="viewer" selected data-i18n="s.role_viewer">Viewer – read-only</option>
         </select>
       </div>
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-add-user">Add User</button>
+        <button class="btn btn-secondary" id="btn-add-user" data-i18n="s.add_user">Add User</button>
         <span class="test-result" id="add-user-result"></span>
       </div>
 
       <!-- API Tokens -->
-      <h3 class="settings-sub">API Tokens</h3>
+      <h3 class="settings-sub" data-i18n="s.api_tokens">API Tokens</h3>
       <p class="hint">Bearer tokens for scripts &amp; integrations (e.g. Home Assistant).<br>
         Use in HTTP header: <code>Authorization: Bearer &lt;token&gt;</code></p>
       <div id="tokens-list" class="token-list"><span class="token-empty">Loading…</span></div>
       <div class="form-row" style="margin-top:10px">
-        <label for="new-token-name">Token Name</label>
+        <label for="new-token-name" data-i18n="s.token_name">Token Name</label>
         <input type="text" id="new-token-name" placeholder="e.g. Home Assistant">
       </div>
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-create-token">Create Token</button>
+        <button class="btn btn-secondary" id="btn-create-token" data-i18n="s.create_token">Create Token</button>
         <span class="test-result" id="token-result"></span>
       </div>
       <div id="new-token-reveal" class="token-reveal" style="display:none">
         <span class="hint">Save this token — it will <strong>not</strong> be shown again:</span>
         <div class="token-value-box" style="margin-top:6px">
           <code id="new-token-text"></code>
-          <button class="btn btn-sm btn-secondary" id="btn-copy-token">Copy</button>
+          <button class="btn btn-sm btn-secondary" id="btn-copy-token" data-i18n="common.copy">Copy</button>
         </div>
       </div>
 
       <!-- HTTPS / TLS -->
-      <h3 class="settings-sub">HTTPS / TLS</h3>
+      <h3 class="settings-sub" data-i18n="s.https_tls">HTTPS / TLS</h3>
       <div class="form-row">
         <label class="toggle-label">
           <input type="checkbox" id="https-enabled">
-          <span>Enable HTTPS with custom certificate</span>
+          <span data-i18n="s.enable_https">Enable HTTPS with custom certificate</span>
         </label>
       </div>
       <div id="https-fields" class="https-fields" style="display:none">
         <div class="form-row">
-          <label for="https-port">HTTPS Port</label>
+          <label for="https-port" data-i18n="s.https_port">HTTPS Port</label>
           <input type="number" id="https-port" placeholder="3443" min="1" max="65535">
         </div>
         <div class="form-row">
-          <label for="https-cert">Certificate File Path</label>
+          <label for="https-cert" data-i18n="s.https_cert">Certificate File Path</label>
           <input type="text" id="https-cert" placeholder="/etc/ssl/certs/cert.pem">
         </div>
         <div class="form-row">
-          <label for="https-key">Private Key File Path</label>
+          <label for="https-key" data-i18n="s.https_key">Private Key File Path</label>
           <input type="text" id="https-key" placeholder="/etc/ssl/private/key.pem">
         </div>
       </div>
@@ -663,59 +663,59 @@
       <div class="form-row" style="margin-top:10px">
         <label class="toggle-label">
           <input type="checkbox" id="le-enabled">
-          <span>Enable Let's Encrypt (auto certificate)</span>
+          <span data-i18n="s.enable_le">Enable Let's Encrypt (auto certificate)</span>
         </label>
       </div>
       <div id="le-fields" class="https-fields" style="display:none">
         <p class="hint">⚠ Requires port 80 accessible from the internet for HTTP-01 challenge.</p>
         <div class="form-row">
-          <label for="le-domain">Domain</label>
+          <label for="le-domain" data-i18n="s.le_domain">Domain</label>
           <input type="text" id="le-domain" placeholder="dashboard.example.com">
         </div>
         <div class="form-row">
-          <label for="le-email">Email (Let's Encrypt account)</label>
+          <label for="le-email" data-i18n="s.le_email">Email (Let's Encrypt account)</label>
           <input type="email" id="le-email" placeholder="admin@example.com">
         </div>
         <div class="form-row">
-          <label for="le-port">HTTPS Port</label>
+          <label for="le-port" data-i18n="s.le_port">HTTPS Port</label>
           <input type="number" id="le-port" placeholder="443" min="1" max="65535">
         </div>
         <div class="form-row">
-          <label for="le-certs-dir">Certs Directory</label>
+          <label for="le-certs-dir" data-i18n="s.le_certs_dir">Certs Directory</label>
           <input type="text" id="le-certs-dir" placeholder="./certs">
         </div>
         <div class="form-row">
           <label class="toggle-label">
             <input type="checkbox" id="le-staging">
-            <span>Use Let's Encrypt staging (for testing — won't issue trusted certs)</span>
+            <span data-i18n="s.le_staging">Use Let's Encrypt staging (for testing — won't issue trusted certs)</span>
           </label>
         </div>
       </div>
       <div class="form-actions" style="margin-top:12px">
-        <button class="btn btn-secondary" id="btn-save-https">Save HTTPS Settings</button>
+        <button class="btn btn-secondary" id="btn-save-https" data-i18n="s.save_https">Save HTTPS Settings</button>
         <span class="test-result" id="https-result"></span>
       </div>
     </section>
 
     <!-- Backup & Restore -->
     <section class="card settings-card">
-      <h2>Backup &amp; Restore</h2>
+      <h2 data-i18n="s.backup_title">Backup &amp; Restore</h2>
       <p class="section-desc">Save your entire configuration to a file or restore from a previous backup.</p>
 
       <div class="backup-row">
         <div class="backup-item">
-          <div class="backup-label">Export</div>
+          <div class="backup-label" data-i18n="s.export">Export</div>
           <p class="hint">Download <code>config.json</code> including all credentials and settings.</p>
-          <a class="btn btn-secondary" id="btn-export" href="/api/settings/export" download>⬇ Download Config</a>
+          <a class="btn btn-secondary" id="btn-export" href="/api/settings/export" download data-i18n="s.download_config">⬇ Download Config</a>
         </div>
 
         <div class="backup-divider"></div>
 
         <div class="backup-item">
-          <div class="backup-label">Import</div>
+          <div class="backup-label" data-i18n="s.import_lbl">Import</div>
           <p class="hint">Restore from a previously exported config file.</p>
           <label class="btn btn-secondary" id="btn-import-label">
-            ⬆ Choose File…
+            <span data-i18n="s.choose_file">⬆ Choose File…</span>
             <input type="file" id="import-file-input" accept=".json,application/json" style="display:none">
           </label>
         </div>
@@ -725,19 +725,19 @@
       <div id="import-preview" class="import-preview" style="display:none">
         <div class="import-preview-title">
           <span id="import-filename"></span>
-          <span class="import-preview-badge">Preview</span>
+          <span class="import-preview-badge" data-i18n="s.preview_badge">Preview</span>
         </div>
         <div class="import-preview-grid">
-          <div class="import-kv"><span>MQTT Host</span><strong id="ip-mqtt-host">—</strong></div>
-          <div class="import-kv"><span>VRM Email</span><strong id="ip-vrm-email">—</strong></div>
-          <div class="import-kv"><span>Installation ID</span><strong id="ip-vrm-id">—</strong></div>
-          <div class="import-kv"><span>Relays</span><strong id="ip-relays">—</strong></div>
-          <div class="import-kv"><span>HomeKit PIN</span><strong id="ip-hk-pin">—</strong></div>
-          <div class="import-kv"><span>Server Port</span><strong id="ip-server-port">—</strong></div>
+          <div class="import-kv"><span data-i18n="s.ip_mqtt_host">MQTT Host</span><strong id="ip-mqtt-host">—</strong></div>
+          <div class="import-kv"><span data-i18n="s.ip_vrm_email">VRM Email</span><strong id="ip-vrm-email">—</strong></div>
+          <div class="import-kv"><span data-i18n="s.ip_vrm_id">Installation ID</span><strong id="ip-vrm-id">—</strong></div>
+          <div class="import-kv"><span data-i18n="s.ip_relays">Relays</span><strong id="ip-relays">—</strong></div>
+          <div class="import-kv"><span data-i18n="s.ip_hk_pin">HomeKit PIN</span><strong id="ip-hk-pin">—</strong></div>
+          <div class="import-kv"><span data-i18n="s.ip_server_port">Server Port</span><strong id="ip-server-port">—</strong></div>
         </div>
         <div class="import-actions">
-          <button class="btn btn-primary" id="btn-import-confirm">Restore This Config</button>
-          <button class="btn btn-secondary" id="btn-import-cancel">Cancel</button>
+          <button class="btn btn-primary" id="btn-import-confirm" data-i18n="s.restore_config">Restore This Config</button>
+          <button class="btn btn-secondary" id="btn-import-cancel" data-i18n="common.cancel">Cancel</button>
           <span class="test-result" id="import-result"></span>
         </div>
       </div>
@@ -746,17 +746,17 @@
     <!-- Save bar -->
     <div class="save-bar">
       <div class="save-message" id="save-message"></div>
-      <button class="btn btn-danger" id="btn-reset-config">Erase Config</button>
-      <button class="btn btn-danger" id="btn-restart">Restart Server</button>
-      <button class="btn btn-primary" id="btn-save">Save Settings</button>
+      <button class="btn btn-danger" id="btn-reset-config" data-i18n="s.erase_config">Erase Config</button>
+      <button class="btn btn-danger" id="btn-restart" data-i18n="s.restart_server">Restart Server</button>
+      <button class="btn btn-primary" id="btn-save" data-i18n="s.save_settings">Save Settings</button>
     </div>
 
     <!-- Restart overlay -->
     <div id="restart-overlay" class="restart-overlay" style="display:none">
       <div class="restart-box">
         <div class="restart-spinner"></div>
-        <div class="restart-title" id="restart-title">Restarting…</div>
-        <div class="restart-sub" id="restart-sub">The server is restarting. Reconnecting in <strong id="restart-countdown">10</strong>s…</div>
+        <div class="restart-title" id="restart-title" data-i18n="s.restarting">Restarting…</div>
+        <div class="restart-sub" id="restart-sub"><span data-i18n="s.restart_sub">The server is restarting. Reconnecting in</span> <strong id="restart-countdown">10</strong>s…</div>
       </div>
     </div>
 
@@ -768,6 +768,7 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="i18n.js"></script>
   <script src="settings.js"></script>
   <script src="theme.js"></script>
   <script src="common.js"></script>

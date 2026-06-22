@@ -26,19 +26,19 @@
       <span class="logo-text">LoxoneSwaggerHelper</span>
     </div>
     <nav class="header-nav">
-      <a href="/" class="nav-link active">Dashboard</a>
-      <a href="/settings.html" class="nav-link">Settings</a>
-      <a href="/logs.html" class="nav-link">Logs</a>
+      <a href="/" class="nav-link active" data-i18n="nav.dashboard">Dashboard</a>
+      <a href="/settings.html" class="nav-link" data-i18n="nav.settings">Settings</a>
+      <a href="/logs.html" class="nav-link" data-i18n="nav.logs">Logs</a>
       <a href="/mqtt.html" class="nav-link">MQTT</a>
     </nav>
     <div class="platform-bar" id="platform-bar"></div>
     <button class="theme-toggle" id="btn-theme"></button>
     <div class="connection-status-wrap">
-      <div class="connection-status" id="connection-status">Connecting...</div>
+      <div class="connection-status" id="connection-status" data-i18n="header.connecting">Connecting…</div>
       <div class="source-badge" id="source-badge" style="display:none"></div>
-      <div class="sip-status" id="sip-status" style="display:none" title="SIP">
+      <div class="sip-status" id="sip-status" style="display:none" data-i18n-title="header.make_call" title="SIP">
         <span class="sip-status-dot" id="sip-status-dot"></span>
-        <button class="sip-dial-btn" id="sip-dial-btn" title="Make a call">📞</button>
+        <button class="sip-dial-btn" id="sip-dial-btn" data-i18n-title="header.make_call" title="Make a call">📞</button>
       </div>
     </div>
   </header>
@@ -53,7 +53,7 @@
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
             </svg>
           </span>
-          Energy Flow
+          <span data-i18n="card.energy_flow">Energy Flow</span>
         </h2>
         <span class="live-dot" id="flow-live-dot"></span>
       </div>
@@ -67,7 +67,7 @@
             </svg>
           </div>
           <div class="fn-val" id="fl-solar" style="color:var(--accent-solar)">--</div>
-          <div class="fn-lbl">Solar</div>
+          <div class="fn-lbl" data-i18n="flow.solar">Solar</div>
         </div>
         <!-- Connector: Solar → Battery -->
         <div class="flow-conn-h fc-s2b" id="fc-s2b">
@@ -87,7 +87,7 @@
           <div class="fn-bat-bar">
             <div class="fn-bat-fill" id="fl-bat-fill"></div>
           </div>
-          <div class="fn-lbl" id="fl-bat-state">Battery</div>
+          <div class="fn-lbl" id="fl-bat-state" data-i18n="flow.battery">Battery</div>
         </div>
         <!-- Connector: Battery → Loads -->
         <div class="flow-conn-h fc-b2l" id="fc-b2l">
@@ -103,7 +103,7 @@
             </svg>
           </div>
           <div class="fn-val" id="fl-loads" style="color:var(--accent-orange)">--</div>
-          <div class="fn-lbl">AC Loads</div>
+          <div class="fn-lbl" data-i18n="flow.ac_loads">AC Loads</div>
         </div>
         <!-- Vertical connector: Grid ↕ Battery -->
         <div class="flow-conn-v" id="fc-g2b">
@@ -118,7 +118,7 @@
             </svg>
           </div>
           <div class="fn-val" id="fl-grid" style="color:var(--accent-blue)">--</div>
-          <div class="fn-lbl" id="fl-grid-lbl">Grid</div>
+          <div class="fn-lbl" id="fl-grid-lbl" data-i18n="flow.grid">Grid</div>
         </div>
       </div>
     </section>
@@ -133,7 +133,7 @@
               <path d="M25 4.5v5" stroke-width="2.5"/>
             </svg>
           </span>
-          Battery
+          <span data-i18n="card.battery">Battery</span>
         </h2>
         <span class="charge-badge" id="bat-state-badge"></span>
       </div>
@@ -146,19 +146,19 @@
       </div>
       <div class="metrics-grid">
         <div class="metric">
-          <span class="label">Voltage</span>
+          <span class="label" data-i18n="metric.voltage">Voltage</span>
           <span class="value" data-key="system/0/Dc/Battery/Voltage" data-format="voltage">--</span>
         </div>
         <div class="metric">
-          <span class="label">Current</span>
+          <span class="label" data-i18n="metric.current">Current</span>
           <span class="value" data-key="system/0/Dc/Battery/Current" data-format="current">--</span>
         </div>
         <div class="metric">
-          <span class="label">Power</span>
+          <span class="label" data-i18n="metric.power">Power</span>
           <span class="value" data-key="system/0/Dc/Battery/Power" data-format="power">--</span>
         </div>
         <div class="metric">
-          <span class="label">Time to Go</span>
+          <span class="label" data-i18n="metric.time_to_go">Time to Go</span>
           <span class="value" data-key="system/0/Dc/Battery/TimeToGo" data-format="time">--</span>
         </div>
       </div>
@@ -174,7 +174,7 @@
               <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
             </svg>
           </span>
-          Solar
+          <span data-i18n="card.solar">Solar</span>
         </h2>
       </div>
       <div class="metric-large">
@@ -182,11 +182,11 @@
       </div>
       <div class="metrics-grid">
         <div class="metric">
-          <span class="label">Current</span>
+          <span class="label" data-i18n="metric.current">Current</span>
           <span class="value" data-key="system/0/Dc/Pv/Current" data-format="current">--</span>
         </div>
         <div class="metric">
-          <span class="label">Daily Yield</span>
+          <span class="label" data-i18n="metric.daily_yield">Daily Yield</span>
           <span class="value" data-key="system/0/PvChargerAggregated/Yield/User" data-format="energy">--</span>
         </div>
       </div>
@@ -201,7 +201,7 @@
               <path d="M13 2 3 14h9l-1 8 10-12h-9z"/>
             </svg>
           </span>
-          Grid
+          <span data-i18n="card.grid">Grid</span>
         </h2>
         <span class="grid-flow-badge" id="grid-flow-badge"></span>
       </div>
@@ -210,19 +210,19 @@
       </div>
       <div class="metrics-grid">
         <div class="metric">
-          <span class="label">Voltage</span>
+          <span class="label" data-i18n="metric.voltage">Voltage</span>
           <span class="value" data-key="system/0/Ac/Grid/L1/Voltage" data-format="voltage">--</span>
         </div>
         <div class="metric">
-          <span class="label">Current</span>
+          <span class="label" data-i18n="metric.current">Current</span>
           <span class="value" data-key="system/0/Ac/Grid/L1/Current" data-format="current">--</span>
         </div>
         <div class="metric">
-          <span class="label">Frequency</span>
+          <span class="label" data-i18n="metric.frequency">Frequency</span>
           <span class="value" data-key="system/0/Ac/Grid/L1/Frequency" data-format="frequency">--</span>
         </div>
         <div class="metric">
-          <span class="label">Status</span>
+          <span class="label" data-i18n="metric.status">Status</span>
           <span class="value" data-key="system/0/Ac/Grid/Available" data-format="grid-status">--</span>
         </div>
       </div>
@@ -238,7 +238,7 @@
               <polyline points="9 22 9 12 15 12 15 22"/>
             </svg>
           </span>
-          AC Loads
+          <span data-i18n="card.ac_loads">AC Loads</span>
         </h2>
       </div>
       <div class="metric-large">
@@ -246,11 +246,11 @@
       </div>
       <div class="metrics-grid">
         <div class="metric">
-          <span class="label">L2 Power</span>
+          <span class="label" data-i18n="metric.l2_power">L2 Power</span>
           <span class="value" data-key="system/0/Ac/Consumption/L2/Power" data-format="power">--</span>
         </div>
         <div class="metric">
-          <span class="label">L3 Power</span>
+          <span class="label" data-i18n="metric.l3_power">L3 Power</span>
           <span class="value" data-key="system/0/Ac/Consumption/L3/Power" data-format="power">--</span>
         </div>
       </div>
@@ -267,7 +267,7 @@
               <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>
             </svg>
           </span>
-          DC System
+          <span data-i18n="card.dc_system">DC System</span>
         </h2>
       </div>
       <div class="metric-large">
@@ -285,7 +285,7 @@
               <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
             </svg>
           </span>
-          SolarEdge
+          <span data-i18n="card.solaredge">SolarEdge</span>
         </h2>
         <span class="grid-flow-badge" id="se-grid-badge"></span>
       </div>
@@ -294,23 +294,23 @@
       </div>
       <div class="metrics-grid">
         <div class="metric">
-          <span class="label">Grid</span>
+          <span class="label" data-i18n="metric.grid">Grid</span>
           <span class="value" data-key="solaredge/gridPower" data-format="power-raw" id="se-grid">--</span>
         </div>
         <div class="metric">
-          <span class="label">Loads</span>
+          <span class="label" data-i18n="metric.loads">Loads</span>
           <span class="value" data-key="solaredge/loadPower" data-format="power-raw">--</span>
         </div>
         <div class="metric">
-          <span class="label">Daily Yield</span>
+          <span class="label" data-i18n="metric.daily_yield">Daily Yield</span>
           <span class="value" data-key="solaredge/dailyEnergy" data-format="energy-wh">--</span>
         </div>
         <div class="metric">
-          <span class="label">Lifetime</span>
+          <span class="label" data-i18n="metric.lifetime">Lifetime</span>
           <span class="value" data-key="solaredge/lifetimeEnergy" data-format="energy-wh">--</span>
         </div>
         <div class="metric" id="se-battery-row" style="display:none">
-          <span class="label">Battery</span>
+          <span class="label" data-i18n="metric.battery">Battery</span>
           <span class="value" data-key="solaredge/batteryLevel" data-format="percent">--</span>
         </div>
       </div>
@@ -326,7 +326,7 @@
               <rect x="1" y="5" width="15" height="14" rx="2"/>
             </svg>
           </span>
-          Cameras
+          <span data-i18n="card.cameras">Cameras</span>
         </h2>
       </div>
       <div id="cameras-grid"></div>
@@ -342,7 +342,7 @@
               <circle cx="27" cy="10" r="5" fill="currentColor" stroke="none"/>
             </svg>
           </span>
-          Relays
+          <span data-i18n="card.relays">Relays</span>
         </h2>
       </div>
       <div id="relays-container"></div>
@@ -357,7 +357,7 @@
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
           </span>
-          Devices
+          <span data-i18n="card.devices">Devices</span>
         </h2>
       </div>
       <p class="devices-subtitle" id="devices-subtitle">Auto-discovered via MQTT</p>
@@ -369,7 +369,7 @@
 
   <footer>
     <span>LoxoneSwaggerHelper</span>
-    <span id="last-update">Last update: --</span>
+    <span id="last-update"><span data-i18n="header.last_update">Last update</span>: --</span>
   </footer>
 
   <!-- Camera popup -->
@@ -385,7 +385,7 @@
         <img  class="cam-modal-img"   id="cam-modal-img"   alt=""  style="display:none">
         <div class="cam-modal-no-snap" id="cam-modal-no-snap" style="display:none">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          <span>No stream URL configured</span>
+          <span data-i18n="cam.no_stream">No stream URL configured</span>
         </div>
       </div>
       <div class="cam-modal-footer">
@@ -394,11 +394,11 @@
       </div>
       <div class="cam-modal-log" id="cam-modal-log">
         <div class="cam-log-header">
-          <span class="cam-log-title">Event Log</span>
+          <span class="cam-log-title" data-i18n="cam.event_log">Event Log</span>
           <button class="cam-log-btn" id="cam-log-refresh" title="Refresh log">↻</button>
         </div>
         <div class="cam-log-entries" id="cam-log-entries">
-          <span class="cam-log-empty">No events yet</span>
+          <span class="cam-log-empty" data-i18n="cam.no_events">No events yet</span>
         </div>
       </div>
     </div>
@@ -408,7 +408,7 @@
   <div id="sip-call-modal" class="sip-call-modal" style="display:none" role="dialog" aria-modal="true" aria-label="SIP Call">
     <div class="sip-call-box">
       <div class="sip-call-icon" id="sip-call-icon">📞</div>
-      <div class="sip-call-state" id="sip-call-state">Incoming Call</div>
+      <div class="sip-call-state" id="sip-call-state" data-i18n="sip.incoming_call">Incoming Call</div>
       <div class="sip-call-name"  id="sip-call-name"></div>
       <div class="sip-call-uri"   id="sip-call-uri"></div>
       <div class="sip-call-timer" id="sip-call-timer" style="display:none">0:00</div>
@@ -418,18 +418,18 @@
       <audio id="sip-audio" autoplay></audio>
       <!-- Incoming -->
       <div class="sip-call-actions" id="sip-actions-incoming">
-        <button class="btn sip-btn-answer" id="sip-btn-answer">📞 Answer</button>
-        <button class="btn sip-btn-reject" id="sip-btn-reject">✗ Decline</button>
+        <button class="btn sip-btn-answer" id="sip-btn-answer" data-i18n="sip.answer">📞 Answer</button>
+        <button class="btn sip-btn-reject" id="sip-btn-reject" data-i18n="sip.decline">✗ Decline</button>
       </div>
       <!-- Active -->
       <div class="sip-call-actions" id="sip-actions-active" style="display:none">
-        <button class="btn sip-btn-unlock" id="sip-btn-unlock">🔓 Unlock</button>
-        <button class="btn sip-btn-mute"   id="sip-btn-mute">🎤 Mute</button>
-        <button class="btn sip-btn-hangup" id="sip-btn-hangup">✗ Hang Up</button>
+        <button class="btn sip-btn-unlock" id="sip-btn-unlock" data-i18n="sip.unlock">🔓 Unlock</button>
+        <button class="btn sip-btn-mute"   id="sip-btn-mute"   data-i18n="sip.mute">🎤 Mute</button>
+        <button class="btn sip-btn-hangup" id="sip-btn-hangup" data-i18n="sip.hang_up">✗ Hang Up</button>
       </div>
       <!-- Calling out -->
       <div class="sip-call-actions" id="sip-actions-calling" style="display:none">
-        <button class="btn sip-btn-cancel" id="sip-btn-cancel">✗ Cancel</button>
+        <button class="btn sip-btn-cancel" id="sip-btn-cancel" data-i18n="sip.cancel">✗ Cancel</button>
       </div>
     </div>
   </div>
@@ -437,15 +437,16 @@
   <!-- SIP dial modal -->
   <div id="sip-dial-modal" class="sip-dial-modal" style="display:none" role="dialog" aria-label="Dial">
     <div class="sip-dial-box">
-      <div class="sip-dial-title">Dial</div>
-      <input class="sip-dial-input" id="sip-dial-input" type="text" placeholder="Extension or SIP URI" autocomplete="off">
+      <div class="sip-dial-title" data-i18n="sip.dial_title">Dial</div>
+      <input class="sip-dial-input" id="sip-dial-input" type="text" data-i18n-placeholder="sip.call_placeholder" placeholder="Extension or SIP URI" autocomplete="off">
       <div class="sip-dial-actions">
-        <button class="btn sip-btn-call" id="sip-btn-call">📞 Call</button>
+        <button class="btn sip-btn-call" id="sip-btn-call" data-i18n="sip.call">📞 Call</button>
         <button class="btn sip-btn-cancel-dial" id="sip-btn-cancel-dial">✗</button>
       </div>
     </div>
   </div>
 
+  <script src="i18n.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/lib/jssip.min.js"></script>
   <script src="sip-phone.js"></script>

@@ -47,6 +47,36 @@
   --input-bg: #f6f8fa;
 }
 
+/* Language switcher */
+.lang-switcher {
+  display: flex;
+  gap: 2px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 3px;
+  flex-shrink: 0;
+}
+.lang-switcher--auth {
+  align-self: center;
+  margin: 0 auto 16px;
+}
+.lang-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 7px;
+  border-radius: 5px;
+  letter-spacing: 0.05em;
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+}
+.lang-btn:hover { color: var(--text); background: var(--hover); }
+.lang-btn.active { background: var(--accent-green); color: #fff; }
+
 /* Theme toggle button */
 .theme-toggle {
   background: none;

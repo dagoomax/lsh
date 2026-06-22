@@ -6,7 +6,9 @@
     if (!nav) return;
     const btn = document.createElement('button');
     btn.className = 'nav-logout';
-    btn.textContent = 'Sign out';
+    btn.dataset.i18n = 'common.sign_out';
+    btn.textContent = (window.t && window.t('common.sign_out') !== 'common.sign_out')
+      ? window.t('common.sign_out') : 'Sign out';
     btn.addEventListener('click', async () => {
       try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
       window.location.href = '/login.html';

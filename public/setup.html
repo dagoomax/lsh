@@ -28,8 +28,8 @@
             d="M6 21L20 8L34 21V35H6Z M21 10L11 22H20L19 30L29 18H20Z"/>
         </svg>
       </div>
-      <h1 class="auth-title">Welcome to LSH</h1>
-      <p class="auth-sub">Create your admin account to secure the dashboard</p>
+      <h1 class="auth-title" data-i18n="auth.setup_title">Welcome to LSH</h1>
+      <p class="auth-sub" data-i18n="auth.setup_sub">Create your admin account to secure the dashboard</p>
     </div>
 
     <!-- Error banner -->
@@ -47,7 +47,7 @@
     <form id="setup-form" autocomplete="on">
 
       <div class="auth-field">
-        <label for="admin-username">Admin Username</label>
+        <label for="admin-username" data-i18n="auth.admin_username">Admin Username</label>
         <div class="auth-field-wrap">
           <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -55,12 +55,12 @@
             <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/>
           </svg>
           <input type="text" id="admin-username" name="adminUsername"
-            autocomplete="username" placeholder="admin" autofocus required>
+            autocomplete="username" data-i18n-placeholder="auth.admin_username_ph" placeholder="admin" autofocus required>
         </div>
       </div>
 
       <div class="auth-field">
-        <label for="admin-password">Password <span style="font-weight:400;text-transform:none;letter-spacing:0">(min. 8 characters)</span></label>
+        <label for="admin-password"><span data-i18n="auth.password">Password</span> <span style="font-weight:400;text-transform:none;letter-spacing:0" data-i18n="auth.password_hint">(min. 8 characters)</span></label>
         <div class="auth-field-wrap">
           <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -73,7 +73,7 @@
       </div>
 
       <div class="auth-field">
-        <label for="admin-password2">Confirm Password</label>
+        <label for="admin-password2" data-i18n="auth.confirm_password">Confirm Password</label>
         <div class="auth-field-wrap">
           <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -86,16 +86,17 @@
         </div>
       </div>
 
-      <button type="submit" class="auth-submit" id="btn-setup">
+      <button type="submit" class="auth-submit" id="btn-setup" data-i18n="auth.create">
         Create Account &amp; Sign In
       </button>
 
     </form>
 
-    <p class="auth-hint">This setup runs once. Your credentials are stored locally.</p>
+    <p class="auth-hint" data-i18n="auth.setup_hint">This setup runs once. Your credentials are stored locally.</p>
 
   </div>
 
+  <script src="i18n.js"></script>
   <script src="setup.js"></script>
   <script src="theme.js"></script>
 </body>

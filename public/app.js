@@ -14,14 +14,14 @@ const cameraLogCache = new Map(); // camera name → [entries...]
 
 // ── Socket events ──────────────────────────────────────────────────────────
 socket.on('connect', () => {
-  statusEl.textContent = 'Connected';
+  statusEl.textContent = window.t ? window.t('header.connected') : 'Connected';
   statusEl.className = 'connection-status connected';
   loadRelays();
   loadCameras();
 });
 
 socket.on('disconnect', () => {
-  statusEl.textContent = 'Disconnected';
+  statusEl.textContent = window.t ? window.t('header.disconnected') : 'Disconnected';
   statusEl.className = 'connection-status disconnected';
   setSourceBadge(null);
 });
@@ -317,7 +317,7 @@ function renderRelays(relays) {
     item.innerHTML = `
       <div>
         <div class="relay-name">${esc(relay.name)}</div>
-        <div class="relay-status" id="relay-status-${relay.index}">${relay.on ? 'ON' : 'OFF'}</div>
+        <div class="relay-status" id="relay-status-${relay.index}">${relay.on ? (window.t ? window.t('relay.on') : 'ON') : (window.t ? window.t('relay.off') : 'OFF')}</div>
       </div>
       <label class="toggle">
         <input type="checkbox" id="relay-toggle-${relay.index}" ${relay.on ? 'checked' : ''}>
@@ -333,7 +333,9 @@ function updateRelayUI(index, on) {
   const cb = document.getElementById(`relay-toggle-${index}`);
   if (cb) cb.checked = on;
   const st = document.getElementById(`relay-status-${index}`);
-  if (st) st.textContent = on ? 'ON' : 'OFF';
+  if (st) st.textContent = on
+    ? (window.t ? window.t('relay.on') : 'ON')
+    : (window.t ? window.t('relay.off') : 'OFF');
 }
 
 async function toggleRelay(index, on, checkbox) {

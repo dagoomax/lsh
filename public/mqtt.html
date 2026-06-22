@@ -14,14 +14,14 @@
   <header>
     <div class="logo"><svg class="logo-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="lsh-g" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#3fb950"/><stop offset="1" stop-color="#58a6ff"/></linearGradient></defs><rect width="40" height="40" rx="10" fill="url(#lsh-g)"/><path fill-rule="evenodd" fill="white" d="M6 21L20 8L34 21V35H6Z M21 10L11 22H20L19 30L29 18H20Z"/></svg><span class="logo-text">LoxoneSwaggerHelper</span></div>
     <nav class="header-nav">
-      <a href="/" class="nav-link">Dashboard</a>
-      <a href="/settings.html" class="nav-link">Settings</a>
-      <a href="/logs.html" class="nav-link">Logs</a>
+      <a href="/" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
+      <a href="/settings.html" class="nav-link" data-i18n="nav.settings">Settings</a>
+      <a href="/logs.html" class="nav-link" data-i18n="nav.logs">Logs</a>
       <a href="/mqtt.html" class="nav-link active">MQTT</a>
     </nav>
     <button class="theme-toggle" id="btn-theme"></button>
     <div class="mqtt-header-stats">
-      <span id="mqtt-status-badge" class="mqtt-badge mqtt-badge--disconnected">Disconnected</span>
+      <span id="mqtt-status-badge" class="mqtt-badge mqtt-badge--disconnected" data-i18n="mqttpage.disconnected">Disconnected</span>
       <span id="mqtt-topic-count" class="mqtt-stat">0 topics</span>
       <span id="mqtt-rate" class="mqtt-stat">0 msg/s</span>
     </div>
@@ -31,22 +31,23 @@
     <!-- Left: topic list -->
     <aside class="mqtt-sidebar">
       <div class="mqtt-search-bar">
-        <input type="search" id="mqtt-search" class="mqtt-search-input" placeholder="Filter topics…">
-        <button class="btn btn-sm" id="btn-mqtt-clear" title="Clear all retained data">Clear</button>
+        <input type="search" id="mqtt-search" class="mqtt-search-input" data-i18n-placeholder="mqttpage.filter" placeholder="Filter topics…">
+        <button class="btn btn-sm" id="btn-mqtt-clear" data-i18n="mqttpage.clear" title="Clear all retained data">Clear</button>
       </div>
       <div class="mqtt-topic-list" id="mqtt-topic-list">
-        <div class="mqtt-empty" id="mqtt-empty">Waiting for messages…</div>
+        <div class="mqtt-empty" id="mqtt-empty" data-i18n="mqttpage.waiting">Waiting for messages…</div>
       </div>
     </aside>
 
     <!-- Right: topic detail -->
     <main class="mqtt-detail" id="mqtt-detail">
       <div class="mqtt-detail-placeholder">
-        <p>Select a topic to inspect</p>
+        <p data-i18n="mqttpage.select_topic">Select a topic to inspect</p>
       </div>
     </main>
   </div>
 
+  <script src="i18n.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="mqtt.js"></script>
   <script src="theme.js"></script>

@@ -14,9 +14,9 @@
   <header>
     <div class="logo"><svg class="logo-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="lsh-g" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#3fb950"/><stop offset="1" stop-color="#58a6ff"/></linearGradient></defs><rect width="40" height="40" rx="10" fill="url(#lsh-g)"/><path fill-rule="evenodd" fill="white" d="M6 21L20 8L34 21V35H6Z M21 10L11 22H20L19 30L29 18H20Z"/></svg><span class="logo-text">LoxoneSwaggerHelper</span></div>
     <nav class="header-nav">
-      <a href="/" class="nav-link">Dashboard</a>
-      <a href="/settings.html" class="nav-link">Settings</a>
-      <a href="/logs.html" class="nav-link active">Logs</a>
+      <a href="/" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
+      <a href="/settings.html" class="nav-link" data-i18n="nav.settings">Settings</a>
+      <a href="/logs.html" class="nav-link active" data-i18n="nav.logs">Logs</a>
       <a href="/mqtt.html" class="nav-link">MQTT</a>
     </nav>
     <button class="theme-toggle" id="btn-theme"></button>
@@ -30,7 +30,7 @@
       <div class="logs-controls">
         <label class="log-auto-refresh">
           <input type="checkbox" id="auto-refresh" checked>
-          Auto-refresh
+          <span data-i18n="logs.auto_refresh">Auto-refresh</span>
         </label>
         <select id="lines-select" title="Lines to show">
           <option value="100">100 lines</option>
@@ -39,14 +39,14 @@
           <option value="1000">1 000 lines</option>
           <option value="2000">2 000 lines</option>
         </select>
-        <button class="btn btn-secondary" id="btn-refresh" title="Refresh">↺ Refresh</button>
-        <button class="btn btn-secondary" id="btn-download" title="Download log file">⬇ Download</button>
-        <button class="btn btn-danger"    id="btn-clear"   title="Clear this log">✕ Clear</button>
+        <button class="btn btn-secondary" id="btn-refresh" data-i18n="logs.refresh" title="Refresh">↺ Refresh</button>
+        <button class="btn btn-secondary" id="btn-download" data-i18n="logs.download" title="Download log file">⬇ Download</button>
+        <button class="btn btn-danger"    id="btn-clear"   data-i18n="logs.clear" title="Clear this log">✕ Clear</button>
       </div>
     </div>
 
     <div class="logs-pane" id="logs-pane">
-      <div class="logs-empty" id="logs-empty" style="display:none">No log entries yet.</div>
+      <div class="logs-empty" id="logs-empty" style="display:none" data-i18n="logs.no_entries">No log entries yet.</div>
       <pre class="logs-output" id="logs-output"></pre>
     </div>
   </main>
@@ -56,6 +56,7 @@
     <span id="logs-footer-info">—</span>
   </footer>
 
+  <script src="i18n.js"></script>
   <script src="logs.js"></script>
   <script src="theme.js"></script>
   <script src="common.js"></script>

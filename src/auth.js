@@ -15,7 +15,7 @@ const TOKEN_TTL    = '7d';
 
 // Paths that never require authentication
 const PUBLIC_HTML = new Set(['/login.html', '/setup.html']);
-const PUBLIC_JS   = new Set(['/login.js', '/setup.js', '/theme.js', '/common.js']);
+const PUBLIC_JS   = new Set(['/login.js', '/setup.js', '/theme.js', '/common.js', '/i18n.js']);
 const PUBLIC_API  = ['/api/auth/login', '/api/auth/setup'];
 
 function ensurePersist() {
@@ -187,6 +187,7 @@ const auth = {
         p.endsWith('.woff2') ||
         p.endsWith('.woff') ||
         p.startsWith('/lib/') ||
+        p.startsWith('/i18n/') ||
         p.startsWith('/socket.io/') ||
         p.startsWith('/.well-known/')
       ) return next();

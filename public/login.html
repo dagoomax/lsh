@@ -29,7 +29,7 @@
         </svg>
       </div>
       <h1 class="auth-title">LoxoneSwaggerHelper</h1>
-      <p class="auth-sub">Sign in to your dashboard</p>
+      <p class="auth-sub" data-i18n="auth.sign_in_sub">Sign in to your dashboard</p>
     </div>
 
     <!-- Error banner -->
@@ -47,7 +47,7 @@
     <form id="login-form" autocomplete="on">
 
       <div class="auth-field">
-        <label for="username">Username</label>
+        <label for="username" data-i18n="auth.username">Username</label>
         <div class="auth-field-wrap">
           <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -55,12 +55,12 @@
             <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/>
           </svg>
           <input type="text" id="username" name="username"
-            autocomplete="username" placeholder="your username" autofocus required>
+            autocomplete="username" data-i18n-placeholder="auth.username_ph" placeholder="your username" autofocus required>
         </div>
       </div>
 
       <div class="auth-field">
-        <label for="password">Password</label>
+        <label for="password" data-i18n="auth.password">Password</label>
         <div class="auth-field-wrap">
           <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -72,12 +72,13 @@
         </div>
       </div>
 
-      <button type="submit" class="auth-submit" id="btn-login">Sign In</button>
+      <button type="submit" class="auth-submit" id="btn-login" data-i18n="auth.sign_in">Sign In</button>
 
     </form>
 
   </div>
 
+  <script src="i18n.js"></script>
   <script src="login.js"></script>
   <script src="theme.js"></script>
 </body>
