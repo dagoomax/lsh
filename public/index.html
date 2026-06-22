@@ -426,6 +426,16 @@
 
   <!-- ── Rooms tab ─────────────────────────────────────────── -->
   <div id="tab-pane-rooms" class="tab-pane">
+    <div class="rooms-toolbar">
+      <button class="rooms-add-btn" id="rooms-add-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Room
+      </button>
+    </div>
+    <div id="custom-rooms-grid" class="custom-rooms-grid"></div>
+    <div class="rooms-section-divider" id="rooms-auto-divider" style="display:none">
+      <span>Discovered Devices</span>
+    </div>
     <div id="rooms-grid"></div>
   </div>
 
@@ -504,6 +514,33 @@
       <div class="sip-dial-actions">
         <button class="btn sip-btn-call" id="sip-btn-call" data-i18n="sip.call">📞 Call</button>
         <button class="btn sip-btn-cancel-dial" id="sip-btn-cancel-dial">✗</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Room editor modal ──────────────────────────────────── -->
+  <div id="room-modal" class="room-modal" style="display:none" role="dialog" aria-modal="true">
+    <div class="room-modal-backdrop"></div>
+    <div class="room-modal-box">
+      <div class="room-modal-header">
+        <span class="room-modal-title" id="room-modal-title">New Room</span>
+        <button class="room-modal-close" id="room-modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="room-modal-body">
+        <label class="room-field-label">Room Name</label>
+        <input class="room-name-input" id="room-name-input" type="text" placeholder="e.g. Living Room" maxlength="40" autocomplete="off">
+        <label class="room-field-label">Icon</label>
+        <div class="room-type-grid" id="room-type-grid"></div>
+        <label class="room-field-label">Color</label>
+        <div class="room-color-swatches" id="room-color-swatches"></div>
+        <label class="room-field-label">Assign Devices</label>
+        <div class="room-device-list" id="room-device-list"></div>
+      </div>
+      <div class="room-modal-footer">
+        <button class="btn room-btn-delete" id="room-btn-delete" style="display:none">Delete</button>
+        <div style="flex:1"></div>
+        <button class="btn room-btn-cancel" id="room-btn-cancel">Cancel</button>
+        <button class="btn room-btn-save" id="room-btn-save">Save</button>
       </div>
     </div>
   </div>

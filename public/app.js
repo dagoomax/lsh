@@ -7,7 +7,8 @@ const batteryBar  = document.getElementById('battery-bar');
 const lastUpdate  = document.getElementById('last-update');
 const devicesGrid = document.getElementById('devices-grid');
 const devicesHdr  = document.getElementById('devices-header');
-const roomsGrid   = document.getElementById('rooms-grid');
+const roomsGrid       = document.getElementById('rooms-grid');
+const customRoomsGrid = document.getElementById('custom-rooms-grid');
 
 const knownDevices  = new Map();
 const cameraTimers  = new Map();
@@ -242,12 +243,10 @@ function updateFlowDiagram() {
   const importing = grid != null && grid > 10;
   const exporting = grid != null && grid < -10;
   const fc = document.getElementById('fc-g2b');
-  const arrowEl = document.getElementById('fc-g2b-arrow');
   if (fc) {
     fc.classList.remove('fc-active', 'fc-importing', 'fc-exporting');
-    if (importing) { fc.classList.add('fc-active', 'fc-importing'); if (arrowEl) arrowEl.textContent = '▲'; }
-    else if (exporting) { fc.classList.add('fc-active', 'fc-exporting'); if (arrowEl) arrowEl.textContent = '▼'; }
-    else { if (arrowEl) arrowEl.textContent = '▲'; }
+    if (importing)      fc.classList.add('fc-active', 'fc-importing');
+    else if (exporting) fc.classList.add('fc-active', 'fc-exporting');
   }
 
   // Grid card badge
@@ -1189,13 +1188,45 @@ const mainTabBar   = document.getElementById('main-tab-bar');
 const tabCountDevices = document.getElementById('tab-count-devices');
 const tabCountRooms   = document.getElementById('tab-count-rooms');
 
+// ── Room types ─────────────────────────────────────────────────────────────
+const ROOM_TYPES = [
+  { id: 'living',   label: 'Living',   svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v6h18v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/><path d="M3 12H1v3h2M21 12h2v3h-2"/><path d="M7 16v2M17 16v2"/></svg>' },
+  { id: 'bedroom',  label: 'Bedroom',  svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20v-6"/><path d="M22 20v-6"/><path d="M2 14h20"/><path d="M2 11a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4"/><path d="M6 14v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg>' },
+  { id: 'kitchen',  label: 'Kitchen',  svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v20M6 9H2V2"/><path d="M18 2v20M14 8a4 4 0 0 1 4-4"/></svg>' },
+  { id: 'bathroom', label: 'Bath',     svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6C9 3.8 7.2 2 5 2S1 3.8 1 6v2h22V6a2 2 0 0 0-2-2H9z"/><path d="M1 8v4a4 4 0 0 0 4 4h14a4 4 0 0 0 4-4V8"/><path d="M5 16v3M19 16v3"/></svg>' },
+  { id: 'office',   label: 'Office',   svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="12" rx="2"/><path d="M2 16h20M8 20h8M12 16v4"/></svg>' },
+  { id: 'dining',   label: 'Dining',   svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>' },
+  { id: 'garage',   label: 'Garage',   svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a1 1 0 0 1-1-1V9a5 5 0 0 1 5-5h10a5 5 0 0 1 5 5v7a1 1 0 0 1-1 1h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/><path d="M6 9h12l1 4H5z"/></svg>' },
+  { id: 'garden',   label: 'Garden',   svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V12"/><path d="M12 12C12 7 7 3 3 5c4 0 7 3 9 7"/><path d="M12 12c0-5 5-9 9-7-4 0-7 3-9 7"/></svg>' },
+  { id: 'laundry',  label: 'Laundry',  svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="12" cy="13" r="5"/><path d="M5 6h3M18 6h1"/></svg>' },
+  { id: 'kids',     label: 'Kids',     svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' },
+  { id: 'hallway',  label: 'Hall',     svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="14" height="20" rx="1.5"/><circle cx="15.5" cy="12" r="1" fill="currentColor" stroke="none"/></svg>' },
+  { id: 'gym',      label: 'Gym',      svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14M18 5v14"/><rect x="3" y="8" width="6" height="8" rx="1"/><rect x="15" y="8" width="6" height="8" rx="1"/><path d="M9 12h6"/></svg>' },
+  { id: 'cellar',   label: 'Cellar',   svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22h20"/><path d="M2 18h5v-4h4v-4h4v-4h5"/></svg>' },
+  { id: 'terrace',  label: 'Terrace',  svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16M4 22h16"/><circle cx="12" cy="8" r="3"/><path d="M12 5V3M12 13v-2M5.4 7.4 4 6M20 6l-1.4 1.4M7 11H5M19 11h-2"/></svg>' },
+  { id: 'generic',  label: 'Room',     svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' },
+];
+
+const ROOM_COLORS = [
+  { id: 'blue',   hex: '#3b82f6' },
+  { id: 'green',  hex: '#22c55e' },
+  { id: 'purple', hex: '#a855f7' },
+  { id: 'orange', hex: '#f97316' },
+  { id: 'pink',   hex: '#ec4899' },
+  { id: 'teal',   hex: '#14b8a6' },
+];
+
+let customRooms = [];
+try { customRooms = JSON.parse(localStorage.getItem('lsh-custom-rooms') || '[]'); } catch {}
+let editingRoomId = null;
+
 let activeTab  = 'energy';
 const roomsBuilt = new Set();
 
 function updateTabCounts() {
   const n = knownDevices.size;
   if (tabCountDevices) tabCountDevices.textContent = n;
-  if (tabCountRooms)   tabCountRooms.textContent   = n;
+  if (tabCountRooms)   tabCountRooms.textContent   = customRooms.length + n;
 }
 
 function switchTab(tabId) {
@@ -1237,6 +1268,9 @@ function buildRoomCard(device) {
 
 function renderRoomsTab() {
   if (!roomsGrid) return;
+  rebuildCustomRoomsGrid();
+  const divider = document.getElementById('rooms-auto-divider');
+  if (divider) divider.style.display = knownDevices.size > 0 ? '' : 'none';
   for (const [key, device] of knownDevices) {
     if (!roomsBuilt.has(key)) {
       roomsBuilt.add(key);
@@ -1247,6 +1281,198 @@ function renderRoomsTab() {
     roomsGrid.innerHTML = `<div class="rooms-empty"><span class="rooms-empty-icon">🏠</span>No devices discovered yet.<br>Configure an integration in Settings to get started.</div>`;
   }
 }
+
+// ── Custom room management ──────────────────────────────────────────────────
+
+function buildCustomRoomCard(room) {
+  const el = document.createElement('div');
+  el.className = 'custom-room-card';
+  el.dataset.customRoomId = room.id;
+
+  const type  = ROOM_TYPES.find(t => t.id === room.typeId) || ROOM_TYPES[ROOM_TYPES.length - 1];
+  const color = ROOM_COLORS.find(c => c.id === room.colorId) || ROOM_COLORS[0];
+
+  let sensorRows = '';
+  for (const key of (room.deviceKeys || [])) {
+    const dev = knownDevices.get(key);
+    if (dev) sensorRows += (dev.sensors || []).map(s => buildSensorRow(s, dev.readings || {}, key)).join('');
+  }
+
+  el.style.setProperty('--rc', color.hex);
+  el.innerHTML = `
+    <div class="custom-room-card-header">
+      <div class="custom-room-icon" style="color:${color.hex}">${type.svg}</div>
+      <div class="custom-room-info">
+        <span class="custom-room-name">${esc(room.name)}</span>
+        <span class="custom-room-type">${esc(type.label)}</span>
+      </div>
+      <button class="custom-room-edit-btn" data-room-id="${esc(room.id)}" title="Edit room">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+    </div>
+    ${sensorRows
+      ? `<div class="custom-room-sensors"><div class="sensor-list">${sensorRows}</div></div>`
+      : `<div class="custom-room-empty">${room.deviceKeys && room.deviceKeys.length ? 'Devices loading…' : 'No devices assigned'}</div>`}`;
+  return el;
+}
+
+function rebuildCustomRoomsGrid() {
+  if (!customRoomsGrid) return;
+  customRoomsGrid.innerHTML = '';
+  for (const room of customRooms) {
+    customRoomsGrid.appendChild(buildCustomRoomCard(room));
+  }
+  updateTabCounts();
+}
+
+function openRoomModal(roomId) {
+  editingRoomId = roomId || null;
+  const room = roomId ? customRooms.find(r => r.id === roomId) : null;
+
+  document.getElementById('room-modal-title').textContent = room ? 'Edit Room' : 'New Room';
+  document.getElementById('room-name-input').value = room ? room.name : '';
+
+  const typeGrid = document.getElementById('room-type-grid');
+  typeGrid.innerHTML = ROOM_TYPES.map(t => {
+    const sel = room ? room.typeId === t.id : t.id === 'generic';
+    return `<button class="room-type-btn${sel ? ' selected' : ''}" data-type-id="${t.id}" title="${t.label}">${t.svg}<span>${t.label}</span></button>`;
+  }).join('');
+
+  const swatches = document.getElementById('room-color-swatches');
+  swatches.innerHTML = ROOM_COLORS.map(c => {
+    const sel = room ? room.colorId === c.id : c.id === 'blue';
+    return `<button class="room-color-btn${sel ? ' selected' : ''}" data-color-id="${c.id}" style="--rc:${c.hex}" title="${c.id}"></button>`;
+  }).join('');
+
+  const deviceList = document.getElementById('room-device-list');
+  if (knownDevices.size === 0) {
+    deviceList.innerHTML = '<span class="room-modal-no-devices">No devices discovered yet</span>';
+  } else {
+    deviceList.innerHTML = [...knownDevices.entries()].map(([key, dev]) => {
+      const checked = room && room.deviceKeys && room.deviceKeys.includes(key) ? 'checked' : '';
+      return `<label class="room-device-item"><input type="checkbox" class="room-device-check" value="${esc(key)}" ${checked}><span class="room-device-label">${esc(dev.label)}</span><span class="room-device-source">${esc(key.split('/')[0])}</span></label>`;
+    }).join('');
+  }
+
+  document.getElementById('room-btn-delete').style.display = room ? '' : 'none';
+  document.getElementById('room-modal').style.display = '';
+  document.getElementById('room-name-input').focus();
+}
+
+function closeRoomModal() {
+  document.getElementById('room-modal').style.display = 'none';
+  editingRoomId = null;
+}
+
+function saveRoom() {
+  const name = document.getElementById('room-name-input').value.trim();
+  if (!name) { document.getElementById('room-name-input').focus(); return; }
+
+  const typeBtn  = document.querySelector('#room-type-grid .room-type-btn.selected');
+  const colorBtn = document.querySelector('#room-color-swatches .room-color-btn.selected');
+  const checked  = [...document.querySelectorAll('#room-device-list .room-device-check:checked')];
+
+  const typeId     = typeBtn  ? typeBtn.dataset.typeId   : 'generic';
+  const colorId    = colorBtn ? colorBtn.dataset.colorId : 'blue';
+  const deviceKeys = checked.map(c => c.value);
+
+  if (editingRoomId) {
+    const idx = customRooms.findIndex(r => r.id === editingRoomId);
+    if (idx >= 0) customRooms[idx] = { ...customRooms[idx], name, typeId, colorId, deviceKeys };
+  } else {
+    customRooms.push({ id: `cr-${Date.now()}`, name, typeId, colorId, deviceKeys });
+  }
+
+  localStorage.setItem('lsh-custom-rooms', JSON.stringify(customRooms));
+  closeRoomModal();
+  rebuildCustomRoomsGrid();
+}
+
+function deleteRoom() {
+  if (!editingRoomId) return;
+  customRooms = customRooms.filter(r => r.id !== editingRoomId);
+  localStorage.setItem('lsh-custom-rooms', JSON.stringify(customRooms));
+  closeRoomModal();
+  rebuildCustomRoomsGrid();
+}
+
+// Modal event wiring
+document.getElementById('rooms-add-btn')?.addEventListener('click', () => openRoomModal(null));
+document.getElementById('room-modal-close')?.addEventListener('click', closeRoomModal);
+document.getElementById('room-btn-cancel')?.addEventListener('click', closeRoomModal);
+document.getElementById('room-btn-save')?.addEventListener('click', saveRoom);
+document.getElementById('room-btn-delete')?.addEventListener('click', deleteRoom);
+document.querySelector('#room-modal .room-modal-backdrop')?.addEventListener('click', closeRoomModal);
+document.getElementById('room-name-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveRoom(); if (e.key === 'Escape') closeRoomModal(); });
+
+document.getElementById('room-type-grid')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.room-type-btn');
+  if (!btn) return;
+  document.querySelectorAll('#room-type-grid .room-type-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+});
+
+document.getElementById('room-color-swatches')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.room-color-btn');
+  if (!btn) return;
+  document.querySelectorAll('#room-color-swatches .room-color-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+});
+
+customRoomsGrid?.addEventListener('click', (e) => {
+  const editBtn = e.target.closest('.custom-room-edit-btn');
+  if (editBtn) { openRoomModal(editBtn.dataset.roomId); return; }
+});
+
+// ── Custom rooms grid sensor event delegation ───────────────────────────────
+customRoomsGrid?.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.sensor-trigger-btn');
+  if (!btn || btn.disabled) return;
+  const deviceKey  = btn.dataset.deviceKey;
+  const sensorPath = btn.dataset.sensorPath;
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '…';
+  try {
+    const res = await fetch(`/api/device/${deviceKey}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor: sensorPath, value: true }),
+    });
+    btn.textContent = res.ok ? '✓' : '✗';
+  } catch { btn.textContent = '✗'; }
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+});
+
+customRoomsGrid?.addEventListener('change', async (e) => {
+  const input = e.target;
+  if (!input.classList.contains('sensor-toggle')) return;
+  const deviceKey  = input.dataset.deviceKey;
+  const sensorPath = input.dataset.sensorPath;
+  const value = input.checked;
+  input.disabled = true;
+  try {
+    const res = await fetch(`/api/device/${deviceKey}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor: sensorPath, value }),
+    });
+    if (!res.ok) input.checked = !value;
+  } catch { input.checked = !value; }
+  finally   { input.disabled = false; }
+});
+
+customRoomsGrid?.addEventListener('input', (e) => {
+  const input = e.target;
+  if (input.classList.contains('sensor-range')) {
+    const deviceKey  = input.dataset.deviceKey;
+    const sensorPath = input.dataset.sensorPath;
+    const val = parseFloat(input.value);
+    const dispEl = document.querySelector(`.sensor-range-val[data-sensor-key="${CSS.escape(input.dataset.sensorKey)}"]`);
+    if (dispEl) dispEl.textContent = formatRangeDisplay(dispEl.dataset.rangeFormat, val);
+    debounce(`range-${deviceKey}-${sensorPath}`, () => sendDeviceCommand(deviceKey, sensorPath, val));
+  }
+});
 
 // ── Rooms grid event delegation (mirrors devicesGrid handlers) ──────────────
 roomsGrid?.addEventListener('click', async (e) => {
