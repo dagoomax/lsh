@@ -1397,8 +1397,8 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         }
       });
     });
-    req2.on('error', err => res.json({ success: false, error: err.message }));
-    req2.on('timeout', () => { req2.destroy(); res.json({ success: false, error: 'Connection timed out' }); });
+    req2.on('error', err => { if (!res.headersSent) res.json({ success: false, error: err.message }); });
+    req2.on('timeout', () => { req2.destroy(); if (!res.headersSent) res.json({ success: false, error: 'Connection timed out' }); });
   });
 
   router.post('/settings/lgthinq', (req, res) => {
