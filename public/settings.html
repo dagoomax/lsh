@@ -538,6 +538,43 @@
       </div>
     </section>
 
+    <!-- SmartBob -->
+    <section class="card settings-card" data-category="controllers" data-title="SmartBob MQTT sensors switches automation">
+      <h2>SmartBob <span class="badge">Optional</span></h2>
+      <p class="section-desc">Connects to SmartBob via MQTT. Add the broker address and define each entity with its state topic, optional command topic, and type.</p>
+
+      <div class="form-row">
+        <label for="smartbob-name">Device Name</label>
+        <input type="text" id="smartbob-name" placeholder="SmartBob">
+      </div>
+      <div class="form-row">
+        <label for="smartbob-host">MQTT Broker Host</label>
+        <input type="text" id="smartbob-host" placeholder="192.168.1.100">
+      </div>
+      <div class="form-row">
+        <label for="smartbob-port">Port <span class="hint">(default 1883)</span></label>
+        <input type="number" id="smartbob-port" placeholder="1883" min="1" max="65535" style="width:120px">
+      </div>
+      <div class="form-row">
+        <label for="smartbob-user">Username <span class="hint">(optional)</span></label>
+        <input type="text" id="smartbob-user" placeholder="(none)" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="smartbob-pass">Password <span class="hint">(optional)</span></label>
+        <input type="password" id="smartbob-pass" placeholder="••••••••" autocomplete="off">
+      </div>
+
+      <h3 style="font-size:0.85rem;color:var(--text-muted);margin:16px 0 8px">Entities</h3>
+      <div id="smartbob-entity-list"></div>
+      <button class="btn btn-secondary" id="btn-add-smartbob-entity" style="margin-top:8px">+ Add Entity</button>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-secondary" id="btn-test-smartbob">Test Broker</button>
+        <button class="btn btn-primary"   id="btn-save-smartbob">Save</button>
+        <span class="test-result" id="smartbob-test-result"></span>
+      </div>
+    </section>
+
     <!-- Shelly -->
     <!-- ESPHome -->
     <section class="card settings-card" data-category="controllers" data-title="ESPHome ESP32 ESP8266 sensors switches smart home">

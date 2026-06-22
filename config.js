@@ -84,6 +84,14 @@ function loadConfig() {
       country: fileConfig.lgthinq.country || 'US',
       lang:    fileConfig.lgthinq.lang    || 'en-US',
     } : undefined,
+    smartbob: fileConfig.smartbob?.entities?.length ? {
+      host:     fileConfig.smartbob.host     || 'localhost',
+      port:     parseInt(fileConfig.smartbob.port) || 1883,
+      name:     fileConfig.smartbob.name     || 'SmartBob',
+      username: fileConfig.smartbob.username || '',
+      password: fileConfig.smartbob.password || '',
+      entities: fileConfig.smartbob.entities || [],
+    } : undefined,
     knx: fileConfig.knx?.host ? {
       host:           fileConfig.knx.host,
       port:           parseInt(fileConfig.knx.port) || 3671,

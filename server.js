@@ -244,6 +244,15 @@ async function main() {
     }
   }
 
+  // Start SmartBob MQTT client if configured
+  if (config.smartbob?.entities?.length) {
+    const SmartBobClient = tryRequire('./src/smartbob-client');
+    if (SmartBobClient) {
+      const smartbob = new SmartBobClient(config, store, sensorRegistry);
+      smartbob.start();
+    }
+  }
+
   // Start KNX client if configured
   if (config.knx?.host) {
     const KNXClient = tryRequire('./src/knx-client', 'npm install knx');

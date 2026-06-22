@@ -97,6 +97,14 @@ async function loadSettings() {
     setVal('lgthinq-user-number',   data.lgthinq?.userNumber || '');
     setVal('lgthinq-country', data.lgthinq?.country || 'EU');
 
+    // SmartBob
+    setVal('smartbob-name', data.smartbob?.name || 'SmartBob');
+    setVal('smartbob-host', data.smartbob?.host || '');
+    setVal('smartbob-port', data.smartbob?.port || 1883);
+    setVal('smartbob-user', data.smartbob?.username || '');
+    setVal('smartbob-pass', data.smartbob?.password ? '••••••••' : '');
+    renderSmartBobEntities(data.smartbob?.entities || []);
+
     // KNX
     setVal('knx-host', data.knx?.host || '');
     setVal('knx-port', data.knx?.port || 3671);
@@ -2328,6 +2336,84 @@ document.getElementById('btn-save-fibaro').addEventListener('click', async () =>
 
 // Init
 loadSettings();
+
+// ── SmartBob ──────────────────────────────────────────────────────────────
+
+const SB_TYPES  = ['switch','light','temperature','humidity','number','boolean'];
+const SB_HK     = ['','switch-rw','light-rw','temperature','humidity','motion','contact','co2-sensor'];
+
+function renderSmartBobEntities(entities) {
+  const c = document.getElementById('smartbob-entity-list');
+  if (!c) return;
+  c.innerHTML = entities.map(e => smartBobRow(e)).join('');
+}
+
+function smartBobRow(e = {}) {
+  const typeOpts = SB_TYPES.map(t => `<option${e.type===t?' selected':''}>${t}</option>`).join('');
+  const hkOpts   = SB_HK.map(h => `<option${e.homekitType===h?' selected':''}>${h}</option>`).join('');
+  return `<div class="shelly-row" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px" data-sb-row>
+    <input type="text" class="sb-name"         placeholder="Name"          value="${e.name||''}"         style="width:120px">
+    <input type="text" class="sb-state-topic"  placeholder="state/topic"   value="${e.stateTopic||''}"   style="flex:1;min-width:140px" title="State topic">
+    <input type="text" class="sb-cmd-topic"    placeholder="command/topic" value="${e.commandTopic||''}" style="flex:1;min-width:140px" title="Command topic (optional)">
+    <select class="sb-type" style="width:100px">${typeOpts}</select>
+    <input type="text" class="sb-unit"         placeholder="unit"          value="${e.unit||''}"         style="width:60px" title="Unit label (optional)">
+    <select class="sb-hk" title="HomeKit type" style="width:110px">${hkOpts}</select>
+    <button class="btn btn-icon" onclick="this.closest('[data-sb-row]').remove()" title="Remove">✕</button>
+  </div>`;
+}
+
+function collectSmartBobEntities() {
+  return Array.from(document.querySelectorAll('[data-sb-row]')).map(r => ({
+    name:         r.querySelector('.sb-name').value.trim(),
+    stateTopic:   r.querySelector('.sb-state-topic').value.trim(),
+    commandTopic: r.querySelector('.sb-cmd-topic').value.trim() || undefined,
+    type:         r.querySelector('.sb-type').value,
+    unit:         r.querySelector('.sb-unit').value.trim() || undefined,
+    homekitType:  r.querySelector('.sb-hk').value || undefined,
+  })).filter(e => e.stateTopic);
+}
+
+document.getElementById('btn-add-smartbob-entity').addEventListener('click', () => {
+  const c = document.getElementById('smartbob-entity-list');
+  const d = document.createElement('div');
+  d.innerHTML = smartBobRow();
+  c.appendChild(d.firstElementChild);
+});
+
+document.getElementById('btn-test-smartbob').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-test-smartbob');
+  const res2 = document.getElementById('smartbob-test-result');
+  btn.disabled = true; res2.textContent = 'Testing…'; res2.className = 'test-result';
+  try {
+    const r    = await fetch('/api/settings/test-smartbob', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: getVal('smartbob-host'), port: parseInt(getVal('smartbob-port')) || 1883 }) });
+    const json = await r.json();
+    res2.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    res2.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) { res2.textContent = '✗ ' + err.message; res2.className = 'test-result err'; }
+  finally { btn.disabled = false; }
+});
+
+document.getElementById('btn-save-smartbob').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-smartbob');
+  const res2 = document.getElementById('smartbob-test-result');
+  btn.disabled = true; res2.textContent = 'Saving…'; res2.className = 'test-result';
+  try {
+    const r    = await fetch('/api/settings/smartbob', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:     getVal('smartbob-name'),
+        host:     getVal('smartbob-host'),
+        port:     parseInt(getVal('smartbob-port')) || 1883,
+        username: getVal('smartbob-user'),
+        password: getVal('smartbob-pass'),
+        entities: collectSmartBobEntities(),
+      }) });
+    const json = await r.json();
+    res2.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    res2.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) { res2.textContent = '✗ ' + err.message; res2.className = 'test-result err'; }
+  finally { btn.disabled = false; }
+});
 
 // ── KNX ───────────────────────────────────────────────────────────────────
 
