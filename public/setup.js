@@ -1,16 +1,28 @@
-const form  = document.getElementById('setup-form');
-const errEl = document.getElementById('setup-error');
-const btnEl = document.getElementById('btn-setup');
-const pwd1  = document.getElementById('admin-password');
-const pwd2  = document.getElementById('admin-password2');
+const form   = document.getElementById('setup-form');
+const errBox = document.getElementById('setup-error');
+const errMsg = document.getElementById('setup-error-msg');
+const btnEl  = document.getElementById('btn-setup');
+const pwd1   = document.getElementById('admin-password');
+const pwd2   = document.getElementById('admin-password2');
+
+function showError(msg) {
+  errMsg.textContent = msg;
+  errBox.style.display = 'flex';
+  errBox.classList.remove('shake');
+  void errBox.offsetWidth;
+  errBox.classList.add('shake');
+}
+
+function hideError() {
+  errBox.style.display = 'none';
+}
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  errEl.style.display = 'none';
+  hideError();
 
   if (pwd1.value !== pwd2.value) {
-    errEl.textContent = 'Passwords do not match';
-    errEl.style.display = '';
+    showError('Passwords do not match');
     return;
   }
 
@@ -30,14 +42,12 @@ form.addEventListener('submit', async (e) => {
     if (data.success) {
       window.location.href = '/';
     } else {
-      errEl.textContent = data.error || 'Setup failed';
-      errEl.style.display = '';
+      showError(data.error || 'Setup failed');
       btnEl.disabled = false;
       btnEl.textContent = 'Create Account & Sign In';
     }
   } catch (err) {
-    errEl.textContent = 'Network error: ' + err.message;
-    errEl.style.display = '';
+    showError('Network error — ' + err.message);
     btnEl.disabled = false;
     btnEl.textContent = 'Create Account & Sign In';
   }

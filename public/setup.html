@@ -10,43 +10,92 @@
   <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('lsh-theme')||'dark')</script>
 </head>
 <body class="auth-page">
+
   <div class="auth-card">
+
+    <!-- Logo + heading -->
     <div class="auth-header">
-      <svg class="auth-logo-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="ag" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#3fb950"/><stop offset="1" stop-color="#58a6ff"/>
-          </linearGradient>
-        </defs>
-        <rect width="40" height="40" rx="10" fill="url(#ag)"/>
-        <path fill-rule="evenodd" fill="white"
-          d="M6 21L20 8L34 21V35H6Z M21 10L11 22H20L19 30L29 18H20Z"/>
-      </svg>
+      <div class="auth-logo-wrap">
+        <svg class="auth-logo-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="lg" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#3fb950"/>
+              <stop offset="1" stop-color="#58a6ff"/>
+            </linearGradient>
+          </defs>
+          <rect width="40" height="40" rx="10" fill="url(#lg)"/>
+          <path fill-rule="evenodd" fill="white"
+            d="M6 21L20 8L34 21V35H6Z M21 10L11 22H20L19 30L29 18H20Z"/>
+        </svg>
+      </div>
       <h1 class="auth-title">Welcome to LSH</h1>
-      <p class="auth-sub">Create an admin account to secure your dashboard</p>
+      <p class="auth-sub">Create your admin account to secure the dashboard</p>
     </div>
-    <div id="setup-error" class="auth-error" style="display:none"></div>
-    <form id="setup-form">
-      <div class="form-row">
+
+    <!-- Error banner -->
+    <div id="setup-error" class="auth-error" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span id="setup-error-msg"></span>
+    </div>
+
+    <!-- Form -->
+    <form id="setup-form" autocomplete="on">
+
+      <div class="auth-field">
         <label for="admin-username">Admin Username</label>
-        <input type="text" id="admin-username" name="adminUsername"
-          autocomplete="username" autofocus required>
+        <div class="auth-field-wrap">
+          <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/>
+          </svg>
+          <input type="text" id="admin-username" name="adminUsername"
+            autocomplete="username" placeholder="admin" autofocus required>
+        </div>
       </div>
-      <div class="form-row">
-        <label for="admin-password">Password <span class="hint">(min. 8 characters)</span></label>
-        <input type="password" id="admin-password" name="adminPassword"
-          autocomplete="new-password" required minlength="8">
+
+      <div class="auth-field">
+        <label for="admin-password">Password <span style="font-weight:400;text-transform:none;letter-spacing:0">(min. 8 characters)</span></label>
+        <div class="auth-field-wrap">
+          <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="11" rx="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <input type="password" id="admin-password" name="adminPassword"
+            autocomplete="new-password" placeholder="••••••••" required minlength="8">
+        </div>
       </div>
-      <div class="form-row">
+
+      <div class="auth-field">
         <label for="admin-password2">Confirm Password</label>
-        <input type="password" id="admin-password2" name="adminPassword2"
-          autocomplete="new-password" required minlength="8">
+        <div class="auth-field-wrap">
+          <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="11" rx="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            <path d="M9 16l2 2 4-4"/>
+          </svg>
+          <input type="password" id="admin-password2" name="adminPassword2"
+            autocomplete="new-password" placeholder="••••••••" required minlength="8">
+        </div>
       </div>
-      <button type="submit" class="btn btn-primary auth-submit" id="btn-setup">
+
+      <button type="submit" class="auth-submit" id="btn-setup">
         Create Account &amp; Sign In
       </button>
+
     </form>
+
+    <p class="auth-hint">This setup runs once. Your credentials are stored locally.</p>
+
   </div>
+
   <script src="setup.js"></script>
   <script src="theme.js"></script>
 </body>

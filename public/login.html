@@ -10,34 +10,74 @@
   <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('lsh-theme')||'dark')</script>
 </head>
 <body class="auth-page">
+
   <div class="auth-card">
+
+    <!-- Logo + heading -->
     <div class="auth-header">
-      <svg class="auth-logo-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="ag" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#3fb950"/><stop offset="1" stop-color="#58a6ff"/>
-          </linearGradient>
-        </defs>
-        <rect width="40" height="40" rx="10" fill="url(#ag)"/>
-        <path fill-rule="evenodd" fill="white"
-          d="M6 21L20 8L34 21V35H6Z M21 10L11 22H20L19 30L29 18H20Z"/>
-      </svg>
+      <div class="auth-logo-wrap">
+        <svg class="auth-logo-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="lg" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#3fb950"/>
+              <stop offset="1" stop-color="#58a6ff"/>
+            </linearGradient>
+          </defs>
+          <rect width="40" height="40" rx="10" fill="url(#lg)"/>
+          <path fill-rule="evenodd" fill="white"
+            d="M6 21L20 8L34 21V35H6Z M21 10L11 22H20L19 30L29 18H20Z"/>
+        </svg>
+      </div>
       <h1 class="auth-title">LoxoneSwaggerHelper</h1>
-      <p class="auth-sub">Sign in to continue</p>
+      <p class="auth-sub">Sign in to your dashboard</p>
     </div>
-    <div id="auth-error" class="auth-error" style="display:none"></div>
-    <form id="login-form">
-      <div class="form-row">
+
+    <!-- Error banner -->
+    <div id="auth-error" class="auth-error" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span id="auth-error-msg"></span>
+    </div>
+
+    <!-- Form -->
+    <form id="login-form" autocomplete="on">
+
+      <div class="auth-field">
         <label for="username">Username</label>
-        <input type="text" id="username" name="username" autocomplete="username" autofocus required>
+        <div class="auth-field-wrap">
+          <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/>
+          </svg>
+          <input type="text" id="username" name="username"
+            autocomplete="username" placeholder="your username" autofocus required>
+        </div>
       </div>
-      <div class="form-row">
+
+      <div class="auth-field">
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" autocomplete="current-password" required>
+        <div class="auth-field-wrap">
+          <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="11" rx="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <input type="password" id="password" name="password"
+            autocomplete="current-password" placeholder="••••••••" required>
+        </div>
       </div>
-      <button type="submit" class="btn btn-primary auth-submit" id="btn-login">Sign In</button>
+
+      <button type="submit" class="auth-submit" id="btn-login">Sign In</button>
+
     </form>
+
   </div>
+
   <script src="login.js"></script>
   <script src="theme.js"></script>
 </body>

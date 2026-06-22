@@ -1,10 +1,24 @@
-const form  = document.getElementById('login-form');
-const errEl = document.getElementById('auth-error');
-const btnEl = document.getElementById('btn-login');
+const form   = document.getElementById('login-form');
+const errBox = document.getElementById('auth-error');
+const errMsg = document.getElementById('auth-error-msg');
+const btnEl  = document.getElementById('btn-login');
+
+function showError(msg) {
+  errMsg.textContent = msg;
+  errBox.style.display = 'flex';
+  errBox.classList.remove('shake');
+  // force reflow so animation re-triggers on repeated errors
+  void errBox.offsetWidth;
+  errBox.classList.add('shake');
+}
+
+function hideError() {
+  errBox.style.display = 'none';
+}
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  errEl.style.display = 'none';
+  hideError();
   btnEl.disabled = true;
   btnEl.textContent = 'Signing in…';
 
@@ -22,14 +36,12 @@ form.addEventListener('submit', async (e) => {
       const next = new URLSearchParams(location.search).get('next');
       window.location.href = (next && next.startsWith('/')) ? next : '/';
     } else {
-      errEl.textContent = data.error || 'Login failed';
-      errEl.style.display = '';
+      showError(data.error || 'Login failed');
       btnEl.disabled = false;
       btnEl.textContent = 'Sign In';
     }
   } catch (err) {
-    errEl.textContent = 'Network error: ' + err.message;
-    errEl.style.display = '';
+    showError('Network error — ' + err.message);
     btnEl.disabled = false;
     btnEl.textContent = 'Sign In';
   }
