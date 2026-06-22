@@ -43,8 +43,10 @@ class LGThinQClient {
   }
 
   async start() {
-    const cfg = this._config.lgthinq;
-    if (!cfg?.username || !cfg?.password) return;
+    const cfg       = this._config.lgthinq;
+    const hasCreds  = !!(cfg?.username && cfg?.password);
+    const hasTokens = !!(this._loadTokens()?.access_token);
+    if (!hasCreds && !hasTokens) return;
     try {
       await this._authenticate();
       await this._discoverDevices();
@@ -69,10 +71,12 @@ class LGThinQClient {
       if (saved.thinq2Host) this._thinq2Host = saved.thinq2Host;
       if (saved.expires_at && saved.expires_at > Date.now() + 60000) return;
       if (saved.refresh_token) {
-        const empHost = saved.empHost || EMP_HOSTS[(this._config.lgthinq.country || 'US').toUpperCase()] || DEFAULT_EMP;
-        try { await this._refreshTokens(empHost); return; } catch { /* fall through */ }
+        const empHost = saved.empHost || EMP_HOSTS[(this._config.lgthinq?.country || 'US').toUpperCase()] || DEFAULT_EMP;
+        try { await this._refreshTokens(empHost); return; } catch { /* fall through to fresh login */ }
       }
     }
+    const cfg = this._config.lgthinq;
+    if (!cfg?.username || !cfg?.password) throw new Error('No valid tokens found and no credentials configured');
     await this._login();
   }
 
