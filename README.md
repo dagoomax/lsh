@@ -66,7 +66,7 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
 | `relays` | No | Victron relay index + display name |
 | `homekit` | No | HomeKit bridge — requires `hap-nodejs` npm package |
-| `server` | No | HTTP port, HTTPS, and Let's Encrypt |
+| `server` | Yes | HTTP port, HTTPS, and Let's Encrypt |
 
 ### `mqtt`
 
