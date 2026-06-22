@@ -9,7 +9,9 @@
   "dependencies": {
     "express": "^4.21.0",
     "hap-nodejs": "^0.12.2",
-    "mqtt": "^5.10.0",
-    "socket.io": "^4.8.0"
+    "jssip": "^3.13.8",
+    "mqtt": "^4.1.0",
+    "node-tradfri-client": "^3.2.0",
+    "socket.io": "^4.5.4"
   }
 }
