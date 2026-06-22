@@ -165,6 +165,7 @@ function fmt(value, format) {
     case 'pm10':          return `${Number(value).toFixed(1)} µg/m³`;
     case 'aqi':           return `AQI ${Math.round(Number(value))}`;
     case 'led':           return value === 1 ? '●' : '○';
+    case 'washer-state':  return typeof value === 'string' ? value.replace(/_/g, ' ') : String(value);
     default:              return typeof value === 'number' ? Number(value).toFixed(1) : String(value);
   }
 }
@@ -1170,6 +1171,7 @@ const PLATFORMS = [
   { key: 'mqtt-explorer',label: 'Explorer',     color: '#7c3aed', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><circle cx="10" cy="10" r="2.5" fill="#fff"/><circle cx="22" cy="10" r="2.5" fill="#fff"/><circle cx="10" cy="22" r="2.5" fill="#fff"/><circle cx="22" cy="22" r="2.5" fill="#fff"/><path d="M12.5 10h7M10 12.5v7M22 12.5v7M12.5 22h7" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>' },
   { key: 'boneio',       label: 'BoneIO',       color: '#1a73e8', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><circle cx="10" cy="10" r="3" fill="#fff"/><circle cx="22" cy="10" r="3" fill="#fff"/><circle cx="10" cy="22" r="3" fill="#fff"/><circle cx="22" cy="22" r="3" fill="#fff"/><path d="M13 10h6M10 13v6M22 13v6M13 22h6" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>' },
   { key: 'fibaro',       label: 'Fibaro',       color: '#e4181c', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M10 10h12v3H10zM10 16h8v3h-8zM10 22h5v3h-5z" fill="#fff"/></svg>' },
+  { key: 'lgthinq',     label: 'LG ThinQ',    color: '#a50034', svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><text x="16" y="21" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="11" fill="#fff">LG</text></svg>' },
 ];
 
 const platformBar = document.getElementById('platform-bar');

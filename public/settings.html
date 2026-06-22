@@ -392,6 +392,38 @@
       </div>
     </section>
 
+    <!-- LG ThinQ -->
+    <section class="card settings-card" data-category="smarthome" data-title="LG ThinQ smart appliances air conditioner washing machine">
+      <h2><span data-i18n="s.lgthinq_title">LG ThinQ</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Connects to your LG account via the ThinQ v2 cloud API. Discovers air conditioners, air purifiers, washing machines, dryers, dishwashers, refrigerators, humidifiers, and dehumidifiers. Requires your LG account (same credentials as the LG ThinQ app).</p>
+
+      <div class="form-row">
+        <label for="lgthinq-user" data-i18n="s.lgthinq_user">LG Account Email</label>
+        <input type="email" id="lgthinq-user" placeholder="you@example.com">
+      </div>
+      <div class="form-row">
+        <label for="lgthinq-pass" data-i18n="s.lgthinq_pass">Password</label>
+        <input type="password" id="lgthinq-pass" placeholder="••••••••">
+      </div>
+      <div class="form-row">
+        <label for="lgthinq-country"><span data-i18n="s.lgthinq_country">Country</span> <span class="hint" data-i18n="s.lgthinq_country_hint">(match your LG account region)</span></label>
+        <select id="lgthinq-country">
+          <option value="US">US — United States</option>
+          <option value="EU">EU — Europe</option>
+          <option value="KR">KR — Korea</option>
+          <option value="AU">AU — Australia</option>
+          <option value="CA">CA — Canada</option>
+          <option value="JP">JP — Japan</option>
+        </select>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-lgthinq" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-lgthinq" data-i18n="common.save">Save</button>
+        <span class="test-result" id="lgthinq-test-result"></span>
+      </div>
+    </section>
+
     <!-- IKEA Dirigera -->
     <section class="card settings-card" data-category="smarthome" data-title="IKEA Dirigera hub lights bulbs">
       <h2><span data-i18n="s.dirigera_title">IKEA Dirigera</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>

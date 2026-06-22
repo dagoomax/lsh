@@ -217,6 +217,15 @@ async function main() {
     }
   }
 
+  // Start LG ThinQ client if configured
+  if (config.lgthinq?.username && config.lgthinq?.password) {
+    const LGThinQClient = tryRequire('./src/lgthinq-client');
+    if (LGThinQClient) {
+      const lgthinq = new LGThinQClient(config, store, sensorRegistry);
+      lgthinq.start().catch((err) => console.error(`[LGThinQ] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Fibaro Home Center client if configured
   if (config.fibaro?.host) {
     const FibaroClient = tryRequire('./src/fibaro-client');

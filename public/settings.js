@@ -88,6 +88,11 @@ async function loadSettings() {
     // Shelly
     renderShellyList(data.shelly?.devices || []);
 
+    // LG ThinQ
+    setVal('lgthinq-user',    data.lgthinq?.username || '');
+    setVal('lgthinq-pass',    data.lgthinq?.password ? '••••••••' : '');
+    setVal('lgthinq-country', data.lgthinq?.country  || 'EU');
+
     // Fibaro
     setVal('fibaro-host', data.fibaro?.host || '');
     setVal('fibaro-port', data.fibaro?.port || 80);
@@ -2102,6 +2107,54 @@ document.getElementById('btn-save-https').addEventListener('click', async () => 
   } catch (err) {
     result.textContent = '✗ ' + err.message;
     result.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── LG ThinQ ──────────────────────────────────────────────────────────────
+
+document.getElementById('btn-test-lgthinq').addEventListener('click', async () => {
+  const resultEl = document.getElementById('lgthinq-test-result');
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result';
+  try {
+    const res = await fetch('/api/settings/test-lgthinq', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: getVal('lgthinq-user'),
+        password: getVal('lgthinq-pass'),
+        country:  getVal('lgthinq-country'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-lgthinq').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-lgthinq');
+  const resultEl = document.getElementById('lgthinq-test-result');
+  btn.disabled   = true;
+  try {
+    const res = await fetch('/api/settings/lgthinq', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: getVal('lgthinq-user'),
+        password: getVal('lgthinq-pass'),
+        country:  getVal('lgthinq-country'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
   } finally { btn.disabled = false; }
 });
 

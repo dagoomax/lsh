@@ -1358,6 +1358,69 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // ── LG ThinQ ─────────────────────────────────────────────────────────
+
+  router.post('/settings/test-lgthinq', async (req, res) => {
+    const { username, password, country = 'US', lang } = req.body;
+    if (!username || !password) return res.status(400).json({ success: false, error: 'username and password required' });
+    // Probe the LG gateway — no credentials needed, just verify connectivity
+    const https   = require('https');
+    const headers = {
+      'x-api-key':        'VGhpblEyLjAgU0VSVklDRQ==',
+      'x-client-id':      'LGAO221A02',
+      'x-country-code':   country.toUpperCase(),
+      'x-language-code':  (lang || 'en-US').replace('-', '_'),
+      'x-message-id':     Math.random().toString(36).slice(2),
+      'x-service-id':     'SVC202',
+      'x-service-phase':  'OP',
+      'x-thinq-app-ver':  '3.6.1200',
+      'x-thinq-app-type': 'NUTS',
+      'x-thinq-app-os':   'ANDROID',
+      'Accept':           'application/json',
+    };
+    const req2 = https.get({
+      hostname: 'aic-service.lgthinq.com',
+      path: `/service/users/gateways?countryCode=${country.toUpperCase()}&langCode=${(lang||'en-US').replace('-','_')}`,
+      timeout: 8000,
+      headers,
+    }, r => {
+      const chunks = [];
+      r.on('data', d => chunks.push(d));
+      r.on('end', () => {
+        if (r.statusCode >= 300) return res.json({ success: false, error: `LG gateway returned HTTP ${r.statusCode}` });
+        try {
+          const gw = JSON.parse(Buffer.concat(chunks));
+          const empHost = (gw.result || gw).empPath || (gw.result || gw).empApiHost || '';
+          res.json({ success: true, message: `LG gateway reachable — ${empHost || 'connected'}. Save and restart to activate.` });
+        } catch {
+          res.json({ success: r.statusCode < 300, message: 'LG gateway reachable' });
+        }
+      });
+    });
+    req2.on('error', err => res.json({ success: false, error: err.message }));
+    req2.on('timeout', () => { req2.destroy(); res.json({ success: false, error: 'Connection timed out' }); });
+  });
+
+  router.post('/settings/lgthinq', (req, res) => {
+    const current = readConfigFile();
+    const { username, password, country, lang } = req.body;
+    try {
+      const prev = current.lgthinq || {};
+      writeConfigFile({
+        ...current,
+        lgthinq: {
+          username: (username || prev.username || '').trim(),
+          password: (password && !password.includes('•')) ? password : (prev.password || ''),
+          country:  (country  || prev.country  || 'US').trim(),
+          lang:     (lang     || prev.lang     || 'en-US').trim(),
+        },
+      });
+      res.json({ success: true, message: 'LG ThinQ settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // ── Fibaro Home Center ────────────────────────────────────────────────
 
   router.post('/settings/test-fibaro', async (req, res) => {

@@ -8,6 +8,13 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-06-22 (7)
+
+### Added
+- **LG ThinQ support** — cloud API integration using LG's ThinQ v2 protocol (same as the official LG ThinQ app). Authenticates via LG account email + password, persists OAuth tokens in `persist/lgthinq-tokens.json` with automatic refresh. Discovers all appliances from the LG account and creates one dashboard card per device. Supported types: air conditioners (power toggle + target temperature slider + current temperature), air purifiers (power + PM1/PM2.5/PM10), washing machines/dryers (state + remaining time), dishwashers (state), refrigerators (fridge and freezer temperatures), humidifiers/dehumidifiers (power + humidity). State changes polled every 30 s. Settings card with country selector (US/EU/KR/AU/CA/JP) and a test button that probes the LG gateway. Platform badge added to the dashboard header. Translated in all 7 languages.
+
+---
+
 ## 2026-06-22 (6)
 
 ### Added
