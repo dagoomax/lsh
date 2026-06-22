@@ -254,12 +254,14 @@ async function main() {
     }
   }
 
-  const startHomekitBridge = tryRequire('./src/homekit-bridge');
-  if (startHomekitBridge) {
-    try {
-      startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient });
-    } catch (err) {
-      console.error(`[HomeKit] Start failed: ${err.message}`);
+  if (config.homekit?.enabled !== false) {
+    const startHomekitBridge = tryRequire('./src/homekit-bridge', 'install hap-nodejs to enable HomeKit');
+    if (startHomekitBridge) {
+      try {
+        startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient });
+      } catch (err) {
+        console.error(`[HomeKit] Start failed: ${err.message}`);
+      }
     }
   }
 

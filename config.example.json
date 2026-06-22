@@ -114,6 +114,7 @@
     }
   },
   "homekit": {
+    "enabled": true,
     "pin": "031-45-154",
     "port": 47128,
     "username": "CC:22:3D:E3:CE:F6"

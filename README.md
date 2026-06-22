@@ -63,7 +63,7 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 | `sip` | No | SIP softphone (WebSocket transport) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
 | `relays` | Yes | Victron relay index + display name |
-| `homekit` | Yes | HomeKit bridge PIN, port, and MAC |
+| `homekit` | No | HomeKit bridge — requires `hap-nodejs` npm package |
 | `server` | Yes | HTTP port, HTTPS, and Let's Encrypt |
 
 ### `mqtt`
@@ -275,6 +275,7 @@ Priority order for the live preview: `webrtcUrl` → `mjpegUrl` → `snapshotUrl
 
 ```json
 "homekit": {
+  "enabled": true,
   "pin": "031-45-154",
   "port": 47128,
   "username": "CC:22:3D:E3:CE:F6"
@@ -282,6 +283,14 @@ Priority order for the live preview: `webrtcUrl` → `mjpegUrl` → `snapshotUrl
 ```
 
 `username` is the bridge MAC address — must be unique per HomeKit home. Generate a random MAC if running multiple instances.
+
+The HomeKit bridge is **optional**. It requires the `hap-nodejs` npm package, which is not installed by default:
+
+```bash
+npm install hap-nodejs
+```
+
+If `hap-nodejs` is missing the bridge is silently skipped and a warning is logged. Set `"enabled": false` to disable HomeKit even when the package is installed.
 
 ### `server`
 
@@ -471,7 +480,7 @@ Subscribes to `#` on the same MQTT broker as `mqtt-client.js`. Maintains a map o
 
 ---
 
-### `src/homekit-bridge.js`
+### `src/homekit-bridge.js` *(optional — requires `hap-nodejs`)*
 
 HAP-nodejs bridge. Registers HomeKit accessories for:
 
@@ -705,6 +714,8 @@ Create tokens in **Settings → Security → API Tokens**. Tokens are stored as 
 ## HomeKit
 
 The HomeKit bridge exposes all relays and integration sensors as native HomeKit accessories. Scan the QR code shown in **Settings → HomeKit** with the **Home** app, or enter the PIN manually.
+
+> **Requirement:** `npm install hap-nodejs` — the package is optional and not bundled. The server starts normally without it (bridge silently disabled). Set `homekit.enabled: false` in `config.json` to disable it even when the package is present.
 
 **Supported service types:**
 
