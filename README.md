@@ -8,6 +8,33 @@
 
 📄 **[Download PDF](leaflet/lsh-leaflet.pdf)** — features, integrations &amp; REST API reference
 
+---
+
+## SWOT Analysis
+
+| | |
+|---|---|
+| **💪 Strengths** | **⚠️ Weaknesses** |
+| • **Local-first** — all data stays on LAN, zero cloud dependency by default | • **Technical setup required** — no one-click installer or Docker Hub image yet |
+| • **20+ integrations** in a single lightweight Node.js process (~120 MB RAM) | • **No automation engine** — no built-in rule/scene builder; relies on external triggers or API |
+| • **Victron Energy deep integration** — solar, battery, grid, relay control over local MQTT | • **Web-only UI** — no dedicated mobile app; responsive browser UI only |
+| • **Native Apple HomeKit bridge** — every device auto-exposed, unlimited accessories | • **Single-node** — no clustering or HA failover; one server failure = no dashboard |
+| • **Protocol breadth** — MQTT, KNXnet/IP, Modbus TCP, REST, WebSocket, RTSP in one platform | • **Cloud API fragility** — SmartThings, LG ThinQ, VRM integrations depend on vendor API stability |
+| • **On-demand RTSP proxy** — FFmpeg re-streams only when a client connects, zero idle bandwidth | • **No persistent history** — no time-series database; live values only, no charts over days/weeks |
+| • **Settings UI** — all integrations configured through browser forms, no YAML or config file editing | • **Limited user management** — single-tier auth; no per-user permissions or multi-tenant support |
+| • **MQTT Explorer built-in** — live topic browser + pub/sub panel, no separate tool needed | |
+| | |
+| **🚀 Opportunities** | **🔴 Threats** |
+| • **Privacy-conscious market** growing — users increasingly reject cloud-dependent home hubs | • **Home Assistant dominance** — large ecosystem, huge community, well-known brand |
+| • **Victron solar/EV adoption** rising — LSH is uniquely positioned as the Victron-native dashboard | • **Vendor API changes** — unilateral breaking changes by SmartThings, LG, Google can silently break integrations |
+| • **KNX building automation** market moving to IP — LSH already supports KNXnet/IP natively | • **Matter / Thread protocol** — commoditises device integration; large platforms may absorb niche use cases |
+| • **Self-hosted / homelab community** growth on GitHub, Reddit, YouTube — strong organic discovery | • **Security exposure** — self-hosted dashboards with port-forwarding are a common attack vector if misconfigured |
+| • **Automation engine addon** — adding a Node-RED-style flow editor would dramatically expand the audience | • **Single maintainer bus factor** — platform continuity depends on one developer |
+| • **Docker image + Helm chart** — packaging would unlock NAS, Proxmox, and k8s user segments | • **Apple HomeKit API changes** — HAP-nodejs relies on reverse-engineered spec; breaking changes possible |
+| • **Commercial integrator channel** — KNX + Victron + Loxone overlap with professional AV/automation installers | • **Competing open platforms** — openHAB, Domoticz, ioBroker cover similar protocol breadth |
+
+---
+
 A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), and KNX into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 ---
