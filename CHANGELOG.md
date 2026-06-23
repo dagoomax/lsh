@@ -6,6 +6,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added
+- **PM2 process-manager support** — added [`ecosystem.config.js`](ecosystem.config.js) so the server can run as an always-on, auto-restarting service via [PM2](https://pm2.keymetrics.io/). Registered as `lsh` in single-instance fork mode (the server binds fixed HTTP(S)/HomeKit/RTSP ports and holds long-lived MQTT/WebSocket connections, so cluster mode is unsafe), with `autorestart` and a 300 MB `max_memory_restart` guard. PM2 stdout/stderr are captured to `logs/pm2-out.log` / `logs/pm2-error.log` alongside the app's existing category logs. Added `pm2:start`/`stop`/`restart`/`reload`/`delete`/`logs`/`status` npm scripts and a "Running as a service (PM2)" section to the README.
+
 ---
 
 ## 2026-06-22 (7)
