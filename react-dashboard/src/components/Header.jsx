@@ -1,92 +1,54 @@
 import { useState, useEffect } from 'react'
 
-export default function Header({ connected, source }) {
-  const [now, setNow] = useState(new Date())
+function fmt(d) {
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+function fmtDate(d) {
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
 
+export default function Header({ connection, connected }) {
+  const [now, setNow] = useState(new Date())
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(id)
+    const t = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(t)
   }, [])
 
-  const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  const dateStr = now.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const source = connection?.source === 'vrm' ? 'VRM Cloud'
+               : connection?.source === 'mqtt' ? 'MQTT Local' : '—'
+  const live = connected && (connection?.vrm?.connected || connection?.mqtt?.connected)
 
   return (
     <header style={{
-      position: 'relative',
-      height: 64,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 32px',
-      background: 'rgba(7,7,15,0.9)',
-      backdropFilter: 'blur(20px)',
-      WebkitBackdropFilter: 'blur(20px)',
-      borderBottom: '1px solid rgba(212,175,55,0.2)',
-      zIndex: 100,
-      flexShrink: 0,
+      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+      height: 52,
+      background: 'rgba(0,0,0,0.85)',
+      backdropFilter: 'blur(40px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+      borderBottom: '1px solid rgba(255,255,255,0.08)',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '0 24px', flexShrink: 0,
     }}>
-      {/* Animated gold top line */}
-      <div style={{
-        position: 'absolute',
-        top: 0, left: 0, right: 0,
-        height: 1,
-        background: 'linear-gradient(90deg, transparent 0%, #D4AF37 30%, #F5E098 50%, #D4AF37 70%, transparent 100%)',
-        backgroundSize: '200% 100%',
-        animation: 'goldShift 4s ease infinite',
-      }} />
-
-      {/* Left — Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{
-          width: 38, height: 38, borderRadius: 10,
-          background: 'linear-gradient(135deg, #D4AF37 0%, #9A7D1E 100%)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 20,
-          boxShadow: '0 0 16px rgba(212,175,55,0.4)',
-        }}>⚡</div>
-        <div>
-          <div className="gold-text" style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 800, lineHeight: 1 }}>LSH</div>
-          <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 2 }}>Local Smart Home</div>
-        </div>
-      </div>
-
-      {/* Center — Clock */}
-      <div style={{ textAlign: 'center' }}>
-        <div style={{
-          fontFamily: 'monospace',
-          fontSize: 22,
-          fontWeight: 600,
-          letterSpacing: '0.06em',
-          color: 'var(--platinum)',
-          lineHeight: 1,
-        }}>{timeStr}</div>
-        <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3, letterSpacing: '0.04em' }}>{dateStr}</div>
-      </div>
-
-      {/* Right — Status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '5px 14px',
-          borderRadius: 20,
-          background: connected ? 'rgba(61,186,110,0.12)' : 'rgba(232,69,69,0.12)',
-          border: `1px solid ${connected ? 'rgba(61,186,110,0.35)' : 'rgba(232,69,69,0.35)'}`,
-          fontSize: 12, fontWeight: 600,
-          color: connected ? 'var(--green)' : 'var(--red)',
-        }}>
-          <span style={{ animation: connected ? 'pulse 2s ease infinite' : 'none' }}>●</span>
-          {connected ? 'LIVE' : 'OFFLINE'}
+        <span style={{ fontSize: 20 }}>⚡</span>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.1 }}>LSH</div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1 }}>Local Smart Home</div>
         </div>
-        {source && (
-          <div style={{
-            padding: '4px 10px', borderRadius: 6,
-            background: 'rgba(212,175,55,0.08)',
-            border: '1px solid rgba(212,175,55,0.2)',
-            fontSize: 10, fontWeight: 600,
-            color: 'var(--gold)', letterSpacing: '0.06em', textTransform: 'uppercase',
-          }}>{source}</div>
-        )}
+      </div>
+
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 17, fontWeight: 300, letterSpacing: '0.05em', fontVariantNumeric: 'tabular-nums' }}>
+          {fmt(now)}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text2)' }}>{fmtDate(now)}</div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span className={`badge ${live ? 'badge-green' : 'badge-red'}`}>
+          <span style={{ fontSize: 7 }}>●</span>{live ? 'Live' : 'Offline'}
+        </span>
+        <span style={{ fontSize: 12, color: 'var(--text2)' }}>{source}</span>
       </div>
     </header>
   )
