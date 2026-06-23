@@ -5,6 +5,7 @@
 [![Page 1](leaflet/pages/page1.png)](leaflet/lsh-leaflet.pdf)
 [![Page 2](leaflet/pages/page2.png)](leaflet/lsh-leaflet.pdf)
 [![Page 3](leaflet/pages/page3.png)](leaflet/lsh-leaflet.pdf)
+[![Page 4 — SWOT](leaflet/pages/page4.png)](leaflet/lsh-leaflet.pdf)
 
 📄 **[Download PDF](leaflet/lsh-leaflet.pdf)** — features, integrations &amp; REST API reference
 
