@@ -102,6 +102,20 @@ function loadConfig() {
       basePort:   parseInt(fileConfig.ffmpegRtsp?.basePort   || 8554),
       ffmpegPath: fileConfig.ffmpegRtsp?.ffmpegPath || 'ffmpeg',
     },
+    somfy: fileConfig.somfy?.host ? {
+      host:         fileConfig.somfy.host,
+      port:         parseInt(fileConfig.somfy.port) || 8443,
+      email:        fileConfig.somfy.email    || '',
+      password:     fileConfig.somfy.password || '',
+      devices:      fileConfig.somfy.devices  || [],
+      pollInterval: parseInt(fileConfig.somfy.pollInterval) || 30,
+    } : undefined,
+    bayrol: fileConfig.bayrol?.username ? {
+      username:     fileConfig.bayrol.username    || '',
+      password:     fileConfig.bayrol.password    || '',
+      pollInterval: parseInt(fileConfig.bayrol.pollInterval) || 60,
+      pools:        fileConfig.bayrol.pools       || [],
+    } : undefined,
   };
 }
 

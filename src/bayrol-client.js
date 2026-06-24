@@ -1,167 +1,201 @@
 'use strict';
 
 const https          = require('https');
+const mqtt           = require('mqtt');
 const platformStatus = require('./platform-status');
 
 const BASE_HOST = 'www.bayrol-poolaccess.de';
-const BASE_PATH = '/webservice/p.php';
+
+// MQTT value UIDs
+const UID_STATUS = '1';
+const UID_PH     = '4.78';
+const UID_ORP    = '4.82';
+const UID_TEMP   = '4.98';
+const UID_SALT   = '4.100';
+const VALUE_UIDS = [UID_STATUS, UID_PH, UID_ORP, UID_TEMP, UID_SALT];
 
 class BayrolClient {
   constructor(config, store, sensorRegistry) {
     this._config   = config;
     this._store    = store;
     this._registry = sensorRegistry;
-    this._session  = null; // PHPSESSID=abc123
-    this._timer    = null;
-    this._pools    = {};   // cid → { name, deviceKey }
+    this._session  = null;
+    this._clients  = []; // mqtt clients, one per pool
   }
 
   async start() {
     const cfg = this._config.bayrol;
     if (!cfg?.username || !cfg?.password) return;
 
+    console.log('[Bayrol] Starting…');
     await this._login(cfg.username, cfg.password);
-    await this._discoverAndRegister(cfg);
+
+    let pools = cfg.pools?.filter(p => p.cid) || [];
+    if (!pools.length) pools = await this._discoverPools();
+
+    for (const pool of pools) {
+      try {
+        await this._connectPool(pool);
+      } catch (err) {
+        console.error(`[Bayrol] Pool ${pool.name || pool.cid} error: ${err.message}`);
+      }
+    }
+
     platformStatus.set('bayrol', true);
-    const interval = (cfg.pollInterval || 60) * 1000;
-    this._timer = setInterval(() => this._pollAll(), interval);
   }
 
   stop() {
-    if (this._timer) clearInterval(this._timer);
+    for (const c of this._clients) c.end(true);
+    this._clients = [];
   }
 
-  // ── Authentication ─────────────────────────────────────────────────────────
+  // ── HTTP login ─────────────────────────────────────────────────────────────
 
   async _login(username, password) {
-    const body = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&stay=1`;
-    const res  = await this._request('POST', `${BASE_PATH}?i=access`, body, {
-      'Content-Type':   'application/x-www-form-urlencoded',
-      'Content-Length': Buffer.byteLength(body),
+    // GET login page → initial PHPSESSID
+    await this._httpGet('/webview/p/login.php?r=reg');
+    // POST credentials
+    const body = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&login=Anmelden`;
+    await this._httpPost('/webview/p/login.php?r=reg', body);
+    console.log('[Bayrol] Login complete');
+  }
+
+  // ── Pool discovery ─────────────────────────────────────────────────────────
+
+  async _discoverPools() {
+    const { body } = await this._httpGet('/webview/p/plants.php');
+    // JS array: var clients = [19048, 12345];
+    const arrMatch = body.match(/var\s+clients\s*=\s*\[([^\]]+)\]/);
+    const cids = arrMatch
+      ? arrMatch[1].split(',').map(s => s.trim()).filter(s => /^\d+$/.test(s))
+      : [...new Set([...body.matchAll(/[?&]c=(\d+)/g)].map(m => m[1]))];
+    console.log(`[Bayrol] Discovered CIDs: ${cids.join(', ') || '(none)'}`);
+    return cids.map(cid => ({ cid, name: `Pool ${cid}` }));
+  }
+
+  // ── Per-pool MQTT setup ────────────────────────────────────────────────────
+
+  async _connectPool(pool) {
+    const { cid, name } = pool;
+
+    // GET device page → extract code from iframe src
+    const { body: deviceHtml } = await this._httpGet(`/webview/p/device.php?c=${cid}`);
+    const codeMatch = deviceHtml.match(/index\.html\?code=([^&"]+)&/);
+    if (!codeMatch) throw new Error(`Code not found in device page (cid=${cid})`);
+
+    // Exchange code for MQTT credentials
+    const { body: tokenBody } = await this._httpGet(`/api/?code=${encodeURIComponent(codeMatch[1])}`);
+    let token;
+    try { token = JSON.parse(tokenBody); } catch { throw new Error(`Bad token JSON (cid=${cid}): ${tokenBody.slice(0, 80)}`); }
+
+    const { accessToken, deviceSerial } = token;
+    if (!accessToken || !deviceSerial) throw new Error(`Incomplete token (cid=${cid}): ${tokenBody}`);
+
+    console.log(`[Bayrol] ${name} serial=${deviceSerial} — connecting MQTT`);
+
+    const deviceKey = `bayrol/${cid}`;
+    this._registry.registerDevice({
+      key:     deviceKey,
+      label:   name,
+      type:    'bayrol',
+      homekit: ['temperature'],
+      sensors: [
+        { path: 'ph',          label: 'pH',          unit: 'pH',  precision: 1 },
+        { path: 'orp',         label: 'ORP',         unit: 'mV',  precision: 0 },
+        { path: 'temperature', label: 'Temperature', unit: '°C',  precision: 1, homekit: 'temperature' },
+        { path: 'salt',        label: 'Salt',        unit: 'g/L', precision: 1 },
+      ],
     });
 
-    const cookies  = [].concat(res.headers['set-cookie'] || []);
-    const phpsessid = cookies.find(c => c.startsWith('PHPSESSID='));
-    if (!phpsessid) throw new Error('Login failed — no session cookie returned');
-
-    this._session = phpsessid.split(';')[0]; // "PHPSESSID=abc123"
-    console.log('[Bayrol] Login successful');
+    this._startMqtt(deviceKey, name, accessToken, deviceSerial);
   }
 
-  // ── Discovery ──────────────────────────────────────────────────────────────
+  _startMqtt(deviceKey, name, accessToken, deviceSerial) {
+    const prefix = `d02/${deviceSerial}`;
 
-  async _discoverAndRegister(cfg) {
-    const json  = await this._getJson(`${BASE_PATH}?i=getPlants`);
-    const plants = Array.isArray(json) ? json : (json?.data || []);
-    const configPools = cfg.pools || [];
+    const client = mqtt.connect('wss://www.bayrol-poolaccess.de:8083', {
+      username:        accessToken,
+      password:        '*',
+      reconnectPeriod: 30_000,
+    });
+    this._clients.push(client);
 
-    for (const plant of plants) {
-      const cid = String(plant.cid ?? plant.id ?? plant.contId ?? '');
-      if (!cid) continue;
+    client.on('connect', () => {
+      console.log(`[Bayrol] MQTT connected: ${name}`);
+      client.subscribe(`${prefix}/v/#`, err => {
+        if (err) { console.error(`[Bayrol] Subscribe error: ${err.message}`); return; }
+        // Request current values
+        for (const uid of VALUE_UIDS) client.publish(`${prefix}/g/${uid}`, '');
+      });
+    });
 
-      // If user restricted to specific pool cids, skip others
-      if (configPools.length && !configPools.find(p => String(p.cid) === cid)) continue;
-
-      const poolCfg   = configPools.find(p => String(p.cid) === cid) || {};
-      const name      = poolCfg.name || plant.name || plant.title || `Pool ${cid}`;
-      const deviceKey = `bayrol/${cid}`;
-
-      const device = {
-        key:   deviceKey,
-        label: name,
-        type:  'bayrol',
-        sensors: [
-          { path: 'ph',          label: 'pH',            unit: 'pH',   precision: 2 },
-          { path: 'orp',         label: 'ORP',           unit: 'mV',   precision: 0 },
-          { path: 'temperature', label: 'Temperature',   unit: '°C',   precision: 1, homekit: 'temperature' },
-          { path: 'chlorine',    label: 'Free Chlorine', unit: 'mg/L', precision: 2 },
-        ],
-      };
-
-      this._registry.registerDevice(device);
-      this._pools[cid] = { name, deviceKey };
-      console.log(`[Bayrol] Registered: ${name} (cid=${cid})`);
-    }
-
-    await this._pollAll();
-  }
-
-  // ── Polling ────────────────────────────────────────────────────────────────
-
-  async _pollAll() {
-    for (const [cid, pool] of Object.entries(this._pools)) {
+    client.on('message', (topic, buf) => {
       try {
-        await this._pollPool(cid, pool.deviceKey);
+        const uid  = topic.split('/').pop();
+        const data = JSON.parse(buf.toString());
+        const v    = data.v;
+
+        if      (uid === UID_PH)   this._store.update(`${deviceKey}/ph`,          Number(v) / 10);
+        else if (uid === UID_ORP)  this._store.update(`${deviceKey}/orp`,         Number(v));
+        else if (uid === UID_TEMP) this._store.update(`${deviceKey}/temperature`, Number(v) / 10);
+        else if (uid === UID_SALT) this._store.update(`${deviceKey}/salt`,        Number(v) / 10);
+        // UID_STATUS ("1"): v is a string like "17.4" — skip for now
       } catch (err) {
-        // Re-login once on session expiry
-        if (err.message.includes('session') || err.message.includes('401')) {
-          try {
-            const cfg = this._config.bayrol;
-            await this._login(cfg.username, cfg.password);
-            await this._pollPool(cid, pool.deviceKey);
-          } catch (e2) {
-            console.error(`[Bayrol] Poll failed cid=${cid}: ${e2.message}`);
-          }
-        } else {
-          console.error(`[Bayrol] Poll failed cid=${cid}: ${err.message}`);
-        }
+        console.error(`[Bayrol] Parse error (${topic}): ${err.message}`);
       }
-    }
-  }
+    });
 
-  async _pollPool(cid, deviceKey) {
-    const json  = await this._getJson(`${BASE_PATH}?i=getData&cid=${encodeURIComponent(cid)}`);
-    const items = Array.isArray(json) ? json : (json?.data || json?.measurements || []);
-
-    for (const m of items) {
-      const label = (m.header || m.name || m.label || '').toLowerCase();
-      const val   = parseFloat(m.value ?? m.current ?? m.val);
-      if (isNaN(val)) continue;
-
-      if (label === 'ph' || (label.includes('ph') && !label.includes('orp'))) {
-        this._store.set(`${deviceKey}/ph`, val);
-      } else if (label.includes('mv') || label.includes('orp') || label.includes('redox')) {
-        this._store.set(`${deviceKey}/orp`, val);
-      } else if (label.includes('temp') || label.includes('°c')) {
-        this._store.set(`${deviceKey}/temperature`, val);
-      } else if (label.includes('cl') || label.includes('chlor')) {
-        this._store.set(`${deviceKey}/chlorine`, val);
-      }
-    }
+    client.on('error', err => console.error(`[Bayrol] MQTT error (${name}): ${err.message}`));
   }
 
   // ── HTTP helpers ──────────────────────────────────────────────────────────
 
-  _request(method, path, body, extraHeaders) {
+  async _httpGet(path) {
+    return this._httpReq('GET', path);
+  }
+
+  async _httpPost(path, body) {
+    return this._httpReq('POST', path, body);
+  }
+
+  _httpReq(method, path, body) {
     return new Promise((resolve, reject) => {
       const headers = {
-        Accept:       'application/json, text/html, */*',
         'User-Agent': 'LSH-Dashboard/1.0',
+        Accept:       'text/html,application/json,*/*',
         ...(this._session ? { Cookie: this._session } : {}),
-        ...extraHeaders,
       };
+      if (body) {
+        headers['Content-Type']   = 'application/x-www-form-urlencoded';
+        headers['Content-Length'] = Buffer.byteLength(body);
+      }
+
+      // Wall-clock timeout covers TCP connect + TLS handshake (options.timeout doesn't)
+      let done = false;
+      const timer = setTimeout(() => {
+        if (done) return;
+        done = true;
+        req.destroy();
+        reject(new Error('HTTP timeout'));
+      }, 15_000);
+
       const req = https.request(
-        { hostname: BASE_HOST, port: 443, path, method, headers, timeout: 10000 },
+        { hostname: BASE_HOST, port: 443, path, method, headers },
         res => {
+          // Capture session cookie
+          const cookies = [].concat(res.headers['set-cookie'] || []);
+          const sess = cookies.find(c => c.startsWith('PHPSESSID='));
+          if (sess) this._session = sess.split(';')[0];
+
           let data = '';
           res.on('data', d => (data += d));
-          res.on('end', () => { res.body = data; resolve(res); });
+          res.on('end', () => { done = true; clearTimeout(timer); resolve({ status: res.statusCode, headers: res.headers, body: data }); });
         }
       );
-      req.on('error', reject);
-      req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')); });
+      req.on('error', err => { if (!done) { done = true; clearTimeout(timer); reject(err); } });
       if (body) req.write(body);
       req.end();
     });
-  }
-
-  async _getJson(path) {
-    const res = await this._request('GET', path, null, {});
-    try {
-      return JSON.parse(res.body);
-    } catch {
-      throw new Error(`Non-JSON from Bayrol (${path}): ${String(res.body).slice(0, 120)}`);
-    }
   }
 }
 
