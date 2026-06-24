@@ -176,12 +176,8 @@ class SatelClient extends EventEmitter {
   // ── Polling ───────────────────────────────────────────────
 
   async _pollAll() {
-    const violations = await this._query(0x00); // zone violations  (16 bytes = 128 zones)
-    const armed      = await this._query(0x09); // partitions armed (4 bytes  = 32 parts)
-    const alarms     = await this._query(0x0D); // partitions alarm
-
+    const violations = await this._query(0x00); // zone violations (16 bytes = 128 zones)
     if (violations) this._updateZones(violations);
-    this._updatePartitions(armed, alarms);
   }
 
   _updateZones(data) {
@@ -194,16 +190,6 @@ class SatelClient extends EventEmitter {
       const violated = data[b] != null && !!(data[b] & (1 << bit));
       this.store.update(`satel/zone/${num}/state`, violated ? 1 : 0);
       if (!this.registered.has(`z${num}`)) this._registerZone(num);
-    }
-  }
-
-  _updatePartitions(armed, alarms) {
-    const nums = this.cfg.partitions || [1];
-    for (const num of nums) {
-      const b = Math.floor((num - 1) / 8), bit = (num - 1) % 8;
-      if (armed)  this.store.update(`satel/partition/${num}/armed`, !!(armed[b]  & (1 << bit)) ? 1 : 0);
-      if (alarms) this.store.update(`satel/partition/${num}/alarm`, !!(alarms[b] & (1 << bit)) ? 1 : 0);
-      if (!this.registered.has(`p${num}`)) this._registerPartition(num);
     }
   }
 
@@ -224,32 +210,7 @@ class SatelClient extends EventEmitter {
     });
   }
 
-  _registerPartition(num) {
-    this.registered.add(`p${num}`);
-    const label = this.cfg.partitionNames?.[num] || this.cfg.partitionNames?.[String(num)] || `Partition ${num}`;
-    const self = this;
-    this.sensorRegistry.registerDevice({
-      key:      `satel/partition/${num}`,
-      type:     'satel',
-      instance: `partition-${num}`,
-      label,
-      icon:     '🛡',
-      color:    'orange',
-      sensors:  [
-        {
-          path: 'armed', name: 'Armed', format: 'on-off', homekit: 'switch-rw',
-          controllable: true, type: 'toggle',
-          writeOn: 'arm', writeOff: 'disarm', capabilityId: 'partition',
-        },
-        { path: 'alarm', name: 'Alarm', format: 'alarm' },
-      ],
-      homekit: ['switch-rw'],
-      _writeCapability(capId, command) {
-        if (command === 'arm')    return self.armPartition(num);
-        if (command === 'disarm') return self.disarmPartition(num);
-      },
-    });
-  }
+
 }
 
 module.exports = SatelClient;
