@@ -111,6 +111,7 @@ function loadConfig() {
       pollInterval: parseInt(fileConfig.somfy.pollInterval) || 30,
     } : undefined,
     bayrol: fileConfig.bayrol?.username ? {
+      poolName:     fileConfig.bayrol.poolName    || '',
       username:     fileConfig.bayrol.username    || '',
       password:     fileConfig.bayrol.password    || '',
       pollInterval: parseInt(fileConfig.bayrol.pollInterval) || 60,

@@ -31,7 +31,7 @@ class BayrolClient {
     await this._login(cfg.username, cfg.password);
 
     let pools = cfg.pools?.filter(p => p.cid) || [];
-    if (!pools.length) pools = await this._discoverPools();
+    if (!pools.length) pools = await this._discoverPools(cfg.poolName);
 
     for (const pool of pools) {
       try {
@@ -62,7 +62,7 @@ class BayrolClient {
 
   // ── Pool discovery ─────────────────────────────────────────────────────────
 
-  async _discoverPools() {
+  async _discoverPools(poolName) {
     const { body } = await this._httpGet('/webview/p/plants.php');
     // JS array: var clients = [19048, 12345];
     const arrMatch = body.match(/var\s+clients\s*=\s*\[([^\]]+)\]/);
@@ -70,7 +70,10 @@ class BayrolClient {
       ? arrMatch[1].split(',').map(s => s.trim()).filter(s => /^\d+$/.test(s))
       : [...new Set([...body.matchAll(/[?&]c=(\d+)/g)].map(m => m[1]))];
     console.log(`[Bayrol] Discovered CIDs: ${cids.join(', ') || '(none)'}`);
-    return cids.map(cid => ({ cid, name: `Pool ${cid}` }));
+    return cids.map((cid, i) => ({
+      cid,
+      name: (cids.length === 1 && poolName) ? poolName : (poolName ? `${poolName} ${i + 1}` : `Pool ${cid}`),
+    }));
   }
 
   // ── Per-pool MQTT setup ────────────────────────────────────────────────────

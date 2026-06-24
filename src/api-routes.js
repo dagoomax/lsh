@@ -1023,11 +1023,12 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   router.post('/settings/bayrol', (req, res) => {
     const current = readConfigFile();
-    const { username, password, pollInterval } = req.body;
+    const { poolName, username, password, pollInterval } = req.body;
     try {
       writeConfigFile({
         ...current,
         bayrol: {
+          poolName:     poolName     != null ? poolName : (current.bayrol?.poolName || ''),
           username:     username     || current.bayrol?.username     || '',
           password:     (password && !password.includes('•')) ? password : (current.bayrol?.password || ''),
           pollInterval: pollInterval != null ? parseInt(pollInterval) : (current.bayrol?.pollInterval ?? 60),

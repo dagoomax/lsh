@@ -37,6 +37,7 @@ async function loadSettings() {
     setVal('somfy-poll',     data.somfy?.pollInterval ?? 30);
 
     // Bayrol
+    setVal('bayrol-pool-name', data.bayrol?.poolName || '');
     setVal('bayrol-email', data.bayrol?.username || '');
     setVal('bayrol-password', data.bayrol?.password ? '••••••••' : '');
     setVal('bayrol-poll', data.bayrol?.pollInterval ?? 60);
@@ -871,6 +872,7 @@ document.getElementById('btn-save-bayrol').addEventListener('click', async () =>
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        poolName:     getVal('bayrol-pool-name'),
         username:     getVal('bayrol-email'),
         password:     getVal('bayrol-password'),
         pollInterval: parseInt(getVal('bayrol-poll') || '60'),
