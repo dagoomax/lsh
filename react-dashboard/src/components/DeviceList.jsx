@@ -68,19 +68,23 @@ function Toggle({ on, onChange }) {
       role="switch" aria-checked={on}
       onClick={e => { e.stopPropagation(); onChange(!on) }}
       style={{
-        width:42, height:24, borderRadius:12,
+        width:48, height:28, borderRadius:14,
         background: on ? 'var(--purple)' : 'rgba(255,255,255,0.12)',
         position:'relative', cursor:'pointer', flexShrink:0,
         transition:'background 0.2s',
-        boxShadow: on ? '0 0 10px rgba(124,58,237,0.5)' : 'none',
+        boxShadow: on ? '0 0 12px rgba(124,58,237,0.5)' : 'none',
         WebkitTapHighlightColor:'transparent',
+        // Extend tap area without changing visual size
+        padding:'8px',
+        margin:'-8px',
+        boxSizing:'content-box',
       }}>
       <div style={{
-        position:'absolute', width:18, height:18, borderRadius:'50%',
+        position:'absolute', width:22, height:22, borderRadius:'50%',
         background:'#fff', top:3, left:3,
         boxShadow:'0 1px 4px rgba(0,0,0,0.5)',
         transition:'transform 0.2s cubic-bezier(0.4,0,0.2,1)',
-        transform: on ? 'translateX(18px)' : 'none',
+        transform: on ? 'translateX(20px)' : 'none',
       }}/>
     </div>
   )
@@ -97,9 +101,10 @@ function Slider({ value, onCommit, color='var(--purple-lt)' }) {
       onTouchEnd={() => onCommit(local)}
       onClick={e => e.stopPropagation()}
       style={{
-        width:'100%', height:3, appearance:'none', WebkitAppearance:'none',
+        width:'100%', height:4, appearance:'none', WebkitAppearance:'none',
         background:`linear-gradient(to right, ${color} ${local}%, rgba(255,255,255,0.1) ${local}%)`,
         borderRadius:2, outline:'none', cursor:'pointer',
+        padding:'10px 0', margin:'-10px 0',
       }}
     />
   )
@@ -324,9 +329,42 @@ export default function DeviceList({ devices }) {
       </div>
 
       {/* ── Tile Grid ── */}
-      <div style={{ flex:1, overflowY:'auto', padding:16 }}>
-        {/* Header row */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+      <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column' }}>
+
+        {/* Mobile category pills (hidden on desktop via CSS) */}
+        <div className="mobile-cat-pills" style={{
+          display:'none',
+          overflowX:'auto', flexShrink:0,
+          padding:'10px 12px',
+          gap:8,
+          borderBottom:'1px solid var(--border)',
+          scrollbarWidth:'none',
+          WebkitOverflowScrolling:'touch',
+        }}>
+          {CATS.filter(c => c==='All' || counts[c]).map(c => {
+            const active = cat === c
+            const CatIcon = CAT_ICON_COMPONENT[c]
+            return (
+              <button key={c} onClick={() => setCat(c)} style={{
+                display:'inline-flex', alignItems:'center', gap:5,
+                padding:'7px 13px', borderRadius:20, border:'none', cursor:'pointer',
+                flexShrink:0,
+                background: active ? 'var(--purple)' : 'rgba(255,255,255,0.07)',
+                color: active ? '#fff' : 'var(--text2)',
+                fontSize:13, fontWeight:active?600:400,
+                boxShadow: active ? '0 2px 12px rgba(124,58,237,0.4)' : 'none',
+                transition:'all 0.15s',
+                WebkitTapHighlightColor:'transparent',
+              }}>
+                <CatIcon size={14} color={active ? '#fff' : 'var(--text3)'} />
+                {c}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Desktop header row (hidden on mobile via CSS) */}
+        <div className="desktop-grid-header" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px 10px', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             {(() => { const I = CAT_ICON_COMPONENT[cat]; return <I size={18} color="var(--purple-lt)"/>})()}
             <span style={{ fontSize:15, fontWeight:700 }}>{cat}</span>
@@ -338,20 +376,22 @@ export default function DeviceList({ devices }) {
           </div>
         </div>
 
-        {visible.length === 0 && (
-          <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>
-            No devices in this category
+        <div style={{ flex:1, overflowY:'auto', padding:'0 12px 16px' }}>
+          {visible.length === 0 && (
+            <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>
+              No devices in this category
+            </div>
+          )}
+          <div className="device-grid" style={{
+            display:'grid',
+            gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
+            gap:10,
+            paddingTop:8,
+          }}>
+            {visible.map(d => (
+              <DeviceTile key={d.key} device={d} onCommand={onCommand} />
+            ))}
           </div>
-        )}
-
-        <div className="device-grid" style={{
-          display:'grid',
-          gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
-          gap:10,
-        }}>
-          {visible.map(d => (
-            <DeviceTile key={d.key} device={d} onCommand={onCommand} />
-          ))}
         </div>
       </div>
     </div>

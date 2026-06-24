@@ -88,22 +88,38 @@ body {
 
 /* Responsive layout switching */
 @media (min-width: 768px) {
-  .layout-desktop { display: flex !important; }
-  .layout-mobile  { display: none !important; }
+  .layout-desktop      { display: flex !important; }
+  .layout-mobile       { display: none !important; }
+  .mobile-cat-pills    { display: none !important; }
+  .desktop-grid-header { display: flex !important; }
 }
+
 @media (max-width: 767px) {
-  .layout-desktop { display: none !important; }
-  .layout-mobile  { display: flex !important; }
+  .layout-desktop      { display: none !important; }
+  .layout-mobile       { display: flex !important; }
+  .mobile-cat-pills    { display: flex !important; }
+  .desktop-grid-header { display: none !important; }
+  .device-sidebar      { display: none !important; }
 
-  /* Tighter header on mobile */
-  header { padding: 0 14px !important; }
+  /* Compact header */
+  header { padding: 0 14px !important; height: 50px !important; }
+  .header-date { display: none !important; }
+  .header-clock div:first-child { font-size: 14px !important; }
 
-  /* Energy cards stack vertically on mobile */
+  /* 2-column tile grid */
+  .device-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Energy cards stack on mobile */
   .energy-strip { flex-direction: column !important; }
 
-  /* Tile grid: 2 columns on mobile */
-  .device-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Energy detail grid: single column */
+  .energy-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
 
-  /* Sidebar hidden on mobile (handled by tab bar) */
-  .device-sidebar { display: none !important; }
+  /* Hide scrollbar on pill row */
+  .mobile-cat-pills::-webkit-scrollbar { display: none; }
 }

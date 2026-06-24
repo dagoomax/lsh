@@ -104,7 +104,7 @@ export default function EnergyFlow({ energy }) {
       </div>
 
       {/* ── Detail row ── */}
-      <div style={{
+      <div className="energy-detail-grid" style={{
         display:'grid', gridTemplateColumns:'1fr 1fr 1fr',
         gap:10,
       }}>

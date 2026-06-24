@@ -1,0 +1,12 @@
+{
+  "server": {
+    "port": 3001
+  },
+  "relays": [
+    { "index": 0, "name": "Relay 1" },
+    { "index": 1, "name": "Relay 2" }
+  ],
+  "homekit": {
+    "enabled": false
+  }
+}

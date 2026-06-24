@@ -47,11 +47,11 @@ export default function Header({ connection, connected }) {
       </div>
 
       {/* Clock */}
-      <div style={{ textAlign: 'center' }}>
+      <div style={{ textAlign: 'center' }} className="header-clock">
         <div style={{ fontSize: 16, fontWeight: 300, letterSpacing: '0.08em', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>
           {fmt(now)}
         </div>
-        <div style={{ fontSize: 10, color: 'var(--text3)' }}>{fmtDate(now)}</div>
+        <div style={{ fontSize: 10, color: 'var(--text3)' }} className="header-date">{fmtDate(now)}</div>
       </div>
 
       {/* Status */}
