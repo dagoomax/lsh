@@ -177,92 +177,94 @@ function DeviceTile({ device, onCommand }) {
     return isOn ? 'On' : 'Off'
   })()
 
+  const tileOn = isOn && hasSwitch
+
   return (
     <div style={{
-      background: isOn && hasSwitch
-        ? 'linear-gradient(160deg, #1c1040 0%, #2a1858 100%)'
-        : '#16172a',
-      border: `1px solid ${isOn && hasSwitch ? 'rgba(167,139,250,0.28)' : 'rgba(255,255,255,0.06)'}`,
-      borderRadius: 20,
-      padding: '16px 12px 14px',
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      gap: 8,
-      minHeight: 158,
-      boxShadow: isOn && hasSwitch
-        ? '0 6px 28px rgba(124,58,237,0.22), inset 0 1px 0 rgba(167,139,250,0.08)'
-        : '0 2px 8px rgba(0,0,0,0.25)',
-      transition: 'all 0.22s ease',
+      background: tileOn
+        ? 'linear-gradient(145deg, #1a0f3a 0%, #231550 100%)'
+        : '#14152a',
+      border: `1px solid ${tileOn ? 'rgba(167,139,250,0.22)' : 'rgba(255,255,255,0.06)'}`,
+      borderRadius: 18,
+      padding: '12px',
+      display: 'flex', flexDirection: 'column',
+      minHeight: 118,
+      boxShadow: tileOn
+        ? '0 4px 24px rgba(124,58,237,0.18)'
+        : '0 2px 6px rgba(0,0,0,0.2)',
+      transition: 'all 0.2s ease',
       animation: 'fadeIn 0.2s ease',
       position: 'relative',
       overflow: 'hidden',
     }}>
 
       {/* Top glow bar when on */}
-      {isOn && hasSwitch && (
+      {tileOn && (
         <div style={{
-          position:'absolute', top:0, left:'20%', right:'20%', height:2,
+          position:'absolute', top:0, left:'15%', right:'15%', height:2,
           background:'linear-gradient(90deg, transparent, #a78bfa, transparent)',
           borderRadius:1,
         }}/>
       )}
 
-      {/* Icon */}
-      <div style={{
-        width:54, height:54, borderRadius:16, flexShrink:0,
-        background: isOn && hasSwitch ? 'rgba(124,58,237,0.22)' : 'rgba(255,255,255,0.05)',
-        display:'flex', alignItems:'center', justifyContent:'center',
-        boxShadow: isOn && hasSwitch ? '0 0 20px rgba(124,58,237,0.35)' : 'none',
-        transition:'all 0.22s',
-      }}>
-        <IconComp size={26} color={isOn && hasSwitch ? '#a78bfa' : activeColor} />
+      {/* Top row: icon left + control right */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+        <div style={{
+          width:40, height:40, borderRadius:12, flexShrink:0,
+          background: tileOn ? 'rgba(124,58,237,0.22)' : 'rgba(255,255,255,0.06)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          boxShadow: tileOn ? '0 0 16px rgba(124,58,237,0.3)' : 'none',
+          transition:'all 0.2s',
+        }}>
+          <IconComp size={21} color={tileOn ? '#a78bfa' : activeColor} />
+        </div>
+
+        <div style={{ flexShrink:0 }}>
+          {hasSwitch && (
+            <Toggle on={isOn} onChange={val => cmd('switch', val ? 1 : 0)} />
+          )}
+          {!hasSwitch && (hasMot||hasPres) && (
+            <span style={{
+              width:9, height:9, borderRadius:'50%', display:'block', marginTop:3,
+              background: (motActive||presActive) ? 'var(--orange)' : '#2d3748',
+              boxShadow: (motActive||presActive) ? '0 0 8px var(--orange)' : 'none',
+            }}/>
+          )}
+          {!hasSwitch && hasBatt && (
+            <span style={{ fontSize:11, fontWeight:700, marginTop:2, display:'block',
+              color:(merged.battery?.value??100)<20?'var(--red)':(merged.battery?.value??100)<50?'var(--orange)':'var(--green)' }}>
+              {merged.battery?.value}%
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Name */}
-      <div style={{
-        fontSize:13, fontWeight:600, lineHeight:1.2, textAlign:'center',
-        color: hasSwitch && !isOn ? '#475569' : '#f1f5f9',
-        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-        maxWidth:'100%',
-      }}>
-        {device.label}
-      </div>
-
-      {/* Status */}
-      <div style={{
-        fontSize:11, fontWeight:500, textAlign:'center',
-        color: isOn && hasSwitch ? '#a78bfa'
-             : (motActive||presActive) ? 'var(--orange)'
-             : '#475569',
-      }}>
-        {statusText}
-      </div>
-
-      {/* Sliders */}
-      {hasSwitch && isOn && (hasLevel || hasCT) && (
-        <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:8, marginTop:2 }}>
+      {/* Sliders when on */}
+      {tileOn && (hasLevel || hasCT) && (
+        <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:10 }}>
           {hasLevel && <Slider value={level} onCommit={v => cmd('level', v)} />}
           {hasCT    && <CTSlider value={ct}  onCommit={v => cmd('colorTemperature', v)} />}
         </div>
       )}
 
-      {/* Toggle / battery / motion dot — pinned to bottom-right */}
-      <div style={{ marginTop:'auto', alignSelf:'flex-end' }}>
-        {hasSwitch && (
-          <Toggle on={isOn} onChange={val => cmd('switch', val ? 1 : 0)} />
-        )}
-        {!hasSwitch && (hasMot||hasPres) && (
-          <span style={{
-            width:10, height:10, borderRadius:'50%', display:'block',
-            background: (motActive||presActive) ? 'var(--orange)' : '#334155',
-            boxShadow: (motActive||presActive) ? '0 0 8px var(--orange)' : 'none',
-          }}/>
-        )}
-        {!hasSwitch && hasBatt && (
-          <span style={{ fontSize:12, fontWeight:700,
-            color:(merged.battery?.value??100)<20?'var(--red)':(merged.battery?.value??100)<50?'var(--orange)':'var(--green)' }}>
-            🔋{merged.battery?.value}%
-          </span>
-        )}
+      {/* Bottom: name + status */}
+      <div style={{ marginTop:'auto', paddingTop:10 }}>
+        <div style={{
+          fontSize:12, fontWeight:600, lineHeight:1.2,
+          color: hasSwitch && !isOn ? '#4a5568' : '#e2e8f0',
+          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+        }}>
+          {device.label}
+        </div>
+        <div style={{
+          fontSize:11, marginTop:3, fontWeight:500,
+          color: tileOn ? '#a78bfa'
+               : (motActive||presActive) ? 'var(--orange)'
+               : !hasSwitch ? activeColor
+               : '#4a5568',
+        }}>
+          {statusText}
+        </div>
       </div>
     </div>
   )
@@ -367,18 +369,23 @@ export default function DeviceList({ devices }) {
             const CatIcon = CAT_ICON_COMPONENT[c]
             return (
               <button key={c} onClick={() => setCat(c)} style={{
-                display:'inline-flex', alignItems:'center', gap:5,
-                padding:'7px 13px', borderRadius:20, border:'none', cursor:'pointer',
+                display:'inline-flex', alignItems:'center', gap:4,
+                padding:'6px 11px', borderRadius:20, border:'none', cursor:'pointer',
                 flexShrink:0,
                 background: active ? 'var(--purple)' : 'rgba(255,255,255,0.07)',
                 color: active ? '#fff' : 'var(--text2)',
-                fontSize:13, fontWeight:active?600:400,
-                boxShadow: active ? '0 2px 12px rgba(124,58,237,0.4)' : 'none',
+                fontSize:12, fontWeight:active?600:400,
+                boxShadow: active ? '0 2px 12px rgba(124,58,237,0.38)' : 'none',
                 transition:'all 0.15s',
                 WebkitTapHighlightColor:'transparent',
               }}>
-                <CatIcon size={14} color={active ? '#fff' : 'var(--text3)'} />
+                <CatIcon size={13} color={active ? '#fff' : 'var(--text3)'} />
                 {c}
+                {active && counts[c] && (
+                  <span style={{ fontSize:10, fontWeight:700, background:'rgba(255,255,255,0.2)', borderRadius:8, padding:'1px 5px' }}>
+                    {c === 'All' ? devices.length : counts[c]}
+                  </span>
+                )}
               </button>
             )
           })}

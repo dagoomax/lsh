@@ -100,16 +100,22 @@ body {
   .mobile-cat-pills    { display: flex !important; }
   .desktop-grid-header { display: none !important; }
   .device-sidebar      { display: none !important; }
+  .header-source       { display: none !important; }
 
   /* Compact header */
-  header { padding: 0 14px !important; height: 50px !important; }
+  header { padding: 0 12px !important; height: 50px !important; }
   .header-date { display: none !important; }
   .header-clock div:first-child { font-size: 14px !important; }
 
-  /* 2-column tile grid */
+  /* Category pills row */
+  .mobile-cat-pills { padding: 8px 12px !important; gap: 6px !important; }
+  .mobile-cat-pills::-webkit-scrollbar { display: none; }
+
+  /* 2-column tile grid, tighter */
   .device-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
+    gap: 7px !important;
+    padding-top: 4px !important;
   }
 
   /* Energy cards: 2x2 grid on mobile */
@@ -124,14 +130,7 @@ body {
     grid-template-columns: 1fr !important;
   }
 
-  /* Hide scrollbar on pill row */
-  .mobile-cat-pills::-webkit-scrollbar { display: none; }
-
   /* Compact energy cards on mobile */
   .energy-card-sub { display: none !important; }
   .energy-card-arc { width: 48px !important; height: 48px !important; }
-
-  /* Tighter tile gap */
-  .device-grid { gap: 8px !important; padding-top: 4px !important; }
-
 }

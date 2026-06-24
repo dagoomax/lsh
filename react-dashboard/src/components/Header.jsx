@@ -71,7 +71,7 @@ export default function Header({ connection, connected }) {
             {live ? 'Connected' : 'Offline'}
           </span>
         </div>
-        <span style={{ fontSize: 11, color: 'var(--text3)', background: 'rgba(255,255,255,0.04)',
+        <span className="header-source" style={{ fontSize: 11, color: 'var(--text3)', background: 'rgba(255,255,255,0.04)',
           padding: '3px 8px', borderRadius: 8, border: '1px solid var(--border)' }}>
           {source}
         </span>
