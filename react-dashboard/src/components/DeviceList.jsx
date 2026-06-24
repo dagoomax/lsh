@@ -167,9 +167,25 @@ function DeviceTile({ device, onCommand }) {
                     : !hasSwitch       ? 'var(--purple-lt)'
                     : 'var(--purple)'
 
-  const isPool = device.type === 'bayrol'
+  const isPool   = device.type === 'bayrol'
+  const isFibaro = device.type === 'fibaro'
+
+  // For Fibaro rooms: extract sensor values from numeric-path readings
+  const fibaroSensors = isFibaro ? (device.sensors || []).map(s => ({
+    ...s,
+    value: (merged[s.path] ?? r[s.path])?.value,
+  })) : []
+  const fibaroSwitches = fibaroSensors.filter(s => s.type === 'boolean' && s.controllable)
+  const fibaroTemps    = fibaroSensors.filter(s => s.unit === '°C' && s.value != null)
+  const fibaroOnCount  = fibaroSwitches.filter(s => s.value === true || s.value === 1).length
 
   const statusText = (() => {
+    if (isFibaro) {
+      const parts = []
+      if (fibaroSwitches.length) parts.push(`${fibaroOnCount}/${fibaroSwitches.length} on`)
+      if (fibaroTemps.length)    parts.push(`${Number(fibaroTemps[0].value).toFixed(1)}°C`)
+      return parts.join(' · ') || `${fibaroSensors.length} sensors`
+    }
     if (isPool) {
       const ph  = merged.ph?.value
       const orp = merged.orp?.value
@@ -275,6 +291,19 @@ function DeviceTile({ device, onCommand }) {
         }}>
           {statusText}
         </div>
+        {isFibaro && fibaroSwitches.length > 0 && (
+          <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
+            {fibaroSwitches.slice(0,4).map(s => {
+              const on = s.value === true || s.value === 1
+              return (
+                <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span style={{ fontSize:10, color:'#94a3b8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'70%' }}>{s.name}</span>
+                  <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
+                </div>
+              )
+            })}
+          </div>
+        )}
         {isPool && (() => {
           const temp = merged.temperature?.value
           const salt = merged.salt?.value

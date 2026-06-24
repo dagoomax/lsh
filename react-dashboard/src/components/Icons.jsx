@@ -346,6 +346,15 @@ export function PoolIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function FibaroIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M9 8h6M9 12h4M9 16h5"/>
+    </svg>
+  )
+}
+
 // ── Icon resolver ─────────────────────────────────────────────────────────────
 const LABEL_MAP = {
   kinkiet:               WallSconceIcon,
@@ -388,6 +397,7 @@ const TYPE_MAP = {
   battery:      BatteryIcon,
   solarcharger: SolarPanelIcon,
   smartthings:  HomeIcon,
+  fibaro:       FibaroIcon,
   bayrol:       PoolIcon,
   somfy:        ShutterIcon,
 }
