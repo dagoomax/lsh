@@ -167,82 +167,103 @@ function DeviceTile({ device, onCommand }) {
                     : !hasSwitch       ? 'var(--purple-lt)'
                     : 'var(--purple)'
 
+  const statusText = (() => {
+    if (hasTemp)  return `${merged.temperature?.value}°C${hasHum ? ` · ${merged.humidity?.value}%` : ''}`
+    if (hasMot)   return motActive ? 'Motion' : 'Clear'
+    if (hasPres)  return presActive ? 'Present' : 'Away'
+    if (r['Pv/V']?.value != null) return `${Number(r['Pv/V'].value).toFixed(1)} V`
+    if (r['Yield/Total']?.value != null) return `${Number(r['Yield/Total'].value).toFixed(0)} kWh`
+    if (hasLevel && isOn) return `${level}%`
+    return isOn ? 'On' : 'Off'
+  })()
+
   return (
     <div style={{
       background: isOn && hasSwitch
-        ? 'linear-gradient(145deg, #1a1035, #261550)'
-        : 'var(--card)',
-      border: `1px solid ${isOn && hasSwitch ? 'rgba(124,58,237,0.35)' : 'var(--border)'}`,
-      borderRadius: 'var(--radius-lg)',
-      padding: '16px 14px 14px',
-      display: 'flex', flexDirection: 'column', gap: 10,
-      boxShadow: isOn && hasSwitch ? '0 4px 24px rgba(124,58,237,0.2)' : '0 2px 8px rgba(0,0,0,0.2)',
-      transition: 'all 0.2s ease',
+        ? 'linear-gradient(160deg, #1c1040 0%, #2a1858 100%)'
+        : '#16172a',
+      border: `1px solid ${isOn && hasSwitch ? 'rgba(167,139,250,0.28)' : 'rgba(255,255,255,0.06)'}`,
+      borderRadius: 20,
+      padding: '16px 12px 14px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      gap: 8,
+      minHeight: 158,
+      boxShadow: isOn && hasSwitch
+        ? '0 6px 28px rgba(124,58,237,0.22), inset 0 1px 0 rgba(167,139,250,0.08)'
+        : '0 2px 8px rgba(0,0,0,0.25)',
+      transition: 'all 0.22s ease',
       animation: 'fadeIn 0.2s ease',
-      minHeight: 140,
+      position: 'relative',
+      overflow: 'hidden',
     }}>
 
-      {/* Icon + status dot */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+      {/* Top glow bar when on */}
+      {isOn && hasSwitch && (
         <div style={{
-          width:44, height:44, borderRadius:12, flexShrink:0,
-          background: isOn && hasSwitch ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.05)',
-          display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow: isOn && hasSwitch ? '0 0 16px rgba(124,58,237,0.3)' : 'none',
-        }}>
-          <IconComp size={22} color={isOn && hasSwitch ? 'var(--purple-lt)' : activeColor} />
-        </div>
+          position:'absolute', top:0, left:'20%', right:'20%', height:2,
+          background:'linear-gradient(90deg, transparent, #a78bfa, transparent)',
+          borderRadius:1,
+        }}/>
+      )}
 
-        {/* Status indicator */}
+      {/* Icon */}
+      <div style={{
+        width:54, height:54, borderRadius:16, flexShrink:0,
+        background: isOn && hasSwitch ? 'rgba(124,58,237,0.22)' : 'rgba(255,255,255,0.05)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        boxShadow: isOn && hasSwitch ? '0 0 20px rgba(124,58,237,0.35)' : 'none',
+        transition:'all 0.22s',
+      }}>
+        <IconComp size={26} color={isOn && hasSwitch ? '#a78bfa' : activeColor} />
+      </div>
+
+      {/* Name */}
+      <div style={{
+        fontSize:13, fontWeight:600, lineHeight:1.2, textAlign:'center',
+        color: hasSwitch && !isOn ? '#475569' : '#f1f5f9',
+        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+        maxWidth:'100%',
+      }}>
+        {device.label}
+      </div>
+
+      {/* Status */}
+      <div style={{
+        fontSize:11, fontWeight:500, textAlign:'center',
+        color: isOn && hasSwitch ? '#a78bfa'
+             : (motActive||presActive) ? 'var(--orange)'
+             : '#475569',
+      }}>
+        {statusText}
+      </div>
+
+      {/* Sliders */}
+      {hasSwitch && isOn && (hasLevel || hasCT) && (
+        <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:8, marginTop:2 }}>
+          {hasLevel && <Slider value={level} onCommit={v => cmd('level', v)} />}
+          {hasCT    && <CTSlider value={ct}  onCommit={v => cmd('colorTemperature', v)} />}
+        </div>
+      )}
+
+      {/* Toggle / battery / motion dot — pinned to bottom-right */}
+      <div style={{ marginTop:'auto', alignSelf:'flex-end' }}>
         {hasSwitch && (
           <Toggle on={isOn} onChange={val => cmd('switch', val ? 1 : 0)} />
         )}
         {!hasSwitch && (hasMot||hasPres) && (
           <span style={{
-            width:8, height:8, borderRadius:'50%', display:'block', flexShrink:0,
-            background: (motActive||presActive) ? 'var(--orange)' : 'var(--text3)',
+            width:10, height:10, borderRadius:'50%', display:'block',
+            background: (motActive||presActive) ? 'var(--orange)' : '#334155',
             boxShadow: (motActive||presActive) ? '0 0 8px var(--orange)' : 'none',
-            marginTop:4,
           }}/>
         )}
         {!hasSwitch && hasBatt && (
-          <span style={{ fontSize:11, fontWeight:700,
+          <span style={{ fontSize:12, fontWeight:700,
             color:(merged.battery?.value??100)<20?'var(--red)':(merged.battery?.value??100)<50?'var(--orange)':'var(--green)' }}>
-            {merged.battery?.value}%
+            🔋{merged.battery?.value}%
           </span>
         )}
       </div>
-
-      {/* Name */}
-      <div>
-        <div style={{
-          fontSize:13, fontWeight:600, lineHeight:1.2,
-          color: hasSwitch && !isOn ? 'var(--text3)' : 'var(--text)',
-          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-        }}>
-          {device.label}
-        </div>
-        <div style={{ fontSize:11, color:'var(--text3)', marginTop:2, display:'flex', gap:5, flexWrap:'wrap' }}>
-          {hasTemp && <span style={{ color:'var(--orange)' }}>{merged.temperature?.value}°C</span>}
-          {hasHum  && <span style={{ color:'var(--teal)' }}>{merged.humidity?.value}%</span>}
-          {hasMot  && <span style={{ color:motActive?'var(--orange)':'var(--text3)' }}>{motActive?'Motion':'Clear'}</span>}
-          {hasPres && !hasMot && <span style={{ color:presActive?'var(--blue)':'var(--text3)' }}>{presActive?'Present':'Away'}</span>}
-          {hasSwitch && !hasLevel && <span style={{ color:isOn?activeColor:'var(--text3)' }}>{isOn?'On':'Off'}</span>}
-          {hasLevel && isOn && <span style={{ color:'var(--purple-lt)' }}>{level}%</span>}
-          {hasCT && isOn && <span style={{ color:'var(--text3)' }}>{Math.round(ct/100)/10}k</span>}
-          {r['Pv/V']?.value!=null && <span>{Number(r['Pv/V'].value).toFixed(1)}V</span>}
-          {r['Yield/Total']?.value!=null && <span>{Number(r['Yield/Total'].value).toFixed(0)} kWh</span>}
-          {r.tvocLevel?.value!=null && <span>TVOC {Number(r.tvocLevel.value).toFixed(3)}</span>}
-        </div>
-      </div>
-
-      {/* Sliders (only when on) */}
-      {hasSwitch && isOn && (hasLevel || hasCT) && (
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          {hasLevel && <Slider value={level} onCommit={v => cmd('level', v)} />}
-          {hasCT    && <CTSlider value={ct}  onCommit={v => cmd('colorTemperature', v)} />}
-        </div>
-      )}
     </div>
   )
 }

@@ -16,10 +16,10 @@ function TabBar({ tab, setTab }) {
   return (
     <div style={{
       display:'flex',
-      background:'rgba(13,14,26,0.96)',
-      backdropFilter:'blur(20px)',
-      WebkitBackdropFilter:'blur(20px)',
-      borderTop:'1px solid rgba(124,58,237,0.15)',
+      background:'rgba(11,12,22,0.97)',
+      backdropFilter:'blur(24px)',
+      WebkitBackdropFilter:'blur(24px)',
+      borderTop:'1px solid rgba(255,255,255,0.07)',
       paddingBottom:'env(safe-area-inset-bottom)',
       flexShrink:0,
     }}>
@@ -28,12 +28,28 @@ function TabBar({ tab, setTab }) {
         return (
           <button key={id} onClick={() => setTab(id)} style={{
             flex:1, display:'flex', flexDirection:'column', alignItems:'center',
-            gap:3, padding:'10px 0', border:'none', background:'none', cursor:'pointer',
-            color: active ? 'var(--purple-lt)' : 'var(--text3)',
+            gap:4, padding:'12px 0 10px', border:'none', background:'none', cursor:'pointer',
+            color: active ? '#a78bfa' : '#475569',
             transition:'color 0.15s',
+            WebkitTapHighlightColor:'transparent',
+            position:'relative',
           }}>
-            <Icon size={22} color={active ? 'var(--purple-lt)' : 'var(--text3)'} />
-            <span style={{ fontSize:10, fontWeight: active?600:400 }}>{label}</span>
+            {active && (
+              <div style={{
+                position:'absolute', top:0, left:'30%', right:'30%', height:2,
+                background:'linear-gradient(90deg, transparent, #7c3aed, transparent)',
+                borderRadius:1,
+              }}/>
+            )}
+            <div style={{
+              width:40, height:32, display:'flex', alignItems:'center', justifyContent:'center',
+              borderRadius:10,
+              background: active ? 'rgba(124,58,237,0.18)' : 'transparent',
+              transition:'background 0.15s',
+            }}>
+              <Icon size={20} color={active ? '#a78bfa' : '#475569'} />
+            </div>
+            <span style={{ fontSize:10, fontWeight: active?700:400, letterSpacing:'0.01em' }}>{label}</span>
           </button>
         )
       })}

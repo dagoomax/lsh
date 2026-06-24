@@ -112,8 +112,12 @@ body {
     gap: 8px !important;
   }
 
-  /* Energy cards stack on mobile */
-  .energy-strip { flex-direction: column !important; }
+  /* Energy cards: 2x2 grid on mobile */
+  .energy-strip {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
 
   /* Energy detail grid: single column */
   .energy-detail-grid {
@@ -122,4 +126,12 @@ body {
 
   /* Hide scrollbar on pill row */
   .mobile-cat-pills::-webkit-scrollbar { display: none; }
+
+  /* Compact energy cards on mobile */
+  .energy-card-sub { display: none !important; }
+  .energy-card-arc { width: 48px !important; height: 48px !important; }
+
+  /* Tighter tile gap */
+  .device-grid { gap: 8px !important; padding-top: 4px !important; }
+
 }

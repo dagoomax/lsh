@@ -36,7 +36,7 @@ function ECard({ icon, label, value, sub, color, pct }) {
       borderLeft: `2px solid ${color}`,
     }}>
       {pct != null && (
-        <div style={{ position:'relative', flexShrink:0, width:64, height:64 }}>
+        <div className="energy-card-arc" style={{ position:'relative', flexShrink:0, width:64, height:64 }}>
           <Arc pct={pct} color={color} size={64}/>
           <div style={{
             position:'absolute', inset:0, display:'flex',
@@ -60,7 +60,7 @@ function ECard({ icon, label, value, sub, color, pct }) {
           {value}
         </div>
         {sub && (
-          <div style={{ fontSize:11, color:'var(--text3)', marginTop:4 }}>{sub}</div>
+          <div className="energy-card-sub" style={{ fontSize:11, color:'var(--text3)', marginTop:4 }}>{sub}</div>
         )}
       </div>
     </div>
