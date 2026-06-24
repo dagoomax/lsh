@@ -4,7 +4,7 @@ function fmt(d) {
   return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 function fmtDate(d) {
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 export default function Header({ connection, connected }) {
@@ -14,41 +14,67 @@ export default function Header({ connection, connected }) {
     return () => clearInterval(t)
   }, [])
 
-  const source = connection?.source === 'vrm' ? 'VRM Cloud'
+  const source = connection?.source === 'vrm'  ? 'VRM Cloud'
                : connection?.source === 'mqtt' ? 'MQTT Local' : '—'
   const live = connected && (connection?.vrm?.connected || connection?.mqtt?.connected)
 
   return (
     <header style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-      height: 52,
-      background: 'rgba(0,0,0,0.85)',
-      backdropFilter: 'blur(40px) saturate(180%)',
-      WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-      borderBottom: '1px solid rgba(255,255,255,0.08)',
+      height: 56,
+      background: 'rgba(13,14,26,0.92)',
+      backdropFilter: 'blur(32px)',
+      WebkitBackdropFilter: 'blur(32px)',
+      borderBottom: '1px solid rgba(124,58,237,0.15)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 24px', flexShrink: 0,
+      padding: '0 20px', flexShrink: 0,
     }}>
+      {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 20 }}>⚡</span>
+        <div style={{
+          width: 32, height: 32, borderRadius: 9,
+          background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 16, flexShrink: 0,
+          boxShadow: '0 2px 12px rgba(124,58,237,0.4)',
+        }}>🏠</div>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.1 }}>LSH</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1 }}>Local Smart Home</div>
+          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.1, color: '#f1f5f9' }}>
+            LSH Server
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text3)', lineHeight: 1 }}>LSH Dashboard</div>
         </div>
       </div>
 
+      {/* Clock */}
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 17, fontWeight: 300, letterSpacing: '0.05em', fontVariantNumeric: 'tabular-nums' }}>
+        <div style={{ fontSize: 16, fontWeight: 300, letterSpacing: '0.08em', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>
           {fmt(now)}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text2)' }}>{fmtDate(now)}</div>
+        <div style={{ fontSize: 10, color: 'var(--text3)' }}>{fmtDate(now)}</div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span className={`badge ${live ? 'badge-green' : 'badge-red'}`}>
-          <span style={{ fontSize: 7 }}>●</span>{live ? 'Live' : 'Offline'}
+      {/* Status */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6,
+          background: live ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+          border: `1px solid ${live ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
+          borderRadius: 20, padding: '3px 10px',
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%',
+            background: live ? 'var(--green)' : 'var(--red)',
+            display: 'inline-block',
+            boxShadow: live ? '0 0 6px var(--green)' : 'none',
+            animation: live ? 'none' : 'pulse 2s infinite',
+          }}/>
+          <span style={{ fontSize: 11, fontWeight: 600, color: live ? 'var(--green)' : 'var(--red)' }}>
+            {live ? 'Connected' : 'Offline'}
+          </span>
+        </div>
+        <span style={{ fontSize: 11, color: 'var(--text3)', background: 'rgba(255,255,255,0.04)',
+          padding: '3px 8px', borderRadius: 8, border: '1px solid var(--border)' }}>
+          {source}
         </span>
-        <span style={{ fontSize: 12, color: 'var(--text2)' }}>{source}</span>
       </div>
     </header>
   )

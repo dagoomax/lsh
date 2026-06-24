@@ -59,6 +59,12 @@ async function main() {
   // ── Express app ──────────────────────────────────────────────────────────
   const app = express();
   app.use(cookieParser());
+
+  // React dashboard — public static files (API calls are Bearer-token protected)
+  const reactDist = path.join(__dirname, 'react-dashboard', 'dist');
+  app.use('/react', express.static(reactDist));
+  app.get('/react/*', (req, res) => res.sendFile(path.join(reactDist, 'index.html')));
+
   app.use(auth.middleware(isSecure));
   app.use(express.json());
   app.use(express.static(path.join(__dirname, 'public')));

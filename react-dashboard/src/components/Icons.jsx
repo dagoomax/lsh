@@ -1,0 +1,396 @@
+// Clean SVG icon components — Homey-style outline, 24×24 viewBox
+
+const s = (color = 'currentColor', size = 24) => ({
+  width: size, height: size,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: color,
+  strokeWidth: 1.75,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+})
+
+export function BulbIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M9 21h6M10 17.5h4"/>
+      <path d="M12 3a6 6 0 0 1 6 6c0 2.5-1.4 4.7-3.5 5.9V17a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-2.1C7.4 13.7 6 11.5 6 9a6 6 0 0 1 6-6z"/>
+    </svg>
+  )
+}
+
+export function CeilingLightIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 2v3"/>
+      <path d="M5 9h14l-2 8H7L5 9z"/>
+      <path d="M9 17v2a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-2"/>
+    </svg>
+  )
+}
+
+export function LedStripIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="9" width="20" height="6" rx="3"/>
+      <circle cx="7"  cy="12" r="1.5" fill={color} stroke="none"/>
+      <circle cx="12" cy="12" r="1.5" fill={color} stroke="none"/>
+      <circle cx="17" cy="12" r="1.5" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
+export function WallSconceIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="9" y="2" width="6" height="3" rx="1"/>
+      <path d="M12 5v2"/>
+      <path d="M8 7h8c0 5-2 8-4 10H12c-2-2-4-5-4-10z"/>
+      <path d="M9 21h6"/>
+    </svg>
+  )
+}
+
+export function DimmerIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <circle cx="12" cy="11" r="4"/>
+      <path d="M12 3v2M12 17v2M4 11H2M22 11h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M5.6 16.4l-1.4 1.4M19.8 4.2l-1.4 1.4"/>
+    </svg>
+  )
+}
+
+export function PlugIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 22v-4"/>
+      <path d="M7 6v4a5 5 0 0 0 10 0V6"/>
+      <path d="M9 2v4M15 2v4"/>
+    </svg>
+  )
+}
+
+export function SwitchOutletIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="3" y="3" width="18" height="18" rx="3"/>
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 8V6M12 18v-2M8 12H6M18 12h-2"/>
+    </svg>
+  )
+}
+
+export function ThermometerIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+    </svg>
+  )
+}
+
+export function HumidityIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 2c0 0-7 7.5-7 12a7 7 0 0 0 14 0c0-4.5-7-12-7-12z"/>
+    </svg>
+  )
+}
+
+export function MotionIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <circle cx="12" cy="9" r="2.5"/>
+      <path d="M6.5 17A7 7 0 0 1 5 12"/>
+      <path d="M17.5 17A7 7 0 0 0 19 12"/>
+      <path d="M3.5 20A11 11 0 0 1 2 12"/>
+      <path d="M22 12a11 11 0 0 1-1.5 8"/>
+    </svg>
+  )
+}
+
+export function PresenceIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <circle cx="12" cy="7" r="4"/>
+      <path d="M5.5 21a8.5 8.5 0 0 1 13 0"/>
+      <circle cx="19" cy="8" r="2"/>
+    </svg>
+  )
+}
+
+export function DoorIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="4" y="2" width="16" height="20" rx="2"/>
+      <path d="M9 2l0 20"/>
+      <circle cx="7" cy="12" r="1" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
+export function CameraIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M23 7l-7 5 7 5V7z"/>
+      <rect x="1" y="5" width="15" height="14" rx="2"/>
+    </svg>
+  )
+}
+
+export function WashingMachineIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="2" width="20" height="20" rx="2"/>
+      <circle cx="12" cy="13" r="5"/>
+      <path d="M7 6h2M11 6h.01"/>
+      <path d="M9.5 11.5c1-1 2.5-1.2 3.5-.5"/>
+    </svg>
+  )
+}
+
+export function DryerIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="2" width="20" height="20" rx="2"/>
+      <circle cx="12" cy="13" r="5"/>
+      <path d="M7 6h2M11 6h.01"/>
+      <path d="M12 8v2M9 11a3 3 0 0 1 3 0"/>
+    </svg>
+  )
+}
+
+export function ShowerIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M4 4a3 3 0 0 1 6 0v8h7a1 1 0 0 0 1-1V5"/>
+      <path d="M10 12v6"/>
+      <path d="M7 19h6"/>
+      <circle cx="13" cy="16" r="1" fill={color} stroke="none"/>
+      <circle cx="16" cy="14" r="1" fill={color} stroke="none"/>
+      <circle cx="16" cy="18" r="1" fill={color} stroke="none"/>
+      <circle cx="19" cy="16" r="1" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
+export function ThermostatIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="6" y="2" width="12" height="14" rx="6"/>
+      <path d="M9 8h6M9 5h4"/>
+      <path d="M12 16v5"/>
+      <path d="M9 20h6"/>
+    </svg>
+  )
+}
+
+export function ValveIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M2 12h20"/>
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 4v4M12 16v4M10 6l-2-2M14 6l2-2"/>
+    </svg>
+  )
+}
+
+export function RemoteIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="7" y="2" width="10" height="20" rx="5"/>
+      <circle cx="12" cy="8"  r="1.5" fill={color} stroke="none"/>
+      <circle cx="12" cy="13" r="1"   fill={color} stroke="none"/>
+      <path d="M10 17h4" strokeWidth="1.5"/>
+    </svg>
+  )
+}
+
+export function ShelfIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="3"  width="20" height="3" rx="1"/>
+      <rect x="2" y="11" width="20" height="3" rx="1"/>
+      <rect x="2" y="19" width="20" height="2" rx="1"/>
+      <path d="M7 6v5M17 6v5M12 14v5"/>
+    </svg>
+  )
+}
+
+export function PhoneIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="5" y="2" width="14" height="20" rx="3"/>
+      <path d="M12 18h.01"/>
+      <path d="M9 6h6"/>
+    </svg>
+  )
+}
+
+export function GardenIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 22V12"/>
+      <path d="M12 12C12 12 7 10 5 6c3 0 5.5 1 7 4"/>
+      <path d="M12 12c0 0 5-2 7-6-3 0-5.5 1-7 4"/>
+      <path d="M12 16c0 0-4-1-5-4 2.5 0 4 1 5 2.5"/>
+    </svg>
+  )
+}
+
+export function SecurityIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 3L4 7v5c0 4.4 3.4 8.5 8 9.5 4.6-1 8-5.1 8-9.5V7l-8-4z"/>
+      <path d="M9 12l2 2 4-4"/>
+    </svg>
+  )
+}
+
+export function SensorIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <circle cx="12" cy="12" r="2" fill={color} stroke="none"/>
+      <path d="M4.9 4.9a10 10 0 0 0 0 14.2"/>
+      <path d="M19.1 4.9a10 10 0 0 1 0 14.2"/>
+      <path d="M7.8 7.8a6 6 0 0 0 0 8.4"/>
+      <path d="M16.2 7.8a6 6 0 0 1 0 8.4"/>
+    </svg>
+  )
+}
+
+export function SolarPanelIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="4" width="20" height="16" rx="2"/>
+      <path d="M2 9h20M2 14h20M8 4v16M16 4v16"/>
+    </svg>
+  )
+}
+
+export function BatteryIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="7" width="18" height="10" rx="2"/>
+      <path d="M22 11v2" strokeWidth="2.5"/>
+      <path d="M6 11v2M9 11v2M12 11v2" strokeWidth="2"/>
+    </svg>
+  )
+}
+
+export function GridPowerIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+    </svg>
+  )
+}
+
+export function HomeIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+      <path d="M9 21V12h6v9"/>
+    </svg>
+  )
+}
+
+export function RouterIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="13" width="20" height="7" rx="2"/>
+      <path d="M6 17h.01M10 17h.01"/>
+      <path d="M12 13V9"/>
+      <path d="M8 9a6 6 0 0 1 8 0"/>
+      <path d="M5.5 6.5a9 9 0 0 1 13 0"/>
+    </svg>
+  )
+}
+
+export function InverterIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="6" width="20" height="12" rx="3"/>
+      <path d="M7 12h2l2-3 2 6 2-3h2"/>
+    </svg>
+  )
+}
+
+export function RelayIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M3 12h6M15 12h6"/>
+      <path d="M12 4v4M12 16v4"/>
+    </svg>
+  )
+}
+
+// ── Icon resolver ─────────────────────────────────────────────────────────────
+const LABEL_MAP = {
+  kinkiet:               WallSconceIcon,
+  ledy:                  LedStripIcon,
+  ubikacja:              ShowerIcon,
+  korytarz:              DoorIcon,
+  entrance:              DoorIcon,
+  wejście:               DoorIcon,
+  edison:                BulbIcon,
+  huebloom:              BulbIcon,
+  'pólka':               ShelfIcon,
+  pralka:                WashingMachineIcon,
+  suszarka:              DryerIcon,
+  żyrandol:              CeilingLightIcon,
+  'zawórlidl':           ValveIcon,
+  'cam 360':             CameraIcon,
+  'ikea vindstyrka':     SensorIcon,
+  'ikea motion sensor':  MotionIcon,
+  'ikea remote control': RemoteIcon,
+  'ikea dimmer switch':  DimmerIcon,
+  'ikea bulb e27 ws 1':  BulbIcon,
+  'bilresa dual button': RemoteIcon,
+  'popp thermostat':     ThermostatIcon,
+  'http temperature':    ThermometerIcon,
+  'http switch':         SwitchOutletIcon,
+  'solar charger':       SolarPanelIcon,
+  'multi/quattro':       InverterIcon,
+  battery:               BatteryIcon,
+  iphone:                PhoneIcon,
+  'ipad pro':            PhoneIcon,
+  ogródek:               GardenIcon,
+  komórka:               PhoneIcon,
+  'czujnik ruchu':       MotionIcon,
+  'okno rgbw':           LedStripIcon,
+  fdsegr:                SwitchOutletIcon,
+}
+
+const TYPE_MAP = {
+  vebus:        InverterIcon,
+  battery:      BatteryIcon,
+  solarcharger: SolarPanelIcon,
+  smartthings:  HomeIcon,
+}
+
+function readingIcon(r = {}) {
+  if (r.motion || r.presence)               return MotionIcon
+  if (r.temperature || r.humidity)          return ThermometerIcon
+  if (r.level != null || r.colorTemperature != null) return BulbIcon
+  if (r.switch != null)                     return SwitchOutletIcon
+  return null
+}
+
+export function resolveIcon(device) {
+  return LABEL_MAP[device.label?.toLowerCase()]
+      || TYPE_MAP[device.type]
+      || readingIcon(device.readings)
+      || HomeIcon
+}
+
+export const CAT_ICON_COMPONENT = {
+  All:      HomeIcon,
+  Victron:  GridPowerIcon,
+  Lighting: BulbIcon,
+  Switches: SwitchOutletIcon,
+  Climate:  ThermometerIcon,
+  Security: SecurityIcon,
+  Sensors:  SensorIcon,
+  Other:    RouterIcon,
+}
