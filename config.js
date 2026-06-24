@@ -102,6 +102,13 @@ function loadConfig() {
       basePort:   parseInt(fileConfig.ffmpegRtsp?.basePort   || 8554),
       ffmpegPath: fileConfig.ffmpegRtsp?.ffmpegPath || 'ffmpeg',
     },
+    loxoneOut: fileConfig.loxoneOut?.host ? {
+      host:     fileConfig.loxoneOut.host,
+      port:     parseInt(fileConfig.loxoneOut.port) || 80,
+      username: fileConfig.loxoneOut.username || 'admin',
+      password: fileConfig.loxoneOut.password || '',
+      mappings: fileConfig.loxoneOut.mappings || [],
+    } : undefined,
     fibaro: fileConfig.fibaro?.host ? {
       host:     fileConfig.fibaro.host,
       port:     parseInt(fileConfig.fibaro.port) || 80,

@@ -259,6 +259,15 @@ async function main() {
     }
   }
 
+  // Start Loxone outbound push client if configured
+  if (config.loxoneOut?.host && config.loxoneOut?.mappings?.length) {
+    const LoxoneOutClient = tryRequire('./src/loxone-out-client');
+    if (LoxoneOutClient) {
+      const loxoneOut = new LoxoneOutClient(config, store);
+      loxoneOut.start();
+    }
+  }
+
   // Start Bayrol Pool Manager client if configured
   if (config.bayrol?.username && config.bayrol?.password) {
     const BayrolClient = tryRequire('./src/bayrol-client');

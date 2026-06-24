@@ -730,6 +730,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.fibaro?.password)      safe.fibaro.password      = '••••••••';
     if (safe.bayrol?.password)      safe.bayrol.password      = '••••••••';
     if (safe.somfy?.password)       safe.somfy.password       = '••••••••';
+    if (safe.loxoneOut?.password)   safe.loxoneOut.password   = '••••••••';
     if (safe.dreame?.devices) {
       safe.dreame.devices = safe.dreame.devices.map(d =>
         d.token ? { ...d, token: '••••••••' } : d
@@ -1083,6 +1084,26 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         },
       });
       res.json({ success: true, message: 'Loxone settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/loxone-out', (req, res) => {
+    const current = readConfigFile();
+    const { host, port, username, password, mappings } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        loxoneOut: {
+          host:     host     || current.loxoneOut?.host     || '',
+          port:     parseInt(port || 80),
+          username: username || current.loxoneOut?.username || 'admin',
+          password: (password && !password.includes('•')) ? password : (current.loxoneOut?.password || ''),
+          mappings: Array.isArray(mappings) ? mappings : (current.loxoneOut?.mappings || []),
+        },
+      });
+      res.json({ success: true, message: 'Loxone outbound settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

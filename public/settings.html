@@ -418,6 +418,38 @@
       </div>
     </section>
 
+    <!-- Loxone Outbound Push -->
+    <section class="card settings-card" data-category="controllers" data-title="Loxone Outbound Push virtual inputs">
+      <h2>Loxone Outbound Push <span class="badge">Optional</span></h2>
+      <p class="section-desc">Pushes sensor values from LSH to Loxone Virtual Inputs in real time (on change, debounced 200 ms). Configure one mapping per line: <code>storeKey = VirtualInputName</code>. Example: <code>bayrol/19048/ph = PoolPH</code></p>
+
+      <div class="form-row">
+        <label for="loxone-out-host">Miniserver Host / IP</label>
+        <input type="text" id="loxone-out-host" placeholder="192.168.1.100">
+      </div>
+      <div class="form-row">
+        <label for="loxone-out-port">Port <span class="hint">(default 80)</span></label>
+        <input type="number" id="loxone-out-port" placeholder="80" min="1" max="65535" style="max-width:120px">
+      </div>
+      <div class="form-row">
+        <label for="loxone-out-user">Username</label>
+        <input type="text" id="loxone-out-user" placeholder="admin">
+      </div>
+      <div class="form-row">
+        <label for="loxone-out-pass">Password</label>
+        <input type="password" id="loxone-out-pass" placeholder="••••••••">
+      </div>
+      <div class="form-row">
+        <label for="loxone-out-mappings">Mappings <span class="hint">(storeKey = VirtualInputName, one per line)</span></label>
+        <textarea id="loxone-out-mappings" rows="6" placeholder="bayrol/19048/ph = PoolPH&#10;bayrol/19048/orp = PoolORP&#10;bayrol/19048/temperature = PoolTemp&#10;fibaro/room_5/42/value = FibaroRelay1" style="width:100%;font-family:monospace;font-size:12px;background:#0d0e1a;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px"></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-loxone-out">Save</button>
+        <span class="test-result" id="loxone-out-result"></span>
+      </div>
+    </section>
+
     <!-- KNX -->
     <section class="card settings-card" data-category="controllers" data-title="KNX bus building automation group addresses">
       <h2>KNX <span class="badge">Optional</span></h2>

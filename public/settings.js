@@ -76,6 +76,13 @@ async function loadSettings() {
     setVal('loxone-user', data.loxone?.username || 'admin');
     setVal('loxone-pass', data.loxone?.password || '');
 
+    // Loxone Outbound Push
+    setVal('loxone-out-host', data.loxoneOut?.host || '');
+    setVal('loxone-out-port', data.loxoneOut?.port || 80);
+    setVal('loxone-out-user', data.loxoneOut?.username || 'admin');
+    setVal('loxone-out-pass', data.loxoneOut?.password ? '••••••••' : '');
+    setVal('loxone-out-mappings', (data.loxoneOut?.mappings || []).map(m => `${m.storeKey} = ${m.virtualInput}`).join('\n'));
+
     // SIP
     setVal('sip-ws-url',       data.sip?.wsUrl       || '');
     setVal('sip-username',     data.sip?.username     || '');
@@ -884,6 +891,40 @@ document.getElementById('btn-save-bayrol').addEventListener('click', async () =>
   } catch (err) {
     resultEl.textContent = '✗ ' + err.message;
     resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Loxone Outbound Push ───────────────────────────────────────────────────
+
+document.getElementById('btn-save-loxone-out').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-loxone-out');
+  const resultEl = document.getElementById('loxone-out-result');
+  btn.disabled   = true;
+  try {
+    const rawMappings = getVal('loxone-out-mappings');
+    const mappings = rawMappings.split('\n')
+      .map(l => l.trim()).filter(Boolean)
+      .map(l => { const [k, v] = l.split('=').map(s => s.trim()); return k && v ? { storeKey: k, virtualInput: v } : null; })
+      .filter(Boolean);
+    const res  = await fetch('/api/settings/loxone-out', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host:     getVal('loxone-out-host'),
+        port:     parseInt(getVal('loxone-out-port') || '80'),
+        username: getVal('loxone-out-user'),
+        password: getVal('loxone-out-pass'),
+        mappings,
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
   } finally {
     btn.disabled = false;
   }
