@@ -68,19 +68,64 @@ A self-hosted home automation dashboard built on Node.js. Aggregates live data f
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Configuration](#configuration)
-3. [Pages](#pages)
-4. [Backend Modules](#backend-modules)
-5. [Integration Modules](#integration-modules)
-6. [Security & Auth](#security--auth)
-7. [HomeKit](#homekit)
-8. [SIP Softphone](#sip-softphone)
-9. [Cameras](#cameras)
-10. [Multi-language (i18n)](#multi-language-i18n)
-11. [HTTPS / TLS](#https--tls)
-12. [REST API](#rest-api)
-13. [Logs](#logs)
-14. [Requirements](#requirements)
+2. [React Dashboard](#react-dashboard)
+3. [Configuration](#configuration)
+4. [Pages](#pages)
+5. [Backend Modules](#backend-modules)
+6. [Integration Modules](#integration-modules)
+7. [Security & Auth](#security--auth)
+8. [HomeKit](#homekit)
+9. [SIP Softphone](#sip-softphone)
+10. [Cameras](#cameras)
+11. [Multi-language (i18n)](#multi-language-i18n)
+12. [HTTPS / TLS](#https--tls)
+13. [REST API](#rest-api)
+14. [Logs](#logs)
+15. [Requirements](#requirements)
+
+---
+
+## React Dashboard
+
+A Homey-style dark dashboard served at `/react/` — no separate port needed.
+
+**URL:** `http://<server-ip>:3001/react/`
+
+### Add to Home Screen (fullscreen PWA)
+
+The dashboard ships as a Progressive Web App. When installed from the home screen it runs fullscreen with no browser chrome.
+
+#### iPhone / iPad (Safari)
+
+1. Open `http://<server-ip>:3001/react/` in **Safari**
+2. Tap the **Share** button (box with arrow pointing up)
+3. Scroll down and tap **Add to Home Screen**
+4. Name it **LSH** → tap **Add**
+5. Open the icon from your home screen — runs fullscreen, no address bar
+
+> Safari is required on iOS. Chrome and Firefox on iOS cannot install PWAs.
+
+#### Android (Chrome)
+
+1. Open `http://<server-ip>:3001/react/` in **Chrome**
+2. Tap the **⋮ menu** (three dots, top right)
+3. Tap **Add to Home screen** → **Add**
+4. Open the icon — runs as a standalone app
+
+#### Desktop (Chrome / Edge)
+
+1. Open `http://<server-ip>:3001/react/` in Chrome or Edge
+2. Click the **install icon** (⊕) in the address bar
+3. Click **Install**
+
+### Features
+
+- Live energy flow — solar, battery, grid, AC loads
+- Device tile grid with one-tap toggle and brightness/colour-temp sliders
+- Category filter (Lighting / Switches / Climate / Security / Sensors / Victron)
+- Relay control panel
+- Mobile: bottom tab bar switches between Devices and Energy views
+- Auto-reconnects via Socket.IO; falls back to 15-second polling
 
 ---
 
