@@ -250,6 +250,15 @@ async function main() {
     }
   }
 
+  // Start Bayrol Pool Manager client if configured
+  if (config.bayrol?.username && config.bayrol?.password) {
+    const BayrolClient = tryRequire('./src/bayrol-client');
+    if (BayrolClient) {
+      const bayrol = new BayrolClient(config, store, sensorRegistry);
+      bayrol.start().catch((err) => console.error(`[Bayrol] Start failed: ${err.message}`));
+    }
+  }
+
   // Start SmartBob MQTT client if configured
   if (config.smartbob?.entities?.length) {
     const SmartBobClient = tryRequire('./src/smartbob-client');

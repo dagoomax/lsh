@@ -325,6 +325,17 @@ export function RelayIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function PoolIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M2 12c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0"/>
+      <path d="M2 17c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0"/>
+      <path d="M9 5l1.5 3M15 5l-1.5 3"/>
+      <path d="M7.5 8h9"/>
+    </svg>
+  )
+}
+
 // ── Icon resolver ─────────────────────────────────────────────────────────────
 const LABEL_MAP = {
   kinkiet:               WallSconceIcon,
@@ -367,6 +378,7 @@ const TYPE_MAP = {
   battery:      BatteryIcon,
   solarcharger: SolarPanelIcon,
   smartthings:  HomeIcon,
+  bayrol:       PoolIcon,
 }
 
 function readingIcon(r = {}) {
