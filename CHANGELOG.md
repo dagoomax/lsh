@@ -8,6 +8,27 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-06-24/25
+
+### Added
+- **AuxAir / AC Freedom** — full cloud control for AUX air conditioners via the SmartHomeCS API. Supports on/off, set temperature (16–30 °C), mode (cool/heat/dry/fan/auto), and fan speed. Dashboard tile shows room temperature, set temperature, mode pills (inline), and +/− temperature buttons. Auth uses AES-128-CBC encrypted login (app-hardcoded key/IV), SHA-1 password hashing, and per-session Bearer tokens.
+- **Loxone Outbound Push** (`src/loxone-out-client.js`) — pushes DataStore values to Loxone Virtual Inputs via HTTP GET (`/dev/sps/io/<input>/<value>`) on every store change, debounced 200 ms. Mappings configured as `storeKey = VirtualInputName` in the settings UI.
+- **Somfy Bearer token auth** — TaHoma Developer Mode token supported as an alternative to email + password. When set, skips session login entirely and sends `Authorization: Bearer <token>` on all requests.
+- **Bayrol Pool Manager Connect** — cloud-brokered MQTT integration (WebSocket, port 8083, TLS) for pH, ORP, temperature, and salt readings. Pool name configurable per tile.
+- **Fibaro Home Center** — room-based device tiles with per-sensor toggles, temperature display, and real-time long-poll updates via `/api/refreshStates`.
+- **Somfy TaHoma** — local HTTPS API integration for roller shutters, screens, venetian blinds, awnings, and gates.
+- **Satel zones only** — partition polling removed; module now returns zone violations only.
+- **React dashboard** — Homey-style PWA with SVG icons, mobile-responsive layout, spring card entrance, glow blobs, and gradient borders. Installable as Add to Home Screen.
+- Pool tile shows pH, ORP, temperature, and salt inline. Fibaro tile shows switch count, temperature, and per-device toggle rows.
+
+### Fixed
+- **Fibaro** — `store.update` used instead of `store.set`; `homekit: []` added to device registration (prevented HomeKit bridge crash).
+- **Bayrol** — complete rewrite: was calling wrong `/webservice/p.php` endpoints; now uses correct MQTT over WebSocket credential exchange flow.
+- **Somfy** — `store.set` → `store.update`; server startup now accepts token-only config.
+- **Config** — `bayrol`, `somfy`, `fibaro`, `loxoneOut`, `auxair` keys added to config whitelist (were returning `undefined`, preventing modules from starting).
+
+---
+
 ## 2026-06-22 (7)
 
 ### Added
