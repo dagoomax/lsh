@@ -172,6 +172,7 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 | `fibaro` | No | Fibaro Home Center 2 / 3 (rooms, switches, dimmers, sensors) |
 | `somfy` | No | Somfy TaHoma local API (roller shutters, awnings, gates) |
 | `bayrol` | No | Bayrol Pool Manager Connect (pH, ORP, temperature, salt via MQTT) |
+| `loxoneOut` | No | Loxone outbound push — forwards store values to Loxone Virtual Inputs in real time |
 | `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
@@ -237,6 +238,26 @@ Leave `deviceIds` empty to discover all devices. Or supply a list of device UUID
 ```
 
 Connects via the Loxone WebSocket API. All controls appear as device cards on the dashboard.
+
+### `loxoneOut`
+
+```json
+"loxoneOut": {
+  "host": "192.168.1.10",
+  "port": 80,
+  "username": "admin",
+  "password": "secret",
+  "mappings": [
+    { "storeKey": "battery/soc", "virtualInput": "VI1" },
+    { "storeKey": "solar/power",  "virtualInput": "VI2" }
+  ]
+}
+```
+
+Pushes live store values to **Loxone Virtual Inputs** via HTTP GET (`/dev/sps/io/<virtualInput>/<value>`) with Basic auth. Updates are sent within 200 ms of any store change, making it a low-latency alternative to polling.
+
+- `storeKey` — the DataStore key to watch (e.g. `battery/soc`, `solar/power`)
+- `virtualInput` — the name of the Loxone Virtual Input (as configured in Loxone Config)
 
 ### `satel`
 
@@ -1062,6 +1083,18 @@ Integrates **Bayrol Pool Manager Connect** pool chemistry monitors via cloud-bro
 | `4.100` | Salt (g/L) | raw ÷ 10 |
 
 **Config:** See [`bayrol`](#bayrol) config section above.
+
+---
+
+### `src/loxone-out-client.js`
+
+Forwards DataStore values to a **Loxone Miniserver** via HTTP GET to Virtual Input endpoints — no Loxone polling required.
+
+**How it works:** On `start()`, subscribes to the DataStore `change` event. When a watched key changes, the new value is sent to the configured Virtual Input within 200 ms (debounced to absorb rapid bursts). Uses Basic auth over HTTP.
+
+**Endpoint:** `GET http://<host>/dev/sps/io/<virtualInput>/<value>` — standard Loxone Virtual Input HTTP command interface.
+
+**Config:** See [`loxoneOut`](#loxoneout) config section above.
 
 ---
 
