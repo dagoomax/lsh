@@ -49,6 +49,7 @@ async function sendCommand(key, sensor, value) {
 // ── Categories ────────────────────────────────────────────────────────────────
 function getGroup(d) {
   if (['vebus','battery','solarcharger'].includes(d.type)) return 'Victron'
+  if (d.type === 'auxair') return 'Climate'
   const r = d.readings || {}
   const k = Object.keys(r)
   if (k.includes('temperature') || k.includes('humidity')) return 'Climate'
@@ -169,6 +170,17 @@ function DeviceTile({ device, onCommand }) {
 
   const isPool   = device.type === 'bayrol'
   const isFibaro = device.type === 'fibaro'
+  const isAC     = device.type === 'auxair'
+
+  const AC_MODES  = ['Cool','Heat','Dry','Fan','Auto']
+  const FAN_NAMES = ['Auto','Low','Med','High','Turbo','Mute']
+
+  const acPwr     = isAC ? (merged.pwr?.value ?? r.pwr?.value) : null
+  const acOn      = acPwr === 1 || acPwr === true
+  const acSetTemp = isAC ? (merged.temp?.value    ?? r.temp?.value)    : null
+  const acEnvTemp = isAC ? (merged.envtemp?.value ?? r.envtemp?.value) : null
+  const acMode    = isAC ? (merged.ac_mode?.value ?? r.ac_mode?.value ?? 0) : 0
+  const acFan     = isAC ? (merged.ac_mark?.value ?? r.ac_mark?.value ?? 0) : 0
 
   // For Fibaro rooms: extract sensor values from numeric-path readings
   const fibaroSensors = isFibaro ? (device.sensors || []).map(s => ({
@@ -180,6 +192,14 @@ function DeviceTile({ device, onCommand }) {
   const fibaroOnCount  = fibaroSwitches.filter(s => s.value === true || s.value === 1).length
 
   const statusText = (() => {
+    if (isAC) {
+      if (!acOn) return 'Off'
+      const parts = []
+      if (acEnvTemp != null) parts.push(`${Number(acEnvTemp).toFixed(1)}°C room`)
+      if (acSetTemp != null) parts.push(`→ ${Number(acSetTemp).toFixed(0)}°C`)
+      parts.push(AC_MODES[acMode] || 'Cool')
+      return parts.join(' · ')
+    }
     if (isFibaro) {
       const parts = []
       if (fibaroSwitches.length) parts.push(`${fibaroOnCount}/${fibaroSwitches.length} on`)
@@ -203,7 +223,7 @@ function DeviceTile({ device, onCommand }) {
     return isOn ? 'On' : 'Off'
   })()
 
-  const tileOn = isOn && hasSwitch
+  const tileOn = (isOn && hasSwitch) || (isAC && acOn)
 
   return (
     <div style={{
@@ -246,17 +266,20 @@ function DeviceTile({ device, onCommand }) {
         </div>
 
         <div style={{ flexShrink:0 }}>
-          {hasSwitch && (
+          {isAC && (
+            <Toggle on={acOn} onChange={val => cmd('pwr', val ? 1 : 0)} />
+          )}
+          {!isAC && hasSwitch && (
             <Toggle on={isOn} onChange={val => cmd('switch', val ? 1 : 0)} />
           )}
-          {!hasSwitch && (hasMot||hasPres) && (
+          {!isAC && !hasSwitch && (hasMot||hasPres) && (
             <span style={{
               width:9, height:9, borderRadius:'50%', display:'block', marginTop:3,
               background: (motActive||presActive) ? 'var(--orange)' : '#2d3748',
               boxShadow: (motActive||presActive) ? '0 0 8px var(--orange)' : 'none',
             }}/>
           )}
-          {!hasSwitch && hasBatt && (
+          {!isAC && !hasSwitch && hasBatt && (
             <span style={{ fontSize:11, fontWeight:700, marginTop:2, display:'block',
               color:(merged.battery?.value??100)<20?'var(--red)':(merged.battery?.value??100)<50?'var(--orange)':'var(--green)' }}>
               {merged.battery?.value}%
@@ -270,6 +293,36 @@ function DeviceTile({ device, onCommand }) {
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:10 }}>
           {hasLevel && <Slider value={level} onCommit={v => cmd('level', v)} />}
           {hasCT    && <CTSlider value={ct}  onCommit={v => cmd('colorTemperature', v)} />}
+        </div>
+      )}
+
+      {/* AC controls: mode pills + temp */}
+      {isAC && acOn && (
+        <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:6 }}>
+          {/* Mode pills */}
+          <div style={{ display:'flex', gap:3, flexWrap:'wrap' }}>
+            {AC_MODES.map((m, i) => (
+              <button key={m} onClick={e => { e.stopPropagation(); cmd('ac_mode', i) }}
+                style={{
+                  fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
+                  background: acMode === i ? 'var(--purple)' : 'rgba(255,255,255,0.08)',
+                  color: acMode === i ? '#fff' : '#94a3b8', cursor:'pointer',
+                }}>
+                {m}
+              </button>
+            ))}
+          </div>
+          {/* Temp +/- */}
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <button onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.max(16, acSetTemp - 1)) }}
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'#e2e8f0', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+            <span style={{ fontSize:12, fontWeight:700, color:'#a78bfa', minWidth:36, textAlign:'center' }}>
+              {acSetTemp != null ? `${Number(acSetTemp).toFixed(0)}°C` : '—'}
+            </span>
+            <button onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.min(30, acSetTemp + 1)) }}
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'#e2e8f0', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+            <span style={{ fontSize:10, color:'#4a5568', marginLeft:4 }}>{FAN_NAMES[acFan] || 'auto'} fan</span>
+          </div>
         </div>
       )}
 

@@ -36,6 +36,12 @@ async function loadSettings() {
     setVal('somfy-devices',  (data.somfy?.devices || []).join(', '));
     setVal('somfy-poll',     data.somfy?.pollInterval ?? 30);
 
+    // AuxAir
+    if (data.auxair?.region) document.getElementById('auxair-region').value = data.auxair.region;
+    setVal('auxair-email',    data.auxair?.email    || '');
+    setVal('auxair-password', data.auxair?.password ? '••••••••' : '');
+    setVal('auxair-poll',     data.auxair?.pollInterval ?? 30);
+
     // Bayrol
     setVal('bayrol-pool-name', data.bayrol?.poolName || '');
     setVal('bayrol-email', data.bayrol?.username || '');
@@ -891,6 +897,34 @@ document.getElementById('btn-save-bayrol').addEventListener('click', async () =>
   } catch (err) {
     resultEl.textContent = '✗ ' + err.message;
     resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── AuxAir (AC Freedom) ───────────────────────────────────────────────────
+
+document.getElementById('btn-save-auxair').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-auxair');
+  const resultEl = document.getElementById('auxair-result');
+  btn.disabled   = true;
+  try {
+    const res  = await fetch('/api/settings/auxair', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        region:       document.getElementById('auxair-region').value,
+        email:        getVal('auxair-email'),
+        password:     getVal('auxair-password'),
+        pollInterval: parseInt(getVal('auxair-poll') || '30'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
   } finally {
     btn.disabled = false;
   }

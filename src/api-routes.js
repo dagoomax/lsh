@@ -731,6 +731,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.bayrol?.password)      safe.bayrol.password      = '••••••••';
     if (safe.somfy?.password)       safe.somfy.password       = '••••••••';
     if (safe.loxoneOut?.password)   safe.loxoneOut.password   = '••••••••';
+    if (safe.auxair?.password)      safe.auxair.password      = '••••••••';
     if (safe.dreame?.devices) {
       safe.dreame.devices = safe.dreame.devices.map(d =>
         d.token ? { ...d, token: '••••••••' } : d
@@ -1104,6 +1105,25 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         },
       });
       res.json({ success: true, message: 'Loxone outbound settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/auxair', (req, res) => {
+    const current = readConfigFile();
+    const { region, email, password, pollInterval } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        auxair: {
+          region:       region       || current.auxair?.region       || 'eu',
+          email:        email        || current.auxair?.email        || '',
+          password:     (password && !password.includes('•')) ? password : (current.auxair?.password || ''),
+          pollInterval: parseInt(pollInterval || 30),
+        },
+      });
+      res.json({ success: true, message: 'AuxAir settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

@@ -123,6 +123,12 @@ function loadConfig() {
       devices:      fileConfig.somfy.devices  || [],
       pollInterval: parseInt(fileConfig.somfy.pollInterval) || 30,
     } : undefined,
+    auxair: fileConfig.auxair?.email ? {
+      region:       fileConfig.auxair.region       || 'eu',
+      email:        fileConfig.auxair.email        || '',
+      password:     fileConfig.auxair.password     || '',
+      pollInterval: parseInt(fileConfig.auxair.pollInterval) || 30,
+    } : undefined,
     bayrol: fileConfig.bayrol?.username ? {
       poolName:     fileConfig.bayrol.poolName    || '',
       username:     fileConfig.bayrol.username    || '',

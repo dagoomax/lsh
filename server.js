@@ -268,6 +268,15 @@ async function main() {
     }
   }
 
+  // Start AuxAir (AC Freedom) client if configured
+  if (config.auxair?.email && config.auxair?.password) {
+    const AuxAirClient = tryRequire('./src/auxair-client');
+    if (AuxAirClient) {
+      const auxair = new AuxAirClient(config, store, sensorRegistry);
+      auxair.start().catch((err) => console.error(`[AuxAir] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Bayrol Pool Manager client if configured
   if (config.bayrol?.username && config.bayrol?.password) {
     const BayrolClient = tryRequire('./src/bayrol-client');

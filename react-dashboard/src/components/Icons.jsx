@@ -346,6 +346,17 @@ export function PoolIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function AirCondIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="6" width="20" height="8" rx="3"/>
+      <path d="M6 14v2M10 14v3M14 14v2M18 14v3"/>
+      <path d="M7 9h10"/>
+      <circle cx="17" cy="9" r="1" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
 export function FibaroIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
@@ -400,6 +411,7 @@ const TYPE_MAP = {
   fibaro:       FibaroIcon,
   bayrol:       PoolIcon,
   somfy:        ShutterIcon,
+  auxair:       AirCondIcon,
 }
 
 function readingIcon(r = {}) {

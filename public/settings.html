@@ -267,6 +267,37 @@
       </div>
     </section>
 
+    <!-- AuxAir (AC Freedom) -->
+    <section class="card settings-card" data-category="smarthome" data-title="AuxAir AC Freedom air conditioner climate control">
+      <h2>AuxAir / AC Freedom <span class="badge">Optional</span></h2>
+      <p class="section-desc">Controls AUX air conditioners via the AC Freedom cloud API. Supports on/off, temperature, mode (cool/heat/dry/fan/auto), and fan speed. Requires an AC Freedom account.</p>
+      <div class="form-group">
+        <label for="auxair-region">Region</label>
+        <select id="auxair-region" style="background:#0d0e1a;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 12px">
+          <option value="eu">Europe (EU)</option>
+          <option value="usa">USA</option>
+          <option value="cn">China (CN)</option>
+          <option value="rus">Russia (RUS)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="auxair-email">AC Freedom Account Email</label>
+        <input type="email" id="auxair-email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label for="auxair-password">Password</label>
+        <input type="password" id="auxair-password" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label for="auxair-poll">Poll Interval <span class="hint">(seconds, min 10)</span></label>
+        <input type="number" id="auxair-poll" placeholder="30" min="10" max="3600" style="max-width:120px">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-auxair">Save</button>
+        <span class="test-result" id="auxair-result"></span>
+      </div>
+    </section>
+
     <!-- Bayrol Pool Manager -->
     <section class="card settings-card" data-category="smarthome" data-title="Bayrol Pool Manager Connect pool chemistry pH ORP chlorine">
       <h2>Bayrol Pool Manager Connect <span class="badge">Optional</span></h2>
