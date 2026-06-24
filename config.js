@@ -102,6 +102,12 @@ function loadConfig() {
       basePort:   parseInt(fileConfig.ffmpegRtsp?.basePort   || 8554),
       ffmpegPath: fileConfig.ffmpegRtsp?.ffmpegPath || 'ffmpeg',
     },
+    fibaro: fileConfig.fibaro?.host ? {
+      host:     fileConfig.fibaro.host,
+      port:     parseInt(fileConfig.fibaro.port) || 80,
+      username: fileConfig.fibaro.username || 'admin',
+      password: fileConfig.fibaro.password || '',
+    } : undefined,
     somfy: fileConfig.somfy?.host ? {
       host:         fileConfig.somfy.host,
       port:         parseInt(fileConfig.somfy.port) || 8443,

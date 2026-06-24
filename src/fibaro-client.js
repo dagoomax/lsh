@@ -65,6 +65,7 @@ class FibaroClient {
         key:    deviceKey,
         label:  group.name,
         type:   'fibaro',
+        homekit: [],
         sensors,
         _writeCapability: async (capId, command, args = []) =>
           this._writeDevice(capId, command, args),
@@ -141,7 +142,7 @@ class FibaroClient {
       const n = Number(value);
       if (value !== '' && value !== null && value !== undefined && !isNaN(n)) value = n;
     }
-    this._store.set(`${deviceKey}/${deviceId}/value`, value);
+    this._store.update(`${deviceKey}/${deviceId}/value`, value);
   }
 
   // ── Write ──────────────────────────────────────────────────────────────

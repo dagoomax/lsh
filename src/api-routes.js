@@ -727,6 +727,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.sip?.password)     safe.sip.password     = '••••••••';
     if (safe.tradfri?.securityCode) safe.tradfri.securityCode = '••••••••';
     if (safe.homey?.token)          safe.homey.token          = '••••••••';
+    if (safe.fibaro?.password)      safe.fibaro.password      = '••••••••';
     if (safe.bayrol?.password)      safe.bayrol.password      = '••••••••';
     if (safe.somfy?.password)       safe.somfy.password       = '••••••••';
     if (safe.dreame?.devices) {
