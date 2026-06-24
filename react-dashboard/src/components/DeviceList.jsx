@@ -167,7 +167,17 @@ function DeviceTile({ device, onCommand }) {
                     : !hasSwitch       ? 'var(--purple-lt)'
                     : 'var(--purple)'
 
+  const isPool = device.type === 'bayrol'
+
   const statusText = (() => {
+    if (isPool) {
+      const ph  = merged.ph?.value
+      const orp = merged.orp?.value
+      const parts = []
+      if (ph  != null) parts.push(`pH ${Number(ph).toFixed(1)}`)
+      if (orp != null) parts.push(`${orp} mV`)
+      return parts.join(' · ') || '—'
+    }
     if (hasTemp)  return `${merged.temperature?.value}°C${hasHum ? ` · ${merged.humidity?.value}%` : ''}`
     if (hasMot)   return motActive ? 'Motion' : 'Clear'
     if (hasPres)  return presActive ? 'Present' : 'Away'
@@ -265,6 +275,18 @@ function DeviceTile({ device, onCommand }) {
         }}>
           {statusText}
         </div>
+        {isPool && (() => {
+          const temp = merged.temperature?.value
+          const salt = merged.salt?.value
+          const parts = []
+          if (temp != null) parts.push(`${Number(temp).toFixed(1)}°C`)
+          if (salt != null) parts.push(`${Number(salt).toFixed(1)} g/L`)
+          return parts.length > 0 ? (
+            <div style={{ fontSize:10, marginTop:2, color:'#4a5568', fontWeight:500 }}>
+              {parts.join(' · ')}
+            </div>
+          ) : null
+        })()}
       </div>
     </div>
   )
