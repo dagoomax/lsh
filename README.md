@@ -61,7 +61,7 @@
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), and KNX into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, and Bayrol Pool Manager Connect into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 ---
 
@@ -169,6 +169,9 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 | `lgthinq` | No | LG ThinQ appliances (token-based auth, v1 API) |
 | `esphome` | No | ESPHome ESP32/ESP8266 devices (HTTP REST API) |
 | `knx` | No | KNX bus via KNXnet/IP gateway (group address mapping) |
+| `fibaro` | No | Fibaro Home Center 2 / 3 (rooms, switches, dimmers, sensors) |
+| `somfy` | No | Somfy TaHoma local API (roller shutters, awnings, gates) |
+| `bayrol` | No | Bayrol Pool Manager Connect (pH, ORP, temperature, salt via MQTT) |
 | `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
@@ -416,6 +419,79 @@ Connects to a KNXnet/IP gateway or IP router. Requires `npm install knx`.
 | `DPT5` | 1 byte | 0–255 | Dimmer, percentage, counter |
 | `DPT9` | 2 bytes | KNX float | Temperature, humidity, lux |
 | `DPT14` | 4 bytes | IEEE 754 float | Power, energy, general |
+
+### `fibaro`
+
+```json
+"fibaro": {
+  "host": "192.168.1.196",
+  "port": 80,
+  "username": "admin",
+  "password": "your-password"
+}
+```
+
+Connects to a **Fibaro Home Center 2 or 3** via its local REST API. Discovers all rooms and supported devices, groups them by room, and registers each room as a device tile on the dashboard.
+
+**Supported device types:** binary switches, dimmers, roller shutters, temperature sensors, humidity sensors, light sensors, power meters, door/window sensors, motion sensors, smoke and flood sensors.
+
+**Control:** Switches and dimmers are controllable from the dashboard. Roller shutters support position (0–100%).
+
+**Live updates:** Uses Fibaro's long-poll `/api/refreshStates` endpoint — changes appear within 1 s of the physical event.
+
+---
+
+### `somfy`
+
+```json
+"somfy": {
+  "host": "192.168.1.x",
+  "port": 8443,
+  "email": "you@example.com",
+  "password": "your-password",
+  "devices": [],
+  "pollInterval": 30
+}
+```
+
+Connects to a **Somfy TaHoma** box via the local HTTPS API (port 8443, self-signed certificate). Discovers roller shutters, awnings, gates, screens, pergolas, and blinds.
+
+> **Prerequisite:** Enable **Developer Mode** in the TaHoma app (Settings → My Home → TaHoma box → Developer Mode) before connecting. Without it the API returns `RESOURCE_ACCESS_DENIED`.
+
+**`devices`** — optional name filter array. Leave empty to discover all. Example: `["Salon", "Bedroom"]`.
+
+**Control:** Each device exposes a switch (open/close) and a level slider (0 = closed, 100 = open).
+
+---
+
+### `bayrol`
+
+```json
+"bayrol": {
+  "poolName": "My Pool",
+  "username": "you@example.com",
+  "password": "your-password",
+  "pollInterval": 60,
+  "pools": []
+}
+```
+
+Connects to **Bayrol Pool Manager Connect** devices via the [bayrol-poolaccess.de](https://www.bayrol-poolaccess.de) cloud portal using **MQTT over WebSockets** (port 8083, TLS).
+
+**Authentication flow:**
+1. HTTP login to `bayrol-poolaccess.de` → session cookie
+2. GET `/webview/p/plants.php` → discover pool CIDs
+3. GET `/webview/p/device.php?c=<cid>` → extract MQTT access code from iframe
+4. GET `/api/?code=<code>` → exchange for `accessToken` + `deviceSerial`
+5. Connect MQTT to `wss://www.bayrol-poolaccess.de:8083` with `accessToken` as username
+
+**Sensors:** pH (uid `4.78`, raw÷10), ORP/Redox (uid `4.82`, mV), Temperature (uid `4.98`, raw÷10 °C), Salt (uid `4.100`, raw÷10 g/L).
+
+**`poolName`** — display name for the tile. If omitted, auto-named `Pool <cid>`.
+
+**`pools`** — optional array of `{ cid, name }` to pin specific pools. Leave empty for auto-discovery.
+
+---
 
 ### `ffmpegRtsp`
 
@@ -935,6 +1011,57 @@ Integrates **ESPHome** ESP32/ESP8266 devices via their built-in **HTTP REST API*
 **Authentication:** Optional HTTP Basic auth — the ESPHome `web_server` password is sent as `:<password>` (empty username).
 
 **Config:** See [`esphome`](#esphome) config section above.
+
+---
+
+### `src/fibaro-client.js`
+
+Integrates **Fibaro Home Center 2 / 3** via its local REST API.
+
+**Discovery:** Fetches `/api/rooms` and `/api/devices` in parallel, groups supported devices by room, and registers each room as a dashboard tile with one sensor entry per device. Sensor paths use the Fibaro device ID (e.g. `42/value`) so write commands can target individual devices.
+
+**Live updates:** Calls `/api/refreshStates?last=<timestamp>` in a continuous long-poll loop (55 s timeout). The `last` cursor is advanced on each response so only changes since the previous poll are processed.
+
+**Write path:** `POST /api/devices/<id>/action/<action>` — `turnOn`, `turnOff`, or `setValue`.
+
+**Config:** See [`fibaro`](#fibaro) config section above.
+
+---
+
+### `src/somfy-client.js`
+
+Integrates **Somfy TaHoma** roller shutters and covers via the local HTTPS API (port 8443).
+
+**Authentication:** `POST /enduser-mobile-web/1/enduserAPI/login` with email + password → `JSESSIONID` cookie. Session is refreshed automatically on 401.
+
+**Discovery:** `GET .../setup/devices` — filters to controllable device classes (RollerShutter, Gate, Awning, Window, etc.). Each device gets a `switch` sensor (open/close toggle) and a `level` sensor (0–100 position slider, inverted from the TaHoma `core:ClosureState` which uses 0 = open).
+
+**Polling:** `GET .../setup/devices/<url>/states` every `pollInterval` seconds. `core:ClosureState` → `level = 100 - closure`.
+
+**Control:** `POST .../exec/apply` with a JSON action list.
+
+**Config:** See [`somfy`](#somfy) config section above.
+
+---
+
+### `src/bayrol-client.js`
+
+Integrates **Bayrol Pool Manager Connect** pool chemistry monitors via cloud-brokered MQTT.
+
+**Credential flow:** HTTP session login → pool discovery (`plants.php`) → per-pool access token exchange (`device.php` + `/api/?code=`) → MQTT WebSocket connection.
+
+**MQTT:** Connects to `wss://www.bayrol-poolaccess.de:8083` using the per-pool `accessToken` as the MQTT username and `*` as password. Subscribes to `d02/<deviceSerial>/v/#` and publishes to `d02/<deviceSerial>/g/<uid>` to request initial values.
+
+**Value transforms:**
+
+| UID | Sensor | Transform |
+|---|---|---|
+| `4.78` | pH | raw ÷ 10 |
+| `4.82` | ORP (mV) | as-is |
+| `4.98` | Temperature (°C) | raw ÷ 10 |
+| `4.100` | Salt (g/L) | raw ÷ 10 |
+
+**Config:** See [`bayrol`](#bayrol) config section above.
 
 ---
 
