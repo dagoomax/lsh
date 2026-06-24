@@ -61,7 +61,7 @@
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, and Bayrol Pool Manager Connect into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, Bayrol Pool Manager Connect, and AUX Air (AC Freedom) into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 ---
 
@@ -172,6 +172,7 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 | `fibaro` | No | Fibaro Home Center 2 / 3 (rooms, switches, dimmers, sensors) |
 | `somfy` | No | Somfy TaHoma local API (roller shutters, awnings, gates) |
 | `bayrol` | No | Bayrol Pool Manager Connect (pH, ORP, temperature, salt via MQTT) |
+| `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
 | `loxoneOut` | No | Loxone outbound push — forwards store values to Loxone Virtual Inputs in real time |
 | `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
@@ -509,6 +510,28 @@ Connects to **Bayrol Pool Manager Connect** devices via the [bayrol-poolaccess.d
 **Sensors:** pH (uid `4.78`, raw÷10), ORP/Redox (uid `4.82`, mV), Temperature (uid `4.98`, raw÷10 °C), Salt (uid `4.100`, raw÷10 g/L).
 
 **`poolName`** — display name for the tile. If omitted, auto-named `Pool <cid>`.
+
+### `auxair`
+
+```json
+"auxair": {
+  "region": "eu",
+  "email": "you@example.com",
+  "password": "your-password",
+  "pollInterval": 30
+}
+```
+
+Connects to **AUX Air** (brand behind the **AC Freedom** app) via the SmartHomeCS cloud API. Supports full control: on/off, target temperature (16–30 °C), mode, and fan speed.
+
+| Field | Default | Description |
+|---|---|---|
+| `region` | `eu` | Server region: `eu`, `usa`, `cn`, `rus` |
+| `email` | — | AC Freedom account email |
+| `password` | — | AC Freedom account password |
+| `pollInterval` | `30` | State refresh interval in seconds |
+
+**Dashboard tile:** Shows current room temperature, set temperature, and mode. When on: mode pills (Cool / Heat / Dry / Fan / Auto) and temperature +/− buttons are shown inline. Fan speed displayed as a label.
 
 **`pools`** — optional array of `{ cid, name }` to pin specific pools. Leave empty for auto-discovery.
 
@@ -1083,6 +1106,30 @@ Integrates **Bayrol Pool Manager Connect** pool chemistry monitors via cloud-bro
 | `4.100` | Salt (g/L) | raw ÷ 10 |
 
 **Config:** See [`bayrol`](#bayrol) config section above.
+
+---
+
+### `src/auxair-client.js`
+
+Integrates **AUX Air** conditioners via the **AC Freedom / SmartHomeCS** cloud API.
+
+**Auth flow:** SHA-1 password hash → AES-128-CBC encrypted login body (zero-padding, hardcoded app key/IV) → per-session `loginsession` + `userid` tokens used in all subsequent request headers.
+
+**Device discovery:** Family list → per-family endpoint list → cookie decoding for device control sessions.
+
+**Control:** `POST /device/control/v2/sdkcontrol` with `act: "get"` for state or `act: "set"` for commands. Parameters:
+
+| Param | Sensor | Notes |
+|---|---|---|
+| `pwr` | Power | 0 = off, 1 = on |
+| `temp` | Set temperature | raw ÷ 10 (e.g. 240 = 24.0 °C) |
+| `envtemp` | Room temperature | raw ÷ 10, read-only |
+| `ac_mode` | Mode | 0=cool 1=heat 2=dry 3=fan 4=auto |
+| `ac_mark` | Fan speed | 0=auto 1=low 2=med 3=high 4=turbo 5=mute |
+
+After each command, state is refreshed automatically after 1.5 s.
+
+**Config:** See [`auxair`](#auxair) config section above.
 
 ---
 
