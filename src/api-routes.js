@@ -727,6 +727,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.sip?.password)     safe.sip.password     = '••••••••';
     if (safe.tradfri?.securityCode) safe.tradfri.securityCode = '••••••••';
     if (safe.homey?.token)          safe.homey.token          = '••••••••';
+    if (safe.bayrol?.password)      safe.bayrol.password      = '••••••••';
     if (safe.dreame?.devices) {
       safe.dreame.devices = safe.dreame.devices.map(d =>
         d.token ? { ...d, token: '••••••••' } : d
@@ -929,6 +930,55 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         },
       });
       res.json({ success: true, message: 'Homey settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Bayrol ─────────────────────────────────────────────────────────────
+
+  router.post('/settings/test-bayrol', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ success: false, error: 'email and password are required' });
+    const https = require('https');
+    const body  = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&stay=1`;
+    try {
+      await new Promise((resolve, reject) => {
+        const reqH = https.request({
+          hostname: 'www.bayrol-poolaccess.de', port: 443,
+          path: '/webservice/p.php?i=access', method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
+          timeout: 10000,
+        }, r => {
+          const cookies = [].concat(r.headers['set-cookie'] || []);
+          if (cookies.find(c => c.startsWith('PHPSESSID='))) resolve();
+          else reject(new Error('Login failed — no session cookie (check credentials)'));
+          r.resume();
+        });
+        reqH.on('error', reject);
+        reqH.on('timeout', () => { reqH.destroy(); reject(new Error('Connection timeout')); });
+        reqH.write(body);
+        reqH.end();
+      });
+      res.json({ success: true, message: 'Login successful — credentials are valid' });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/bayrol', (req, res) => {
+    const current = readConfigFile();
+    const { username, password, pollInterval } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        bayrol: {
+          username:     username     || current.bayrol?.username     || '',
+          password:     (password && !password.includes('•')) ? password : (current.bayrol?.password || ''),
+          pollInterval: pollInterval != null ? parseInt(pollInterval) : (current.bayrol?.pollInterval ?? 60),
+        },
+      });
+      res.json({ success: true, message: 'Bayrol settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

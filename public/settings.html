@@ -230,6 +230,31 @@
       </div>
     </section>
 
+    <!-- Bayrol Pool Manager -->
+    <section class="card settings-card" data-category="smarthome" data-title="Bayrol Pool Manager Connect pool chemistry pH ORP chlorine">
+      <h2>Bayrol Pool Manager Connect <span class="badge">Optional</span></h2>
+      <p class="section-desc">Connects to the Bayrol Pool Access cloud to read pH, ORP (redox), temperature, and free chlorine from a Pool Manager Connect device. Polling interval is 60 s by default.</p>
+
+      <div class="form-row">
+        <label for="bayrol-email">Bayrol Pool Access Email</label>
+        <input type="email" id="bayrol-email" placeholder="you@example.com">
+      </div>
+      <div class="form-row">
+        <label for="bayrol-password">Password</label>
+        <input type="password" id="bayrol-password" placeholder="••••••••">
+      </div>
+      <div class="form-row">
+        <label for="bayrol-poll">Poll Interval <span class="hint">(seconds, min 30)</span></label>
+        <input type="number" id="bayrol-poll" placeholder="60" min="30" max="3600" style="max-width:120px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-bayrol">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-bayrol">Save</button>
+        <span class="test-result" id="bayrol-test-result"></span>
+      </div>
+    </section>
+
     <!-- Dreame -->
     <section class="card settings-card" data-category="smarthome" data-title="Dreame vacuum purifier">
       <h2><span data-i18n="s.dreame_title">Dreame</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
