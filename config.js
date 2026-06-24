@@ -118,6 +118,7 @@ function loadConfig() {
     somfy: fileConfig.somfy?.host ? {
       host:         fileConfig.somfy.host,
       port:         parseInt(fileConfig.somfy.port) || 8443,
+      token:        fileConfig.somfy.token    || '',
       email:        fileConfig.somfy.email    || '',
       password:     fileConfig.somfy.password || '',
       devices:      fileConfig.somfy.devices  || [],

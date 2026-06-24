@@ -244,11 +244,15 @@
         <input type="number" id="somfy-port" placeholder="8443" min="1" max="65535" style="max-width:120px">
       </div>
       <div class="form-row">
-        <label for="somfy-email">Somfy Account Email</label>
+        <label for="somfy-token">Developer Token <span class="hint">(preferred — from TaHoma Developer Mode)</span></label>
+        <input type="password" id="somfy-token" placeholder="••••••••">
+      </div>
+      <div class="form-row">
+        <label for="somfy-email">Somfy Account Email <span class="hint">(only if no token)</span></label>
         <input type="email" id="somfy-email" placeholder="you@example.com">
       </div>
       <div class="form-row">
-        <label for="somfy-password">Password</label>
+        <label for="somfy-password">Password <span class="hint">(only if no token)</span></label>
         <input type="password" id="somfy-password" placeholder="••••••••">
       </div>
       <div class="form-row">

@@ -17,7 +17,8 @@ class SomfyClient {
     this._config   = config;
     this._store    = store;
     this._registry = sensorRegistry;
-    this._session  = null; // JSESSIONID=...
+    this._session  = null; // JSESSIONID=... (cookie auth)
+    this._token    = null; // Bearer token (developer mode)
     this._timer    = null;
     this._devices  = {}; // deviceURL → { label, deviceKey, uiClass }
     // TaHoma box uses a self-signed TLS certificate
@@ -26,9 +27,16 @@ class SomfyClient {
 
   async start() {
     const cfg = this._config.somfy;
-    if (!cfg?.host || !cfg?.email || !cfg?.password) return;
+    if (!cfg?.host) return;
+    if (!cfg.token && (!cfg.email || !cfg.password))
+      throw new Error('Somfy requires either a token or email + password');
 
-    await this._login(cfg);
+    if (cfg.token) {
+      this._token = cfg.token;
+      console.log('[Somfy] Using Bearer token auth');
+    } else {
+      await this._login(cfg);
+    }
     await this._discoverDevices(cfg);
     platformStatus.set('somfy', true);
     const ms = (cfg.pollInterval || 30) * 1000;
@@ -117,7 +125,7 @@ class SomfyClient {
       } catch (err) {
         if (err.message.includes('401') || err.message.includes('session')) {
           try {
-            await this._login(this._config.somfy);
+            if (!this._token) await this._login(this._config.somfy);
             await this._pollDevice(url, dev.deviceKey);
           } catch (e2) {
             console.error(`[Somfy] Poll retry failed for ${dev.label}: ${e2.message}`);
@@ -140,10 +148,10 @@ class SomfyClient {
       // closure: 0=fully open, 100=fully closed → level: 100=open, 0=closed
       if (name === 'core:ClosureState' || name === 'core:DeploymentState') {
         const closure = Number(value);
-        this._store.set(`${deviceKey}/level`,  100 - closure);
-        this._store.set(`${deviceKey}/switch`, closure < 100 ? 1 : 0);
+        this._store.update(`${deviceKey}/level`,  100 - closure);
+        this._store.update(`${deviceKey}/switch`, closure < 100 ? 1 : 0);
       } else if (name === 'core:OpenClosedState' || name === 'core:OpenClosedUnknownState') {
-        this._store.set(`${deviceKey}/switch`, value === 'open' ? 1 : 0);
+        this._store.update(`${deviceKey}/switch`, value === 'open' ? 1 : 0);
       }
     }
   }
@@ -180,6 +188,7 @@ class SomfyClient {
       const headers = {
         Accept:       'application/json',
         'User-Agent': 'LSH-Dashboard/1.0',
+        ...(this._token   ? { Authorization: `Bearer ${this._token}` } : {}),
         ...(this._session ? { Cookie: this._session } : {}),
         ...extraHeaders,
       };

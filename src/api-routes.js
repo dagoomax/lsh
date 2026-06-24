@@ -730,6 +730,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.fibaro?.password)      safe.fibaro.password      = '••••••••';
     if (safe.bayrol?.password)      safe.bayrol.password      = '••••••••';
     if (safe.somfy?.password)       safe.somfy.password       = '••••••••';
+    if (safe.somfy?.token)          safe.somfy.token          = '••••••••';
     if (safe.loxoneOut?.password)   safe.loxoneOut.password   = '••••••••';
     if (safe.auxair?.password)      safe.auxair.password      = '••••••••';
     if (safe.dreame?.devices) {
@@ -974,13 +975,14 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   router.post('/settings/somfy', (req, res) => {
     const current = readConfigFile();
-    const { host, port, email, password, devices, pollInterval } = req.body;
+    const { host, port, token, email, password, devices, pollInterval } = req.body;
     try {
       writeConfigFile({
         ...current,
         somfy: {
           host:         host         || current.somfy?.host         || '',
           port:         port         ?? current.somfy?.port         ?? 8443,
+          token:        (token    && !token.includes('•'))    ? token    : (current.somfy?.token    || ''),
           email:        email        || current.somfy?.email        || '',
           password:     (password && !password.includes('•')) ? password : (current.somfy?.password || ''),
           devices:      Array.isArray(devices) ? devices : (current.somfy?.devices ?? []),

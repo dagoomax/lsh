@@ -31,7 +31,8 @@ async function loadSettings() {
     // Somfy
     setVal('somfy-host',     data.somfy?.host || '');
     setVal('somfy-port',     data.somfy?.port || 8443);
-    setVal('somfy-email',    data.somfy?.email || '');
+    setVal('somfy-token',    data.somfy?.token    ? '••••••••' : '');
+    setVal('somfy-email',    data.somfy?.email    || '');
     setVal('somfy-password', data.somfy?.password ? '••••••••' : '');
     setVal('somfy-devices',  (data.somfy?.devices || []).join(', '));
     setVal('somfy-poll',     data.somfy?.pollInterval ?? 30);
@@ -831,6 +832,7 @@ document.getElementById('btn-save-somfy').addEventListener('click', async () => 
       body: JSON.stringify({
         host:         getVal('somfy-host'),
         port:         parseInt(getVal('somfy-port') || '8443'),
+        token:        getVal('somfy-token'),
         email:        getVal('somfy-email'),
         password:     getVal('somfy-password'),
         devices:      getVal('somfy-devices').split(',').map(s => s.trim()).filter(Boolean),
