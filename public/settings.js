@@ -28,6 +28,14 @@ async function loadSettings() {
     setVal('st-token', data.smartthings?.token || '');
     setVal('st-device-ids', (data.smartthings?.deviceIds || []).join(', '));
 
+    // Somfy
+    setVal('somfy-host',     data.somfy?.host || '');
+    setVal('somfy-port',     data.somfy?.port || 8443);
+    setVal('somfy-email',    data.somfy?.email || '');
+    setVal('somfy-password', data.somfy?.password ? '••••••••' : '');
+    setVal('somfy-devices',  (data.somfy?.devices || []).join(', '));
+    setVal('somfy-poll',     data.somfy?.pollInterval ?? 30);
+
     // Bayrol
     setVal('bayrol-email', data.bayrol?.username || '');
     setVal('bayrol-password', data.bayrol?.password ? '••••••••' : '');
@@ -757,6 +765,62 @@ document.getElementById('btn-save-homey').addEventListener('click', async () => 
         homeyId:      getVal('homey-id'),
         token:        getVal('homey-token'),
         pollInterval: parseInt(getVal('homey-poll') || '10'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Somfy ──────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-test-somfy').addEventListener('click', async () => {
+  const resultEl  = document.getElementById('somfy-test-result');
+  const host      = getVal('somfy-host');
+  const password  = getVal('somfy-password');
+  if (!host || !getVal('somfy-email') || !password || password.includes('•')) {
+    resultEl.textContent = 'Enter host, email and password first';
+    resultEl.className = 'test-result err';
+    return;
+  }
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result loading';
+  try {
+    const res  = await fetch('/api/settings/test-somfy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host, port: parseInt(getVal('somfy-port') || '8443'), email: getVal('somfy-email'), password }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-somfy').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-somfy');
+  const resultEl = document.getElementById('somfy-test-result');
+  btn.disabled = true;
+  try {
+    const res  = await fetch('/api/settings/somfy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host:         getVal('somfy-host'),
+        port:         parseInt(getVal('somfy-port') || '8443'),
+        email:        getVal('somfy-email'),
+        password:     getVal('somfy-password'),
+        devices:      getVal('somfy-devices').split(',').map(s => s.trim()).filter(Boolean),
+        pollInterval: parseInt(getVal('somfy-poll') || '30'),
       }),
     });
     const json = await res.json();

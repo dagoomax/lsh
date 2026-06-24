@@ -325,6 +325,16 @@ export function RelayIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function ShutterIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="3" width="20" height="18" rx="2"/>
+      <path d="M2 7h20M2 11h20M2 15h20"/>
+      <path d="M12 3v18"/>
+    </svg>
+  )
+}
+
 export function PoolIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
@@ -379,6 +389,7 @@ const TYPE_MAP = {
   solarcharger: SolarPanelIcon,
   smartthings:  HomeIcon,
   bayrol:       PoolIcon,
+  somfy:        ShutterIcon,
 }
 
 function readingIcon(r = {}) {

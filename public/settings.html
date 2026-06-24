@@ -230,6 +230,43 @@
       </div>
     </section>
 
+    <!-- Somfy TaHoma -->
+    <section class="card settings-card" data-category="smarthome" data-title="Somfy TaHoma roller shutter blind awning gate">
+      <h2>Somfy TaHoma <span class="badge">Optional</span></h2>
+      <p class="section-desc">Connects to a Somfy TaHoma or Connexoon box on your local network. Roller shutters, screens, venetian blinds, awnings, gates, and garage doors are auto-discovered and controllable from the dashboard.</p>
+
+      <div class="form-row">
+        <label for="somfy-host">TaHoma Box IP Address</label>
+        <input type="text" id="somfy-host" placeholder="192.168.x.x">
+      </div>
+      <div class="form-row">
+        <label for="somfy-port">Port <span class="hint">(default 8443)</span></label>
+        <input type="number" id="somfy-port" placeholder="8443" min="1" max="65535" style="max-width:120px">
+      </div>
+      <div class="form-row">
+        <label for="somfy-email">Somfy Account Email</label>
+        <input type="email" id="somfy-email" placeholder="you@example.com">
+      </div>
+      <div class="form-row">
+        <label for="somfy-password">Password</label>
+        <input type="password" id="somfy-password" placeholder="••••••••">
+      </div>
+      <div class="form-row">
+        <label for="somfy-devices"><span>Device Filter</span> <span class="hint">(comma-separated labels — leave blank for all)</span></label>
+        <input type="text" id="somfy-devices" placeholder="Living Room Blind, Garage Door">
+      </div>
+      <div class="form-row">
+        <label for="somfy-poll">Poll Interval <span class="hint">(seconds, default 30)</span></label>
+        <input type="number" id="somfy-poll" placeholder="30" min="10" max="300" style="max-width:120px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-somfy">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-somfy">Save</button>
+        <span class="test-result" id="somfy-test-result"></span>
+      </div>
+    </section>
+
     <!-- Bayrol Pool Manager -->
     <section class="card settings-card" data-category="smarthome" data-title="Bayrol Pool Manager Connect pool chemistry pH ORP chlorine">
       <h2>Bayrol Pool Manager Connect <span class="badge">Optional</span></h2>

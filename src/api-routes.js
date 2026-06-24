@@ -728,6 +728,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.tradfri?.securityCode) safe.tradfri.securityCode = '••••••••';
     if (safe.homey?.token)          safe.homey.token          = '••••••••';
     if (safe.bayrol?.password)      safe.bayrol.password      = '••••••••';
+    if (safe.somfy?.password)       safe.somfy.password       = '••••••••';
     if (safe.dreame?.devices) {
       safe.dreame.devices = safe.dreame.devices.map(d =>
         d.token ? { ...d, token: '••••••••' } : d
@@ -930,6 +931,60 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         },
       });
       res.json({ success: true, message: 'Homey settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Somfy ──────────────────────────────────────────────────────────────
+
+  router.post('/settings/test-somfy', async (req, res) => {
+    const { host, port = 8443, email, password } = req.body;
+    if (!host || !email || !password)
+      return res.status(400).json({ success: false, error: 'host, email and password are required' });
+    const https = require('https');
+    const agent = new https.Agent({ rejectUnauthorized: false });
+    const body  = `userId=${encodeURIComponent(email)}&userPassword=${encodeURIComponent(password)}`;
+    try {
+      await new Promise((resolve, reject) => {
+        const reqH = https.request({
+          hostname: host, port, agent,
+          path: '/enduser-mobile-web/1/enduserAPI/login', method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
+          timeout: 10000,
+        }, r => {
+          const cookies = [].concat(r.headers['set-cookie'] || []);
+          r.resume();
+          if (cookies.find(c => c.startsWith('JSESSIONID='))) resolve();
+          else reject(new Error('Login failed — no session cookie (check credentials)'));
+        });
+        reqH.on('error', reject);
+        reqH.on('timeout', () => { reqH.destroy(); reject(new Error('Connection timeout — check host/port')); });
+        reqH.write(body);
+        reqH.end();
+      });
+      res.json({ success: true, message: 'Login successful — TaHoma box reachable' });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/somfy', (req, res) => {
+    const current = readConfigFile();
+    const { host, port, email, password, devices, pollInterval } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        somfy: {
+          host:         host         || current.somfy?.host         || '',
+          port:         port         ?? current.somfy?.port         ?? 8443,
+          email:        email        || current.somfy?.email        || '',
+          password:     (password && !password.includes('•')) ? password : (current.somfy?.password || ''),
+          devices:      Array.isArray(devices) ? devices : (current.somfy?.devices ?? []),
+          pollInterval: pollInterval != null ? parseInt(pollInterval) : (current.somfy?.pollInterval ?? 30),
+        },
+      });
+      res.json({ success: true, message: 'Somfy settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

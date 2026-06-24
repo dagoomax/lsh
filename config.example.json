@@ -80,6 +80,14 @@
     "password": "",
     "apiKey": ""
   },
+  "somfy": {
+    "host": "192.168.x.x",
+    "email": "you@somfy.com",
+    "password": "",
+    "port": 8443,
+    "pollInterval": 30,
+    "devices": []
+  },
   "bayrol": {
     "username": "you@example.com",
     "password": "",
