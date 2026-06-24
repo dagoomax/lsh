@@ -12,17 +12,22 @@ const CONTROLLABLE = [
   'GarageDoor', 'Awning', 'Window', 'Blind',
 ];
 
+// Events that carry device state changes
+const STATE_EVENTS = new Set(['DeviceStateChangedEvent', 'DeviceCreatedEvent', 'DeviceUpdatedEvent']);
+
 class SomfyClient {
   constructor(config, store, sensorRegistry) {
-    this._config   = config;
-    this._store    = store;
-    this._registry = sensorRegistry;
-    this._session  = null; // JSESSIONID=... (cookie auth)
-    this._token    = null; // Bearer token (developer mode)
-    this._timer    = null;
-    this._devices  = {}; // deviceURL → { label, deviceKey, uiClass }
+    this._config     = config;
+    this._store      = store;
+    this._registry   = sensorRegistry;
+    this._session    = null; // JSESSIONID=... (cookie auth)
+    this._token      = null; // Bearer token (developer mode)
+    this._listenerId = null; // event listener ID (token mode only)
+    this._eventTimer = null; // event poll interval
+    this._pollTimer  = null; // fallback state poll interval
+    this._devices    = {};   // deviceURL → { label, deviceKey, uiClass }
     // TaHoma box uses a self-signed TLS certificate
-    this._agent    = new https.Agent({ rejectUnauthorized: false });
+    this._agent      = new https.Agent({ rejectUnauthorized: false });
   }
 
   async start() {
@@ -33,18 +38,28 @@ class SomfyClient {
 
     if (cfg.token) {
       this._token = cfg.token;
-      console.log('[Somfy] Using Bearer token auth');
+      console.log('[Somfy] Using Bearer token auth (Developer Mode)');
     } else {
       await this._login(cfg);
     }
+
     await this._discoverDevices(cfg);
     platformStatus.set('somfy', true);
-    const ms = (cfg.pollInterval || 30) * 1000;
-    this._timer = setInterval(() => this._pollAll(), ms);
+
+    if (this._token) {
+      // Event-based updates: register listener, poll every 1 s
+      await this._startEventPolling();
+    } else {
+      // Cookie auth: fallback to periodic state polling
+      const ms = (cfg.pollInterval || 30) * 1000;
+      this._pollTimer = setInterval(() => this._pollAll(), ms);
+    }
   }
 
   stop() {
-    if (this._timer) clearInterval(this._timer);
+    if (this._eventTimer) clearInterval(this._eventTimer);
+    if (this._pollTimer)  clearInterval(this._pollTimer);
+    if (this._listenerId) this._unregisterListener().catch(() => {});
   }
 
   // ── Authentication ─────────────────────────────────────────────────────────
@@ -90,6 +105,7 @@ class SomfyClient {
         key:   deviceKey,
         label: label,
         type:  'somfy',
+        homekit: [],
         sensors: [
           {
             path: 'switch', label: 'Open/Close', format: 'on-off',
@@ -113,10 +129,60 @@ class SomfyClient {
       console.log(`[Somfy] Registered: ${label} (${uiClass})`);
     }
 
+    // Initial state fetch via state API
     await this._pollAll();
   }
 
-  // ── Polling ────────────────────────────────────────────────────────────────
+  // ── Event polling (Developer Mode / token auth) ────────────────────────────
+
+  async _startEventPolling() {
+    try {
+      const res = await this._postJson(`${BASE_PATH}/events/register`, {});
+      this._listenerId = res?.id;
+      if (!this._listenerId) throw new Error('No listener ID returned');
+      console.log(`[Somfy] Event listener registered: ${this._listenerId}`);
+      // Poll for events every 1 s; re-register listener if it expires (10 min inactivity)
+      this._eventTimer = setInterval(() => this._fetchEvents(), 1000);
+    } catch (err) {
+      console.error(`[Somfy] Event registration failed: ${err.message} — falling back to polling`);
+      const ms = (this._config.somfy?.pollInterval || 30) * 1000;
+      this._pollTimer = setInterval(() => this._pollAll(), ms);
+    }
+  }
+
+  async _fetchEvents() {
+    if (!this._listenerId) return;
+    try {
+      const events = await this._postJson(`${BASE_PATH}/events/${this._listenerId}/fetch`, {});
+      if (!Array.isArray(events)) return;
+      for (const evt of events) {
+        if (!STATE_EVENTS.has(evt.name)) continue;
+        const dev = this._devices[evt.deviceURL];
+        if (!dev) continue;
+        for (const state of (evt.deviceStates || [])) {
+          this._applyState(dev.deviceKey, state.name, state.value);
+        }
+      }
+    } catch (err) {
+      const msg = String(err.message);
+      if (msg.includes('404') || msg.includes('UNKNOWN_OBJECT') || msg.includes('expired')) {
+        // Listener expired — re-register
+        console.warn('[Somfy] Event listener expired — re-registering');
+        this._listenerId = null;
+        clearInterval(this._eventTimer);
+        this._eventTimer = null;
+        await this._startEventPolling();
+      }
+    }
+  }
+
+  async _unregisterListener() {
+    if (!this._listenerId) return;
+    await this._postJson(`${BASE_PATH}/events/${this._listenerId}/unregister`, {}).catch(() => {});
+    this._listenerId = null;
+  }
+
+  // ── State polling (cookie auth fallback) ──────────────────────────────────
 
   async _pollAll() {
     for (const [url, dev] of Object.entries(this._devices)) {
@@ -141,18 +207,18 @@ class SomfyClient {
     const cfg     = this._config.somfy;
     const encoded = encodeURIComponent(url);
     const states  = await this._getJson(cfg, `${BASE_PATH}/setup/devices/${encoded}/states`);
-
     for (const state of (Array.isArray(states) ? states : [])) {
-      const { name, value } = state;
+      this._applyState(deviceKey, state.name, state.value);
+    }
+  }
 
-      // closure: 0=fully open, 100=fully closed → level: 100=open, 0=closed
-      if (name === 'core:ClosureState' || name === 'core:DeploymentState') {
-        const closure = Number(value);
-        this._store.update(`${deviceKey}/level`,  100 - closure);
-        this._store.update(`${deviceKey}/switch`, closure < 100 ? 1 : 0);
-      } else if (name === 'core:OpenClosedState' || name === 'core:OpenClosedUnknownState') {
-        this._store.update(`${deviceKey}/switch`, value === 'open' ? 1 : 0);
-      }
+  _applyState(deviceKey, name, value) {
+    if (name === 'core:ClosureState' || name === 'core:DeploymentState') {
+      const closure = Number(value);
+      this._store.update(`${deviceKey}/level`,  100 - closure);
+      this._store.update(`${deviceKey}/switch`, closure < 100 ? 1 : 0);
+    } else if (name === 'core:OpenClosedState' || name === 'core:OpenClosedUnknownState') {
+      this._store.update(`${deviceKey}/switch`, value === 'open' ? 1 : 0);
     }
   }
 
@@ -163,7 +229,6 @@ class SomfyClient {
     if (capId === 'toggle') {
       cmd = { name: command === 'on' ? 'open' : 'close', parameters: [] };
     } else if (capId === 'position') {
-      // level 0-100 → closure 100-0
       const closure = 100 - Math.round(args?.[0] ?? 0);
       cmd = { name: 'setClosure', parameters: [closure] };
     } else {
@@ -218,6 +283,16 @@ class SomfyClient {
       if (res.statusCode === 401) throw new Error('401 session expired');
       throw new Error(`Non-JSON from Somfy (${path}): ${String(res.body).slice(0, 120)}`);
     }
+  }
+
+  async _postJson(path, payload) {
+    const body = JSON.stringify(payload);
+    const res  = await this._request(this._config.somfy, 'POST', path, body, {
+      'Content-Type':   'application/json',
+      'Content-Length': Buffer.byteLength(body),
+    });
+    if (res.statusCode === 404) throw new Error('404 listener not found or expired');
+    try { return JSON.parse(res.body); } catch { return null; }
   }
 }
 
