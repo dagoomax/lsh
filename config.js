@@ -130,6 +130,13 @@ function loadConfig() {
       password:     fileConfig.auxair.password     || '',
       pollInterval: parseInt(fileConfig.auxair.pollInterval) || 30,
     } : undefined,
+    denon: fileConfig.denon?.host ? {
+      host:      fileConfig.denon.host,
+      port:      parseInt(fileConfig.denon.port)      || 23,
+      name:      fileConfig.denon.name                || '',
+      maxVolume: parseInt(fileConfig.denon.maxVolume) || 80,
+      inputs:    fileConfig.denon.inputs              || [],
+    } : undefined,
     sonos: (fileConfig.sonos?.hosts?.length || fileConfig.sonos?.discover !== false) ? {
       hosts:        fileConfig.sonos?.hosts        || [],
       discover:     fileConfig.sonos?.discover     !== false,

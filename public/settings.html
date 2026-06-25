@@ -271,6 +271,33 @@
       </div>
     </section>
 
+    <!-- Denon AVR -->
+    <section class="card settings-card" data-category="smarthome" data-title="Denon AV receiver amplifier audio volume input">
+      <h2>Denon AVR <span class="badge">Optional</span></h2>
+      <p class="section-desc">Controls Denon (and Marantz) AV receivers over the local network via the Telnet control protocol (port 23). Supports power on/standby, master volume, mute, and input selection.</p>
+      <div class="form-group">
+        <label for="denon-host">Receiver IP / Hostname</label>
+        <input type="text" id="denon-host" placeholder="192.168.1.100">
+      </div>
+      <div class="form-group">
+        <label for="denon-name">Display Name <span class="hint">(optional)</span></label>
+        <input type="text" id="denon-name" placeholder="Denon AVR-X2800H">
+      </div>
+      <div class="form-group">
+        <label for="denon-maxvol">Max Volume <span class="hint">(typically 80 or 98 depending on model)</span></label>
+        <input type="number" id="denon-maxvol" placeholder="80" min="50" max="98" style="max-width:120px">
+      </div>
+      <div class="form-group">
+        <label for="denon-inputs">Input sources <span class="hint">(Denon codes, one per line — e.g. CD, BD, NET, BT, GAME, SAT/CBL)</span></label>
+        <textarea id="denon-inputs" rows="4" placeholder="CD&#10;BD&#10;NET&#10;BT&#10;GAME&#10;SAT/CBL" style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-denon">Save</button>
+        <button class="btn" id="btn-test-denon">Test connection</button>
+        <span class="test-result" id="denon-result"></span>
+      </div>
+    </section>
+
     <!-- Sonos -->
     <section class="card settings-card" data-category="smarthome" data-title="Sonos speaker music play pause volume zone">
       <h2>Sonos <span class="badge">Optional</span></h2>

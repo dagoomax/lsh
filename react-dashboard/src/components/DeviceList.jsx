@@ -51,6 +51,7 @@ function getGroup(d) {
   if (['vebus','battery','solarcharger'].includes(d.type)) return 'Victron'
   if (d.type === 'auxair') return 'Climate'
   if (d.type === 'sonos')  return 'Media'
+  if (d.type === 'denon')  return 'Media'
   const r = d.readings || {}
   const k = Object.keys(r)
   if (k.includes('temperature') || k.includes('humidity')) return 'Climate'
@@ -173,9 +174,20 @@ function DeviceTile({ device, onCommand }) {
   const isFibaro = device.type === 'fibaro'
   const isAC     = device.type === 'auxair'
   const isSonos  = device.type === 'sonos'
+  const isDenon  = device.type === 'denon'
 
   const AC_MODES  = ['Cool','Heat','Dry','Fan','Auto']
   const FAN_NAMES = ['Auto','Low','Med','High','Turbo','Mute']
+
+  const denonPower      = isDenon ? (merged.power?.value  === 1 || merged.power?.value  === true) : false
+  const denonVolume     = isDenon ? (merged.volume?.value ?? 50) : 50
+  const denonMute       = isDenon ? (merged.mute?.value   === 1 || merged.mute?.value   === true) : false
+  const denonInput      = isDenon ? (merged.input?.value  ?? '') : ''
+  const denonInputIdx   = isDenon ? (merged.input_idx?.value ?? 0) : 0
+  // inputNames lives on the sensor descriptor (spread into readings by getDeviceReadings)
+  const denonInputNames = isDenon
+    ? (r.input_idx?.inputNames ?? device.sensors?.find(s => s.path === 'input_idx')?.inputNames ?? [])
+    : []
 
   const sonosPlaying = isSonos ? (merged.playing?.value === 1 || merged.playing?.value === true) : false
   const sonosVolume  = isSonos ? (merged.volume?.value  ?? 50) : 50
@@ -200,6 +212,13 @@ function DeviceTile({ device, onCommand }) {
   const fibaroOnCount  = fibaroSwitches.filter(s => s.value === true || s.value === 1).length
 
   const statusText = (() => {
+    if (isDenon) {
+      if (!denonPower) return 'Standby'
+      const parts = []
+      if (denonInput) parts.push(denonInput)
+      if (denonMute)  parts.push('Muted')
+      return parts.join(' · ') || 'On'
+    }
     if (isSonos) {
       if (sonosTrack) return sonosPlaying ? sonosTrack : `⏸ ${sonosTrack}`
       return sonosPlaying ? 'Playing' : 'Stopped'
@@ -235,7 +254,7 @@ function DeviceTile({ device, onCommand }) {
     return isOn ? 'On' : 'Off'
   })()
 
-  const tileOn = (isOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying)
+  const tileOn = (isOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying) || (isDenon && denonPower)
 
   return (
     <div style={{
@@ -278,6 +297,9 @@ function DeviceTile({ device, onCommand }) {
         </div>
 
         <div style={{ flexShrink:0 }}>
+          {isDenon && (
+            <Toggle on={denonPower} onChange={val => cmd('power', val ? 1 : 0)} />
+          )}
           {isSonos && (
             <button onClick={e => { e.stopPropagation(); cmd('playing', sonosPlaying ? 0 : 1) }}
               style={{
@@ -347,6 +369,44 @@ function DeviceTile({ device, onCommand }) {
             <button onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.min(30, acSetTemp + 1)) }}
               style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'#e2e8f0', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
             <span style={{ fontSize:10, color:'#4a5568', marginLeft:4 }}>{FAN_NAMES[acFan] || 'auto'} fan</span>
+          </div>
+        </div>
+      )}
+
+      {/* Denon controls */}
+      {isDenon && denonPower && (
+        <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:5 }}>
+          {/* Input selection pills */}
+          {denonInputNames.length > 0 && (
+            <div style={{ display:'flex', gap:3, flexWrap:'wrap' }}>
+              {denonInputNames.map((name, i) => (
+                <button key={name} onClick={e => { e.stopPropagation(); cmd('input_idx', i) }}
+                  style={{
+                    fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
+                    background: denonInputIdx === i ? 'var(--purple)' : 'rgba(255,255,255,0.08)',
+                    color: denonInputIdx === i ? '#fff' : '#94a3b8', cursor:'pointer',
+                    WebkitTapHighlightColor:'transparent',
+                  }}>
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* Volume slider + mute */}
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <button onClick={e => { e.stopPropagation(); cmd('mute', denonMute ? 0 : 1) }}
+              style={{
+                width:24, height:24, borderRadius:7, border:'none', cursor:'pointer', flexShrink:0,
+                background: denonMute ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.07)',
+                color: denonMute ? '#f87171' : '#94a3b8', fontSize:11,
+                WebkitTapHighlightColor:'transparent',
+              }}>
+              {denonMute ? '🔇' : '🔊'}
+            </button>
+            <span style={{ fontSize:9, color:'#4a5568', flexShrink:0, minWidth:22, textAlign:'right' }}>
+              {Math.round(denonVolume)}
+            </span>
+            <Slider value={denonVolume} onCommit={v => cmd('volume', v)} color="var(--purple)" />
           </div>
         </div>
       )}

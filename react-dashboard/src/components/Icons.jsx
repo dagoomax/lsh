@@ -366,6 +366,17 @@ export function FibaroIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function DenonIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="7" width="20" height="10" rx="2"/>
+      <circle cx="7"  cy="12" r="2"/>
+      <circle cx="7"  cy="12" r="0.8" fill={color} stroke="none"/>
+      <path d="M12 9.5h6M12 12h6M12 14.5h4"/>
+    </svg>
+  )
+}
+
 export function SpeakerIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
@@ -424,6 +435,7 @@ const TYPE_MAP = {
   somfy:        ShutterIcon,
   auxair:       AirCondIcon,
   sonos:        SpeakerIcon,
+  denon:        DenonIcon,
 }
 
 function readingIcon(r = {}) {

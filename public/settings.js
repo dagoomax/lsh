@@ -37,6 +37,12 @@ async function loadSettings() {
     setVal('somfy-devices',  (data.somfy?.devices || []).join(', '));
     setVal('somfy-poll',     data.somfy?.pollInterval ?? 30);
 
+    // Denon
+    setVal('denon-host',   data.denon?.host      || '');
+    setVal('denon-name',   data.denon?.name      || '');
+    setVal('denon-maxvol', data.denon?.maxVolume ?? 80);
+    setVal('denon-inputs', (data.denon?.inputs   || []).join('\n'));
+
     // Sonos
     setVal('sonos-hosts', (data.sonos?.hosts || []).join('\n'));
     document.getElementById('sonos-discover').checked = data.sonos?.discover !== false;
@@ -904,6 +910,58 @@ document.getElementById('btn-save-bayrol').addEventListener('click', async () =>
   } catch (err) {
     resultEl.textContent = '✗ ' + err.message;
     resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Denon AVR ─────────────────────────────────────────────────────────────
+
+document.getElementById('btn-save-denon').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-denon');
+  const resultEl = document.getElementById('denon-result');
+  btn.disabled   = true;
+  try {
+    const inputs = getVal('denon-inputs').split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+    const res    = await fetch('/api/settings/denon', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host:      getVal('denon-host'),
+        name:      getVal('denon-name'),
+        maxVolume: parseInt(getVal('denon-maxvol') || '80'),
+        inputs,
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-test-denon').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-test-denon');
+  const resultEl = document.getElementById('denon-result');
+  btn.disabled   = true;
+  resultEl.textContent = 'Testing…';
+  resultEl.className   = 'test-result';
+  try {
+    const res  = await fetch('/api/settings/test-denon', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: getVal('denon-host'), port: 23 }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
   } finally {
     btn.disabled = false;
   }

@@ -277,6 +277,15 @@ async function main() {
     }
   }
 
+  // Start Denon AVR client if configured
+  if (config.denon?.host) {
+    const DenonClient = tryRequire('./src/denon-client');
+    if (DenonClient) {
+      const denon = new DenonClient(config, store, sensorRegistry);
+      denon.start().catch((err) => console.error(`[Denon] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Sonos client if configured or auto-discovery enabled
   if (config.sonos) {
     const SonosClient = tryRequire('./src/sonos-client');

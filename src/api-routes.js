@@ -1131,6 +1131,58 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  router.post('/settings/denon', (req, res) => {
+    const current = readConfigFile();
+    const { host, port, name, maxVolume, inputs } = req.body;
+    try {
+      const inputList = Array.isArray(inputs)
+        ? inputs.filter(Boolean)
+        : (typeof inputs === 'string' ? inputs.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : (current.denon?.inputs || []));
+      writeConfigFile({
+        ...current,
+        denon: {
+          host:      (host || current.denon?.host || '').trim(),
+          port:      parseInt(port || 23),
+          name:      (name || '').trim(),
+          maxVolume: parseInt(maxVolume || 80),
+          inputs:    inputList,
+        },
+      });
+      res.json({ success: true, message: 'Denon settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/test-denon', async (req, res) => {
+    const net  = require('net');
+    const host = req.body.host || readConfigFile().denon?.host || '';
+    const port = parseInt(req.body.port) || 23;
+    if (!host) return res.json({ success: false, error: 'No host specified' });
+    const socket = net.createConnection({ host, port }, () => {
+      socket.write('PW?\r');
+    });
+    let response = '';
+    const timer = setTimeout(() => {
+      socket.destroy();
+      res.json({ success: false, error: `No response from ${host}:${port} within 5 s` });
+    }, 5000);
+    socket.setEncoding('utf8');
+    socket.on('data', data => {
+      response += data;
+      if (response.includes('PW')) {
+        clearTimeout(timer);
+        socket.destroy();
+        const state = response.includes('PWON') ? 'ON' : 'STANDBY';
+        res.json({ success: true, message: `Connected — receiver is ${state}` });
+      }
+    });
+    socket.on('error', err => {
+      clearTimeout(timer);
+      res.json({ success: false, error: err.message });
+    });
+  });
+
   router.post('/settings/sonos', (req, res) => {
     const current = readConfigFile();
     const { hosts, discover, pollInterval } = req.body;
