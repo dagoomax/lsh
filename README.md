@@ -11,6 +11,19 @@
 
 ---
 
+## Business Guide — Support-Driven Monetization
+
+💰 **[Open Business Guide](leaflet/lsh-monetize-leaflet.html)** — how to build a support-driven business on LSH (free software, paid expertise model)
+
+3-page A4 guide covering:
+- The support flywheel: free deployment → setup fee → annual SLA → expand scope → referrals
+- Three support tiers: Community (free), Professional (€300/yr), Managed (€80/mo)
+- Full service catalogue with indicative pricing (onboarding, SLA, managed hosting, custom dev, training)
+- 3-year revenue projection for a solo operator
+- Why LSH's focused integration set is a moat vs Home Assistant's 3 000-integration community
+
+---
+
 ## SWOT Analysis
 
 ### 💪 Strengths
