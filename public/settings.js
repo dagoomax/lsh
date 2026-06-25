@@ -37,6 +37,11 @@ async function loadSettings() {
     setVal('somfy-devices',  (data.somfy?.devices || []).join(', '));
     setVal('somfy-poll',     data.somfy?.pollInterval ?? 30);
 
+    // Sonos
+    setVal('sonos-hosts', (data.sonos?.hosts || []).join('\n'));
+    document.getElementById('sonos-discover').checked = data.sonos?.discover !== false;
+    setVal('sonos-poll', data.sonos?.pollInterval ?? 5);
+
     // AuxAir
     if (data.auxair?.region) document.getElementById('auxair-region').value = data.auxair.region;
     setVal('auxair-email',    data.auxair?.email    || '');
@@ -899,6 +904,34 @@ document.getElementById('btn-save-bayrol').addEventListener('click', async () =>
   } catch (err) {
     resultEl.textContent = '✗ ' + err.message;
     resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Sonos ─────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-save-sonos').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-sonos');
+  const resultEl = document.getElementById('sonos-result');
+  btn.disabled   = true;
+  try {
+    const hosts = getVal('sonos-hosts').split(/[\n,]+/).map(h => h.trim()).filter(Boolean);
+    const res   = await fetch('/api/settings/sonos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        hosts,
+        discover:     document.getElementById('sonos-discover').checked,
+        pollInterval: parseInt(getVal('sonos-poll') || '5'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
   } finally {
     btn.disabled = false;
   }

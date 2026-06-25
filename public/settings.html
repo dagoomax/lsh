@@ -271,6 +271,28 @@
       </div>
     </section>
 
+    <!-- Sonos -->
+    <section class="card settings-card" data-category="smarthome" data-title="Sonos speaker music play pause volume zone">
+      <h2>Sonos <span class="badge">Optional</span></h2>
+      <p class="section-desc">Controls Sonos speakers on your local network via UPnP (port 1400). Auto-discovers all Zone Players via SSDP, or specify IPs manually. Provides play/pause, prev/next track, volume, and mute. No account required.</p>
+      <div class="form-group">
+        <label for="sonos-hosts">Speaker IPs <span class="hint">(one per line — leave empty to use auto-discovery only)</span></label>
+        <textarea id="sonos-hosts" rows="3" placeholder="192.168.1.50&#10;192.168.1.51" style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="sonos-discover" style="width:16px;height:16px">
+        <label for="sonos-discover" style="margin:0">Auto-discover speakers via SSDP (recommended)</label>
+      </div>
+      <div class="form-group">
+        <label for="sonos-poll">Poll Interval <span class="hint">(seconds, min 3)</span></label>
+        <input type="number" id="sonos-poll" placeholder="5" min="3" max="60" style="max-width:120px">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-sonos">Save</button>
+        <span class="test-result" id="sonos-result"></span>
+      </div>
+    </section>
+
     <!-- AuxAir (AC Freedom) -->
     <section class="card settings-card" data-category="smarthome" data-title="AuxAir AC Freedom air conditioner climate control">
       <h2>AuxAir / AC Freedom <span class="badge">Optional</span></h2>

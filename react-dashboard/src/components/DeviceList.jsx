@@ -50,6 +50,7 @@ async function sendCommand(key, sensor, value) {
 function getGroup(d) {
   if (['vebus','battery','solarcharger'].includes(d.type)) return 'Victron'
   if (d.type === 'auxair') return 'Climate'
+  if (d.type === 'sonos')  return 'Media'
   const r = d.readings || {}
   const k = Object.keys(r)
   if (k.includes('temperature') || k.includes('humidity')) return 'Climate'
@@ -60,7 +61,7 @@ function getGroup(d) {
   return 'Other'
 }
 
-const CATS = ['All','Victron','Lighting','Switches','Climate','Security','Sensors','Other']
+const CATS = ['All','Victron','Lighting','Switches','Climate','Media','Security','Sensors','Other']
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 function Toggle({ on, onChange }) {
@@ -171,9 +172,16 @@ function DeviceTile({ device, onCommand }) {
   const isPool   = device.type === 'bayrol'
   const isFibaro = device.type === 'fibaro'
   const isAC     = device.type === 'auxair'
+  const isSonos  = device.type === 'sonos'
 
   const AC_MODES  = ['Cool','Heat','Dry','Fan','Auto']
   const FAN_NAMES = ['Auto','Low','Med','High','Turbo','Mute']
+
+  const sonosPlaying = isSonos ? (merged.playing?.value === 1 || merged.playing?.value === true) : false
+  const sonosVolume  = isSonos ? (merged.volume?.value  ?? 50) : 50
+  const sonosMute    = isSonos ? (merged.mute?.value    === 1 || merged.mute?.value === true) : false
+  const sonosTrack   = isSonos ? (merged.track?.value   ?? '') : ''
+  const sonosArtist  = isSonos ? (merged.artist?.value  ?? '') : ''
 
   const acPwr     = isAC ? (merged.pwr?.value ?? r.pwr?.value) : null
   const acOn      = acPwr === 1 || acPwr === true
@@ -192,6 +200,10 @@ function DeviceTile({ device, onCommand }) {
   const fibaroOnCount  = fibaroSwitches.filter(s => s.value === true || s.value === 1).length
 
   const statusText = (() => {
+    if (isSonos) {
+      if (sonosTrack) return sonosPlaying ? sonosTrack : `⏸ ${sonosTrack}`
+      return sonosPlaying ? 'Playing' : 'Stopped'
+    }
     if (isAC) {
       if (!acOn) return 'Off'
       const parts = []
@@ -223,7 +235,7 @@ function DeviceTile({ device, onCommand }) {
     return isOn ? 'On' : 'Off'
   })()
 
-  const tileOn = (isOn && hasSwitch) || (isAC && acOn)
+  const tileOn = (isOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying)
 
   return (
     <div style={{
@@ -266,20 +278,33 @@ function DeviceTile({ device, onCommand }) {
         </div>
 
         <div style={{ flexShrink:0 }}>
+          {isSonos && (
+            <button onClick={e => { e.stopPropagation(); cmd('playing', sonosPlaying ? 0 : 1) }}
+              style={{
+                width:34, height:34, borderRadius:10, border:'none', cursor:'pointer',
+                background: sonosPlaying ? 'rgba(124,58,237,0.25)' : 'rgba(255,255,255,0.08)',
+                color: sonosPlaying ? '#a78bfa' : '#94a3b8',
+                fontSize:15, display:'flex', alignItems:'center', justifyContent:'center',
+                boxShadow: sonosPlaying ? '0 0 12px rgba(124,58,237,0.3)' : 'none',
+                WebkitTapHighlightColor:'transparent',
+              }}>
+              {sonosPlaying ? '⏸' : '▶'}
+            </button>
+          )}
           {isAC && (
             <Toggle on={acOn} onChange={val => cmd('pwr', val ? 1 : 0)} />
           )}
-          {!isAC && hasSwitch && (
+          {!isSonos && !isAC && hasSwitch && (
             <Toggle on={isOn} onChange={val => cmd('switch', val ? 1 : 0)} />
           )}
-          {!isAC && !hasSwitch && (hasMot||hasPres) && (
+          {!isSonos && !isAC && !hasSwitch && (hasMot||hasPres) && (
             <span style={{
               width:9, height:9, borderRadius:'50%', display:'block', marginTop:3,
               background: (motActive||presActive) ? 'var(--orange)' : '#2d3748',
               boxShadow: (motActive||presActive) ? '0 0 8px var(--orange)' : 'none',
             }}/>
           )}
-          {!isAC && !hasSwitch && hasBatt && (
+          {!isSonos && !isAC && !hasSwitch && hasBatt && (
             <span style={{ fontSize:11, fontWeight:700, marginTop:2, display:'block',
               color:(merged.battery?.value??100)<20?'var(--red)':(merged.battery?.value??100)<50?'var(--orange)':'var(--green)' }}>
               {merged.battery?.value}%
@@ -322,6 +347,40 @@ function DeviceTile({ device, onCommand }) {
             <button onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.min(30, acSetTemp + 1)) }}
               style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'#e2e8f0', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
             <span style={{ fontSize:10, color:'#4a5568', marginLeft:4 }}>{FAN_NAMES[acFan] || 'auto'} fan</span>
+          </div>
+        </div>
+      )}
+
+      {/* Sonos controls */}
+      {isSonos && (
+        <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:5 }}>
+          {sonosArtist && (
+            <div style={{ fontSize:9, color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {sonosArtist}
+            </div>
+          )}
+          {/* Prev / Next / Mute */}
+          <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+            <button onClick={e => { e.stopPropagation(); cmd('prev', true) }}
+              style={{ flex:1, height:24, borderRadius:7, border:'none', cursor:'pointer',
+                background:'rgba(255,255,255,0.07)', color:'#94a3b8', fontSize:12,
+                WebkitTapHighlightColor:'transparent' }}>⏮</button>
+            <button onClick={e => { e.stopPropagation(); cmd('next', true) }}
+              style={{ flex:1, height:24, borderRadius:7, border:'none', cursor:'pointer',
+                background:'rgba(255,255,255,0.07)', color:'#94a3b8', fontSize:12,
+                WebkitTapHighlightColor:'transparent' }}>⏭</button>
+            <button onClick={e => { e.stopPropagation(); cmd('mute', sonosMute ? 0 : 1) }}
+              style={{ width:28, height:24, borderRadius:7, border:'none', cursor:'pointer',
+                background: sonosMute ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.07)',
+                color: sonosMute ? '#f87171' : '#94a3b8', fontSize:12,
+                WebkitTapHighlightColor:'transparent' }}>
+              {sonosMute ? '🔇' : '🔊'}
+            </button>
+          </div>
+          {/* Volume slider */}
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <span style={{ fontSize:9, color:'#4a5568', flexShrink:0, width:22, textAlign:'right' }}>{sonosVolume}%</span>
+            <Slider value={sonosVolume} onCommit={v => cmd('volume', v)} color="var(--purple)" />
           </div>
         </div>
       )}

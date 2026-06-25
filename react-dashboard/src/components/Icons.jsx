@@ -366,6 +366,17 @@ export function FibaroIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function SpeakerIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="3" y="3" width="18" height="18" rx="4"/>
+      <circle cx="12" cy="13" r="3.5"/>
+      <circle cx="12" cy="13" r="1" fill={color} stroke="none"/>
+      <circle cx="12" cy="6" r="1" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
 // ── Icon resolver ─────────────────────────────────────────────────────────────
 const LABEL_MAP = {
   kinkiet:               WallSconceIcon,
@@ -412,6 +423,7 @@ const TYPE_MAP = {
   bayrol:       PoolIcon,
   somfy:        ShutterIcon,
   auxair:       AirCondIcon,
+  sonos:        SpeakerIcon,
 }
 
 function readingIcon(r = {}) {
@@ -435,6 +447,7 @@ export const CAT_ICON_COMPONENT = {
   Lighting: BulbIcon,
   Switches: SwitchOutletIcon,
   Climate:  ThermometerIcon,
+  Media:    SpeakerIcon,
   Security: SecurityIcon,
   Sensors:  SensorIcon,
   Other:    RouterIcon,

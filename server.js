@@ -277,6 +277,15 @@ async function main() {
     }
   }
 
+  // Start Sonos client if configured or auto-discovery enabled
+  if (config.sonos) {
+    const SonosClient = tryRequire('./src/sonos-client');
+    if (SonosClient) {
+      const sonos = new SonosClient(config, store, sensorRegistry);
+      sonos.start().catch((err) => console.error(`[Sonos] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Bayrol Pool Manager client if configured
   if (config.bayrol?.username && config.bayrol?.password) {
     const BayrolClient = tryRequire('./src/bayrol-client');

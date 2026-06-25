@@ -1131,6 +1131,27 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  router.post('/settings/sonos', (req, res) => {
+    const current = readConfigFile();
+    const { hosts, discover, pollInterval } = req.body;
+    try {
+      const hostList = Array.isArray(hosts)
+        ? hosts.filter(Boolean)
+        : (typeof hosts === 'string' ? hosts.split(/[\n,]+/).map(h => h.trim()).filter(Boolean) : (current.sonos?.hosts || []));
+      writeConfigFile({
+        ...current,
+        sonos: {
+          hosts:        hostList,
+          discover:     discover !== false,
+          pollInterval: parseInt(pollInterval || 5),
+        },
+      });
+      res.json({ success: true, message: 'Sonos settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   router.post('/settings/test-boneio', async (req, res) => {
     const mqttLib = require('mqtt');
     const cfg     = readConfigFile();
