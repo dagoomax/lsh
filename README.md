@@ -18,7 +18,7 @@
 | | |
 |---|---|
 | **Local-first, zero cloud dependency** | All data stays on LAN. MQTT runs directly to hardware — no relay server, no account, works during internet outages. Optional VRM cloud fallback only when needed. |
-| **20+ integrations in a single process** | ~120 MB RAM footprint. No microservice sprawl, no Docker Compose with 12 containers — just `node server.js`. |
+| **20+ integrations in a single process** | ~80–130 MB RAM. No microservice sprawl, no Docker Compose with 12 containers — just `node server.js`. Runs comfortably on a Raspberry Pi 2 or any spare ARM/x86 board. |
 | **Victron Energy depth** | Solar MPPT, battery SoC, grid import/export, relay control — uniquely positioned for off-grid and solar installations. SolarEdge overlay included. |
 | **Native Apple HomeKit bridge** | Every sensor, switch, camera, and relay auto-exposed. Unlimited accessories — bridge survives restarts without re-pairing. |
 | **Protocol breadth** | MQTT, KNXnet/IP, Modbus TCP, REST, WebSocket, RTSP — standard protocols only, no proprietary SDKs required. |
@@ -61,15 +61,58 @@
 
 ---
 
+## LSH vs. Home Assistant — RAM & Server Footprint
+
+Home Assistant is the most popular open home automation platform and has a huge ecosystem. LSH does not try to replace it — but if you are running both, or just need bridge-and-control without a full automation engine, the resource difference is significant.
+
+| | **LSH** | **Home Assistant** |
+|---|---|---|
+| **Runtime** | Node.js single process | Python + systemd services (Core/Supervised/OS) |
+| **RAM at idle** | ~80–130 MB | 300–600 MB (Core only, no add-ons) |
+| **RAM with typical add-ons** | — (no add-ons; all integrations built-in) | 600 MB–1.5 GB (Mosquitto + Z-Wave + Zigbee2MQTT + HA cast) |
+| **Minimum RAM recommended** | **256 MB** | **1 GB** (official minimum for HA OS / Supervised) |
+| **Minimum sensible hardware** | Raspberry Pi 2 / 512 MB board | Raspberry Pi 3 (2 GB recommended by Nabu Casa) |
+| **Startup time** | 2–4 s | 30–90 s |
+| **Disk footprint** | ~60 MB (node\_modules included) | 8–32 GB (HA OS image alone is 2 GB) |
+| **Containers / processes** | 1 | 5–15 (supervisor, core, DNS, mDNS, add-ons) |
+| **Install method** | `npm install && node server.js` | Dedicated image, Docker, or VM |
+| **Remote access cost** | Free (own TLS / reverse proxy) | €6.99 / month (Nabu Casa Cloud) or self-host |
+| **Database** | None — live data only | SQLite (grows unbounded; recorder purge needed) |
+| **Config format** | JSON + browser UI | YAML + browser UI |
+| **25+ integration scope** | ✓ all built-in, one process | ✓ 3 000+ via separate integration packages |
+| **HomeKit bridge** | ✓ native (hap-nodejs) | ✓ via HomeKit Controller add-on |
+| **SIP softphone** | ✓ built-in | ✗ |
+| **Victron MQTT depth** | ✓ first-class | Limited (community integration) |
+
+### When to choose LSH
+
+- You want a **bridge-and-control layer** on top of existing hardware without committing 1+ GB RAM to an automation platform.
+- You run on a **Raspberry Pi 2, Orange Pi Zero, or any 256–512 MB board** that would thrash with HA.
+- You care about **instant startup** — after a power blip LSH is live in under 5 seconds, HomeKit re-pairs in seconds.
+- You are a **KNX / Victron / Loxone integrator** who needs a professional-grade API gateway, not a consumer hub.
+- You want **zero cloud dependency by default** — no Nabu Casa account, no subscription, works 100% offline.
+
+### When Home Assistant is the better choice
+
+- You need **automations, scenes, and a visual rule builder** — HA's scripting engine has no equivalent in LSH.
+- You rely on **Z-Wave, Zigbee, or Matter** devices — HA's native stack for these is far more mature.
+- You want **historical charts and energy dashboards** — HA's Recorder + Statistics panels are built for this.
+- You need **3 000+ vendor integrations** from the HA ecosystem.
+
+> LSH and Home Assistant run well side-by-side: run LSH on a low-power board for bridging and relay control, and point Home Assistant at the LSH REST API for automations.
+
+---
+
 A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Sonos speakers, and Denon / Marantz AV receivers into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 ---
 
 ## Table of Contents
 
-1. [Quick Start](#quick-start)
-2. [React Dashboard](#react-dashboard)
-3. [Configuration](#configuration)
+1. [LSH vs. Home Assistant — RAM & Server Footprint](#lsh-vs-home-assistant--ram--server-footprint)
+2. [Quick Start](#quick-start)
+3. [React Dashboard](#react-dashboard)
+4. [Configuration](#configuration)
 4. [Pages](#pages)
 5. [Backend Modules](#backend-modules)
 6. [Integration Modules](#integration-modules)
@@ -2020,6 +2063,19 @@ Log files are written to `logs/` (gitignored). Each category has its own file pl
 ---
 
 ## Requirements
+
+### Hardware
+
+| | Minimum | Comfortable |
+|---|---|---|
+| **RAM** | 128 MB | 256 MB+ |
+| **CPU** | ARMv7 / single-core 700 MHz | Any modern single-board computer |
+| **Disk** | 100 MB free | 500 MB (for logs + persisted state) |
+| **Examples** | Raspberry Pi 2, Orange Pi Zero 2, any VPS | Raspberry Pi 3/4, NUC, NAS |
+
+LSH runs comfortably on hardware that cannot run Home Assistant. The entire server — 25+ integrations active — typically uses **80–130 MB RAM** as a single Node.js process with no containers.
+
+### Software
 
 - **Node.js** 18 or later
 - **npm** packages: see `package.json`
