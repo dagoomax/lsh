@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LSH Unified API</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg:      #0d1117;
+    --surf:    #161b22;
+    --surf2:   #1c2128;
+    --border:  #30363d;
+    --border2: #21262d;
+    --text:    #e6edf3;
+    --muted:   #8b949e;
+    --dim:     #484f58;
+    --green:   #3fb950;
+    --blue:    #58a6ff;
+    --purple:  #bc8cff;
+    --orange:  #f0883e;
+    --red:     #f85149;
+    --teal:    #39d353;
+  }
+
+  html, body {
+    width: 210mm;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 9.5pt;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  code, .mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.5pt;
+    background: rgba(255,255,255,.07);
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--blue);
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 11mm 12mm 10mm;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    page-break-after: always;
+    overflow: hidden;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  /* ── HEADER ─────────────────────────────────────────────────────────────── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 22px; background: var(--surf); border-radius: 13px;
+    border: 1px solid var(--border); position: relative; overflow: hidden; flex-shrink: 0;
+  }
+  .header::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 90% 140% at -5% 50%,
+      rgba(88,166,255,.18) 0%, rgba(188,140,255,.09) 45%, transparent 68%);
+    pointer-events: none;
+  }
+  .header::after {
+    content: ''; position: absolute; inset: 0; border-radius: 13px; padding: 1px;
+    background: linear-gradient(135deg, rgba(88,166,255,.55) 0%, rgba(188,140,255,.25) 50%, transparent 80%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+  }
+  .logo-group { display: flex; align-items: center; gap: 13px; position: relative; z-index: 1; }
+  .logo-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+    box-shadow: 0 0 22px rgba(88,166,255,.32), 0 4px 10px rgba(0,0,0,.4); flex-shrink: 0;
+  }
+  .logo-text h1 {
+    font-size: 24pt; font-weight: 900; letter-spacing: -1px; line-height: 1;
+    background: linear-gradient(90deg, #58a6ff 0%, #bc8cff 55%, #f0883e 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .logo-text p { font-size: 8.5pt; color: var(--muted); margin-top: 3px; letter-spacing: .02em; }
+  .header-right { text-align: right; position: relative; z-index: 1; }
+  .header-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(88,166,255,.18), rgba(188,140,255,.12));
+    border: 1px solid rgba(88,166,255,.38); border-radius: 20px; padding: 3px 12px;
+    font-size: 7.5pt; font-weight: 700; color: var(--blue);
+    letter-spacing: .05em; text-transform: uppercase; margin-bottom: 5px;
+  }
+  .header-tagline { font-size: 8pt; color: var(--muted); max-width: 160px; line-height: 1.45; }
+
+  /* ── HERO ───────────────────────────────────────────────────────────────── */
+  .hero {
+    background: var(--surf); border: 1px solid var(--border);
+    border-radius: 11px; padding: 16px 22px; text-align: center; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 65% 110% at 50% 110%, rgba(88,166,255,.12) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .hero h2 { font-size: 16pt; font-weight: 900; letter-spacing: -.5px; position: relative; line-height: 1.2; }
+  .hero h2 span {
+    background: linear-gradient(90deg, #58a6ff 0%, #bc8cff 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero p  { margin-top: 7px; font-size: 9pt; color: var(--muted); max-width: 450px; margin-left:auto; margin-right:auto; position: relative; line-height: 1.6; }
+
+  /* ── USP ROW ────────────────────────────────────────────────────────────── */
+  .usp-row { display: flex; gap: 7px; }
+  .usp-item {
+    flex: 1; background: var(--surf); border: 1px solid var(--border);
+    border-radius: 10px; padding: 11px 13px; display: flex; align-items: flex-start; gap: 9px;
+  }
+  .usp-icon { font-size: 19px; flex-shrink: 0; margin-top: 1px; }
+  .usp-item h4 { font-size: 8.5pt; font-weight: 700; margin-bottom: 2px; }
+  .usp-item p  { font-size: 7.5pt; color: var(--muted); line-height: 1.45; }
+
+  /* ── PROBLEM / SOLUTION ─────────────────────────────────────────────────── */
+  .vs-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .vs-card {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+    position: relative; overflow: hidden;
+  }
+  .vs-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--vc, var(--border));
+  }
+  .vs-card h4 { font-size: 8.5pt; font-weight: 700; margin-bottom: 8px; }
+  .vs-row-item { display: flex; align-items: baseline; gap: 6px; margin-bottom: 5px; font-size: 7.8pt; }
+  .vs-row-item:last-child { margin-bottom: 0; }
+  .vs-x { color: var(--red);   font-size: 9pt; font-weight: 700; flex-shrink: 0; }
+  .vs-c { color: var(--green); font-size: 9pt; font-weight: 700; flex-shrink: 0; }
+  .vs-row-item span { color: var(--muted); line-height: 1.4; }
+
+  /* ── ARCH ───────────────────────────────────────────────────────────────── */
+  .arch-section {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 13px 16px;
+  }
+  .arch-outer { display: flex; align-items: center; gap: 8px; }
+  .arch-col { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+  .arch-node {
+    background: var(--surf2); border: 1px solid var(--border); border-radius: 7px;
+    padding: 6px 10px; display: flex; align-items: center; gap: 7px;
+  }
+  .arch-node .ani { font-size: 13px; flex-shrink: 0; }
+  .arch-node .anl { font-size: 7.5pt; font-weight: 600; line-height: 1.2; }
+  .arch-node .ans { font-size: 6.5pt; color: var(--muted); }
+  .arch-arrow { color: var(--dim); font-size: 18pt; flex-shrink: 0; }
+  .arch-center {
+    background: linear-gradient(135deg, rgba(88,166,255,.12), rgba(188,140,255,.1));
+    border: 1px solid rgba(88,166,255,.3); border-radius: 11px;
+    padding: 14px 16px; text-align: center; flex-shrink: 0; width: 96px;
+    box-shadow: 0 0 22px rgba(88,166,255,.12);
+  }
+  .arch-center .aci { font-size: 22px; display: block; margin-bottom: 4px; }
+  .arch-center .acl { font-size: 9.5pt; font-weight: 900; color: var(--blue); display: block; line-height: 1.1; }
+  .arch-center .acs { font-size: 6.5pt; color: var(--muted); margin-top: 3px; display: block; }
+  .arch-right { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+  .arch-client {
+    background: var(--surf2); border: 1px solid var(--border); border-radius: 7px;
+    padding: 6px 10px; display: flex; align-items: center; gap: 7px;
+  }
+  .arch-client .ani { font-size: 13px; flex-shrink: 0; }
+  .arch-client .anl { font-size: 7.5pt; font-weight: 600; }
+  .arch-client .ans { font-size: 6.5pt; color: var(--muted); }
+
+  /* ── CODE BLOCK ─────────────────────────────────────────────────────────── */
+  .code-block {
+    background: var(--bg); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px 14px; font-family: 'JetBrains Mono', monospace; font-size: 7pt;
+    line-height: 1.75; overflow: hidden;
+  }
+  .code-block .kw  { color: var(--purple); }
+  .code-block .str { color: var(--green); }
+  .code-block .num { color: var(--orange); }
+  .code-block .cmt { color: var(--dim); font-style: italic; }
+  .code-block .key { color: var(--blue); }
+  .code-block .url { color: var(--orange); }
+  .code-block .hd  { color: var(--muted); }
+
+  /* ── API TABLE ──────────────────────────────────────────────────────────── */
+  .api-section {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px;
+  }
+  .api-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+  .api-table th {
+    text-align: left; font-size: 6.8pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--muted); padding: 4px 8px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .api-table td { padding: 5px 8px; border-bottom: 1px solid var(--border2); vertical-align: middle; }
+  .api-table tr:last-child td { border-bottom: none; }
+  .method {
+    display: inline-block; border-radius: 3px; padding: 1px 6px;
+    font-size: 6.5pt; font-weight: 700; letter-spacing: .03em; white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .get  { background: rgba(63,185,80,.15);  color: var(--green);  border: 1px solid rgba(63,185,80,.25); }
+  .post { background: rgba(88,166,255,.15); color: var(--blue);   border: 1px solid rgba(88,166,255,.25); }
+  .del  { background: rgba(248,81,73,.15);  color: var(--red);    border: 1px solid rgba(248,81,73,.25); }
+  .api-path { font-family: 'JetBrains Mono', monospace; font-size: 7pt; color: var(--text); }
+  .api-desc { color: var(--muted); font-size: 7.2pt; }
+
+  /* ── INTEGRATION GRID ───────────────────────────────────────────────────── */
+  .int-section {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px;
+  }
+  .int-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .int-pill {
+    background: rgba(255,255,255,.03); border: 1px solid var(--border2);
+    border-radius: 7px; padding: 5px 8px; font-size: 7.5pt; font-weight: 500;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: var(--green); }
+  .dot.b { background: var(--blue); }
+  .dot.p { background: var(--purple); }
+  .dot.o { background: var(--orange); }
+  .dot.r { background: var(--red); }
+
+  /* ── COMMAND TABLE ──────────────────────────────────────────────────────── */
+  .cmd-section {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px;
+  }
+  .cmd-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+  .cmd-table th {
+    text-align: left; font-size: 6.8pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--muted); padding: 4px 8px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cmd-table td { padding: 5px 8px; border-bottom: 1px solid var(--border2); vertical-align: middle; font-size: 7.5pt; }
+  .cmd-table tr:last-child td { border-bottom: none; }
+  .cmd-table .mono-cell { font-family: 'JetBrains Mono', monospace; font-size: 6.8pt; color: var(--blue); }
+  .cmd-table .val-cell  { font-family: 'JetBrains Mono', monospace; font-size: 6.8pt; color: var(--orange); }
+  .cmd-table .lbl { color: var(--muted); }
+
+  /* ── SLABEL ─────────────────────────────────────────────────────────────── */
+  .slabel {
+    font-size: 7pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--muted); margin-bottom: 6px;
+  }
+
+  /* ── GRID ───────────────────────────────────────────────────────────────── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+
+  /* ── FEATURE CARD ───────────────────────────────────────────────────────── */
+  .feat-card {
+    background: var(--surf); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 13px; position: relative; overflow: hidden;
+  }
+  .feat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    border-radius: 10px 10px 0 0;
+    background: var(--fc-color, linear-gradient(90deg, var(--blue), var(--purple)));
+  }
+  .feat-icon { font-size: 18px; margin-bottom: 6px; display: block; }
+  .feat-card h3 { font-size: 9pt; font-weight: 700; margin-bottom: 4px; }
+  .feat-card p  { font-size: 7.5pt; color: var(--muted); line-height: 1.5; }
+
+  /* ── TOKEN BOX ──────────────────────────────────────────────────────────── */
+  .token-box {
+    background: var(--surf); border: 1px solid rgba(88,166,255,.3);
+    border-radius: 10px; padding: 11px 16px; display: flex; align-items: center; gap: 14px;
+    box-shadow: 0 0 16px rgba(88,166,255,.07);
+  }
+  .token-box .tb-icon { font-size: 22px; flex-shrink: 0; }
+  .token-box h4 { font-size: 8.5pt; font-weight: 700; margin-bottom: 3px; }
+  .token-box p  { font-size: 7.5pt; color: var(--muted); line-height: 1.45; }
+
+  /* ── FOOTER ─────────────────────────────────────────────────────────────── */
+  .footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px; background: var(--surf); border-radius: 9px;
+    border: 1px solid var(--border2); flex-shrink: 0; margin-top: auto;
+  }
+  .footer-left  { font-size: 7pt; color: var(--muted); }
+  .footer-right { font-size: 7pt; color: var(--dim); }
+  .footer-badge {
+    display: inline-block; background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.2);
+    border-radius: 5px; padding: 1px 7px; font-size: 6.5pt; font-weight: 700;
+    color: var(--blue); margin-left: 6px; letter-spacing: .04em; text-transform: uppercase;
+  }
+
+  @media print {
+    html, body { background: var(--bg); }
+    .page { page-break-after: always; }
+    .page:last-child { page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════ PAGE 1 -->
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-group">
+      <div class="logo-icon">🔌</div>
+      <div class="logo-text">
+        <h1>LSH Unified API</h1>
+        <p>Local Smart Home · Developer Edition</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">REST + WebSocket</div>
+      <div class="header-tagline">One API surface for every protocol in your building</div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h2>One API. Every Device. <span>Zero Lock-in.</span></h2>
+    <p>LSH ingests 15+ home automation protocols — MQTT, WebSocket, REST, CoAP, UDP, cloud APIs — normalises them into a single live data store, and exposes everything through one consistent REST + WebSocket interface. Read any sensor. Send any command. Subscribe to all updates. One token.</p>
+  </div>
+
+  <!-- USP row -->
+  <div class="usp-row">
+    <div class="usp-item">
+      <div class="usp-icon">📡</div>
+      <div>
+        <h4>Single endpoint</h4>
+        <p><code>GET /api/devices</code> returns every device from every integration with live values — no per-vendor SDK required.</p>
+      </div>
+    </div>
+    <div class="usp-item">
+      <div class="usp-icon">⚡</div>
+      <div>
+        <h4>Universal write</h4>
+        <p><code>POST /api/device/:key/command</code> works the same for SmartThings, Fibaro, Loxone, KNX, Shelly, AuxAir, and 10 more.</p>
+      </div>
+    </div>
+    <div class="usp-item">
+      <div class="usp-icon">🔄</div>
+      <div>
+        <h4>Real-time push</h4>
+        <p>One Socket.IO connection delivers live updates from all integrations — no polling, no per-vendor WebSocket.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Architecture -->
+  <div class="arch-section">
+    <div class="slabel">Architecture</div>
+    <div class="arch-outer">
+      <!-- Left: protocol sources -->
+      <div class="arch-col">
+        <div class="arch-node"><span class="ani">⚡</span><div><div class="anl">Victron / MQTT</div><div class="ans">Local broker · VRM cloud</div></div></div>
+        <div class="arch-node"><span class="ani">🏠</span><div><div class="anl">SmartThings</div><div class="ans">Cloud REST API</div></div></div>
+        <div class="arch-node"><span class="ani">🟦</span><div><div class="anl">Loxone</div><div class="ans">WebSocket API</div></div></div>
+        <div class="arch-node"><span class="ani">🔴</span><div><div class="anl">Fibaro HC</div><div class="ans">Local REST · long-poll</div></div></div>
+        <div class="arch-node"><span class="ani">❄️</span><div><div class="anl">AuxAir / AC Freedom</div><div class="ans">AES-encrypted cloud</div></div></div>
+        <div class="arch-node"><span class="ani">🪟</span><div><div class="anl">Somfy TaHoma</div><div class="ans">HTTPS · Bearer · events</div></div></div>
+        <div class="arch-node"><span class="ani">🏊</span><div><div class="anl">Bayrol Pool</div><div class="ans">MQTT over WebSocket</div></div></div>
+        <div class="arch-node"><span class="ani">💡</span><div><div class="anl">KNX · Shelly · ESPHome</div><div class="ans">UDP · REST · mDNS</div></div></div>
+      </div>
+
+      <div class="arch-arrow">›</div>
+
+      <!-- Centre: LSH -->
+      <div class="arch-center">
+        <span class="aci">🔌</span>
+        <span class="acl">LSH</span>
+        <span class="acs">Normalisation<br>+ Live Store</span>
+      </div>
+
+      <div class="arch-arrow">›</div>
+
+      <!-- Right: consumers -->
+      <div class="arch-right">
+        <div class="arch-client"><span class="ani">🖥️</span><div><div class="anl">LSH Dashboard</div><div class="ans">Browser PWA · real-time</div></div></div>
+        <div class="arch-client"><span class="ani">🍎</span><div><div class="anl">Apple HomeKit</div><div class="ans">HAP-nodejs bridge</div></div></div>
+        <div class="arch-client"><span class="ani">🤖</span><div><div class="anl">Home Assistant</div><div class="ans">REST integration</div></div></div>
+        <div class="arch-client"><span class="ani">🔁</span><div><div class="anl">Node-RED</div><div class="ans">HTTP + Socket.IO nodes</div></div></div>
+        <div class="arch-client"><span class="ani">📱</span><div><div class="anl">Mobile apps</div><div class="ans">Bearer token auth</div></div></div>
+        <div class="arch-client"><span class="ani">📜</span><div><div class="anl">Shell scripts</div><div class="ans">curl / any HTTP client</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Without vs With -->
+  <div class="vs-row">
+    <div class="vs-card" style="--vc: var(--red);">
+      <h4>Without LSH</h4>
+      <div class="vs-row-item"><span class="vs-x">✗</span><span>15+ different APIs, auth flows, and protocols</span></div>
+      <div class="vs-row-item"><span class="vs-x">✗</span><span>Implement polling separately for each system</span></div>
+      <div class="vs-row-item"><span class="vs-x">✗</span><span>Per-vendor credentials in every client app</span></div>
+      <div class="vs-row-item"><span class="vs-x">✗</span><span>Cloud dependency even for local devices</span></div>
+      <div class="vs-row-item"><span class="vs-x">✗</span><span>Home Assistant / Node-RED need per-vendor adapters</span></div>
+      <div class="vs-row-item"><span class="vs-x">✗</span><span>Devices unreachable when internet is down</span></div>
+    </div>
+    <div class="vs-card" style="--vc: var(--green);">
+      <h4>With LSH</h4>
+      <div class="vs-row-item"><span class="vs-c">✓</span><span>1 REST API + 1 WebSocket — same format everywhere</span></div>
+      <div class="vs-row-item"><span class="vs-c">✓</span><span>Subscribe once, receive updates from all integrations</span></div>
+      <div class="vs-row-item"><span class="vs-c">✓</span><span>Single Bearer token for all API consumers</span></div>
+      <div class="vs-row-item"><span class="vs-c">✓</span><span>Local-first — MQTT with automatic VRM cloud fallback</span></div>
+      <div class="vs-row-item"><span class="vs-c">✓</span><span><code>POST /api/device/:key/command</code> for every device</span></div>
+      <div class="vs-row-item"><span class="vs-c">✓</span><span>Works offline — all critical paths stay local</span></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-left">LSH Unified API <span class="footer-badge">Page 1 / 3</span></div>
+    <div class="footer-right">github.com/dagoomax/lsh</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ PAGE 2 -->
+<div class="page">
+
+  <div class="header" style="padding: 10px 22px;">
+    <div class="logo-group">
+      <div class="logo-icon" style="width:36px;height:36px;font-size:18px;border-radius:9px;">🔌</div>
+      <div class="logo-text"><h1 style="font-size:17pt;">LSH Unified API</h1><p>API Reference</p></div>
+    </div>
+    <div class="header-right"><div class="header-badge">Endpoints</div></div>
+  </div>
+
+  <!-- Read: GET /api/devices -->
+  <div class="api-section">
+    <div class="slabel">Read — any device, any integration</div>
+    <div class="grid-2" style="gap:8px; margin-bottom:8px;">
+      <div>
+        <div class="code-block">
+<span class="cmt"># List all devices with live readings</span>
+<span class="kw">GET</span> <span class="url">/api/devices</span>
+<span class="hd">Authorization:</span> Bearer &lt;token&gt;
+
+<span class="cmt"># Single device</span>
+<span class="kw">GET</span> <span class="url">/api/devices/auxair%2F12345</span>
+
+<span class="cmt"># Live Victron metrics</span>
+<span class="kw">GET</span> <span class="url">/api/battery</span>
+<span class="kw">GET</span> <span class="url">/api/solar</span>
+<span class="kw">GET</span> <span class="url">/api/grid</span></div>
+      </div>
+      <div>
+        <div class="code-block">
+<span class="cmt">// Response shape (all endpoints)</span>
+{
+  <span class="key">"success"</span>: <span class="kw">true</span>,
+  <span class="key">"data"</span>: [{
+    <span class="key">"key"</span>:      <span class="str">"auxair/12345"</span>,
+    <span class="key">"label"</span>:    <span class="str">"Living Room AC"</span>,
+    <span class="key">"type"</span>:     <span class="str">"auxair"</span>,
+    <span class="key">"readings"</span>: {
+      <span class="key">"pwr"</span>:     { <span class="key">"value"</span>: <span class="num">1</span> },
+      <span class="key">"temp"</span>:    { <span class="key">"value"</span>: <span class="num">22</span> },
+      <span class="key">"envtemp"</span>: { <span class="key">"value"</span>: <span class="num">23.5</span> },
+      <span class="key">"ac_mode"</span>: { <span class="key">"value"</span>: <span class="num">0</span> }
+    }
+  }]
+}</div>
+      </div>
+    </div>
+
+    <table class="api-table">
+      <tr><th>Method</th><th>Path</th><th>Description</th></tr>
+      <tr><td><span class="method get">GET</span></td><td class="api-path">/api/devices</td><td class="api-desc">All registered devices with live sensor readings from every integration</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="api-path">/api/devices/:key</td><td class="api-desc">Single device by its store key (URL-encode slashes as %2F)</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="api-path">/api/status</td><td class="api-desc">All live Victron metrics grouped by category</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="api-path">/api/battery</td><td class="api-desc">Battery SOC, voltage, current, power, time-to-go</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="api-path">/api/solar</td><td class="api-desc">PV power and daily energy yield</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="api-path">/api/grid</td><td class="api-desc">Grid voltage, current, power, frequency, import/export</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="api-path">/api/relays</td><td class="api-desc">All Victron relays with current on/off state</td></tr>
+    </table>
+  </div>
+
+  <!-- Write: POST /api/device/:key/command -->
+  <div class="cmd-section">
+    <div class="slabel">Write — one command format, every device</div>
+    <div class="grid-2" style="gap:8px; margin-bottom:8px;">
+      <div>
+        <div class="code-block">
+<span class="cmt"># Turn SmartThings light on</span>
+<span class="kw">POST</span> <span class="url">/api/device/smartthings%2Fabc/command</span>
+{ <span class="key">"sensor"</span>: <span class="str">"switch"</span>, <span class="key">"value"</span>: <span class="kw">true</span> }
+
+<span class="cmt"># Set AC to 22°C</span>
+<span class="kw">POST</span> <span class="url">/api/device/auxair%2F12345/command</span>
+{ <span class="key">"sensor"</span>: <span class="str">"temp"</span>, <span class="key">"value"</span>: <span class="num">22</span> }
+
+<span class="cmt"># Open Somfy roller shutter</span>
+<span class="kw">POST</span> <span class="url">/api/device/somfy%2Fio__1234/command</span>
+{ <span class="key">"sensor"</span>: <span class="str">"switch"</span>, <span class="key">"value"</span>: <span class="kw">true</span> }
+
+<span class="cmt"># Dim Fibaro light to 75%</span>
+<span class="kw">POST</span> <span class="url">/api/device/fibaro%2FRoom%2F42/command</span>
+{ <span class="key">"sensor"</span>: <span class="str">"level"</span>, <span class="key">"value"</span>: <span class="num">75</span> }</div>
+      </div>
+      <div>
+        <table class="cmd-table">
+          <tr><th>Device</th><th>Sensor</th><th>Value</th></tr>
+          <tr><td class="lbl">SmartThings bulb</td><td class="mono-cell">switch</td><td class="val-cell">true / false</td></tr>
+          <tr><td class="lbl">Shelly relay</td><td class="mono-cell">relay0</td><td class="val-cell">true / false</td></tr>
+          <tr><td class="lbl">Loxone dimmer</td><td class="mono-cell">level</td><td class="val-cell">0 – 100</td></tr>
+          <tr><td class="lbl">Fibaro dimmer</td><td class="mono-cell">level</td><td class="val-cell">0 – 100</td></tr>
+          <tr><td class="lbl">AuxAir power</td><td class="mono-cell">pwr</td><td class="val-cell">1 / 0</td></tr>
+          <tr><td class="lbl">AuxAir temperature</td><td class="mono-cell">temp</td><td class="val-cell">16 – 30</td></tr>
+          <tr><td class="lbl">AuxAir mode</td><td class="mono-cell">ac_mode</td><td class="val-cell">0–4 (cool/heat/dry/fan/auto)</td></tr>
+          <tr><td class="lbl">Somfy shutter</td><td class="mono-cell">switch</td><td class="val-cell">true / false</td></tr>
+          <tr><td class="lbl">Somfy position</td><td class="mono-cell">level</td><td class="val-cell">0 – 100 (%)</td></tr>
+          <tr><td class="lbl">KNX group address</td><td class="mono-cell">1/0/1</td><td class="val-cell">true / 0–255 / float</td></tr>
+          <tr><td class="lbl">BroadLink IR code</td><td class="mono-cell">tv-power</td><td class="val-cell">true (trigger)</td></tr>
+          <tr><td class="lbl">Victron relay</td><td colspan="2"><code>POST /api/relay/:index/state</code> <code>{"on":true}</code></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-time -->
+  <div class="api-section">
+    <div class="slabel">Real-time push — Socket.IO</div>
+    <div class="grid-2" style="gap:8px;">
+      <div>
+        <div class="code-block">
+<span class="cmt">// Browser / Node.js</span>
+<span class="kw">const</span> socket = <span class="key">io</span>(<span class="str">'https://lsh.local:3001'</span>, {
+  auth: { token: <span class="str">'Bearer &lt;token&gt;'</span> }
+})
+
+<span class="cmt">// All integrations — one event</span>
+socket.<span class="key">on</span>(<span class="str">'state'</span>, ({ key, value }) =&gt; {
+  <span class="cmt">// e.g. key = "auxair/12345/temp"</span>
+  <span class="cmt">//      value = 22.5</span>
+  updateUI(key, value)
+})
+
+<span class="cmt">// Sensor registry changes</span>
+socket.<span class="key">on</span>(<span class="str">'devices'</span>, (devices) =&gt; {
+  renderDeviceList(devices)
+})</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div class="feat-card" style="--fc-color: linear-gradient(90deg,#58a6ff,#bc8cff);">
+          <span class="feat-icon">📡</span>
+          <h3>Sub-second latency</h3>
+          <p>Somfy events polled every 1 s. Bayrol MQTT pushed on change. Victron MQTT is live. All arrive on the same Socket.IO stream.</p>
+        </div>
+        <div class="feat-card" style="--fc-color: linear-gradient(90deg,#bc8cff,#f0883e);">
+          <span class="feat-icon">🔁</span>
+          <h3>No polling required</h3>
+          <p>LSH handles all protocol-level polling and push internally. Consumers just listen — no reconnect logic, no per-vendor heartbeat.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-left">LSH Unified API <span class="footer-badge">Page 2 / 3</span></div>
+    <div class="footer-right">github.com/dagoomax/lsh</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ PAGE 3 -->
+<div class="page">
+
+  <div class="header" style="padding: 10px 22px;">
+    <div class="logo-group">
+      <div class="logo-icon" style="width:36px;height:36px;font-size:18px;border-radius:9px;">🔌</div>
+      <div class="logo-text"><h1 style="font-size:17pt;">LSH Unified API</h1><p>Integrations &amp; Auth</p></div>
+    </div>
+    <div class="header-right"><div class="header-badge">15+ Integrations</div></div>
+  </div>
+
+  <!-- Integrations grid -->
+  <div class="int-section">
+    <div class="slabel">Supported integrations — all exposed through the same API</div>
+    <div class="int-grid">
+      <div class="int-pill"><div class="dot"></div>Victron MQTT</div>
+      <div class="int-pill"><div class="dot b"></div>VRM Cloud</div>
+      <div class="int-pill"><div class="dot"></div>SolarEdge</div>
+      <div class="int-pill"><div class="dot b"></div>SmartThings</div>
+      <div class="int-pill"><div class="dot p"></div>Loxone WS</div>
+      <div class="int-pill"><div class="dot o"></div>Fibaro HC</div>
+      <div class="int-pill"><div class="dot p"></div>Somfy TaHoma</div>
+      <div class="int-pill"><div class="dot b"></div>AuxAir / AC Freedom</div>
+      <div class="int-pill"><div class="dot"></div>Bayrol Pool</div>
+      <div class="int-pill"><div class="dot o"></div>KNX IP Gateway</div>
+      <div class="int-pill"><div class="dot"></div>Shelly Gen1/2</div>
+      <div class="int-pill"><div class="dot b"></div>ESPHome</div>
+      <div class="int-pill"><div class="dot p"></div>IKEA Dirigera</div>
+      <div class="int-pill"><div class="dot b"></div>IKEA Tradfri</div>
+      <div class="int-pill"><div class="dot"></div>BoneIO MQTT</div>
+      <div class="int-pill"><div class="dot o"></div>LG ThinQ</div>
+      <div class="int-pill"><div class="dot p"></div>Homey Pro</div>
+      <div class="int-pill"><div class="dot"></div>Dreame Vacuums</div>
+      <div class="int-pill"><div class="dot b"></div>BroadLink IR/RF</div>
+      <div class="int-pill"><div class="dot o"></div>Waveshare Modbus</div>
+      <div class="int-pill"><div class="dot"></div>UniFi Protect</div>
+      <div class="int-pill"><div class="dot p"></div>SmartBob MQTT</div>
+      <div class="int-pill"><div class="dot b"></div>FFmpeg RTSP Proxy</div>
+      <div class="int-pill"><div class="dot o"></div>Satel INTEGRA</div>
+      <div class="int-pill"><div class="dot r"></div>Loxone Outbound</div>
+    </div>
+  </div>
+
+  <!-- Auth + full API table -->
+  <div class="grid-2" style="gap:7px;">
+    <div>
+      <!-- Token auth -->
+      <div class="token-box" style="margin-bottom:7px;">
+        <div class="tb-icon">🔑</div>
+        <div>
+          <h4>Single Bearer token</h4>
+          <p>Create in <strong>Settings → API Tokens</strong>. Works for Home Assistant, Node-RED, shell scripts, and any HTTP client. Tokens don't expire until revoked. No OAuth flow, no refresh cycle.</p>
+          <div class="code-block" style="margin-top:7px; padding:7px 12px;">
+<span class="hd">Authorization:</span> Bearer e95b1a01b85f38a83...
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional endpoints -->
+      <div class="api-section">
+        <div class="slabel">Additional endpoints</div>
+        <table class="api-table">
+          <tr><th>Method</th><th>Path</th><th>Description</th></tr>
+          <tr><td><span class="method post">POST</span></td><td class="api-path">/api/relay/:i/state</td><td class="api-desc">Set Victron relay on/off</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="api-path">/api/cameras</td><td class="api-desc">All cameras (UniFi, manual, SmartThings)</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="api-path">/api/camera-log</td><td class="api-desc">Recent motion/sound events</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="api-path">/api/mqtt-explorer/topics</td><td class="api-desc">All live MQTT topics + values</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="api-path">/api/mqtt-explorer/publish</td><td class="api-desc">Publish to MQTT broker</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="api-path">/api/broadlink/codes</td><td class="api-desc">All learned IR/RF codes</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="api-path">/api/broadlink/learn/ir</td><td class="api-desc">Start IR learn (NDJSON stream)</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="api-path">/api/broadlink/send</td><td class="api-desc">Send named IR/RF code</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="api-path">/api/connection</td><td class="api-desc">Active source: mqtt / vrm / null</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="api-path">/api/auth/tokens</td><td class="api-desc">Create a new API token</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:7px;">
+      <!-- Device key table -->
+      <div class="api-section">
+        <div class="slabel">Device key format</div>
+        <table class="api-table">
+          <tr><th>Integration</th><th>Key format</th></tr>
+          <tr><td class="api-desc">Shelly</td><td class="api-path">shelly/&lt;host&gt;</td></tr>
+          <tr><td class="api-desc">SmartThings</td><td class="api-path">smartthings/&lt;deviceId&gt;</td></tr>
+          <tr><td class="api-desc">Loxone</td><td class="api-path">loxone/&lt;uuid&gt;</td></tr>
+          <tr><td class="api-desc">Fibaro</td><td class="api-path">fibaro/&lt;room&gt;/&lt;id&gt;</td></tr>
+          <tr><td class="api-desc">AuxAir</td><td class="api-path">auxair/&lt;endpointId&gt;</td></tr>
+          <tr><td class="api-desc">Somfy</td><td class="api-path">somfy/&lt;deviceURL&gt;</td></tr>
+          <tr><td class="api-desc">Bayrol</td><td class="api-path">bayrol/&lt;cid&gt;</td></tr>
+          <tr><td class="api-desc">KNX</td><td class="api-path">knx/&lt;host&gt;</td></tr>
+          <tr><td class="api-desc">ESPHome</td><td class="api-path">esphome/&lt;host&gt;</td></tr>
+          <tr><td class="api-desc">LG ThinQ</td><td class="api-path">lgthinq/&lt;deviceId&gt;</td></tr>
+          <tr><td class="api-desc">Homey</td><td class="api-path">homey/&lt;id&gt;</td></tr>
+          <tr><td class="api-desc">Dirigera</td><td class="api-path">dirigera/&lt;id&gt;</td></tr>
+        </table>
+        <p style="font-size:6.8pt;color:var(--muted);margin-top:6px;">⚠ URL-encode forward slashes in keys as <code>%2F</code> in path parameters.</p>
+      </div>
+
+      <!-- Home Assistant example -->
+      <div class="api-section">
+        <div class="slabel">Home Assistant REST integration</div>
+        <div class="code-block">
+<span class="cmt"># configuration.yaml</span>
+<span class="key">rest</span>:
+  - <span class="key">resource</span>: <span class="str">http://lsh.local:3001/api/battery</span>
+    <span class="key">headers</span>:
+      <span class="key">Authorization</span>: <span class="str">"Bearer &lt;token&gt;"</span>
+    <span class="key">scan_interval</span>: <span class="num">30</span>
+    <span class="key">sensor</span>:
+      - <span class="key">name</span>: <span class="str">"Battery SOC"</span>
+        <span class="key">value_template</span>: <span class="str">"{{ value_json.data.soc }}"</span>
+        <span class="key">unit_of_measurement</span>: <span class="str">"%"</span>
+
+<span class="key">rest_command</span>:
+  <span class="key">lsh_ac_on</span>:
+    <span class="key">url</span>: <span class="str">http://lsh.local:3001/api/device/auxair%2F12345/command</span>
+    <span class="key">method</span>: <span class="num">post</span>
+    <span class="key">headers</span>:
+      <span class="key">Authorization</span>: <span class="str">"Bearer &lt;token&gt;"</span>
+    <span class="key">payload</span>: <span class="str">'{"sensor":"pwr","value":1}'</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-left">LSH Unified API <span class="footer-badge">Page 3 / 3</span></div>
+    <div class="footer-right">github.com/dagoomax/lsh · Self-hosted · MIT</div>
+  </div>
+</div>
+
+</body>
+</html>

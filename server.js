@@ -251,7 +251,7 @@ async function main() {
   }
 
   // Start Somfy TaHoma client if configured
-  if (config.somfy?.host && config.somfy?.email && config.somfy?.password) {
+  if (config.somfy?.host && (config.somfy?.token || (config.somfy?.email && config.somfy?.password))) {
     const SomfyClient = tryRequire('./src/somfy-client');
     if (SomfyClient) {
       const somfy = new SomfyClient(config, store, sensorRegistry);
