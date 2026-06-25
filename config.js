@@ -149,6 +149,18 @@ function loadConfig() {
       pollInterval: parseInt(fileConfig.bayrol.pollInterval) || 60,
       pools:        fileConfig.bayrol.pools       || [],
     } : undefined,
+    suppla: fileConfig.suppla?.token ? {
+      token:        fileConfig.suppla.token,
+      server:       fileConfig.suppla.server       || 'https://cloud.supla.org',
+      pollInterval: parseInt(fileConfig.suppla.pollInterval) || 30,
+    } : undefined,
+    arduino: fileConfig.arduino?.devices?.length ? {
+      host:     fileConfig.arduino.host     || '',
+      port:     parseInt(fileConfig.arduino.port) || 1883,
+      username: fileConfig.arduino.username || '',
+      password: fileConfig.arduino.password || '',
+      devices:  fileConfig.arduino.devices  || [],
+    } : undefined,
   };
 }
 

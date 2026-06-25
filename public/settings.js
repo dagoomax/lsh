@@ -55,6 +55,11 @@ async function loadSettings() {
     setVal('auxair-poll',     data.auxair?.pollInterval ?? 30);
 
     // Bayrol
+    // Suppla
+    setVal('suppla-token',  data.suppla?.token  ? '••••••••' : '');
+    setVal('suppla-server', data.suppla?.server || 'https://cloud.supla.org');
+    setVal('suppla-poll',   data.suppla?.pollInterval ?? 30);
+
     setVal('bayrol-pool-name', data.bayrol?.poolName || '');
     setVal('bayrol-email', data.bayrol?.username || '');
     setVal('bayrol-password', data.bayrol?.password ? '••••••••' : '');
@@ -143,6 +148,16 @@ async function loadSettings() {
     setVal('smartbob-user', data.smartbob?.username || '');
     setVal('smartbob-pass', data.smartbob?.password ? '••••••••' : '');
     renderSmartBobEntities(data.smartbob?.entities || []);
+
+    // Arduino
+    setVal('arduino-host', data.arduino?.host || '');
+    setVal('arduino-port', data.arduino?.port || 1883);
+    setVal('arduino-user', data.arduino?.username || '');
+    setVal('arduino-pass', data.arduino?.password ? '••••••••' : '');
+    const arduinoEl = document.getElementById('arduino-devices');
+    if (arduinoEl) arduinoEl.value = data.arduino?.devices?.length
+      ? JSON.stringify(data.arduino.devices, null, 2)
+      : '';
 
     // KNX
     setVal('knx-host', data.knx?.host || '');
@@ -859,6 +874,40 @@ document.getElementById('btn-save-somfy').addEventListener('click', async () => 
   } finally {
     btn.disabled = false;
   }
+});
+
+// ── Suppla ─────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-test-suppla')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-test-suppla');
+  const res2 = document.getElementById('suppla-result');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/settings/test-suppla', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: getVal('suppla-token'), server: getVal('suppla-server') || 'https://cloud.supla.org' }) });
+    const json = await r.json();
+    res2.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    res2.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) { res2.textContent = '✗ ' + err.message; res2.className = 'test-result err'; }
+  finally { btn.disabled = false; }
+});
+
+document.getElementById('btn-save-suppla')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-suppla');
+  const res2 = document.getElementById('suppla-result');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/settings/suppla', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token:        getVal('suppla-token'),
+        server:       getVal('suppla-server') || 'https://cloud.supla.org',
+        pollInterval: parseInt(getVal('suppla-poll')) || 30,
+      }) });
+    const json = await r.json();
+    res2.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    res2.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) { res2.textContent = '✗ ' + err.message; res2.className = 'test-result err'; }
+  finally { btn.disabled = false; }
 });
 
 // ── Bayrol ─────────────────────────────────────────────────────────────────
@@ -2699,6 +2748,32 @@ document.getElementById('btn-save-smartbob').addEventListener('click', async () 
         username: getVal('smartbob-user'),
         password: getVal('smartbob-pass'),
         entities: collectSmartBobEntities(),
+      }) });
+    const json = await r.json();
+    res2.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    res2.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) { res2.textContent = '✗ ' + err.message; res2.className = 'test-result err'; }
+  finally { btn.disabled = false; }
+});
+
+// ── Arduino MQTT ──────────────────────────────────────────────────────────
+
+document.getElementById('btn-save-arduino')?.addEventListener('click', async () => {
+  const btn  = document.getElementById('btn-save-arduino');
+  const res2 = document.getElementById('arduino-result');
+  btn.disabled = true;
+  try {
+    const raw = document.getElementById('arduino-devices')?.value?.trim() || '[]';
+    let devices;
+    try { devices = JSON.parse(raw); }
+    catch { res2.textContent = '✗ Invalid JSON in devices field'; res2.className = 'test-result err'; btn.disabled = false; return; }
+    const r = await fetch('/api/settings/arduino', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host:     getVal('arduino-host'),
+        port:     parseInt(getVal('arduino-port')) || 1883,
+        username: getVal('arduino-user'),
+        password: getVal('arduino-pass'),
+        devices,
       }) });
     const json = await r.json();
     res2.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;

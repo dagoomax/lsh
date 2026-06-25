@@ -388,6 +388,26 @@ export function SpeakerIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function SuplaIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 3a9 9 0 100 18A9 9 0 0012 3z" strokeWidth="1.5"/>
+      <path d="M8.5 12h7M12 8.5v7" strokeLinecap="round" strokeWidth="2"/>
+    </svg>
+  )
+}
+
+export function ArduinoIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="4" y="7" width="16" height="10" rx="2"/>
+      <path d="M4 10H2M4 14H2M20 10h2M20 14h2" strokeLinecap="round"/>
+      <path d="M9 12h2M13 12h2" strokeLinecap="round"/>
+      <circle cx="8" cy="12" r="1.2" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
 // ── Icon resolver ─────────────────────────────────────────────────────────────
 const LABEL_MAP = {
   kinkiet:               WallSconceIcon,
@@ -436,6 +456,8 @@ const TYPE_MAP = {
   auxair:       AirCondIcon,
   sonos:        SpeakerIcon,
   denon:        DenonIcon,
+  arduino:      ArduinoIcon,
+  suppla:       SuplaIcon,
 }
 
 function readingIcon(r = {}) {

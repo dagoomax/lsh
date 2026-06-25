@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LSH — Support-Driven Business Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg:      #0d1117;
+    --surf:    #161b22;
+    --surf2:   #1c2128;
+    --border:  #30363d;
+    --border2: #21262d;
+    --text:    #e6edf3;
+    --muted:   #8b949e;
+    --dim:     #484f58;
+    --green:   #3fb950;
+    --blue:    #58a6ff;
+    --purple:  #bc8cff;
+    --orange:  #f0883e;
+    --gold:    #e3b341;
+    --red:     #f85149;
+  }
+
+  html, body {
+    width: 210mm;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 9.5pt;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.5pt;
+    background: rgba(255,255,255,.07);
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--blue);
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 11mm 12mm 10mm;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    page-break-after: always;
+    overflow: hidden;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  /* ── HEADER ──────────────────────────────────────────────────────────────── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 15px 22px;
+    background: var(--surf); border: 1px solid var(--border); border-radius: 13px;
+    position: relative; overflow: hidden; flex-shrink: 0;
+  }
+  .header::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 90% 140% at -5% 50%,
+      rgba(63,185,80,.15) 0%, rgba(88,166,255,.08) 45%, transparent 68%);
+    pointer-events: none;
+  }
+  .header::after {
+    content: ''; position: absolute; inset: 0; border-radius: 13px; padding: 1px;
+    background: linear-gradient(135deg, rgba(63,185,80,.5) 0%, rgba(88,166,255,.22) 50%, transparent 80%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+  }
+  .logo-group { display: flex; align-items: center; gap: 13px; position: relative; z-index: 1; }
+  .logo-icon {
+    width: 46px; height: 46px; border-radius: 12px;
+    background: linear-gradient(135deg, #3fb950 0%, #58a6ff 100%);
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+    box-shadow: 0 0 20px rgba(63,185,80,.3), 0 4px 10px rgba(0,0,0,.4); flex-shrink: 0;
+  }
+  .logo-text h1 {
+    font-size: 22pt; font-weight: 900; letter-spacing: -1px; line-height: 1;
+    background: linear-gradient(90deg, #3fb950 0%, #58a6ff 55%, #bc8cff 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .logo-text p { font-size: 8pt; color: var(--muted); margin-top: 3px; letter-spacing: .02em; }
+  .header-right { text-align: right; position: relative; z-index: 1; }
+  .header-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(63,185,80,.16), rgba(88,166,255,.10));
+    border: 1px solid rgba(63,185,80,.35); border-radius: 20px;
+    padding: 3px 11px; font-size: 7pt; font-weight: 700; color: var(--green);
+    letter-spacing: .05em; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .header-tagline { font-size: 7.5pt; color: var(--muted); max-width: 165px; line-height: 1.45; }
+
+  /* ── SECTION LABEL ───────────────────────────────────────────────────────── */
+  .slabel {
+    font-size: 6.8pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .09em; color: var(--muted); margin-bottom: 6px;
+  }
+
+  /* ── HERO ────────────────────────────────────────────────────────────────── */
+  .hero {
+    background: var(--surf); border: 1px solid var(--border);
+    border-radius: 11px; padding: 14px 22px; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 70% 120% at 100% 100%, rgba(88,166,255,.08) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-inner { display: flex; align-items: flex-start; gap: 22px; position: relative; }
+  .hero-text { flex: 1.6; }
+  .hero-text h2 { font-size: 16pt; font-weight: 900; letter-spacing: -.6px; line-height: 1.15; margin-bottom: 7px; }
+  .hero-text h2 em { font-style: normal; color: var(--green); }
+  .hero-text p { font-size: 8.5pt; color: var(--muted); line-height: 1.6; }
+  .hero-proof { flex: 1; }
+  .proof-card {
+    background: var(--bg); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 9px 12px; margin-bottom: 6px;
+  }
+  .proof-card:last-child { margin-bottom: 0; }
+  .proof-card .pc-name { font-size: 7.5pt; font-weight: 700; margin-bottom: 1px; }
+  .proof-card .pc-sub  { font-size: 7pt; color: var(--muted); }
+  .proof-card .pc-val  { font-size: 11pt; font-weight: 800; color: var(--gold); float: right; margin-top: -2px; }
+
+  /* ── FLYWHEEL ────────────────────────────────────────────────────────────── */
+  .flywheel-section {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px;
+  }
+  .flywheel-row { display: flex; align-items: stretch; gap: 0; }
+  .fw-step {
+    flex: 1; text-align: center; padding: 11px 8px; position: relative;
+    background: var(--surf2); border: 1px solid var(--border2); border-radius: 8px;
+    margin-right: 2px;
+  }
+  .fw-step:last-child { margin-right: 0; }
+  .fw-num {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--green);
+    color: #000; font-size: 9pt; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 6px;
+  }
+  .fw-icon { font-size: 16px; display: block; margin-bottom: 4px; }
+  .fw-step h4 { font-size: 7.5pt; font-weight: 700; margin-bottom: 3px; }
+  .fw-step p  { font-size: 6.8pt; color: var(--muted); line-height: 1.45; }
+  .fw-arrow { display: flex; align-items: center; color: var(--dim); font-size: 14pt; padding: 0 3px; flex-shrink: 0; }
+
+  /* ── GRIDS ───────────────────────────────────────────────────────────────── */
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+
+  /* ── TIER CARDS ──────────────────────────────────────────────────────────── */
+  .tier-card {
+    background: var(--surf); border: 1px solid var(--border);
+    border-radius: 11px; padding: 13px 14px; position: relative; overflow: hidden;
+  }
+  .tier-card.highlighted {
+    border-color: rgba(63,185,80,.35);
+    background: linear-gradient(160deg, rgba(63,185,80,.06) 0%, var(--surf) 60%);
+    box-shadow: 0 0 20px rgba(63,185,80,.08);
+  }
+  .tier-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--tc-bar, var(--border));
+  }
+  .tier-label {
+    font-size: 6.5pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; margin-bottom: 4px;
+    color: var(--tc-color, var(--muted));
+  }
+  .tier-name  { font-size: 11pt; font-weight: 800; margin-bottom: 2px; }
+  .tier-price { font-size: 14pt; font-weight: 900; color: var(--tc-color, var(--text)); line-height: 1; margin-bottom: 2px; }
+  .tier-price span { font-size: 8pt; font-weight: 500; color: var(--muted); }
+  .tier-desc  { font-size: 7.2pt; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+  .tier-items { list-style: none; }
+  .tier-items li {
+    font-size: 7.2pt; line-height: 1.55; padding: 2px 0;
+    display: flex; gap: 6px; align-items: baseline;
+  }
+  .tier-items li::before { content: '✓'; color: var(--tc-color, var(--dim)); font-weight: 700; flex-shrink: 0; }
+  .tier-badge {
+    display: inline-block; background: rgba(63,185,80,.12); border: 1px solid rgba(63,185,80,.25);
+    border-radius: 10px; padding: 2px 9px; font-size: 6.5pt; font-weight: 700;
+    color: var(--green); margin-top: 8px;
+  }
+
+  /* ── SERVICE TABLE ───────────────────────────────────────────────────────── */
+  .svc-section {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 11px 15px;
+  }
+  .svc-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+  .svc-table th {
+    text-align: left; font-size: 6.8pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--muted); padding: 4px 9px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .svc-table td { padding: 5px 9px; border-bottom: 1px solid var(--border2); vertical-align: top; }
+  .svc-table tr:last-child td { border-bottom: none; }
+  .svc-table .cat-head td {
+    background: rgba(255,255,255,.02); font-size: 6.8pt; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .07em; color: var(--dim); padding: 3px 9px;
+  }
+  .svc-name  { font-weight: 600; }
+  .svc-price { font-weight: 700; color: var(--gold); white-space: nowrap; }
+  .svc-model { color: var(--muted); font-size: 7pt; }
+  .svc-desc  { color: var(--muted); font-size: 7pt; line-height: 1.45; }
+
+  /* ── METRICS STRIP ───────────────────────────────────────────────────────── */
+  .metrics-strip { display: flex; gap: 7px; }
+  .metric-item {
+    flex: 1; background: var(--surf); border: 1px solid var(--border);
+    border-radius: 9px; padding: 10px 12px; text-align: center;
+  }
+  .metric-item .mv { font-size: 16pt; font-weight: 900; line-height: 1.1; }
+  .metric-item .ml { font-size: 7pt; color: var(--muted); margin-top: 2px; }
+  .mv-g { color: var(--green); }
+  .mv-b { color: var(--blue); }
+  .mv-d { color: var(--gold); }
+  .mv-p { color: var(--purple); }
+  .mv-o { color: var(--orange); }
+
+  /* ── TAG ─────────────────────────────────────────────────────────────────── */
+  .tag {
+    display: inline-block; border-radius: 4px; padding: 1px 6px;
+    font-size: 6.5pt; font-weight: 600; margin-right: 3px; white-space: nowrap;
+    background: rgba(88,166,255,.12); border: 1px solid rgba(88,166,255,.25); color: var(--blue);
+  }
+  .tag.g { background: rgba(63,185,80,.12);  border-color: rgba(63,185,80,.25);  color: var(--green); }
+  .tag.d { background: rgba(227,179,65,.12); border-color: rgba(227,179,65,.25); color: var(--gold); }
+  .tag.o { background: rgba(240,136,62,.12); border-color: rgba(240,136,62,.25); color: var(--orange); }
+  .tag.p { background: rgba(188,140,255,.12);border-color: rgba(188,140,255,.25);color: var(--purple); }
+
+  /* ── SCENARIO ────────────────────────────────────────────────────────────── */
+  .scenario {
+    background: var(--bg); border: 1px solid rgba(227,179,65,.18);
+    border-radius: 9px; padding: 11px 14px; position: relative; overflow: hidden;
+  }
+  .scenario::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: linear-gradient(180deg, var(--gold), var(--orange)); border-radius: 9px 0 0 9px;
+  }
+  .scenario h4 { font-size: 8pt; font-weight: 700; color: var(--gold); margin-bottom: 6px; }
+  .sc-row { display: flex; justify-content: space-between; font-size: 7.2pt; padding: 2.5px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+  .sc-row:last-of-type { border-bottom: none; }
+  .sc-label { color: var(--muted); }
+  .sc-val   { font-weight: 600; }
+  .sc-total {
+    display: flex; justify-content: space-between; font-size: 9pt; font-weight: 800;
+    padding-top: 6px; margin-top: 5px; border-top: 1px solid var(--border2);
+  }
+  .sc-total .sc-val { color: var(--gold); }
+
+  /* ── ROADMAP ─────────────────────────────────────────────────────────────── */
+  .road-section {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px;
+  }
+  .road-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+  .road-step { display: flex; flex-direction: column; gap: 6px; }
+  .road-num {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10pt; font-weight: 800; color: #000;
+    background: linear-gradient(135deg, #3fb950, #1e7d35);
+    box-shadow: 0 0 10px rgba(63,185,80,.25);
+  }
+  .road-step h4 { font-size: 7.8pt; font-weight: 700; margin-bottom: 1px; }
+  .road-step p  { font-size: 6.8pt; color: var(--muted); line-height: 1.5; }
+
+  /* ── ROI PANEL ───────────────────────────────────────────────────────────── */
+  .roi-section {
+    background: linear-gradient(135deg, rgba(63,185,80,.06), rgba(88,166,255,.04));
+    border: 1px solid rgba(63,185,80,.18); border-radius: 11px; padding: 12px 15px;
+  }
+  .roi-lines { display: flex; flex-direction: column; gap: 4px; }
+  .roi-line  {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 7.5pt; padding: 4px 10px;
+    background: rgba(255,255,255,.025); border-radius: 6px;
+  }
+  .rl-label  { color: var(--muted); }
+  .rl-val    { font-weight: 700; }
+  .rl-g  { color: var(--green); }
+  .rl-d  { color: var(--gold); }
+  .rl-r  { color: var(--red); }
+  .roi-total {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 10pt; font-weight: 800; padding: 7px 10px; margin-top: 4px;
+    background: rgba(63,185,80,.08); border: 1px solid rgba(63,185,80,.2); border-radius: 7px;
+  }
+  .roi-total .rl-val { color: var(--green); }
+
+  /* ── QUOTE BLOCK ─────────────────────────────────────────────────────────── */
+  .quote-block {
+    background: var(--surf2); border-left: 3px solid var(--green);
+    border-radius: 0 8px 8px 0; padding: 10px 14px;
+  }
+  .quote-block p    { font-size: 8.5pt; font-style: italic; color: var(--text); line-height: 1.6; margin-bottom: 5px; }
+  .quote-block cite { font-size: 7pt; color: var(--muted); font-style: normal; }
+
+  /* ── INTEGRATION PILLS ───────────────────────────────────────────────────── */
+  .pill-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+  .int-pill {
+    background: rgba(255,255,255,.04); border: 1px solid var(--border2);
+    border-radius: 6px; padding: 3px 8px; font-size: 7pt; font-weight: 500;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; background: var(--green); }
+  .dot.b { background: var(--blue); }
+  .dot.o { background: var(--orange); }
+  .dot.p { background: var(--purple); }
+  .dot.d { background: var(--gold); }
+
+  /* ── FOOTER ──────────────────────────────────────────────────────────────── */
+  .footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px; background: var(--surf); border: 1px solid var(--border);
+    border-radius: 9px; flex-shrink: 0; margin-top: auto;
+  }
+  .footer-brand {
+    font-size: 11pt; font-weight: 900; letter-spacing: -.5px;
+    background: linear-gradient(90deg, #3fb950, #58a6ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .footer p { font-size: 7pt; color: var(--muted); }
+  .footer-right { text-align: right; line-height: 1.6; }
+
+  @media print {
+    @page { size: A4; margin: 0; }
+    html, body { background: var(--bg); }
+    .page { page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════ PAGE 1 — THE MODEL ═══════════════════════════ -->
+<div class="page">
+
+  <div class="header">
+    <div class="logo-group">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">
+        <h1>LSH</h1>
+        <p>Local Smart Home — Support-Driven Business Guide</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">Business Model</div>
+      <p class="header-tagline">Free software · Paid expertise · Recurring revenue</p>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-text">
+        <h2>The software is <em>free</em>.<br>The expertise is the product.</h2>
+        <p>LSH follows the same model that built Red Hat ($34B), MySQL, Elastic, and WordPress VIP: give away the open-source platform, and sell the knowledge, time, and reliability that users cannot easily provide themselves. Every Victron installer, KNX programmer, or homeowner who runs LSH is a potential support client — because 30+ integrations mean 30+ things that can need professional attention.</p>
+        <p style="margin-top:8px">You do not need to own the software. You need to be the person who knows it best in your market.</p>
+      </div>
+      <div class="hero-proof">
+        <div class="proof-card">
+          <span class="pc-val">$34B</span>
+          <div class="pc-name">Red Hat — support-only on Linux</div>
+          <div class="pc-sub">Zero proprietary software. 100% support revenue.</div>
+        </div>
+        <div class="proof-card">
+          <span class="pc-val">$1.1B</span>
+          <div class="pc-name">Elastic — open core + support</div>
+          <div class="pc-sub">Software free to download; enterprise support paid.</div>
+        </div>
+        <div class="proof-card">
+          <span class="pc-val">45 %</span>
+          <div class="pc-name">Gross margin — typical MSP on support</div>
+          <div class="pc-sub">After labour costs; scales with client count, not headcount.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- The flywheel -->
+  <div class="flywheel-section">
+    <div class="slabel">The support flywheel — how revenue compounds</div>
+    <div class="flywheel-row">
+      <div class="fw-step">
+        <div class="fw-num">1</div>
+        <span class="fw-icon">🆓</span>
+        <h4>Software is free</h4>
+        <p>Client downloads and runs LSH. Barrier to entry is zero. You get into the account without a software sale.</p>
+      </div>
+      <div class="fw-arrow">›</div>
+      <div class="fw-step">
+        <div class="fw-num">2</div>
+        <span class="fw-icon">🔧</span>
+        <h4>Setup service</h4>
+        <p>You configure integrations, pair HomeKit, wire the API to their HA/Loxone. One-off fee. Client is now dependent on your config.</p>
+      </div>
+      <div class="fw-arrow">›</div>
+      <div class="fw-step">
+        <div class="fw-num">3</div>
+        <span class="fw-icon">📋</span>
+        <h4>Support contract</h4>
+        <p>Client wants guaranteed response when a relay drops or an integration breaks. Annual SLA converts the job into recurring revenue.</p>
+      </div>
+      <div class="fw-arrow">›</div>
+      <div class="fw-step">
+        <div class="fw-num">4</div>
+        <span class="fw-icon">🔌</span>
+        <h4>Expand scope</h4>
+        <p>"We can also add your pool, your Denon, your alarm." Each new integration is an upsell that deepens the support relationship.</p>
+      </div>
+      <div class="fw-arrow">›</div>
+      <div class="fw-step">
+        <div class="fw-num">5</div>
+        <span class="fw-icon">🔁</span>
+        <h4>Renew + refer</h4>
+        <p>Happy clients renew automatically and refer neighbours. One installation becomes a cluster of support contracts in the same street.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Three tiers -->
+  <div class="slabel">Three support tiers — structure your offering</div>
+  <div class="grid-3">
+
+    <div class="tier-card" style="--tc-bar: var(--border); --tc-color: var(--muted)">
+      <div class="tier-label">Tier 0</div>
+      <div class="tier-name">Community</div>
+      <div class="tier-price">Free <span>forever</span></div>
+      <div class="tier-desc">Self-service. GitHub issues, README docs, community forum. No SLA, no response guarantee. The hook that fills your pipeline.</div>
+      <ul class="tier-items" style="color:var(--muted)">
+        <li>Full LSH software, all integrations</li>
+        <li>Public GitHub issues &amp; discussions</li>
+        <li>Self-setup via documentation</li>
+        <li>Best-effort responses only</li>
+      </ul>
+    </div>
+
+    <div class="tier-card highlighted" style="--tc-bar: linear-gradient(90deg,#3fb950,#58a6ff); --tc-color: var(--green)">
+      <div class="tier-label">Tier 1 · Most popular</div>
+      <div class="tier-name">Professional</div>
+      <div class="tier-price">€300 <span>/ year per site</span></div>
+      <div class="tier-desc">Annual contract. Remote setup, software updates, guaranteed response within 1 business day. The core recurring revenue unit.</div>
+      <ul class="tier-items">
+        <li>Remote onboarding &amp; integration setup</li>
+        <li>LSH &amp; OS updates applied remotely</li>
+        <li>&lt; 1 business day email response</li>
+        <li>Quarterly health-check report</li>
+        <li>Up to 2 integration changes per year</li>
+        <li>VPN access to client site included</li>
+      </ul>
+      <div class="tier-badge">Stack 10 clients → €3 000 / yr passive</div>
+    </div>
+
+    <div class="tier-card" style="--tc-bar: linear-gradient(90deg,#e3b341,#f0883e); --tc-color: var(--gold)">
+      <div class="tier-label">Tier 2</div>
+      <div class="tier-name">Managed</div>
+      <div class="tier-price">€80 <span>/ month per site</span></div>
+      <div class="tier-desc">Fully managed. LSH runs on your VPS; you own the infra. Client gets a branded URL and 24/7 uptime monitoring.</div>
+      <ul class="tier-items" style="color:var(--gold)">
+        <li>Hosted on your VPS (VPN tunnel to home)</li>
+        <li>Custom domain: <em>client.yourbrand.com</em></li>
+        <li>24/7 uptime monitoring + auto-restart</li>
+        <li>Unlimited integration changes</li>
+        <li>Monthly energy &amp; uptime report</li>
+        <li>4h response, remote hands on demand</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div>
+      <div class="footer-brand">LSH</div>
+      <p>Local Smart Home · Support-Driven Business Guide</p>
+    </div>
+    <div class="footer-right"><p>Page 1 of 3</p></div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════ PAGE 2 — SERVICE CATALOGUE ═══════════════════ -->
+<div class="page">
+
+  <div class="header">
+    <div class="logo-group">
+      <div class="logo-icon">📋</div>
+      <div class="logo-text">
+        <h1>LSH</h1>
+        <p>Service Catalogue — What You Sell, What You Charge</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">Pricing Reference</div>
+      <p class="header-tagline">Indicative EU rates · adjust for local market</p>
+    </div>
+  </div>
+
+  <!-- Full service table -->
+  <div class="svc-section">
+    <div class="slabel">Service catalogue — all billable work items</div>
+    <table class="svc-table">
+      <thead>
+        <tr>
+          <th style="width:30%">Service</th>
+          <th style="width:18%">Price</th>
+          <th style="width:13%">Model</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="cat-head"><td colspan="4">🔧 Onboarding &amp; Setup (leads to support contract)</td></tr>
+        <tr>
+          <td><span class="svc-name">Basic Onboarding</span></td>
+          <td><span class="svc-price">€400 – €800</span></td>
+          <td><span class="svc-model">One-time</span></td>
+          <td class="svc-desc">LSH on RPi, Victron MQTT, 2–3 Shelly relays, HomeKit pairing, user walkthrough. Half day remote or on-site.</td>
+        </tr>
+        <tr>
+          <td><span class="svc-name">Full System Deployment</span></td>
+          <td><span class="svc-price">€1 200 – €3 000</span></td>
+          <td><span class="svc-model">One-time</span></td>
+          <td class="svc-desc">Victron + Loxone/KNX + cameras + alarm + HomeKit + API credentials. 1–3 day project. Includes hardware commissioning.</td>
+        </tr>
+        <tr>
+          <td><span class="svc-name">Integration Add-on</span></td>
+          <td><span class="svc-price">€150 – €500</span></td>
+          <td><span class="svc-model">Per module</span></td>
+          <td class="svc-desc">Add a new integration to an existing running LSH: Bayrol pool, Denon AVR, Somfy shutters, Suppla cloud, etc. 1–4 h.</td>
+        </tr>
+        <tr>
+          <td><span class="svc-name">HomeKit Re-pairing</span></td>
+          <td><span class="svc-price">€80 – €150</span></td>
+          <td><span class="svc-model">Per visit</span></td>
+          <td class="svc-desc">Reset and re-pair accessories after iOS update or bridge crash. Fully remote. Fast but clients cannot do it themselves.</td>
+        </tr>
+
+        <tr class="cat-head"><td colspan="4">🔄 Recurring Support (the engine of the business)</td></tr>
+        <tr>
+          <td><span class="svc-name">Professional SLA</span></td>
+          <td><span class="svc-price">€200 – €400 / yr</span></td>
+          <td><span class="svc-model">Annual</span></td>
+          <td class="svc-desc">Remote monitoring via VPN/SSH, OS + LSH updates, integration fixes, email support, &lt;1 bd response. Fully remote.</td>
+        </tr>
+        <tr>
+          <td><span class="svc-name">Managed Hosting (SaaS)</span></td>
+          <td><span class="svc-price">€50 – €100 / mo</span></td>
+          <td><span class="svc-model">Monthly</span></td>
+          <td class="svc-desc">LSH on your VPS, WireGuard tunnel to client home. Client gets a branded domain + 24/7 uptime monitoring.</td>
+        </tr>
+        <tr>
+          <td><span class="svc-name">Victron Energy Monitoring</span></td>
+          <td><span class="svc-price">€30 – €60 / mo</span></td>
+          <td><span class="svc-model">Monthly</span></td>
+          <td class="svc-desc">Active watch on VRM alerts; monthly PDF report with solar yield, battery cycles, grid import/export balance.</td>
+        </tr>
+        <tr>
+          <td><span class="svc-name">Multi-site Fleet SLA</span></td>
+          <td><span class="svc-price">€15 – €35 / site / mo</span></td>
+          <td><span class="svc-model">Monthly</span></td>
+          <td class="svc-desc">Manage a rental property portfolio or facilities estate. Automated alerts, remote relay control, per-site dashboard.</td>
+        </tr>
+
+        <tr class="cat-head"><td colspan="4">💻 Professional Services (project-based)</td></tr>
+        <tr>
+          <td><span class="svc-name">Custom Integration Dev</span></td>
+          <td><span class="svc-price">€80 – €180 / hr</span></td>
+          <td><span class="svc-model">T&amp;M project</span></td>
+          <td class="svc-desc">New device module: 4–16 h typical. The module can then be licenced to other installers for passive income.</td>
+        </tr>
+        <tr>
+          <td><span class="svc-name">Energy Audit &amp; Report</span></td>
+          <td><span class="svc-price">€300 – €700</span></td>
+          <td><span class="svc-model">Per report</span></td>
+          <td class="svc-desc">Use LSH + SolarEdge + Victron data to model optimal battery dispatch, grid tariff usage, and ROI on a storage upgrade.</td>
+        </tr>
+        <tr>
+          <td><span class="svc-name">Installer Training Workshop</span></td>
+          <td><span class="svc-price">€200 – €500 / seat</span></td>
+          <td><span class="svc-model">Workshop</span></td>
+          <td class="svc-desc">Half-day for electricians and AV installers: LSH setup, Victron commissioning, HomeKit pairing, SLA handover checklist.</td>
+        </tr>
+        <tr>
+          <td><span class="svc-name">White-label Branding</span></td>
+          <td><span class="svc-price">€200 – €400</span></td>
+          <td><span class="svc-model">One-time</span></td>
+          <td class="svc-desc">Replace LSH identity with client's or your own brand: dashboard logo, HomeKit bridge name, custom domain, favicon.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Scenario + Why support sticks -->
+  <div class="grid-2">
+    <div class="scenario">
+      <h4>📋 Scenario: 15-client support portfolio — Year 2</h4>
+      <div class="sc-row"><span class="sc-label">8× Professional SLA (€300 avg)</span><span class="sc-val">€2 400</span></div>
+      <div class="sc-row"><span class="sc-label">4× Managed Hosting (€70/mo)</span><span class="sc-val">€3 360</span></div>
+      <div class="sc-row"><span class="sc-label">3× Victron Monitoring (€45/mo)</span><span class="sc-val">€1 620</span></div>
+      <div class="sc-row"><span class="sc-label">6× Integration add-ons (€250 avg)</span><span class="sc-val">€1 500</span></div>
+      <div class="sc-row"><span class="sc-label">2× new full deployments (€2 000 avg)</span><span class="sc-val">€4 000</span></div>
+      <div class="sc-row"><span class="sc-label">1× custom module development</span><span class="sc-val">€1 200</span></div>
+      <div class="sc-total"><span class="sc-label">Year 2 total</span><span class="sc-val">€14 080</span></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:7px;">
+      <div class="slabel">Why clients don't leave</div>
+      <div class="quote-block">
+        <p>"My alarm, solar, pool, and speakers are all in one app and it works. I'm not going to touch it — that's what I pay you for."</p>
+        <cite>— Typical residential client after year 1</cite>
+      </div>
+      <div style="background:var(--surf2);border:1px solid var(--border2);border-radius:9px;padding:10px 12px;">
+        <div class="slabel">Switching costs work in your favour</div>
+        <ul style="padding-left:13px;list-style:disc">
+          <li style="font-size:7.2pt;color:var(--muted);line-height:1.55">Client's HomeKit home is built on <em>your</em> LSH config — reconfiguring on another platform takes days.</li>
+          <li style="font-size:7.2pt;color:var(--muted);line-height:1.55">All 30+ integrations are set up and working; re-doing that elsewhere requires expertise they don't have.</li>
+          <li style="font-size:7.2pt;color:var(--muted);line-height:1.55">VPN access, monitoring, and alerting are all managed by you. Leaving means losing that oversight.</li>
+          <li style="font-size:7.2pt;color:var(--muted);line-height:1.55">Annual renewal friction is near zero — most clients auto-renew without a conversation.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>
+      <div class="footer-brand">LSH</div>
+      <p>Local Smart Home · Support-Driven Business Guide</p>
+    </div>
+    <div class="footer-right"><p>Page 2 of 3</p></div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════ PAGE 3 — ROADMAP & ROI ═══════════════════════ -->
+<div class="page">
+
+  <div class="header">
+    <div class="logo-group">
+      <div class="logo-icon">🚀</div>
+      <div class="logo-text">
+        <h1>LSH</h1>
+        <p>Go-to-Market Roadmap &amp; 3-Year Revenue Projection</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">Action Plan</div>
+      <p class="header-tagline">From first deployment to stable MSP income</p>
+    </div>
+  </div>
+
+  <!-- 4-phase roadmap -->
+  <div class="road-section">
+    <div class="slabel">4-phase growth roadmap</div>
+    <div class="road-grid">
+      <div class="road-step">
+        <div class="road-num">1</div>
+        <h4>Months 1–2 · Build credibility</h4>
+        <p>Deploy LSH at home and at one friend's house for free. Document both setups with photos and a short case study. This is your portfolio — the only credibility signal that matters in this market is a live working installation a prospect can see.</p>
+      </div>
+      <div class="road-step">
+        <div class="road-num">2</div>
+        <h4>Months 3–4 · First paying clients</h4>
+        <p>Target Victron owners in your area (solar forum posts, Facebook groups, local Victron dealer referrals). Offer a fixed-price €600 "Victron + HomeKit setup" to the first 3 clients. Include a 12-month Professional SLA in the invoice — frame it as the handover guarantee, not an upsell.</p>
+      </div>
+      <div class="road-step">
+        <div class="road-num">3</div>
+        <h4>Months 5–9 · Build the recurring base</h4>
+        <p>Grow to 8–12 SLA clients through referrals. Introduce the Managed Hosting tier for clients who want a branded dashboard URL. Standardise your onboarding checklist and support runbook so each new client takes less of your time than the last.</p>
+      </div>
+      <div class="road-step">
+        <div class="road-num">4</div>
+        <h4>Year 2+ · Scale and specialise</h4>
+        <p>Pick a vertical: holiday villas (Bayrol + AuxAir + Somfy), commercial energy (Victron + SolarEdge + Waveshare), or residential luxury (KNX + Denon + HomeKit). Specialisation raises your hourly rate and makes referrals targeted. Train a junior to handle tier-1 tickets while you sell and architect.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3-year projection + integration depth -->
+  <div class="grid-2">
+    <div class="roi-section">
+      <div class="slabel">3-year revenue projection — solo operator</div>
+      <div class="roi-lines">
+        <div style="display:flex;gap:8px;margin-bottom:2px">
+          <div style="flex:1;text-align:center;font-size:6.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">Year 1</div>
+          <div style="flex:1;text-align:center;font-size:6.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">Year 2</div>
+          <div style="flex:1;text-align:center;font-size:6.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">Year 3</div>
+        </div>
+        <div class="roi-line">
+          <span class="rl-label">Active SLA/Managed clients</span>
+          <span style="display:flex;gap:14px">
+            <span class="rl-val" style="color:var(--muted)">5</span>
+            <span class="rl-val" style="color:var(--blue)">14</span>
+            <span class="rl-val rl-g">28</span>
+          </span>
+        </div>
+        <div class="roi-line">
+          <span class="rl-label">Recurring revenue (SLA + Managed)</span>
+          <span style="display:flex;gap:14px">
+            <span class="rl-val" style="color:var(--muted)">€2 400</span>
+            <span class="rl-val" style="color:var(--blue)">€8 200</span>
+            <span class="rl-val rl-g">€18 000</span>
+          </span>
+        </div>
+        <div class="roi-line">
+          <span class="rl-label">Project / setup revenue</span>
+          <span style="display:flex;gap:14px">
+            <span class="rl-val" style="color:var(--muted)">€5 500</span>
+            <span class="rl-val" style="color:var(--blue)">€7 000</span>
+            <span class="rl-val rl-g">€9 000</span>
+          </span>
+        </div>
+        <div class="roi-line">
+          <span class="rl-label">Professional services / dev</span>
+          <span style="display:flex;gap:14px">
+            <span class="rl-val" style="color:var(--muted)">€1 200</span>
+            <span class="rl-val" style="color:var(--blue)">€2 400</span>
+            <span class="rl-val rl-g">€4 000</span>
+          </span>
+        </div>
+        <div class="roi-line">
+          <span class="rl-label">Costs (server, tools, VPN)</span>
+          <span style="display:flex;gap:14px">
+            <span class="rl-val rl-r">−€400</span>
+            <span class="rl-val rl-r">−€700</span>
+            <span class="rl-val rl-r">−€1 200</span>
+          </span>
+        </div>
+        <div class="roi-total">
+          <span class="rl-label">Net revenue</span>
+          <span style="display:flex;gap:18px">
+            <span class="rl-val" style="color:var(--muted)">€8 700</span>
+            <span class="rl-val" style="color:var(--blue)">€16 900</span>
+            <span class="rl-val rl-g">€29 800</span>
+          </span>
+        </div>
+      </div>
+      <div style="margin-top:7px;font-size:7pt;color:var(--dim)">Conservative estimates. Solo operator, part-time year 1. By year 3, recurring covers &gt;60% of revenue — the business runs without new sales.</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:7px;">
+      <div class="slabel">30+ integrations = 30+ support reasons</div>
+      <div style="background:var(--surf);border:1px solid var(--border);border-radius:9px;padding:9px 12px;">
+        <div style="font-size:7.2pt;color:var(--muted);line-height:1.55;margin-bottom:7px">Each integration is a reason a client can't simply cancel: if you set up their Bayrol pool, their KNX lights, and their Satel alarm, they need you for all three. Breadth = stickiness.</div>
+        <div class="pill-wrap">
+          <span class="int-pill"><span class="dot"></span>Victron MQTT</span>
+          <span class="int-pill"><span class="dot b"></span>Apple HomeKit</span>
+          <span class="int-pill"><span class="dot d"></span>KNX / Loxone</span>
+          <span class="int-pill"><span class="dot o"></span>Bayrol Pool</span>
+          <span class="int-pill"><span class="dot p"></span>Satel Alarm</span>
+          <span class="int-pill"><span class="dot"></span>UniFi Cameras</span>
+          <span class="int-pill"><span class="dot b"></span>SolarEdge</span>
+          <span class="int-pill"><span class="dot o"></span>AuxAir HVAC</span>
+          <span class="int-pill"><span class="dot d"></span>Somfy Shutters</span>
+          <span class="int-pill"><span class="dot p"></span>Fibaro / Homey</span>
+          <span class="int-pill"><span class="dot"></span>Sonos / Denon</span>
+          <span class="int-pill"><span class="dot b"></span>ESPHome / Shelly</span>
+          <span class="int-pill"><span class="dot o"></span>BoneIO relays</span>
+          <span class="int-pill"><span class="dot d"></span>Suppla cloud</span>
+          <span class="int-pill"><span class="dot p"></span>LG ThinQ</span>
+          <span class="int-pill"><span class="dot"></span>Arduino MQTT</span>
+          <span class="int-pill"><span class="dot b"></span>Waveshare Modbus</span>
+          <span class="int-pill"><span class="dot o"></span>IKEA Dirigera</span>
+        </div>
+      </div>
+      <div style="background:linear-gradient(135deg,rgba(63,185,80,.07),rgba(88,166,255,.05));border:1px solid rgba(63,185,80,.18);border-radius:9px;padding:9px 12px;">
+        <div style="font-size:8pt;font-weight:700;margin-bottom:4px">The key insight</div>
+        <div style="font-size:7.2pt;color:var(--muted);line-height:1.6">Home Assistant has 3 000 integrations and a huge community. That means clients can find answers on Reddit without calling you. LSH has 30 carefully built integrations — <strong style="color:var(--text)">you</strong> are the community. That's not a weakness: it's your moat. Clients pay for access to the person who built and maintains their specific setup.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div style="background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:20px;">
+    <div style="flex:1">
+      <div style="font-size:6.8pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--green);margin-bottom:4px">Start this week</div>
+      <div style="font-size:9.5pt;font-weight:800;margin-bottom:5px">Your first SLA client is probably already in your phone.</div>
+      <div style="font-size:7.2pt;color:var(--muted);line-height:1.6">Think of someone who has a Victron system, a Shelly or two, and who asked you "is there an app for this?" — that's your first prospect. Book a 30-minute demo at their house, show them the dashboard on your laptop, and close a €600 setup + €250/year SLA on the spot. You'll have recouped your first year's server costs before you leave their driveway.</div>
+    </div>
+    <div style="flex-shrink:0;display:flex;flex-direction:column;gap:6px;min-width:130px">
+      <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 14px;text-align:center">
+        <div style="font-size:6.5pt;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.07em;font-weight:700">Deploy in</div>
+        <div style="font-size:12pt;font-weight:900;color:var(--green)">20 min</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:7pt;color:var(--blue);margin-top:3px">npm install &amp;&amp; npm start</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:7px 14px;text-align:center">
+        <div style="font-size:6.5pt;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.07em;font-weight:700">Requires</div>
+        <div style="font-size:7.5pt;color:var(--text);font-weight:600">Node.js 18+ · 100 MB RAM</div>
+        <div style="font-size:6.5pt;color:var(--dim);margin-top:1px">Raspberry Pi 2 or any VPS</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>
+      <div class="footer-brand">LSH</div>
+      <p>Local Smart Home · Support-Driven Business Guide</p>
+    </div>
+    <div class="footer-right"><p>Page 3 of 3 — All figures indicative, EU market</p></div>
+  </div>
+
+</div>
+</body>
+</html>

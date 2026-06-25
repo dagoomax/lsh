@@ -1937,6 +1937,110 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // ── Arduino MQTT ──────────────────────────────────────────────────────
+
+  router.post('/settings/arduino', (req, res) => {
+    const current = readConfigFile();
+    const { host, port, username, password, devices } = req.body;
+    let parsed = [];
+    if (Array.isArray(devices)) {
+      parsed = devices;
+    } else if (typeof devices === 'string') {
+      try { parsed = JSON.parse(devices); } catch { return res.status(400).json({ success: false, error: 'Invalid devices JSON' }); }
+    }
+    const sanitized = parsed
+      .filter(d => d.name && (d.stateTopic || (d.sensors || []).some(s => s.stateTopic)))
+      .map(d => ({
+        name:         (d.name         || '').trim(),
+        key:          (d.key          || '').trim() || undefined,
+        stateTopic:   (d.stateTopic   || '').trim() || undefined,
+        commandTopic: (d.commandTopic || '').trim() || undefined,
+        sensors:      (d.sensors || []).map(s => ({
+          path:         (s.path         || '').trim(),
+          label:        (s.label        || '').trim() || undefined,
+          unit:         (s.unit         || '').trim() || undefined,
+          type:         (s.type         || '').trim() || undefined,
+          stateTopic:   (s.stateTopic   || '').trim() || undefined,
+          commandTopic: (s.commandTopic || '').trim() || undefined,
+          payloadOn:    (s.payloadOn    || '').trim() || undefined,
+          payloadOff:   (s.payloadOff   || '').trim() || undefined,
+          min:          s.min != null ? Number(s.min) : undefined,
+          max:          s.max != null ? Number(s.max) : undefined,
+          jsonKey:      (s.jsonKey      || '').trim() || undefined,
+        })).filter(s => s.path),
+      }));
+    try {
+      writeConfigFile({
+        ...current,
+        arduino: {
+          host:     (host || '').trim(),
+          port:     parseInt(port) || 1883,
+          username: (username || '').trim(),
+          password: (password && !password.includes('•')) ? password : (current.arduino?.password || ''),
+          devices:  sanitized,
+        },
+      });
+      res.json({ success: true, message: `Arduino saved (${sanitized.length} device(s)). Restart to apply.` });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Suppla ────────────────────────────────────────────────────────────
+
+  router.post('/settings/test-suppla', async (req, res) => {
+    const https = require('https');
+    const http  = require('http');
+    const { token, server = 'https://cloud.supla.org' } = req.body;
+    if (!token) return res.status(400).json({ success: false, error: 'token required' });
+    try {
+      const parsed  = new URL(server);
+      const mod     = parsed.protocol === 'https:' ? https : http;
+      const port    = parsed.port ? parseInt(parsed.port) : (parsed.protocol === 'https:' ? 443 : 80);
+      const payload = await new Promise((resolve, reject) => {
+        const rq = mod.request({
+          hostname: parsed.hostname, port,
+          path: '/api/v2.4.0/server-info',
+          method: 'GET', timeout: 8000,
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        }, resp => {
+          const c = [];
+          resp.on('data', d => c.push(d));
+          resp.on('end', () => {
+            if (resp.statusCode === 401) return reject(new Error('Invalid token — check your personal access token'));
+            if (resp.statusCode < 200 || resp.statusCode >= 300) return reject(new Error(`HTTP ${resp.statusCode}`));
+            try { resolve(JSON.parse(Buffer.concat(c).toString())); }
+            catch { reject(new Error('Non-JSON response')); }
+          });
+        });
+        rq.on('error', reject);
+        rq.on('timeout', () => { rq.destroy(); reject(new Error('Connection timed out')); });
+        rq.end();
+      });
+      res.json({ success: true, message: `Connected — server ${payload.serverAddress || server}` });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/suppla', (req, res) => {
+    const current = readConfigFile();
+    const { token, server, pollInterval } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        suppla: {
+          token:        (token  || current.suppla?.token  || '').trim(),
+          server:       (server || current.suppla?.server || 'https://cloud.supla.org').trim(),
+          pollInterval: parseInt(pollInterval) || 30,
+        },
+      });
+      res.json({ success: true, message: 'Suppla saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // ── KNX ───────────────────────────────────────────────────────────────
 
   router.post('/settings/test-knx', (req, res) => {

@@ -313,6 +313,24 @@ async function main() {
     }
   }
 
+  // Start Suppla client if configured
+  if (config.suppla?.token) {
+    const SuplaClient = tryRequire('./src/suppla-client');
+    if (SuplaClient) {
+      const suppla = new SuplaClient(config, store, sensorRegistry);
+      suppla.start().catch((err) => console.error(`[Suppla] Start failed: ${err.message}`));
+    }
+  }
+
+  // Start Arduino MQTT client if configured
+  if (config.arduino?.devices?.length) {
+    const ArduinoClient = tryRequire('./src/arduino-client');
+    if (ArduinoClient) {
+      const arduino = new ArduinoClient(config, store, sensorRegistry);
+      arduino.start();
+    }
+  }
+
   // Start KNX client if configured
   if (config.knx?.host) {
     const KNXClient = tryRequire('./src/knx-client', 'npm install knx');

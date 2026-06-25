@@ -351,6 +351,31 @@
       </div>
     </section>
 
+    <!-- Suppla -->
+    <section class="card settings-card" data-category="smarthome" data-title="Suppla smart home relay switches thermometer cloud Poland">
+      <h2>Suppla <span class="badge">Optional</span></h2>
+      <p class="section-desc">Connects to the Suppla cloud (cloud.supla.org) or a self-hosted Suppla server. Discovers all channels (switches, dimmers, thermometers, humidity sensors, shutters, gates) and groups them by device. Authentication uses a personal access token from the Suppla Cloud → Security → Personal Access Tokens page.</p>
+
+      <div class="form-row">
+        <label for="suppla-token">Personal Access Token</label>
+        <input type="password" id="suppla-token" placeholder="••••••••" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="suppla-server">Server URL <span class="hint">(default: https://cloud.supla.org)</span></label>
+        <input type="text" id="suppla-server" placeholder="https://cloud.supla.org">
+      </div>
+      <div class="form-row">
+        <label for="suppla-poll">Poll Interval <span class="hint">(seconds, min 10)</span></label>
+        <input type="number" id="suppla-poll" placeholder="30" min="10" max="3600" style="max-width:120px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-suppla">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-suppla">Save</button>
+        <span class="test-result" id="suppla-result"></span>
+      </div>
+    </section>
+
     <!-- Bayrol Pool Manager -->
     <section class="card settings-card" data-category="smarthome" data-title="Bayrol Pool Manager Connect pool chemistry pH ORP chlorine">
       <h2>Bayrol Pool Manager Connect <span class="badge">Optional</span></h2>
@@ -754,6 +779,55 @@
         <button class="btn btn-secondary" id="btn-test-smartbob">Test Broker</button>
         <button class="btn btn-primary"   id="btn-save-smartbob">Save</button>
         <span class="test-result" id="smartbob-test-result"></span>
+      </div>
+    </section>
+
+    <!-- Arduino MQTT -->
+    <section class="card settings-card" data-category="controllers" data-title="Arduino MQTT sensors switches microcontroller ESP32 ESP8266">
+      <h2>Arduino / Generic MQTT <span class="badge">Optional</span></h2>
+      <p class="section-desc">Subscribe to any MQTT topic and map JSON fields to sensor readings or controllable switches. Works with Arduino, ESP32, Tasmota custom firmware, or any device publishing JSON over MQTT.</p>
+
+      <div class="form-group">
+        <label for="arduino-host">MQTT Broker Host <span class="hint">(leave blank to reuse the main MQTT broker)</span></label>
+        <input type="text" id="arduino-host" placeholder="192.168.1.100 (defaults to Cerbo GX broker)">
+      </div>
+      <div class="form-group">
+        <label for="arduino-port">Port <span class="hint">(default 1883)</span></label>
+        <input type="number" id="arduino-port" placeholder="1883" min="1" max="65535" style="width:120px">
+      </div>
+      <div class="form-group">
+        <label for="arduino-user">Username <span class="hint">(optional)</span></label>
+        <input type="text" id="arduino-user" placeholder="(none)" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="arduino-pass">Password <span class="hint">(optional)</span></label>
+        <input type="password" id="arduino-pass" placeholder="••••••••" autocomplete="off">
+      </div>
+
+      <div class="form-group">
+        <label for="arduino-devices">Devices <span class="hint">(JSON array — see example below)</span></label>
+        <textarea id="arduino-devices" rows="14" style="font-family:monospace;font-size:12px;resize:vertical" placeholder='[
+  {
+    "name": "Sensor Board",
+    "stateTopic": "arduino/board/state",
+    "commandTopic": "arduino/board/cmd",
+    "sensors": [
+      { "path": "temperature", "label": "Temperature", "unit": "°C" },
+      { "path": "humidity",    "label": "Humidity",    "unit": "%" },
+      { "path": "relay0",      "label": "Relay 1",     "type": "toggle",
+        "payloadOn": "1", "payloadOff": "0" }
+    ]
+  }
+]'></textarea>
+        <p class="hint" style="margin-top:6px">
+          Sensor <code>type</code>: omit for read-only · <code>"toggle"</code> for on/off switch · <code>"range"</code> for slider (add <code>"min"</code>/<code>"max"</code>).<br>
+          Override per-sensor with <code>"stateTopic"</code> / <code>"commandTopic"</code>. Use <code>"jsonKey"</code> if the JSON key differs from <code>"path"</code>.
+        </p>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-arduino">Save</button>
+        <span class="test-result" id="arduino-result"></span>
       </div>
     </section>
 

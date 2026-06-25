@@ -8,6 +8,20 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-06-25 (3)
+
+### Added
+- **Suppla** (`src/suppla-client.js`) — REST API integration for the Suppla smart-home platform (cloud.supla.org or self-hosted). Discovers all channels via `GET /api/v2.4.0/channels` and groups them by physical ioDevice into one dashboard card per device. Supported channel types: `LIGHTSWITCH`/`POWERSWITCH` → toggle, `DIMMER`/`RGBLIGHTING` → brightness slider, `CONTROLLINGTHEROLLERSHUTTER` → position slider, `CONTROLLINGTHEGARAGEDOOR`/`GATEWAY` → open/close toggle, `THERMOMETER` → °C readout, `HUMIDITYANDTEMPERATURE` → combined temp+humidity pair, `OPENCLOSESENSOR` and binary types → read-only indicator, `ELECTRICITYMETER` → power + energy. Commands sent via PATCH `/channels/{id}` with appropriate action (`TURN_ON`, `SET_RGBW_PARAMETERS`, `OPEN`, `REVEAL_PARTIALLY`, etc.). Polled every 30 s (configurable). `SuplaIcon` added to React icon set. Test-connection endpoint probes `/api/v2.4.0/server-info`.
+
+---
+
+## 2026-06-25 (2)
+
+### Added
+- **Arduino / Generic MQTT** (`src/arduino-client.js`) — subscribe to any MQTT topic and map JSON fields to dashboard sensor readings or controllable outputs. Supports read-only sensors, toggle switches (with configurable `payloadOn`/`payloadOff`), and range sliders. Works with Arduino (PubSubClient), ESP32/ESP8266, Tasmota custom firmware, or any device publishing JSON over MQTT. Device-level JSON topic or per-sensor individual topics both supported. Commands published as raw payload (per-sensor topic) or JSON object (device-level topic). Settings card with broker connection fields and a JSON textarea for the device+sensor list. `ArduinoIcon` added to React icon set. Hardware docs updated with Arduino/ESP32 as the recommended sensor node platform.
+
+---
+
 ## 2026-06-25
 
 ### Added

@@ -103,7 +103,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Sonos speakers, and Denon / Marantz AV receivers into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Sonos speakers, Denon / Marantz AV receivers, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 ---
 
@@ -218,6 +218,8 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 | `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
 | `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
 | `denon` | No | Denon / Marantz AV receivers — power, volume, mute, input via Telnet (port 23) |
+| `arduino` | No | Arduino / ESP32 / generic MQTT — subscribe to JSON topics and map fields to sensor readings or controllable outputs |
+| `suppla` | No | Suppla smart-home — cloud or self-hosted REST API; discovers switches, dimmers, thermometers, shutters, gates |
 | `loxoneOut` | No | Loxone outbound push — forwards store values to Loxone Virtual Inputs in real time |
 | `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
@@ -635,6 +637,114 @@ Connects to a **Denon** or **Marantz** AV receiver over the Telnet control proto
 **Responses parsed:** `PWON`/`PWSTANDBY` → power; `MV##`/`MV##.5` → volume (half-dB steps handled); `MUON`/`MUOFF` → mute; `SI<INPUT>` → current input and selection-pill highlight.
 
 **Dashboard tile** (Media category): power toggle, input selection pills (active highlighted), mute button + volume slider. Status shows current input · Muted / Standby.
+
+---
+
+### `arduino`
+
+```json
+"arduino": {
+  "host": "192.168.1.100",
+  "port": 1883,
+  "username": "",
+  "password": "",
+  "devices": [
+    {
+      "name": "Sensor Board",
+      "key": "sensor_board",
+      "stateTopic": "arduino/board/state",
+      "commandTopic": "arduino/board/cmd",
+      "sensors": [
+        { "path": "temperature", "label": "Temperature", "unit": "°C" },
+        { "path": "humidity",    "label": "Humidity",    "unit": "%" },
+        { "path": "relay0",      "label": "Relay 1",     "type": "toggle",
+          "payloadOn": "1", "payloadOff": "0" }
+      ]
+    }
+  ]
+}
+```
+
+Subscribes to MQTT topics and maps incoming JSON payloads to dashboard sensor readings. Works with Arduino (PubSubClient library), ESP32/ESP8266, Tasmota custom firmware, or any device publishing JSON over MQTT.
+
+**`host`/`port`** — MQTT broker. Defaults to the main `mqtt.host`/`mqtt.port` if omitted.
+
+**Device fields:**
+
+| Field | Description |
+|---|---|
+| `name` | Display name on the dashboard |
+| `key` | Optional unique store key (auto-derived from name if omitted) |
+| `stateTopic` | MQTT topic that receives JSON payloads with all sensor values |
+| `commandTopic` | MQTT topic for device-level commands (JSON `{ sensorPath: value }`) |
+| `sensors` | Array of sensor descriptors (see below) |
+
+**Sensor descriptor fields:**
+
+| Field | Default | Description |
+|---|---|---|
+| `path` | — | JSON key in the state payload (also used as the store key) |
+| `label` | same as `path` | Display label |
+| `unit` | `""` | Unit suffix (e.g. `°C`, `%`, `V`) |
+| `type` | read-only | `"toggle"` for on/off switch, `"range"` for slider, omit for read-only |
+| `payloadOn` / `payloadOff` | `"1"` / `"0"` | Published payload for toggle commands |
+| `min` / `max` | `0` / `100` | Range sensor bounds |
+| `stateTopic` | device `stateTopic` | Per-sensor topic (receives a single value, not JSON) |
+| `commandTopic` | device `commandTopic` | Per-sensor command topic (publishes raw payload) |
+| `jsonKey` | same as `path` | Override the JSON key when it differs from `path` |
+
+**Payload coercion:** `1`/`true`/`on` → `1`, `0`/`false`/`off` → `0`, numeric strings → float, everything else kept as string.
+
+**Arduino example sketch** (PubSubClient):
+```cpp
+void loop() {
+  StaticJsonDocument<128> doc;
+  doc["temperature"] = dht.readTemperature();
+  doc["humidity"]    = dht.readHumidity();
+  doc["relay0"]      = digitalRead(RELAY_PIN);
+  char buf[128];
+  serializeJson(doc, buf);
+  client.publish("arduino/board/state", buf);
+  delay(5000);
+}
+```
+
+---
+
+### `suppla`
+
+```json
+"suppla": {
+  "token": "your-personal-access-token",
+  "server": "https://cloud.supla.org",
+  "pollInterval": 30
+}
+```
+
+Connects to the **Suppla** cloud or a self-hosted Suppla server. All channels are discovered automatically.
+
+| Field | Default | Description |
+|---|---|---|
+| `token` | — | Personal access token — create at Suppla Cloud → Security → Personal Access Tokens |
+| `server` | `https://cloud.supla.org` | API base URL. For self-hosted: `https://your-server.com` or `http://...` |
+| `pollInterval` | `30` | How often to refresh all channel states (seconds) |
+
+**Channel types discovered:**
+
+| Function | Dashboard control |
+|---|---|
+| `LIGHTSWITCH`, `POWERSWITCH`, `STAIRCASETIMER` | Toggle switch |
+| `DIMMER`, `RGBLIGHTING`, `DIMMERANDRGBLIGHTING` | Brightness slider (0–100 %) |
+| `CONTROLLINGTHEROLLERSHUTTER`, `CONTROLLINGTHEROOFWINDOW` | Position slider (0 = open, 100 = closed) |
+| `CONTROLLINGTHEGARAGEDOOR`, `CONTROLLINGTHEGATEWAY` | Toggle (open/close) |
+| `CONTROLLINGTHEDOORLOCK` | Toggle (open/lock) |
+| `THERMOMETER` | Temperature readout (°C) |
+| `HUMIDITY` | Humidity readout (%) |
+| `HUMIDITYANDTEMPERATURE` | Temperature + humidity pair |
+| `OPENCLOSESENSOR`, binary types | Read-only indicator |
+| `ELECTRICITYMETER` | Power (W) + energy (kWh) |
+
+Channels are grouped by **physical device** (ioDevice) into a single dashboard card. The card label uses the device comment field if set, otherwise the device name.
 
 ---
 
@@ -1296,6 +1406,60 @@ The receiver pushes unsolicited updates whenever state changes (e.g. when the us
 
 ---
 
+### `src/arduino-client.js`
+
+Generic **MQTT subscriber** for Arduino, ESP32, ESP8266, and any microcontroller publishing JSON over MQTT. No external npm packages (uses the `mqtt` package already required by the project).
+
+**Subscription strategy:**
+- **Device-level topic** (`stateTopic` on the device): receives a single JSON object; each key matching a sensor's `path` (or `jsonKey`) updates that sensor's value in the DataStore.
+- **Per-sensor topic** (`stateTopic` on a sensor): receives a raw single-value payload; the value is coerced and stored directly.
+
+**Payload coercion:** `"1"` / `"true"` / `"on"` → `1` (numeric), `"0"` / `"false"` / `"off"` → `0`, numeric strings → float, everything else kept as string.
+
+**Command dispatch:**
+- Toggle sensors with a per-sensor `commandTopic` → publishes the raw `payloadOn` / `payloadOff` string.
+- Toggle sensors using the device `commandTopic` → publishes `{ sensorPath: payloadOn/Off }` as JSON.
+- Range sensors → publishes the numeric value as a string.
+
+**Sensor types:**
+| `type` | Dashboard control | Command payload |
+|---|---|---|
+| _(omitted)_ | Read-only value display | — |
+| `"toggle"` | On/Off toggle switch | `payloadOn` or `payloadOff` |
+| `"range"` | Slider (`min`–`max`) | Numeric string |
+
+**Config:** See [`arduino`](#arduino) config section above.
+
+---
+
+### `src/suppla-client.js`
+
+Integrates **Suppla** smart-home devices via the **Suppla Cloud REST API** (`api/v2.4.0`) or a self-hosted Suppla server. No external npm packages (uses Node.js built-in `https`/`http`).
+
+**Discovery flow:**
+1. `GET /channels?include[]=state,iodevice,connected` — fetches all channels with their current state and parent ioDevice info.
+2. Channels are grouped by `iodevice.id` → one dashboard card per physical device.
+3. Each channel's `functionName` determines the sensor type: read-only, toggle, range slider, or compound (e.g. temperature + humidity from one channel).
+4. Initial state is applied immediately; polling refreshes state every `pollInterval` seconds.
+
+**Channel ↔ sensor mapping:**
+
+| Suppla function | `path` key | Notes |
+|---|---|---|
+| `LIGHTSWITCH` / `POWERSWITCH` | `ch_<id>` | Toggle; 0/1 |
+| `DIMMER` / `RGBLIGHTING` | `ch_<id>` | Range 0–100 |
+| `CONTROLLINGTHEROLLERSHUTTER` | `ch_<id>` | Range 0–100; 0=open |
+| `CONTROLLINGTHEGARAGEDOOR` / `GATEWAY` | `ch_<id>` | Toggle; open/close |
+| `THERMOMETER` | `ch_<id>` | Float °C |
+| `HUMIDITYANDTEMPERATURE` | `ch_<id>_temp` + `ch_<id>_hum` | Two sensors per channel |
+| `ELECTRICITYMETER` | `ch_<id>_power` + `ch_<id>_energy` | W + kWh from phase array |
+
+**Commands:** PATCH `/channels/{id}` with `{ action }`. Switch → `TURN_ON`/`TURN_OFF`; dimmer → `SET_RGBW_PARAMETERS` with `brightness`; gate → `OPEN`/`CLOSE`; shutter → `REVEAL`/`SHUT`/`REVEAL_PARTIALLY`.
+
+**Config:** See [`suppla`](#suppla) config section above.
+
+---
+
 ### `src/knx-client.js`
 
 Integrates **KNX** bus devices via a **KNXnet/IP gateway or IP router** over the local network.
@@ -1746,6 +1910,8 @@ The `:key` uses `/` separators — use the exact key returned by `GET /api/devic
 | AuxAir | `auxair/<endpointId>` | `auxair/12345` |
 | Sonos | `sonos/<ip_with_underscores>` | `sonos/192_168_1_50` |
 | Denon | `denon/<ip_with_underscores>` | `denon/192_168_1_100` |
+| Arduino | `arduino/<name_or_key>` | `arduino/sensor_board` |
+| Suppla | `suppla/<ioDeviceId>` | `suppla/12345` |
 
 **Example — list all devices:**
 
@@ -2071,9 +2237,12 @@ Log files are written to `logs/` (gitignored). Each category has its own file pl
 | **RAM** | 128 MB | 256 MB+ |
 | **CPU** | ARMv7 / single-core 700 MHz | Any modern single-board computer |
 | **Disk** | 100 MB free | 500 MB (for logs + persisted state) |
-| **Examples** | Raspberry Pi 2, Orange Pi Zero 2, any VPS | Raspberry Pi 3/4, NUC, NAS |
+| **Best pick — server** | Raspberry Pi 2 (512 MB) | Raspberry Pi 3/4, Orange Pi, any VPS |
+| **Best pick — sensor nodes** | Arduino Uno/Nano + Ethernet shield | ESP32 / ESP8266 (Wi-Fi built-in, MQTT library) |
 
 LSH runs comfortably on hardware that cannot run Home Assistant. The entire server — 25+ integrations active — typically uses **80–130 MB RAM** as a single Node.js process with no containers.
+
+**Arduino / ESP32 as sensor nodes:** Flash your board with any MQTT library (PubSubClient for Arduino, built-in for ESP32), publish a JSON payload to a topic (e.g. `arduino/board/state`), and configure it in `config.json` under `arduino.devices`. Toggle relays or PWM outputs by subscribing to a command topic — no extra software needed on the board side.
 
 ### Software
 
