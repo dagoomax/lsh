@@ -1366,6 +1366,79 @@ Certificates are auto-renewed when fewer than 30 days remain. Requires `npm inst
 
 ---
 
+## Unified API
+
+Your home runs on a dozen different protocols. Victron speaks MQTT. Loxone has its own WebSocket format. Fibaro uses REST. SmartThings is cloud-only. Bayrol is MQTT-over-WebSocket behind a proprietary auth flow. Somfy Developer Mode is HTTPS with Bearer tokens and event polling. AuxAir uses AES-128-CBC encrypted cloud requests. KNX speaks UDP datagrams. None of them talk to each other.
+
+LSH ingests all of them, normalises the data into a single live store, and exposes it through one consistent API. You query one endpoint and get everything. You send one command format to every device.
+
+### Read — any device, any integration
+
+```bash
+GET /api/devices
+Authorization: Bearer <token>
+```
+
+Returns every registered device — Victron inverter, SmartThings bulbs, Fibaro rooms, Bayrol pool chemistry, AuxAir climate unit, Somfy shutters, KNX group addresses — in one response, with live sensor values included. No per-integration SDK, no per-vendor auth flow.
+
+### Write — one command format
+
+```bash
+POST /api/device/:key/command
+Content-Type: application/json
+
+{ "sensor": "temp", "value": 22 }
+```
+
+The same endpoint and payload format works for:
+
+| Action | Device key | Sensor | Value |
+|---|---|---|---|
+| Turn light on | `smartthings/abc-123` | `switch` | `true` |
+| Set AC temperature | `auxair/12345` | `temp` | `22` |
+| Open roller shutter | `somfy/io__...` | `switch` | `true` |
+| Set shutter position | `somfy/io__...` | `level` | `50` |
+| Dim a Fibaro light | `fibaro/Living Room/42` | `level` | `75` |
+| Toggle Victron relay | `relay/0` | — | `{"on": true}` |
+| Send KNX telegram | `knx/192.168.1.100` | `1/0/1` | `true` |
+| Trigger BroadLink IR | `broadlink/...` | `tv-power` | `true` |
+
+LSH routes each command to the correct protocol, handles auth, retries, and re-encoding, and returns `{ "success": true }`.
+
+### Real-time push — one stream
+
+```js
+const socket = io('https://your-lsh-host', {
+  auth: { token: 'Bearer <token>' }
+})
+socket.on('state', ({ key, value }) => {
+  // fires on every live update — all integrations, one stream
+})
+```
+
+One Socket.IO connection. Bayrol pH changes, Victron SOC ticks, SmartThings motion events, Somfy shutter movements — all arrive on the same `state` event. No polling, no per-vendor WebSocket.
+
+### Why it matters
+
+| Without LSH | With LSH |
+|---|---|
+| 15+ different APIs, auth flows, and protocols | 1 REST API + 1 WebSocket |
+| Re-implement polling for each system | Subscribe once, get everything |
+| Each client needs per-vendor credentials | One Bearer token |
+| Home Assistant / Node-RED need per-vendor adapters | `POST /api/device/:key/command` |
+| Cloud dependency for local devices | Local-first, cloud fallback |
+| Devices unreachable when internet is down | MQTT + VRM automatic failover |
+
+### Token
+
+```bash
+Authorization: Bearer <token>
+```
+
+One token, created in **Settings → API Tokens**. Works for Home Assistant REST integration, Node-RED HTTP nodes, shell scripts, and any HTTP client. Tokens do not expire unless revoked.
+
+---
+
 ## REST API
 
 LSH exposes a JSON REST API at `/api/*`. This section is a developer reference — it covers authentication, the response envelope, every endpoint, example `curl` calls, and the real-time Socket.IO event stream.
@@ -1513,6 +1586,9 @@ The `:key` uses `/` separators — use the exact key returned by `GET /api/devic
 | Waveshare | `waveshare/<host>` | `waveshare/192.168.1.50` |
 | ESPHome | `esphome/<host>` | `esphome/192.168.1.80` |
 | KNX | `knx/<host>` | `knx/192.168.1.100` |
+| Somfy | `somfy/<deviceURL>` | `somfy/io__1234_5678` |
+| Bayrol | `bayrol/<cid>` | `bayrol/19048` |
+| AuxAir | `auxair/<endpointId>` | `auxair/12345` |
 
 **Example — list all devices:**
 
