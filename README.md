@@ -1476,7 +1476,7 @@ Certificates are auto-renewed when fewer than 30 days remain. Requires `npm inst
 
 ## Unified API
 
-Your home runs on a dozen different protocols. Victron speaks MQTT. Loxone has its own WebSocket format. Fibaro uses REST. SmartThings is cloud-only. Bayrol is MQTT-over-WebSocket behind a proprietary auth flow. Somfy Developer Mode is HTTPS with Bearer tokens and event polling. AuxAir uses AES-128-CBC encrypted cloud requests. KNX speaks UDP datagrams. None of them talk to each other.
+Your home runs on a dozen different protocols. Victron speaks MQTT. Loxone has its own WebSocket format. Fibaro uses REST. SmartThings is cloud-only. Bayrol is MQTT-over-WebSocket behind a proprietary auth flow. Somfy Developer Mode is HTTPS with Bearer tokens and event polling. AuxAir uses AES-128-CBC encrypted cloud requests. KNX speaks UDP datagrams. Sonos uses UPnP/SOAP over HTTP. Denon uses a plain-text Telnet protocol. None of them talk to each other.
 
 LSH ingests all of them, normalises the data into a single live store, and exposes it through one consistent API. You query one endpoint and get everything. You send one command format to every device.
 
@@ -1487,7 +1487,7 @@ GET /api/devices
 Authorization: Bearer <token>
 ```
 
-Returns every registered device — Victron inverter, SmartThings bulbs, Fibaro rooms, Bayrol pool chemistry, AuxAir climate unit, Somfy shutters, KNX group addresses — in one response, with live sensor values included. No per-integration SDK, no per-vendor auth flow.
+Returns every registered device — Victron inverter, SmartThings bulbs, Fibaro rooms, Bayrol pool chemistry, AuxAir climate unit, Somfy shutters, Sonos speakers, Denon AV receiver, KNX group addresses — in one response, with live sensor values included. No per-integration SDK, no per-vendor auth flow.
 
 ### Write — one command format
 
@@ -1510,6 +1510,10 @@ The same endpoint and payload format works for:
 | Toggle Victron relay | `relay/0` | — | `{"on": true}` |
 | Send KNX telegram | `knx/192.168.1.100` | `1/0/1` | `true` |
 | Trigger BroadLink IR | `broadlink/...` | `tv-power` | `true` |
+| Sonos play/pause | `sonos/192_168_1_50` | `playing` | `1` / `0` |
+| Sonos set volume | `sonos/192_168_1_50` | `volume` | `65` |
+| Denon power on | `denon/192_168_1_100` | `power` | `1` |
+| Denon set input | `denon/192_168_1_100` | `input_idx` | `2` |
 
 LSH routes each command to the correct protocol, handles auth, retries, and re-encoding, and returns `{ "success": true }`.
 
@@ -1697,6 +1701,8 @@ The `:key` uses `/` separators — use the exact key returned by `GET /api/devic
 | Somfy | `somfy/<deviceURL>` | `somfy/io__1234_5678` |
 | Bayrol | `bayrol/<cid>` | `bayrol/19048` |
 | AuxAir | `auxair/<endpointId>` | `auxair/12345` |
+| Sonos | `sonos/<ip_with_underscores>` | `sonos/192_168_1_50` |
+| Denon | `denon/<ip_with_underscores>` | `denon/192_168_1_100` |
 
 **Example — list all devices:**
 
@@ -1768,6 +1774,44 @@ curl -X POST 'http://localhost:3001/api/device/fibaro%2FLiving%20Room%2F42/comma
   -H 'Authorization: Bearer lsh_xxxx...' \
   -H 'Content-Type: application/json' \
   -d '{"sensor": "level", "value": 75}'
+```
+
+**Example — control Sonos (play, volume, next track):**
+
+```bash
+# Pause playback
+curl -X POST 'http://localhost:3001/api/device/sonos%2F192_168_1_50/command' \
+  -H 'Authorization: Bearer lsh_xxxx...' -H 'Content-Type: application/json' \
+  -d '{"sensor": "playing", "value": 0}'
+
+# Set volume to 60
+curl -X POST 'http://localhost:3001/api/device/sonos%2F192_168_1_50/command' \
+  -H 'Authorization: Bearer lsh_xxxx...' -H 'Content-Type: application/json' \
+  -d '{"sensor": "volume", "value": 60}'
+
+# Skip to next track
+curl -X POST 'http://localhost:3001/api/device/sonos%2F192_168_1_50/command' \
+  -H 'Authorization: Bearer lsh_xxxx...' -H 'Content-Type: application/json' \
+  -d '{"sensor": "next", "value": true}'
+```
+
+**Example — control Denon AVR (power, input, volume):**
+
+```bash
+# Power on
+curl -X POST 'http://localhost:3001/api/device/denon%2F192_168_1_100/command' \
+  -H 'Authorization: Bearer lsh_xxxx...' -H 'Content-Type: application/json' \
+  -d '{"sensor": "power", "value": 1}'
+
+# Switch to Bluetooth (index 3 in your inputs list)
+curl -X POST 'http://localhost:3001/api/device/denon%2F192_168_1_100/command' \
+  -H 'Authorization: Bearer lsh_xxxx...' -H 'Content-Type: application/json' \
+  -d '{"sensor": "input_idx", "value": 3}'
+
+# Set master volume to 55
+curl -X POST 'http://localhost:3001/api/device/denon%2F192_168_1_100/command' \
+  -H 'Authorization: Bearer lsh_xxxx...' -H 'Content-Type: application/json' \
+  -d '{"sensor": "volume", "value": 55}'
 ```
 
 > **Note:** Forward slashes in device keys must be URL-encoded as `%2F`.
