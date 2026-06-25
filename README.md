@@ -61,7 +61,7 @@
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, Bayrol Pool Manager Connect, and AUX Air (AC Freedom) into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Sonos speakers, and Denon / Marantz AV receivers into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 ---
 
@@ -173,6 +173,8 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 | `somfy` | No | Somfy TaHoma local API (roller shutters, awnings, gates) |
 | `bayrol` | No | Bayrol Pool Manager Connect (pH, ORP, temperature, salt via MQTT) |
 | `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
+| `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
+| `denon` | No | Denon / Marantz AV receivers — power, volume, mute, input via Telnet (port 23) |
 | `loxoneOut` | No | Loxone outbound push — forwards store values to Loxone Virtual Inputs in real time |
 | `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
@@ -534,6 +536,62 @@ Connects to **AUX Air** (brand behind the **AC Freedom** app) via the SmartHomeC
 **Dashboard tile:** Shows current room temperature, set temperature, and mode. When on: mode pills (Cool / Heat / Dry / Fan / Auto) and temperature +/− buttons are shown inline. Fan speed displayed as a label.
 
 **`pools`** — optional array of `{ cid, name }` to pin specific pools. Leave empty for auto-discovery.
+
+---
+
+### `sonos`
+
+```json
+"sonos": {
+  "hosts": ["192.168.1.50", "192.168.1.51"],
+  "discover": true,
+  "pollInterval": 5
+}
+```
+
+Connects to **Sonos** speakers on the local network using the **UPnP/SOAP** control protocol over HTTP port 1400. No account or cloud dependency required.
+
+| Field | Default | Description |
+|---|---|---|
+| `hosts` | `[]` | List of speaker IPs. Leave empty to rely on auto-discovery only |
+| `discover` | `true` | Run SSDP multicast discovery on startup to find all Zone Players |
+| `pollInterval` | `5` | State refresh interval in seconds (min 3) |
+
+Auto-discovery sends a `M-SEARCH` UDP multicast to `239.255.255.250:1900` with `ST: urn:schemas-upnp-org:device:ZonePlayer:1` and registers all responding speakers. Manual `hosts` entries are added on top and are preferred for reliable setups with static IPs.
+
+**Per-speaker sensors:** `playing` (play/pause toggle), `prev` / `next` (triggers), `volume` (0–100), `mute` (toggle), `track` (current title), `artist` (current artist).
+
+**Dashboard tile** (Media category): play/pause button, ⏮/⏭ + mute row, volume slider, track title and artist display.
+
+---
+
+### `denon`
+
+```json
+"denon": {
+  "host": "192.168.1.100",
+  "port": 23,
+  "name": "Denon AVR-X2800H",
+  "maxVolume": 80,
+  "inputs": ["CD", "BD", "NET", "BT", "GAME", "SAT/CBL"]
+}
+```
+
+Connects to a **Denon** or **Marantz** AV receiver over the Telnet control protocol (port 23). Reconnects automatically after 15 s on drop.
+
+| Field | Default | Description |
+|---|---|---|
+| `host` | — | Receiver IP address or hostname |
+| `port` | `23` | Telnet control port (23 on all Denon/Marantz models) |
+| `name` | `Denon <host>` | Display name on the dashboard |
+| `maxVolume` | `80` | Maximum volume step. Use `80` for most models, `98` for newer flagship models |
+| `inputs` | `[]` | Denon input codes to show as selection pills. Common values: `CD`, `BD`, `DVD`, `TV`, `SAT/CBL`, `GAME`, `NET`, `BT`, `AUX1`, `AUX2`, `TUNER`, `MPLAY` |
+
+**Commands sent:** `PWON` / `PWSTANDBY`, `MV##` (zero-padded, e.g. `MV50`), `MUON` / `MUOFF`, `SI<INPUT>` (e.g. `SICD`, `SIBT`).
+
+**Responses parsed:** `PWON`/`PWSTANDBY` → power; `MV##`/`MV##.5` → volume (half-dB steps handled); `MUON`/`MUOFF` → mute; `SI<INPUT>` → current input and selection-pill highlight.
+
+**Dashboard tile** (Media category): power toggle, input selection pills (active highlighted), mute button + volume slider. Status shows current input · Muted / Standby.
 
 ---
 
@@ -1142,6 +1200,56 @@ Forwards DataStore values to a **Loxone Miniserver** via HTTP GET to Virtual Inp
 **Endpoint:** `GET http://<host>/dev/sps/io/<virtualInput>/<value>` — standard Loxone Virtual Input HTTP command interface.
 
 **Config:** See [`loxoneOut`](#loxoneout) config section above.
+
+---
+
+### `src/sonos-client.js`
+
+Integrates **Sonos** speakers via the **UPnP/SOAP** control protocol over HTTP port 1400. No external npm packages required — uses only `http`, `dgram`, and `net` from Node.js stdlib.
+
+**Discovery:** On startup, sends a UDP `M-SEARCH` multicast to `239.255.255.250:1900` targeting `urn:schemas-upnp-org:device:ZonePlayer:1`. Responses are validated by checking for `ZonePlayer` or `RINCON` in the response body and the IP is taken from `rinfo.address` (not the LOCATION header, which can be `0.0.0.0` on some networks). Discovered IPs are merged with any manually configured `hosts`.
+
+**Room name:** Fetched from each speaker's `/xml/device_description.xml` (`<roomName>` tag) so the dashboard shows "Living Room", "Kitchen" etc. instead of raw IPs.
+
+**State polling:** Every `pollInterval` seconds (default 5 s), fires four parallel SOAP calls:
+
+| SOAP action | Service | Used for |
+|---|---|---|
+| `GetTransportInfo` | AVTransport | Play / Paused / Stopped state |
+| `GetVolume` | RenderingControl | Master volume (0–100) |
+| `GetMute` | RenderingControl | Mute on/off |
+| `GetPositionInfo` | AVTransport | Current track metadata (DIDL-Lite) |
+
+Track title and artist are extracted from the HTML-entity-encoded DIDL-Lite XML in `TrackMetaData` (`dc:title`, `dc:creator`).
+
+**Commands:** `Play` / `Pause` (AVTransport), `Previous` / `Next` (AVTransport), `SetVolume` / `SetMute` (RenderingControl). State is refreshed 700 ms after each command.
+
+**Config:** See [`sonos`](#sonos) config section above.
+
+---
+
+### `src/denon-client.js`
+
+Integrates **Denon** and **Marantz** AV receivers via the **Telnet ASCII control protocol** (TCP port 23). No external npm packages.
+
+**Connection lifecycle:** `net.createConnection` with 35 s socket timeout used as a keepalive heartbeat (a query is sent on timeout to reset it). Reconnects in 15 s on `close`. On connect, immediately queries `PW?`, `MV?`, `MU?`, `SI?` and starts a 30 s polling interval.
+
+**Response parser:** Lines are CR-terminated (`\r`). Parsed prefixes:
+
+| Prefix | Example | Meaning |
+|---|---|---|
+| `PW` | `PWON`, `PWSTANDBY` | Power state |
+| `MV` | `MV50`, `MV505`, `MVMAX80` | Volume (half-dB steps; `MVMAX` ignored) |
+| `MU` | `MUON`, `MUOFF` | Mute state |
+| `SI` | `SICD`, `SIBT`, `SISAT/CBL` | Active input |
+
+The receiver pushes unsolicited updates whenever state changes (e.g. when the user presses the physical remote), so the dashboard stays in sync without aggressive polling.
+
+**Input selection:** When `inputs` are configured, an `input_idx` range sensor is registered carrying an `inputNames` array in its descriptor. The dashboard reads this array to render input selection pills. Clicking a pill sends `SI<INPUT>` (e.g. `SIBT` for Bluetooth).
+
+**Commands sent:** `PWON` / `PWSTANDBY`, `MV##` (zero-padded), `MUON` / `MUOFF`, `SI<INPUT>`.
+
+**Config:** See [`denon`](#denon) config section above.
 
 ---
 

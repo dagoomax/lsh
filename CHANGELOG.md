@@ -8,6 +8,18 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-06-25
+
+### Added
+- **Sonos** (`src/sonos-client.js`) — UPnP/SOAP local control for Sonos speakers (port 1400). Auto-discovers all Zone Players via SSDP multicast (`M-SEARCH` → `ZonePlayer:1`); manual IPs also supported. Polls play state, volume, mute, and current track/artist from DIDL-Lite every 5 s. Commands: play/pause, previous, next, set volume, mute. Dashboard: Media category tile with play/pause button, ⏮/⏭ + mute row, volume slider, track + artist display. Room name taken from `/xml/device_description.xml`.
+- **Denon AVR** (`src/denon-client.js`) — Telnet ASCII control for Denon and Marantz AV receivers (port 23). Connects on startup, parses unsolicited PW/MV/MU/SI pushes in real time, polls every 30 s. Reconnects in 15 s on disconnect. Supports power on/standby, master volume (including half-dB steps), mute, and input selection. `inputs[]` config drives interactive selection pills on the dashboard tile. Test-connection endpoint probes TCP and reports power state. Dashboard: Media category tile with power toggle, input pills (active highlighted), mute button, volume slider.
+- **Settings → Sonos** card: IP list textarea, auto-discover checkbox, poll interval.
+- **Settings → Denon AVR** card: host, display name, max volume, inputs textarea, Save + Test connection.
+- **Media category** in React dashboard sidebar/pills for Sonos and Denon tiles.
+- **`SpeakerIcon`** and **`DenonIcon`** added to icon set.
+
+---
+
 ## 2026-06-24/25
 
 ### Added
