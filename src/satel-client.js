@@ -4,9 +4,25 @@ const net            = require('net');
 const EventEmitter   = require('events');
 const platformStatus = require('./platform-status');
 
-const POLL_MS         = 10_000;
+const POLL_MS         = 2_000;   // new_data check interval
 const QUERY_TIMEOUT   = 3_000;
 const RECONNECT_DELAY = 30_000;
+
+// Satel Integra protocol command codes (used as indices in new_data response)
+const CMD_ZONES_VIOLATION  = 0x00;
+const CMD_ZONES_TAMPER     = 0x01;
+const CMD_ZONES_ALARM      = 0x02;
+const CMD_PART_ARMED       = 0x0A; // ArmedPartitionsReally
+const CMD_PART_ALARM       = 0x13; // PartitionsAlarm
+const CMD_PART_FIRE_ALARM  = 0x14;
+const CMD_OUTPUTS_STATE    = 0x17;
+const CMD_NEW_DATA         = 0x7F;
+
+// Check if a command's data changed (new_data response uses cmd code as bit index)
+function changed(newDataResp, cmdCode) {
+  if (!newDataResp) return true;
+  return !!(newDataResp[Math.floor(cmdCode / 8)] & (1 << (cmdCode % 8)));
+}
 
 // ── Protocol helpers ──────────────────────────────────────────────────────────
 
@@ -110,7 +126,7 @@ class SatelClient extends EventEmitter {
 
   async start() {
     await this._connect();
-    await this._pollAll();
+    await this._pollAll(true);
     this.pollTimer = setInterval(() => this._pollAll().catch(() => {}), POLL_MS);
     console.log(`[Satel] Started — ${this.cfg.host}:${this.cfg.port || 7094}`);
   }
@@ -197,32 +213,38 @@ class SatelClient extends EventEmitter {
 
   // ── Polling ───────────────────────────────────────────────────────────────
 
-  async _pollAll() {
-    const [violations, tampers, partArmed, partAlarm, outputs] = await Promise.all([
-      this._query(0x00), // zone violations  (16 bytes)
-      this._query(0x01), // zone tampers     (16 bytes)
-      this._query(0x0A), // partition armed  (4 bytes)
-      this._query(0x0B), // partition alarm  (4 bytes)
-      this._query(0x17), // output states    (16 bytes)
+  async _pollAll(force = false) {
+    // Query new_data to find what changed; on first call (force) skip and fetch all
+    const nd = force ? null : await this._query(CMD_NEW_DATA);
+
+    const fetch = (cmd) => (force || changed(nd, cmd)) ? this._query(cmd) : Promise.resolve(null);
+
+    const [violations, tampers, zoneAlarms, partArmed, partAlarm, partFire, outputs] = await Promise.all([
+      fetch(CMD_ZONES_VIOLATION),
+      fetch(CMD_ZONES_TAMPER),
+      fetch(CMD_ZONES_ALARM),
+      fetch(CMD_PART_ARMED),
+      fetch(CMD_PART_ALARM),
+      fetch(CMD_PART_FIRE_ALARM),
+      fetch(CMD_OUTPUTS_STATE),
     ]);
 
-    if (violations || tampers)   this._updateZones(violations, tampers);
-    if (partArmed  || partAlarm) this._updatePartitions(partArmed, partAlarm);
-    if (outputs)                 this._updateOutputs(outputs);
+    if (violations || tampers || zoneAlarms) this._updateZones(violations, tampers, zoneAlarms);
+    if (partArmed  || partAlarm || partFire)  this._updatePartitions(partArmed, partAlarm, partFire);
+    if (outputs)                              this._updateOutputs(outputs);
   }
 
   // ── Zones ─────────────────────────────────────────────────────────────────
 
-  _updateZones(violations, tampers) {
+  _updateZones(violations, tampers, alarms) {
     const nums = this.cfg.zones
       ? this.cfg.zones
       : Array.from({ length: this.cfg.zoneCount || 32 }, (_, i) => i + 1);
 
     for (const num of nums) {
-      const violated = getBit(violations, num);
-      const tampered = getBit(tampers, num);
-      this.store.update(`satel/zone/${num}/state`,  violated ? 1 : 0);
-      this.store.update(`satel/zone/${num}/tamper`, tampered ? 1 : 0);
+      if (violations) this.store.update(`satel/zone/${num}/state`,   getBit(violations, num) ? 1 : 0);
+      if (tampers)    this.store.update(`satel/zone/${num}/tamper`,  getBit(tampers, num)    ? 1 : 0);
+      if (alarms)     this.store.update(`satel/zone/${num}/alarm`,   getBit(alarms, num)     ? 1 : 0);
       if (!this.registered.has(`z${num}`)) this._registerZone(num);
     }
   }
@@ -238,19 +260,19 @@ class SatelClient extends EventEmitter {
       sensors: [
         { path: 'state',  label: 'Violation', sensorType: 'violation', format: 'on-off', homekit: null },
         { path: 'tamper', label: 'Tamper',    sensorType: 'tamper',    format: 'on-off', homekit: null },
+        { path: 'alarm',  label: 'Alarm',     sensorType: 'alarm',     format: 'on-off', homekit: null },
       ],
     });
   }
 
   // ── Partitions ────────────────────────────────────────────────────────────
 
-  _updatePartitions(armed, alarm) {
+  _updatePartitions(armed, alarm, fire) {
     const nums = this.cfg.partitions || [1];
     for (const num of nums) {
-      const isArmed  = getBit(armed, num);
-      const hasAlarm = getBit(alarm, num);
-      this.store.update(`satel/partition/${num}/armed`, isArmed  ? 1 : 0);
-      this.store.update(`satel/partition/${num}/alarm`, hasAlarm ? 1 : 0);
+      if (armed) this.store.update(`satel/partition/${num}/armed`,      getBit(armed, num) ? 1 : 0);
+      if (alarm) this.store.update(`satel/partition/${num}/alarm`,      getBit(alarm, num) ? 1 : 0);
+      if (fire)  this.store.update(`satel/partition/${num}/fire_alarm`, getBit(fire,  num) ? 1 : 0);
       if (!this.registered.has(`p${num}`)) this._registerPartition(num);
     }
   }
@@ -276,7 +298,8 @@ class SatelClient extends EventEmitter {
           capabilityId: 'armed',
           homekit:      null,
         },
-        { path: 'alarm', label: 'Alarm', sensorType: 'alarm', format: 'on-off', homekit: null },
+        { path: 'alarm',      label: 'Alarm',      sensorType: 'alarm',      format: 'on-off', homekit: null },
+        { path: 'fire_alarm', label: 'Fire Alarm',  sensorType: 'fire_alarm', format: 'on-off', homekit: null },
       ],
       _writeCapability: (capId, command) => {
         if (capId !== 'armed') return;

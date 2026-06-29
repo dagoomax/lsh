@@ -20,11 +20,12 @@ const FIBARO_SENSOR_ICON = {
 }
 
 const SATEL_SENSOR_ICON = {
-  violation: SecurityIcon,
-  tamper:    SecurityIcon,
-  armed:     SecurityIcon,
-  alarm:     SecurityIcon,
-  output:    RelayIcon,
+  violation:  SecurityIcon,
+  tamper:     SecurityIcon,
+  armed:      SecurityIcon,
+  alarm:      SecurityIcon,
+  fire_alarm: SecurityIcon,
+  output:     RelayIcon,
 }
 
 const SUPPLA_SENSOR_ICON = {
@@ -836,7 +837,8 @@ function DeviceTile({ device, onCommand }) {
             {satelSensors.map(s => {
               const on   = s.value === 1 || s.value === true
               const Icon = SATEL_SENSOR_ICON[s.sensorType] || SecurityIcon
-              const iconColor = s.sensorType === 'alarm'     ? (on ? 'var(--red,#ef4444)' : '#4a5568')
+              const iconColor = s.sensorType === 'fire_alarm' ? (on ? '#f97316'            : '#4a5568')
+                              : s.sensorType === 'alarm'     ? (on ? 'var(--red,#ef4444)' : '#4a5568')
                               : s.sensorType === 'violation' ? (on ? 'var(--orange)'       : '#4a5568')
                               : on ? '#a78bfa' : '#4a5568'
               return (
