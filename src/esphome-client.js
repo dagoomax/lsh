@@ -33,6 +33,24 @@ function sensorFormat(domain, deviceClass, unitOfMeasurement) {
   return 'number';
 }
 
+function sensorType(domain, deviceClass) {
+  const dc = (deviceClass || '').toLowerCase();
+  if (domain === 'switch')   return 'switch';
+  if (domain === 'light')    return 'dimmer';
+  if (domain === 'cover')    return 'shutter';
+  if (domain === 'climate')  return 'temperature';
+  if (dc === 'temperature')  return 'temperature';
+  if (dc === 'humidity')     return 'humidity';
+  if (dc === 'illuminance')  return 'light';
+  if (dc === 'power')        return 'power';
+  if (dc === 'energy')       return 'energy';
+  if (dc === 'motion')       return 'motion';
+  if (dc === 'door' || dc === 'window' || dc === 'opening') return 'door';
+  if (dc === 'smoke' || dc === 'moisture') return 'security';
+  if (domain === 'binary_sensor') return 'switch';
+  return 'sensor';
+}
+
 function homekitType(domain, deviceClass) {
   const dc = (deviceClass || '').toLowerCase();
   if (domain === 'switch')        return 'switch-rw';
@@ -100,7 +118,10 @@ class ESPHomeClient {
       const hk       = homekitType(meta.domain, meta.deviceClass);
       const sensor   = {
         path:        `${meta.domain}/${id}`,
+        label:       meta.name || id,
         name:        meta.name || id,
+        sensorType:  sensorType(meta.domain, meta.deviceClass),
+        unit:        meta.unit || '',
         type:        dmInfo.type,
         controllable: dmInfo.controllable,
         format:      fmt,
