@@ -88,9 +88,10 @@ class ArduinoClient {
   }
 
   _sensorDescriptor(s) {
+    const sensorType = s.sensorType || _inferSensorType(s);
     if (s.type === 'toggle') {
       return {
-        path: s.path, label: s.label || s.path, format: 'on-off',
+        path: s.path, label: s.label || s.path, sensorType, format: 'on-off',
         controllable: true, type: 'toggle',
         writeOn: 'on', writeOff: 'off',
         capabilityId: s.path,
@@ -99,7 +100,7 @@ class ArduinoClient {
     }
     if (s.type === 'range') {
       return {
-        path: s.path, label: s.label || s.path, unit: s.unit || '',
+        path: s.path, label: s.label || s.path, sensorType, unit: s.unit || '',
         controllable: true, type: 'range',
         min: s.min ?? 0, max: s.max ?? 100, rangeFormat: 'percent',
         writeCmd: 'set', capabilityId: s.path,
@@ -108,7 +109,7 @@ class ArduinoClient {
     }
     // Read-only (temperature, humidity, numeric sensors, etc.)
     return {
-      path: s.path, label: s.label || s.path, unit: s.unit || '',
+      path: s.path, label: s.label || s.path, sensorType, unit: s.unit || '',
       homekit: s.homekit || null,
     };
   }
@@ -167,6 +168,23 @@ class ArduinoClient {
       this._client.publish(cmdTopic, JSON.stringify({ [capId]: payload }));
     }
   }
+}
+
+function _inferSensorType(s) {
+  if (s.type === 'toggle') return 'switch';
+  if (s.type === 'range')  return 'dimmer';
+  const unit  = (s.unit  || '').toLowerCase();
+  const label = (s.label || s.path || '').toLowerCase();
+  if (unit === '°c' || unit === '°f' || unit === 'c' || unit === 'f') return 'temperature';
+  if (unit === 'lux' || unit === 'lx')                                  return 'light';
+  if (unit === 'w' || unit === 'kw' || unit === 'va')                   return 'power';
+  if (unit === 'kwh' || unit === 'wh')                                  return 'energy';
+  if (label.includes('hum') || unit === 'rh')                           return 'humidity';
+  if (unit === '%')                                                      return 'humidity';
+  if (label.includes('motion') || label.includes('pir'))                return 'motion';
+  if (label.includes('door') || label.includes('window'))               return 'door';
+  if (label.includes('smoke') || label.includes('flood'))               return 'security';
+  return 'sensor';
 }
 
 // Normalise common Arduino payload strings to numbers/booleans
