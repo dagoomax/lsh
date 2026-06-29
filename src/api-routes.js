@@ -214,7 +214,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (sensor) {
       const reading = data.readings?.[sensor];
       if (!reading) return res.status(404).json({ success: false, error: `Sensor '${sensor}' not found` });
-      return res.json({ success: true, data: { sensor, value: reading.value, unit: reading.unit } });
+      return res.send(String(reading.value));
     }
     res.json({ success: true, data });
   });
