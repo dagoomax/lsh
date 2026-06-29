@@ -96,41 +96,41 @@ class FibaroClient {
     const base = { path, name: dev.name, capabilityId: id };
 
     if (t.includes('binarySwitch')) {
-      return { ...base, type: 'boolean', controllable: true,
+      return { ...base, sensorType: 'switch', type: 'boolean', controllable: true,
         writeOn: 'on', writeOff: 'off',
         homekit: { service: 'Switch', characteristic: 'On' } };
     }
     if (t.includes('dimmer')) {
-      return { ...base, type: 'range', controllable: true, min: 0, max: 99, writeCmd: 'set',
+      return { ...base, sensorType: 'dimmer', type: 'range', controllable: true, min: 0, max: 99, writeCmd: 'set',
         homekit: { service: 'Lightbulb', characteristic: 'Brightness' } };
     }
     if (t.includes('FGRM') || t.includes('FGR') || t.includes('rollerShutter')) {
-      return { ...base, type: 'range', controllable: true, min: 0, max: 100, writeCmd: 'set',
+      return { ...base, sensorType: 'shutter', type: 'range', controllable: true, min: 0, max: 100, writeCmd: 'set',
         homekit: { service: 'WindowCovering', characteristic: 'CurrentPosition' } };
     }
     if (t.includes('temperatureSensor')) {
-      return { ...base, type: 'number', controllable: false, unit: '°C' };
+      return { ...base, sensorType: 'temperature', type: 'number', controllable: false, unit: '°C' };
     }
     if (t.includes('humiditySensor')) {
-      return { ...base, type: 'number', controllable: false, unit: '%' };
+      return { ...base, sensorType: 'humidity', type: 'number', controllable: false, unit: '%' };
     }
     if (t.includes('lightSensor')) {
-      return { ...base, type: 'number', controllable: false, unit: 'lux' };
+      return { ...base, sensorType: 'light', type: 'number', controllable: false, unit: 'lux' };
     }
     if (t.includes('powerSensor') || t.includes('energyMeter')) {
-      return { ...base, type: 'number', controllable: false,
+      return { ...base, sensorType: 'power', type: 'number', controllable: false,
         unit: dev.properties?.unit || 'W' };
     }
     if (t.includes('doorSensor') || t.includes('windowSensor')) {
-      return { ...base, type: 'boolean', controllable: false };
+      return { ...base, sensorType: 'door', type: 'boolean', controllable: false };
     }
     if (t.includes('motionSensor')) {
-      return { ...base, type: 'boolean', controllable: false };
+      return { ...base, sensorType: 'motion', type: 'boolean', controllable: false };
     }
     if (t.includes('smokeSensor') || t.includes('floodSensor')) {
-      return { ...base, type: 'boolean', controllable: false };
+      return { ...base, sensorType: 'security', type: 'boolean', controllable: false };
     }
-    return { ...base, type: 'number', controllable: false,
+    return { ...base, sensorType: 'sensor', type: 'number', controllable: false,
       unit: dev.properties?.unit || '' };
   }
 

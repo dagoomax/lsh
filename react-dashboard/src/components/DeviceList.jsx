@@ -1,5 +1,23 @@
 import { useState, useCallback, useEffect } from 'react'
-import { resolveIcon, CAT_ICON_COMPONENT } from './Icons'
+import {
+  resolveIcon, CAT_ICON_COMPONENT,
+  SwitchOutletIcon, BulbIcon, ShutterIcon, ThermometerIcon,
+  HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon,
+} from './Icons'
+
+const FIBARO_SENSOR_ICON = {
+  switch:      SwitchOutletIcon,
+  dimmer:      BulbIcon,
+  shutter:     ShutterIcon,
+  temperature: ThermometerIcon,
+  humidity:    HumidityIcon,
+  light:       BulbIcon,
+  power:       PlugIcon,
+  door:        DoorIcon,
+  motion:      MotionIcon,
+  security:    SecurityIcon,
+  sensor:      SensorIcon,
+}
 
 const TOKEN = 'e95b1a01b85f38a831d8a8b8d949e5e783bf32d3f52ff5d1d6a46ab25b28385e'
 const H     = { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }
@@ -463,14 +481,25 @@ function DeviceTile({ device, onCommand }) {
         }}>
           {statusText}
         </div>
-        {isFibaro && fibaroSwitches.length > 0 && (
+        {isFibaro && fibaroSensors.length > 0 && (
           <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
-            {fibaroSwitches.slice(0,4).map(s => {
-              const on = s.value === true || s.value === 1
+            {fibaroSensors.slice(0,5).map(s => {
+              const on  = s.value === true || s.value === 1
+              const Icon = FIBARO_SENSOR_ICON[s.sensorType] || SensorIcon
+              const isToggle = s.type === 'boolean' && s.controllable
+              const isReadBool = s.type === 'boolean' && !s.controllable
               return (
-                <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <span style={{ fontSize:10, color:'#94a3b8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'70%' }}>{s.name}</span>
-                  <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
+                <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
+                    <Icon size={12} color={on ? '#a78bfa' : '#4a5568'} />
+                    <span style={{ fontSize:10, color:'#94a3b8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
+                  </div>
+                  {isToggle
+                    ? <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
+                    : isReadBool
+                      ? <span style={{ fontSize:10, color: on ? '#a78bfa' : '#4a5568', fontWeight:600 }}>{on ? 'Yes' : 'No'}</span>
+                      : <span style={{ fontSize:10, color:'#94a3b8' }}>{s.value != null ? `${Number(s.value).toFixed(s.unit === '°C' ? 1 : 0)}${s.unit || ''}` : '—'}</span>
+                  }
                 </div>
               )
             })}
