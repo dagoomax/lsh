@@ -104,44 +104,49 @@ class SuplaClient {
     const id = ch.id;
 
     if (SWITCH_FNS.has(fn)) {
-      return [{ path: `ch_${id}`, label: cap, format: 'on-off',
+      return [{ path: `ch_${id}`, label: cap, sensorType: 'switch', format: 'on-off',
         controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off',
         capabilityId: `ch_${id}`, homekit: null }];
     }
     if (DIMMER_FNS.has(fn)) {
-      return [{ path: `ch_${id}`, label: cap, unit: '%',
+      return [{ path: `ch_${id}`, label: cap, sensorType: 'dimmer', unit: '%',
         controllable: true, type: 'range', min: 0, max: 100,
         writeCmd: 'set', capabilityId: `ch_${id}`, homekit: null }];
     }
     if (SHUTTER_FNS.has(fn)) {
-      return [{ path: `ch_${id}`, label: cap, unit: '%',
+      return [{ path: `ch_${id}`, label: cap, sensorType: 'shutter', unit: '%',
         controllable: true, type: 'range', min: 0, max: 100,
         writeCmd: 'set', capabilityId: `ch_${id}`, homekit: null }];
     }
-    if (GATE_FNS.has(fn) || LOCK_FNS.has(fn)) {
-      return [{ path: `ch_${id}`, label: cap, format: 'on-off',
+    if (GATE_FNS.has(fn)) {
+      return [{ path: `ch_${id}`, label: cap, sensorType: 'gate', format: 'on-off',
+        controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off',
+        capabilityId: `ch_${id}`, homekit: null }];
+    }
+    if (LOCK_FNS.has(fn)) {
+      return [{ path: `ch_${id}`, label: cap, sensorType: 'lock', format: 'on-off',
         controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off',
         capabilityId: `ch_${id}`, homekit: null }];
     }
     if (fn === 'THERMOMETER') {
-      return [{ path: `ch_${id}`, label: cap, unit: '°C', homekit: null }];
+      return [{ path: `ch_${id}`, label: cap, sensorType: 'temperature', unit: '°C', homekit: null }];
     }
     if (fn === 'HUMIDITY') {
-      return [{ path: `ch_${id}`, label: cap, unit: '%', homekit: null }];
+      return [{ path: `ch_${id}`, label: cap, sensorType: 'humidity', unit: '%', homekit: null }];
     }
     if (fn === 'HUMIDITYANDTEMPERATURE') {
       return [
-        { path: `ch_${id}_temp`, label: cap ? `${cap} Temp` : 'Temperature', unit: '°C', homekit: null },
-        { path: `ch_${id}_hum`,  label: cap ? `${cap} Hum`  : 'Humidity',    unit: '%',  homekit: null },
+        { path: `ch_${id}_temp`, label: cap ? `${cap} Temp` : 'Temperature', sensorType: 'temperature', unit: '°C', homekit: null },
+        { path: `ch_${id}_hum`,  label: cap ? `${cap} Hum`  : 'Humidity',    sensorType: 'humidity',    unit: '%',  homekit: null },
       ];
     }
     if (BINARY_FNS.has(fn)) {
-      return [{ path: `ch_${id}`, label: cap, format: 'on-off', homekit: null }];
+      return [{ path: `ch_${id}`, label: cap, sensorType: 'binary', format: 'on-off', homekit: null }];
     }
     if (fn === 'ELECTRICITYMETER') {
       return [
-        { path: `ch_${id}_power`,  label: cap ? `${cap} Power`  : 'Power',  unit: 'W',   homekit: null },
-        { path: `ch_${id}_energy`, label: cap ? `${cap} Energy` : 'Energy', unit: 'kWh', homekit: null },
+        { path: `ch_${id}_power`,  label: cap ? `${cap} Power`  : 'Power',  sensorType: 'power',  unit: 'W',   homekit: null },
+        { path: `ch_${id}_energy`, label: cap ? `${cap} Energy` : 'Energy', sensorType: 'energy', unit: 'kWh', homekit: null },
       ];
     }
     return [];
