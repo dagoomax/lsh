@@ -438,7 +438,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   router.post('/settings/satel', (req, res) => {
     const current = readConfigFile();
-    const { host, port, armCode, zoneCount, partitions, zoneNames, partitionNames } = req.body;
+    const { host, port, armCode, zoneCount, partitions, zoneNames, partitionNames, outputCount, outputNames } = req.body;
     const updated = {
       ...current,
       satel: {
@@ -452,6 +452,8 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
           : (partitions ? String(partitions).split(',').map(s => parseInt(s.trim())).filter(Boolean) : [1]),
         zoneNames:      (zoneNames      && typeof zoneNames      === 'object') ? zoneNames      : (current.satel?.zoneNames      || {}),
         partitionNames: (partitionNames && typeof partitionNames === 'object') ? partitionNames : (current.satel?.partitionNames || {}),
+        outputCount:    parseInt(outputCount) || 0,
+        outputNames:    (outputNames && typeof outputNames === 'object') ? outputNames : (current.satel?.outputNames || {}),
       },
     };
     try {

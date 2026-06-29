@@ -423,7 +423,7 @@
     <!-- Satel -->
     <section class="card settings-card" data-category="security" data-title="Satel INTEGRA alarm panel">
       <h2><span data-i18n="s.satel_title">Satel INTEGRA</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connect to a Satel INTEGRA alarm panel via ETHM-1 Plus module (TCP port 7094). Zone sensors (violation + tamper) and partition arm state (arm/disarm control) appear as individual dashboard devices.</p>
+      <p class="section-desc">Connect to a Satel INTEGRA alarm panel via ETHM-1 Plus module (TCP port 7094). Zone sensors (violation + tamper), partition arm state (arm/disarm control), and programmable output relays appear as individual dashboard devices.</p>
 
       <div class="form-row">
         <label for="satel-host" data-i18n="s.satel_host">ETHM-1 Plus Host / IP</label>
@@ -460,6 +460,19 @@
           <button class="btn btn-secondary btn-sm" id="btn-add-partition-name" data-i18n="common.add">+ Add</button>
         </div>
         <div id="satel-partition-names-list" class="names-list"></div>
+      </div>
+
+      <div class="form-row" style="margin-top:10px">
+        <label for="satel-output-count">Output / Relay count <span class="hint">(how many programmable outputs to monitor and control, 0 = disabled)</span></label>
+        <input type="number" id="satel-output-count" placeholder="0" min="0" max="128" style="max-width:100px">
+      </div>
+
+      <div class="names-section">
+        <div class="names-header">
+          <span class="names-title">Output / Relay Names</span>
+          <button class="btn btn-secondary btn-sm" id="btn-add-output-name">+ Add</button>
+        </div>
+        <div id="satel-output-names-list" class="names-list"></div>
       </div>
 
       <div class="form-actions">
