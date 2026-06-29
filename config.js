@@ -47,6 +47,9 @@ function loadConfig() {
       zoneNames:      fileConfig.satel?.zoneNames      || {},
       partitions:     fileConfig.satel?.partitions     || [1],
       partitionNames: fileConfig.satel?.partitionNames || {},
+      outputCount:    parseInt(fileConfig.satel?.outputCount) || 0,
+      outputs:        fileConfig.satel?.outputs         || null,
+      outputNames:    fileConfig.satel?.outputNames     || {},
     },
     unifi: {
       host:     process.env.UNIFI_HOST     || fileConfig.unifi?.host     || '',
