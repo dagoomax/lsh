@@ -79,7 +79,7 @@ class ShellyClient {
     (status.relays || []).forEach((_, i) => {
       const label = (status.relays.length > 1) ? `Switch ${i + 1}` : 'Switch';
       sensors.push({
-        path: `relay_${i}`, label, format: 'on-off',
+        path: `relay_${i}`, label, sensorType: 'switch', format: 'on-off',
         controllable: true, type: 'toggle',
         writeOn: 'on', writeOff: 'off',
         capabilityId: `relay_${i}`, homekit: 'switch-rw',
@@ -89,14 +89,14 @@ class ShellyClient {
     (status.lights || []).forEach((l, i) => {
       const sfx = (status.lights.length > 1) ? ` ${i + 1}` : '';
       sensors.push({
-        path: `light_${i}_on`, label: `Light${sfx}`, format: 'on-off',
+        path: `light_${i}_on`, label: `Light${sfx}`, sensorType: 'dimmer', format: 'on-off',
         controllable: true, type: 'toggle',
         writeOn: 'on', writeOff: 'off',
         capabilityId: `light_${i}`, homekit: 'switch-rw',
       });
       if (l.brightness !== undefined || type.includes('SHDM') || type.includes('SHRGBW')) {
         sensors.push({
-          path: `light_${i}_brightness`, label: `Brightness${sfx}`, format: 'percent',
+          path: `light_${i}_brightness`, label: `Brightness${sfx}`, sensorType: 'dimmer', format: 'percent',
           controllable: true, type: 'range',
           writeCmd: 'setBrightness', capabilityId: `light_${i}`,
           min: 0, max: 100, rangeFormat: 'percent',
@@ -108,28 +108,28 @@ class ShellyClient {
       sensors.push({
         path: `power_${i}`,
         label: (status.meters.length > 1) ? `Power ${i + 1}` : 'Power',
-        unit: 'W',
+        sensorType: 'power', unit: 'W',
       });
     });
 
     if (status.emeters) {
       status.emeters.forEach((_, i) => {
-        sensors.push({ path: `emeter_${i}_power`, label: `Power ${i + 1}`, unit: 'W' });
-        sensors.push({ path: `emeter_${i}_reactive`, label: `Reactive ${i + 1}`, unit: 'VAR' });
+        sensors.push({ path: `emeter_${i}_power`,    label: `Power ${i + 1}`,    sensorType: 'power',  unit: 'W'   });
+        sensors.push({ path: `emeter_${i}_reactive`, label: `Reactive ${i + 1}`, sensorType: 'power',  unit: 'VAR' });
       });
     }
 
     const s = status.sensor || {};
-    if (status.tmp !== undefined)     sensors.push({ path: 'temperature', label: 'Temperature', unit: '°C', homekit: 'temperature' });
-    if (s.temperature !== undefined)  sensors.push({ path: 'temperature', label: 'Temperature', unit: '°C', homekit: 'temperature' });
-    if (status.hum !== undefined)     sensors.push({ path: 'humidity',    label: 'Humidity',    unit: '%',  homekit: 'humidity' });
-    if (s.humidity !== undefined)     sensors.push({ path: 'humidity',    label: 'Humidity',    unit: '%',  homekit: 'humidity' });
-    if (s.lux !== undefined)          sensors.push({ path: 'lux',         label: 'Illuminance', unit: 'lux' });
-    if (s.state !== undefined)        sensors.push({ path: 'contact',     label: 'Contact',     format: 'on-off', homekit: 'contact' });
-    if (s.motion !== undefined)       sensors.push({ path: 'motion',      label: 'Motion',      format: 'on-off', homekit: 'motion' });
-    if (s.flood !== undefined)        sensors.push({ path: 'flood',       label: 'Flood',       format: 'on-off', homekit: 'leak' });
-    if (s.smoke !== undefined)        sensors.push({ path: 'smoke',       label: 'Smoke',       format: 'alarm',  homekit: 'smoke' });
-    if (status.bat !== undefined)     sensors.push({ path: 'battery',     label: 'Battery',     unit: '%',  homekit: 'battery-level' });
+    if (status.tmp !== undefined)     sensors.push({ path: 'temperature', label: 'Temperature', sensorType: 'temperature', unit: '°C', homekit: 'temperature' });
+    if (s.temperature !== undefined)  sensors.push({ path: 'temperature', label: 'Temperature', sensorType: 'temperature', unit: '°C', homekit: 'temperature' });
+    if (status.hum !== undefined)     sensors.push({ path: 'humidity',    label: 'Humidity',    sensorType: 'humidity',    unit: '%',  homekit: 'humidity' });
+    if (s.humidity !== undefined)     sensors.push({ path: 'humidity',    label: 'Humidity',    sensorType: 'humidity',    unit: '%',  homekit: 'humidity' });
+    if (s.lux !== undefined)          sensors.push({ path: 'lux',         label: 'Illuminance', sensorType: 'light',       unit: 'lux' });
+    if (s.state !== undefined)        sensors.push({ path: 'contact',     label: 'Contact',     sensorType: 'door',        format: 'on-off', homekit: 'contact' });
+    if (s.motion !== undefined)       sensors.push({ path: 'motion',      label: 'Motion',      sensorType: 'motion',      format: 'on-off', homekit: 'motion' });
+    if (s.flood !== undefined)        sensors.push({ path: 'flood',       label: 'Flood',       sensorType: 'security',    format: 'on-off', homekit: 'leak' });
+    if (s.smoke !== undefined)        sensors.push({ path: 'smoke',       label: 'Smoke',       sensorType: 'security',    format: 'alarm',  homekit: 'smoke' });
+    if (status.bat !== undefined)     sensors.push({ path: 'battery',     label: 'Battery',     sensorType: 'sensor',      unit: '%',  homekit: 'battery-level' });
 
     return sensors;
   }
@@ -143,22 +143,23 @@ class ShellyClient {
         const [, comp, idx] = sw;
         const c   = comp.toLowerCase();
         const sfx = idx === '0' ? '' : ` ${parseInt(idx) + 1}`;
+        const st  = c === 'light' ? 'dimmer' : 'switch';
         sensors.push({
-          path: `${c}_${idx}_on`, label: `${comp}${sfx}`, format: 'on-off',
+          path: `${c}_${idx}_on`, label: `${comp}${sfx}`, sensorType: st, format: 'on-off',
           controllable: true, type: 'toggle',
           writeOn: 'on', writeOff: 'off',
           capabilityId: `${c}_${idx}`, homekit: 'switch-rw',
         });
         if (val.brightness !== undefined) {
           sensors.push({
-            path: `${c}_${idx}_brightness`, label: `Brightness${sfx}`, format: 'percent',
+            path: `${c}_${idx}_brightness`, label: `Brightness${sfx}`, sensorType: 'dimmer', format: 'percent',
             controllable: true, type: 'range',
             writeCmd: 'setBrightness', capabilityId: `${c}_${idx}`,
             min: 0, max: 100, rangeFormat: 'percent',
           });
         }
         if (val.apower !== undefined) {
-          sensors.push({ path: `${c}_${idx}_power`, label: `Power${sfx}`, unit: 'W' });
+          sensors.push({ path: `${c}_${idx}_power`, label: `Power${sfx}`, sensorType: 'power', unit: 'W' });
         }
         continue;
       }
@@ -166,14 +167,14 @@ class ShellyClient {
       const tm = key.match(/^temperature:(\d+)$/i);
       if (tm) {
         const sfx = tm[1] === '0' ? '' : ` ${parseInt(tm[1]) + 1}`;
-        sensors.push({ path: `temp_${tm[1]}`, label: `Temperature${sfx}`, unit: '°C', homekit: 'temperature' });
+        sensors.push({ path: `temp_${tm[1]}`, label: `Temperature${sfx}`, sensorType: 'temperature', unit: '°C', homekit: 'temperature' });
         continue;
       }
 
       const hm = key.match(/^humidity:(\d+)$/i);
       if (hm) {
         const sfx = hm[1] === '0' ? '' : ` ${parseInt(hm[1]) + 1}`;
-        sensors.push({ path: `hum_${hm[1]}`, label: `Humidity${sfx}`, unit: '%', homekit: 'humidity' });
+        sensors.push({ path: `hum_${hm[1]}`, label: `Humidity${sfx}`, sensorType: 'humidity', unit: '%', homekit: 'humidity' });
         continue;
       }
     }
