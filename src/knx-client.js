@@ -41,19 +41,31 @@ function encodeValue(value, dpt) {
   }
 }
 
-const DPT_META = {
-  DPT1:  { type: 'boolean', homekitType: 'Switch' },
-  DPT5:  { type: 'range',   min: 0, max: 255 },
-  DPT9:  { type: 'float' },
-  DPT14: { type: 'float' },
-};
+function inferSensorType(ga) {
+  const unit  = (ga.unit  || '').toLowerCase();
+  const name  = (ga.name  || ga.address || '').toLowerCase();
+  const base  = (ga.dpt   || 'DPT1').split('.')[0].toUpperCase();
+
+  if (base === 'DPT5') return 'dimmer';
+  if (unit === '°c' || unit === '°f' || unit === 'c' || unit === 'f' || unit === 'k') return 'temperature';
+  if (unit === 'lux' || unit === 'lx')    return 'light';
+  if (unit === 'w'   || unit === 'kw')    return 'power';
+  if (unit === 'kwh' || unit === 'wh')    return 'energy';
+  if (unit === '%' || name.includes('hum')) return 'humidity';
+  if (name.includes('motion') || name.includes('pir'))          return 'motion';
+  if (name.includes('door')   || name.includes('window'))       return 'door';
+  if (name.includes('smoke')  || name.includes('flood'))        return 'security';
+  if (base === 'DPT1') return 'switch';
+  return 'sensor';
+}
 
 class KNXClient extends EventEmitter {
   constructor(config, store, sensorRegistry) {
     super();
-    this._cfg  = config.knx;
-    this._reg  = sensorRegistry;
-    this._conn = null;
+    this._cfg   = config.knx;
+    this._store = store;
+    this._reg   = sensorRegistry;
+    this._conn  = null;
   }
 
   async start() {
@@ -91,7 +103,7 @@ class KNXClient extends EventEmitter {
           if (!ga) return;
           const value = parseValue(rawValue, ga.dpt);
           if (value === null) return;
-          this._reg.update(deviceKey, { [ga.address]: value });
+          this._store.update(`${deviceKey}/${ga.address}`, value);
         },
 
         error: (err) => {
@@ -103,37 +115,54 @@ class KNXClient extends EventEmitter {
 
   _registerDevice(deviceKey, gas) {
     const sensors = gas.map(ga => {
-      const base = (ga.dpt || 'DPT1').split('.')[0].toUpperCase();
-      const meta = DPT_META[base] || { type: 'float' };
+      const base       = (ga.dpt || 'DPT1').split('.')[0].toUpperCase();
+      const isBoolean  = base === 'DPT1';
+      const isRange    = base === 'DPT5';
+      const sensorType = ga.sensorType || inferSensorType(ga);
+
+      if (ga.writable && isBoolean) {
+        return {
+          path: ga.address, label: ga.name || ga.address, sensorType,
+          format: 'on-off', controllable: true, type: 'toggle',
+          writeOn: 'on', writeOff: 'off', capabilityId: ga.address, homekit: null,
+        };
+      }
+      if (ga.writable && isRange) {
+        return {
+          path: ga.address, label: ga.name || ga.address, sensorType,
+          unit: ga.unit || '', controllable: true, type: 'range',
+          min: ga.min ?? 0, max: ga.max ?? 255, writeCmd: 'set',
+          capabilityId: ga.address, homekit: null,
+        };
+      }
       return {
-        path:         ga.address,
-        name:         ga.name || ga.address,
-        type:         meta.type,
-        unit:         ga.unit  || undefined,
-        min:          ga.min   ?? meta.min,
-        max:          ga.max   ?? meta.max,
-        controllable: !!ga.writable,
-        homekitType:  ga.homekitType || meta.homekitType || null,
+        path: ga.address, label: ga.name || ga.address, sensorType,
+        unit: ga.unit || '', homekit: null,
       };
     });
 
-    this._reg.register({
-      key:    deviceKey,
-      label:  'KNX Bus',
-      icon:   'knx',
-      color:  '#e85d00',
+    this._reg.registerDevice({
+      key:     deviceKey,
+      label:   cfg_label(this._cfg),
+      type:    'knx',
+      homekit: [],
       sensors,
-      sendCommand: (address, value) => {
-        const ga = gas.find(g => g.address === address);
+      _writeCapability: (capId, command, args) => {
+        const ga = gas.find(g => g.address === capId);
         if (!ga?.writable || !this._conn) return;
+        const value = command === 'on' ? 1 : command === 'off' ? 0 : (args?.[0] ?? 0);
         try {
-          this._conn.write(address, encodeValue(value, ga.dpt), ga.dpt || 'DPT1');
+          this._conn.write(ga.address, encodeValue(value, ga.dpt), ga.dpt || 'DPT1');
         } catch (err) {
-          console.error(`[KNX] Write ${address} failed: ${err.message}`);
+          console.error(`[KNX] Write ${ga.address} failed: ${err.message}`);
         }
       },
     });
   }
+}
+
+function cfg_label(cfg) {
+  return cfg.name || `KNX ${cfg.host}`;
 }
 
 module.exports = KNXClient;
