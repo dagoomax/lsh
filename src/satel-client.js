@@ -236,8 +236,8 @@ class SatelClient extends EventEmitter {
       label,
       homekit: [],
       sensors: [
-        { path: 'state',  label: 'Violation', format: 'on-off', homekit: null },
-        { path: 'tamper', label: 'Tamper',    format: 'on-off', homekit: null },
+        { path: 'state',  label: 'Violation', sensorType: 'violation', format: 'on-off', homekit: null },
+        { path: 'tamper', label: 'Tamper',    sensorType: 'tamper',    format: 'on-off', homekit: null },
       ],
     });
   }
@@ -267,6 +267,7 @@ class SatelClient extends EventEmitter {
         {
           path:         'armed',
           label:        'Armed',
+          sensorType:   'armed',
           format:       'on-off',
           controllable: true,
           type:         'toggle',
@@ -275,7 +276,7 @@ class SatelClient extends EventEmitter {
           capabilityId: 'armed',
           homekit:      null,
         },
-        { path: 'alarm', label: 'Alarm', format: 'on-off', homekit: null },
+        { path: 'alarm', label: 'Alarm', sensorType: 'alarm', format: 'on-off', homekit: null },
       ],
       _writeCapability: (capId, command) => {
         if (capId !== 'armed') return;
@@ -312,6 +313,7 @@ class SatelClient extends EventEmitter {
         {
           path:         'state',
           label:        'State',
+          sensorType:   'output',
           format:       'on-off',
           controllable: true,
           type:         'toggle',

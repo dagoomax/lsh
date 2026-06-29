@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import {
   resolveIcon, CAT_ICON_COMPONENT,
   SwitchOutletIcon, BulbIcon, ShutterIcon, ThermometerIcon,
-  HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon,
+  HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon, RelayIcon,
 } from './Icons'
 
 const FIBARO_SENSOR_ICON = {
@@ -17,6 +17,14 @@ const FIBARO_SENSOR_ICON = {
   motion:      MotionIcon,
   security:    SecurityIcon,
   sensor:      SensorIcon,
+}
+
+const SATEL_SENSOR_ICON = {
+  violation: SecurityIcon,
+  tamper:    SecurityIcon,
+  armed:     SecurityIcon,
+  alarm:     SecurityIcon,
+  output:    RelayIcon,
 }
 
 const TOKEN = 'e95b1a01b85f38a831d8a8b8d949e5e783bf32d3f52ff5d1d6a46ab25b28385e'
@@ -190,6 +198,7 @@ function DeviceTile({ device, onCommand }) {
 
   const isPool   = device.type === 'bayrol'
   const isFibaro = device.type === 'fibaro'
+  const isSatel  = device.type === 'satel'
   const isAC     = device.type === 'auxair'
   const isSonos  = device.type === 'sonos'
   const isDenon  = device.type === 'denon'
@@ -219,6 +228,12 @@ function DeviceTile({ device, onCommand }) {
   const acEnvTemp = isAC ? (merged.envtemp?.value ?? r.envtemp?.value) : null
   const acMode    = isAC ? (merged.ac_mode?.value ?? r.ac_mode?.value ?? 0) : 0
   const acFan     = isAC ? (merged.ac_mark?.value ?? r.ac_mark?.value ?? 0) : 0
+
+  // For Satel: extract sensor values from path-keyed readings
+  const satelSensors = isSatel ? (device.sensors || []).map(s => ({
+    ...s,
+    value: (merged[s.path] ?? r[s.path])?.value,
+  })) : []
 
   // For Fibaro rooms: extract sensor values from numeric-path readings
   const fibaroSensors = isFibaro ? (device.sensors || []).map(s => ({
@@ -499,6 +514,29 @@ function DeviceTile({ device, onCommand }) {
                     : isReadBool
                       ? <span style={{ fontSize:10, color: on ? '#a78bfa' : '#4a5568', fontWeight:600 }}>{on ? 'Yes' : 'No'}</span>
                       : <span style={{ fontSize:10, color:'#94a3b8' }}>{s.value != null ? `${Number(s.value).toFixed(s.unit === '°C' ? 1 : 0)}${s.unit || ''}` : '—'}</span>
+                  }
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {isSatel && satelSensors.length > 0 && (
+          <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
+            {satelSensors.map(s => {
+              const on   = s.value === 1 || s.value === true
+              const Icon = SATEL_SENSOR_ICON[s.sensorType] || SecurityIcon
+              const iconColor = s.sensorType === 'alarm'     ? (on ? 'var(--red,#ef4444)' : '#4a5568')
+                              : s.sensorType === 'violation' ? (on ? 'var(--orange)'       : '#4a5568')
+                              : on ? '#a78bfa' : '#4a5568'
+              return (
+                <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
+                    <Icon size={12} color={iconColor} />
+                    <span style={{ fontSize:10, color:'#94a3b8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
+                  </div>
+                  {s.controllable
+                    ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
+                    : <span style={{ fontSize:10, color: iconColor, fontWeight:600 }}>{on ? 'Yes' : 'No'}</span>
                   }
                 </div>
               )
