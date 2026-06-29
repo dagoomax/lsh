@@ -222,6 +222,15 @@ async function main() {
     }
   }
 
+  // Start Roborock client if configured
+  if (config.roborock?.devices?.length) {
+    const RoborockClient = tryRequire('./src/roborock-client');
+    if (RoborockClient) {
+      const roborock = new RoborockClient(config, store, sensorRegistry);
+      roborock.start().catch((err) => console.error(`[Roborock] Start failed: ${err.message}`));
+    }
+  }
+
   // Start BroadLink IR/RF client if configured
   if (config.broadlink?.devices?.length) {
     const BroadlinkClient = tryRequire('./src/broadlink-client');
