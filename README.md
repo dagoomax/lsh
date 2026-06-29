@@ -571,6 +571,57 @@ Connects to **Bayrol Pool Manager Connect** devices via the [bayrol-poolaccess.d
 
 **`poolName`** — display name for the tile. If omitted, auto-named `Pool <cid>`.
 
+#### Reading Bayrol measurements from Loxone Miniserver
+
+The Bayrol Pool Manager Connect is **cloud-only** — it has no local Modbus or REST interface. Loxone cannot connect to it directly. The recommended approach is to let LSH read the cloud data and have Loxone poll LSH's REST API.
+
+**Option A — Virtual HTTP Input (polling LSH)**
+
+1. In **Loxone Config**, add a **Virtual HTTP Input** object.
+2. Set the URL to `http://<lsh-ip>:3000/api/devices/bayrol/<your-cid>` (find `<cid>` in the LSH settings page).
+3. Set a poll cycle (e.g. 60 s).
+4. For each measurement, add a **Virtual HTTP Input Command** with a regex to extract the value:
+
+| Sensor | Regex |
+|---|---|
+| pH | `"ph":\{"value":(\d+\.?\d*)` |
+| ORP (mV) | `"orp":\{"value":(\d+\.?\d*)` |
+| Temperature (°C) | `"temperature":\{"value":(\d+\.?\d*)` |
+| Salt (g/L) | `"salt":\{"value":(\d+\.?\d*)` |
+
+**Option B — Loxone push via `loxoneOut`**
+
+Configure the [`loxoneOut`](#loxoneout) module in LSH to push values directly to Loxone Virtual Inputs whenever they change — no polling required. Example:
+
+```json
+"loxoneOut": {
+  "host": "192.168.1.50",
+  "username": "admin",
+  "password": "your-password",
+  "mappings": [
+    { "storeKey": "bayrol/<cid>/ph",          "virtualInput": "VI1" },
+    { "storeKey": "bayrol/<cid>/temperature",  "virtualInput": "VI2" },
+    { "storeKey": "bayrol/<cid>/orp",          "virtualInput": "VI3" },
+    { "storeKey": "bayrol/<cid>/salt",         "virtualInput": "VI4" }
+  ]
+}
+```
+
+Values are pushed to `http://<loxone-host>/dev/sps/io/<virtualInput>/<value>` within 200 ms of each change.
+
+**Option C — Direct Modbus TCP (Pool Manager 5 only)**
+
+If you have a **Bayrol Pool Manager 5** (PM5) — not the Pool Manager Connect — it supports Modbus TCP on port 502. In Loxone Config, add a **Modbus TCP Extension** pointing to the PM5 IP and map these holding registers (FC03):
+
+| Register | Sensor | Scale |
+|---|---|---|
+| 1 | pH | ÷ 10 |
+| 2 | ORP (mV) | × 1 |
+| 3 | Temperature (°C) | ÷ 10 |
+| 4 | Free chlorine | ÷ 100 |
+
+This requires no LSH and works fully offline. Only the **PM5** model supports Modbus — the **Pool Manager Connect** is cloud-only.
+
 ### `auxair`
 
 ```json
