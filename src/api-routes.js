@@ -904,6 +904,37 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // ── MC6 Thermostats ────────────────────────────────────────────────────
+
+  router.post('/settings/mc6', (req, res) => {
+    const current = readConfigFile();
+    const { broker, port, username, password, devices } = req.body;
+    if (!broker) return res.status(400).json({ success: false, error: 'broker is required' });
+    if (!Array.isArray(devices) || !devices.length)
+      return res.status(400).json({ success: false, error: 'devices array is required' });
+
+    const sanitized = devices.map(d => ({
+      name: (d.name || '').trim(),
+      mac:  (d.mac  || '').replace(/[^A-Fa-f0-9]/g, '').toUpperCase(),
+    })).filter(d => d.mac.length === 12);
+
+    try {
+      writeConfigFile({
+        ...current,
+        mc6: {
+          broker,
+          port:     port ? parseInt(port) : 1883,
+          username: username || '',
+          password: password || '',
+          devices:  sanitized,
+        },
+      });
+      res.json({ success: true, message: `${sanitized.length} MC6 device(s) saved. Restart to apply.` });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // ── Roborock ───────────────────────────────────────────────────────────
 
   router.post('/settings/test-roborock', async (req, res) => {

@@ -222,6 +222,15 @@ async function main() {
     }
   }
 
+  // Start MC6 thermostat client if configured
+  if (config.mc6?.broker && config.mc6?.devices?.length) {
+    const MC6Client = tryRequire('./src/mc6-client');
+    if (MC6Client) {
+      const mc6 = new MC6Client(config, store, sensorRegistry);
+      mc6.start().catch((err) => console.error(`[MC6] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Roborock client if configured
   if (config.roborock?.devices?.length) {
     const RoborockClient = tryRequire('./src/roborock-client');
