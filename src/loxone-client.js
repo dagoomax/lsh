@@ -20,7 +20,7 @@ const platformStatus = require('./platform-status');
 const T = {
   Switch: {
     sensors: [
-      { path: 'active', label: 'Switch', format: 'on-off',
+      { path: 'active', label: 'Switch', sensorType: 'switch', format: 'on-off',
         controllable: true, type: 'toggle', writeOn: 'On', writeOff: 'Off',
         capabilityId: 'io', homekit: 'switch-rw' },
     ],
@@ -29,7 +29,7 @@ const T = {
 
   TimedSwitch: {
     sensors: [
-      { path: 'active', label: 'Switch', format: 'on-off',
+      { path: 'active', label: 'Switch', sensorType: 'switch', format: 'on-off',
         controllable: true, type: 'toggle', writeOn: 'Pulse', writeOff: 'Pulse',
         capabilityId: 'io', homekit: 'switch-rw' },
     ],
@@ -38,7 +38,7 @@ const T = {
 
   Pushbutton: {
     sensors: [
-      { path: 'active', label: 'Button', format: 'on-off',
+      { path: 'active', label: 'Button', sensorType: 'switch', format: 'on-off',
         controllable: true, type: 'toggle', writeOn: 'Pulse', writeOff: 'Pulse',
         capabilityId: 'io', homekit: 'switch-rw' },
     ],
@@ -47,7 +47,7 @@ const T = {
 
   Gate: {
     sensors: [
-      { path: 'active', label: 'Gate', format: 'on-off',
+      { path: 'active', label: 'Gate', sensorType: 'gate', format: 'on-off',
         controllable: true, type: 'toggle', writeOn: 'On', writeOff: 'Off',
         capabilityId: 'io', homekit: 'switch-rw' },
     ],
@@ -56,10 +56,10 @@ const T = {
 
   Dimmer: {
     sensors: [
-      { path: 'on', label: 'Light', format: 'on-off',
+      { path: 'on', label: 'Light', sensorType: 'dimmer', format: 'on-off',
         controllable: true, type: 'toggle', writeOn: 'On', writeOff: 'Off',
         capabilityId: 'io', homekit: 'switch-rw' },
-      { path: 'level', label: 'Level', format: 'percent',
+      { path: 'level', label: 'Level', sensorType: 'dimmer', format: 'percent',
         controllable: true, type: 'range', writeCmd: 'setLevel',
         capabilityId: 'io', min: 0, max: 100, rangeFormat: 'percent' },
     ],
@@ -71,13 +71,13 @@ const T = {
 
   Jalousie: {
     sensors: [
-      { path: 'up',   label: 'Up',   format: 'on-off',
+      { path: 'up',   label: 'Up',   sensorType: 'shutter', format: 'on-off',
         controllable: true, type: 'toggle', writeOn: 'Up',   writeOff: 'Stop',
         capabilityId: 'io', homekit: null },
-      { path: 'down', label: 'Down', format: 'on-off',
+      { path: 'down', label: 'Down', sensorType: 'shutter', format: 'on-off',
         controllable: true, type: 'toggle', writeOn: 'Down', writeOff: 'Stop',
         capabilityId: 'io', homekit: null },
-      { path: 'position', label: 'Position', unit: '%' },
+      { path: 'position', label: 'Position', sensorType: 'shutter', unit: '%' },
     ],
     bindings: [
       { state: 'up',       path: 'up',       transform: v => v > 0 },
@@ -88,8 +88,8 @@ const T = {
 
   IRoomController: {
     sensors: [
-      { path: 'temperature', label: 'Temperature', unit: '°C', homekit: 'temperature' },
-      { path: 'target',      label: 'Target Temp', unit: '°C',
+      { path: 'temperature', label: 'Temperature', sensorType: 'temperature', unit: '°C', homekit: 'temperature' },
+      { path: 'target',      label: 'Target Temp', sensorType: 'temperature', unit: '°C',
         controllable: true, type: 'range', writeCmd: 'setTarget',
         capabilityId: 'io', min: 5, max: 35, rangeFormat: 'temperature' },
     ],
@@ -101,10 +101,10 @@ const T = {
 
   Alarm: {
     sensors: [
-      { path: 'armed', label: 'Armed', format: 'on-off',
+      { path: 'armed', label: 'Armed', sensorType: 'security', format: 'on-off',
         controllable: true, type: 'toggle', writeOn: 'delayedOn/30', writeOff: 'Off',
         capabilityId: 'io', homekit: 'switch-rw' },
-      { path: 'level', label: 'Level' },
+      { path: 'level', label: 'Level', sensorType: 'security' },
     ],
     bindings: [
       { state: 'armed', path: 'armed', transform: v => v > 0 },
@@ -113,17 +113,17 @@ const T = {
   },
 
   InfoOnlyDigital: {
-    sensors: [{ path: 'value', label: 'State', format: 'on-off', homekit: null }],
+    sensors: [{ path: 'value', label: 'State', sensorType: 'sensor', format: 'on-off', homekit: null }],
     bindings: [{ state: 'active', path: 'value', bool: true }],
   },
 
   InfoOnlyAnalog: {
-    sensors: [{ path: 'value', label: 'Value', homekit: null }],
+    sensors: [{ path: 'value', label: 'Value', sensorType: 'sensor', homekit: null }],
     bindings: [{ state: 'value', path: 'value' }],
   },
 
   TextInput: {
-    sensors: [{ path: 'value', label: 'Text', homekit: null }],
+    sensors: [{ path: 'value', label: 'Text', sensorType: 'sensor', homekit: null }],
     bindings: [],
     textBindings: [{ state: 'value', path: 'value' }],
   },
@@ -131,8 +131,8 @@ const T = {
 
 T.VideoIntercom = {
   sensors: [
-    { path: 'bell',      label: 'Doorbell',  format: 'on-off', homekit: null },
-    { path: 'answering', label: 'Answering', format: 'on-off', homekit: null },
+    { path: 'bell',      label: 'Doorbell',  sensorType: 'door',   format: 'on-off', homekit: null },
+    { path: 'answering', label: 'Answering', sensorType: 'switch', format: 'on-off', homekit: null },
   ],
   bindings: [
     { state: 'bell',      path: 'bell',      bool: true },
