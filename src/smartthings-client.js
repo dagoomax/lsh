@@ -17,41 +17,41 @@ const POLL_INTERVAL_MS = 30000;
 // Capability → sensor metadata.
 // type: 'toggle' | 'range' | 'color' | 'color-temp' (controls UI rendering)
 const CAPABILITIES = {
-  switch:                      { storeAttr: 'switch',           name: 'Switch',       format: 'on-off',      homekit: 'switch-rw',   controllable: true, type: 'toggle',     writeOn: 'on',                 writeOff: 'off',     capabilityId: 'switch' },
-  switchLevel:                 { storeAttr: 'level',            name: 'Brightness',   format: 'percent',                             controllable: true, type: 'range',      writeCmd: 'setLevel',          capabilityId: 'switchLevel',   min: 0,   max: 100 },
-  colorControl:                { storeAttr: null,               name: 'Color',        format: 'color',                               controllable: true, type: 'color',                                     capabilityId: 'colorControl' },
-  colorTemperature:            { storeAttr: 'colorTemperature', name: 'Color Temp',   format: 'color-temp',                          controllable: true, type: 'color-temp', writeCmd: 'setColorTemperature', capabilityId: 'colorTemperature', min: 2700, max: 6500 },
-  powerMeter:                  { storeAttr: 'power',            name: 'Power',        format: 'power' },
-  energyMeter:                 { storeAttr: 'energy',           name: 'Energy',       format: 'energy' },
-  temperatureMeasurement:      { storeAttr: 'temperature',      name: 'Temperature',  format: 'temperature', homekit: 'temperature' },
-  relativeHumidityMeasurement: { storeAttr: 'humidity',         name: 'Humidity',     format: 'percent',     homekit: 'humidity' },
-  battery:                     { storeAttr: 'battery',          name: 'Battery',      format: 'percent',     homekit: 'battery-level' },
-  contactSensor:               { storeAttr: 'contact',          name: 'Contact',      format: 'on-off',      homekit: 'contact' },
-  motionSensor:                { storeAttr: 'motion',           name: 'Motion',       format: 'on-off',      homekit: 'motion' },
-  illuminanceMeasurement:      { storeAttr: 'illuminance',      name: 'Illuminance',  format: 'number',  homekit: 'lux' },
-  thermostatMode:              { storeAttr: 'thermostatMode',          name: 'Mode',             format: 'string', raw: true },
-  thermostatHeatingSetpoint:   { storeAttr: 'heatingSetpoint',         name: 'Heating Setpoint', format: 'temperature', unit: '°C', controllable: true, type: 'range', writeCmd: 'setHeatingSetpoint', capabilityId: 'thermostatHeatingSetpoint', min: 4, max: 38 },
-  thermostatCoolingSetpoint:   { storeAttr: 'coolingSetpoint',         name: 'Cooling Setpoint', format: 'temperature', unit: '°C', controllable: true, type: 'range', writeCmd: 'setCoolingSetpoint', capabilityId: 'thermostatCoolingSetpoint', min: 10, max: 35 },
-  thermostatOperatingState:    { storeAttr: 'thermostatOperatingState',name: 'Operating State',  format: 'string', raw: true },
-  temperatureSetpoint:         { storeAttr: 'heatingSetpoint',         name: 'Setpoint',         format: 'temperature', unit: '°C', controllable: true, type: 'range', writeCmd: 'setHeatingSetpoint', capabilityId: 'temperatureSetpoint', min: 4, max: 38 },
-  fanControl:                  { storeAttr: 'switch',           name: 'Fan',          format: 'on-off',  homekit: 'fan-rw',   controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off', capabilityId: 'switch' },
-  fanSpeed:                    { storeAttr: 'level',            name: 'Fan Speed',    format: 'percent', controllable: true, type: 'range', writeCmd: 'setFanSpeed', capabilityId: 'fanSpeed', min: 0, max: 100 },
-  carbonMonoxideDetector:      { storeAttr: 'carbonMonoxide',   name: 'CO Detector',  format: 'alarm',       homekit: 'co' },
-  smokeDetector:               { storeAttr: 'smoke',            name: 'Smoke',        format: 'alarm',       homekit: 'smoke' },
-  waterSensor:                 { storeAttr: 'water',            name: 'Water Sensor', format: 'on-off',      homekit: 'leak' },
-  presenceSensor:              { storeAttr: 'presence',         name: 'Presence',     format: 'on-off',      homekit: 'occupancy' },
-  lock:                        { storeAttr: 'lock',             name: 'Lock',         format: 'on-off',      controllable: true, type: 'toggle',     writeOn: 'lock',               writeOff: 'unlock',  capabilityId: 'lock' },
-  doorControl:                 { storeAttr: 'door',             name: 'Door',         format: 'on-off',      controllable: true, type: 'toggle',     writeOn: 'open',               writeOff: 'close',   capabilityId: 'doorControl' },
-  windowShade:                 { storeAttr: 'windowShade',      name: 'Shade',        format: 'on-off',      controllable: true, type: 'toggle',     writeOn: 'open',               writeOff: 'close',   capabilityId: 'windowShade' },
-  airQualitySensor:            { storeAttr: 'airQuality',       name: 'Air Quality',  format: 'aqi',         homekit: 'air-quality' },
-  carbonDioxideMeasurement:    { storeAttr: 'carbonDioxide',    name: 'CO₂',     format: 'co2',         homekit: 'co2-sensor' },
-  tvocMeasurement:             { storeAttr: 'tvocLevel',        name: 'TVOC',         format: 'voc',         homekit: 'air-quality' },
-  dustSensor: { multi: [
+  switch:                      { storeAttr: 'switch',           name: 'Switch',       sensorType: 'switch',      format: 'on-off',      homekit: 'switch-rw',   controllable: true, type: 'toggle',     writeOn: 'on',                 writeOff: 'off',     capabilityId: 'switch' },
+  switchLevel:                 { storeAttr: 'level',            name: 'Brightness',   sensorType: 'dimmer',      format: 'percent',                             controllable: true, type: 'range',      writeCmd: 'setLevel',          capabilityId: 'switchLevel',   min: 0,   max: 100 },
+  colorControl:                { storeAttr: null,               name: 'Color',        sensorType: 'dimmer',      format: 'color',                               controllable: true, type: 'color',                                     capabilityId: 'colorControl' },
+  colorTemperature:            { storeAttr: 'colorTemperature', name: 'Color Temp',   sensorType: 'dimmer',      format: 'color-temp',                          controllable: true, type: 'color-temp', writeCmd: 'setColorTemperature', capabilityId: 'colorTemperature', min: 2700, max: 6500 },
+  powerMeter:                  { storeAttr: 'power',            name: 'Power',        sensorType: 'power',       format: 'power' },
+  energyMeter:                 { storeAttr: 'energy',           name: 'Energy',       sensorType: 'energy',      format: 'energy' },
+  temperatureMeasurement:      { storeAttr: 'temperature',      name: 'Temperature',  sensorType: 'temperature', format: 'temperature', homekit: 'temperature' },
+  relativeHumidityMeasurement: { storeAttr: 'humidity',         name: 'Humidity',     sensorType: 'humidity',    format: 'percent',     homekit: 'humidity' },
+  battery:                     { storeAttr: 'battery',          name: 'Battery',      sensorType: 'sensor',      format: 'percent',     homekit: 'battery-level' },
+  contactSensor:               { storeAttr: 'contact',          name: 'Contact',      sensorType: 'door',        format: 'on-off',      homekit: 'contact' },
+  motionSensor:                { storeAttr: 'motion',           name: 'Motion',       sensorType: 'motion',      format: 'on-off',      homekit: 'motion' },
+  illuminanceMeasurement:      { storeAttr: 'illuminance',      name: 'Illuminance',  sensorType: 'light',       format: 'number',      homekit: 'lux' },
+  thermostatMode:              { storeAttr: 'thermostatMode',          name: 'Mode',             sensorType: 'temperature', format: 'string', raw: true },
+  thermostatHeatingSetpoint:   { storeAttr: 'heatingSetpoint',         name: 'Heating Setpoint', sensorType: 'temperature', format: 'temperature', unit: '°C', controllable: true, type: 'range', writeCmd: 'setHeatingSetpoint', capabilityId: 'thermostatHeatingSetpoint', min: 4, max: 38 },
+  thermostatCoolingSetpoint:   { storeAttr: 'coolingSetpoint',         name: 'Cooling Setpoint', sensorType: 'temperature', format: 'temperature', unit: '°C', controllable: true, type: 'range', writeCmd: 'setCoolingSetpoint', capabilityId: 'thermostatCoolingSetpoint', min: 10, max: 35 },
+  thermostatOperatingState:    { storeAttr: 'thermostatOperatingState',name: 'Operating State',  sensorType: 'temperature', format: 'string', raw: true },
+  temperatureSetpoint:         { storeAttr: 'heatingSetpoint',         name: 'Setpoint',         sensorType: 'temperature', format: 'temperature', unit: '°C', controllable: true, type: 'range', writeCmd: 'setHeatingSetpoint', capabilityId: 'temperatureSetpoint', min: 4, max: 38 },
+  fanControl:                  { storeAttr: 'switch',           name: 'Fan',          sensorType: 'switch',      format: 'on-off',  homekit: 'fan-rw',   controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off', capabilityId: 'switch' },
+  fanSpeed:                    { storeAttr: 'level',            name: 'Fan Speed',    sensorType: 'dimmer',      format: 'percent', controllable: true, type: 'range', writeCmd: 'setFanSpeed', capabilityId: 'fanSpeed', min: 0, max: 100 },
+  carbonMonoxideDetector:      { storeAttr: 'carbonMonoxide',   name: 'CO Detector',  sensorType: 'security',    format: 'alarm',       homekit: 'co' },
+  smokeDetector:               { storeAttr: 'smoke',            name: 'Smoke',        sensorType: 'security',    format: 'alarm',       homekit: 'smoke' },
+  waterSensor:                 { storeAttr: 'water',            name: 'Water Sensor', sensorType: 'security',    format: 'on-off',      homekit: 'leak' },
+  presenceSensor:              { storeAttr: 'presence',         name: 'Presence',     sensorType: 'motion',      format: 'on-off',      homekit: 'occupancy' },
+  lock:                        { storeAttr: 'lock',             name: 'Lock',         sensorType: 'door',        format: 'on-off',      controllable: true, type: 'toggle',     writeOn: 'lock',               writeOff: 'unlock',  capabilityId: 'lock' },
+  doorControl:                 { storeAttr: 'door',             name: 'Door',         sensorType: 'door',        format: 'on-off',      controllable: true, type: 'toggle',     writeOn: 'open',               writeOff: 'close',   capabilityId: 'doorControl' },
+  windowShade:                 { storeAttr: 'windowShade',      name: 'Shade',        sensorType: 'shutter',     format: 'on-off',      controllable: true, type: 'toggle',     writeOn: 'open',               writeOff: 'close',   capabilityId: 'windowShade' },
+  airQualitySensor:            { storeAttr: 'airQuality',       name: 'Air Quality',  sensorType: 'sensor',      format: 'aqi',         homekit: 'air-quality' },
+  carbonDioxideMeasurement:    { storeAttr: 'carbonDioxide',    name: 'CO₂',          sensorType: 'sensor',      format: 'co2',         homekit: 'co2-sensor' },
+  tvocMeasurement:             { storeAttr: 'tvocLevel',        name: 'TVOC',         sensorType: 'sensor',      format: 'voc',         homekit: 'air-quality' },
+  dustSensor: { sensorType: 'sensor', multi: [
     { storeAttr: 'fineDustLevel', name: 'PM2.5', format: 'pm25' },
     { storeAttr: 'dustLevel',     name: 'PM10',  format: 'pm10' },
   ]},
-  soundSensor:  { storeAttr: 'sound',  name: 'Sound Detection', format: 'on-off' },
-  imageCapture: { storeAttr: 'image',  name: 'Snapshot URL',    format: 'string', raw: true, isCamera: true },
+  soundSensor:  { storeAttr: 'sound',  name: 'Sound Detection', sensorType: 'motion',  format: 'on-off' },
+  imageCapture: { storeAttr: 'image',  name: 'Snapshot URL',    sensorType: 'sensor',  format: 'string', raw: true, isCamera: true },
 };
 
 function _deriveHomekitTypes(caps) {
@@ -160,18 +160,18 @@ class SmartThingsClient {
         if (!caps.has(capId)) continue;
 
         if (def.type === 'color') {
-          sensors.push({ path: 'hue',        name: 'Hue',        format: 'number', hidden: true });
-          sensors.push({ path: 'saturation', name: 'Saturation', format: 'number', hidden: true });
-          sensors.push({ path: 'color',      name: def.name,     format: 'color',  controllable: true, type: 'color', capabilityId: def.capabilityId });
+          sensors.push({ path: 'hue',        name: 'Hue',        sensorType: 'dimmer', format: 'number', hidden: true });
+          sensors.push({ path: 'saturation', name: 'Saturation', sensorType: 'dimmer', format: 'number', hidden: true });
+          sensors.push({ path: 'color',      name: def.name,     sensorType: 'dimmer', format: 'color',  controllable: true, type: 'color', capabilityId: def.capabilityId });
           continue;
         }
 
         if (def.multi) {
-          for (const m of def.multi) sensors.push({ path: m.storeAttr, name: m.name, format: m.format });
+          for (const m of def.multi) sensors.push({ path: m.storeAttr, name: m.name, sensorType: def.sensorType || 'sensor', format: m.format });
           continue;
         }
 
-        const sensor = { path: def.storeAttr, name: def.name, format: def.format };
+        const sensor = { path: def.storeAttr, name: def.name, label: def.name, sensorType: def.sensorType || 'sensor', format: def.format };
         if (def.homekit)       sensor.homekit      = def.homekit;
         if (def.controllable)  sensor.controllable = true;
         if (def.type)          sensor.type         = def.type;

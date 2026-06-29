@@ -39,6 +39,21 @@ const SUPPLA_SENSOR_ICON = {
   energy:      PlugIcon,
 }
 
+const SMARTTHINGS_SENSOR_ICON = {
+  switch:      SwitchOutletIcon,
+  dimmer:      BulbIcon,
+  shutter:     ShutterIcon,
+  temperature: ThermometerIcon,
+  humidity:    HumidityIcon,
+  light:       BulbIcon,
+  power:       PlugIcon,
+  energy:      PlugIcon,
+  motion:      MotionIcon,
+  door:        DoorIcon,
+  security:    SecurityIcon,
+  sensor:      SensorIcon,
+}
+
 const LOXONE_SENSOR_ICON = {
   switch:      SwitchOutletIcon,
   dimmer:      BulbIcon,
@@ -283,7 +298,8 @@ function DeviceTile({ device, onCommand }) {
   const isKnx     = device.type === 'knx'
   const isEsphome = device.type === 'esphome'
   const isShelly  = device.type === 'shelly'
-  const isLoxone  = device.type === 'loxone'
+  const isLoxone       = device.type === 'loxone'
+  const isSmartthings  = device.type === 'smartthings'
   const isAC      = device.type === 'auxair'
   const isSonos  = device.type === 'sonos'
   const isDenon  = device.type === 'denon'
@@ -313,6 +329,12 @@ function DeviceTile({ device, onCommand }) {
   const acEnvTemp = isAC ? (merged.envtemp?.value ?? r.envtemp?.value) : null
   const acMode    = isAC ? (merged.ac_mode?.value ?? r.ac_mode?.value ?? 0) : 0
   const acFan     = isAC ? (merged.ac_mark?.value ?? r.ac_mark?.value ?? 0) : 0
+
+  // For SmartThings: extract sensor values from path-keyed readings
+  const smartthingsSensors = isSmartthings ? (device.sensors || []).filter(s => !s.hidden).map(s => ({
+    ...s,
+    value: (merged[s.path] ?? r[s.path])?.value,
+  })) : []
 
   // For Loxone: extract sensor values from path-keyed readings
   const loxoneSensors = isLoxone ? (device.sensors || []).map(s => ({
@@ -635,6 +657,30 @@ function DeviceTile({ device, onCommand }) {
                     : isReadBool
                       ? <span style={{ fontSize:10, color: on ? '#a78bfa' : '#4a5568', fontWeight:600 }}>{on ? 'Yes' : 'No'}</span>
                       : <span style={{ fontSize:10, color:'#94a3b8' }}>{s.value != null ? `${Number(s.value).toFixed(s.unit === '°C' ? 1 : 0)}${s.unit || ''}` : '—'}</span>
+                  }
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {isSmartthings && smartthingsSensors.length > 0 && (
+          <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
+            {smartthingsSensors.slice(0,5).map(s => {
+              const on   = s.value === 1 || s.value === true
+              const Icon = SMARTTHINGS_SENSOR_ICON[s.sensorType] || SensorIcon
+              const isToggle = s.type === 'toggle'
+              const isRange  = s.type === 'range'
+              return (
+                <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
+                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#a78bfa' : '#4a5568'} />
+                    <span style={{ fontSize:10, color:'#94a3b8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label || s.name}</span>
+                  </div>
+                  {isToggle
+                    ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
+                    : s.value != null
+                      ? <span style={{ fontSize:10, color:'#94a3b8' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      : <span style={{ fontSize:10, color:'#4a5568' }}>—</span>
                   }
                 </div>
               )
