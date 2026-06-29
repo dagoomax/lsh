@@ -86,8 +86,6 @@ async function loadSettings() {
     setVal('satel-partitions', (data.satel?.partitions || [1]).join(', '));
     renderNamesList('satel-zone-names-list', data.satel?.zoneNames || {}, 1, 128, 'Zone');
     renderNamesList('satel-partition-names-list', data.satel?.partitionNames || {}, 1, 32, 'Partition');
-    setVal('satel-output-count', data.satel?.outputCount || 0);
-    renderNamesList('satel-output-names-list', data.satel?.outputNames || {}, 1, 128, 'Output');
 
     // UniFi Protect
     setVal('unifi-host', data.unifi?.host || '');
@@ -1162,13 +1160,6 @@ document.getElementById('btn-add-partition-name').addEventListener('click', () =
   container.appendChild(makeNameRow('satel-partition-names-list', '', '', 1, 32, 'Partition'));
 });
 
-document.getElementById('btn-add-output-name').addEventListener('click', () => {
-  const container = document.getElementById('satel-output-names-list');
-  const empty = container.querySelector('.names-empty');
-  if (empty) empty.remove();
-  container.appendChild(makeNameRow('satel-output-names-list', '', '', 1, 128, 'Output'));
-});
-
 document.getElementById('btn-test-satel').addEventListener('click', async () => {
   const resultEl = document.getElementById('satel-test-result');
   resultEl.textContent = 'Testing…';
@@ -1204,8 +1195,6 @@ document.getElementById('btn-save-satel').addEventListener('click', async () => 
         partitions:     getVal('satel-partitions'),
         zoneNames:      collectNamesList('satel-zone-names-list'),
         partitionNames: collectNamesList('satel-partition-names-list'),
-        outputCount:    parseInt(getVal('satel-output-count')) || 0,
-        outputNames:    collectNamesList('satel-output-names-list'),
       }),
     });
     const json = await res.json();

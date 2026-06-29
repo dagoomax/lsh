@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import {
   resolveIcon, CAT_ICON_COMPONENT,
   SwitchOutletIcon, BulbIcon, ShutterIcon, ThermometerIcon,
-  HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon, RelayIcon,
+  HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon,
 } from './Icons'
 
 const FIBARO_SENSOR_ICON = {
@@ -24,7 +24,6 @@ const SATEL_SENSOR_ICON = {
   tamper:    SecurityIcon,
   armed:     SecurityIcon,
   alarm:     SecurityIcon,
-  output:    RelayIcon,
 }
 
 const SUPPLA_SENSOR_ICON = {

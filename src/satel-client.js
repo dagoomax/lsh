@@ -80,13 +80,6 @@ function partitionMask(num) {
   return buf;
 }
 
-// 16-byte mask for outputs/zones (128 outputs)
-function outputMask(num) {
-  const buf = Buffer.alloc(16, 0);
-  buf[Math.floor((num - 1) / 8)] |= 1 << ((num - 1) % 8);
-  return buf;
-}
-
 function getBit(data, num) {
   if (!data) return false;
   const b = Math.floor((num - 1) / 8), bit = (num - 1) % 8;
@@ -137,14 +130,6 @@ class SatelClient extends EventEmitter {
     await this._send(
       Buffer.concat([Buffer.from([0x85]), encodeBcd(this.cfg.armCode || ''), partitionMask(num)])
     );
-  }
-
-  // ── Output control ────────────────────────────────────────────────────────
-
-  async setOutput(num, on) {
-    const cmd  = on ? 0x88 : 0x89;
-    const code = encodeBcd(this.cfg.armCode || '');
-    await this._send(Buffer.concat([Buffer.from([cmd]), code, outputMask(num)]));
   }
 
   // ── Transport ─────────────────────────────────────────────────────────────
@@ -198,17 +183,15 @@ class SatelClient extends EventEmitter {
   // ── Polling ───────────────────────────────────────────────────────────────
 
   async _pollAll() {
-    const [violations, tampers, partArmed, partAlarm, outputs] = await Promise.all([
-      this._query(0x00), // zone violations  (16 bytes)
-      this._query(0x01), // zone tampers     (16 bytes)
-      this._query(0x0A), // partition armed  (4 bytes)
-      this._query(0x0B), // partition alarm  (4 bytes)
-      this._query(0x17), // output states    (16 bytes)
+    const [violations, tampers, partArmed, partAlarm] = await Promise.all([
+      this._query(0x00), // zone violations (16 bytes)
+      this._query(0x01), // zone tampers    (16 bytes)
+      this._query(0x0A), // partition armed (4 bytes)
+      this._query(0x0B), // partition alarm (4 bytes)
     ]);
 
     if (violations || tampers)   this._updateZones(violations, tampers);
     if (partArmed  || partAlarm) this._updatePartitions(partArmed, partAlarm);
-    if (outputs)                 this._updateOutputs(outputs);
   }
 
   // ── Zones ─────────────────────────────────────────────────────────────────
@@ -283,50 +266,6 @@ class SatelClient extends EventEmitter {
         return command === 'arm'
           ? this.armPartition(num)
           : this.disarmPartition(num);
-      },
-    });
-  }
-
-  // ── Outputs ───────────────────────────────────────────────────────────────
-
-  _updateOutputs(data) {
-    const nums = this.cfg.outputs
-      ? this.cfg.outputs
-      : Array.from({ length: this.cfg.outputCount || 0 }, (_, i) => i + 1);
-
-    for (const num of nums) {
-      const on = getBit(data, num);
-      this.store.update(`satel/output/${num}/state`, on ? 1 : 0);
-      if (!this.registered.has(`o${num}`)) this._registerOutput(num);
-    }
-  }
-
-  _registerOutput(num) {
-    this.registered.add(`o${num}`);
-    const label = this.cfg.outputNames?.[num] || this.cfg.outputNames?.[String(num)] || `Output ${num}`;
-    this.sensorRegistry.registerDevice({
-      key:     `satel/output/${num}`,
-      type:    'satel',
-      label,
-      homekit: [],
-      sensors: [
-        {
-          path:         'state',
-          label:        'State',
-          sensorType:   'output',
-          format:       'on-off',
-          controllable: true,
-          type:         'toggle',
-          writeOn:      'on',
-          writeOff:     'off',
-          capabilityId: 'state',
-          homekit:      null,
-        },
-      ],
-      _writeCapability: (capId, command) => {
-        if (capId !== 'state') return;
-        return this.setOutput(num, command === 'on')
-          .catch(err => console.error(`[Satel] Output ${num} command failed: ${err.message}`));
       },
     });
   }
