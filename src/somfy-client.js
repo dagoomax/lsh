@@ -88,11 +88,13 @@ class SomfyClient {
     const devices = Array.isArray(json) ? json : [];
     const filter  = (cfg.devices || []).map(f => f.toLowerCase());
 
+    console.log(`[Somfy] ${devices.length} device(s) found from TaHoma`);
     for (const dev of devices) {
-      const uiClass = dev.uiClass || dev.widget || '';
+      const uiClass = dev.uiClass || dev.widget || dev.controllableName
+        || dev.definition?.uiClass || dev.definition?.widgetName || '';
       if (!CONTROLLABLE.some(c => uiClass.includes(c))) continue;
 
-      const url   = dev.deviceURL || '';
+      const url   = dev.deviceURL || dev.deviceUrl || '';
       const label = dev.label || url.split('/').pop() || url;
 
       if (filter.length && !filter.some(f =>
