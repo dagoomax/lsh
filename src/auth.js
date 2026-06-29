@@ -203,6 +203,13 @@ const auth = {
         return res.redirect('/setup.html');
       }
 
+      // Check ?token= query param (API tokens only)
+      const queryToken = req.query?.token;
+      if (queryToken) {
+        if (auth.verifyApiToken(queryToken)) return next();
+        return res.status(401).json({ success: false, error: 'Invalid token' });
+      }
+
       // Check Authorization: Bearer header (API token or JWT)
       const authHeader = req.headers['authorization'];
       if (authHeader?.startsWith('Bearer ')) {
