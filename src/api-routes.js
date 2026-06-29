@@ -210,6 +210,12 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (!sensorRegistry) return res.json({ success: true, data: null });
     const data = sensorRegistry.getDeviceReadings(req.params.deviceKey);
     if (!data) return res.status(404).json({ success: false, error: 'Device not found' });
+    const { sensor } = req.query;
+    if (sensor) {
+      const reading = data.readings?.[sensor];
+      if (!reading) return res.status(404).json({ success: false, error: `Sensor '${sensor}' not found` });
+      return res.json({ success: true, data: { sensor, value: reading.value, unit: reading.unit } });
+    }
     res.json({ success: true, data });
   });
 
