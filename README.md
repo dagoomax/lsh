@@ -329,10 +329,13 @@ Pushes live store values to **Loxone Virtual Inputs** via HTTP GET (`/dev/sps/io
   "armCode": "1234",
   "zoneCount": 32,
   "zoneNames": { "1": "Front Door", "2": "Back Door" },
+  "zoneTypes": { "5": "motion", "8": "contact", "16": "none" },
   "partitions": [1],
   "partitionNames": { "1": "House" }
 }
 ```
+
+Zones are exposed to **HomeKit as motion or contact sensors**. The type is inferred from the zone name — `RUCH`/`PIR`/`MOTION` → motion sensor, `OKNO`/`DRZWI`/`DOOR`/`WINDOW`/`CONTACT`/`REED` → contact sensor — and can be overridden per zone with `zoneTypes` (`"motion"`, `"contact"`, or `"none"` to keep a zone out of HomeKit). Unmatched zones are not exposed to HomeKit by default. A zone's violation drives the sensor (motion detected / contact open).
 
 Speaks the Satel INTEGRA binary TCP protocol. Zone, output, and partition **names are downloaded from the panel automatically** on connect (via the `0xEE` read-name command, decoded as CP1250 so Polish characters survive). The `zoneNames` / `outputNames` / `partitionNames` maps are therefore optional — set an entry only to **override** the name stored in the panel; anything you leave out falls back to the panel name, then to `Zone N` / `Output N` / `Partition N`.
 

@@ -328,17 +328,31 @@ class SatelClient extends EventEmitter {
     }
   }
 
+  // Classify a zone as a HomeKit 'motion' or 'contact' sensor (or null = not
+  // exposed). An explicit cfg.zoneTypes entry wins ('motion'|'contact'|'none');
+  // otherwise infer from the zone name (PL/EN): RUCH/PIR/MOTION → motion,
+  // OKNO/DRZWI/CONTACT/REED → contact.
+  _zoneHomekitType(num, label) {
+    const override = this.cfg.zoneTypes?.[num] || this.cfg.zoneTypes?.[String(num)];
+    if (override) return override === 'none' ? null : override;
+    const u = (label || '').toUpperCase();
+    if (/\b(RUCH|PIR|MOTION)\b|^RUCH/.test(u)) return 'motion';
+    if (/\b(OKNO|DRZWI|CONTACT|REED|DOOR|WINDOW)\b|^OKNO|^DRZWI/.test(u)) return 'contact';
+    return null;
+  }
+
   _registerZone(num) {
     this.registered.add(`z${num}`);
     const label = this.cfg.zoneNames?.[num] || this.cfg.zoneNames?.[String(num)]
       || this.names.zone[num] || `Zone ${num}`;
+    const hk = this._zoneHomekitType(num, label);
     this.sensorRegistry.registerDevice({
       key:     `satel/zone/${num}`,
       type:    'satel',
       label,
-      homekit: [],
+      homekit: hk ? [hk] : [],
       sensors: [
-        { path: 'state',  label: 'Violation', sensorType: 'violation', format: 'on-off', homekit: null },
+        { path: 'state',  label: 'Violation', sensorType: 'violation', format: 'on-off', homekit: hk },
         { path: 'tamper', label: 'Tamper',    sensorType: 'tamper',    format: 'on-off', homekit: null },
         { path: 'alarm',  label: 'Alarm',     sensorType: 'alarm',     format: 'on-off', homekit: null },
       ],
