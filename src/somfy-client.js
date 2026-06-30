@@ -103,6 +103,11 @@ class SomfyClient {
 
       const deviceKey = `somfy/${url.replace(/[:/]/g, '_')}`;
 
+      // Determine position command from available commands list
+      const cmds = (dev.definition?.commands || []).map(c => c.commandName || c.name || c);
+      const hasSetPosition = cmds.includes('setPosition');
+      const posCmd = hasSetPosition ? 'setPosition' : 'setClosure';
+
       const device = {
         key:   deviceKey,
         label: label,
@@ -118,7 +123,7 @@ class SomfyClient {
           {
             path: 'level', label: 'Position', format: 'percent',
             controllable: true, type: 'range',
-            writeCmd: 'setPosition', capabilityId: 'position',
+            writeCmd: posCmd, capabilityId: 'position',
             min: 0, max: 100, rangeFormat: 'percent',
           },
         ],
@@ -231,8 +236,10 @@ class SomfyClient {
     if (capId === 'toggle') {
       cmd = { name: command === 'on' ? 'open' : 'close', parameters: [] };
     } else if (capId === 'position') {
-      const closure = 100 - Math.round(args?.[0] ?? 0);
-      cmd = { name: 'setClosure', parameters: [closure] };
+      const pct = Math.round(args?.[0] ?? 0);
+      // setPosition: 0=closed, 100=open  |  setClosure: 0=open, 100=closed
+      const param = command === 'setPosition' ? pct : 100 - pct;
+      cmd = { name: command, parameters: [param] };
     } else {
       return;
     }
@@ -242,10 +249,16 @@ class SomfyClient {
       actions: [{ deviceURL: deviceUrl, commands: [cmd] }],
     });
 
-    await this._request(cfg, 'POST', `${BASE_PATH}/exec/apply`, body, {
+    const res = await this._request(cfg, 'POST', `${BASE_PATH}/exec/apply`, body, {
       'Content-Type':   'application/json',
       'Content-Length': Buffer.byteLength(body),
     });
+
+    if (res.statusCode && res.statusCode >= 300) {
+      console.error(`[Somfy] Command failed (HTTP ${res.statusCode}): ${res.body}`);
+      throw new Error(`TaHoma rejected command: HTTP ${res.statusCode}`);
+    }
+    console.log(`[Somfy] Command sent: ${cmd.name}(${cmd.parameters}) → ${deviceUrl.split('/').pop()}`);
   }
 
   // ── HTTP helpers ──────────────────────────────────────────────────────────
