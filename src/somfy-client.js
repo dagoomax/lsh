@@ -181,8 +181,11 @@ class SomfyClient {
 
     console.log(`[Somfy] ${devices.length} device(s) found from TaHoma`);
     for (const dev of devices) {
-      const uiClass = dev.uiClass || dev.widget || dev.controllableName
-        || dev.definition?.uiClass || dev.definition?.widgetName || '';
+      // Prefer the clean uiClass: the cloud sets dev.uiClass, the local box
+      // sets definition.uiClass. controllableName is a protocol string like
+      // "rts:RollerShutterRTSComponent", so it's a last resort only.
+      const uiClass = dev.uiClass || dev.definition?.uiClass
+        || dev.widget || dev.definition?.widgetName || dev.controllableName || '';
       // Exact match — substring matching mis-classified gateways
       // (e.g. 'Gate' ⊂ 'ProtocolGateway') as controllable shutters.
       if (!CONTROLLABLE.includes(uiClass)) continue;
