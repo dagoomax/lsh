@@ -118,8 +118,10 @@ function loadConfig() {
       username: fileConfig.fibaro.username || 'admin',
       password: fileConfig.fibaro.password || '',
     } : undefined,
-    somfy: fileConfig.somfy?.host ? {
-      host:         fileConfig.somfy.host,
+    somfy: (fileConfig.somfy?.host || fileConfig.somfy?.mode === 'cloud') ? {
+      mode:         fileConfig.somfy.mode === 'cloud' ? 'cloud' : 'local',
+      region:       fileConfig.somfy.region   || 'europe',
+      host:         fileConfig.somfy.host     || '',
       port:         parseInt(fileConfig.somfy.port) || 8443,
       token:        fileConfig.somfy.token    || '',
       email:        fileConfig.somfy.email    || '',

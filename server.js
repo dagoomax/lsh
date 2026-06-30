@@ -268,8 +268,11 @@ async function main() {
     }
   }
 
-  // Start Somfy TaHoma client if configured
-  if (config.somfy?.host && (config.somfy?.token || (config.somfy?.email && config.somfy?.password))) {
+  // Start Somfy client if configured (cloud: email+password; local: host + token or email/password)
+  if (
+    (config.somfy?.mode === 'cloud' && config.somfy?.email && config.somfy?.password) ||
+    (config.somfy?.host && (config.somfy?.token || (config.somfy?.email && config.somfy?.password)))
+  ) {
     const SomfyClient = tryRequire('./src/somfy-client');
     if (SomfyClient) {
       const somfy = new SomfyClient(config, store, sensorRegistry);

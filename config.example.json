@@ -81,9 +81,12 @@
     "apiKey": ""
   },
   "somfy": {
+    "mode": "local",
+    "region": "europe",
     "host": "192.168.x.x",
     "email": "you@somfy.com",
     "password": "",
+    "token": "",
     "port": 8443,
     "pollInterval": 30,
     "devices": []

@@ -226,7 +226,7 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 | `esphome` | No | ESPHome ESP32/ESP8266 devices (HTTP REST API) |
 | `knx` | No | KNX bus via KNXnet/IP gateway (group address mapping) |
 | `fibaro` | No | Fibaro Home Center 2 / 3 (rooms, switches, dimmers, sensors) |
-| `somfy` | No | Somfy TaHoma local API (roller shutters, awnings, gates) |
+| `somfy` | No | Somfy TaHoma, local API or Overkiz cloud (roller shutters, awnings, gates) |
 | `bayrol` | No | Bayrol Pool Manager Connect (pH, ORP, temperature, salt via MQTT) |
 | `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
 | `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
@@ -527,6 +527,8 @@ Connects to a **Fibaro Home Center 2 or 3** via its local REST API. Discovers al
 
 ```json
 "somfy": {
+  "mode": "local",
+  "region": "europe",
   "host": "192.168.1.x",
   "port": 8443,
   "email": "you@example.com",
@@ -536,9 +538,12 @@ Connects to a **Fibaro Home Center 2 or 3** via its local REST API. Discovers al
 }
 ```
 
-Connects to a **Somfy TaHoma** box via the local HTTPS API (port 8443, self-signed certificate). Discovers roller shutters, awnings, gates, screens, pergolas, and blinds.
+Connects to a **Somfy TaHoma** installation and discovers roller shutters, awnings, gates, screens, pergolas, and blinds. Two connection modes:
 
-> **Prerequisite:** Enable **Developer Mode** in the TaHoma app (Settings → My Home → TaHoma box → Developer Mode) before connecting. Without it the API returns `RESOURCE_ACCESS_DENIED`.
+- **`mode: "local"`** (default) — talks to the TaHoma box on the LAN via the local HTTPS API (port 8443, self-signed certificate). Authenticate with `email` + `password`, or a Developer-Mode `token`.
+- **`mode: "cloud"`** — talks to the Somfy/Overkiz cloud, so it works when the box isn't reachable on the LAN. Set `region` (`europe`, `north_america`, or `oceania`) and authenticate with your Somfy account `email` + `password`. No Developer Mode or local `host` required; the client signs in via the Somfy SSO and refreshes its token automatically.
+
+> **Local-mode prerequisite:** Enable **Developer Mode** in the TaHoma app (Settings → My Home → TaHoma box → Developer Mode) before connecting. Without it the local API returns `RESOURCE_ACCESS_DENIED`. Cloud mode does not need Developer Mode.
 
 **`devices`** — optional name filter array. Leave empty to discover all. Example: `["Salon", "Bedroom"]`.
 

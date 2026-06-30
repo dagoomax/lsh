@@ -3,7 +3,24 @@
 const https          = require('https');
 const platformStatus = require('./platform-status');
 
-const BASE_PATH = '/enduser-mobile-web/1/enduserAPI';
+const BASE_PATH       = '/enduser-mobile-web/1/enduserAPI';        // local TaHoma box
+const CLOUD_BASE_PATH = '/enduser-mobile-web/enduserAPI';          // Overkiz cloud
+
+// Somfy / Overkiz cloud (Developer-Mode-free): authenticate against the Somfy
+// SSO with the account email + password to obtain a short-lived Bearer token,
+// then talk to the regional Overkiz endpoint exactly like the local token path.
+const SOMFY_SSO      = 'accounts.somfy.com';
+const SOMFY_SSO_PATH = '/oauth/oauth/v2/token/jwt';
+// Public app credentials shared by the Somfy mobile apps (same values pyoverkiz uses).
+const SOMFY_CLIENT_ID     = '0d8e920c-1478-11e7-a377-02dd59bd3041_1ewvaqmclfogo4kcsoo0c8k4kso884owg08sg8c40sk4go4ksg';
+const SOMFY_CLIENT_SECRET = '12k73w1n540g8o4cokg0cw84cog840k84cwggscwg884004kgk';
+
+// region → Overkiz cloud host
+const CLOUD_HOSTS = {
+  europe:        'ha101-1.overkiz.com',
+  oceania:       'ha201-1.overkiz.com',
+  north_america: 'ha401-1.overkiz.com',
+};
 
 // Somfy uiClass values that are motorised and controllable
 const CONTROLLABLE = [
@@ -21,26 +38,49 @@ class SomfyClient {
     this._store      = store;
     this._registry   = sensorRegistry;
     this._session    = null; // JSESSIONID=... (cookie auth)
-    this._token      = null; // Bearer token (developer mode)
+    this._token      = null; // Bearer token (developer mode or cloud SSO)
+    this._tokenExp   = 0;    // epoch ms when the cloud token expires (cloud only)
+    this._cloud      = false;// cloud (Overkiz SSO) mode
     this._listenerId = null; // event listener ID (token mode only)
     this._eventTimer = null; // event poll interval
     this._pollTimer  = null; // fallback state poll interval
     this._devices    = {};   // deviceURL → { label, deviceKey, uiClass }
-    // TaHoma box uses a self-signed TLS certificate
+    // Resolved per-mode connection target (set in start()).
+    this._host       = null;
+    this._port       = 8443;
+    this._basePath   = BASE_PATH;
+    // TaHoma box uses a self-signed TLS certificate; the cloud uses a valid one.
     this._agent      = new https.Agent({ rejectUnauthorized: false });
   }
 
   async start() {
     const cfg = this._config.somfy;
-    if (!cfg?.host) return;
-    if (!cfg.token && (!cfg.email || !cfg.password))
-      throw new Error('Somfy requires either a token or email + password');
+    this._cloud = cfg?.mode === 'cloud' || cfg?.cloud === true;
 
-    if (cfg.token) {
-      this._token = cfg.token;
-      console.log('[Somfy] Using Bearer token auth (Developer Mode)');
+    if (this._cloud) {
+      if (!cfg.email || !cfg.password)
+        throw new Error('Somfy cloud requires email + password');
+      const region = cfg.region || 'europe';
+      this._host     = CLOUD_HOSTS[region];
+      if (!this._host) throw new Error(`Unknown Somfy region: ${region}`);
+      this._port     = 443;
+      this._basePath = CLOUD_BASE_PATH;
+      this._agent    = new https.Agent({ rejectUnauthorized: true });
+      await this._cloudLogin(cfg);
+      console.log(`[Somfy] Using cloud auth (Overkiz ${region}) — token valid`);
     } else {
-      await this._login(cfg);
+      if (!cfg?.host) return;
+      if (!cfg.token && (!cfg.email || !cfg.password))
+        throw new Error('Somfy requires either a token or email + password');
+      this._host     = cfg.host;
+      this._port     = cfg.port || 8443;
+      this._basePath = BASE_PATH;
+      if (cfg.token) {
+        this._token = cfg.token;
+        console.log('[Somfy] Using Bearer token auth (Developer Mode)');
+      } else {
+        await this._login(cfg);
+      }
     }
 
     await this._discoverDevices(cfg);
@@ -66,7 +106,7 @@ class SomfyClient {
 
   async _login(cfg) {
     const body = `userId=${encodeURIComponent(cfg.email)}&userPassword=${encodeURIComponent(cfg.password)}`;
-    const res  = await this._request(cfg, 'POST', `${BASE_PATH}/login`, body, {
+    const res  = await this._request(cfg, 'POST', `${this._basePath}/login`, body, {
       'Content-Type':   'application/x-www-form-urlencoded',
       'Content-Length': Buffer.byteLength(body),
     });
@@ -81,10 +121,61 @@ class SomfyClient {
     console.log('[Somfy] Login successful');
   }
 
+  // Somfy SSO password grant → short-lived Bearer (JWT) for the Overkiz cloud.
+  async _cloudLogin(cfg) {
+    const params = new URLSearchParams({
+      grant_type:    'password',
+      client_id:     SOMFY_CLIENT_ID,
+      client_secret: SOMFY_CLIENT_SECRET,
+      username:      cfg.email,
+      password:      cfg.password,
+    }).toString();
+
+    const res = await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: SOMFY_SSO, port: 443, path: SOMFY_SSO_PATH, method: 'POST',
+        headers: {
+          'Content-Type':   'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(params),
+          Accept:           'application/json',
+          'User-Agent':     'LSH-Dashboard/1.0',
+        },
+        timeout: 10000,
+      }, r => {
+        let data = '';
+        r.on('data', d => (data += d));
+        r.on('end', () => resolve({ statusCode: r.statusCode, body: data }));
+      });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('SSO timeout')); });
+      req.write(params);
+      req.end();
+    });
+
+    let json;
+    try { json = JSON.parse(res.body); } catch { json = {}; }
+    if (res.statusCode >= 300 || !json.access_token) {
+      const msg = json.error === 'invalid_grant'
+        ? 'Invalid Somfy account email or password'
+        : (json.error_description || json.error || `SSO HTTP ${res.statusCode}`);
+      throw new Error(msg);
+    }
+    this._token    = json.access_token;
+    // Refresh a minute early; default to 1 h if the server omits expires_in.
+    this._tokenExp = Date.now() + ((json.expires_in || 3600) - 60) * 1000;
+  }
+
+  // Refresh the cloud token before it expires (no-op in local/token modes).
+  async _ensureToken() {
+    if (this._cloud && Date.now() >= this._tokenExp) {
+      await this._cloudLogin(this._config.somfy);
+    }
+  }
+
   // ── Device discovery ───────────────────────────────────────────────────────
 
   async _discoverDevices(cfg) {
-    const json    = await this._getJson(cfg, `${BASE_PATH}/setup/devices`);
+    const json    = await this._getJson(cfg, `${this._basePath}/setup/devices`);
     const devices = Array.isArray(json) ? json : [];
     const filter  = (cfg.devices || []).map(f => f.toLowerCase());
 
@@ -92,7 +183,9 @@ class SomfyClient {
     for (const dev of devices) {
       const uiClass = dev.uiClass || dev.widget || dev.controllableName
         || dev.definition?.uiClass || dev.definition?.widgetName || '';
-      if (!CONTROLLABLE.some(c => uiClass.includes(c))) continue;
+      // Exact match — substring matching mis-classified gateways
+      // (e.g. 'Gate' ⊂ 'ProtocolGateway') as controllable shutters.
+      if (!CONTROLLABLE.includes(uiClass)) continue;
 
       const url   = dev.deviceURL || dev.deviceUrl || '';
       const label = dev.label || url.split('/').pop() || url;
@@ -144,7 +237,7 @@ class SomfyClient {
 
   async _startEventPolling() {
     try {
-      const res = await this._postJson(`${BASE_PATH}/events/register`, {});
+      const res = await this._postJson(`${this._basePath}/events/register`, {});
       this._listenerId = res?.id;
       if (!this._listenerId) throw new Error('No listener ID returned');
       console.log(`[Somfy] Event listener registered: ${this._listenerId}`);
@@ -160,7 +253,7 @@ class SomfyClient {
   async _fetchEvents() {
     if (!this._listenerId) return;
     try {
-      const events = await this._postJson(`${BASE_PATH}/events/${this._listenerId}/fetch`, {});
+      const events = await this._postJson(`${this._basePath}/events/${this._listenerId}/fetch`, {});
       if (!Array.isArray(events)) return;
       for (const evt of events) {
         if (!STATE_EVENTS.has(evt.name)) continue;
@@ -185,7 +278,7 @@ class SomfyClient {
 
   async _unregisterListener() {
     if (!this._listenerId) return;
-    await this._postJson(`${BASE_PATH}/events/${this._listenerId}/unregister`, {}).catch(() => {});
+    await this._postJson(`${this._basePath}/events/${this._listenerId}/unregister`, {}).catch(() => {});
     this._listenerId = null;
   }
 
@@ -213,7 +306,7 @@ class SomfyClient {
   async _pollDevice(url, deviceKey) {
     const cfg     = this._config.somfy;
     const encoded = encodeURIComponent(url);
-    const states  = await this._getJson(cfg, `${BASE_PATH}/setup/devices/${encoded}/states`);
+    const states  = await this._getJson(cfg, `${this._basePath}/setup/devices/${encoded}/states`);
     for (const state of (Array.isArray(states) ? states : [])) {
       this._applyState(deviceKey, state.name, state.value);
     }
@@ -232,6 +325,7 @@ class SomfyClient {
   // ── Command dispatch ──────────────────────────────────────────────────────
 
   async _executeCommand(cfg, deviceUrl, capId, command, args) {
+    await this._ensureToken();
     let cmd;
     if (capId === 'toggle') {
       cmd = { name: command === 'on' ? 'open' : 'close', parameters: [] };
@@ -249,7 +343,7 @@ class SomfyClient {
       actions: [{ deviceURL: deviceUrl, commands: [cmd] }],
     });
 
-    const res = await this._request(cfg, 'POST', `${BASE_PATH}/exec/apply`, body, {
+    const res = await this._request(cfg, 'POST', `${this._basePath}/exec/apply`, body, {
       'Content-Type':   'application/json',
       'Content-Length': Buffer.byteLength(body),
     });
@@ -273,8 +367,8 @@ class SomfyClient {
         ...extraHeaders,
       };
       const req = https.request({
-        hostname: cfg.host,
-        port:     cfg.port || 8443,
+        hostname: this._host,
+        port:     this._port,
         path, method, headers,
         agent:   this._agent,
         timeout: 10000,
@@ -291,7 +385,12 @@ class SomfyClient {
   }
 
   async _getJson(cfg, path) {
-    const res = await this._request(cfg, 'GET', path, null, {});
+    await this._ensureToken();
+    let res = await this._request(cfg, 'GET', path, null, {});
+    if (res.statusCode === 401 && this._cloud) {
+      await this._cloudLogin(this._config.somfy);            // token rejected — re-auth once
+      res = await this._request(cfg, 'GET', path, null, {});
+    }
     try {
       return JSON.parse(res.body);
     } catch {
@@ -301,11 +400,14 @@ class SomfyClient {
   }
 
   async _postJson(path, payload) {
-    const body = JSON.stringify(payload);
-    const res  = await this._request(this._config.somfy, 'POST', path, body, {
-      'Content-Type':   'application/json',
-      'Content-Length': Buffer.byteLength(body),
-    });
+    await this._ensureToken();
+    const body    = JSON.stringify(payload);
+    const headers = { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) };
+    let res = await this._request(this._config.somfy, 'POST', path, body, headers);
+    if (res.statusCode === 401 && this._cloud) {
+      await this._cloudLogin(this._config.somfy);            // token rejected — re-auth once
+      res = await this._request(this._config.somfy, 'POST', path, body, headers);
+    }
     if (res.statusCode === 404) throw new Error('404 listener not found or expired');
     try { return JSON.parse(res.body); } catch { return null; }
   }
