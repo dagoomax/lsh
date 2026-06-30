@@ -153,7 +153,14 @@ class FibaroClient {
     else if (command === 'off') { action = 'turnOff'; body = { args: [] }; }
     else if (command === 'set') { action = 'setValue'; body = { args: [args[0]] }; }
     else { action = command; body = { args: args || [] }; }
-    await this._post(`/api/devices/${deviceId}/action/${action}`, body);
+    console.log(`[Fibaro] CMD → device ${deviceId}: ${action}`, JSON.stringify(body));
+    try {
+      await this._post(`/api/devices/${deviceId}/action/${action}`, body);
+      console.log(`[Fibaro] CMD OK — device ${deviceId}: ${action}`);
+    } catch (err) {
+      console.error(`[Fibaro] CMD FAILED — device ${deviceId}: ${action} — ${err.message}`);
+      throw err;
+    }
   }
 
   // ── Long-poll state updates ────────────────────────────────────────────
@@ -226,12 +233,18 @@ class FibaroClient {
           'Content-Length': payload.length,
         },
       }, res => {
-        res.resume();
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          reject(new Error(`HTTP ${res.statusCode}`));
-        } else {
-          resolve();
-        }
+        const chunks = [];
+        res.on('data', d => chunks.push(d));
+        res.on('end', () => {
+          const responseBody = Buffer.concat(chunks).toString();
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            console.error(`[Fibaro] POST ${path} → HTTP ${res.statusCode}: ${responseBody}`);
+            reject(new Error(`HTTP ${res.statusCode}: ${responseBody}`));
+          } else {
+            if (responseBody) console.log(`[Fibaro] POST ${path} → ${res.statusCode}: ${responseBody.slice(0, 200)}`);
+            resolve();
+          }
+        });
       });
       req.on('error', reject);
       req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
