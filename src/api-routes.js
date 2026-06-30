@@ -234,6 +234,21 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // GET version — browser/Loxone friendly: /api/device/{key}/set?sensor=…&value=…&token=…
+  router.get('/device/:deviceKey(*)/set', async (req, res) => {
+    if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
+    const { sensor, value } = req.query;
+    if (typeof sensor !== 'string' || value === undefined) {
+      return res.status(400).json({ success: false, error: 'Query must contain sensor and value' });
+    }
+    try {
+      await sensorRegistry.sendCommand(req.params.deviceKey, sensor, value);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
   // ── Cameras ───────────────────────────────────────────────
 
   router.get('/cameras', (req, res) => {
