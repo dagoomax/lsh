@@ -103,14 +103,22 @@ body::after {
 
 /* ── Dashboard: active main tab + live dot ──────────────── */
 .main-tab-btn.active { position: relative; color: var(--text); }
+/* Left accent bar for the vertical sidebar */
 .main-tab-btn.active::after {
   content: '';
   position: absolute;
-  left: 14px; right: 14px; bottom: -1px;
-  height: 2px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+  left: 0; top: 8px; bottom: 8px; width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--accent-green), var(--accent-blue));
   box-shadow: 0 0 10px color-mix(in srgb, var(--accent-blue) 60%, transparent);
+}
+/* Back to a bottom underline when the sidebar collapses to a top bar */
+@media (max-width: 768px) {
+  .main-tab-btn.active::after {
+    left: 14px; right: 14px; top: auto; bottom: -1px;
+    width: auto; height: 2px;
+    background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+  }
 }
 .live-dot {
   box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-green) 70%, transparent);

@@ -235,8 +235,6 @@ main {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 16px;
   padding: 20px 24px;
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 .card {
@@ -1010,8 +1008,6 @@ main {
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
   padding: 0 24px 20px;
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 .device-card {
@@ -1597,8 +1593,6 @@ footer {
 
 /* ── Devices tab ───────────────────────────────────────────── */
 .tab-pane-inner {
-  max-width: 1400px;
-  margin: 0 auto;
   padding: 20px 24px 0;
 }
 
@@ -1627,8 +1621,6 @@ footer {
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
   padding: 20px 24px 24px;
-  max-width: 1400px;
-  margin: 0 auto;
 }
 
 .rooms-empty {
@@ -2142,4 +2134,67 @@ footer {
 .sip-call-timer, .qr-pin-value {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
+}
+
+/* ─────────────────────────────────────────────────────────
+   Full-screen layout + left tab sidebar (dashboard)
+   ───────────────────────────────────────────────────────── */
+:root { --header-h: 80px; }
+
+.app-shell {
+  display: flex;
+  align-items: flex-start;
+}
+.tab-pane-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Tab bar → vertical left sidebar */
+.main-tab-bar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 212px;
+  flex-shrink: 0;
+  padding: 16px 12px;
+  border-bottom: none;
+  border-right: 1px solid var(--card-border);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  position: sticky;
+  top: var(--header-h);
+  height: calc(100vh - var(--header-h));
+  align-self: flex-start;
+  overflow-y: auto;
+}
+.main-tab-btn {
+  border-bottom: none;
+  border-radius: 9px;
+  padding: 11px 14px;
+  justify-content: flex-start;
+}
+.main-tab-btn:hover { background: var(--card-bg); }
+.main-tab-btn.active {
+  border-bottom-color: transparent;
+  background: var(--accent-dim);
+  color: var(--text);
+}
+.main-tab-btn .tab-count { margin-left: auto; }
+
+/* Collapse back to a top bar on narrow screens */
+@media (max-width: 768px) {
+  .app-shell { flex-direction: column; }
+  .main-tab-bar {
+    flex-direction: row;
+    width: auto;
+    height: auto;
+    align-items: stretch;
+    padding: 0 12px;
+    border-right: none;
+    border-bottom: 1px solid var(--card-border);
+    top: 0;
+    overflow-x: auto;
+  }
+  .main-tab-btn { border-radius: 0; padding: 13px 18px; }
+  .main-tab-btn .tab-count { margin-left: 0; }
 }

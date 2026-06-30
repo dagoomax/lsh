@@ -44,7 +44,9 @@
     </div>
   </header>
 
-  <!-- ── Main tab bar ──────────────────────────────────────── -->
+  <!-- ── App shell: left tab sidebar + content ─────────────── -->
+  <div class="app-shell">
+  <!-- ── Main tab bar (left sidebar) ───────────────────────── -->
   <div class="main-tab-bar" id="main-tab-bar">
     <button class="main-tab-btn active" data-tab="energy">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -62,6 +64,7 @@
     </button>
   </div>
 
+  <div class="tab-pane-wrap">
   <div id="tab-pane-energy" class="tab-pane tab-active">
   <main>
     <!-- ── Energy Flow ─────────────────────────────────── -->
@@ -439,6 +442,9 @@
     </div>
     <div id="rooms-grid"></div>
   </div>
+
+  </div><!-- /tab-pane-wrap -->
+  </div><!-- /app-shell -->
 
   <footer>
     <span>LSHServer</span>
