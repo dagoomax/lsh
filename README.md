@@ -334,7 +334,7 @@ Pushes live store values to **Loxone Virtual Inputs** via HTTP GET (`/dev/sps/io
 }
 ```
 
-Speaks the Satel INTEGRA binary TCP protocol. Zone and partition names are optional display labels.
+Speaks the Satel INTEGRA binary TCP protocol. Zone, output, and partition **names are downloaded from the panel automatically** on connect (via the `0xEE` read-name command, decoded as CP1250 so Polish characters survive). The `zoneNames` / `outputNames` / `partitionNames` maps are therefore optional — set an entry only to **override** the name stored in the panel; anything you leave out falls back to the panel name, then to `Zone N` / `Output N` / `Partition N`.
 
 ### `unifi`
 
@@ -1167,7 +1167,7 @@ Connects to a **Loxone Miniserver** via its WebSocket API with token-based authe
 
 ### `src/satel-client.js`
 
-Speaks the **Satel INTEGRA binary TCP protocol** (default port 7094). Polls zone states and partition arm status every 10 s. Zone and partition names are set in config for display purposes.
+Speaks the **Satel INTEGRA binary TCP protocol** (default port 7094). Uses the `new_data` (`0x7F`) command in a self-scheduling loop (~300 ms, no overlapping requests) so zone/output/partition state changes surface within a fraction of a second. Zone, output, and partition names are downloaded from the panel on connect (`0xEE`, CP1250-decoded); config `*Names` maps override them.
 
 Wire protocol uses CRC-16 with `0xFE` byte-stuffing. Reconnects automatically after 30 s on connection loss.
 

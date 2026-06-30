@@ -4,7 +4,7 @@ const net            = require('net');
 const EventEmitter   = require('events');
 const platformStatus = require('./platform-status');
 
-const POLL_MS         = 2_000;   // new_data check interval
+const POLL_MS         = 300;     // delay between new_data checks (self-scheduling, no overlap)
 const QUERY_TIMEOUT   = 3_000;
 const RECONNECT_DELAY = 30_000;
 
@@ -17,6 +17,13 @@ const CMD_PART_ALARM       = 0x13; // PartitionsAlarm
 const CMD_PART_FIRE_ALARM  = 0x14;
 const CMD_OUTPUTS_STATE    = 0x17;
 const CMD_NEW_DATA         = 0x7F;
+const CMD_READ_NAME        = 0xEE; // read element name; request: EE <type> <number>
+
+// Element types for the 0xEE name query.
+const NAME_TYPE_PARTITION  = 0;
+const NAME_TYPE_ZONE       = 1;
+const NAME_TYPE_OUTPUT     = 4;
+const NAME_TIMEOUT         = 1_000; // names answer fast; keep well under QUERY_TIMEOUT
 
 // Check if a command's data changed (new_data response uses cmd code as bit index)
 function changed(newDataResp, cmdCode) {
@@ -109,6 +116,25 @@ function getBit(data, num) {
   return data[b] != null && !!(data[b] & (1 << bit));
 }
 
+// Decode a 16-byte element name from a 0xEE response. Names are padded with
+// spaces; INTEGRA stores text in a Latin-2 / CP1250-style code page, so decode
+// high bytes accordingly to keep Polish diacritics (ąćęłńóśźż …) intact.
+const CP1250_HIGH = {
+  0xA5: 'Ą', 0xB9: 'ą', 0xC6: 'Ć', 0xE6: 'ć', 0xCA: 'Ę', 0xEA: 'ę',
+  0xA3: 'Ł', 0xB3: 'ł', 0xD1: 'Ń', 0xF1: 'ń', 0xD3: 'Ó', 0xF3: 'ó',
+  0x8C: 'Ś', 0x9C: 'ś', 0x8F: 'Ź', 0x9F: 'ź', 0xAF: 'Ż', 0xBF: 'ż',
+};
+function decodeSatelName(buf) {
+  let s = '';
+  for (const b of buf) {
+    if (b === 0x00) continue;
+    if (b >= 0x20 && b < 0x7F) s += String.fromCharCode(b);
+    else if (CP1250_HIGH[b])   s += CP1250_HIGH[b];
+    else if (b !== 0x20)       s += '';
+  }
+  return s.replace(/\s+$/, '').trim();
+}
+
 // ── Client ────────────────────────────────────────────────────────────────────
 
 class SatelClient extends EventEmitter {
@@ -121,18 +147,34 @@ class SatelClient extends EventEmitter {
     this.rxBuf          = Buffer.alloc(0);
     this.pollTimer      = null;
     this.reconnTimer    = null;
+    this._running       = false;
     this.registered     = new Set();
+    this.names          = { partition: {}, zone: {}, output: {} }; // names read from the panel
+    // Name loading briefly stacks one-shot 'frame' listeners; lift the default cap.
+    this.setMaxListeners(50);
   }
 
   async start() {
     await this._connect();
+    await this._loadNames();
     await this._pollAll(true);
-    this.pollTimer = setInterval(() => this._pollAll().catch(() => {}), POLL_MS);
+    // Self-scheduling loop: the next poll is queued only after the current one
+    // settles, so a slow/timed-out query can never overlap the next request on
+    // the socket. The loop keeps ticking across disconnects (polls fail harmlessly
+    // until _connect succeeds again) and stops only via stop().
+    this._running = true;
+    const loop = async () => {
+      if (!this._running) return;
+      try { await this._pollAll(); } catch {}
+      if (this._running) this.pollTimer = setTimeout(loop, POLL_MS);
+    };
+    this.pollTimer = setTimeout(loop, POLL_MS);
     console.log(`[Satel] Started — ${this.cfg.host}:${this.cfg.port || 7094}`);
   }
 
   stop() {
-    clearInterval(this.pollTimer);
+    this._running = false;
+    clearTimeout(this.pollTimer);
     clearTimeout(this.reconnTimer);
     this.socket?.destroy();
     this.socket = null;
@@ -211,6 +253,43 @@ class SatelClient extends EventEmitter {
     });
   }
 
+  // Read a single element name via 0xEE. Response: EE <type> <num> <func> <16 name>.
+  _readName(type, num) {
+    return new Promise(resolve => {
+      const onFrame = frame => {
+        if (frame[0] === CMD_READ_NAME && frame[1] === type && frame[2] === num) {
+          this.off('frame', onFrame);
+          resolve(decodeSatelName(frame.slice(4, 20)));
+        }
+      };
+      this.on('frame', onFrame);
+      this._send(Buffer.from([CMD_READ_NAME, type, num])).catch(() => {});
+      setTimeout(() => { this.off('frame', onFrame); resolve(null); }, NAME_TIMEOUT);
+    });
+  }
+
+  // Download zone / output / partition names from the panel once, sequentially
+  // (one outstanding query at a time keeps the socket and listeners sane).
+  async _loadNames() {
+    const range  = (n) => Array.from({ length: n }, (_, i) => i + 1);
+    const zoneN  = this.cfg.zones      || range(this.cfg.zoneCount   || 0);
+    const outN   = this.cfg.outputs    || range(this.cfg.outputCount || 0);
+    const partN  = this.cfg.partitions || [1];
+
+    for (const [type, nums, bucket] of [
+      [NAME_TYPE_PARTITION, partN, this.names.partition],
+      [NAME_TYPE_ZONE,      zoneN, this.names.zone],
+      [NAME_TYPE_OUTPUT,    outN,  this.names.output],
+    ]) {
+      for (const n of nums) {
+        if (!this.socket) return; // disconnected mid-load — abort
+        const name = await this._readName(type, n);
+        if (name) bucket[n] = name;
+      }
+    }
+    console.log(`[Satel] Names from panel — ${Object.keys(this.names.output).length} output(s), ${Object.keys(this.names.zone).length} zone(s), ${Object.keys(this.names.partition).length} partition(s)`);
+  }
+
   // ── Polling ───────────────────────────────────────────────────────────────
 
   async _pollAll(force = false) {
@@ -251,7 +330,8 @@ class SatelClient extends EventEmitter {
 
   _registerZone(num) {
     this.registered.add(`z${num}`);
-    const label = this.cfg.zoneNames?.[num] || this.cfg.zoneNames?.[String(num)] || `Zone ${num}`;
+    const label = this.cfg.zoneNames?.[num] || this.cfg.zoneNames?.[String(num)]
+      || this.names.zone[num] || `Zone ${num}`;
     this.sensorRegistry.registerDevice({
       key:     `satel/zone/${num}`,
       type:    'satel',
@@ -279,7 +359,8 @@ class SatelClient extends EventEmitter {
 
   _registerPartition(num) {
     this.registered.add(`p${num}`);
-    const label = this.cfg.partitionNames?.[num] || this.cfg.partitionNames?.[String(num)] || `Partition ${num}`;
+    const label = this.cfg.partitionNames?.[num] || this.cfg.partitionNames?.[String(num)]
+      || this.names.partition[num] || `Partition ${num}`;
     this.sensorRegistry.registerDevice({
       key:     `satel/partition/${num}`,
       type:    'satel',
@@ -325,7 +406,8 @@ class SatelClient extends EventEmitter {
 
   _registerOutput(num) {
     this.registered.add(`o${num}`);
-    const label = this.cfg.outputNames?.[num] || this.cfg.outputNames?.[String(num)] || `Output ${num}`;
+    const label = this.cfg.outputNames?.[num] || this.cfg.outputNames?.[String(num)]
+      || this.names.output[num] || `Output ${num}`;
     this.sensorRegistry.registerDevice({
       key:     `satel/output/${num}`,
       type:    'satel',
