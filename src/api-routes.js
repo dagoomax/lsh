@@ -1110,26 +1110,45 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ success: false, error: 'email and password are required' });
     const https = require('https');
-    const body  = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&stay=1`;
-    try {
-      await new Promise((resolve, reject) => {
-        const reqH = https.request({
-          hostname: 'www.bayrol-poolaccess.de', port: 443,
-          path: '/webservice/p.php?i=access', method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
-          timeout: 10000,
-        }, r => {
-          const cookies = [].concat(r.headers['set-cookie'] || []);
-          if (cookies.find(c => c.startsWith('PHPSESSID='))) resolve();
-          else reject(new Error('Login failed — no session cookie (check credentials)'));
-          r.resume();
-        });
-        reqH.on('error', reject);
-        reqH.on('timeout', () => { reqH.destroy(); reject(new Error('Connection timeout')); });
-        reqH.write(body);
-        reqH.end();
+    const HOST  = 'www.bayrol-poolaccess.de';
+
+    // Cookie-aware request helper — mirrors bayrol-client.js so the test
+    // exercises the same login flow the poller actually uses.
+    let session = '';
+    const request = (method, path, body) => new Promise((resolve, reject) => {
+      const headers = {};
+      if (session) headers['Cookie'] = session;
+      if (body) {
+        headers['Content-Type']   = 'application/x-www-form-urlencoded';
+        headers['Content-Length'] = Buffer.byteLength(body);
+      }
+      let done = false;
+      const timer = setTimeout(() => { if (!done) { done = true; reqH.destroy(); reject(new Error('Connection timeout')); } }, 10000);
+      const reqH = https.request({ hostname: HOST, port: 443, path, method, headers }, r => {
+        const sess = [].concat(r.headers['set-cookie'] || []).find(c => c.startsWith('PHPSESSID='));
+        if (sess) session = sess.split(';')[0];
+        let data = '';
+        r.on('data', d => (data += d));
+        r.on('end', () => { done = true; clearTimeout(timer); resolve({ status: r.statusCode, body: data }); });
       });
-      res.json({ success: true, message: 'Login successful — credentials are valid' });
+      reqH.on('error', err => { if (!done) { done = true; clearTimeout(timer); reject(err); } });
+      if (body) reqH.write(body);
+      reqH.end();
+    });
+
+    try {
+      // 1. GET login page → initial PHPSESSID
+      await request('GET', '/webview/p/login.php?r=reg');
+      // 2. POST credentials
+      const loginBody = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&login=Anmelden`;
+      await request('POST', '/webview/p/login.php?r=reg', loginBody);
+      // 3. Confirm by loading the plants page — only reachable when logged in
+      const { body } = await request('GET', '/webview/p/plants.php');
+      if (/var\s+clients\s*=\s*\[/.test(body) || /[?&]c=\d+/.test(body)) {
+        res.json({ success: true, message: 'Login successful — credentials are valid' });
+      } else {
+        res.json({ success: false, error: 'Login failed (check credentials)' });
+      }
     } catch (err) {
       res.json({ success: false, error: err.message });
     }
