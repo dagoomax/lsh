@@ -86,8 +86,9 @@ class SensorRegistry extends EventEmitter {
       // value = { hue: 0-100, saturation: 0-100 }
       return device._writeCapability(sensor.capabilityId, 'setColor', [value]);
     }
-    // toggle: value is boolean
-    const command = value ? sensor.writeOn : sensor.writeOff;
+    // toggle: normalize string 'on'/'off'/'1'/'0' and boolean/number values
+    const on = value === true || value === 1 || value === 'on' || value === '1' || value === 'true';
+    const command = on ? sensor.writeOn : sensor.writeOff;
     return device._writeCapability(sensor.capabilityId, command);
   }
 }
