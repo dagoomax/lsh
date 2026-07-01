@@ -22,6 +22,7 @@
     "dc_system": "System DC",
     "cameras": "Kamery",
     "relays": "Przekaźniki",
+    "security_inputs": "Wejścia alarmowe",
     "devices": "Urządzenia",
     "solaredge": "SolarEdge"
   },

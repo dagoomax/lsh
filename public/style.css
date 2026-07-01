@@ -2198,3 +2198,27 @@ footer {
   .main-tab-btn { border-radius: 0; padding: 13px 18px; }
   .main-tab-btn .tab-count { margin-left: 0; }
 }
+
+/* ── Satel "inputs open" summary tile ───────────────────── */
+.satel-inputs-body { display: flex; flex-direction: column; gap: 14px; }
+.satel-inputs-count { display: flex; align-items: baseline; gap: 9px; }
+.satel-inputs-num {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent-green);
+  font-variant-numeric: tabular-nums;
+  transition: color .2s;
+}
+.satel-inputs-card.has-open .satel-inputs-num { color: var(--accent-orange); }
+.satel-inputs-label { color: var(--text-muted); font-size: 0.9rem; }
+.satel-inputs-open { display: flex; flex-wrap: wrap; gap: 6px; }
+.satel-inputs-allclosed { color: var(--text-muted); font-size: 0.82rem; }
+.satel-input-chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--accent-orange) 15%, transparent);
+  color: var(--accent-orange);
+}

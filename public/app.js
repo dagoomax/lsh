@@ -91,8 +91,43 @@ function applyValue(key, value) {
     updateRelayUI(idx, value === 1);
   }
 
+  // Satel input (zone) violation → "X inputs open" summary tile
+  const satZone = key.match(/^satel\/zone\/(\d+)\/state$/);
+  if (satZone) { satelZoneOpen.set(+satZone[1], Number(value)); updateSatelInputsTile(); }
+
   // Update device sensor cells
   updateDeviceSensor(key, value);
+}
+
+// ── Satel "inputs open" summary tile ───────────────────────────────────────
+const satelZoneOpen = new Map(); // zone number → 0/1 (1 = violated / open)
+
+function updateSatelInputsTile() {
+  const card = document.getElementById('satel-inputs-card');
+  if (!card) return;
+
+  // Only surface the tile once at least one Satel zone exists
+  let hasZones = false;
+  for (const k of knownDevices.keys()) { if (k.startsWith('satel/zone/')) { hasZones = true; break; } }
+  if (!hasZones && satelZoneOpen.size === 0) return;
+  card.style.display = '';
+
+  const openNums = [...satelZoneOpen.entries()].filter(([, v]) => v === 1).map(([n]) => n).sort((a, b) => a - b);
+  const count = openNums.length;
+
+  document.getElementById('satel-open-count').textContent = count;
+  document.getElementById('satel-open-label').textContent = count === 1 ? 'input open' : 'inputs open';
+  card.classList.toggle('has-open', count > 0);
+
+  const list = document.getElementById('satel-open-list');
+  if (count === 0) {
+    list.innerHTML = '<span class="satel-inputs-allclosed">All inputs closed</span>';
+  } else {
+    list.innerHTML = openNums.map((n) => {
+      const d = knownDevices.get(`satel/zone/${n}`);
+      return `<span class="satel-input-chip">${esc(d ? d.label : `Zone ${n}`)}</span>`;
+    }).join('');
+  }
 }
 
 // ── Formatters ─────────────────────────────────────────────────────────────
@@ -979,6 +1014,13 @@ function addOrUpdateDevice(device) {
   if (!device || !device.key) return;
 
   devicesHdr.style.display = '';
+
+  // Feed Satel zones into the "inputs open" summary tile
+  if (device.key.startsWith('satel/zone/')) {
+    const sv = device.readings?.state?.value;
+    if (sv != null) satelZoneOpen.set(+device.key.split('/').pop(), Number(sv));
+    setTimeout(updateSatelInputsTile, 0); // defer so knownDevices label is set first
+  }
 
   if (knownDevices.has(device.key)) {
     const readings = device.readings || {};

@@ -405,6 +405,28 @@
       <div id="relays-container"></div>
     </section>
 
+    <!-- ── Security inputs (Satel) ────────────────────── -->
+    <section class="card satel-inputs-card" id="satel-inputs-card" style="display:none">
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--accent-red)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </span>
+          <span data-i18n="card.security_inputs">Security Inputs</span>
+        </h2>
+        <span class="live-dot active" id="satel-inputs-dot"></span>
+      </div>
+      <div class="satel-inputs-body">
+        <div class="satel-inputs-count">
+          <span class="satel-inputs-num" id="satel-open-count">0</span>
+          <span class="satel-inputs-label" id="satel-open-label">inputs open</span>
+        </div>
+        <div class="satel-inputs-open" id="satel-open-list"></div>
+      </div>
+    </section>
+
   </main>
   </div><!-- end #tab-pane-energy -->
 

@@ -22,6 +22,7 @@
     "dc_system": "DC System",
     "cameras": "Cameras",
     "relays": "Relays",
+    "security_inputs": "Security Inputs",
     "devices": "Devices",
     "solaredge": "SolarEdge"
   },
