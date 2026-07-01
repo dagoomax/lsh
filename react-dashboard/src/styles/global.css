@@ -72,7 +72,7 @@ body {
 .badge-orange { background: rgba(240,136,62,0.15);  color: var(--orange); }
 .badge-gray   { background: rgba(255,255,255,0.07); color: var(--text2); }
 .badge-yellow { background: rgba(210,153,34,0.15);   color: var(--yellow); }
-.badge-purple { background: rgba(88,166,255,0.2);   color: var(--accent-lt); }
+.badge-accent { background: rgba(88,166,255,0.2);   color: var(--accent-lt); }
 
 @keyframes flowDash {
   to { stroke-dashoffset: -20; }

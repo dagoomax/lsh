@@ -27,7 +27,7 @@ export default function RelayPanel({ relays, onToggle }) {
           <span style={{ fontSize:16 }}>🔁</span>
           <span style={{ fontSize:13, fontWeight:600 }}>Relay Control</span>
         </div>
-        <span className={`badge ${activeCount>0?'badge-purple':'badge-gray'}`}>{activeCount} on</span>
+        <span className={`badge ${activeCount>0?'badge-accent':'badge-gray'}`}>{activeCount} on</span>
       </div>
 
       {(!relays||relays.length===0) && (
