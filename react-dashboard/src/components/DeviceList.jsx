@@ -125,8 +125,8 @@ const ARDUINO_SENSOR_ICON = {
   sensor:      SensorIcon,
 }
 
-const TOKEN = 'e95b1a01b85f38a831d8a8b8d949e5e783bf32d3f52ff5d1d6a46ab25b28385e'
-const H     = { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }
+// Auth via same-origin session cookie (see useLSH.js) — no hardcoded token.
+const H = { 'Content-Type': 'application/json' }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let _setToast = null
@@ -156,7 +156,7 @@ function toast(ok, text) { _setToast?.({ ok, text }) }
 async function sendCommand(key, sensor, value) {
   try {
     const res  = await fetch(`/api/device/${key}/command`, {
-      method:'POST', headers:H, body:JSON.stringify({ sensor, value }),
+      method:'POST', credentials:'same-origin', headers:H, body:JSON.stringify({ sensor, value }),
     })
     const json = await res.json().catch(() => ({}))
     if (!json.success) throw new Error(json.error || `HTTP ${res.status}`)

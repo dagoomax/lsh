@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import { io } from 'socket.io-client'
 
-const TOKEN = 'e95b1a01b85f38a831d8a8b8d949e5e783bf32d3f52ff5d1d6a46ab25b28385e'
-const H = { Authorization: `Bearer ${TOKEN}` }
-
+// Auth: /react is served same-origin as /api, so requests carry the
+// `lsh-session` cookie automatically. If unauthenticated, bounce to login.
 async function apiFetch(path) {
-  try { const r = await fetch(path,{headers:H}); const j=await r.json(); return j.success?j.data:null }
-  catch { return null }
+  try {
+    const r = await fetch(path, { credentials: 'same-origin' })
+    if (r.status === 401) { window.location.href = `/login.html?next=${encodeURIComponent('/react/')}`; return null }
+    const j = await r.json(); return j.success ? j.data : null
+  } catch { return null }
 }
 
 export function useLSH() {
@@ -38,7 +40,7 @@ export function useLSH() {
     fetchAll()
     const iv = setInterval(fetchAll, 15000)
 
-    const socket = io('/', { auth: { token: TOKEN }, transports: ['websocket','polling'] })
+    const socket = io('/', { transports: ['websocket','polling'] })
     socket.on('connect',    () => setConnected(true))
     socket.on('disconnect', () => setConnected(false))
     socket.on('connection-status', d => setConn(d))
@@ -54,7 +56,7 @@ export function useLSH() {
       ...prev, relays: prev.relays?.map(r => r.index===index ? {...r,on:state} : r)
     } : prev)
     await fetch(`/api/relay/${index}/state`, {
-      method:'POST', headers:{...H,'Content-Type':'application/json'},
+      method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({state}),
     })
   }, [])
