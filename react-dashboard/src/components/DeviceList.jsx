@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect } from 'react'
 import {
-  resolveIcon, CAT_ICON_COMPONENT,
+  resolveIcon, CAT_ICON_COMPONENT, GridPowerIcon,
   SwitchOutletIcon, BulbIcon, ShutterIcon, ThermometerIcon,
   HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon, RelayIcon,
 } from './Icons'
+import EnergyFlow from './EnergyFlow'
+import RelayPanel from './RelayPanel'
 
 const FIBARO_SENSOR_ICON = {
   switch:      SwitchOutletIcon,
@@ -874,7 +876,7 @@ function DeviceTile({ device, onCommand }) {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function DeviceList({ devices }) {
+export default function DeviceList({ devices, energy, onToggleRelay }) {
   const [cat, setCat] = useState('All')
 
   const onCommand = useCallback((key, sensor, value) => {
@@ -1008,6 +1010,27 @@ export default function DeviceList({ devices }) {
         </div>
 
         <div style={{ flex:1, overflowY:'auto', padding:'0 12px 16px' }}>
+          {/* Energy as the top section of the overview */}
+          {cat === 'All' && energy && (
+            <div style={{
+              margin:'8px 0 12px',
+              background:'var(--card)', border:'1px solid var(--border)',
+              borderRadius:'var(--radius-lg)', overflow:'hidden',
+            }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 14px 8px' }}>
+                <GridPowerIcon size={15} color="var(--orange)" />
+                <span style={{ fontSize:13, fontWeight:700 }}>Energy</span>
+              </div>
+              <div style={{ padding:'0 12px 12px' }}>
+                <EnergyFlow energy={energy} />
+                {energy.relays && (
+                  <div style={{ marginTop:12, background:'var(--bg)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)' }}>
+                    <RelayPanel relays={energy.relays} onToggle={onToggleRelay} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           {visible.length === 0 && (
             <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>
               No devices in this category
