@@ -5,7 +5,7 @@ function Toggle({ on, onChange }) {
       background: on ? 'var(--purple)' : 'rgba(255,255,255,0.12)',
       position:'relative', cursor:'pointer',
       transition:'background 0.2s', flexShrink:0,
-      boxShadow: on ? '0 0 10px rgba(124,58,237,0.5)' : 'none',
+      boxShadow: on ? '0 0 10px rgba(88,166,255,0.5)' : 'none',
     }}>
       <div style={{
         position:'absolute', width:18, height:18, borderRadius:'50%',
@@ -41,8 +41,8 @@ export default function RelayPanel({ relays, onToggle }) {
           <div key={r.index} style={{
             display:'flex', alignItems:'center', justifyContent:'space-between',
             padding:'10px 12px', borderRadius:10,
-            background: r.on ? 'rgba(124,58,237,0.12)' : 'rgba(255,255,255,0.03)',
-            border: `1px solid ${r.on ? 'rgba(124,58,237,0.25)' : 'var(--border)'}`,
+            background: r.on ? 'rgba(88,166,255,0.12)' : 'rgba(255,255,255,0.03)',
+            border: `1px solid ${r.on ? 'rgba(88,166,255,0.25)' : 'var(--border)'}`,
             transition:'all 0.2s',
           }}>
             <div>

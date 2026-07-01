@@ -1,24 +1,24 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:        #0d0e1a;
-  --sidebar:   #11131f;
-  --card:      #181a2a;
-  --card-on:   #1e1035;
-  --border:    rgba(255,255,255,0.07);
+  --bg:        #0d1117;
+  --sidebar:   #0d1117;
+  --card:      #161b22;
+  --card-on:   #1c2333;
+  --border:    #21262d;
   --sep:       rgba(255,255,255,0.05);
-  --text:      #f1f5f9;
-  --text2:     #94a3b8;
-  --text3:     #475569;
-  --purple:    #7c3aed;
-  --purple-lt: #a78bfa;
-  --purple-dim: rgba(124,58,237,0.18);
-  --blue:      #3b82f6;
-  --green:     #22c55e;
-  --orange:    #f97316;
-  --yellow:    #eab308;
-  --red:       #ef4444;
-  --teal:      #14b8a6;
+  --text:      #e6edf3;
+  --text2:     #8b949e;
+  --text3:     #6e7681;
+  --purple:    #58a6ff;
+  --purple-lt: #79c0ff;
+  --purple-dim: rgba(88,166,255,0.18);
+  --blue:      #58a6ff;
+  --green:     #3fb950;
+  --orange:    #f0883e;
+  --yellow:    #d29922;
+  --red:       #f85149;
+  --teal:      #39c5cf;
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 18px;
@@ -53,7 +53,7 @@ body {
 
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.3); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(88,166,255,0.3); border-radius: 2px; }
 
 .card {
   background: var(--card);
@@ -66,13 +66,13 @@ body {
   padding: 2px 9px; border-radius: 20px;
   font-size: 11px; font-weight: 600; letter-spacing: 0.01em;
 }
-.badge-green  { background: rgba(34,197,94,0.15);   color: var(--green); }
-.badge-blue   { background: rgba(59,130,246,0.15);  color: var(--blue); }
-.badge-red    { background: rgba(239,68,68,0.15);   color: var(--red); }
-.badge-orange { background: rgba(249,115,22,0.15);  color: var(--orange); }
+.badge-green  { background: rgba(63,185,80,0.15);   color: var(--green); }
+.badge-blue   { background: rgba(88,166,255,0.15);  color: var(--blue); }
+.badge-red    { background: rgba(248,81,73,0.15);   color: var(--red); }
+.badge-orange { background: rgba(240,136,62,0.15);  color: var(--orange); }
 .badge-gray   { background: rgba(255,255,255,0.07); color: var(--text2); }
-.badge-yellow { background: rgba(234,179,8,0.15);   color: var(--yellow); }
-.badge-purple { background: rgba(124,58,237,0.2);   color: var(--purple-lt); }
+.badge-yellow { background: rgba(210,153,34,0.15);   color: var(--yellow); }
+.badge-purple { background: rgba(88,166,255,0.2);   color: var(--purple-lt); }
 
 @keyframes flowDash {
   to { stroke-dashoffset: -20; }
