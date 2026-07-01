@@ -1,0 +1,27 @@
+services:
+  lsh:
+    build: .
+    image: lsh-server
+    container_name: lsh
+    restart: unless-stopped
+
+    # HomeKit advertises over mDNS, which only reaches the LAN with host
+    # networking. This also exposes every port (HTTP/HTTPS/HomeKit/RTSP)
+    # directly on the host — no port mapping needed.
+    # NOTE: host networking is Linux-only (not Docker Desktop on macOS/Windows).
+    network_mode: host
+
+    volumes:
+      - ./config.json:/app/config.json   # your config (copy from config.example.json)
+      - ./persist:/app/persist           # HomeKit pairing + API tokens + users
+      - ./certs:/app/certs               # optional: Let's Encrypt / TLS certs
+
+    environment:
+      - NODE_ENV=production
+
+    # If you are NOT using HomeKit and prefer bridge networking, comment out
+    # network_mode above and use explicit port mappings instead:
+    # ports:
+    #   - "3000:3000"    # HTTP
+    #   - "3443:3443"    # HTTPS
+    #   - "8554:8554"    # RTSP

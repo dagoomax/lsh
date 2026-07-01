@@ -1,0 +1,24 @@
+# Dependencies (reinstalled in the image)
+node_modules
+react-dashboard/node_modules
+
+# Runtime data — provided via volumes, never baked into the image
+config.json
+persist
+certs
+*.log
+
+# VCS / tooling
+.git
+.gitignore
+.github
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Editor / OS cruft
+.DS_Store
+.vscode
+.idea
+
+# Keep react-dashboard/dist (prebuilt frontend) — do NOT ignore it

@@ -199,6 +199,23 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 
 > **Tip:** Every setting is available in the **Settings** page inside the UI. You rarely need to edit `config.json` by hand after initial setup.
 
+### Docker
+
+```bash
+cp config.example.json config.json    # edit with your credentials
+docker compose up -d --build
+```
+
+The image is a multi-stage build (Node 20, `ffmpeg` for the RTSP proxy, `tini` for signal handling). Three things are mounted so data survives rebuilds:
+
+- **`config.json`** → `/app/config.json` — your configuration
+- **`persist/`** → `/app/persist` — HomeKit pairing, API tokens, users (must persist)
+- **`certs/`** → `/app/certs` — optional TLS / Let's Encrypt certificates
+
+`docker-compose.yml` uses **`network_mode: host`** because HomeKit advertises over mDNS, which only reaches the LAN with host networking (this also exposes every port directly, so no port mapping is needed).
+
+> **Note:** Host networking is **Linux-only** — on Docker Desktop (macOS/Windows) HomeKit/mDNS won't work; switch to bridge networking with explicit `ports:` (the commented block in the compose file) if you don't need HomeKit.
+
 ---
 
 ## Configuration
