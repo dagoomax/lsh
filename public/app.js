@@ -405,6 +405,30 @@ async function toggleRelay(index, on, checkbox) {
   finally { checkbox.disabled = false; }
 }
 
+// ── Cameras summary tile ───────────────────────────────────────────────────
+function updateCamerasTile(cameras) {
+  const card = document.getElementById('cameras-summary-card');
+  if (!card) return;
+  cameras = cameras || [];
+  if (!cameras.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const total = cameras.length;
+  const live = cameras.filter((c) =>
+    (c.mjpegUrl && c.mjpegUrl.trim()) || (c.snapshotUrl && c.snapshotUrl.trim())).length;
+
+  document.getElementById('cameras-count').textContent = total;
+  document.getElementById('cameras-count-label').textContent = total === 1 ? 'camera' : 'cameras';
+  document.getElementById('cameras-summary-sub').innerHTML =
+    `<span class="satel-inputs-allclosed">${live} of ${total} with a live stream</span>`;
+}
+
+// Clicking the cameras tile scrolls to the full camera grid
+document.getElementById('cameras-summary-card')?.addEventListener('click', () => {
+  switchTab('energy');
+  document.getElementById('cameras-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
 // ── Cameras ────────────────────────────────────────────────────────────────
 async function loadCameras() {
   try {
@@ -415,6 +439,7 @@ async function loadCameras() {
 }
 
 function renderCameras(cameras) {
+  updateCamerasTile(cameras);
   const section = document.getElementById('cameras-section');
   const grid    = document.getElementById('cameras-grid');
 

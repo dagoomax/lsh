@@ -405,8 +405,30 @@
       <div id="relays-container"></div>
     </section>
 
+    <!-- ── Cameras summary ────────────────────────────── -->
+    <section class="card cameras-summary-card clickable-tile" id="cameras-summary-card" style="display:none">
+      <div class="card-hdr">
+        <h2>
+          <span class="card-icon" style="--ci:var(--accent-blue)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+            </svg>
+          </span>
+          <span data-i18n="card.cameras">Cameras</span>
+        </h2>
+        <span class="live-dot active"></span>
+      </div>
+      <div class="satel-inputs-body">
+        <div class="satel-inputs-count">
+          <span class="satel-inputs-num" id="cameras-count">0</span>
+          <span class="satel-inputs-label" id="cameras-count-label">cameras</span>
+        </div>
+        <div class="satel-inputs-open" id="cameras-summary-sub"></div>
+      </div>
+    </section>
+
     <!-- ── Security inputs (Satel) ────────────────────── -->
-    <section class="card satel-inputs-card" id="satel-inputs-card" style="display:none">
+    <section class="card satel-inputs-card clickable-tile" id="satel-inputs-card" style="display:none">
       <div class="card-hdr">
         <h2>
           <span class="card-icon" style="--ci:var(--accent-red)">
