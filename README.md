@@ -116,7 +116,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Sonos speakers, Denon / Marantz AV receivers, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Sonos speakers, Denon / Marantz AV receivers, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 ---
 
@@ -888,7 +888,9 @@ Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standa
 - `stream` — `main` (full-res) or `sub` (low-res); default `main`
 - `https` / `port` — override the snapshot transport (defaults: HTTP on port 80)
 
-> **Note:** Test a camera before saving with `POST /api/settings/test-reolink` (same body fields) — it pulls one snapshot and reports the size. The `webrtcUrl` and the auto-built RTSP URL carry the credentials; snapshots do not.
+Configure cameras in **Settings → 📷 Cameras → Reolink** — add a row per camera, hit **Test** to pull a live snapshot, then **Save**. Changes apply **live, without a restart** (the client reads the camera list from config on demand). Passwords are stored server-side and returned **masked** to the browser.
+
+> **Note:** The auto-built RTSP URL and any `webrtcUrl` carry the credentials; the proxied snapshot (`/api/reolink/snapshot/<index>`) does not.
 
 ### `relays`
 
@@ -1212,6 +1214,17 @@ Connects to **UniFi Protect** via its local HTTPS API. Authenticates with API ke
 **Config:**
 ```json
 "unifi": { "host": "192.168.1.1", "username": "admin", "password": "secret", "apiKey": "" }
+```
+
+---
+
+### `src/reolink-client.js`
+
+Adds **Reolink PoE cameras / NVRs** to the camera list. Reads `reolink.cameras` from config on demand (so Settings edits apply without a restart), builds each camera's RTSP URL (`h264Preview_<NN>_<main|sub>`), and pulls JPEG snapshots via Reolink's HTTP API (`cmd=Snap`). Snapshots are proxied through `GET /api/reolink/snapshot/:idx` so credentials never reach the browser. No polling — snapshots are fetched on demand.
+
+**Config:**
+```json
+"reolink": { "cameras": [ { "name": "Driveway", "host": "192.168.1.50", "username": "admin", "password": "secret", "channel": 0 } ] }
 ```
 
 ---
@@ -2171,12 +2184,15 @@ curl -H 'Authorization: Bearer lsh_xxxx...' \
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/cameras` | All cameras (manual config + UniFi Protect + SmartThings) |
+| `GET` | `/api/cameras` | All cameras (manual config + UniFi Protect + Reolink + SmartThings) |
 | `GET` | `/api/camera-log` | Recent camera events (`?camera=Front+Door&limit=100`) |
 | `POST` | `/api/camera-log` | Push a camera event `{ camera, type, detail }` |
 | `GET` | `/api/smartthings-camera/:deviceId/snapshot` | Proxy the latest SmartThings snapshot image |
 | `POST` | `/api/smartthings-camera/:deviceId/take` | Trigger a SmartThings `imageCapture.take` command |
 | `GET` | `/api/unifi/snapshot/:cameraId` | Proxy a UniFi Protect snapshot |
+| `GET` | `/api/reolink/snapshot/:idx` | Proxy a Reolink snapshot (credentials stay server-side) |
+| `POST` | `/api/settings/reolink` | Save the Reolink camera list `{ cameras: [...] }` (applies live) |
+| `POST` | `/api/settings/test-reolink` | Pull one snapshot to test a camera `{ host, username, password, channel }` |
 | `POST` | `/api/webrtc/offer` | WHEP SDP offer proxy `{ url, sdp }` |
 
 ---
