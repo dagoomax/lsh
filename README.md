@@ -2379,6 +2379,39 @@ switch:
 
 ---
 
+### Using LSH from Loxone
+
+A Loxone Miniserver can read and control any LSH device through the REST API — useful for bringing cloud-only or otherwise incompatible gear (Fibaro, Satel, Somfy, Bayrol, SmartThings…) into Loxone. Loxone reads with a **Virtual HTTP Input** and controls with a **Virtual Output**.
+
+Loxone's HTTP blocks can't easily set an `Authorization` header, so pass the token as the **`?token=`** query parameter (create a dedicated API token in **Settings → API Tokens**). `<lsh-ip>` is the LSH host as reachable from the Miniserver; the default port is `3000`.
+
+> **Encoding:** device keys and sensor paths contain `/`, which must be URL-encoded as **`%2F`** in Loxone commands (e.g. key `fibaro/room_443` → `fibaro%2Froom_443`, sensor `71/value` → `71%2Fvalue`). Find every device's `key` and sensor `path` via `GET http://<lsh-ip>:3000/api/devices?token=<token>`.
+
+**Control a device — Virtual Output**
+
+Set the Virtual Output *Address* to `http://<lsh-ip>:3000`, then add a Virtual Output Command. This example sets a Fibaro dimmer (device `71` in room `443`) to the value `<v>` (0–99):
+
+```
+/api/device/fibaro%2Froom_443/set?sensor=71%2Fvalue&value=<v>&token=<token>
+```
+
+`<v>` is Loxone's value placeholder — wire an analog output (0–99) to it, or use fixed `value=99` / `value=0` commands for on/off. The `/set` endpoint is a GET-friendly control route made for exactly this (no request body needed).
+
+**Read a value — Virtual HTTP Input**
+
+- **URL:** `http://<lsh-ip>:3000/api/devices/fibaro%2Froom_443?token=<token>`
+- **Command recognition** (`\v` marks the number to extract — the dimmer's current level):
+
+```
+"characteristic":"Brightness"},"value":\v
+```
+
+Anchor the recognition on something unique to the device if a room has several controllables (e.g. `Dimmer Biuro"…"value":\v`). Mark the input as analog with a 2–5 s poll interval.
+
+The same two patterns work for **any** LSH device — swap in the target's `key` and sensor `path`: a Satel output (`satel/output/5`, `state`), a relay (`/api/relay/0/state`), a Somfy blind, etc.
+
+---
+
 ## Logs
 
 Log files are written to `logs/` (gitignored). Each category has its own file plus a combined `app.log`. Files are rotated at 2 MB (one backup kept as `<name>.1.log`).
