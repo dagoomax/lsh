@@ -430,14 +430,6 @@ document.getElementById('cameras-summary-card')?.addEventListener('click', () =>
 });
 
 // ── Cameras ────────────────────────────────────────────────────────────────
-async function loadCameras() {
-  try {
-    const res = await fetch('/api/cameras');
-    const { data } = await res.json();
-    renderCameras(data || []);
-  } catch { /* ignore */ }
-}
-
 function renderCameras(cameras) {
   updateCamerasTile(cameras);
   const section = document.getElementById('cameras-section');
