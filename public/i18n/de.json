@@ -104,7 +104,8 @@
     "setup_hint": "Diese Einrichtung läuft einmal. Ihre Daten werden lokal gespeichert."
   },
   "devices": {
-    "auto_via": "Automatisch erkannt über {source}"
+    "auto_via": "Automatisch erkannt über {source}",
+    "filtered_by": "Gefiltert nach"
   },
   "common": {
     "sign_out": "Abmelden",

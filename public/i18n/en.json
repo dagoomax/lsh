@@ -104,7 +104,8 @@
     "setup_hint": "This setup runs once. Your credentials are stored locally."
   },
   "devices": {
-    "auto_via": "Auto-discovered via {source}"
+    "auto_via": "Auto-discovered via {source}",
+    "filtered_by": "Filtered by"
   },
   "common": {
     "sign_out": "Sign out",

@@ -104,7 +104,8 @@
     "setup_hint": "Esta configuración se realiza una sola vez. Tus credenciales se almacenan localmente."
   },
   "devices": {
-    "auto_via": "Descubierto automáticamente vía {source}"
+    "auto_via": "Descubierto automáticamente vía {source}",
+    "filtered_by": "Filtrado por"
   },
   "common": {
     "sign_out": "Cerrar sesión",

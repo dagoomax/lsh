@@ -104,7 +104,8 @@
     "setup_hint": "Questa configurazione viene eseguita una sola volta. Le credenziali sono memorizzate localmente."
   },
   "devices": {
-    "auto_via": "Scoperto automaticamente tramite {source}"
+    "auto_via": "Scoperto automaticamente tramite {source}",
+    "filtered_by": "Filtrato per"
   },
   "common": {
     "sign_out": "Esci",

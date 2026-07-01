@@ -1051,6 +1051,8 @@ function addOrUpdateDevice(device) {
   const card = document.createElement('section');
   card.className = `device-card device-${device.color || 'blue'}`;
   card.id = `device-${device.key.replace(/\//g, '-')}`;
+  card.dataset.deviceType = device.type || '';
+  if (deviceFilter && card.dataset.deviceType !== deviceFilter) card.classList.add('device-hidden');
 
   const readings = device.readings || {};
   const sensorRows = (device.sensors || []).map((s) => buildSensorRow(s, readings, device.key)).join('');
@@ -1301,6 +1303,33 @@ function switchTab(tabId) {
 mainTabBar?.addEventListener('click', (e) => {
   const btn = e.target.closest('.main-tab-btn');
   if (btn && btn.dataset.tab) switchTab(btn.dataset.tab);
+});
+
+// ── Device type filter (driven by summary tiles) ────────────────────────────
+let deviceFilter = null; // null = show all, else a device type e.g. 'satel'
+
+function applyDeviceFilter(type) {
+  deviceFilter = type || null;
+  devicesGrid.querySelectorAll('.device-card').forEach((c) => {
+    c.classList.toggle('device-hidden', !!deviceFilter && c.dataset.deviceType !== deviceFilter);
+  });
+  const bar = document.getElementById('devices-filter-bar');
+  if (bar) {
+    bar.style.display = deviceFilter ? '' : 'none';
+    const name = document.getElementById('devices-filter-name');
+    if (name && deviceFilter) name.textContent = deviceFilter.charAt(0).toUpperCase() + deviceFilter.slice(1);
+  }
+}
+function clearDeviceFilter() { applyDeviceFilter(null); }
+
+// Clicking the "inputs open" tile jumps to Devices filtered to Satel
+document.getElementById('satel-inputs-card')?.addEventListener('click', () => {
+  switchTab('devices');
+  applyDeviceFilter('satel');
+});
+document.getElementById('devices-filter-clear')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  clearDeviceFilter();
 });
 
 function buildRoomCard(device) {

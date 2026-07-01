@@ -104,7 +104,8 @@
     "setup_hint": "Konfiguracja uruchamia się raz. Dane są przechowywane lokalnie."
   },
   "devices": {
-    "auto_via": "Wykryto przez {source}"
+    "auto_via": "Wykryto przez {source}",
+    "filtered_by": "Filtr"
   },
   "common": {
     "sign_out": "Wyloguj",
