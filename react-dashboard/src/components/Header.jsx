@@ -36,7 +36,13 @@ export default function Header({ connection, connected }) {
           boxShadow: '0 2px 12px rgba(88,166,255,0.35)',
         }}/>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.1, color: '#f1f5f9' }}>
+          <div style={{
+            fontSize: 14, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.1,
+            background: 'linear-gradient(135deg, #3fb950 0%, #4fa8e0 55%, #58a6ff 100%)',
+            WebkitBackgroundClip: 'text', backgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            width: 'fit-content',
+          }}>
             LSH Server
           </div>
           <div style={{ fontSize: 10, color: 'var(--text3)', lineHeight: 1 }}>LSH Dashboard</div>
