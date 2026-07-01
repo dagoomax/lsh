@@ -237,6 +237,7 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 | `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
+| `reolink` | No | Reolink PoE cameras / NVR (proxied snapshots + RTSP) |
 | `relays` | No | Victron relay index + display name |
 | `homekit` | No | HomeKit bridge — requires `hap-nodejs` npm package |
 | `server` | Yes | HTTP port, HTTPS, and Let's Encrypt |
@@ -869,7 +870,25 @@ WebSocket SIP. `dtmfUnlock` is the DTMF tone sent when the **Unlock** button is 
 ]
 ```
 
-Priority order for the live preview: `webrtcUrl` → `mjpegUrl` → `snapshotUrl` (polled every 2 s). UniFi Protect cameras are automatically added to this list.
+Priority order for the live preview: `webrtcUrl` → `mjpegUrl` → `snapshotUrl` (polled every 2 s). UniFi Protect and Reolink cameras are automatically added to this list.
+
+### `reolink`
+
+```json
+"reolink": {
+  "cameras": [
+    { "name": "Driveway", "host": "192.168.1.50", "username": "admin", "password": "secret", "channel": 0, "stream": "main", "https": false, "port": 0, "webrtcUrl": "" }
+  ]
+}
+```
+
+Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standalone PoE camera uses `channel: 0`; an NVR exposes several channels on the same `host` (one entry per channel). LSH pulls JPEG snapshots via Reolink's HTTP API (`cmd=Snap`) and proxies them at `/api/reolink/snapshot/<index>` so **the browser never sees the camera password**. The RTSP URL is built automatically as `rtsp://<user>:<pass>@<host>:554/h264Preview_<NN>_<main|sub>` for use with go2rtc / VLC / an NVR (set `webrtcUrl` to a go2rtc endpoint for in-dashboard live view).
+
+- `channel` — 0 for a standalone camera, or the NVR channel index
+- `stream` — `main` (full-res) or `sub` (low-res); default `main`
+- `https` / `port` — override the snapshot transport (defaults: HTTP on port 80)
+
+> **Note:** Test a camera before saving with `POST /api/settings/test-reolink` (same body fields) — it pulls one snapshot and reports the size. The `webrtcUrl` and the auto-built RTSP URL carry the credentials; snapshots do not.
 
 ### `relays`
 

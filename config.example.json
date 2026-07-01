@@ -111,6 +111,11 @@
   "cameras": [
     { "name": "Front Door", "url": "rtsp://localhost:8554/FrontDoor", "snapshotUrl": "", "mjpegUrl": "", "webrtcUrl": "" }
   ],
+  "reolink": {
+    "cameras": [
+      { "name": "Driveway", "host": "192.168.1.50", "username": "admin", "password": "", "channel": 0, "stream": "main", "https": false, "port": 0, "webrtcUrl": "" }
+    ]
+  },
   "relays": [
     { "index": 0, "name": "Relay 1" },
     { "index": 1, "name": "Relay 2" }

@@ -45,6 +45,15 @@ async function main() {
     }
   }
 
+  let reolink = null;
+  if (config.reolink?.cameras?.length) {
+    const ReolinkClient = tryRequire('./src/reolink-client');
+    if (ReolinkClient) {
+      reolink = new ReolinkClient(config);
+      console.log(`[Reolink] ${reolink.getCameras().length} camera(s) configured`);
+    }
+  }
+
   let mqttExplorer = null;
   if (config.mqtt?.host) {
     const MqttExplorer = tryRequire('./src/mqtt-explorer');
@@ -77,7 +86,7 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, mqttExplorer, auth, isSecure, ffmpegRtsp };
+  const apiClients = { unifiProtect, reolink, mqttExplorer, auth, isSecure, ffmpegRtsp };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────
