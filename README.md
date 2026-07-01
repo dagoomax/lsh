@@ -2099,6 +2099,55 @@ curl -X POST 'http://localhost:3001/api/device/denon%2F192_168_1_100/command' \
 
 ---
 
+### Satel alarm
+
+Live state and control for a Satel INTEGRA panel (see the [`satel`](#satel) integration). Zones, outputs and partitions are also exposed as generic [integration devices](#integration-devices) (`satel/zone/N`, `satel/output/N`, `satel/partition/N`); these endpoints are a convenience layer over them.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/satel/status` | Summary: input/output totals, open-input count, partition arm state |
+| `GET` | `/api/satel/zones` | All inputs (zones) with `violation`, `tamper`, `alarm`, and `kind` (`motion` / `contact` / `other`) |
+| `GET` | `/api/satel/outputs` | All outputs with `on` state |
+| `GET` | `/api/satel/partitions` | All partitions with `armed`, `alarm`, `fireAlarm` |
+| `POST` | `/api/satel/output/:num` | Set output `:num` — body `{ "state": true \| false }` |
+| `POST` | `/api/satel/partition/:num/arm` | Arm partition `:num` |
+| `POST` | `/api/satel/partition/:num/disarm` | Disarm partition `:num` |
+
+Each zone/output/partition object also carries its `num`, `key`, and `label` (the name downloaded from the panel).
+
+**Example — summary:**
+
+```bash
+curl -H 'Authorization: Bearer lsh_xxxx...' http://localhost:3000/api/satel/status
+# → { "success": true, "data": {
+#      "configured": true,
+#      "zones":   { "total": 32, "open": 4 },
+#      "outputs": { "total": 32, "on": 2 },
+#      "partitions": [ { "num": 1, "label": "CZUJNIKI RUCHU", "armed": false, "alarm": false } ]
+#    } }
+```
+
+**Example — list open inputs:**
+
+```bash
+curl -H 'Authorization: Bearer lsh_xxxx...' http://localhost:3000/api/satel/zones \
+  | jq '.data[] | select(.violation) | {label, kind}'
+```
+
+**Example — turn an output on / arm a partition:**
+
+```bash
+curl -H 'Authorization: Bearer lsh_xxxx...' -H 'Content-Type: application/json' \
+  -X POST http://localhost:3000/api/satel/output/3 -d '{"state": true}'
+
+curl -H 'Authorization: Bearer lsh_xxxx...' \
+  -X POST http://localhost:3000/api/satel/partition/1/arm
+```
+
+> **Note:** Control endpoints act on the real panel — an output can be a gate or siren, and arming is live. Partition arm/disarm honours the configured `armCode`.
+
+---
+
 ### Cameras
 
 | Method | Path | Description |
