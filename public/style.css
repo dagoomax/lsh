@@ -2288,3 +2288,54 @@ footer {
   transition: background .15s;
 }
 .devices-filter-clear:hover { background: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* ── Satel alarm partitions (arm/disarm) ────────────────── */
+.satel-partitions { display: flex; flex-direction: column; gap: 10px; }
+.satel-part-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.satel-part-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.satel-part-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.satel-part-state {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.satel-part-state.disarmed { color: var(--text-muted); }
+.satel-part-state.armed    { color: var(--accent-green); }
+.satel-part-state.alarm    { color: var(--accent-red); animation: pulse-badge 1.2s ease infinite; }
+
+.satel-part-btn {
+  flex-shrink: 0;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, opacity .15s;
+}
+.satel-part-btn.is-disarmed {
+  background: color-mix(in srgb, var(--accent-red) 15%, transparent);
+  color: var(--accent-red);
+  border-color: color-mix(in srgb, var(--accent-red) 35%, transparent);
+}
+.satel-part-btn.is-disarmed:hover { background: color-mix(in srgb, var(--accent-red) 26%, transparent); }
+.satel-part-btn.is-armed {
+  background: color-mix(in srgb, var(--accent-green) 15%, transparent);
+  color: var(--accent-green);
+  border-color: color-mix(in srgb, var(--accent-green) 35%, transparent);
+}
+.satel-part-btn.is-armed:hover { background: color-mix(in srgb, var(--accent-green) 26%, transparent); }
+.satel-part-btn:disabled { opacity: .55; cursor: default; }

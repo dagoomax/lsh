@@ -21,6 +21,7 @@
     "ac_loads": "AC Loads",
     "dc_system": "DC System",
     "cameras": "Cameras",
+    "alarm": "Alarm",
     "relays": "Relays",
     "security_inputs": "Security Inputs",
     "devices": "Devices",

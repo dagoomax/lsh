@@ -95,6 +95,13 @@ function applyValue(key, value) {
   const satZone = key.match(/^satel\/zone\/(\d+)\/state$/);
   if (satZone) { satelZoneOpen.set(+satZone[1], Number(value)); updateSatelInputsTile(); }
 
+  // Satel partition arm / alarm state → alarm control card
+  const satPart = key.match(/^satel\/partition\/(\d+)\/(armed|alarm)$/);
+  if (satPart) {
+    (satPart[2] === 'armed' ? satelPartArmed : satelPartAlarm).set(+satPart[1], Number(value));
+    updateSatelPartitions();
+  }
+
   // Update device sensor cells
   updateDeviceSensor(key, value);
 }
@@ -145,6 +152,62 @@ function updateSatelInputsTile() {
     }).join('');
   }
 }
+
+// ── Satel alarm partitions (arm / disarm) ───────────────────────────────────
+const satelPartArmed = new Map(); // partition number → 0/1
+const satelPartAlarm = new Map();
+
+function updateSatelPartitions() {
+  const card = document.getElementById('satel-alarm-card');
+  const wrap = document.getElementById('satel-partitions');
+  if (!card || !wrap) return;
+
+  const parts = [...knownDevices.keys()]
+    .filter((k) => k.startsWith('satel/partition/'))
+    .map((k) => +k.split('/').pop())
+    .sort((a, b) => a - b);
+  if (!parts.length) return;
+  card.style.display = '';
+
+  wrap.innerHTML = parts.map((num) => {
+    const d = knownDevices.get(`satel/partition/${num}`);
+    const label = d ? d.label : `Partition ${num}`;
+    const armed = satelPartArmed.get(num) === 1;
+    const alarm = satelPartAlarm.get(num) === 1;
+    const stateCls = alarm ? 'alarm' : armed ? 'armed' : 'disarmed';
+    const stateTxt = alarm ? 'Alarm' : armed ? 'Armed' : 'Disarmed';
+    return `<div class="satel-part-row">
+      <div class="satel-part-info">
+        <span class="satel-part-name">${esc(label)}</span>
+        <span class="satel-part-state ${stateCls}">${stateTxt}</span>
+      </div>
+      <button class="satel-part-btn ${armed ? 'is-armed' : 'is-disarmed'}" data-num="${num}" data-armed="${armed ? 1 : 0}">
+        ${armed ? 'Disarm' : 'Arm'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+async function setPartition(num, arm, btn) {
+  const name = btn.closest('.satel-part-row')?.querySelector('.satel-part-name')?.textContent || 'partition';
+  if (!confirm(`${arm ? 'Arm' : 'Disarm'} "${name}"?`)) return;
+  btn.disabled = true;
+  const prev = btn.textContent;
+  btn.textContent = arm ? 'Arming…' : 'Disarming…';
+  try {
+    const res = await fetch(`/api/satel/partition/${num}/${arm ? 'arm' : 'disarm'}`, { method: 'POST' });
+    if (!res.ok) throw new Error();
+    // Panel pushes the new armed state → updateSatelPartitions() re-renders the row
+  } catch {
+    btn.textContent = prev;
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('satel-partitions')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.satel-part-btn');
+  if (btn) setPartition(+btn.dataset.num, btn.dataset.armed !== '1', btn);
+});
 
 // ── Formatters ─────────────────────────────────────────────────────────────
 const MPPT_STATES = {
@@ -1053,6 +1116,16 @@ function addOrUpdateDevice(device) {
     const sv = device.readings?.state?.value;
     if (sv != null) satelZoneOpen.set(+device.key.split('/').pop(), Number(sv));
     setTimeout(updateSatelInputsTile, 0); // defer so knownDevices label is set first
+  }
+
+  // Feed Satel partitions into the alarm control card
+  if (device.key.startsWith('satel/partition/')) {
+    const num = +device.key.split('/').pop();
+    const ar = device.readings?.armed?.value;
+    const al = device.readings?.alarm?.value;
+    if (ar != null) satelPartArmed.set(num, Number(ar));
+    if (al != null) satelPartAlarm.set(num, Number(al));
+    setTimeout(updateSatelPartitions, 0);
   }
 
   if (knownDevices.has(device.key)) {
