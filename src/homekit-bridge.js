@@ -879,17 +879,25 @@ function buildDeviceAccessory(device, store) {
     }
   }
 
-  // Per-sensor Lightbulb services — for room-grouped devices (Fibaro) each
-  // dimmer sensor carries an object `homekit` and becomes its own Lightbulb.
-  for (const s of device.sensors || []) {
-    if (s.controllable && s.homekit && typeof s.homekit === 'object' && s.homekit.service === 'Lightbulb') {
-      addSensorLightbulbService(
-        acc, s.name || device.label, `${device.key}/${s.path}`,
-        s.capabilityId, device._writeCapability, store, s.max || 99,
-      );
-    }
-  }
+  return acc;
+}
 
+// Room-grouped devices (Fibaro) expose each dimmer sensor as its OWN standalone
+// Lightbulb accessory rather than a service on a shared room accessory.
+function dimmerSensors(device) {
+  return (device.sensors || []).filter(
+    (s) => s.controllable && s.homekit && typeof s.homekit === 'object' && s.homekit.service === 'Lightbulb',
+  );
+}
+
+function buildDimmerAccessory(device, sensor, store) {
+  const name = sensor.name || device.label;
+  const path = `${device.key}/${sensor.path}`;
+  const acc  = new Accessory(name, makeUUID(`dimmer-${path}`));
+  acc.category = Categories.LIGHTBULB;
+  const manufacturer = device.type === 'fibaro' ? 'Fibaro' : 'LSH';
+  setInfo(acc, manufacturer, name, `${device.type}-${sensor.capabilityId}`);
+  addSensorLightbulbService(acc, name, path, sensor.capabilityId, device._writeCapability, store, sensor.max || 99);
   return acc;
 }
 
@@ -985,29 +993,27 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
 
   // ── Sensor accessories (auto-discovered from MQTT) ────────
   if (sensorRegistry) {
-    // Bridge devices with a device-level homekit type, OR whose per-sensor
-    // `homekit` object carries a service (e.g. Fibaro room devices, where each
-    // dimmer sensor becomes its own Lightbulb even though device.homekit is []).
-    const wantsBridge = (d) => (d.homekit && d.homekit.length > 0)
-      || (d.sensors || []).some((s) => s && typeof s.homekit === 'object' && s.homekit.service === 'Lightbulb');
-    const hkLabel = (d) => (d.homekit && d.homekit.length) ? d.homekit.join(', ') : 'dimmers';
-
-    // Handle devices discovered before HomeKit started
-    for (const device of sensorRegistry.getDevices()) {
-      if (wantsBridge(device)) {
-        const acc = buildDeviceAccessory(device, store);
-        bridge.addBridgedAccessory(acc);
-        console.log(`[HomeKit] Sensor: ${device.label} (${hkLabel(device)})`);
+    // Bridge a device: each dimmer sensor (room-grouped Fibaro) becomes its own
+    // standalone Lightbulb accessory; a device-level homekit type still bridges
+    // as a single accessory (SmartThings / Loxone / etc.).
+    const bridgeDevice = (device, added) => {
+      for (const s of dimmerSensors(device)) {
+        bridge.addBridgedAccessory(buildDimmerAccessory(device, s, store));
+        console.log(`[HomeKit] Light${added ? ' added' : ''}: ${s.name || device.label}`);
       }
-    }
+      if (device.homekit && device.homekit.length > 0) {
+        bridge.addBridgedAccessory(buildDeviceAccessory(device, store));
+        console.log(`[HomeKit] Sensor${added ? ' added' : ''}: ${device.label} (${device.homekit.join(', ')})`);
+      }
+    };
 
-    // Handle devices discovered after HomeKit started
+    // Devices discovered before HomeKit started
+    for (const device of sensorRegistry.getDevices()) bridgeDevice(device, false);
+
+    // Devices discovered after HomeKit started
     sensorRegistry.on('device-discovered', (device) => {
-      if (!wantsBridge(device)) return;
       try {
-        const acc = buildDeviceAccessory(device, store);
-        bridge.addBridgedAccessory(acc);
-        console.log(`[HomeKit] Sensor added: ${device.label} (${hkLabel(device)})`);
+        bridgeDevice(device, true);
       } catch (err) {
         console.error(`[HomeKit] Failed to add ${device.label}:`, err.message);
       }
