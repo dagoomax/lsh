@@ -31,13 +31,10 @@ export default function Header({ connection, connected }) {
     }}>
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 9,
-          background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 16, flexShrink: 0,
-          boxShadow: '0 2px 12px rgba(124,58,237,0.4)',
-        }}>🏠</div>
+        <img src="/logo.svg" alt="LSH" width={32} height={32} style={{
+          borderRadius: 9, flexShrink: 0, display: 'block',
+          boxShadow: '0 2px 12px rgba(88,166,255,0.35)',
+        }}/>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.1, color: '#f1f5f9' }}>
             LSH Server
