@@ -336,6 +336,35 @@ function addLightbulbService(accessory, name, deviceKey, store, writeCapability,
 }
 
 /**
+ * Adds a Lightbulb service driven by ONE dimmer sensor (room-grouped devices
+ * such as Fibaro). The store path holds a 0..max brightness value (Fibaro
+ * dimmers use 0–99). `writeCapability(capId, 'on'|'off')` toggles, and
+ * `writeCapability(capId, 'set', [0..max])` sets brightness. `subtype` (capId)
+ * keeps multiple lights unique on one accessory.
+ */
+function addSensorLightbulbService(accessory, name, statePath, capId, writeCapability, store, max = 99) {
+  const svc  = accessory.addService(Service.Lightbulb, name, String(capId));
+  const toHK  = (v) => clamp(Math.round((Number(v) || 0) * 100 / max), 0, 100); // device → HomeKit 0-100
+  const toDev = (v) => clamp(Math.round(Number(v) * max / 100), 0, max);        // HomeKit → device 0-max
+
+  svc.getCharacteristic(Characteristic.On)
+    .onGet(() => (Number(store.get(statePath)) || 0) > 0)
+    .onSet(async (v) => { await writeCapability(capId, v ? 'on' : 'off'); });
+
+  svc.getCharacteristic(Characteristic.Brightness)
+    .onGet(() => toHK(store.get(statePath)))
+    .onSet(async (v) => { await writeCapability(capId, 'set', [toDev(v)]); });
+
+  store.on('change', ({ key, value }) => {
+    if (key !== statePath) return;
+    svc.getCharacteristic(Characteristic.On).updateValue((Number(value) || 0) > 0);
+    svc.getCharacteristic(Characteristic.Brightness).updateValue(toHK(value));
+  });
+
+  return svc;
+}
+
+/**
  * Adds a LightSensor service.
  * storePath value: lux (0.0001–100000)
  */
@@ -850,6 +879,17 @@ function buildDeviceAccessory(device, store) {
     }
   }
 
+  // Per-sensor Lightbulb services — for room-grouped devices (Fibaro) each
+  // dimmer sensor carries an object `homekit` and becomes its own Lightbulb.
+  for (const s of device.sensors || []) {
+    if (s.controllable && s.homekit && typeof s.homekit === 'object' && s.homekit.service === 'Lightbulb') {
+      addSensorLightbulbService(
+        acc, s.name || device.label, `${device.key}/${s.path}`,
+        s.capabilityId, device._writeCapability, store, s.max || 99,
+      );
+    }
+  }
+
   return acc;
 }
 
@@ -945,22 +985,29 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
 
   // ── Sensor accessories (auto-discovered from MQTT) ────────
   if (sensorRegistry) {
+    // Bridge devices with a device-level homekit type, OR whose per-sensor
+    // `homekit` object carries a service (e.g. Fibaro room devices, where each
+    // dimmer sensor becomes its own Lightbulb even though device.homekit is []).
+    const wantsBridge = (d) => (d.homekit && d.homekit.length > 0)
+      || (d.sensors || []).some((s) => s && typeof s.homekit === 'object' && s.homekit.service === 'Lightbulb');
+    const hkLabel = (d) => (d.homekit && d.homekit.length) ? d.homekit.join(', ') : 'dimmers';
+
     // Handle devices discovered before HomeKit started
     for (const device of sensorRegistry.getDevices()) {
-      if (device.homekit.length > 0) {
+      if (wantsBridge(device)) {
         const acc = buildDeviceAccessory(device, store);
         bridge.addBridgedAccessory(acc);
-        console.log(`[HomeKit] Sensor: ${device.label} (${device.homekit.join(', ')})`);
+        console.log(`[HomeKit] Sensor: ${device.label} (${hkLabel(device)})`);
       }
     }
 
     // Handle devices discovered after HomeKit started
     sensorRegistry.on('device-discovered', (device) => {
-      if (device.homekit.length === 0) return;
+      if (!wantsBridge(device)) return;
       try {
         const acc = buildDeviceAccessory(device, store);
         bridge.addBridgedAccessory(acc);
-        console.log(`[HomeKit] Sensor added: ${device.label} (${device.homekit.join(', ')})`);
+        console.log(`[HomeKit] Sensor added: ${device.label} (${hkLabel(device)})`);
       } catch (err) {
         console.error(`[HomeKit] Failed to add ${device.label}:`, err.message);
       }
