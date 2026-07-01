@@ -56,16 +56,20 @@ const T = {
 
   Dimmer: {
     sensors: [
-      { path: 'on', label: 'Light', sensorType: 'dimmer', format: 'on-off',
+      { path: 'switch', label: 'Light', sensorType: 'dimmer', format: 'on-off',
         controllable: true, type: 'toggle', writeOn: 'On', writeOff: 'Off',
-        capabilityId: 'io', homekit: 'switch-rw' },
+        capabilityId: 'io', homekit: 'light-rw' },
       { path: 'level', label: 'Level', sensorType: 'dimmer', format: 'percent',
         controllable: true, type: 'range', writeCmd: 'setLevel',
         capabilityId: 'io', min: 0, max: 100, rangeFormat: 'percent' },
     ],
+    // A Loxone Dimmer's brightness is the `position` state (0–100); bind `value`
+    // too for firmware/control variants that report it there. >0 ⇒ on.
     bindings: [
-      { state: 'value', path: 'on',    transform: v => v > 0 },
-      { state: 'value', path: 'level' },
+      { state: 'position', path: 'switch', transform: v => (v > 0 ? 1 : 0) },
+      { state: 'value',    path: 'switch', transform: v => (v > 0 ? 1 : 0) },
+      { state: 'position', path: 'level' },
+      { state: 'value',    path: 'level' },
     ],
   },
 
@@ -304,8 +308,14 @@ class LoxoneClient extends EventEmitter {
         key: deviceKey, label, type: 'loxone',
         sensors: def.sensors.map(s => ({ ...s })),
         homekit,
-        _writeCapability: (capId, command, args = []) =>
-          this._sendCmd(ctrlUuid, command, args[0]),
+        _writeCapability: (capId, command, args = []) => {
+          // The HomeKit Lightbulb service (light-rw) uses SmartThings-style
+          // capability ids; translate them to Loxone commands. The dashboard
+          // uses capId 'io' and passes On/Off/setLevel straight through.
+          if (capId === 'switch')           command = command === 'on' ? 'On' : 'Off';
+          else if (capId === 'switchLevel') command = 'setLevel';
+          return this._sendCmd(ctrlUuid, command, args[0]);
+        },
       };
 
       this._registry.registerDevice(device);
