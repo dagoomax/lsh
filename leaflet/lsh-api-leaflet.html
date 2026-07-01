@@ -684,6 +684,19 @@ socket.<span class="key">on</span>(<span class="str">'devices'</span>, (devices)
       <span class="key">Authorization</span>: <span class="str">"Bearer &lt;token&gt;"</span>
     <span class="key">payload</span>: <span class="str">'{"sensor":"pwr","value":1}'</span></div>
       </div>
+
+      <!-- Loxone example -->
+      <div class="api-section">
+        <div class="slabel">Loxone Miniserver (Virtual HTTP In / Out)</div>
+        <div class="code-block">
+<span class="cmt"># Loxone can't set headers — pass the token as ?token=</span>
+<span class="cmt"># Virtual Output — set a Fibaro dimmer to &lt;v&gt; (0–99)</span>
+<span class="key">GET</span> /api/device/fibaro%2Froom_443/set?sensor=71%2Fvalue&amp;value=<span class="num">&lt;v&gt;</span>&amp;token=<span class="str">&lt;token&gt;</span>
+
+<span class="cmt"># Virtual HTTP Input — read the level  (\v = extracted number)</span>
+<span class="key">URL</span> http://&lt;lsh-ip&gt;:3000/api/devices/fibaro%2Froom_443?token=<span class="str">&lt;token&gt;</span>
+<span class="cmt">Recognition:</span> "characteristic":"Brightness"},"value":\v</div>
+      </div>
     </div>
   </div>
 
