@@ -96,7 +96,7 @@ export default function EnergyFlow({ energy }) {
           pct={solarPct} sub={`${(s?.dailyYield??0).toFixed(2)} kWh today`} />
         <ECard icon="🔋" label="Battery" value={`${battPct}%`}     color={battColor}
           pct={battPct} sub={`${battState} · ${fmtV(b?.voltage)}`} />
-        <ECard icon="🏠" label="Loads"   value={fmtW(l?.power)}    color="var(--purple-lt)"
+        <ECard icon="🏠" label="Loads"   value={fmtW(l?.power)}    color="var(--accent-lt)"
           sub={`L1 ${fmtW(l?.power)} · L2 ${fmtW(l?.powerL2)} · L3 ${fmtW(l?.powerL3)}`} />
         <ECard icon={exporting?'↗️':'↙️'} label={exporting?'Exporting':'Importing'}
           value={fmtW(g?.power)} color={gridColor}

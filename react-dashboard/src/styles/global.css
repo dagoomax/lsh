@@ -10,9 +10,9 @@
   --text:      #e6edf3;
   --text2:     #8b949e;
   --text3:     #6e7681;
-  --purple:    #58a6ff;
-  --purple-lt: #79c0ff;
-  --purple-dim: rgba(88,166,255,0.18);
+  --accent:    #58a6ff;
+  --accent-lt: #79c0ff;
+  --accent-dim: rgba(88,166,255,0.18);
   --blue:      #58a6ff;
   --green:     #3fb950;
   --orange:    #f0883e;
@@ -72,7 +72,7 @@ body {
 .badge-orange { background: rgba(240,136,62,0.15);  color: var(--orange); }
 .badge-gray   { background: rgba(255,255,255,0.07); color: var(--text2); }
 .badge-yellow { background: rgba(210,153,34,0.15);   color: var(--yellow); }
-.badge-purple { background: rgba(88,166,255,0.2);   color: var(--purple-lt); }
+.badge-purple { background: rgba(88,166,255,0.2);   color: var(--accent-lt); }
 
 @keyframes flowDash {
   to { stroke-dashoffset: -20; }

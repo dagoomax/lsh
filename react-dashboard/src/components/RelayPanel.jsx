@@ -2,7 +2,7 @@ function Toggle({ on, onChange }) {
   return (
     <div onClick={() => onChange(!on)} style={{
       width:42, height:24, borderRadius:12,
-      background: on ? 'var(--purple)' : 'rgba(255,255,255,0.12)',
+      background: on ? 'var(--accent)' : 'rgba(255,255,255,0.12)',
       position:'relative', cursor:'pointer',
       transition:'background 0.2s', flexShrink:0,
       boxShadow: on ? '0 0 10px rgba(88,166,255,0.5)' : 'none',
@@ -50,7 +50,7 @@ export default function RelayPanel({ relays, onToggle }) {
                 {r.name}
               </div>
               <div style={{ fontSize:11, marginTop:1,
-                color: r.on ? 'var(--purple-lt)' : 'var(--text3)' }}>
+                color: r.on ? 'var(--accent-lt)' : 'var(--text3)' }}>
                 {r.on ? '● Active' : 'Inactive'}
               </div>
             </div>

@@ -196,7 +196,7 @@ function Toggle({ on, onChange }) {
       onClick={e => { e.stopPropagation(); onChange(!on) }}
       style={{
         width:48, height:28, borderRadius:14,
-        background: on ? 'var(--purple)' : 'rgba(255,255,255,0.12)',
+        background: on ? 'var(--accent)' : 'rgba(255,255,255,0.12)',
         position:'relative', cursor:'pointer', flexShrink:0,
         transition:'background 0.2s',
         boxShadow: on ? '0 0 12px rgba(88,166,255,0.5)' : 'none',
@@ -218,7 +218,7 @@ function Toggle({ on, onChange }) {
 }
 
 // ── Brightness slider ─────────────────────────────────────────────────────────
-function Slider({ value, onCommit, color='var(--purple-lt)' }) {
+function Slider({ value, onCommit, color='var(--accent-lt)' }) {
   const [local, setLocal] = useState(value ?? 100)
   useEffect(() => { setLocal(value ?? 100) }, [value])
   return (
@@ -291,8 +291,8 @@ function DeviceTile({ device, onCommand }) {
 
   const activeColor = hasMot||hasPres ? 'var(--orange)'
                     : hasTemp||hasHum  ? 'var(--teal)'
-                    : !hasSwitch       ? 'var(--purple-lt)'
-                    : 'var(--purple)'
+                    : !hasSwitch       ? 'var(--accent-lt)'
+                    : 'var(--accent)'
 
   const isPool    = device.type === 'bayrol'
   const isFibaro  = device.type === 'fibaro'
@@ -532,7 +532,7 @@ function DeviceTile({ device, onCommand }) {
               <button key={m} onClick={e => { e.stopPropagation(); cmd('ac_mode', i) }}
                 style={{
                   fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
-                  background: acMode === i ? 'var(--purple)' : 'rgba(255,255,255,0.08)',
+                  background: acMode === i ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
                   color: acMode === i ? '#fff' : '#8b949e', cursor:'pointer',
                 }}>
                 {m}
@@ -563,7 +563,7 @@ function DeviceTile({ device, onCommand }) {
                 <button key={name} onClick={e => { e.stopPropagation(); cmd('input_idx', i) }}
                   style={{
                     fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
-                    background: denonInputIdx === i ? 'var(--purple)' : 'rgba(255,255,255,0.08)',
+                    background: denonInputIdx === i ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
                     color: denonInputIdx === i ? '#fff' : '#8b949e', cursor:'pointer',
                     WebkitTapHighlightColor:'transparent',
                   }}>
@@ -586,7 +586,7 @@ function DeviceTile({ device, onCommand }) {
             <span style={{ fontSize:9, color:'#4a5568', flexShrink:0, minWidth:22, textAlign:'right' }}>
               {Math.round(denonVolume)}
             </span>
-            <Slider value={denonVolume} onCommit={v => cmd('volume', v)} color="var(--purple)" />
+            <Slider value={denonVolume} onCommit={v => cmd('volume', v)} color="var(--accent)" />
           </div>
         </div>
       )}
@@ -620,7 +620,7 @@ function DeviceTile({ device, onCommand }) {
           {/* Volume slider */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
             <span style={{ fontSize:9, color:'#4a5568', flexShrink:0, width:22, textAlign:'right' }}>{sonosVolume}%</span>
-            <Slider value={sonosVolume} onCommit={v => cmd('volume', v)} color="var(--purple)" />
+            <Slider value={sonosVolume} onCommit={v => cmd('volume', v)} color="var(--accent)" />
           </div>
         </div>
       )}
@@ -920,17 +920,17 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
               display:'flex', alignItems:'center', gap:8,
               padding:'8px 10px', borderRadius:10, border:'none', cursor:'pointer',
               background: active ? 'rgba(88,166,255,0.2)' : 'transparent',
-              color: active ? 'var(--purple-lt)' : 'var(--text2)',
+              color: active ? 'var(--accent-lt)' : 'var(--text2)',
               fontSize:13, fontWeight: active?600:400,
               textAlign:'left', width:'100%',
               transition:'all 0.15s',
             }}>
-              <CatIcon size={16} color={active ? 'var(--purple-lt)' : 'var(--text3)'} />
+              <CatIcon size={16} color={active ? 'var(--accent-lt)' : 'var(--text3)'} />
               <span style={{ flex:1 }}>{c}</span>
               <span style={{
                 fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:8,
                 background: active ? 'rgba(88,166,255,0.3)' : 'rgba(255,255,255,0.06)',
-                color: active ? 'var(--purple-lt)' : 'var(--text3)',
+                color: active ? 'var(--accent-lt)' : 'var(--text3)',
               }}>{cnt}</span>
             </button>
           )
@@ -977,7 +977,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
                 display:'inline-flex', alignItems:'center', gap:4,
                 padding:'6px 11px', borderRadius:20, border:'none', cursor:'pointer',
                 flexShrink:0,
-                background: active ? 'var(--purple)' : 'rgba(255,255,255,0.07)',
+                background: active ? 'var(--accent)' : 'rgba(255,255,255,0.07)',
                 color: active ? '#fff' : 'var(--text2)',
                 fontSize:12, fontWeight:active?600:400,
                 boxShadow: active ? '0 2px 12px rgba(88,166,255,0.38)' : 'none',
@@ -999,7 +999,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
         {/* Desktop header row (hidden on mobile via CSS) */}
         <div className="desktop-grid-header" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px 10px', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            {(() => { const I = CAT_ICON_COMPONENT[cat]; return <I size={18} color="var(--purple-lt)"/>})()}
+            {(() => { const I = CAT_ICON_COMPONENT[cat]; return <I size={18} color="var(--accent-lt)"/>})()}
             <span style={{ fontSize:15, fontWeight:700 }}>{cat}</span>
           </div>
           <div style={{ display:'flex', gap:6 }}>
