@@ -4,7 +4,7 @@ const http           = require('http');
 const platformStatus = require('./platform-status');
 
 const TRACKED_TYPES = [
-  'binarySwitch', 'dimmer', 'temperatureSensor', 'humiditySensor',
+  'binarySwitch', 'dimmer', 'FGD', 'multilevelSwitch', 'temperatureSensor', 'humiditySensor',
   'lightSensor',  'powerSensor', 'energyMeter',  'doorSensor',
   'motionSensor', 'windowSensor', 'smokeSensor',  'floodSensor',
   'multilevelSensor', 'FGRM', 'FGR', 'rollerShutter',
@@ -100,7 +100,8 @@ class FibaroClient {
         writeOn: 'on', writeOff: 'off',
         homekit: { service: 'Switch', characteristic: 'On' } };
     }
-    if (t.includes('dimmer')) {
+    // Fibaro dimmers: FGD212/FGD211 (Dimmer 2), generic multilevelSwitch, or *dimmer* types
+    if (t.includes('dimmer') || t.includes('FGD') || t.includes('multilevelSwitch')) {
       return { ...base, sensorType: 'dimmer', type: 'range', controllable: true, min: 0, max: 99, writeCmd: 'set',
         homekit: { service: 'Lightbulb', characteristic: 'Brightness' } };
     }
