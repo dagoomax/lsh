@@ -86,6 +86,32 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Header nav — vanilla GitHub-dark / blue palette */
+.header-nav-react {
+  display: flex;
+  gap: 6px;
+  background: #161b22;
+  border: 1px solid #21262d;
+  border-radius: 10px;
+  padding: 4px;
+}
+.header-nav-react a {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 16px;
+  border-radius: 7px;
+  color: #8b949e;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s;
+}
+.header-nav-react a:hover { color: #e6edf3; background: rgba(255,255,255,0.06); }
+.header-nav-react a.active {
+  color: #fff;
+  background: #58a6ff;
+  box-shadow: 0 2px 8px rgba(88,166,255,0.35);
+}
+
 /* Responsive layout switching */
 @media (min-width: 768px) {
   .layout-desktop      { display: flex !important; }

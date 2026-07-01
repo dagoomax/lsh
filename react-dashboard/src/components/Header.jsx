@@ -14,10 +14,10 @@ export default function Header({ connection, connected }) {
     <header style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
       height: 56,
-      background: 'rgba(13,14,26,0.92)',
-      backdropFilter: 'blur(32px)',
-      WebkitBackdropFilter: 'blur(32px)',
-      borderBottom: '1px solid rgba(124,58,237,0.15)',
+      background: 'rgba(13,17,23,0.85)',            // #0d1117 (vanilla --bg)
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      borderBottom: '1px solid #21262d',            // vanilla --card-border
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: 12,
       padding: '0 20px', flexShrink: 0,
@@ -36,44 +36,32 @@ export default function Header({ connection, connected }) {
         }}>LSHServer</span>
       </div>
 
-      {/* Nav (center) */}
-      <nav className="header-nav-react" style={{
-        display: 'flex', gap: 6,
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid var(--border)',
-        borderRadius: 10, padding: 4,
-      }}>
+      {/* Nav (center) — styled in global.css to match vanilla */}
+      <nav className="header-nav-react">
         {NAV.map(({ label, href, active }) => (
-          <a key={label} href={href} style={{
-            fontSize: 13, fontWeight: 500, padding: '7px 16px', borderRadius: 7,
-            textDecoration: 'none', whiteSpace: 'nowrap',
-            color: active ? '#fff' : 'var(--text2)',
-            background: active ? 'var(--purple)' : 'transparent',
-            boxShadow: active ? '0 2px 8px rgba(124,58,237,0.35)' : 'none',
-            transition: 'color 0.15s, background 0.15s',
-          }}>{label}</a>
+          <a key={label} href={href} className={active ? 'active' : undefined}>{label}</a>
         ))}
       </nav>
 
-      {/* Connection status + source (right) */}
+      {/* Connection status + source (right) — vanilla green/red + neutral chip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6,
-          background: live ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-          border: `1px solid ${live ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
+          background: live ? 'rgba(63,185,80,0.15)' : 'rgba(248,81,73,0.15)',
+          border: `1px solid ${live ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)'}`,
           borderRadius: 20, padding: '3px 10px',
         }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%',
-            background: live ? 'var(--green)' : 'var(--red)',
+            background: live ? '#3fb950' : '#f85149',
             display: 'inline-block',
-            boxShadow: live ? '0 0 6px var(--green)' : 'none',
+            boxShadow: live ? '0 0 6px #3fb950' : 'none',
             animation: live ? 'none' : 'pulse 2s infinite',
           }}/>
-          <span style={{ fontSize: 11, fontWeight: 600, color: live ? 'var(--green)' : 'var(--red)' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: live ? '#3fb950' : '#f85149' }}>
             {live ? 'Connected' : 'Offline'}
           </span>
         </div>
-        <span className="header-source" style={{ fontSize: 11, color: 'var(--text3)', background: 'rgba(255,255,255,0.04)',
-          padding: '3px 8px', borderRadius: 8, border: '1px solid var(--border)' }}>
+        <span className="header-source" style={{ fontSize: 11, color: '#8b949e',
+          background: '#161b22', padding: '3px 8px', borderRadius: 8, border: '1px solid #21262d' }}>
           {source}
         </span>
       </div>
