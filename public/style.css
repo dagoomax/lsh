@@ -2215,10 +2215,22 @@ footer {
 .satel-inputs-open { display: flex; flex-wrap: wrap; gap: 6px; }
 .satel-inputs-allclosed { color: var(--text-muted); font-size: 0.82rem; }
 .satel-input-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 3px 10px;
+  padding: 3px 10px 3px 8px;
   border-radius: 20px;
+  background: color-mix(in srgb, var(--text-muted) 15%, transparent);
+  color: var(--text-muted);
+}
+.satel-input-chip .chip-ico { width: 11px; height: 11px; flex-shrink: 0; }
+.satel-input-chip.kind-motion {
+  background: color-mix(in srgb, var(--accent-blue) 15%, transparent);
+  color: var(--accent-blue);
+}
+.satel-input-chip.kind-open {
   background: color-mix(in srgb, var(--accent-orange) 15%, transparent);
   color: var(--accent-orange);
 }

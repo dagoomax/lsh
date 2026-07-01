@@ -102,6 +102,21 @@ function applyValue(key, value) {
 // ── Satel "inputs open" summary tile ───────────────────────────────────────
 const satelZoneOpen = new Map(); // zone number → 0/1 (1 = violated / open)
 
+const SATEL_ICO = {
+  motion: '<svg class="chip-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><path d="M8.6 8.6a4.8 4.8 0 0 0 0 6.8"/><path d="M15.4 8.6a4.8 4.8 0 0 1 0 6.8"/></svg>',
+  open:   '<svg class="chip-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a2 2 0 0 1 2-2h8v18"/><path d="M14 3l6 3v15h-6"/></svg>',
+  active: '<svg class="chip-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/></svg>',
+};
+
+// A violated input reads as "motion" (PIR zones) or "open" (window/door
+// contacts), inferred from the zone's HomeKit sensor type.
+function satelZoneKind(dev) {
+  if (!dev) return 'active';
+  const stateHk = (dev.sensors || []).find((s) => s.path === 'state')?.homekit;
+  const hk = stateHk || (dev.homekit || [])[0];
+  return hk === 'motion' ? 'motion' : hk === 'contact' ? 'open' : 'active';
+}
+
 function updateSatelInputsTile() {
   const card = document.getElementById('satel-inputs-card');
   if (!card) return;
@@ -125,7 +140,8 @@ function updateSatelInputsTile() {
   } else {
     list.innerHTML = openNums.map((n) => {
       const d = knownDevices.get(`satel/zone/${n}`);
-      return `<span class="satel-input-chip">${esc(d ? d.label : `Zone ${n}`)}</span>`;
+      const kind = satelZoneKind(d);
+      return `<span class="satel-input-chip kind-${kind}" title="${kind}">${SATEL_ICO[kind]}${esc(d ? d.label : `Zone ${n}`)}</span>`;
     }).join('');
   }
 }
