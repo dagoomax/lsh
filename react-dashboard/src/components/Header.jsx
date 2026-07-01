@@ -1,19 +1,11 @@
-import { useState, useEffect } from 'react'
-
-function fmt(d) {
-  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-}
-function fmtDate(d) {
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
-}
+const NAV = [
+  { label: 'Dashboard', href: '/react/',        active: true  },
+  { label: 'Settings',  href: '/settings.html', active: false },
+  { label: 'Logs',      href: '/logs.html',     active: false },
+  { label: 'MQTT',      href: '/mqtt.html',     active: false },
+]
 
 export default function Header({ connection, connected }) {
-  const [now, setNow] = useState(new Date())
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(t)
-  }, [])
-
   const source = connection?.source === 'vrm'  ? 'VRM Cloud'
                : connection?.source === 'mqtt' ? 'MQTT Local' : '—'
   const live = connected && (connection?.vrm?.connected || connection?.mqtt?.connected)
@@ -27,38 +19,44 @@ export default function Header({ connection, connected }) {
       WebkitBackdropFilter: 'blur(32px)',
       borderBottom: '1px solid rgba(124,58,237,0.15)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: 12,
       padding: '0 20px', flexShrink: 0,
     }}>
-      {/* Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* Logo + wordmark (left) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <img src="/logo.svg" alt="LSH" width={32} height={32} style={{
           borderRadius: 9, flexShrink: 0, display: 'block',
           boxShadow: '0 2px 12px rgba(88,166,255,0.35)',
         }}/>
-        <div>
-          <div style={{
-            fontSize: 14, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.1,
-            background: 'linear-gradient(135deg, #3fb950 0%, #4fa8e0 55%, #58a6ff 100%)',
-            WebkitBackgroundClip: 'text', backgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            width: 'fit-content',
-          }}>
-            LSH Server
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--text3)', lineHeight: 1 }}>LSH Dashboard</div>
-        </div>
+        <span style={{
+          fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', whiteSpace: 'nowrap',
+          background: 'linear-gradient(135deg, #3fb950 0%, #4fa8e0 55%, #58a6ff 100%)',
+          WebkitBackgroundClip: 'text', backgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}>LSHServer</span>
       </div>
 
-      {/* Clock */}
-      <div style={{ textAlign: 'center' }} className="header-clock">
-        <div style={{ fontSize: 16, fontWeight: 300, letterSpacing: '0.08em', fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>
-          {fmt(now)}
-        </div>
-        <div style={{ fontSize: 10, color: 'var(--text3)' }} className="header-date">{fmtDate(now)}</div>
-      </div>
+      {/* Nav (center) */}
+      <nav className="header-nav-react" style={{
+        display: 'flex', gap: 6,
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid var(--border)',
+        borderRadius: 10, padding: 4,
+      }}>
+        {NAV.map(({ label, href, active }) => (
+          <a key={label} href={href} style={{
+            fontSize: 13, fontWeight: 500, padding: '7px 16px', borderRadius: 7,
+            textDecoration: 'none', whiteSpace: 'nowrap',
+            color: active ? '#fff' : 'var(--text2)',
+            background: active ? 'var(--purple)' : 'transparent',
+            boxShadow: active ? '0 2px 8px rgba(124,58,237,0.35)' : 'none',
+            transition: 'color 0.15s, background 0.15s',
+          }}>{label}</a>
+        ))}
+      </nav>
 
-      {/* Status */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* Connection status + source (right) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6,
           background: live ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
           border: `1px solid ${live ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,

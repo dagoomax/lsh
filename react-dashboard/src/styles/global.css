@@ -101,11 +101,10 @@ body {
   .desktop-grid-header { display: none !important; }
   .device-sidebar      { display: none !important; }
   .header-source       { display: none !important; }
+  .header-nav-react    { display: none !important; }
 
   /* Compact header */
   header { padding: 0 12px !important; height: 50px !important; }
-  .header-date { display: none !important; }
-  .header-clock div:first-child { font-size: 14px !important; }
 
   /* Category pills row */
   .mobile-cat-pills { padding: 8px 12px !important; gap: 6px !important; }
