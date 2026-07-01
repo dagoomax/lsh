@@ -860,6 +860,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.fibaro?.password)      safe.fibaro.password      = '••••••••';
     if (safe.bayrol?.password)      safe.bayrol.password      = '••••••••';
     if (safe.somfy?.password)       safe.somfy.password       = '••••••••';
+    if (Array.isArray(safe.reolink?.cameras)) safe.reolink.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (safe.somfy?.token)          safe.somfy.token          = '••••••••';
     if (safe.loxoneOut?.password)   safe.loxoneOut.password   = '••••••••';
     if (safe.auxair?.password)      safe.auxair.password      = '••••••••';

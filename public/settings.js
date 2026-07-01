@@ -1,5 +1,6 @@
 let currentRelays = [];
 let currentCameras = [];
+let currentReolink = [];
 let qrInstance = null;
 
 async function loadSettings() {
@@ -189,6 +190,10 @@ async function loadSettings() {
 
     // Cameras — fetched separately so settings API doesn't need to include them
     await loadCameras();
+
+    // Reolink PoE cameras (password comes back masked)
+    currentReolink = data.reolink?.cameras || [];
+    renderReolinkList(currentReolink);
 
     // Relays
     currentRelays = data.relays || [];
@@ -1481,6 +1486,107 @@ document.getElementById('btn-save-cameras').addEventListener('click', async () =
   } finally {
     btn.disabled = false;
   }
+});
+
+// ── Reolink PoE cameras ────────────────────────────────────────────────────
+function renderReolinkList(cams) {
+  const c = document.getElementById('reolink-settings-list');
+  if (!c) return;
+  c.innerHTML = '';
+  if (!cams.length) {
+    c.innerHTML = '<p class="hint" style="margin-bottom:12px">No Reolink cameras yet.</p>';
+    return;
+  }
+  cams.forEach((cam, i) => {
+    const row = document.createElement('div');
+    row.className = 'camera-settings-row';
+    row.dataset.index = i;
+    row.innerHTML = `
+      <div class="camera-settings-fields">
+        <input type="text" class="rl-name" placeholder="Camera name" value="${escapeVal(cam.name||'')}">
+        <input type="text" class="rl-host" placeholder="Host / IP (192.168.1.50)" value="${escapeVal(cam.host||'')}">
+        <input type="text" class="rl-user" placeholder="Username (admin)" value="${escapeVal(cam.username||'')}">
+        <input type="password" class="rl-pass" placeholder="Password" value="${escapeVal(cam.password||'')}">
+        <div style="display:flex; gap:8px; grid-column:1/-1; flex-wrap:wrap; align-items:center">
+          <input type="number" class="rl-channel" min="0" placeholder="Ch" value="${cam.channel ?? 0}" style="width:78px" title="0 = standalone camera; NVR channel index otherwise">
+          <select class="rl-stream" style="width:96px">
+            <option value="main"${cam.stream!=='sub'?' selected':''}>main</option>
+            <option value="sub"${cam.stream==='sub'?' selected':''}>sub</option>
+          </select>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem"><input type="checkbox" class="rl-https"${cam.https?' checked':''}> HTTPS</label>
+          <input type="number" class="rl-port" min="0" placeholder="Port" value="${cam.port||''}" style="width:84px" title="Snapshot port (blank = 80 / 443)">
+          <button class="btn btn-secondary btn-sm rl-test" title="Pull a test snapshot">Test</button>
+          <span class="rl-test-result test-result"></span>
+        </div>
+      </div>
+      <button class="btn btn-remove rl-remove" title="Remove">✕</button>`;
+    row.querySelector('.rl-remove').addEventListener('click', () => {
+      currentReolink = collectReolink();
+      currentReolink.splice(i, 1);
+      renderReolinkList(currentReolink);
+    });
+    row.querySelector('.rl-test').addEventListener('click', async () => {
+      const btn = row.querySelector('.rl-test');
+      const out = row.querySelector('.rl-test-result');
+      const pass = row.querySelector('.rl-pass').value;
+      const body = {
+        host:     row.querySelector('.rl-host').value.trim(),
+        username: row.querySelector('.rl-user').value.trim(),
+        password: pass.includes('•') ? (currentReolink[i]?.password || '') : pass,
+        channel:  parseInt(row.querySelector('.rl-channel').value) || 0,
+        https:    row.querySelector('.rl-https').checked,
+        port:     parseInt(row.querySelector('.rl-port').value) || 0,
+      };
+      if (!body.host) { out.textContent = '✗ host required'; out.className = 'rl-test-result test-result err'; return; }
+      btn.disabled = true; out.textContent = '…'; out.className = 'rl-test-result test-result';
+      try {
+        const r = await fetch('/api/settings/test-reolink', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const j = await r.json();
+        out.textContent = j.success ? '✓ ' + j.message : '✗ ' + j.error;
+        out.className = 'rl-test-result test-result ' + (j.success ? 'ok' : 'err');
+      } catch (e) {
+        out.textContent = '✗ ' + e.message; out.className = 'rl-test-result test-result err';
+      } finally { btn.disabled = false; }
+    });
+    c.appendChild(row);
+  });
+}
+
+function collectReolink() {
+  return Array.from(document.querySelectorAll('#reolink-settings-list .camera-settings-row')).map((row) => ({
+    name:     row.querySelector('.rl-name').value.trim(),
+    host:     row.querySelector('.rl-host').value.trim(),
+    username: row.querySelector('.rl-user').value.trim(),
+    password: row.querySelector('.rl-pass').value,   // masked '••••' preserved server-side
+    channel:  parseInt(row.querySelector('.rl-channel').value) || 0,
+    stream:   row.querySelector('.rl-stream').value,
+    https:    row.querySelector('.rl-https').checked,
+    port:     parseInt(row.querySelector('.rl-port').value) || 0,
+  })).filter((c) => c.host);
+}
+
+document.getElementById('btn-add-reolink')?.addEventListener('click', () => {
+  currentReolink = collectReolink();
+  currentReolink.push({ name:'', host:'', username:'admin', password:'', channel:0, stream:'main', https:false, port:0 });
+  renderReolinkList(currentReolink);
+  const names = document.querySelectorAll('#reolink-settings-list .rl-name');
+  names[names.length - 1]?.focus();
+});
+
+document.getElementById('btn-save-reolink')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-reolink');
+  const out = document.getElementById('reolink-save-result');
+  btn.disabled = true;
+  try {
+    const cameras = collectReolink();
+    const res = await fetch('/api/settings/reolink', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cameras }) });
+    const j = await res.json();
+    out.textContent = j.success ? '✓ ' + j.message : '✗ ' + j.error;
+    out.className = 'test-result ' + (j.success ? 'ok' : 'err');
+    if (j.success) currentReolink = cameras;
+  } catch (e) {
+    out.textContent = '✗ ' + e.message; out.className = 'test-result err';
+  } finally { btn.disabled = false; }
 });
 
 // ── SolarEdge test + save ──────────────────────────────────────────────────

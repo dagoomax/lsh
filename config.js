@@ -67,6 +67,7 @@ function loadConfig() {
       password: process.env.LOXONE_PASS || fileConfig.loxone?.password || '',
     },
     cameras: fileConfig.cameras || [],
+    reolink: { cameras: fileConfig.reolink?.cameras || [] },
     relays: fileConfig.relays || [
       { index: 0, name: 'Relay 1' },
       { index: 1, name: 'Relay 2' },

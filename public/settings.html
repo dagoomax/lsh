@@ -981,6 +981,21 @@
       </div>
     </section>
 
+    <!-- Reolink PoE cameras -->
+    <section class="card settings-card" data-category="cameras" data-title="Reolink PoE camera NVR RTSP snapshot ONVIF">
+      <h2><span>Reolink</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Reolink PoE cameras and NVRs. One row per camera — use channel 0 for a standalone camera, or add a row per NVR channel. Snapshots are proxied so the password stays server-side.</p>
+
+      <div id="reolink-settings-list"></div>
+
+      <button class="btn btn-secondary" id="btn-add-reolink">+ Add Reolink Camera</button>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-primary" id="btn-save-reolink" data-i18n="common.save">Save</button>
+        <span class="test-result" id="reolink-save-result"></span>
+      </div>
+    </section>
+
     <!-- Cameras -->
     <section class="card settings-card" data-category="cameras" data-title="Cameras RTSP streams video">
       <h2 data-i18n="s.cameras_title">Cameras</h2>
