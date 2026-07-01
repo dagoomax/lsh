@@ -45,13 +45,14 @@ async function main() {
     }
   }
 
+  // Always construct — the client reads cameras from config.json on demand, so
+  // cameras added via Settings apply live without a restart.
   let reolink = null;
-  if (config.reolink?.cameras?.length) {
-    const ReolinkClient = tryRequire('./src/reolink-client');
-    if (ReolinkClient) {
-      reolink = new ReolinkClient(config);
-      console.log(`[Reolink] ${reolink.getCameras().length} camera(s) configured`);
-    }
+  const ReolinkClient = tryRequire('./src/reolink-client');
+  if (ReolinkClient) {
+    reolink = new ReolinkClient();
+    const n = reolink.getCameras().length;
+    if (n) console.log(`[Reolink] ${n} camera(s) configured`);
   }
 
   let mqttExplorer = null;

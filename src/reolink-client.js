@@ -10,6 +10,21 @@
 
 const http  = require('http');
 const https = require('https');
+const fs    = require('fs');
+const path  = require('path');
+
+const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
+
+// Read the current Reolink cameras straight from config.json so changes saved
+// via the Settings page apply immediately — no server restart needed.
+function loadCameras() {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    return (cfg.reolink?.cameras || []).filter((c) => c && c.host);
+  } catch {
+    return [];
+  }
+}
 
 // rtsp://user:pass@host:554/h264Preview_<NN>_<main|sub>  (NN = channel + 1, padded)
 function buildRtspUrl(cam) {
@@ -23,13 +38,9 @@ function buildRtspUrl(cam) {
 }
 
 class ReolinkClient {
-  constructor(config) {
-    this.cams = (config.reolink?.cameras || []).filter((c) => c && c.host);
-  }
-
-  // Shape consumed by GET /api/cameras
+  // Shape consumed by GET /api/cameras — read fresh so Settings edits apply live.
   getCameras() {
-    return this.cams.map((cam, idx) => ({
+    return loadCameras().map((cam, idx) => ({
       name:        cam.name || `Reolink ${cam.host}${cam.channel ? '/' + cam.channel : ''}`,
       url:         buildRtspUrl(cam),
       snapshotUrl: `/api/reolink/snapshot/${idx}`,
@@ -41,7 +52,7 @@ class ReolinkClient {
 
   // Pipe a fresh snapshot for camera <idx> to the Express response.
   proxySnapshot(idx, res) {
-    const cam = this.cams[Number(idx)];
+    const cam = loadCameras()[Number(idx)];
     if (!cam) return res.status(404).end();
     ReolinkClient.fetchSnapshot(cam)
       .then(({ buffer, contentType }) => {

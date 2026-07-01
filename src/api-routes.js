@@ -437,7 +437,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     cleaned.forEach((c, i) => { if (c.password === undefined) c.password = prev[i]?.password || ''; });
     try {
       writeConfigFile({ ...current, reolink: { cameras: cleaned } });
-      res.json({ success: true, message: 'Reolink cameras saved. Restart to apply.' });
+      res.json({ success: true, message: 'Reolink cameras saved' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
