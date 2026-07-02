@@ -222,6 +222,13 @@ class SomfyClient {
             writeCmd: posCmd, capabilityId: 'position',
             min: 0, max: 100, rangeFormat: 'percent',
           },
+          {
+            // Momentary: any value halts the motor (Somfy/Overkiz `stop`).
+            path: 'stop', label: 'Stop', format: 'on-off',
+            controllable: true, type: 'toggle',
+            writeOn: 'stop', writeOff: 'stop',
+            capabilityId: 'stop', homekit: null,
+          },
         ],
         _writeCapability: (capId, command, args) =>
           this._executeCommand(cfg, url, capId, command, args),
@@ -332,6 +339,10 @@ class SomfyClient {
     let cmd;
     if (capId === 'toggle') {
       cmd = { name: command === 'on' ? 'open' : 'close', parameters: [] };
+    } else if (capId === 'stop') {
+      // Halt an in-motion cover. RTS motors use `stop`; some io covers expose
+      // `stopIdentify` — `stop` is accepted by both via exec/apply.
+      cmd = { name: 'stop', parameters: [] };
     } else if (capId === 'position') {
       const pct = Math.round(args?.[0] ?? 0);
       // setPosition: 0=closed, 100=open  |  setClosure: 0=open, 100=closed
