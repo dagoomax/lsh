@@ -879,7 +879,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function DeviceList({ devices, energy, onToggleRelay }) {
-  const [openKey, setOpenKey] = useState(null)
+  const [openKey, setOpenKey] = useState(() => new URLSearchParams(window.location.search).get('device'))
   const openDevice = openKey ? devices.find(d => d.key === openKey) : null
   const [cat, setCat] = useState('All')
 
