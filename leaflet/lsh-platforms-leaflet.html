@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LSH — Supported Platforms &amp; Devices</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#0d1117; --surf:#161b22; --surf2:#1c2128; --border:#30363d; --border2:#21262d;
+    --text:#e6edf3; --muted:#8b949e; --dim:#484f58;
+    --green:#3fb950; --blue:#58a6ff; --purple:#bc8cff; --orange:#f0883e; --red:#f85149; --yellow:#d29922; --teal:#39d353;
+  }
+  html, body { width:210mm; background:var(--bg); color:var(--text);
+    font-family:'Inter',system-ui,sans-serif; font-size:9.5pt; line-height:1.45; -webkit-font-smoothing:antialiased; }
+  code { font-family:'JetBrains Mono',monospace; font-size:7.5pt; background:rgba(255,255,255,.07);
+    border-radius:3px; padding:1px 5px; color:var(--blue); }
+  .page { width:210mm; min-height:297mm; padding:11mm 12mm 10mm; display:flex; flex-direction:column; gap:8px;
+    page-break-after:always; overflow:hidden; }
+  .page:last-child { page-break-after:auto; }
+
+  .header { display:flex; align-items:center; justify-content:space-between; padding:15px 22px;
+    background:var(--surf); border-radius:13px; border:1px solid var(--border); position:relative; overflow:hidden; }
+  .header::before { content:''; position:absolute; inset:0;
+    background:radial-gradient(ellipse 90% 140% at -5% 50%, rgba(63,185,80,.16) 0%, rgba(88,166,255,.09) 45%, transparent 68%); }
+  .header h1 { font-size:19pt; font-weight:800; letter-spacing:-.02em;
+    background:linear-gradient(135deg,#3fb950 0%,#4fa8e0 55%,#58a6ff 100%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .header .sub { color:var(--muted); font-size:8.5pt; margin-top:2px; }
+  .header .stat { text-align:right; position:relative; }
+  .header .stat b { font-size:17pt; font-weight:800; color:var(--green); display:block; line-height:1.1; }
+  .header .stat span { color:var(--muted); font-size:7.5pt; }
+
+  .cat { background:var(--surf); border:1px solid var(--border2); border-radius:11px; padding:10px 14px 11px; }
+  .cat h2 { font-size:10.5pt; font-weight:700; margin-bottom:7px; display:flex; align-items:center; gap:7px; }
+  .cat h2 .ico { font-size:11pt; }
+  .cat h2 .n { margin-left:auto; color:var(--dim); font-size:8pt; font-weight:500; }
+
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; color:var(--dim); font-size:7pt; font-weight:600; text-transform:uppercase;
+    letter-spacing:.06em; padding:0 8px 4px 0; border-bottom:1px solid var(--border2); }
+  td { padding:4px 8px 4px 0; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:top; font-size:8.4pt; }
+  tr:last-child td { border-bottom:none; }
+  td.name { font-weight:600; white-space:nowrap; }
+  td.dev { color:var(--muted); }
+  .tag { display:inline-block; font-size:6.8pt; font-weight:600; padding:1px 7px; border-radius:99px; white-space:nowrap; }
+  .tag.local { background:rgba(63,185,80,.13); color:var(--green); border:1px solid rgba(63,185,80,.3); }
+  .tag.cloud { background:rgba(88,166,255,.13); color:var(--blue); border:1px solid rgba(88,166,255,.3); }
+  .tag.both  { background:rgba(188,140,255,.13); color:var(--purple); border:1px solid rgba(188,140,255,.3); }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .foot { margin-top:auto; display:flex; justify-content:space-between; color:var(--dim); font-size:7.5pt;
+    padding:8px 4px 0; border-top:1px solid var(--border2); }
+  .foot code { color:var(--muted); background:none; padding:0; }
+
+  .bridges { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .bridge { background:var(--surf2); border:1px solid var(--border2); border-radius:9px; padding:8px 11px; }
+  .bridge b { display:block; font-size:8.6pt; margin-bottom:1px; }
+  .bridge span { color:var(--muted); font-size:7.6pt; line-height:1.35; display:block; }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="header">
+    <div>
+      <h1>LSH — Supported Platforms &amp; Devices</h1>
+      <div class="sub">One server · one REST API · one WebSocket · Apple HomeKit &amp; Loxone bridges built in</div>
+    </div>
+    <div class="stat"><b>32</b><span>integrations,<br>all in one process</span></div>
+  </div>
+
+  <div class="cat">
+    <h2><span class="ico">⚡</span> Energy <span class="n">3 platforms</span></h2>
+    <table>
+      <tr><th style="width:23%">Platform</th><th style="width:15%">Connection</th><th>Devices &amp; data</th></tr>
+      <tr><td class="name">Victron Energy</td><td><span class="tag local">Local MQTT</span></td><td class="dev">Cerbo GX / Venus OS — battery SOC, PV, grid, AC/DC loads, relays, system state</td></tr>
+      <tr><td class="name">Victron VRM</td><td><span class="tag cloud">Cloud</span></td><td class="dev">Automatic fallback when local MQTT is unreachable; same data + relay control</td></tr>
+      <tr><td class="name">SolarEdge</td><td><span class="tag cloud">Cloud</span></td><td class="dev">Inverters — production, grid/battery/load power, daily &amp; lifetime energy</td></tr>
+    </table>
+  </div>
+
+  <div class="cat">
+    <h2><span class="ico">🚨</span> Security &amp; Cameras <span class="n">4 platforms</span></h2>
+    <table>
+      <tr><th style="width:23%">Platform</th><th style="width:15%">Connection</th><th>Devices &amp; data</th></tr>
+      <tr><td class="name">Satel INTEGRA</td><td><span class="tag local">Local TCP</span></td><td class="dev">Alarm panel via ETHM — 64+ zones (motion/contact → HomeKit), tampers, fire &amp; burglary alarms, partition arm/disarm, 32 outputs</td></tr>
+      <tr><td class="name">UniFi Protect</td><td><span class="tag local">Local</span></td><td class="dev">NVR cameras — live streams, snapshots, motion/doorbell events</td></tr>
+      <tr><td class="name">Reolink</td><td><span class="tag local">Local</span></td><td class="dev">PoE cameras &amp; NVRs — RTSP/snapshot streams, per-channel config, live-apply</td></tr>
+      <tr><td class="name">Generic cameras</td><td><span class="tag local">Local</span></td><td class="dev">Any RTSP / MJPEG / WebRTC source + on-demand FFmpeg RTSP proxy</td></tr>
+    </table>
+  </div>
+
+  <div class="cat">
+    <h2><span class="ico">🏠</span> Hubs &amp; Controllers <span class="n">9 platforms</span></h2>
+    <table>
+      <tr><th style="width:23%">Platform</th><th style="width:15%">Connection</th><th>Devices &amp; data</th></tr>
+      <tr><td class="name">Loxone Miniserver</td><td><span class="tag local">Local WS</span></td><td class="dev">Rooms, switches, dimmers, blinds, thermostats, sensors — auto-discovered from structure file; outbound push to Virtual Inputs; XML template generator for Config 17.1</td></tr>
+      <tr><td class="name">Fibaro HC 2 / 3</td><td><span class="tag local">Local REST</span></td><td class="dev">Z-Wave switches, dimmers (FGD212 → HomeKit lights), shutters, temp/humidity/lux, power meters, door/window, motion, smoke, flood</td></tr>
+      <tr><td class="name">Somfy TaHoma</td><td><span class="tag both">Local + Cloud</span></td><td class="dev">Roller shutters, screens, venetian blinds, awnings, gates, garage doors — open/close/stop/position (Overkiz SSO cloud mode)</td></tr>
+      <tr><td class="name">Homey Pro</td><td><span class="tag both">Local + Cloud</span></td><td class="dev">All Homey devices — lights, switches, sensors, thermostats, locks with full control</td></tr>
+      <tr><td class="name">SmartThings</td><td><span class="tag cloud">Cloud</span></td><td class="dev">Samsung ecosystem — switches, plugs, power meters, sensors, appliances</td></tr>
+      <tr><td class="name">KNX</td><td><span class="tag local">KNXnet/IP</span></td><td class="dev">Group-address mapping — switches, dimmers, values (DPT 1/5/9…)</td></tr>
+      <tr><td class="name">IKEA Dirigera</td><td><span class="tag local">Local</span></td><td class="dev">Lights, plugs, blinds, motion &amp; air-quality sensors</td></tr>
+      <tr><td class="name">IKEA Tradfri</td><td><span class="tag local">Local CoAP</span></td><td class="dev">Legacy gateway — bulbs, plugs, blinds, remotes</td></tr>
+      <tr><td class="name">Suppla</td><td><span class="tag both">Cloud / self-host</span></td><td class="dev">Switches, dimmers, thermometers, humidity, shutters, gates</td></tr>
+    </table>
+  </div>
+
+  <div class="foot"><span>LSH — Local Smart Home · Supported Platforms</span><span>page 1 / 2</span></div>
+</div>
+
+<div class="page">
+  <div class="cat">
+    <h2><span class="ico">🔌</span> Devices &amp; DIY <span class="n">8 platforms</span></h2>
+    <table>
+      <tr><th style="width:23%">Platform</th><th style="width:15%">Connection</th><th>Devices &amp; data</th></tr>
+      <tr><td class="name">Shelly</td><td><span class="tag local">Local</span></td><td class="dev">Gen1/Gen2 relays, plugs, dimmers, energy meters, sensors</td></tr>
+      <tr><td class="name">ESPHome</td><td><span class="tag local">Local</span></td><td class="dev">ESP32 / ESP8266 nodes via web server API — any sensor or switch</td></tr>
+      <tr><td class="name">BoneIO</td><td><span class="tag local">MQTT</span></td><td class="dev">DIN-rail I/O — relays, inputs, sensors</td></tr>
+      <tr><td class="name">Waveshare Modbus</td><td><span class="tag local">Modbus TCP</span></td><td class="dev">Relay boards — up to 32 channels per device</td></tr>
+      <tr><td class="name">Arduino / generic MQTT</td><td><span class="tag local">MQTT</span></td><td class="dev">Any JSON topic mapped to sensor readings or controllable outputs</td></tr>
+      <tr><td class="name">SmartBob</td><td><span class="tag local">MQTT</span></td><td class="dev">Custom entities — sensors, switches, automation endpoints</td></tr>
+      <tr><td class="name">BroadLink</td><td><span class="tag local">Local</span></td><td class="dev">RM4 IR/RF blasters — learn &amp; replay remote codes</td></tr>
+      <tr><td class="name">MC6 thermostats</td><td><span class="tag local">MQTT</span></td><td class="dev">Room temperature, setpoint, mode</td></tr>
+    </table>
+  </div>
+
+  <div class="grid2">
+    <div class="cat">
+      <h2><span class="ico">🌡</span> Climate, Pool &amp; Wellness <span class="n">4</span></h2>
+      <table>
+        <tr><td class="name">AUX Air</td><td><span class="tag cloud">Cloud</span></td></tr>
+        <tr><td class="dev" colspan="2">AC Freedom — on/off, target temp 16–30 °C, mode, fan speed</td></tr>
+        <tr><td class="name">Bayrol Pool Manager</td><td><span class="tag cloud">Cloud MQTT</span></td></tr>
+        <tr><td class="dev" colspan="2">pH, ORP/redox, water temperature, salt</td></tr>
+        <tr><td class="name">SmartTub</td><td><span class="tag cloud">Cloud</span></td></tr>
+        <tr><td class="dev" colspan="2">Jacuzzi / Sundance spas — water &amp; set temp, heat mode, jet pumps, lights</td></tr>
+        <tr><td class="name">LG ThinQ</td><td><span class="tag cloud">Cloud</span></td></tr>
+        <tr><td class="dev" colspan="2">Washers, dryers, fridges, AC — state &amp; cycle monitoring</td></tr>
+      </table>
+    </div>
+    <div class="cat">
+      <h2><span class="ico">🤖</span> Vacuums &amp; A/V <span class="n">4</span></h2>
+      <table>
+        <tr><td class="name">Dreame</td><td><span class="tag local">Local miio</span></td></tr>
+        <tr><td class="dev" colspan="2">Robot vacuums &amp; air purifiers — start/stop, status, battery</td></tr>
+        <tr><td class="name">Roborock</td><td><span class="tag local">Local</span></td></tr>
+        <tr><td class="dev" colspan="2">Robot vacuums — cleaning control &amp; status</td></tr>
+        <tr><td class="name">Sonos</td><td><span class="tag local">UPnP</span></td></tr>
+        <tr><td class="dev" colspan="2">Speakers — play/pause, prev/next, volume, mute (SSDP auto-discovery)</td></tr>
+        <tr><td class="name">Denon / Marantz</td><td><span class="tag local">Telnet</span></td></tr>
+        <tr><td class="dev" colspan="2">AV receivers — power, volume, mute, input selection</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="cat">
+    <h2><span class="ico">📤</span> Outbound Bridges &amp; Automation</h2>
+    <div class="bridges">
+      <div class="bridge"><b>Apple HomeKit</b><span>Every device bridged as native accessories — temperature, motion, contact, switches, dimmable lights, cameras</span></div>
+      <div class="bridge"><b>Loxone</b><span>Real-time push to Virtual Inputs + one-click XML import templates (Config 17.1) for commands &amp; feedback</span></div>
+      <div class="bridge"><b>SIP Softphone</b><span>UniFi Talk / any PBX — incoming call popup with camera feed and one-tap door unlock</span></div>
+      <div class="bridge"><b>REST API + WebSocket</b><span>One endpoint for all platforms — <code>/api/devices</code>, <code>/api/device/&lt;key&gt;/set</code>, Socket.IO live stream</span></div>
+      <div class="bridge"><b>Automation engine</b><span>Edge-triggered rules, one-tap scenes, threshold alerts with real-time toasts</span></div>
+      <div class="bridge"><b>History &amp; charts</b><span>Every numeric value recorded — sparkline charts, min/avg/max, <code>/api/history</code></span></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>LSH — Local Smart Home · github.com/dagoomax/lsh</span><span>page 2 / 2</span></div>
+</div>
+
+</body>
+</html>
