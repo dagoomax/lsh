@@ -475,6 +475,14 @@ export function resolveIcon(device) {
       || HomeIcon
 }
 
+export function ChartIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18"/><path d="m7 14 4-5 3 3 5-7"/>
+    </svg>
+  )
+}
+
 export const CAT_ICON_COMPONENT = {
   All:      HomeIcon,
   Victron:  GridPowerIcon,
@@ -485,4 +493,5 @@ export const CAT_ICON_COMPONENT = {
   Security: SecurityIcon,
   Sensors:  SensorIcon,
   Other:    RouterIcon,
+  Graphs:   ChartIcon,
 }

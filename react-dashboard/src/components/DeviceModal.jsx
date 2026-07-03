@@ -32,12 +32,13 @@ function smoothPath(pts) {
   return d
 }
 
-function Chart({ deviceKey, sensor, accent = '#79c0ff' }) {
+export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
   const [points, setPoints] = useState(null)
   const [rangeH, setRangeH] = useState(6)
   const wrapRef = useRef(null)
   const [w, setW] = useState(560)
-  const H = 190, padL = 42, padR = 14, padT = 14, padB = 24
+  const H = height, padL = 42, padR = 14, padT = 14, padB = 24
+  const uid = useMemo(() => `${deviceKey}/${sensor.path}`.replace(/[^a-zA-Z0-9]/g, '_'), [deviceKey, sensor.path])
 
   useEffect(() => {
     let alive = true
@@ -110,11 +111,11 @@ function Chart({ deviceKey, sensor, accent = '#79c0ff' }) {
         {view !== null && view.pts.length > 1 && (
           <svg width={w} height={H} style={{ display: 'block' }}>
             <defs>
-              <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={`fill_${uid}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={accent} stopOpacity="0.35" />
                 <stop offset="100%" stopColor={accent} stopOpacity="0" />
               </linearGradient>
-              <linearGradient id="chartStroke" x1="0" y1="0" x2="1" y2="0">
+              <linearGradient id={`stroke_${uid}`} x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%" stopColor="#3fb950" />
                 <stop offset="100%" stopColor={accent} />
               </linearGradient>
@@ -128,8 +129,8 @@ function Chart({ deviceKey, sensor, accent = '#79c0ff' }) {
             {view.times.map((t, i) => (
               <text key={i} x={t.x} y={H - 8} textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'} fontSize="9.5" fill="#8b949e" fontFamily="system-ui">{t.l}</text>
             ))}
-            <path d={`${smoothPath(view.xy)} L ${view.xy[view.xy.length - 1][0]} ${H - padB} L ${view.xy[0][0]} ${H - padB} Z`} fill="url(#chartFill)" />
-            <path d={smoothPath(view.xy)} fill="none" stroke="url(#chartStroke)" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+            <path d={`${smoothPath(view.xy)} L ${view.xy[view.xy.length - 1][0]} ${H - padB} L ${view.xy[0][0]} ${H - padB} Z`} fill={`url(#fill_${uid})`} />
+            <path d={smoothPath(view.xy)} fill="none" stroke={`url(#stroke_${uid})`} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
             <circle cx={view.last[0]} cy={view.last[1]} r="4" fill={accent}>
               <animate attributeName="opacity" values="1;0.35;1" dur="2s" repeatCount="indefinite" />
             </circle>

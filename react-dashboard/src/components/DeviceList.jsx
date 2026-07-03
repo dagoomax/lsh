@@ -5,6 +5,7 @@ import {
   HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon, RelayIcon,
 } from './Icons'
 import DeviceModal from './DeviceModal'
+import StatsView   from './StatsView'
 import EnergyFlow from './EnergyFlow'
 import RelayPanel from './RelayPanel'
 
@@ -187,7 +188,7 @@ function getGroup(d) {
   return 'Other'
 }
 
-const CATS = ['All','Victron','Lighting','Switches','Climate','Media','Security','Sensors','Other']
+const CATS = ['All','Victron','Lighting','Switches','Climate','Media','Security','Sensors','Other','Graphs']
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 function Toggle({ on, onChange }) {
@@ -881,7 +882,10 @@ function DeviceTile({ device, onCommand, onOpen }) {
 export default function DeviceList({ devices, energy, onToggleRelay }) {
   const [openKey, setOpenKey] = useState(() => new URLSearchParams(window.location.search).get('device'))
   const openDevice = openKey ? devices.find(d => d.key === openKey) : null
-  const [cat, setCat] = useState('All')
+  const [cat, setCat] = useState(() => {
+    const c = new URLSearchParams(window.location.search).get('cat')
+    return CATS.includes(c) ? c : 'All'
+  })
 
   const onCommand = useCallback((key, sensor, value) => {
     sendCommand(key, sensor, value)
@@ -915,8 +919,8 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
           Rooms & Categories
         </div>
 
-        {CATS.filter(c => c==='All' || counts[c]).map(c => {
-          const cnt    = c==='All' ? devices.length : (counts[c]||0)
+        {CATS.filter(c => c==='All' || c==='Graphs' || counts[c]).map(c => {
+          const cnt    = c==='All' ? devices.length : c==='Graphs' ? '📊' : (counts[c]||0)
           const active = cat === c
           const CatIcon = CAT_ICON_COMPONENT[c]
           return (
@@ -973,7 +977,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
           scrollbarWidth:'none',
           WebkitOverflowScrolling:'touch',
         }}>
-          {CATS.filter(c => c==='All' || counts[c]).map(c => {
+          {CATS.filter(c => c==='All' || c==='Graphs' || counts[c]).map(c => {
             const active = cat === c
             const CatIcon = CAT_ICON_COMPONENT[c]
             return (
@@ -1014,8 +1018,11 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
         </div>
 
         <div style={{ flex:1, overflowY:'auto', padding:'0 12px 16px' }}>
+          {cat === 'Graphs' && (
+            <StatsView devices={devices} energy={energy} onOpen={setOpenKey} />
+          )}
           {/* Energy as the top section of the overview */}
-          {cat === 'All' && energy && (
+          {cat !== 'Graphs' && cat === 'All' && energy && (
             <div style={{
               margin:'8px 0 12px',
               background:'var(--card)', border:'1px solid var(--border)',
@@ -1035,12 +1042,12 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
               </div>
             </div>
           )}
-          {visible.length === 0 && (
+          {cat !== 'Graphs' && visible.length === 0 && (
             <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>
               No devices in this category
             </div>
           )}
-          <div className="device-grid" style={{
+          {cat !== 'Graphs' && <div className="device-grid" style={{
             display:'grid',
             gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
             gap:10,
@@ -1049,7 +1056,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
             {visible.map(d => (
               <DeviceTile key={d.key} device={d} onCommand={onCommand} onOpen={setOpenKey} />
             ))}
-          </div>
+          </div>}
         </div>
       </div>
       <DeviceModal device={openDevice} onClose={() => setOpenKey(null)} onCommand={onCommand} />
