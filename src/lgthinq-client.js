@@ -44,7 +44,12 @@ class LGThinQClient {
 
   async start() {
     const hasTokens = !!(this._loadTokens()?.access_token);
-    if (!hasTokens) return;
+    if (!hasTokens) {
+      // configured but not logged in — show the badge as disconnected
+      platformStatus.set('lgthinq', false);
+      console.log('[LGThinQ] No tokens — log in via Settings → LG ThinQ to connect');
+      return;
+    }
     try {
       await this._authenticate();
       await this._discoverDevices();
