@@ -1,15 +1,44 @@
 const { EventEmitter } = require('events');
 
+// History ring buffer: per-key [timestamp, value] points for numeric/boolean
+// values. Points closer together than MIN_INTERVAL update the last point in
+// place, so RAM stays bounded even for fast-changing keys (~6h at 30 s).
+const HISTORY_MAX_POINTS   = 720;
+const HISTORY_MIN_INTERVAL = 30_000; // ms
+
 class DataStore extends EventEmitter {
   constructor() {
     super();
     this.data = {};
+    this.history = new Map(); // key → [[t, v], …]
     this.setMaxListeners(200);
   }
 
   update(key, value) {
     this.data[key] = { value, timestamp: Date.now() };
+    this._record(key, value);
     this.emit('change', { key, value });
+  }
+
+  _record(key, value) {
+    const v = typeof value === 'boolean' ? (value ? 1 : 0) : value;
+    if (typeof v !== 'number' || !Number.isFinite(v)) return;
+
+    const now = Date.now();
+    let buf = this.history.get(key);
+    if (!buf) { buf = []; this.history.set(key, buf); }
+
+    const last = buf[buf.length - 1];
+    if (last && now - last[0] < HISTORY_MIN_INTERVAL) {
+      last[1] = v; // too soon — keep latest value on the existing point
+      return;
+    }
+    buf.push([now, v]);
+    if (buf.length > HISTORY_MAX_POINTS) buf.shift();
+  }
+
+  getHistory(key) {
+    return this.history.get(key) || [];
   }
 
   get(key) {

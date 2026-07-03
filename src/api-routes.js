@@ -249,6 +249,46 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // ── History ───────────────────────────────────────────────
+  router.get('/history/:key(*)', (req, res) => {
+    res.json({ success: true, key: req.params.key, points: store.getHistory(req.params.key) });
+  });
+
+  // ── Automation (rules / scenes / notifications) ───────────
+  if (clients.automation) {
+    const automation = clients.automation;
+
+    router.get('/automation/rules', (req, res) => res.json({ success: true, data: automation.rules }));
+    router.post('/automation/rules', (req, res) => {
+      try { res.json({ success: true, data: automation.saveRule(req.body) }); }
+      catch (err) { res.status(400).json({ success: false, error: err.message }); }
+    });
+    router.delete('/automation/rules/:id', (req, res) => {
+      automation.deleteRule(req.params.id);
+      res.json({ success: true });
+    });
+
+    router.get('/automation/scenes', (req, res) => res.json({ success: true, data: automation.scenes }));
+    router.post('/automation/scenes', (req, res) => {
+      try { res.json({ success: true, data: automation.saveScene(req.body) }); }
+      catch (err) { res.status(400).json({ success: false, error: err.message }); }
+    });
+    router.delete('/automation/scenes/:id', (req, res) => {
+      automation.deleteScene(req.params.id);
+      res.json({ success: true });
+    });
+    router.post('/automation/scenes/:id/run', async (req, res) => {
+      try { res.json({ success: true, data: await automation.runScene(req.params.id) }); }
+      catch (err) { res.status(400).json({ success: false, error: err.message }); }
+    });
+
+    router.get('/automation/notifications', (req, res) => res.json({ success: true, data: automation.getNotifications() }));
+    router.delete('/automation/notifications', (req, res) => {
+      automation.clearNotifications();
+      res.json({ success: true });
+    });
+  }
+
   // ── Satel INTEGRA ─────────────────────────────────────────
   // Live state + control for zones (inputs), outputs and partitions.
   const satelList = (kind) => (sensorRegistry ? sensorRegistry.getDevices() : [])

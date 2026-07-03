@@ -4,3 +4,4 @@ persist/
 logs/
 .claude/
 motor_control/
+automations.json

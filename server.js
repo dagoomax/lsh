@@ -87,7 +87,12 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, reolink, mqttExplorer, auth, isSecure, ffmpegRtsp };
+  // Automation engine (rules / scenes / notifications) — io attached after WS setup
+  let automation = null;
+  const AutomationEngine = tryRequire('./src/automation-engine');
+  if (AutomationEngine) automation = new AutomationEngine(store, sensorRegistry, relayController);
+
+  const apiClients = { unifiProtect, reolink, mqttExplorer, auth, isSecure, ffmpegRtsp, automation };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────
@@ -145,6 +150,11 @@ async function main() {
   }
 
   const io = setupWebSocket(mainServer, store, sensorRegistry, connectionMgr, auth);
+
+  if (automation) {
+    automation.setIo(io);
+    automation.start();
+  }
 
   if (mqttExplorer) {
     mqttExplorer.setIo(io);

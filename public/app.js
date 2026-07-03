@@ -1722,3 +1722,481 @@ function renderPlatformBar(status) {
       </div>`;
   }).join('');
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Sensor history charts
+// ═══════════════════════════════════════════════════════════════════════════
+const histModal  = document.getElementById('hist-modal');
+const histCanvas = document.getElementById('hist-canvas');
+const histTitle  = document.getElementById('hist-modal-title');
+const histStats  = document.getElementById('hist-stats');
+const histNoData = document.getElementById('hist-no-data');
+let histPoints = [];
+let histRangeH = 6; // hours, 0 = all
+let histUnit   = '';
+
+async function openHistModal(sensorKey, label, unit) {
+  histTitle.textContent = label || sensorKey;
+  histUnit = unit || '';
+  histModal.style.display = '';
+  histPoints = [];
+  drawHistChart();
+  try {
+    const res = await fetch(`/api/history/${sensorKey}`);
+    const { points } = await res.json();
+    histPoints = points || [];
+  } catch { /* ignore */ }
+  drawHistChart();
+}
+
+function closeHistModal() { histModal.style.display = 'none'; }
+document.getElementById('hist-modal-close')?.addEventListener('click', closeHistModal);
+document.getElementById('hist-modal-backdrop')?.addEventListener('click', closeHistModal);
+document.querySelectorAll('.hist-range-btn').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.hist-range-btn').forEach((x) => x.classList.remove('active'));
+  b.classList.add('active');
+  histRangeH = Number(b.dataset.range);
+  drawHistChart();
+}));
+
+function drawHistChart() {
+  const wrap = histCanvas.parentElement;
+  const dpr  = window.devicePixelRatio || 1;
+  const cssW = wrap.clientWidth || 640, cssH = 260;
+  histCanvas.width  = cssW * dpr;
+  histCanvas.height = cssH * dpr;
+  histCanvas.style.width  = cssW + 'px';
+  histCanvas.style.height = cssH + 'px';
+  const ctx = histCanvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  const cutoff = histRangeH ? Date.now() - histRangeH * 3600_000 : 0;
+  const pts = histPoints.filter((p) => p[0] >= cutoff);
+  if (pts.length < 2) {
+    histNoData.style.display = '';
+    histStats.textContent = '';
+    return;
+  }
+  histNoData.style.display = 'none';
+
+  const styles = getComputedStyle(document.documentElement);
+  const accent = styles.getPropertyValue('--accent').trim() || '#58a6ff';
+  const muted  = styles.getPropertyValue('--text-muted').trim() || '#8b949e';
+  const border = styles.getPropertyValue('--border').trim() || '#21262d';
+
+  const padL = 44, padR = 10, padT = 10, padB = 22;
+  const W = cssW - padL - padR, H = cssH - padT - padB;
+  const t0 = pts[0][0], t1 = pts[pts.length - 1][0];
+  let vMin = Infinity, vMax = -Infinity, vSum = 0;
+  for (const [, v] of pts) { if (v < vMin) vMin = v; if (v > vMax) vMax = v; vSum += v; }
+  if (vMin === vMax) { vMin -= 1; vMax += 1; }
+  const pad = (vMax - vMin) * 0.08;
+  vMin -= pad; vMax += pad;
+
+  const X = (t) => padL + ((t - t0) / Math.max(1, t1 - t0)) * W;
+  const Y = (v) => padT + (1 - (v - vMin) / (vMax - vMin)) * H;
+
+  // grid + labels
+  ctx.strokeStyle = border; ctx.fillStyle = muted;
+  ctx.font = '10px system-ui, sans-serif'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const v = vMin + ((vMax - vMin) * i) / 4;
+    const y = Y(v);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(cssW - padR, y); ctx.stroke();
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(v.toFixed(Math.abs(vMax - vMin) < 10 ? 1 : 0), padL - 6, y);
+  }
+  const fmtT = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(fmtT(t0), padL, cssH - padB + 6);
+  ctx.fillText(fmtT((t0 + t1) / 2), padL + W / 2, cssH - padB + 6);
+  ctx.fillText(fmtT(t1), padL + W, cssH - padB + 6);
+
+  // area fill + line
+  ctx.beginPath();
+  ctx.moveTo(X(pts[0][0]), Y(pts[0][1]));
+  for (const [t, v] of pts) ctx.lineTo(X(t), Y(v));
+  ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+  ctx.lineTo(X(t1), padT + H); ctx.lineTo(X(t0), padT + H); ctx.closePath();
+  const grad = ctx.createLinearGradient(0, padT, 0, padT + H);
+  grad.addColorStop(0, accent + '44'); grad.addColorStop(1, accent + '00');
+  ctx.fillStyle = grad; ctx.fill();
+
+  const avg = vSum / pts.length;
+  const u = histUnit ? ` ${histUnit}` : '';
+  histStats.textContent = `min ${(vMin + pad).toFixed(1)}${u} · avg ${avg.toFixed(1)}${u} · max ${(vMax - pad).toFixed(1)}${u}`;
+}
+
+// Click a read-only sensor value → history chart
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('.sensor-value[data-sensor-key]');
+  if (!el) return;
+  const row    = el.closest('.sensor-row');
+  const label  = row?.querySelector('.sensor-label')?.textContent || '';
+  const card   = el.closest('.device-card, .room-card');
+  const device = card?.querySelector('.device-title, .room-title')?.textContent || '';
+  const unitMatch = el.textContent.match(/[^\d.,\s-]+\s*$/);
+  openHistModal(el.dataset.sensorKey, [device, label].filter(Boolean).join(' — '), unitMatch ? unitMatch[0].trim() : '');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Automation: scenes, rules, notifications
+// ═══════════════════════════════════════════════════════════════════════════
+let autoRules  = [];
+let autoScenes = [];
+let autoRelays = [];
+
+const scenesGrid  = document.getElementById('scenes-grid');
+const sceneStrip  = document.getElementById('scene-strip');
+const rulesList   = document.getElementById('rules-list');
+const notifList   = document.getElementById('notif-list');
+
+async function loadAutomation() {
+  try {
+    const [r1, r2, r3, r4] = await Promise.all([
+      fetch('/api/automation/rules').then((r) => r.json()),
+      fetch('/api/automation/scenes').then((r) => r.json()),
+      fetch('/api/automation/notifications').then((r) => r.json()),
+      fetch('/api/relays').then((r) => r.json()).catch(() => ({ data: [] })),
+    ]);
+    autoRules  = r1.data || [];
+    autoScenes = r2.data || [];
+    autoRelays = r4.data || [];
+    renderScenes();
+    renderRules();
+    renderNotifs(r3.data || []);
+    updateAutoTabCount();
+  } catch (err) {
+    console.warn('[Automation] load failed:', err.message);
+  }
+}
+
+function updateAutoTabCount() {
+  const el = document.getElementById('tab-count-automation');
+  if (el) el.textContent = autoRules.length + autoScenes.length;
+}
+
+// ── Scenes ──────────────────────────────────────────────────────────────────
+const SCENE_ICONS = ['🎬', '🌙', '☀️', '🏠', '🛁', '🎉', '📺', '🔥', '❄️', '🔒'];
+
+function renderScenes() {
+  sceneStrip.style.display = autoScenes.length ? '' : 'none';
+  sceneStrip.innerHTML = autoScenes.map((s) =>
+    `<button class="scene-chip" data-scene-run="${s.id}">${s.icon || '🎬'} ${esc(s.name)}</button>`).join('');
+
+  document.getElementById('scenes-empty').style.display = autoScenes.length ? 'none' : '';
+  scenesGrid.innerHTML = autoScenes.map((s) => `
+    <div class="scene-card">
+      <button class="scene-run" data-scene-run="${s.id}">
+        <span class="scene-icon">${s.icon || '🎬'}</span>
+        <span class="scene-name">${esc(s.name)}</span>
+        <span class="scene-count">${(s.actions || []).length} action${(s.actions || []).length === 1 ? '' : 's'}</span>
+      </button>
+      <button class="scene-edit" data-scene-edit="${s.id}" title="Edit">✎</button>
+    </div>`).join('');
+}
+
+document.addEventListener('click', async (e) => {
+  const runBtn = e.target.closest('[data-scene-run]');
+  if (runBtn) {
+    runBtn.classList.add('scene-running');
+    try { await fetch(`/api/automation/scenes/${runBtn.dataset.sceneRun}/run`, { method: 'POST' }); }
+    catch { /* ignore */ }
+    setTimeout(() => runBtn.classList.remove('scene-running'), 600);
+    return;
+  }
+  const editBtn = e.target.closest('[data-scene-edit]');
+  if (editBtn) openAutoModal('scene', autoScenes.find((s) => s.id === editBtn.dataset.sceneEdit));
+});
+
+// ── Rules ───────────────────────────────────────────────────────────────────
+function ruleSummary(r) {
+  const t = r.trigger || {};
+  const cond = t.op === 'changes' ? `${t.key} changes` : `${t.key} ${t.op} ${t.value}`;
+  const acts = (r.actions || []).map((a) =>
+    a.type === 'notify' ? `notify "${a.message}"`
+    : a.type === 'relay' ? `relay ${a.index} ${a.on ? 'on' : 'off'}`
+    : a.type === 'scene' ? `scene ${(autoScenes.find((s) => s.id === a.sceneId) || {}).name || a.sceneId}`
+    : `${a.deviceKey}/${a.sensor} → ${a.value}`).join(', ');
+  return `When ${cond} → ${acts || '(no actions)'}`;
+}
+
+function renderRules() {
+  document.getElementById('rules-empty').style.display = autoRules.length ? 'none' : '';
+  rulesList.innerHTML = autoRules.map((r) => `
+    <div class="rule-row${r.enabled ? '' : ' rule-disabled'}">
+      <label class="toggle rule-toggle">
+        <input type="checkbox" data-rule-enable="${r.id}"${r.enabled ? ' checked' : ''}>
+        <span class="toggle-slider"></span>
+      </label>
+      <div class="rule-info" data-rule-edit="${r.id}">
+        <div class="rule-name">${esc(r.name)}</div>
+        <div class="rule-summary">${esc(ruleSummary(r))}</div>
+      </div>
+      <button class="rule-del" data-rule-del="${r.id}" title="Delete">🗑</button>
+    </div>`).join('');
+}
+
+rulesList?.addEventListener('click', async (e) => {
+  const en = e.target.closest('[data-rule-enable]');
+  if (en) {
+    const rule = autoRules.find((r) => r.id === en.dataset.ruleEnable);
+    if (rule) {
+      rule.enabled = en.checked;
+      await fetch('/api/automation/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rule) });
+      renderRules();
+    }
+    return;
+  }
+  const del = e.target.closest('[data-rule-del]');
+  if (del) {
+    if (!confirm('Delete this rule?')) return;
+    await fetch(`/api/automation/rules/${del.dataset.ruleDel}`, { method: 'DELETE' });
+    autoRules = autoRules.filter((r) => r.id !== del.dataset.ruleDel);
+    renderRules(); updateAutoTabCount();
+    return;
+  }
+  const edit = e.target.closest('[data-rule-edit]');
+  if (edit) openAutoModal('rule', autoRules.find((r) => r.id === edit.dataset.ruleEdit));
+});
+
+document.getElementById('rule-add-btn')?.addEventListener('click', () => openAutoModal('rule', null));
+document.getElementById('scene-add-btn')?.addEventListener('click', () => openAutoModal('scene', null));
+
+// ── Notifications ───────────────────────────────────────────────────────────
+function notifRowHtml(n) {
+  const time = new Date(n.time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return `<div class="notif-row notif-${n.level}">
+    <span class="notif-dot"></span>
+    <span class="notif-msg">${esc(n.message)}</span>
+    <span class="notif-meta">${n.source ? esc(n.source) + ' · ' : ''}${time}</span>
+  </div>`;
+}
+
+function renderNotifs(list) {
+  document.getElementById('notif-empty').style.display = list.length ? 'none' : '';
+  notifList.innerHTML = list.slice().reverse().map(notifRowHtml).join('');
+}
+
+document.getElementById('notif-clear-btn')?.addEventListener('click', async () => {
+  await fetch('/api/automation/notifications', { method: 'DELETE' });
+  renderNotifs([]);
+});
+
+socket.on('notification', (entry) => {
+  document.getElementById('notif-empty').style.display = 'none';
+  notifList.insertAdjacentHTML('afterbegin', notifRowHtml(entry));
+  showToast(entry);
+});
+
+function showToast(entry) {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = `toast toast-${entry.level}`;
+  el.innerHTML = `<span class="notif-dot"></span><span>${esc(entry.message)}</span>`;
+  wrap.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('toast-show'));
+  const ttl = entry.level === 'critical' ? 15000 : 6000;
+  setTimeout(() => { el.classList.remove('toast-show'); setTimeout(() => el.remove(), 400); }, ttl);
+  el.addEventListener('click', () => el.remove());
+}
+
+// ── Rule / Scene editor modal ───────────────────────────────────────────────
+const autoModal = document.getElementById('auto-modal');
+let autoEditKind = 'rule';
+let autoEditObj  = null;
+
+function deviceOptions(selectedKey, controllableOnly) {
+  let opts = '<option value="">— device —</option>';
+  for (const [key, dev] of knownDevices) {
+    const sensors = (dev.sensors || []).filter((s) => !controllableOnly || s.controllable);
+    if (!sensors.length) continue;
+    opts += `<option value="${key}"${key === selectedKey ? ' selected' : ''}>${esc(dev.label || key)}</option>`;
+  }
+  opts += `<option value="__custom"${selectedKey === '__custom' ? ' selected' : ''}>Custom key…</option>`;
+  return opts;
+}
+
+function sensorOptions(deviceKey, selectedPath, controllableOnly) {
+  const dev = knownDevices.get(deviceKey);
+  if (!dev) return '<option value="">—</option>';
+  return (dev.sensors || [])
+    .filter((s) => !controllableOnly || s.controllable)
+    .map((s) => `<option value="${s.path}"${s.path === selectedPath ? ' selected' : ''}>${esc(s.name || s.path)}</option>`)
+    .join('');
+}
+
+function actionRowHtml(a = {}, idx) {
+  const type = a.type || 'device';
+  let fields = '';
+  if (type === 'device') {
+    const devKey = a.deviceKey || '';
+    fields = `
+      <select class="auto-select" data-af="deviceKey">${deviceOptions(devKey, true)}</select>
+      <select class="auto-select" data-af="sensor">${sensorOptions(devKey, a.sensor, true)}</select>
+      <input class="auto-input auto-input-val" data-af="value" type="text" placeholder="on / off / 22" value="${a.value !== undefined ? esc(String(a.value)) : ''}">`;
+  } else if (type === 'relay') {
+    fields = `
+      <select class="auto-select" data-af="index">${autoRelays.map((r) =>
+        `<option value="${r.index}"${Number(a.index) === r.index ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</select>
+      <select class="auto-select auto-select-op" data-af="on">
+        <option value="1"${a.on ? ' selected' : ''}>On</option>
+        <option value="0"${a.on === false ? ' selected' : ''}>Off</option>
+      </select>`;
+  } else if (type === 'notify') {
+    fields = `
+      <select class="auto-select auto-select-op" data-af="level">
+        ${['info', 'warning', 'critical'].map((l) => `<option value="${l}"${a.level === l ? ' selected' : ''}>${l}</option>`).join('')}
+      </select>
+      <input class="auto-input" data-af="message" type="text" placeholder="Message — {value} and {key} available" value="${esc(a.message || '')}">`;
+  } else if (type === 'scene') {
+    fields = `<select class="auto-select" data-af="sceneId">${autoScenes.map((s) =>
+      `<option value="${s.id}"${a.sceneId === s.id ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>`;
+  }
+  return `<div class="auto-action-row" data-action-idx="${idx}">
+    <select class="auto-select auto-select-type" data-af="type">
+      ${['device', 'relay', 'notify', 'scene'].map((t) => `<option value="${t}"${type === t ? ' selected' : ''}>${t}</option>`).join('')}
+    </select>
+    ${fields}
+    <button class="auto-action-del" title="Remove">✕</button>
+  </div>`;
+}
+
+function openAutoModal(kind, obj) {
+  autoEditKind = kind;
+  autoEditObj  = obj ? JSON.parse(JSON.stringify(obj)) : null;
+  document.getElementById('auto-modal-title').textContent =
+    obj ? (kind === 'rule' ? 'Edit Rule' : 'Edit Scene') : (kind === 'rule' ? 'New Rule' : 'New Scene');
+  document.getElementById('auto-name').value = obj?.name || '';
+  document.getElementById('auto-trigger-section').style.display = kind === 'rule' ? '' : 'none';
+  document.getElementById('auto-btn-delete').style.display = obj ? '' : 'none';
+
+  if (kind === 'rule') {
+    const t = obj?.trigger || {};
+    const key = t.key || '';
+    // try to split key into known device + sensor
+    let devKey = '', sensorPath = '';
+    for (const [k, dev] of knownDevices) {
+      if (key.startsWith(k + '/')) { devKey = k; sensorPath = key.slice(k.length + 1); break; }
+    }
+    const trigDev = document.getElementById('auto-trig-device');
+    trigDev.innerHTML = deviceOptions(devKey || (key ? '__custom' : ''), false);
+    rebuildTrigSensor(devKey, sensorPath, key);
+    document.getElementById('auto-trig-op').value = t.op || '>';
+    document.getElementById('auto-trig-value').value = t.value !== undefined ? t.value : '';
+    document.getElementById('auto-cooldown').value = obj?.cooldownSeconds ?? 60;
+  }
+
+  const actionsEl = document.getElementById('auto-actions');
+  const actions = obj?.actions?.length ? obj.actions : [{ type: kind === 'rule' ? 'notify' : 'device' }];
+  actionsEl.innerHTML = actions.map((a, i) => actionRowHtml(a, i)).join('');
+
+  autoModal.style.display = '';
+}
+
+function rebuildTrigSensor(devKey, selectedPath, customKey) {
+  const trigSensor = document.getElementById('auto-trig-sensor');
+  if (devKey === '__custom' || (!devKey && customKey)) {
+    trigSensor.outerHTML = `<input id="auto-trig-sensor" class="auto-input" type="text" placeholder="store key e.g. smarttub/xyz/water_temp" value="${esc(customKey || '')}">`;
+  } else {
+    trigSensor.outerHTML = `<select id="auto-trig-sensor" class="auto-select">${sensorOptions(devKey, selectedPath, false)}</select>`;
+  }
+}
+
+document.getElementById('auto-trig-device')?.addEventListener('change', (e) => {
+  rebuildTrigSensor(e.target.value === '__custom' ? '__custom' : e.target.value, '', '');
+});
+
+document.getElementById('auto-add-action')?.addEventListener('click', () => {
+  const actionsEl = document.getElementById('auto-actions');
+  actionsEl.insertAdjacentHTML('beforeend', actionRowHtml({}, actionsEl.children.length));
+});
+
+document.getElementById('auto-actions')?.addEventListener('change', (e) => {
+  const row = e.target.closest('.auto-action-row');
+  if (!row) return;
+  if (e.target.dataset.af === 'type') {
+    row.outerHTML = actionRowHtml({ type: e.target.value }, Number(row.dataset.actionIdx));
+  } else if (e.target.dataset.af === 'deviceKey') {
+    const sensorSel = row.querySelector('[data-af="sensor"]');
+    if (sensorSel) sensorSel.innerHTML = sensorOptions(e.target.value, '', true);
+  }
+});
+
+document.getElementById('auto-actions')?.addEventListener('click', (e) => {
+  if (e.target.closest('.auto-action-del')) e.target.closest('.auto-action-row').remove();
+});
+
+function collectActions() {
+  const actions = [];
+  document.querySelectorAll('#auto-actions .auto-action-row').forEach((row) => {
+    const get = (f) => row.querySelector(`[data-af="${f}"]`)?.value;
+    const type = get('type');
+    if (type === 'device') {
+      if (!get('deviceKey') || get('deviceKey') === '__custom') return;
+      actions.push({ type, deviceKey: get('deviceKey'), sensor: get('sensor'), value: get('value') });
+    } else if (type === 'relay') {
+      actions.push({ type, index: Number(get('index')), on: get('on') === '1' });
+    } else if (type === 'notify') {
+      if (!get('message')) return;
+      actions.push({ type, level: get('level'), message: get('message') });
+    } else if (type === 'scene') {
+      if (get('sceneId')) actions.push({ type, sceneId: get('sceneId') });
+    }
+  });
+  return actions;
+}
+
+async function saveAutoModal() {
+  const name = document.getElementById('auto-name').value.trim();
+  if (!name) return alert('Name is required');
+  const actions = collectActions();
+
+  if (autoEditKind === 'rule') {
+    const trigDevEl = document.getElementById('auto-trig-device');
+    const trigSenEl = document.getElementById('auto-trig-sensor');
+    const key = trigDevEl.value === '__custom' || trigSenEl.tagName === 'INPUT'
+      ? trigSenEl.value.trim()
+      : `${trigDevEl.value}/${trigSenEl.value}`;
+    if (!key || key.endsWith('/')) return alert('Trigger sensor is required');
+    const rule = {
+      ...(autoEditObj || {}),
+      name, actions,
+      enabled: autoEditObj?.enabled ?? true,
+      trigger: {
+        key,
+        op: document.getElementById('auto-trig-op').value,
+        value: document.getElementById('auto-trig-value').value,
+      },
+      cooldownSeconds: Number(document.getElementById('auto-cooldown').value) || 0,
+    };
+    await fetch('/api/automation/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rule) });
+  } else {
+    const scene = {
+      ...(autoEditObj || {}),
+      name, actions,
+      icon: autoEditObj?.icon || SCENE_ICONS[autoScenes.length % SCENE_ICONS.length],
+    };
+    await fetch('/api/automation/scenes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(scene) });
+  }
+  closeAutoModal();
+  loadAutomation();
+}
+
+async function deleteAutoModal() {
+  if (!autoEditObj?.id) return closeAutoModal();
+  if (!confirm(`Delete this ${autoEditKind}?`)) return;
+  await fetch(`/api/automation/${autoEditKind}s/${autoEditObj.id}`, { method: 'DELETE' });
+  closeAutoModal();
+  loadAutomation();
+}
+
+function closeAutoModal() { autoModal.style.display = 'none'; }
+document.getElementById('auto-btn-save')?.addEventListener('click', saveAutoModal);
+document.getElementById('auto-btn-delete')?.addEventListener('click', deleteAutoModal);
+document.getElementById('auto-btn-cancel')?.addEventListener('click', closeAutoModal);
+document.getElementById('auto-modal-close')?.addEventListener('click', closeAutoModal);
+document.getElementById('auto-modal-backdrop')?.addEventListener('click', closeAutoModal);
+
+loadAutomation();
