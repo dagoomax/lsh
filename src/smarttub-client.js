@@ -177,15 +177,16 @@ class SmartTubClient {
       if (waterTemp != null)             this._store.update(`${key}/water_temp`, Number(waterTemp));
       if (status.setTemperature != null) this._store.update(`${key}/set_temp`,   Number(status.setTemperature));
       if (status.heatMode != null)       this._store.update(`${key}/heat_mode`,  HEAT_MODES.indexOf(status.heatMode));
-      if (status.heater != null)         this._store.update(`${key}/heater`,     status.heater === 'ON');
-      if (status.online != null)         this._store.update(`${key}/online`,     !!status.online);
+      // booleans stored as 0/1 — dashboard toggles and Loxone \v expect numbers
+      if (status.heater != null)         this._store.update(`${key}/heater`,     status.heater === 'ON' ? 1 : 0);
+      if (status.online != null)         this._store.update(`${key}/online`,     status.online ? 1 : 0);
     }
 
     const pumps = (await this._req('GET', `spas/${spa.id}/pumps`))?.pumps || [];
-    for (const p of pumps) this._store.update(`${key}/pump_${p.id}`, p.state !== 'OFF');
+    for (const p of pumps) this._store.update(`${key}/pump_${p.id}`, p.state !== 'OFF' ? 1 : 0);
 
     const lights = (await this._req('GET', `spas/${spa.id}/lights`))?.lights || [];
-    for (const l of lights) this._store.update(`${key}/light_${l.zone}`, l.mode !== 'OFF' && l.intensity > 0);
+    for (const l of lights) this._store.update(`${key}/light_${l.zone}`, l.mode !== 'OFF' && l.intensity > 0 ? 1 : 0);
   }
 
   // ── HTTP ────────────────────────────────────────────────────────────────

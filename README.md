@@ -1975,6 +1975,41 @@ Authorization: Bearer <token>
 
 One token, created in **Settings → API Tokens**. Works for Home Assistant REST integration, Node-RED HTTP nodes, shell scripts, and any HTTP client. Tokens do not expire unless revoked.
 
+### Loxone Config XML templates (Miniserver 17.1)
+
+LSH generates ready-to-import **Virtual Output** and **Virtual HTTP Input** templates for Loxone Config, so every LSH device can be wired into the Miniserver without hand-writing commands:
+
+```
+GET /api/loxone/outputs.xml   — VirtualOut: send commands to LSH devices
+GET /api/loxone/inputs.xml    — VirtualInHttp: poll device states from LSH
+```
+
+**Query parameters:**
+
+| Param | Default | Description |
+|---|---|---|
+| `token` | `YOUR_API_TOKEN` placeholder | API token embedded into the generated URLs — pass your real token so the file works as-is |
+| `device` | all | Limit to one device key, e.g. `smarttub/abc123` |
+| `type` | all | Limit to one integration, e.g. `fibaro`, `smarttub`, `shelly` |
+| `host` | request host | LSH address embedded in the XML (set it if the Miniserver reaches LSH on a different IP) |
+| `polling` | `5000` | VirtualInHttp poll interval in ms (inputs only) |
+
+**Example — everything for one hot tub, downloaded in a browser:**
+
+```
+http://<lsh-ip>:3000/api/loxone/outputs.xml?type=smarttub&token=<token>
+http://<lsh-ip>:3000/api/loxone/inputs.xml?type=smarttub&token=<token>
+```
+
+**Import into Loxone Config 17.1:**
+1. Download both XML files (the endpoints send them as attachments)
+2. In Loxone Config: **Virtual Outputs → Device templates → Import template from file** for `outputs.xml`; **Virtual HTTP Inputs → Import** for `inputs.xml` (or drop the files into `Documents\Loxone\Loxone Config\Templates\VirtualOut` / `…\VirtualIn` and restart Config)
+3. All commands/readings appear pre-named after the LSH device labels — drag them into your page and connect
+
+**How the generated templates work:**
+- *Outputs*: digital sensors get `CmdOn`/`CmdOff` GET calls to `/api/device/<key>/set?sensor=…&value=1|0&token=…`; range sensors are analog with `<v>` substitution and the sensor's real min/max; trigger sensors are momentary (CmdOn only)
+- *Inputs*: one `VirtualInHttpCmd` per sensor with a `Check` pattern that matches that sensor's unique JSON fragment in `/api/devices` and captures the value with `\v` (numeric values — all LSH integrations store booleans as 0/1)
+
 ---
 
 ## REST API

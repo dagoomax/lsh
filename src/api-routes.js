@@ -254,6 +254,34 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, key: req.params.key, points: store.getHistory(req.params.key) });
   });
 
+  // ── Loxone Config XML templates ───────────────────────────
+  // Ready-to-import Virtual Output / Virtual HTTP Input templates.
+  // ?device=<key> or ?type=<integration> filters; ?host= overrides the LSH
+  // address embedded in the XML; ?token= is embedded into command URLs.
+  const loxoneXmlHandler = (kind) => (req, res) => {
+    if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
+    const { buildInputsXml, buildOutputsXml } = require('./loxone-xml');
+
+    let devices = sensorRegistry.getDevices();
+    if (req.query.device) devices = devices.filter((d) => d.key === req.query.device);
+    if (req.query.type)   devices = devices.filter((d) => d.type === req.query.type);
+    if (!devices.length)  return res.status(404).json({ success: false, error: 'No matching devices' });
+
+    const opts = {
+      host:      req.query.host || req.get('host'),
+      token:     req.query.token || 'YOUR_API_TOKEN',
+      pollingMs: Math.max(1000, Number(req.query.polling) || 5000),
+    };
+    const xml  = kind === 'inputs' ? buildInputsXml(devices, opts) : buildOutputsXml(devices, opts);
+    const name = ['lsh-loxone', kind, req.query.type || (req.query.device || '').replace(/\//g, '-')]
+      .filter(Boolean).join('-') + '.xml';
+    res.set('Content-Type', 'application/xml; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${name}"`);
+    res.send(xml);
+  };
+  router.get('/loxone/inputs.xml',  loxoneXmlHandler('inputs'));
+  router.get('/loxone/outputs.xml', loxoneXmlHandler('outputs'));
+
   // ── Automation (rules / scenes / notifications) ───────────
   if (clients.automation) {
     const automation = clients.automation;
