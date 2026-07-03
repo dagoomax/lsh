@@ -4,6 +4,7 @@ import {
   SwitchOutletIcon, BulbIcon, ShutterIcon, ThermometerIcon,
   HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon, RelayIcon,
 } from './Icons'
+import DeviceModal from './DeviceModal'
 import EnergyFlow from './EnergyFlow'
 import RelayPanel from './RelayPanel'
 
@@ -260,7 +261,7 @@ function CTSlider({ value, onCommit }) {
 }
 
 // ── Device Tile ───────────────────────────────────────────────────────────────
-function DeviceTile({ device, onCommand }) {
+function DeviceTile({ device, onCommand, onOpen }) {
   const [localState, setLocalState] = useState({})
   const r = device.readings || {}
 
@@ -437,7 +438,8 @@ function DeviceTile({ device, onCommand }) {
   const tileOn = (isOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying) || (isDenon && denonPower)
 
   return (
-    <div style={{
+    <div onClick={() => onOpen?.(device.key)} style={{
+      cursor: 'pointer',
       background: tileOn
         ? 'linear-gradient(145deg, #1a0f3a 0%, #231550 100%)'
         : '#14152a',
@@ -877,6 +879,8 @@ function DeviceTile({ device, onCommand }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function DeviceList({ devices, energy, onToggleRelay }) {
+  const [openKey, setOpenKey] = useState(null)
+  const openDevice = openKey ? devices.find(d => d.key === openKey) : null
   const [cat, setCat] = useState('All')
 
   const onCommand = useCallback((key, sensor, value) => {
@@ -1043,11 +1047,12 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
             paddingTop:8,
           }}>
             {visible.map(d => (
-              <DeviceTile key={d.key} device={d} onCommand={onCommand} />
+              <DeviceTile key={d.key} device={d} onCommand={onCommand} onOpen={setOpenKey} />
             ))}
           </div>
         </div>
       </div>
+      <DeviceModal device={openDevice} onClose={() => setOpenKey(null)} onCommand={onCommand} />
     </div>
   )
 }
