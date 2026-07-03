@@ -725,6 +725,39 @@
     </div>
   </div>
 
+  <!-- ── Device popup: advanced controls + graphs ───────────── -->
+  <div id="dev-modal" class="dev-modal" style="display:none" role="dialog" aria-modal="true">
+    <div class="dev-modal-backdrop" id="dev-modal-backdrop"></div>
+    <div class="dev-modal-box">
+      <div class="dev-glow dev-glow-a"></div>
+      <div class="dev-glow dev-glow-b"></div>
+      <div class="dev-modal-header">
+        <span class="dev-modal-icon" id="dev-modal-icon">📟</span>
+        <div style="flex:1;min-width:0">
+          <div class="dev-modal-title" id="dev-modal-title"></div>
+          <div class="dev-modal-key" id="dev-modal-key"></div>
+        </div>
+        <button class="dev-modal-close" id="dev-modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="dev-modal-body">
+        <div id="dev-modal-controls" class="dev-controls"></div>
+        <div id="dev-modal-chips"></div>
+        <div id="dev-chart-area">
+          <div class="hist-range-bar dev-range-bar">
+            <button class="hist-range-btn dev-range-btn" data-range="1">1h</button>
+            <button class="hist-range-btn dev-range-btn active" data-range="6">6h</button>
+            <button class="hist-range-btn dev-range-btn" data-range="0">All</button>
+            <span class="hist-stats" id="dev-stats"></span>
+          </div>
+          <div class="hist-canvas-wrap dev-canvas-wrap">
+            <canvas id="dev-canvas" width="640" height="260"></canvas>
+            <div class="hist-no-data" id="dev-no-data" style="display:none">Collecting data — check back in a few minutes.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification toasts -->
   <div id="toast-wrap" class="toast-wrap"></div>
 

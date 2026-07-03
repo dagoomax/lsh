@@ -11,6 +11,7 @@ const roomsGrid       = document.getElementById('rooms-grid');
 const customRoomsGrid = document.getElementById('custom-rooms-grid');
 
 const knownDevices  = new Map();
+const liveValues    = new Map(); // storeKey → latest value (feeds device modal)
 const cameraTimers  = new Map();
 const cameraLogCache = new Map(); // camera name → [entries...]
 
@@ -69,6 +70,7 @@ socket.on('camera-event', (entry) => {
 
 // ── Value application ──────────────────────────────────────────────────────
 function applyValue(key, value) {
+  liveValues.set(key, value);
   // Update static DOM bindings
   document.querySelectorAll(`[data-key="${key}"]`).forEach((el) => {
     el.textContent = fmt(value, el.dataset.format);
@@ -1142,6 +1144,7 @@ function addOrUpdateDevice(device) {
   card.className = `device-card device-${device.color || 'blue'}`;
   card.id = `device-${device.key.replace(/\//g, '-')}`;
   card.dataset.deviceType = device.type || '';
+  card.dataset.deviceKey  = device.key;
   if (deviceFilter && card.dataset.deviceType !== deviceFilter) card.classList.add('device-hidden');
 
   const readings = device.readings || {};
@@ -1180,7 +1183,8 @@ function addOrUpdateDevice(device) {
 }
 
 // ── Device control events (toggle, range, color) ──────────────────────────
-devicesGrid.addEventListener('click', async (e) => {
+function attachSensorControlHandlers(container) {
+container.addEventListener('click', async (e) => {
   const btn = e.target.closest('.sensor-trigger-btn');
   if (!btn || btn.disabled) return;
   const deviceKey  = btn.dataset.deviceKey;
@@ -1201,7 +1205,7 @@ devicesGrid.addEventListener('click', async (e) => {
   setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
 });
 
-devicesGrid.addEventListener('change', async (e) => {
+container.addEventListener('change', async (e) => {
   const input = e.target;
   if (!input.classList.contains('sensor-toggle')) return;
   const deviceKey  = input.dataset.deviceKey;
@@ -1219,7 +1223,7 @@ devicesGrid.addEventListener('change', async (e) => {
   finally { input.disabled = false; }
 });
 
-devicesGrid.addEventListener('input', (e) => {
+container.addEventListener('input', (e) => {
   const input = e.target;
 
   if (input.classList.contains('sensor-range')) {
@@ -1239,6 +1243,8 @@ devicesGrid.addEventListener('input', (e) => {
     debounce(`color-${deviceKey}`, () => sendDeviceCommand(deviceKey, sensorPath, color));
   }
 });
+}
+attachSensorControlHandlers(devicesGrid);
 
 function updateDeviceSensor(fullKey, value) {
   const cells = document.querySelectorAll(`[data-sensor-key="${CSS.escape(fullKey)}"]`);
@@ -1764,25 +1770,29 @@ document.querySelectorAll('.hist-range-btn').forEach((b) => b.addEventListener('
 }));
 
 function drawHistChart() {
-  const wrap = histCanvas.parentElement;
+  renderChartCanvas(histCanvas, histPoints, histRangeH, histUnit, histStats, histNoData);
+}
+
+function renderChartCanvas(canvas, allPoints, rangeH, unit, statsEl, noDataEl) {
+  const wrap = canvas.parentElement;
   const dpr  = window.devicePixelRatio || 1;
   const cssW = wrap.clientWidth || 640, cssH = 260;
-  histCanvas.width  = cssW * dpr;
-  histCanvas.height = cssH * dpr;
-  histCanvas.style.width  = cssW + 'px';
-  histCanvas.style.height = cssH + 'px';
-  const ctx = histCanvas.getContext('2d');
+  canvas.width  = cssW * dpr;
+  canvas.height = cssH * dpr;
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssW, cssH);
 
-  const cutoff = histRangeH ? Date.now() - histRangeH * 3600_000 : 0;
-  const pts = histPoints.filter((p) => p[0] >= cutoff);
+  const cutoff = rangeH ? Date.now() - rangeH * 3600_000 : 0;
+  const pts = (allPoints || []).filter((p) => p[0] >= cutoff);
   if (pts.length < 2) {
-    histNoData.style.display = '';
-    histStats.textContent = '';
+    noDataEl.style.display = '';
+    statsEl.textContent = '';
     return;
   }
-  histNoData.style.display = 'none';
+  noDataEl.style.display = 'none';
 
   const styles = getComputedStyle(document.documentElement);
   const accent = styles.getPropertyValue('--accent').trim() || '#58a6ff';
@@ -1828,8 +1838,8 @@ function drawHistChart() {
   ctx.fillStyle = grad; ctx.fill();
 
   const avg = vSum / pts.length;
-  const u = histUnit ? ` ${histUnit}` : '';
-  histStats.textContent = `min ${(vMin + pad).toFixed(1)}${u} · avg ${avg.toFixed(1)}${u} · max ${(vMax - pad).toFixed(1)}${u}`;
+  const u = unit ? ` ${unit}` : '';
+  statsEl.textContent = `min ${(vMin + pad).toFixed(1)}${u} · avg ${avg.toFixed(1)}${u} · max ${(vMax - pad).toFixed(1)}${u}`;
 }
 
 // Click a read-only sensor value → history chart
@@ -2204,3 +2214,135 @@ document.getElementById('auto-modal-close')?.addEventListener('click', closeAuto
 document.getElementById('auto-modal-backdrop')?.addEventListener('click', closeAutoModal);
 
 loadAutomation();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Device popup — advanced controls + history graphs
+// ═══════════════════════════════════════════════════════════════════════════
+const devModal   = document.getElementById('dev-modal');
+const devBody    = document.getElementById('dev-modal-controls');
+const devChips   = document.getElementById('dev-modal-chips');
+const devCanvas  = document.getElementById('dev-canvas');
+const devStats   = document.getElementById('dev-stats');
+const devNoData  = document.getElementById('dev-no-data');
+let devKey = null, devSel = null, devRangeH = 6, devPoints = [], devTimer = null;
+
+if (devBody) attachSensorControlHandlers(devBody);
+
+function devReadings(device) {
+  const readings = {};
+  for (const s of device.sensors || []) {
+    const v = liveValues.get(`${device.key}/${s.path}`);
+    if (v !== undefined) readings[s.path] = { ...s, value: v };
+  }
+  return readings;
+}
+
+function openDevModal(deviceKey) {
+  const device = knownDevices.get(deviceKey);
+  if (!device || !devModal) return;
+  devKey = deviceKey;
+
+  document.getElementById('dev-modal-icon').textContent  = device.icon || '📟';
+  document.getElementById('dev-modal-title').textContent = device.label || deviceKey;
+  document.getElementById('dev-modal-key').textContent   = deviceKey;
+
+  const readings = devReadings(device);
+  const sensors  = (device.sensors || []).filter((s) => !s.hidden);
+
+  // Controls — reuse the standard sensor rows (delegated handlers attached)
+  const ctrl = sensors.filter((s) => s.controllable);
+  devBody.innerHTML = ctrl.length
+    ? `<div class="dev-section-label">Controls</div>` +
+      ctrl.map((s) => buildSensorRow(s, readings, deviceKey)).join('')
+    : '';
+
+  // Graph chips — anything with a numeric live value
+  const graphable = sensors.filter((s) => typeof liveValues.get(`${deviceKey}/${s.path}`) === 'number'
+    || ['number', 'range', 'boolean', 'toggle'].includes(s.type));
+  devSel = graphable.some((s) => s.path === devSel) ? devSel : graphable[0]?.path || null;
+
+  devChips.innerHTML = graphable.length
+    ? `<div class="dev-section-label">History</div><div class="dev-chip-row">` +
+      graphable.map((s) => {
+        const v = liveValues.get(`${deviceKey}/${s.path}`);
+        const disp = typeof v === 'number' ? `${Number.isInteger(v) ? v : v.toFixed(1)}${s.unit || ''}` : '—';
+        return `<button class="dev-chip${s.path === devSel ? ' active' : ''}" data-chip="${esc(s.path)}">
+          ${esc(s.name || s.label || s.path)} <b>${disp}</b></button>`;
+      }).join('') + '</div>'
+    : '';
+
+  document.getElementById('dev-chart-area').style.display = graphable.length ? '' : 'none';
+
+  devModal.style.display = '';
+  devPoints = [];
+  drawDevChart();
+  loadDevHistory();
+  clearInterval(devTimer);
+  devTimer = setInterval(loadDevHistory, 30000);
+}
+
+async function loadDevHistory() {
+  if (!devKey || !devSel) return;
+  try {
+    const res = await fetch(`/api/history/${devKey}/${devSel}`);
+    const { points } = await res.json();
+    devPoints = points || [];
+  } catch { /* ignore */ }
+  drawDevChart();
+}
+
+function drawDevChart() {
+  if (!devCanvas || devModal.style.display === 'none') return;
+  const device = knownDevices.get(devKey);
+  const sensor = device?.sensors?.find((s) => s.path === devSel);
+  renderChartCanvas(devCanvas, devPoints, devRangeH, sensor?.unit || '', devStats, devNoData);
+}
+
+function closeDevModal() {
+  devModal.style.display = 'none';
+  clearInterval(devTimer);
+  devTimer = null;
+  devKey = null;
+}
+
+// Chip + range selection
+devChips?.addEventListener('click', (e) => {
+  const chip = e.target.closest('.dev-chip');
+  if (!chip) return;
+  devSel = chip.dataset.chip;
+  devChips.querySelectorAll('.dev-chip').forEach((c) => c.classList.toggle('active', c === chip));
+  devPoints = [];
+  drawDevChart();
+  loadDevHistory();
+});
+
+document.querySelectorAll('.dev-range-btn').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.dev-range-btn').forEach((x) => x.classList.remove('active'));
+  b.classList.add('active');
+  devRangeH = Number(b.dataset.range);
+  drawDevChart();
+}));
+
+document.getElementById('dev-modal-close')?.addEventListener('click', closeDevModal);
+document.getElementById('dev-modal-backdrop')?.addEventListener('click', closeDevModal);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && devModal?.style.display !== 'none') closeDevModal();
+});
+
+// Open from any device card header (but not the resize button)
+devicesGrid.addEventListener('click', (e) => {
+  if (e.target.closest('.card-size-btn')) return;
+  const header = e.target.closest('.device-header');
+  const card   = e.target.closest('.device-card');
+  if (header && card?.dataset.deviceKey) openDevModal(card.dataset.deviceKey);
+});
+
+// Deep-link: ?device=<key> auto-opens the device popup once it registers
+(() => {
+  const want = new URLSearchParams(location.search).get('device');
+  if (!want) return;
+  const t = setInterval(() => {
+    if (knownDevices.has(want)) { clearInterval(t); openDevModal(want); }
+  }, 300);
+  setTimeout(() => clearInterval(t), 15000);
+})();
