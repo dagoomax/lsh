@@ -281,10 +281,17 @@ class SatelClient extends EventEmitter {
       [NAME_TYPE_ZONE,      zoneN, this.names.zone],
       [NAME_TYPE_OUTPUT,    outN,  this.names.output],
     ]) {
-      for (const n of nums) {
-        if (!this.socket) return; // disconnected mid-load — abort
-        const name = await this._readName(type, n);
-        if (name) bucket[n] = name;
+      // Up to 3 passes: a single dropped/timed-out frame must not permanently
+      // lose that element's name (unnamed elements stay silent each pass)
+      let pending = [...nums];
+      for (let attempt = 0; attempt < 3 && pending.length; attempt++) {
+        const missing = [];
+        for (const n of pending) {
+          if (!this.socket) return; // disconnected mid-load — abort
+          const name = await this._readName(type, n);
+          if (name) bucket[n] = name; else missing.push(n);
+        }
+        pending = missing;
       }
     }
     console.log(`[Satel] Names from panel — ${Object.keys(this.names.output).length} output(s), ${Object.keys(this.names.zone).length} zone(s), ${Object.keys(this.names.partition).length} partition(s)`);
@@ -337,7 +344,7 @@ class SatelClient extends EventEmitter {
     if (override) return override === 'none' ? null : override;
     const u = (label || '').toUpperCase();
     if (/\b(RUCH|PIR|MOTION)\b|^RUCH/.test(u)) return 'motion';
-    if (/\b(OKNO|DRZWI|CONTACT|REED|DOOR|WINDOW)\b|^OKNO|^DRZWI/.test(u)) return 'contact';
+    if (/\b(OKNO|DRZWI|BRAMA|GATE|CONTACT|REED|DOOR|WINDOW)\b|^OKNO|^DRZWI|^BRAMA/.test(u)) return 'contact';
     return null;
   }
 
