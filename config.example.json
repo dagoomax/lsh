@@ -99,6 +99,11 @@
       { "cid": "12345", "name": "Garden Pool" }
     ]
   },
+  "smarttub": {
+    "email": "you@example.com",
+    "password": "",
+    "pollInterval": 60
+  },
   "sip": {
     "wsUrl":       "wss://192.168.1.1:5443",
     "username":    "101",

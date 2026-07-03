@@ -116,7 +116,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Sonos speakers, Denon / Marantz AV receivers, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 ---
 
@@ -246,6 +246,7 @@ The image is a multi-stage build (Node 20, `ffmpeg` for the RTSP proxy, `tini` f
 | `somfy` | No | Somfy TaHoma, local API or Overkiz cloud (roller shutters, awnings, gates) |
 | `bayrol` | No | Bayrol Pool Manager Connect (pH, ORP, temperature, salt via MQTT) |
 | `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
+| `smarttub` | No | SmartTub hot tubs (Jacuzzi / Sundance / Watkins) — water/set temperature, heat mode, pumps, lights via cloud API |
 | `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
 | `denon` | No | Denon / Marantz AV receivers — power, volume, mute, input via Telnet (port 23) |
 | `arduino` | No | Arduino / ESP32 / generic MQTT — subscribe to JSON topics and map fields to sensor readings or controllable outputs |
@@ -671,6 +672,41 @@ Connects to **AUX Air** (brand behind the **AC Freedom** app) via the SmartHomeC
 **Dashboard tile:** Shows current room temperature, set temperature, and mode. When on: mode pills (Cool / Heat / Dry / Fan / Auto) and temperature +/− buttons are shown inline. Fan speed displayed as a label.
 
 **`pools`** — optional array of `{ cid, name }` to pin specific pools. Leave empty for auto-discovery.
+
+---
+
+### `smarttub`
+
+```json
+"smarttub": {
+  "email": "you@example.com",
+  "password": "your-password",
+  "pollInterval": 60
+}
+```
+
+Connects to **SmartTub**-enabled hot tubs (Jacuzzi, Sundance, Watkins and other brands using the SmartTub app) via the `api.smarttub.io` cloud API. All spas on the account are auto-discovered and registered as dashboard tiles.
+
+| Field | Default | Description |
+|---|---|---|
+| `email` | — | SmartTub account email |
+| `password` | — | SmartTub account password |
+| `pollInterval` | `60` | State refresh interval in seconds |
+
+**Authentication flow:**
+1. POST `https://api.smarttub.io/idp/signin` with `{ username, password }` → `access_token` + `id_token`
+2. `account_id` is read from the `custom:account_id` claim of the `id_token` JWT
+3. Subsequent requests use `Authorization: Bearer <access_token>` (there is no refresh endpoint — LSH re-authenticates with stored credentials when the token expires)
+
+**Sensors & controls (per spa):**
+- **Water** — current water temperature (°C, also bridged to HomeKit)
+- **Set Temp** — target temperature (15–40 °C), adjustable — `PATCH spas/<id>/config` with `{ setTemperature }`
+- **Heat Mode** — Economy / Day / Auto / Ready / Rest — `PATCH spas/<id>/config` with `{ heatMode }`
+- **Heater** / **Online** — read-only status
+- **Pumps** — jet/blower pumps as toggles (`POST spas/<id>/pumps/<pumpId>/toggle`); circulation pumps are read-only
+- **Lights** — per-zone on/off (`PATCH spas/<id>/lights/<zone>`)
+
+Temperatures are handled in **Celsius**; the API rejects set-points with more than one decimal place, so values are rounded to 0.1 °C.
 
 ---
 

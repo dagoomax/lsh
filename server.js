@@ -335,6 +335,15 @@ async function main() {
     }
   }
 
+  // Start SmartTub client if configured
+  if (config.smarttub?.email && config.smarttub?.password) {
+    const SmartTubClient = tryRequire('./src/smarttub-client');
+    if (SmartTubClient) {
+      const smarttub = new SmartTubClient(config, store, sensorRegistry);
+      smarttub.start().catch((err) => console.error(`[SmartTub] Start failed: ${err.message}`));
+    }
+  }
+
   // Start SmartBob MQTT client if configured
   if (config.smartbob?.entities?.length) {
     const SmartBobClient = tryRequire('./src/smartbob-client');
