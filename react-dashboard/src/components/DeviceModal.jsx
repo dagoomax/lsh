@@ -242,7 +242,7 @@ export default function DeviceModal({ device, onClose, onCommand }) {
             {/* gradient border via CSS mask */}
             <div style={{
               position: 'absolute', inset: 0, borderRadius: 22, padding: 1, pointerEvents: 'none',
-              background: 'linear-gradient(140deg, rgba(63,185,80,0.55), rgba(88,166,255,0.45) 45%, rgba(188,140,255,0.35))',
+              background: 'linear-gradient(140deg, rgba(212,175,55,0.75), rgba(245,224,152,0.55) 45%, rgba(154,125,30,0.45))',
               WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
               WebkitMaskComposite: 'xor', maskComposite: 'exclude',
             }} />
@@ -258,13 +258,13 @@ export default function DeviceModal({ device, onClose, onCommand }) {
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '18px 20px 12px' }}>
               <div style={{
                 width: 44, height: 44, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
-                background: 'linear-gradient(135deg, rgba(63,185,80,0.18), rgba(88,166,255,0.18))',
-                border: '1px solid rgba(88,166,255,0.25)', boxShadow: '0 0 20px rgba(88,166,255,0.15)',
+                background: 'linear-gradient(135deg, rgba(212,175,55,0.20), rgba(154,125,30,0.15))',
+                border: '1px solid rgba(212,175,55,0.35)', boxShadow: '0 0 20px rgba(212,175,55,0.18)',
               }}>{device.icon || '📟'}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  background: 'linear-gradient(135deg, #3fb950, #79c0ff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  background: 'linear-gradient(90deg, #D4AF37 0%, #F5E098 50%, #D4AF37 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 }}>{device.label}</div>
                 <div style={{ fontSize: 11, color: 'var(--muted, #8b949e)' }}>{device.key}</div>
               </div>

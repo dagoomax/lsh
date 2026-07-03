@@ -163,10 +163,10 @@ body {
 
 /* Device modal breathing glow */
 .device-modal-glow {
-  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px rgba(88,166,255,0.40), 0 0 160px rgba(63,185,80,0.22);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px rgba(212,175,55,0.38), 0 0 160px rgba(212,175,55,0.16);
   animation: modalBreathe 4.5s ease-in-out infinite alternate;
 }
 @keyframes modalBreathe {
-  from { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 55px rgba(88,166,255,0.32), 0 0 130px rgba(63,185,80,0.18); }
-  to   { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 90px rgba(88,166,255,0.52), 0 0 190px rgba(188,140,255,0.30); }
+  from { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 55px rgba(212,175,55,0.30), 0 0 130px rgba(154,125,30,0.14); }
+  to   { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 95px rgba(245,224,152,0.45), 0 0 200px rgba(212,175,55,0.26); }
 }
