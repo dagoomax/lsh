@@ -494,6 +494,10 @@
 <span class="kw">POST</span> <span class="url">/api/device/somfy%2Fio__1234/command</span>
 { <span class="key">"sensor"</span>: <span class="str">"switch"</span>, <span class="key">"value"</span>: <span class="kw">true</span> }
 
+<span class="cmt"># Stop Somfy shutter mid-travel</span>
+<span class="kw">POST</span> <span class="url">/api/device/somfy%2Fio__1234/command</span>
+{ <span class="key">"sensor"</span>: <span class="str">"stop"</span>, <span class="key">"value"</span>: <span class="num">1</span> }
+
 <span class="cmt"># Dim Fibaro light to 75%</span>
 <span class="kw">POST</span> <span class="url">/api/device/fibaro%2FRoom%2F42/command</span>
 { <span class="key">"sensor"</span>: <span class="str">"level"</span>, <span class="key">"value"</span>: <span class="num">75</span> }</div>
@@ -510,6 +514,7 @@
           <tr><td class="lbl">AuxAir mode</td><td class="mono-cell">ac_mode</td><td class="val-cell">0–4 (cool/heat/dry/fan/auto)</td></tr>
           <tr><td class="lbl">Somfy shutter</td><td class="mono-cell">switch</td><td class="val-cell">true / false</td></tr>
           <tr><td class="lbl">Somfy position</td><td class="mono-cell">level</td><td class="val-cell">0 – 100 (%)</td></tr>
+          <tr><td class="lbl">Somfy stop</td><td class="mono-cell">stop</td><td class="val-cell">1 (momentary)</td></tr>
           <tr><td class="lbl">KNX group address</td><td class="mono-cell">1/0/1</td><td class="val-cell">true / 0–255 / float</td></tr>
           <tr><td class="lbl">BroadLink IR code</td><td class="mono-cell">tv-power</td><td class="val-cell">true (trigger)</td></tr>
           <tr><td class="lbl">Victron relay</td><td colspan="2"><code>POST /api/relay/:index/state</code> <code>{"on":true}</code></td></tr>
