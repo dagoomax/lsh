@@ -268,6 +268,11 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       const types = new Set(String(req.query.type).split(',').map((t) => t.trim()).filter(Boolean));
       devices = devices.filter((d) => types.has(d.type));
     }
+    // ?named=1 — skip devices with generic fallback labels (e.g. unnamed Satel
+    // zones "Zone 33"); devices without the flag are always kept
+    if (req.query.named === '1' || req.query.named === 'true') {
+      devices = devices.filter((d) => d.named !== false);
+    }
     if (!devices.length)  return res.status(404).json({ success: false, error: 'No matching devices' });
 
     // ?tokenId= resolves an API token server-side (used by the Settings UI,

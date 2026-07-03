@@ -1990,7 +1990,9 @@ GET /api/loxone/inputs.xml    — VirtualInHttp: poll device states from LSH
 |---|---|---|
 | `token` | `YOUR_API_TOKEN` placeholder | API token embedded into the generated URLs — pass your real token so the file works as-is |
 | `device` | all | Limit to one device key, e.g. `smarttub/abc123` |
-| `type` | all | Limit to one integration, e.g. `fibaro`, `smarttub`, `shelly` |
+| `type` | all | Limit to integrations, comma-separated: `type=satel,fibaro` |
+| `named` | off | `named=1` skips devices with generic fallback labels (e.g. unnamed Satel zones "Zone 33") |
+| `tokenId` | — | Alternative to `token`: an API-token id resolved to its value server-side (used by the Settings UI) |
 | `host` | request host | LSH address embedded in the XML (set it if the Miniserver reaches LSH on a different IP) |
 | `polling` | `5000` | VirtualInHttp poll interval in ms (inputs only) |
 

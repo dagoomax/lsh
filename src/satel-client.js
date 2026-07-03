@@ -343,13 +343,15 @@ class SatelClient extends EventEmitter {
 
   _registerZone(num) {
     this.registered.add(`z${num}`);
-    const label = this.cfg.zoneNames?.[num] || this.cfg.zoneNames?.[String(num)]
-      || this.names.zone[num] || `Zone ${num}`;
+    const explicit = this.cfg.zoneNames?.[num] || this.cfg.zoneNames?.[String(num)]
+      || this.names.zone[num];
+    const label = explicit || `Zone ${num}`;
     const hk = this._zoneHomekitType(num, label);
     this.sensorRegistry.registerDevice({
       key:     `satel/zone/${num}`,
       type:    'satel',
       label,
+      named:   !!explicit,
       homekit: hk ? [hk] : [],
       sensors: [
         { path: 'state',  label: 'Violation', sensorType: 'violation', format: 'on-off', homekit: hk },
@@ -373,12 +375,14 @@ class SatelClient extends EventEmitter {
 
   _registerPartition(num) {
     this.registered.add(`p${num}`);
-    const label = this.cfg.partitionNames?.[num] || this.cfg.partitionNames?.[String(num)]
-      || this.names.partition[num] || `Partition ${num}`;
+    const explicit = this.cfg.partitionNames?.[num] || this.cfg.partitionNames?.[String(num)]
+      || this.names.partition[num];
+    const label = explicit || `Partition ${num}`;
     this.sensorRegistry.registerDevice({
       key:     `satel/partition/${num}`,
       type:    'satel',
       label,
+      named:   !!explicit,
       homekit: [],
       sensors: [
         {
@@ -420,12 +424,14 @@ class SatelClient extends EventEmitter {
 
   _registerOutput(num) {
     this.registered.add(`o${num}`);
-    const label = this.cfg.outputNames?.[num] || this.cfg.outputNames?.[String(num)]
-      || this.names.output[num] || `Output ${num}`;
+    const explicit = this.cfg.outputNames?.[num] || this.cfg.outputNames?.[String(num)]
+      || this.names.output[num];
+    const label = explicit || `Output ${num}`;
     this.sensorRegistry.registerDevice({
       key:     `satel/output/${num}`,
       type:    'satel',
       label,
+      named:   !!explicit,
       homekit: [],
       sensors: [
         {

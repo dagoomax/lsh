@@ -3101,7 +3101,9 @@ document.getElementById('btn-save-ffrtsp').addEventListener('click', async () =>
 
   function updateCounts() {
     const sel = selectedTypes();
-    const active = devices.filter((d) => !sel.length || sel.includes(d.type));
+    const namedOnly = document.getElementById('loxxml-named').checked;
+    const active = devices.filter((d) =>
+      (!sel.length || sel.includes(d.type)) && (!namedOnly || d.named !== false));
     let inputs = 0, outputs = 0;
     for (const d of active) {
       inputs  += (d.sensors || []).filter(isInput).length;
@@ -3129,6 +3131,7 @@ document.getElementById('btn-save-ffrtsp').addEventListener('click', async () =>
           ).join('')
         : '<span class="hint">No devices connected yet.</span>';
       brandsEl.addEventListener('change', updateCounts);
+      document.getElementById('loxxml-named').addEventListener('change', updateCounts);
 
       // API token dropdown (values stay server-side; we pass tokenId)
       const tokens = tokRes.data || [];
@@ -3153,6 +3156,7 @@ document.getElementById('btn-save-ffrtsp').addEventListener('click', async () =>
     params.set('tokenId', tokenSel.value);
     const sel = selectedTypes();
     if (sel.length) params.set('type', sel.join(','));
+    if (document.getElementById('loxxml-named').checked) params.set('named', '1');
     if (hostEl.value.trim()) params.set('host', hostEl.value.trim());
     if (kind === 'inputs' && pollEl.value) params.set('polling', pollEl.value);
     resultEl.textContent = '';
