@@ -17,6 +17,7 @@ export function useLSH() {
   const [connection,setConn]      = useState(null)
   const [connected, setConnected] = useState(false)
   const [lastUpdate,setLastUpdate]= useState(null)
+  const [platforms, setPlatforms] = useState({})
 
   const fetchAll = useCallback(async () => {
     const [status, conn, devs] = await Promise.all([
@@ -47,6 +48,7 @@ export function useLSH() {
     socket.on('devices', readings => {
       if (Array.isArray(readings) && readings.length) setDevices(readings)
     })
+    socket.on('platform-status', s => setPlatforms(s || {}))
 
     return () => { clearInterval(iv); socket.disconnect() }
   }, [fetchAll])
@@ -61,5 +63,5 @@ export function useLSH() {
     })
   }, [])
 
-  return { energy, devices, connection, connected, lastUpdate, toggleRelay }
+  return { energy, devices, connection, connected, lastUpdate, platforms, toggleRelay }
 }
