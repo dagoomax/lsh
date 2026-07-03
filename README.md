@@ -347,7 +347,7 @@ Pushes live store values to **Loxone Virtual Inputs** via HTTP GET (`/dev/sps/io
   "host": "192.168.1.100",
   "port": 7094,
   "armCode": "1234",
-  "zoneCount": 32,
+  "zoneCount": 64,
   "zoneNames": { "1": "Front Door", "2": "Back Door" },
   "zoneTypes": { "5": "motion", "8": "contact", "16": "none" },
   "partitions": [1],
@@ -1253,7 +1253,7 @@ Wire protocol uses CRC-16 with `0xFE` byte-stuffing. Reconnects automatically af
 ```json
 "satel": {
   "host": "192.168.1.100", "port": 7094, "armCode": "1234",
-  "zoneCount": 32,
+  "zoneCount": 64,
   "zoneNames": { "1": "Front Door" },
   "partitions": [1], "partitionNames": { "1": "House" }
 }
