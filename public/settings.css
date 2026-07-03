@@ -958,3 +958,14 @@ select.sb-type:focus, select.sb-hk:focus {
 .btn-primary {
   letter-spacing: 0.01em;
 }
+
+/* Loxone XML Templates */
+.loxxml-brands {
+  display: flex; flex-wrap: wrap; gap: 8px 14px;
+  padding: 4px 0;
+}
+.loxxml-brand {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.88em; cursor: pointer; user-select: none;
+}
+.loxxml-brand input { accent-color: var(--accent, #58a6ff); }

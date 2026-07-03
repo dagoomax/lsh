@@ -573,6 +573,35 @@
       </div>
     </section>
 
+    <!-- Loxone XML Templates -->
+    <section class="card settings-card" data-category="controllers" data-title="Loxone XML templates virtual inputs outputs import generator Miniserver">
+      <h2>Loxone XML Templates</h2>
+      <p class="section-desc">Generates ready-to-import <strong>Virtual Output</strong> (commands) and <strong>Virtual HTTP Input</strong> (feedback) templates for Loxone Config 17.1 from your connected devices. Filter by brand, pick the API token to embed, and download — then import via <em>Virtual Outputs / Virtual HTTP Inputs → template import</em> in Loxone Config.</p>
+
+      <div class="form-row">
+        <label>Brands / Integrations <span class="hint">(connected devices, none checked = all)</span></label>
+        <div id="loxxml-brands" class="loxxml-brands"><span class="hint">Loading devices…</span></div>
+      </div>
+      <div class="form-row">
+        <label for="loxxml-token">API Token <span class="hint">(embedded into the generated URLs)</span></label>
+        <select id="loxxml-token" style="max-width:320px"></select>
+      </div>
+      <div class="form-row">
+        <label for="loxxml-host">LSH address as seen by the Miniserver <span class="hint">(host:port)</span></label>
+        <input type="text" id="loxxml-host" placeholder="192.168.1.229:3000" style="max-width:320px">
+      </div>
+      <div class="form-row">
+        <label for="loxxml-polling">Input polling <span class="hint">(ms, inputs.xml only)</span></label>
+        <input type="number" id="loxxml-polling" placeholder="5000" min="1000" step="500" style="max-width:120px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary"   id="btn-loxxml-outputs">⬇ outputs.xml <span class="hint" id="loxxml-out-count"></span></button>
+        <button class="btn btn-primary"   id="btn-loxxml-inputs">⬇ inputs.xml <span class="hint" id="loxxml-in-count"></span></button>
+        <span class="test-result" id="loxxml-result"></span>
+      </div>
+    </section>
+
     <!-- KNX -->
     <section class="card settings-card" data-category="controllers" data-title="KNX bus building automation group addresses">
       <h2>KNX <span class="badge">Optional</span></h2>

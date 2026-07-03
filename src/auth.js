@@ -135,6 +135,12 @@ const auth = {
     return loadTokens().map(({ id, name, createdAt }) => ({ id, name, createdAt }));
   },
 
+  // Value lookup for server-side embedding (e.g. generated Loxone templates).
+  // Never expose this through an API response.
+  getApiTokenValue(id) {
+    return loadTokens().find(t => t.id === id)?.token || null;
+  },
+
   deleteApiToken(id) {
     saveTokens(loadTokens().filter(t => t.id !== id));
   },

@@ -264,12 +264,20 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
     let devices = sensorRegistry.getDevices();
     if (req.query.device) devices = devices.filter((d) => d.key === req.query.device);
-    if (req.query.type)   devices = devices.filter((d) => d.type === req.query.type);
+    if (req.query.type) {
+      const types = new Set(String(req.query.type).split(',').map((t) => t.trim()).filter(Boolean));
+      devices = devices.filter((d) => types.has(d.type));
+    }
     if (!devices.length)  return res.status(404).json({ success: false, error: 'No matching devices' });
+
+    // ?tokenId= resolves an API token server-side (used by the Settings UI,
+    // where token values are never exposed to the browser)
+    let embedToken = req.query.token;
+    if (!embedToken && req.query.tokenId && auth) embedToken = auth.getApiTokenValue(req.query.tokenId);
 
     const opts = {
       host:      req.query.host || req.get('host'),
-      token:     req.query.token || 'YOUR_API_TOKEN',
+      token:     embedToken || 'YOUR_API_TOKEN',
       pollingMs: Math.max(1000, Number(req.query.polling) || 5000),
     };
     const xml  = kind === 'inputs' ? buildInputsXml(devices, opts) : buildOutputsXml(devices, opts);

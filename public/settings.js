@@ -3080,3 +3080,87 @@ document.getElementById('btn-save-ffrtsp').addEventListener('click', async () =>
     applyFilter();
   });
 })();
+
+// ── Loxone XML Templates ─────────────────────────────────────────────────────
+(() => {
+  const brandsEl  = document.getElementById('loxxml-brands');
+  const tokenSel  = document.getElementById('loxxml-token');
+  const hostEl    = document.getElementById('loxxml-host');
+  const pollEl    = document.getElementById('loxxml-polling');
+  const resultEl  = document.getElementById('loxxml-result');
+  if (!brandsEl) return;
+
+  let devices = [];
+
+  const isInput  = (s) => !s.hidden && s.type !== 'color' && s.type !== 'trigger';
+  const isOutput = (s) => !s.hidden && s.controllable && s.type !== 'color';
+
+  function selectedTypes() {
+    return [...brandsEl.querySelectorAll('input:checked')].map((c) => c.value);
+  }
+
+  function updateCounts() {
+    const sel = selectedTypes();
+    const active = devices.filter((d) => !sel.length || sel.includes(d.type));
+    let inputs = 0, outputs = 0;
+    for (const d of active) {
+      inputs  += (d.sensors || []).filter(isInput).length;
+      outputs += (d.sensors || []).filter(isOutput).length;
+    }
+    document.getElementById('loxxml-in-count').textContent  = `(${inputs})`;
+    document.getElementById('loxxml-out-count').textContent = `(${outputs})`;
+  }
+
+  async function load() {
+    try {
+      const [devRes, tokRes] = await Promise.all([
+        fetch('/api/devices').then((r) => r.json()),
+        fetch('/api/auth/tokens').then((r) => r.json()),
+      ]);
+      devices = devRes.data || [];
+
+      // Brand checkboxes with device counts
+      const byType = {};
+      for (const d of devices) byType[d.type] = (byType[d.type] || 0) + 1;
+      const types = Object.keys(byType).sort();
+      brandsEl.innerHTML = types.length
+        ? types.map((t) =>
+            `<label class="loxxml-brand"><input type="checkbox" value="${t}"> ${t} <span class="hint">(${byType[t]})</span></label>`
+          ).join('')
+        : '<span class="hint">No devices connected yet.</span>';
+      brandsEl.addEventListener('change', updateCounts);
+
+      // API token dropdown (values stay server-side; we pass tokenId)
+      const tokens = tokRes.data || [];
+      tokenSel.innerHTML = tokens.length
+        ? tokens.map((t) => `<option value="${t.id}">${t.name}</option>`).join('')
+        : '<option value="">— no API tokens; create one in Security → API Tokens —</option>';
+
+      if (!hostEl.value) hostEl.value = window.location.host;
+      updateCounts();
+    } catch (err) {
+      brandsEl.innerHTML = `<span class="hint">Failed to load: ${err.message}</span>`;
+    }
+  }
+
+  function download(kind) {
+    if (!tokenSel.value) {
+      resultEl.textContent = 'Create an API token first (Security → API Tokens)';
+      resultEl.className = 'test-result error';
+      return;
+    }
+    const params = new URLSearchParams();
+    params.set('tokenId', tokenSel.value);
+    const sel = selectedTypes();
+    if (sel.length) params.set('type', sel.join(','));
+    if (hostEl.value.trim()) params.set('host', hostEl.value.trim());
+    if (kind === 'inputs' && pollEl.value) params.set('polling', pollEl.value);
+    resultEl.textContent = '';
+    window.location.href = `/api/loxone/${kind}.xml?${params}`;
+  }
+
+  document.getElementById('btn-loxxml-outputs').addEventListener('click', () => download('outputs'));
+  document.getElementById('btn-loxxml-inputs').addEventListener('click', () => download('inputs'));
+
+  load();
+})();
