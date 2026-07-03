@@ -231,12 +231,12 @@ export default function DeviceModal({ device, onClose, onCommand }) {
             exit={{ opacity: 0, scale: 0.92, y: 16 }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             onClick={e => e.stopPropagation()}
+            className="device-modal-glow"
             style={{
               position: 'relative', width: 'min(680px, 100%)', maxHeight: '88vh',
               display: 'flex', flexDirection: 'column',
               background: 'linear-gradient(160deg, #12142a 0%, #0d0e1e 100%)',
               borderRadius: 22, overflow: 'hidden',
-              boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 60px rgba(88,166,255,0.08)',
             }}>
 
             {/* gradient border via CSS mask */}

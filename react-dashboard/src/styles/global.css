@@ -159,3 +159,14 @@ body {
   .energy-card-sub { display: none !important; }
   .energy-card-arc { width: 48px !important; height: 48px !important; }
 }
+
+
+/* Device modal breathing glow */
+.device-modal-glow {
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px rgba(88,166,255,0.40), 0 0 160px rgba(63,185,80,0.22);
+  animation: modalBreathe 4.5s ease-in-out infinite alternate;
+}
+@keyframes modalBreathe {
+  from { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 55px rgba(88,166,255,0.32), 0 0 130px rgba(63,185,80,0.18); }
+  to   { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 90px rgba(88,166,255,0.52), 0 0 190px rgba(188,140,255,0.30); }
+}

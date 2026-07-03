@@ -2500,8 +2500,12 @@ footer {
   display: flex; flex-direction: column;
   background: linear-gradient(160deg, #12142a 0%, #0d0e1e 100%);
   border-radius: 22px; overflow: hidden;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 60px rgba(88,166,255,0.08);
-  animation: devPop .32s cubic-bezier(.34,1.4,.64,1);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px rgba(88,166,255,0.40), 0 0 160px rgba(63,185,80,0.22);
+  animation: devPop .32s cubic-bezier(.34,1.4,.64,1), devBreathe 4.5s ease-in-out .32s infinite alternate;
+}
+@keyframes devBreathe {
+  from { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 55px rgba(88,166,255,0.32), 0 0 130px rgba(63,185,80,0.18); }
+  to   { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 90px rgba(88,166,255,0.52), 0 0 190px rgba(188,140,255,0.30); }
 }
 @keyframes devPop {
   from { opacity: 0; transform: scale(0.88) translateY(26px); }
