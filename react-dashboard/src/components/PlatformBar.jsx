@@ -16,6 +16,8 @@ const PLATFORMS = [
   { key: 'fibaro',       label: 'Fibaro',      color: '#e4181c', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M10 10h12v3H10zM10 16h8v3h-8zM10 22h5v3h-5z" fill="#fff"/></svg> },
   { key: 'somfy',        label: 'Somfy',       color: '#f2a900', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M9 9h14v3.5H9zM9 14.5h14V18H9z" fill="#fff"/><path d="M9 20h14v1.8H9z" fill="#fff" opacity="0.85"/><circle cx="16" cy="24.5" r="1.6" fill="#fff"/></svg> },
   { key: 'lgthinq',      label: 'LG ThinQ',    color: '#a50034', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><text x="16" y="21" textAnchor="middle" fontFamily="Arial,sans-serif" fontWeight="bold" fontSize="11" fill="#fff">LG</text></svg> },
+  { key: 'zway',         label: 'Z-Way',       color: '#7d59a5', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M10 11h12l-12 10h12" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg> },
+  { key: 'wirenboard',   label: 'WirenBoard',  color: '#4caf50', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><rect x="9" y="9" width="14" height="14" rx="2" fill="none" stroke="#fff" strokeWidth="2"/><path d="M12 13v6M16 13v6M20 13v6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/></svg> },
 ]
 
 export default function PlatformBar({ platforms }) {

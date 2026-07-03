@@ -381,6 +381,24 @@ async function main() {
     }
   }
 
+  // Start Z-Way / RaZberry client if configured
+  if (config.zway?.host) {
+    const ZWayClient = tryRequire('./src/zway-client');
+    if (ZWayClient) {
+      const zway = new ZWayClient(config, store, sensorRegistry);
+      zway.start().catch((err) => console.error(`[Z-Way] Start failed: ${err.message}`));
+    }
+  }
+
+  // Start Wiren Board client if configured
+  if (config.wirenboard?.host) {
+    const WirenBoardClient = tryRequire('./src/wirenboard-client');
+    if (WirenBoardClient) {
+      const wirenboard = new WirenBoardClient(config, store, sensorRegistry);
+      wirenboard.start();
+    }
+  }
+
   // Start KNX client if configured
   if (config.knx?.host) {
     const KNXClient = tryRequire('./src/knx-client', 'npm install knx');

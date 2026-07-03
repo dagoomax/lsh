@@ -116,7 +116,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 ---
 
@@ -248,6 +248,8 @@ The image is a multi-stage build (Node 20, `ffmpeg` for the RTSP proxy, `tini` f
 | `bayrol` | No | Bayrol Pool Manager Connect (pH, ORP, temperature, salt via MQTT) |
 | `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
 | `smarttub` | No | SmartTub hot tubs (Jacuzzi / Sundance / Watkins) — water/set temperature, heat mode, pumps, lights via cloud API |
+| `zway` | No | Z-Way / RaZberry — Z-Wave switches, dimmers, thermostats, locks, sensors via ZAutomation REST API |
+| `wirenboard` | No | Wiren Board controllers — relays, dimmers, inputs, climate sensors via MQTT Conventions |
 | `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
 | `denon` | No | Denon / Marantz AV receivers — power, volume, mute, input via Telnet (port 23) |
 | `arduino` | No | Arduino / ESP32 / generic MQTT — subscribe to JSON topics and map fields to sensor readings or controllable outputs |
@@ -708,6 +710,44 @@ Connects to **SmartTub**-enabled hot tubs (Jacuzzi, Sundance, Watkins and other 
 - **Lights** — per-zone on/off (`PATCH spas/<id>/lights/<zone>`)
 
 Temperatures are handled in **Celsius**; the API rejects set-points with more than one decimal place, so values are rounded to 0.1 °C.
+
+---
+
+### `zway`
+
+```json
+"zway": {
+  "host": "192.168.1.x",
+  "port": 8083,
+  "username": "admin",
+  "password": "your-password",
+  "pollInterval": 10
+}
+```
+
+Connects to **Z-Way** — the Z-Wave.Me controller software that runs on **RaZberry** boards, UZB sticks, or any Z-Way server — via the ZAutomation v1 REST API (`:8083`). Virtual devices are auto-discovered and grouped per physical Z-Wave node into one dashboard tile.
+
+**Supported device types:** binary switches (on/off), multilevel switches / dimmers (0–99), thermostats (setpoint), door locks, buttons, binary sensors, multilevel sensors (temperature → HomeKit, humidity, lux, power…), battery levels.
+
+Session auth (`ZWAYSession`) with automatic re-login on expiry. Commands go through `/ZAutomation/api/v1/devices/<vDev>/command/…`.
+
+### `wirenboard`
+
+```json
+"wirenboard": {
+  "host": "192.168.1.x",
+  "port": 1883,
+  "username": "",
+  "password": "",
+  "devices": []
+}
+```
+
+Connects to a **Wiren Board** controller's MQTT broker and auto-discovers every device published under the [MQTT Conventions](https://github.com/wirenboard/conventions) (`/devices/<dev>/controls/<ctrl>` + retained `meta` topics).
+
+**Control mapping:** `switch` → toggle, `range` → slider (respects `meta/max`), `pushbutton` → momentary, `temperature`/`rel_humidity`/`voltage`/`power`/… → read-only sensors with proper units; `readonly` meta respected. Temperature controls are bridged to HomeKit. Writes publish to `/devices/<dev>/controls/<ctrl>/on`.
+
+**`devices`** — optional whitelist of WB device ids; empty = everything except system devices (`system`, `network`, `hwmon`, `power_status`, `buzzer`, `metrics`, `alarms`).
 
 ---
 
