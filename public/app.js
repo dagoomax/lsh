@@ -1398,6 +1398,8 @@ function switchTab(tabId) {
   if (btn)  btn.classList.add('active');
   activeTab = tabId;
   if (tabId === 'rooms') renderRoomsTab();
+  if (tabId === 'graphs') renderGraphsTab();
+  else stopGraphsRefresh();
 }
 
 mainTabBar?.addEventListener('click', (e) => {
@@ -1773,10 +1775,10 @@ function drawHistChart() {
   renderChartCanvas(histCanvas, histPoints, histRangeH, histUnit, histStats, histNoData);
 }
 
-function renderChartCanvas(canvas, allPoints, rangeH, unit, statsEl, noDataEl) {
+function renderChartCanvas(canvas, allPoints, rangeH, unit, statsEl, noDataEl, height = 260) {
   const wrap = canvas.parentElement;
   const dpr  = window.devicePixelRatio || 1;
-  const cssW = wrap.clientWidth || 640, cssH = 260;
+  const cssW = wrap.clientWidth || 640, cssH = height;
   canvas.width  = cssW * dpr;
   canvas.height = cssH * dpr;
   canvas.style.width  = cssW + 'px';
@@ -2345,4 +2347,152 @@ devicesGrid.addEventListener('click', (e) => {
     if (knownDevices.has(want)) { clearInterval(t); openDevModal(want); }
   }, 300);
   setTimeout(() => clearInterval(t), 15000);
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Graphs & Statistics tab
+// ═══════════════════════════════════════════════════════════════════════════
+const graphsGrid    = document.getElementById('graphs-grid');
+const graphsStats   = document.getElementById('graphs-stats');
+const graphsFilters = document.getElementById('graphs-filters');
+let graphsFilter = 'all', graphsRangeH = 6, graphsTimer = null;
+
+const GRAPH_FILTERS = [
+  { id: 'all',   label: 'All' },
+  { id: 'temp',  label: '🌡 Temperature' },
+  { id: 'power', label: '⚡ Power & Energy' },
+  { id: 'humid', label: '💧 Humidity' },
+  { id: 'other', label: '📈 Other' },
+];
+const GRAPH_ACCENT = { temp: '#f0883e', power: '#d29922', humid: '#39d353', other: '#79c0ff' };
+const GRAPH_ORDER  = { temp: 0, power: 1, humid: 2, other: 3 };
+
+function classifySensor(s) {
+  const u = (s.unit || '').toLowerCase();
+  const n = s.name || s.label || s.path || '';
+  if (u.includes('°') || s.homekit === 'temperature') return 'temp';
+  if (['w', 'kw', 'kwh', 'wh', 'v', 'a', 'va', 'mv'].includes(u)) return 'power';
+  if (u === '%' && /humid|rh/i.test(n)) return 'humid';
+  if (u === '%' && /soc|battery|level/i.test(n)) return 'power';
+  return 'other';
+}
+
+function collectGraphable() {
+  const out = [];
+  for (const [key, device] of knownDevices) {
+    for (const s of device.sensors || []) {
+      if (s.hidden) continue;
+      const v = liveValues.get(`${key}/${s.path}`);
+      if (typeof v !== 'number') continue;
+      out.push({ device, sensor: s, value: v, cls: classifySensor(s) });
+    }
+  }
+  out.sort((a, b) => (GRAPH_ORDER[a.cls] - GRAPH_ORDER[b.cls])
+    || String(a.device.label).localeCompare(String(b.device.label)));
+  return out;
+}
+
+function renderGraphsTab() {
+  const graphable = collectGraphable();
+
+  // ── Stats cards ──
+  const temps = graphable.filter((g) => g.cls === 'temp').map((g) => g.value);
+  const avgTemp = temps.length ? temps.reduce((a, b) => a + b, 0) / temps.length : null;
+  let activeOn = 0;
+  for (const [key, device] of knownDevices) {
+    if ((device.sensors || []).some((s) => s.controllable && liveValues.get(`${key}/${s.path}`) === 1)) activeOn++;
+  }
+  const soc   = liveValues.get('system/0/Dc/Battery/Soc');
+  const solar = liveValues.get('system/0/Dc/Pv/Power');
+
+  const statCard = (label, value, unit, color) => `
+    <div class="graphs-stat" style="--gs:${color}">
+      <div class="graphs-stat-label">${label}</div>
+      <div class="graphs-stat-value">${value}<span>${unit}</span></div>
+    </div>`;
+  graphsStats.innerHTML =
+    statCard('Devices', knownDevices.size, '', '#79c0ff') +
+    statCard('Active now', activeOn, ' on', '#d29922') +
+    statCard('Tracked series', graphable.length, '', '#bc8cff') +
+    (avgTemp != null ? statCard('Avg temperature', avgTemp.toFixed(1), '°C', '#f0883e') : '') +
+    (typeof soc   === 'number' ? statCard('Battery', Math.round(soc), '%', '#3fb950') : '') +
+    (typeof solar === 'number' ? statCard('Solar', Math.round(solar), 'W', '#f0c000') : '');
+
+  // ── Filter chips ──
+  const counts = { all: graphable.length };
+  for (const g of graphable) counts[g.cls] = (counts[g.cls] || 0) + 1;
+  graphsFilters.innerHTML = GRAPH_FILTERS
+    .filter((f) => f.id === 'all' || counts[f.id])
+    .map((f) => `<button class="graphs-chip${graphsFilter === f.id ? ' active' : ''}" data-gfilter="${f.id}">
+      ${f.label} <span>(${counts[f.id] || counts.all})</span></button>`).join('');
+
+  // ── Chart cards ──
+  const shown = (graphsFilter === 'all' ? graphable : graphable.filter((g) => g.cls === graphsFilter)).slice(0, 30);
+  document.getElementById('graphs-empty').style.display = shown.length ? 'none' : '';
+  document.getElementById('tab-count-graphs').textContent = graphable.length;
+
+  graphsGrid.innerHTML = shown.map(({ device, sensor, value, cls }, i) => `
+    <div class="graphs-card">
+      <div class="graphs-card-hdr" data-open-dev="${esc(device.key)}">
+        <span class="graphs-card-dev">${esc(device.label)}</span>
+        <span class="graphs-card-sensor">${esc(sensor.name || sensor.label || sensor.path)}</span>
+        <span class="graphs-card-val" style="color:${GRAPH_ACCENT[cls]}">${Number.isInteger(value) ? value : value.toFixed(1)}${esc(sensor.unit || '')}</span>
+      </div>
+      <div class="graphs-card-stats" id="gstat-${i}"></div>
+      <div class="graphs-canvas-wrap">
+        <canvas id="gcanvas-${i}"></canvas>
+        <div class="hist-no-data" id="gnodata-${i}" style="display:none">Collecting…</div>
+      </div>
+    </div>`).join('');
+
+  shown.forEach(({ device, sensor }, i) => loadGraphCard(device.key, sensor, i));
+
+  clearInterval(graphsTimer);
+  graphsTimer = setInterval(() => {
+    if (activeTab === 'graphs') shown.forEach(({ device, sensor }, i) => loadGraphCard(device.key, sensor, i));
+  }, 30000);
+}
+
+async function loadGraphCard(deviceKey, sensor, i) {
+  try {
+    const res = await fetch(`/api/history/${deviceKey}/${sensor.path}`);
+    const { points } = await res.json();
+    const canvas = document.getElementById(`gcanvas-${i}`);
+    if (!canvas) return;
+    renderChartCanvas(canvas, points || [], graphsRangeH, sensor.unit || '',
+      document.getElementById(`gstat-${i}`), document.getElementById(`gnodata-${i}`), 150);
+  } catch { /* ignore */ }
+}
+
+function stopGraphsRefresh() {
+  clearInterval(graphsTimer);
+  graphsTimer = null;
+}
+
+graphsFilters?.addEventListener('click', (e) => {
+  const chip = e.target.closest('.graphs-chip');
+  if (!chip) return;
+  graphsFilter = chip.dataset.gfilter;
+  renderGraphsTab();
+});
+
+document.querySelectorAll('.graphs-range-btn').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.graphs-range-btn').forEach((x) => x.classList.remove('active'));
+  b.classList.add('active');
+  graphsRangeH = Number(b.dataset.range);
+  renderGraphsTab();
+}));
+
+graphsGrid?.addEventListener('click', (e) => {
+  const hdr = e.target.closest('[data-open-dev]');
+  if (hdr) openDevModal(hdr.dataset.openDev);
+});
+
+// Deep-link: ?tab=<id> selects a main tab on load
+(() => {
+  const wantTab = new URLSearchParams(location.search).get('tab');
+  if (wantTab && document.getElementById(`tab-pane-${wantTab}`)) {
+    // devices arrive async — graphs/rooms need a beat to populate
+    setTimeout(() => switchTab(wantTab), 400);
+  }
 })();

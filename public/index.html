@@ -62,6 +62,11 @@
       Rooms
       <span class="tab-count" id="tab-count-rooms">0</span>
     </button>
+    <button class="main-tab-btn" data-tab="graphs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M3 3v18h18"/><path d="m7 14 4-5 3 3 5-7"/></svg>
+      Graphs
+      <span class="tab-count" id="tab-count-graphs">0</span>
+    </button>
     <button class="main-tab-btn" data-tab="automation">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M12 3v3M18.4 5.6l-2.1 2.1M21 12h-3M18.4 18.4l-2.1-2.1M12 21v-3M5.6 18.4l2.1-2.1M3 12h3M5.6 5.6l2.1 2.1"/><circle cx="12" cy="12" r="3"/></svg>
       Automation
@@ -514,6 +519,23 @@
       <span>Discovered Devices</span>
     </div>
     <div id="rooms-grid"></div>
+  </div>
+
+  <!-- ── Graphs & Statistics tab ────────────────────────────── -->
+  <div id="tab-pane-graphs" class="tab-pane">
+    <div class="tab-pane-inner">
+      <div id="graphs-stats" class="graphs-stats"></div>
+      <div class="graphs-toolbar">
+        <div id="graphs-filters" class="graphs-filters"></div>
+        <div class="hist-range-bar graphs-range-bar">
+          <button class="hist-range-btn graphs-range-btn" data-range="1">1h</button>
+          <button class="hist-range-btn graphs-range-btn active" data-range="6">6h</button>
+          <button class="hist-range-btn graphs-range-btn" data-range="0">All</button>
+        </div>
+      </div>
+      <div id="graphs-grid" class="graphs-grid"></div>
+      <div class="auto-empty" id="graphs-empty" style="display:none">No numeric sensors reporting yet — history builds up while the server runs.</div>
+    </div>
   </div>
 
   <!-- ── Automation tab ─────────────────────────────────────── -->
