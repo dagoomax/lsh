@@ -28,6 +28,7 @@ class BayrolClient {
     if (!cfg?.username || !cfg?.password) return;
 
     console.log('[Bayrol] Starting…');
+    platformStatus.set('bayrol', false); // badge appears; goes green on MQTT connect
     await this._login(cfg.username, cfg.password);
 
     let pools = cfg.pools?.filter(p => p.cid) || [];
@@ -40,8 +41,7 @@ class BayrolClient {
         console.error(`[Bayrol] Pool ${pool.name || pool.cid} error: ${err.message}`);
       }
     }
-
-    platformStatus.set('bayrol', true);
+    // status turns true in the per-pool MQTT connect handler
   }
 
   stop() {
@@ -125,11 +125,17 @@ class BayrolClient {
 
     client.on('connect', () => {
       console.log(`[Bayrol] MQTT connected: ${name}`);
+      platformStatus.set('bayrol', true);
       client.subscribe(`${prefix}/v/#`, err => {
         if (err) { console.error(`[Bayrol] Subscribe error: ${err.message}`); return; }
         // Request current values
         for (const uid of VALUE_UIDS) client.publish(`${prefix}/g/${uid}`, '');
       });
+    });
+
+    client.on('close', () => {
+      // connected = any pool's MQTT still up
+      if (!this._clients.some(c => c !== client && c.connected)) platformStatus.set('bayrol', false);
     });
 
     client.on('message', (topic, buf) => {
