@@ -441,7 +441,7 @@ async function main() {
     const startHomekitBridge = tryRequire('./src/homekit-bridge', 'install hap-nodejs to enable HomeKit');
     if (startHomekitBridge) {
       try {
-        startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient });
+        startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient, automation });
       } catch (err) {
         console.error(`[HomeKit] Start failed: ${err.message}`);
       }

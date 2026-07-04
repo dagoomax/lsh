@@ -990,7 +990,7 @@ function addCameraToBridge(cam, bridge) {
 
 // ── Main bridge factory ────────────────────────────────────────────────────
 
-function startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient } = {}) {
+function startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient, automation } = {}) {
   const bridge = new Bridge('Victron Energy', makeUUID('bridge'));
 
   setInfo(bridge, 'Victron Energy', 'Cerbo GX Dashboard', 'VICTRON-001');
@@ -1085,6 +1085,31 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
         console.error(`[HomeKit] Failed to add ${device.label}:`, err.message);
       }
     });
+  }
+
+  // ── Scene switches (LSH automation scenes as momentary switches) ──────────
+  if (automation?.scenes?.length) {
+    for (const scene of automation.scenes) {
+      const name = `${scene.name}`;
+      const acc  = new Accessory(name, makeUUID(`scene-${scene.id}`));
+      acc.category = Categories.SWITCH;
+      setInfo(acc, 'LSH Scene', name, `SCENE-${scene.id}`);
+      const svc = acc.addService(Service.Switch, name);
+      svc.getCharacteristic(Characteristic.On)
+        .onGet(() => false) // momentary — always reads off
+        .onSet(async (v) => {
+          if (!v) return;
+          try {
+            await automation.runScene(scene.id);
+          } catch (err) {
+            console.error(`[HomeKit] Scene "${name}" failed: ${err.message}`);
+          }
+          // spring back to off so it behaves like a button
+          setTimeout(() => svc.getCharacteristic(Characteristic.On).updateValue(false), 1000);
+        });
+      bridge.addBridgedAccessory(acc);
+      console.log(`[HomeKit] Scene switch: ${name}`);
+    }
   }
 
   // ── Publish ────────────────────────────────────────────────
