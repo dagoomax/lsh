@@ -60,7 +60,7 @@
     <!-- MQTT -->
     <section class="card settings-card" data-category="energy" data-title="MQTT Cerbo GX Connection">
       <h2 data-i18n="s.mqtt_title">Cerbo GX – MQTT Connection</h2>
-      <p class="section-desc">Direct local connection to your Cerbo GX (recommended).</p>
+      <p class="section-desc" data-i18n-html="sdesc.d0">Direct local connection to your Cerbo GX (recommended).</p>
 
       <div class="form-row">
         <label for="mqtt-host" data-i18n="s.mqtt_host">Host / IP Address</label>
@@ -84,7 +84,7 @@
     <!-- VRM -->
     <section class="card settings-card" data-category="energy" data-title="VRM Cloud API">
       <h2><span data-i18n="s.vrm_title">VRM Cloud API</span> <span class="badge" data-i18n="common.fallback">Fallback</span></h2>
-      <p class="section-desc">Used when local MQTT is unavailable.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d1">Used when local MQTT is unavailable.</p>
 
       <div class="form-row">
         <label for="vrm-api-token"><span data-i18n="s.vrm_token">API Token</span> <span class="hint" data-i18n="s.vrm_token_hint">(preferred — leave blank to use email/password)</span></label>
@@ -149,7 +149,7 @@
     <!-- SolarEdge -->
     <section class="card settings-card" data-category="energy" data-title="SolarEdge">
       <h2><span data-i18n="s.se_title">SolarEdge</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Adds real-time solar production data from the SolarEdge Monitoring API. Runs alongside Victron data sources.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d2">Adds real-time solar production data from the SolarEdge Monitoring API. Runs alongside Victron data sources.</p>
 
       <div class="form-row">
         <label for="se-site-id" data-i18n="s.se_site_id">Site ID</label>
@@ -170,7 +170,7 @@
     <!-- SmartThings -->
     <section class="card settings-card" data-category="smarthome" data-title="Samsung SmartThings">
       <h2><span data-i18n="s.st_title">Samsung SmartThings</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Adds SmartThings devices (switches, power meters, sensors) to the dashboard. Get a Personal Access Token from <strong>account.smartthings.com/tokens</strong>.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d3">Adds SmartThings devices (switches, power meters, sensors) to the dashboard. Get a Personal Access Token from <strong>account.smartthings.com/tokens</strong>.</p>
 
       <div class="form-row">
         <label for="st-token" data-i18n="s.st_token">Personal Access Token</label>
@@ -191,7 +191,7 @@
     <!-- Homey -->
     <section class="card settings-card" data-category="smarthome" data-title="Homey">
       <h2><span data-i18n="s.homey_title">Homey</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to Athom Homey Pro 2023+ or Homey Cloud. All devices (lights, switches, sensors, thermostats, locks) are auto-discovered and appear in the dashboard with full control.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d4">Connects to Athom Homey Pro 2023+ or Homey Cloud. All devices (lights, switches, sensors, thermostats, locks) are auto-discovered and appear in the dashboard with full control.</p>
 
       <div class="form-row">
         <label for="homey-mode" data-i18n="s.homey_mode">Connection Mode</label>
@@ -234,7 +234,7 @@
     <!-- Somfy TaHoma -->
     <section class="card settings-card" data-category="smarthome" data-title="Somfy TaHoma roller shutter blind awning gate">
       <h2>Somfy TaHoma <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to a Somfy TaHoma or Connexoon box on your local network. Roller shutters, screens, venetian blinds, awnings, gates, and garage doors are auto-discovered and controllable from the dashboard.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d5">Connects to a Somfy TaHoma or Connexoon box on your local network. Roller shutters, screens, venetian blinds, awnings, gates, and garage doors are auto-discovered and controllable from the dashboard.</p>
 
       <div class="form-row">
         <label for="somfy-host" data-i18n="s2.tahoma_hostname_ip">TaHoma Hostname / IP <span class="hint">(use <code>gateway-XXXX-XXXX-XXXX.local</code> for Developer Mode)</span></label>
@@ -275,7 +275,7 @@
     <!-- Denon AVR -->
     <section class="card settings-card" data-category="smarthome" data-title="Denon AV receiver amplifier audio volume input">
       <h2>Denon AVR <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Controls Denon (and Marantz) AV receivers over the local network via the Telnet control protocol (port 23). Supports power on/standby, master volume, mute, and input selection.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d6">Controls Denon (and Marantz) AV receivers over the local network via the Telnet control protocol (port 23). Supports power on/standby, master volume, mute, and input selection.</p>
       <div class="form-group">
         <label for="denon-host" data-i18n="s2.receiver_ip_hostname">Receiver IP / Hostname</label>
         <input type="text" id="denon-host" placeholder="192.168.1.100">
@@ -302,7 +302,7 @@
     <!-- Sonos -->
     <section class="card settings-card" data-category="smarthome" data-title="Sonos speaker music play pause volume zone">
       <h2>Sonos <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Controls Sonos speakers on your local network via UPnP (port 1400). Auto-discovers all Zone Players via SSDP, or specify IPs manually. Provides play/pause, prev/next track, volume, and mute. No account required.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d7">Controls Sonos speakers on your local network via UPnP (port 1400). Auto-discovers all Zone Players via SSDP, or specify IPs manually. Provides play/pause, prev/next track, volume, and mute. No account required.</p>
       <div class="form-group">
         <label for="sonos-hosts" data-i18n="s2.speaker_ips">Speaker IPs <span class="hint">(one per line — leave empty to use auto-discovery only)</span></label>
         <textarea id="sonos-hosts" rows="3" placeholder="192.168.1.50&#10;192.168.1.51" style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
@@ -324,7 +324,7 @@
     <!-- AuxAir (AC Freedom) -->
     <section class="card settings-card" data-category="smarthome" data-title="AuxAir AC Freedom air conditioner climate control">
       <h2>AuxAir / AC Freedom <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Controls AUX air conditioners via the AC Freedom cloud API. Supports on/off, temperature, mode (cool/heat/dry/fan/auto), and fan speed. Requires an AC Freedom account.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d8">Controls AUX air conditioners via the AC Freedom cloud API. Supports on/off, temperature, mode (cool/heat/dry/fan/auto), and fan speed. Requires an AC Freedom account.</p>
       <div class="form-group">
         <label for="auxair-region" data-i18n="s2.region">Region</label>
         <select id="auxair-region" style="background:#0d0e1a;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 12px">
@@ -355,7 +355,7 @@
     <!-- Suppla -->
     <section class="card settings-card" data-category="smarthome" data-title="Suppla smart home relay switches thermometer cloud Poland">
       <h2>Suppla <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to the Suppla cloud (cloud.supla.org) or a self-hosted Suppla server. Discovers all channels (switches, dimmers, thermometers, humidity sensors, shutters, gates) and groups them by device. Authentication uses a personal access token from the Suppla Cloud → Security → Personal Access Tokens page.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d9">Connects to the Suppla cloud (cloud.supla.org) or a self-hosted Suppla server. Discovers all channels (switches, dimmers, thermometers, humidity sensors, shutters, gates) and groups them by device. Authentication uses a personal access token from the Suppla Cloud → Security → Personal Access Tokens page.</p>
 
       <div class="form-row">
         <label for="suppla-token" data-i18n="s2.personal_access_token">Personal Access Token</label>
@@ -380,7 +380,7 @@
     <!-- Bayrol Pool Manager -->
     <section class="card settings-card" data-category="smarthome" data-title="Bayrol Pool Manager Connect pool chemistry pH ORP chlorine">
       <h2>Bayrol Pool Manager Connect <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to the Bayrol Pool Access cloud to read pH, ORP (redox), temperature, and free chlorine from a Pool Manager Connect device. Polling interval is 60 s by default.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d10">Connects to the Bayrol Pool Access cloud to read pH, ORP (redox), temperature, and free chlorine from a Pool Manager Connect device. Polling interval is 60 s by default.</p>
 
       <div class="form-row">
         <label for="bayrol-pool-name" data-i18n="s2.pool_name">Pool Name</label>
@@ -409,7 +409,7 @@
     <!-- Dreame -->
     <section class="card settings-card" data-category="smarthome" data-title="Dreame vacuum purifier">
       <h2><span data-i18n="s.dreame_title">Dreame</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to Dreame robot vacuums and air purifiers locally via the Mi Home (miio) protocol. Each device needs its local IP and 32-char hex token — enable <strong>Developer mode</strong> in Mi Home, go to the device detail page, tap the three-dot menu → Share Device → 拷贝到剪贴板 to see the token, or use a third-party token extractor.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d11">Connects to Dreame robot vacuums and air purifiers locally via the Mi Home (miio) protocol. Each device needs its local IP and 32-char hex token — enable <strong>Developer mode</strong> in Mi Home, go to the device detail page, tap the three-dot menu → Share Device → 拷贝到剪贴板 to see the token, or use a third-party token extractor.</p>
 
       <div id="dreame-devices-list"></div>
 
@@ -424,7 +424,7 @@
     <!-- Satel -->
     <section class="card settings-card" data-category="security" data-title="Satel INTEGRA alarm panel">
       <h2><span data-i18n="s.satel_title">Satel INTEGRA</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connect to a Satel INTEGRA alarm panel via ETHM-1 Plus module (TCP port 7094). Zone sensors (violation + tamper), partition arm state (arm/disarm control), and programmable output relays appear as individual dashboard devices.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d12">Connect to a Satel INTEGRA alarm panel via ETHM-1 Plus module (TCP port 7094). Zone sensors (violation + tamper), partition arm state (arm/disarm control), and programmable output relays appear as individual dashboard devices.</p>
 
       <div class="form-row">
         <label for="satel-host" data-i18n="s.satel_host">ETHM-1 Plus Host / IP</label>
@@ -486,7 +486,7 @@
     <!-- UniFi Protect -->
     <section class="card settings-card" data-category="security" data-title="UniFi Protect cameras sensors">
       <h2><span data-i18n="s.unifi_title">UniFi Protect</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Auto-discovers cameras (shown in dashboard) and sensors (door, motion, temperature, humidity) from a UniFi Dream Machine or UNVR.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d13">Auto-discovers cameras (shown in dashboard) and sensors (door, motion, temperature, humidity) from a UniFi Dream Machine or UNVR.</p>
 
       <div class="form-row">
         <label for="unifi-host" data-i18n="s.unifi_host">Console Host / IP</label>
@@ -515,7 +515,7 @@
     <!-- Loxone -->
     <section class="card settings-card" data-category="controllers" data-title="Loxone Miniserver">
       <h2><span data-i18n="s.loxone_title">Loxone Miniserver</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to a Loxone Miniserver via WebSocket. All rooms, switches, dimmers, blinds, thermostats, and sensors are auto-discovered from the structure file.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d14">Connects to a Loxone Miniserver via WebSocket. All rooms, switches, dimmers, blinds, thermostats, and sensors are auto-discovered from the structure file.</p>
 
       <div class="form-row">
         <label for="loxone-host" data-i18n="s.loxone_host">Miniserver Host / IP</label>
@@ -544,7 +544,7 @@
     <!-- Loxone Outbound Push -->
     <section class="card settings-card" data-category="controllers" data-title="Loxone Outbound Push virtual inputs">
       <h2>Loxone Outbound Push <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Pushes sensor values from LSH to Loxone Virtual Inputs in real time (on change, debounced 200 ms). Configure one mapping per line: <code>storeKey = VirtualInputName</code>. Example: <code>bayrol/19048/ph = PoolPH</code></p>
+      <p class="section-desc" data-i18n-html="sdesc.d15">Pushes sensor values from LSH to Loxone Virtual Inputs in real time (on change, debounced 200 ms). Configure one mapping per line: <code>storeKey = VirtualInputName</code>. Example: <code>bayrol/19048/ph = PoolPH</code></p>
 
       <div class="form-row">
         <label for="loxone-out-host" data-i18n="s2.miniserver_host_ip">Miniserver Host / IP</label>
@@ -576,7 +576,7 @@
     <!-- Loxone XML Templates -->
     <section class="card settings-card" data-category="controllers" data-title="Loxone XML templates virtual inputs outputs import generator Miniserver">
       <h2>Loxone XML Templates</h2>
-      <p class="section-desc">Generates ready-to-import <strong>Virtual Output</strong> (commands) and <strong>Virtual HTTP Input</strong> (feedback) templates for Loxone Config 17.1 from your connected devices. Filter by brand, pick the API token to embed, and download — then import via <em>Virtual Outputs / Virtual HTTP Inputs → template import</em> in Loxone Config.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d16">Generates ready-to-import <strong>Virtual Output</strong> (commands) and <strong>Virtual HTTP Input</strong> (feedback) templates for Loxone Config 17.1 from your connected devices. Filter by brand, pick the API token to embed, and download — then import via <em>Virtual Outputs / Virtual HTTP Inputs → template import</em> in Loxone Config.</p>
 
       <div class="form-row">
         <label data-i18n="s2.brands_integrations">Brands / Integrations <span class="hint">(connected devices, none checked = all)</span></label>
@@ -608,7 +608,7 @@
     <!-- KNX -->
     <section class="card settings-card" data-category="controllers" data-title="KNX bus building automation group addresses">
       <h2>KNX <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to a KNXnet/IP gateway or IP router over TCP/IP. Group addresses are mapped to dashboard device cards with read/write support. Requires <code>npm install knx</code>.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d17">Connects to a KNXnet/IP gateway or IP router over TCP/IP. Group addresses are mapped to dashboard device cards with read/write support. Requires <code>npm install knx</code>.</p>
 
       <div class="form-row">
         <label for="knx-host" data-i18n="s2.gateway_host_ip">Gateway Host / IP</label>
@@ -633,7 +633,7 @@
     <!-- SIP / Intercom -->
     <section class="card settings-card" data-category="communication" data-title="SIP Intercom phone doorbell">
       <h2><span data-i18n="s.sip_title">📞 SIP / Intercom</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Register as a SIP extension on UniFi Talk, Loxone, or any SIP PBX with WebSocket transport. Incoming calls (e.g. from a UniFi Access door reader) pop up with the matching camera feed and a one-tap unlock button.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d18">Register as a SIP extension on UniFi Talk, Loxone, or any SIP PBX with WebSocket transport. Incoming calls (e.g. from a UniFi Access door reader) pop up with the matching camera feed and a one-tap unlock button.</p>
 
       <div class="form-row">
         <label for="sip-ws-url"><span data-i18n="s.sip_ws_url">WebSocket URL</span> <span class="hint">wss://host:5443 (UniFi Talk) or ws://host:7778 (Loxone)</span></label>
@@ -673,7 +673,7 @@
     <!-- LG ThinQ -->
     <section class="card settings-card" data-category="smarthome" data-title="LG ThinQ smart appliances air conditioner washing machine">
       <h2><span data-i18n="s.lgthinq_title">LG ThinQ</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to your LG ThinQ account via the v1 cloud API. Use your LG account email and password to fetch tokens and user number automatically, or paste them manually. Password is never stored.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d19">Connects to your LG ThinQ account via the v1 cloud API. Use your LG account email and password to fetch tokens and user number automatically, or paste them manually. Password is never stored.</p>
 
       <div class="form-row">
         <label for="lgthinq-country"><span data-i18n="s.lgthinq_country">Country</span> <span class="hint">(match your LG account region)</span></label>
@@ -724,7 +724,7 @@
     <!-- IKEA Dirigera -->
     <section class="card settings-card" data-category="smarthome" data-title="IKEA Dirigera hub lights bulbs">
       <h2><span data-i18n="s.dirigera_title">IKEA Dirigera</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to an IKEA Dirigera hub (2022+). Discovers lights, outlets, blinds, motion sensors, and VINDSTYRKA air quality sensors. Requires a bearer token obtained once via <code>node scripts/dirigera-auth.js &lt;hub-ip&gt;</code> — press the button on the hub when prompted.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d20">Connects to an IKEA Dirigera hub (2022+). Discovers lights, outlets, blinds, motion sensors, and VINDSTYRKA air quality sensors. Requires a bearer token obtained once via <code>node scripts/dirigera-auth.js &lt;hub-ip&gt;</code> — press the button on the hub when prompted.</p>
 
       <div class="form-row">
         <label for="dirigera-host" data-i18n="s.dirigera_host">Hub Host / IP</label>
@@ -745,7 +745,7 @@
     <!-- IKEA Tradfri -->
     <section class="card settings-card" data-category="smarthome" data-title="IKEA Tradfri gateway lights">
       <h2><span data-i18n="s.tradfri_title">IKEA Tradfri</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to an older IKEA Tradfri gateway via CoAP/DTLS. Requires <code>npm install node-tradfri-client</code>. First run: enter the security code from the sticker on the gateway — generated identity and PSK are printed to the server log. Subsequent runs: leave the code blank and fill in identity + PSK.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d21">Connects to an older IKEA Tradfri gateway via CoAP/DTLS. Requires <code>npm install node-tradfri-client</code>. First run: enter the security code from the sticker on the gateway — generated identity and PSK are printed to the server log. Subsequent runs: leave the code blank and fill in identity + PSK.</p>
 
       <div class="form-row">
         <label for="tradfri-host" data-i18n="s.tradfri_host">Gateway Host / IP</label>
@@ -773,7 +773,7 @@
     <!-- BoneIO -->
     <section class="card settings-card" data-category="controllers" data-title="BoneIO relay controller MQTT">
       <h2><span data-i18n="s.boneio_title">BoneIO</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to a BoneIO controller via MQTT. Relays, inputs, and sensors are auto-discovered through Home Assistant MQTT discovery. Leave host blank to use the Cerbo GX MQTT broker.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d22">Connects to a BoneIO controller via MQTT. Relays, inputs, and sensors are auto-discovered through Home Assistant MQTT discovery. Leave host blank to use the Cerbo GX MQTT broker.</p>
 
       <div class="form-row">
         <label for="boneio-host"><span data-i18n="s.boneio_host">MQTT Host / IP</span> <span class="hint" data-i18n="s.boneio_host_hint">(leave blank to reuse Cerbo GX broker)</span></label>
@@ -794,7 +794,7 @@
     <!-- SmartBob -->
     <section class="card settings-card" data-category="controllers" data-title="SmartBob MQTT sensors switches automation">
       <h2>SmartBob <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to SmartBob via MQTT. Add the broker address and define each entity with its state topic, optional command topic, and type.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d23">Connects to SmartBob via MQTT. Add the broker address and define each entity with its state topic, optional command topic, and type.</p>
 
       <div class="form-row">
         <label for="smartbob-name" data-i18n="s2.device_name">Device Name</label>
@@ -831,7 +831,7 @@
     <!-- Arduino MQTT -->
     <section class="card settings-card" data-category="controllers" data-title="Arduino MQTT sensors switches microcontroller ESP32 ESP8266">
       <h2>Arduino / Generic MQTT <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Subscribe to any MQTT topic and map JSON fields to sensor readings or controllable switches. Works with Arduino, ESP32, Tasmota custom firmware, or any device publishing JSON over MQTT.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d24">Subscribe to any MQTT topic and map JSON fields to sensor readings or controllable switches. Works with Arduino, ESP32, Tasmota custom firmware, or any device publishing JSON over MQTT.</p>
 
       <div class="form-group">
         <label for="arduino-host" data-i18n="s2.mqtt_broker_host">MQTT Broker Host <span class="hint">(leave blank to reuse the main MQTT broker)</span></label>
@@ -881,7 +881,7 @@
     <!-- ESPHome -->
     <section class="card settings-card" data-category="controllers" data-title="ESPHome ESP32 ESP8266 sensors switches smart home">
       <h2>ESPHome <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to ESP32/ESP8266 devices running ESPHome with the <code>web_server:</code> component enabled. Sensors, switches, binary sensors, lights, and covers are auto-discovered via the device event stream.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d25">Connects to ESP32/ESP8266 devices running ESPHome with the <code>web_server:</code> component enabled. Sensors, switches, binary sensors, lights, and covers are auto-discovered via the device event stream.</p>
 
       <div id="esphome-devices-list"></div>
       <button class="btn btn-secondary" id="btn-add-esphome" data-i18n="s2.add_device">+ Add Device</button>
@@ -895,7 +895,7 @@
     <!-- Shelly -->
     <section class="card settings-card" data-category="controllers" data-title="Shelly smart plug switch relay">
       <h2><span data-i18n="s.shelly_title">Shelly</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Add Shelly Gen1 and Gen2 smart devices by IP address. Switches, dimmers, plugs, and sensors are auto-detected and polled every 30 s.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d26">Add Shelly Gen1 and Gen2 smart devices by IP address. Switches, dimmers, plugs, and sensors are auto-detected and polled every 30 s.</p>
 
       <div id="shelly-devices-list"></div>
       <button class="btn btn-secondary" id="btn-add-shelly" data-i18n="common.add_device">+ Add Device</button>
@@ -909,7 +909,7 @@
     <!-- BroadLink RM4 IR/RF -->
     <section class="card settings-card" data-category="controllers" data-title="BroadLink RM4 IR RF remote control codes">
       <h2><span data-i18n="s.broadlink_title">BroadLink RM4 IR/RF</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Control BroadLink RM4 Pro / RM4 Mini IR blasters and RF radio transmitters. Learn IR and RF codes by name, store them locally, and trigger them from the dashboard or via API. MAC address is printed on the device label.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d27">Control BroadLink RM4 Pro / RM4 Mini IR blasters and RF radio transmitters. Learn IR and RF codes by name, store them locally, and trigger them from the dashboard or via API. MAC address is printed on the device label.</p>
 
       <div id="broadlink-devices-list"></div>
       <button class="btn btn-secondary" id="btn-add-broadlink" data-i18n="s.broadlink_add">+ Add Device</button>
@@ -929,7 +929,7 @@
     <!-- Fibaro Home Center -->
     <section class="card settings-card" data-category="smarthome" data-title="Fibaro Home Center Z-Wave gateway">
       <h2><span data-i18n="s.fibaro_title">Fibaro Home Center</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Connects to a Fibaro Home Center 2 or Home Center 3 (Lite) via its local REST API. Devices are grouped by room into cards on the dashboard. Switches, dimmers, roller shutters, and sensors are discovered automatically.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d28">Connects to a Fibaro Home Center 2 or Home Center 3 (Lite) via its local REST API. Devices are grouped by room into cards on the dashboard. Switches, dimmers, roller shutters, and sensors are discovered automatically.</p>
 
       <div class="form-row">
         <label for="fibaro-host" data-i18n="s.fibaro_host">Host / IP Address</label>
@@ -958,7 +958,7 @@
     <!-- Waveshare Modbus TCP -->
     <section class="card settings-card" data-category="controllers" data-title="Waveshare Modbus TCP relay board">
       <h2><span data-i18n="s.waveshare_title">Waveshare Modbus TCP</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Control Waveshare relay boards over Modbus TCP (port 502). Supports any Waveshare relay module with Ethernet or a serial-to-Ethernet converter. Each board appears as a device card with individual relay toggles.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d29">Control Waveshare relay boards over Modbus TCP (port 502). Supports any Waveshare relay module with Ethernet or a serial-to-Ethernet converter. Each board appears as a device card with individual relay toggles.</p>
 
       <div id="waveshare-devices-list"></div>
       <button class="btn btn-secondary" id="btn-add-waveshare" data-i18n="s.waveshare_add">+ Add Board</button>
@@ -972,7 +972,7 @@
     <!-- Aeotec 360 Camera -->
     <section class="card settings-card" data-category="cameras" data-title="Aeotec 360 camera RTSP snapshot">
       <h2><span data-i18n="s.aeotec_title">Aeotec 360 Camera</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Add an Aeotec Indoor Camera 360° by local IP. Sensor data (motion, sound) flows via SmartThings; the local RTSP stream is added to your Cameras list for live video. Credentials are the ones you set in the Aeotec app.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d30">Add an Aeotec Indoor Camera 360° by local IP. Sensor data (motion, sound) flows via SmartThings; the local RTSP stream is added to your Cameras list for live video. Credentials are the ones you set in the Aeotec app.</p>
 
       <div class="form-row">
         <label for="aeotec-name" data-i18n="s.aeotec_name">Camera Name</label>
@@ -1016,7 +1016,7 @@
     <!-- Reolink PoE cameras -->
     <section class="card settings-card" data-category="cameras" data-title="Reolink PoE camera NVR RTSP snapshot ONVIF">
       <h2><span>Reolink</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Reolink PoE cameras and NVRs. One row per camera — use channel 0 for a standalone camera, or add a row per NVR channel. Snapshots are proxied so the password stays server-side.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d31">Reolink PoE cameras and NVRs. One row per camera — use channel 0 for a standalone camera, or add a row per NVR channel. Snapshots are proxied so the password stays server-side.</p>
 
       <div id="reolink-settings-list"></div>
 
@@ -1031,7 +1031,7 @@
     <!-- Cameras -->
     <section class="card settings-card" data-category="cameras" data-title="Cameras RTSP streams video">
       <h2 data-i18n="s.cameras_title">Cameras</h2>
-      <p class="section-desc">Cameras shown on the dashboard. Provide an RTSP URL and optionally a snapshot URL (HTTP JPEG endpoint) for live preview.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d32">Cameras shown on the dashboard. Provide an RTSP URL and optionally a snapshot URL (HTTP JPEG endpoint) for live preview.</p>
 
       <div id="cameras-settings-list"></div>
 
@@ -1046,7 +1046,7 @@
     <!-- FFmpeg RTSP Proxy -->
     <section class="card settings-card" data-category="cameras" data-title="FFmpeg RTSP proxy Loxone restream cameras">
       <h2>FFmpeg RTSP Proxy <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Re-streams each camera's RTSP URL through a built-in RTSP server so Loxone (or any RTSP client) can connect to a single clean URL. Requires <code>ffmpeg</code> installed on the server. Each camera gets a dedicated port starting at Base Port.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d33">Re-streams each camera's RTSP URL through a built-in RTSP server so Loxone (or any RTSP client) can connect to a single clean URL. Requires <code>ffmpeg</code> installed on the server. Each camera gets a dedicated port starting at Base Port.</p>
 
       <div class="form-row">
         <label data-i18n="s2.enable_rtsp_proxy">Enable RTSP Proxy</label>
@@ -1083,7 +1083,7 @@
     <!-- Relays -->
     <section class="card settings-card" data-category="system" data-title="Relays Cerbo GX switches">
       <h2><span data-i18n="s.relays_title">Relays</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Name the relays on your Cerbo GX. Leave empty to hide the relay card from the dashboard entirely.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d34">Name the relays on your Cerbo GX. Leave empty to hide the relay card from the dashboard entirely.</p>
 
       <div id="relays-settings-list"></div>
 
@@ -1093,7 +1093,7 @@
     <!-- HomeKit -->
     <section class="card settings-card" data-category="system" data-title="HomeKit Apple Home integration pairing">
       <h2 data-i18n="s.hk_title">HomeKit Integration</h2>
-      <p class="section-desc">Pair the relay bridge in Apple Home using the PIN below.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d35">Pair the relay bridge in Apple Home using the PIN below.</p>
 
       <div class="form-row">
         <label for="hk-pin" data-i18n="s.hk_pin">Pairing PIN</label>
@@ -1135,7 +1135,7 @@
     <!-- Security & Authentication -->
     <section class="card settings-card" data-category="system" data-title="Security authentication users passwords tokens HTTPS TLS">
       <h2 data-i18n="s.security_title">Security &amp; Authentication</h2>
-      <p class="section-desc">Manage users, API tokens, and HTTPS/TLS encryption.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d36">Manage users, API tokens, and HTTPS/TLS encryption.</p>
 
       <!-- Change Password -->
       <h3 class="settings-sub" data-i18n="s.change_pw">Change Password</h3>
@@ -1264,7 +1264,7 @@
     <!-- Backup & Restore -->
     <section class="card settings-card" data-category="system" data-title="Backup restore export import config">
       <h2 data-i18n="s.backup_title">Backup &amp; Restore</h2>
-      <p class="section-desc">Save your entire configuration to a file or restore from a previous backup.</p>
+      <p class="section-desc" data-i18n-html="sdesc.d37">Save your entire configuration to a file or restore from a previous backup.</p>
 
       <div class="backup-row">
         <div class="backup-item">
