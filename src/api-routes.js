@@ -324,6 +324,12 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     });
 
     router.get('/automation/notifications', (req, res) => res.json({ success: true, data: automation.getNotifications() }));
+    // External systems (Node-RED, scripts) can push a notification → toast + log
+    router.post('/automation/notifications', (req, res) => {
+      const { level, message, source } = req.body || {};
+      if (!message) return res.status(400).json({ success: false, error: 'message required' });
+      res.json({ success: true, data: automation.notify(level || 'info', String(message), source || 'api') });
+    });
     router.delete('/automation/notifications', (req, res) => {
       automation.clearNotifications();
       res.json({ success: true });
