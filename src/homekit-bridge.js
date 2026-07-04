@@ -738,12 +738,79 @@ function addCO2SensorService(accessory, name, storePath, store) {
 
 // ── Device accessory builders ──────────────────────────────────────────────
 
+/**
+ * Spa accessory (SmartTub): heat-only Thermostat (water temp / set temp /
+ * heater state) + subtyped Switch services for jet pumps and lights.
+ */
+function addSpaServices(acc, device, store) {
+  const key        = device.key;
+  const tempPath   = `${key}/water_temp`;
+  const setPath    = `${key}/set_temp`;
+  const heaterPath = `${key}/heater`;
+
+  const svc = acc.addService(Service.Thermostat, device.label);
+  svc.getCharacteristic(Characteristic.CurrentHeatingCoolingState)
+    .onGet(() => (store.get(heaterPath) === 1 ? 1 : 0));
+  svc.getCharacteristic(Characteristic.TargetHeatingCoolingState)
+    .setProps({ validValues: [1] }) // a spa only heats
+    .onGet(() => 1)
+    .onSet(() => {});
+  svc.getCharacteristic(Characteristic.CurrentTemperature)
+    .setProps({ minValue: 0, maxValue: 60 })
+    .onGet(() => clamp(store.get(tempPath) ?? 36, 0, 60));
+  svc.getCharacteristic(Characteristic.TargetTemperature)
+    .setProps({ minValue: 15, maxValue: 40, minStep: 0.5 })
+    .onGet(() => clamp(store.get(setPath) ?? 36, 15, 40))
+    .onSet(async (v) => {
+      try {
+        await device._writeCapability('setTemp', 'setTemperature', [v]);
+        store.update(setPath, v);
+      } catch (err) {
+        console.error(`[HomeKit] Spa set temp failed: ${err.message}`);
+        throw new hap.HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+      }
+    });
+  svc.getCharacteristic(Characteristic.TemperatureDisplayUnits).onGet(() => 0).onSet(() => {});
+
+  store.on('change', ({ key: k, value }) => {
+    if (k === tempPath)   svc.getCharacteristic(Characteristic.CurrentTemperature).updateValue(clamp(value, 0, 60));
+    if (k === setPath)    svc.getCharacteristic(Characteristic.TargetTemperature).updateValue(clamp(value, 15, 40));
+    if (k === heaterPath) svc.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(value === 1 ? 1 : 0);
+  });
+
+  // Jet pumps, blower and light zones as individual switches (subtyped)
+  const toggles = (device.sensors || []).filter(
+    (x) => x.controllable && (x.path.startsWith('pump_') || x.path.startsWith('light_')));
+  for (const x of toggles) {
+    const p  = `${key}/${x.path}`;
+    const sw = acc.addService(Service.Switch, `${device.label} ${x.name || x.path}`, x.path);
+    sw.getCharacteristic(Characteristic.On)
+      .onGet(() => store.get(p) === 1)
+      .onSet(async (v) => {
+        try {
+          await device._writeCapability(x.capabilityId, v ? 'on' : 'off');
+          store.update(p, v ? 1 : 0);
+        } catch (err) {
+          console.error(`[HomeKit] Spa ${x.path} failed: ${err.message}`);
+          throw new hap.HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+        }
+      });
+    store.on('change', ({ key: k, value }) => {
+      if (k === p) sw.getCharacteristic(Characteristic.On).updateValue(value === 1);
+    });
+  }
+}
+
 function buildDeviceAccessory(device, store) {
   const acc = new Accessory(device.label, makeUUID(device.key));
   const manufacturer = device.type === 'smartthings' ? 'Samsung SmartThings' : 'Victron Energy';
   setInfo(acc, manufacturer, device.label, device.key);
 
   for (const hkType of device.homekit) {
+    if (hkType === 'spa') {
+      addSpaServices(acc, device, store);
+    }
+
     if (hkType === 'temperature') {
       const s = device.sensors.find((s) => s.homekit === 'temperature');
       if (s) addTemperatureService(acc, `${device.label} Temperature`, `${device.key}/${s.path}`, store);

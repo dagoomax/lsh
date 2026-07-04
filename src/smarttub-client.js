@@ -129,7 +129,7 @@ class SmartTubClient {
       key:     deviceKey,
       label:   name,
       type:    'smarttub',
-      homekit: ['temperature'],
+      homekit: ['spa'], // Thermostat + pump/light switches (see homekit-bridge addSpaServices)
       sensors,
       _writeCapability: (capId, command, args = []) => this._writeCapability(spaId, capId, command, args),
     });
