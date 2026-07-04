@@ -25,6 +25,7 @@ class SmartTubClient {
     this._expiresAt   = 0;
 
     this._spas  = []; // { id, name }
+    this._lightOnMode = {}; // `${spaId}:${zone}` → 'WHITE' | 'ON' (exterior zones reject WHITE)
     this._timer = null;
   }
 
@@ -119,8 +120,10 @@ class SmartTubClient {
     }
 
     for (const l of lights) {
+      // Exterior zones only accept ON/OFF; interior zones use WHITE
+      this._lightOnMode[`${spaId}:${l.zone}`] = (l.exterior || l.zoneType === 'EXTERIOR') ? 'ON' : 'WHITE';
       sensors.push({
-        path: `light_${l.zone}`, name: `Light ${l.zone}`, type: 'boolean',
+        path: `light_${l.zone}`, name: `${l.exterior || l.zoneType === 'EXTERIOR' ? 'Exterior ' : ''}Light ${l.zone}`, type: 'boolean',
         controllable: true, capabilityId: `light:${l.zone}`, writeOn: 'on', writeOff: 'off',
       });
     }
@@ -155,8 +158,9 @@ class SmartTubClient {
     } else if (capId.startsWith('light:')) {
       const zone = capId.slice('light:'.length);
       const on   = command === 'on';
+      const onMode = this._lightOnMode[`${spaId}:${zone}`] || 'WHITE';
       await this._req('PATCH', `spas/${spaId}/lights/${zone}`,
-        on ? { intensity: 100, mode: 'WHITE' } : { intensity: 0, mode: 'OFF' });
+        on ? { intensity: 100, mode: onMode } : { intensity: 0, mode: 'OFF' });
     }
     // Reflect the change shortly after
     setTimeout(() => this._poll().catch(() => {}), 2000);
