@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { resolveIcon } from './Icons'
 
 // ── Advanced device popup: full controls + history graphs ──────────────────
 // Design language: glow blobs, gradient border (CSS mask), gradient title,
@@ -261,7 +262,7 @@ export default function DeviceModal({ device, onClose, onCommand }) {
                 width: 44, height: 44, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
                 background: 'linear-gradient(135deg, rgba(212,175,55,0.20), rgba(154,125,30,0.15))',
                 border: '1px solid rgba(212,175,55,0.35)', boxShadow: '0 0 20px rgba(212,175,55,0.18)',
-              }}>{device.icon || '📟'}</div>
+              }}>{(() => { const I = resolveIcon(device); return <I size={24} color="#F5E098"/> })()}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',

@@ -458,6 +458,23 @@ const TYPE_MAP = {
   denon:        DenonIcon,
   arduino:      ArduinoIcon,
   suppla:       SuplaIcon,
+  smarttub:     SpaIcon,
+  zway:         ZWaveIcon,
+  wirenboard:   DinRailIcon,
+  dreame:       RobotVacuumIcon,
+  roborock:     RobotVacuumIcon,
+  esphome:      ChipIcon,
+  shelly:       PlugIcon,
+  knx:          KnxBusIcon,
+  loxone:       LoxoneIcon,
+  lgthinq:      LgAppliianceIcon,
+  mc6:          ThermostatIcon,
+  broadlink:    RemoteIcon,
+  boneio:       DinRailIcon,
+  waveshare:    RelayOutputIcon,
+  homey:        HomeIcon,
+  dirigera:     BulbIcon,
+  tradfri:      BulbIcon,
 }
 
 function readingIcon(r = {}) {
@@ -468,9 +485,147 @@ function readingIcon(r = {}) {
   return null
 }
 
+
+// ── Individual device icons (stroke style matches the set above) ────────────
+
+export function SpaIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12h18v4a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-4z"/>
+      <path d="M6 12v-1a2 2 0 0 1 4 0v1M14 12v-1a2 2 0 0 1 4 0v1"/>
+      <path d="M7 8c0-1 .8-1.4.8-2.4S7 4.3 7 3.5M11 8c0-1 .8-1.4.8-2.4S11 4.3 11 3.5M15 8c0-1 .8-1.4.8-2.4S15 4.3 15 3.5"/>
+    </svg>
+  )
+}
+
+export function ZWaveIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M8 9h8l-8 6h8"/>
+    </svg>
+  )
+}
+
+export function DinRailIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2"/>
+      <path d="M8 8v8M12 8v8M16 8v8"/>
+      <path d="M4 12h2M18 12h2"/>
+    </svg>
+  )
+}
+
+export function RobotVacuumIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <circle cx="12" cy="12" r="3.5"/>
+      <path d="M12 3v3M5.6 18.4l2.1-2.1M18.4 18.4l-2.1-2.1"/>
+    </svg>
+  )
+}
+
+export function ChipIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="7" y="7" width="10" height="10" rx="1.5"/>
+      <path d="M10 7V4M14 7V4M10 20v-3M14 20v-3M7 10H4M7 14H4M20 10h-3M20 14h-3"/>
+    </svg>
+  )
+}
+
+export function KnxBusIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12h18"/>
+      <circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/>
+      <path d="M7 10V6h4M17 14v4h-4"/>
+    </svg>
+  )
+}
+
+export function LoxoneIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2.5"/>
+      <rect x="9.5" y="9.5" width="5" height="5" rx="1" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
+export function LgAppliianceIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M9 8v8h4M15 8a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2"/>
+    </svg>
+  )
+}
+
+export function ShieldIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6l7-3z"/>
+      <path d="M9 12l2 2 4-4"/>
+    </svg>
+  )
+}
+
+export function RelayOutputIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+      <path d="M7 12h3M14 8.5L10 12M16 12h1"/>
+      <path d="M14 5l1.5 2.5L14 10"/>
+    </svg>
+  )
+}
+
+export function VenetianIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="3" width="16" height="18" rx="1.5"/>
+      <path d="M4 7h16M4 11h16M4 15h16"/>
+      <circle cx="12" cy="18.2" r="1" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
+export function AwningIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18"/>
+      <path d="M3 6l2 6h14l2-6"/>
+      <path d="M5 12v6M19 12v6"/>
+      <path d="M8 12c0 1.2 1 2 2 2s2-.8 2-2c0 1.2 1 2 2 2s2-.8 2-2"/>
+    </svg>
+  )
+}
+
 export function resolveIcon(device) {
-  return LABEL_MAP[device.label?.toLowerCase()]
-      || TYPE_MAP[device.type]
+  const custom = LABEL_MAP[device.label?.toLowerCase()]
+  if (custom) return custom
+
+  // Per-device specifics — kind and role, not just integration type
+  if (device.type === 'satel') {
+    const key = device.key || ''
+    if (key.includes('/partition/')) return ShieldIcon
+    if (key.includes('/output/'))    return RelayOutputIcon
+    const hk = device.homekit || []
+    if (hk.includes('motion'))  return MotionIcon
+    if (hk.includes('contact')) return DoorIcon
+    return SensorIcon
+  }
+  if (device.type === 'somfy') {
+    const l = (device.label || '').toLowerCase()
+    if (/żaluzj|zaluzj|venetian|blind/.test(l))       return VenetianIcon
+    if (/żagiel|zagiel|awning|screen|markiz/.test(l)) return AwningIcon
+    return ShutterIcon
+  }
+
+  return TYPE_MAP[device.type]
       || readingIcon(device.readings)
       || HomeIcon
 }
