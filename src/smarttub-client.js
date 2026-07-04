@@ -146,6 +146,11 @@ class SmartTubClient {
       await this._req('PATCH', `spas/${spaId}/config`, { heatMode: mode });
     } else if (capId.startsWith('pump:')) {
       const pumpId = capId.slice('pump:'.length);
+      // The API only offers toggle — skip if the pump is already in the
+      // desired state so scenes/HomeKit "on" commands are idempotent
+      const cur = this._store.get(`smarttub/${spaId}/pump_${pumpId}`);
+      const want = command === 'on' ? 1 : 0;
+      if (cur === want) return;
       await this._req('POST', `spas/${spaId}/pumps/${pumpId}/toggle`);
     } else if (capId.startsWith('light:')) {
       const zone = capId.slice('light:'.length);
