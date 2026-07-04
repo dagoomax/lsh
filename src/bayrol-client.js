@@ -6,13 +6,16 @@ const platformStatus = require('./platform-status');
 
 const BASE_HOST = 'www.bayrol-poolaccess.de';
 
-// MQTT value UIDs
-const UID_STATUS = '1';
-const UID_PH     = '4.78';
-const UID_ORP    = '4.82';
-const UID_TEMP   = '4.98';
-const UID_SALT   = '4.100';
-const VALUE_UIDS = [UID_STATUS, UID_PH, UID_ORP, UID_TEMP, UID_SALT];
+// MQTT value UIDs (per tdenolle/bayrol-poolaccess-mqtt entity map)
+const UID_STATUS  = '1';
+const UID_PH      = '4.78';
+const UID_ORP     = '4.82';
+const UID_TEMP    = '4.98';
+const UID_SALT    = '4.100'; // ASE (salt electrolysis) devices only
+const UID_PH_DOS  = '4.89';  // pH dosing rate %
+const UID_CL_DOS  = '4.90';  // chlorine dosing rate % (ACL / Automatic Cl-pH)
+const UID_SE_PROD = '4.91';  // electrolysis production rate % (ASE)
+const VALUE_UIDS = [UID_STATUS, UID_PH, UID_ORP, UID_TEMP, UID_SALT, UID_PH_DOS, UID_CL_DOS, UID_SE_PROD];
 
 class BayrolClient {
   constructor(config, store, sensorRegistry) {
@@ -96,18 +99,30 @@ class BayrolClient {
 
     console.log(`[Bayrol] ${name} serial=${deviceSerial} — connecting MQTT`);
 
+    // Device family from the serial: ACL = Automatic Cl-pH (liquid chlorine,
+    // regulated via redox — dosing rates, no salt), ASE = Automatic SALT.
+    const isACL = /ACL/i.test(deviceSerial);
+    const isASE = /ASE/i.test(deviceSerial);
+
+    const sensors = [
+      { path: 'ph',          label: 'pH',          unit: 'pH',  precision: 1 },
+      { path: 'orp',         label: 'ORP',         unit: 'mV',  precision: 0 },
+      { path: 'temperature', label: 'Temperature', unit: '°C',  precision: 1, homekit: 'temperature' },
+      { path: 'ph_dosing',   label: 'pH Dosing',   unit: '%',   precision: 0 },
+    ];
+    if (isACL) sensors.push({ path: 'cl_dosing', label: 'Chlorine Dosing', unit: '%', precision: 0 });
+    if (isASE) sensors.push(
+      { path: 'salt',       label: 'Salt',       unit: 'g/L', precision: 1 },
+      { path: 'production', label: 'Production', unit: '%',   precision: 0 });
+    if (!isACL && !isASE) sensors.push({ path: 'salt', label: 'Salt', unit: 'g/L', precision: 1 }); // unknown family — keep legacy shape
+
     const deviceKey = `bayrol/${cid}`;
     this._registry.registerDevice({
       key:     deviceKey,
       label:   name,
       type:    'bayrol',
       homekit: ['temperature'],
-      sensors: [
-        { path: 'ph',          label: 'pH',          unit: 'pH',  precision: 1 },
-        { path: 'orp',         label: 'ORP',         unit: 'mV',  precision: 0 },
-        { path: 'temperature', label: 'Temperature', unit: '°C',  precision: 1, homekit: 'temperature' },
-        { path: 'salt',        label: 'Salt',        unit: 'g/L', precision: 1 },
-      ],
+      sensors,
     });
 
     this._startMqtt(deviceKey, name, accessToken, deviceSerial);
@@ -144,11 +159,14 @@ class BayrolClient {
         const data = JSON.parse(buf.toString());
         const v    = data.v;
 
-        if      (uid === UID_PH)   this._store.update(`${deviceKey}/ph`,          Number(v) / 10);
-        else if (uid === UID_ORP)  this._store.update(`${deviceKey}/orp`,         Number(v));
-        else if (uid === UID_TEMP) this._store.update(`${deviceKey}/temperature`, Number(v) / 10);
-        else if (uid === UID_SALT) this._store.update(`${deviceKey}/salt`,        Number(v) / 10);
-        // UID_STATUS ("1"): v is a string like "17.4" — skip for now
+        if      (uid === UID_PH)      this._store.update(`${deviceKey}/ph`,          Number(v) / 10);
+        else if (uid === UID_ORP)     this._store.update(`${deviceKey}/orp`,         Number(v));
+        else if (uid === UID_TEMP)    this._store.update(`${deviceKey}/temperature`, Number(v) / 10);
+        else if (uid === UID_SALT)    this._store.update(`${deviceKey}/salt`,        Number(v) / 10);
+        else if (uid === UID_PH_DOS)  this._store.update(`${deviceKey}/ph_dosing`,   Number(v));
+        else if (uid === UID_CL_DOS)  this._store.update(`${deviceKey}/cl_dosing`,   Number(v));
+        else if (uid === UID_SE_PROD) this._store.update(`${deviceKey}/production`,  Number(v));
+        // UID_STATUS ("1"): v > 17.0 means online — skip for now
       } catch (err) {
         console.error(`[Bayrol] Parse error (${topic}): ${err.message}`);
       }

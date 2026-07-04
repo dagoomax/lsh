@@ -245,7 +245,7 @@ The image is a multi-stage build (Node 20, `ffmpeg` for the RTSP proxy, `tini` f
 | `knx` | No | KNX bus via KNXnet/IP gateway (group address mapping) |
 | `fibaro` | No | Fibaro Home Center 2 / 3 (rooms, switches, dimmers, sensors) |
 | `somfy` | No | Somfy TaHoma, local API or Overkiz cloud (roller shutters, awnings, gates) |
-| `bayrol` | No | Bayrol Pool Manager Connect (pH, ORP, temperature, salt via MQTT) |
+| `bayrol` | No | Bayrol Pool Manager Connect / Automatic Cl-pH / SALT (pH, ORP, temperature, dosing rates, salt via MQTT) |
 | `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
 | `smarttub` | No | SmartTub hot tubs (Jacuzzi / Sundance / Watkins) — water/set temperature, heat mode, pumps, lights via cloud API |
 | `zway` | No | Z-Way / RaZberry — Z-Wave switches, dimmers, thermostats, locks, sensors via ZAutomation REST API |
@@ -597,7 +597,9 @@ Connects to **Bayrol Pool Manager Connect** devices via the [bayrol-poolaccess.d
 4. GET `/api/?code=<code>` → exchange for `accessToken` + `deviceSerial`
 5. Connect MQTT to `wss://www.bayrol-poolaccess.de:8083` with `accessToken` as username
 
-**Sensors:** pH (uid `4.78`, raw÷10), ORP/Redox (uid `4.82`, mV), Temperature (uid `4.98`, raw÷10 °C), Salt (uid `4.100`, raw÷10 g/L).
+**Sensors:** pH (uid `4.78`, raw÷10), ORP/Redox (uid `4.82`, mV), Temperature (uid `4.98`, raw÷10 °C), pH dosing rate (uid `4.89`, %). Device-family extras detected from the serial: **Automatic Cl-pH (ACL)** adds Chlorine dosing rate (uid `4.90`, %); **Automatic SALT (ASE)** adds Salt (uid `4.100`, raw÷10 g/L) and electrolysis Production rate (uid `4.91`, %).
+
+> Note: the Automatic Cl-pH has no free-chlorine (mg/l) probe — chlorine is regulated from the redox (ORP) reading; the dosing rate shows how actively chlorine is being added.
 
 **`poolName`** — display name for the tile. If omitted, auto-named `Pool <cid>`.
 
