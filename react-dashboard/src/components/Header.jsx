@@ -1,3 +1,5 @@
+import { LANGUAGES, getLang, setLang } from '../i18n'
+
 const NAV = [
   { label: 'Dashboard', href: '/react/',        active: true  },
   { label: 'Settings',  href: '/settings.html', active: false },
@@ -45,6 +47,19 @@ export default function Header({ connection, connected }) {
 
       {/* Connection status + source (right) — vanilla green/red + neutral chip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <select
+          value={getLang()}
+          onChange={e => setLang(e.target.value)}
+          title="Language"
+          style={{
+            background: 'rgba(255,255,255,0.06)', color: 'var(--text2, #8b949e)',
+            border: '1px solid #21262d', borderRadius: 8,
+            padding: '4px 6px', fontSize: 12, fontWeight: 600, cursor: 'pointer', outline: 'none',
+          }}>
+          {LANGUAGES.map(([code, label]) => (
+            <option key={code} value={code} style={{ background: '#161b22' }}>{label}</option>
+          ))}
+        </select>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6,
           background: live ? 'rgba(63,185,80,0.15)' : 'rgba(248,81,73,0.15)',
           border: `1px solid ${live ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)'}`,

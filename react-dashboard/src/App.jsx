@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import './styles/global.css'
 import { useLSH }            from './hooks/useLSH'
 import Header                from './components/Header'
@@ -9,6 +10,14 @@ import DeviceList, { Toast } from './components/DeviceList'
 // split screen between devices and energy.
 export default function App() {
   const { energy, devices, connection, connected, platforms, toggleRelay } = useLSH()
+
+  // Re-render the whole tree when the language changes (gt() reads it live)
+  const [, setLangTick] = useState(0)
+  useEffect(() => {
+    const bump = () => setLangTick(t => t + 1)
+    window.addEventListener('lsh-lang-changed', bump)
+    return () => window.removeEventListener('lsh-lang-changed', bump)
+  }, [])
 
   return (
     <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--bg)', overflow:'hidden' }}>

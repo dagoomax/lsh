@@ -39,6 +39,17 @@ const DICT = {
         collecting: 'Збирання — перевірте за кілька хвилин', showing: 'Перші 30 із {n} серій — скористайтеся фільтрами.' },
 }
 
+export const LANGUAGES = [
+  ['en', 'EN'], ['pl', 'PL'], ['fr', 'FR'], ['de', 'DE'], ['es', 'ES'], ['it', 'IT'], ['uk', 'UA'],
+]
+
+export function getLang() { return lang() }
+
+export function setLang(l) {
+  try { localStorage.setItem('lsh-lang', l) } catch { /* ignore */ }
+  window.dispatchEvent(new Event('lsh-lang-changed'))
+}
+
 function lang() {
   try {
     const stored = localStorage.getItem('lsh-lang')
