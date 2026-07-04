@@ -69,7 +69,7 @@
     </button>
     <button class="main-tab-btn" data-tab="automation">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M12 3v3M18.4 5.6l-2.1 2.1M21 12h-3M18.4 18.4l-2.1-2.1M12 21v-3M5.6 18.4l2.1-2.1M3 12h3M5.6 5.6l2.1 2.1"/><circle cx="12" cy="12" r="3"/></svg>
-      Automation
+      <span data-i18n="auto.tab">Automation</span>
       <span class="tab-count" id="tab-count-automation">0</span>
     </button>
   </div>
@@ -544,29 +544,29 @@
 
       <section class="card auto-card">
         <div class="auto-hdr">
-          <h2>🎬 Scenes</h2>
-          <button class="btn auto-add-btn" id="scene-add-btn">＋ Add Scene</button>
+          <h2>🎬 <span data-i18n="auto.scenes">Scenes</span></h2>
+          <button class="btn auto-add-btn" id="scene-add-btn" data-i18n="auto.add_scene">＋ Add Scene</button>
         </div>
         <div id="scenes-grid" class="scenes-grid"></div>
-        <div class="auto-empty" id="scenes-empty">No scenes yet — create one-tap presets that set several devices at once.</div>
+        <div class="auto-empty" id="scenes-empty" data-i18n="auto.scenes_empty">No scenes yet — create one-tap presets that set several devices at once.</div>
       </section>
 
       <section class="card auto-card">
         <div class="auto-hdr">
-          <h2>⚡ Rules</h2>
-          <button class="btn auto-add-btn" id="rule-add-btn">＋ Add Rule</button>
+          <h2>⚡ <span data-i18n="auto.rules">Rules</span></h2>
+          <button class="btn auto-add-btn" id="rule-add-btn" data-i18n="auto.add_rule">＋ Add Rule</button>
         </div>
         <div id="rules-list" class="rules-list"></div>
-        <div class="auto-empty" id="rules-empty">No rules yet — trigger actions or alerts when a sensor crosses a threshold.</div>
+        <div class="auto-empty" id="rules-empty" data-i18n="auto.rules_empty">No rules yet — trigger actions or alerts when a sensor crosses a threshold.</div>
       </section>
 
       <section class="card auto-card">
         <div class="auto-hdr">
-          <h2>🔔 Notifications</h2>
-          <button class="btn auto-clear-btn" id="notif-clear-btn">Clear</button>
+          <h2>🔔 <span data-i18n="auto.notifications">Notifications</span></h2>
+          <button class="btn auto-clear-btn" id="notif-clear-btn" data-i18n="auto.clear">Clear</button>
         </div>
         <div id="notif-list" class="notif-list"></div>
-        <div class="auto-empty" id="notif-empty">No notifications yet.</div>
+        <div class="auto-empty" id="notif-empty" data-i18n="auto.notif_empty">No notifications yet.</div>
       </section>
 
     </div>
@@ -707,15 +707,15 @@
     <div class="room-modal-backdrop" id="auto-modal-backdrop"></div>
     <div class="room-modal-box auto-modal-box">
       <div class="room-modal-header">
-        <span class="room-modal-title" id="auto-modal-title">New Rule</span>
+        <span class="room-modal-title" id="auto-modal-title" data-i18n="auto.new_rule">New Rule</span>
         <button class="room-modal-close" id="auto-modal-close" aria-label="Close">✕</button>
       </div>
       <div class="room-modal-body">
-        <label class="room-field-label">Name</label>
+        <label class="room-field-label" data-i18n="auto.name">Name</label>
         <input class="room-name-input" id="auto-name" type="text" placeholder="e.g. Spa overheating alert" maxlength="60" autocomplete="off">
 
         <div id="auto-trigger-section">
-          <label class="room-field-label">When</label>
+          <label class="room-field-label" data-i18n="auto.when">When</label>
           <div class="auto-trigger-row">
             <select id="auto-trig-device" class="auto-select"></select>
             <select id="auto-trig-sensor" class="auto-select"></select>
@@ -730,19 +730,19 @@
             </select>
             <input id="auto-trig-value" class="auto-input auto-input-val" type="text" placeholder="value">
           </div>
-          <label class="room-field-label">Cooldown (seconds between firings)</label>
+          <label class="room-field-label" data-i18n="auto.cooldown">Cooldown (seconds between firings)</label>
           <input id="auto-cooldown" class="auto-input" type="number" min="0" value="60">
         </div>
 
-        <label class="room-field-label">Then</label>
+        <label class="room-field-label" data-i18n="auto.then">Then</label>
         <div id="auto-actions"></div>
-        <button class="btn auto-add-action-btn" id="auto-add-action">＋ Add action</button>
+        <button class="btn auto-add-action-btn" id="auto-add-action" data-i18n="auto.add_action">＋ Add action</button>
       </div>
       <div class="room-modal-footer">
-        <button class="btn room-btn-delete" id="auto-btn-delete" style="display:none">Delete</button>
+        <button class="btn room-btn-delete" id="auto-btn-delete" style="display:none" data-i18n="auto.delete">Delete</button>
         <div style="flex:1"></div>
-        <button class="btn room-btn-cancel" id="auto-btn-cancel">Cancel</button>
-        <button class="btn room-btn-save" id="auto-btn-save">Save</button>
+        <button class="btn room-btn-cancel" id="auto-btn-cancel" data-i18n="auto.cancel">Cancel</button>
+        <button class="btn room-btn-save" id="auto-btn-save" data-i18n="auto.save">Save</button>
       </div>
     </div>
   </div>

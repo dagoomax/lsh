@@ -1893,6 +1893,8 @@ function updateAutoTabCount() {
   if (el) el.textContent = autoRules.length + autoScenes.length;
 }
 
+const at = (k, fb) => { const v = window.t ? window.t('auto.' + k) : null; return v && v !== 'auto.' + k ? v : fb; };
+
 // ── Scenes ──────────────────────────────────────────────────────────────────
 const SCENE_ICONS = ['🎬', '🌙', '☀️', '🏠', '🛁', '🎉', '📺', '🔥', '❄️', '🔒'];
 
@@ -1907,7 +1909,7 @@ function renderScenes() {
       <button class="scene-run" data-scene-run="${s.id}">
         <span class="scene-icon">${s.icon || '🎬'}</span>
         <span class="scene-name">${esc(s.name)}</span>
-        <span class="scene-count">${(s.actions || []).length} action${(s.actions || []).length === 1 ? '' : 's'}</span>
+        <span class="scene-count">${(s.actions || []).length} ${(s.actions || []).length === 1 ? at('action', 'action') : at('actions', 'actions')}</span>
       </button>
       <button class="scene-edit" data-scene-edit="${s.id}" title="Edit">✎</button>
     </div>`).join('');
@@ -1967,7 +1969,7 @@ rulesList?.addEventListener('click', async (e) => {
   }
   const del = e.target.closest('[data-rule-del]');
   if (del) {
-    if (!confirm('Delete this rule?')) return;
+    if (!confirm(at('confirm_rule', 'Delete this rule?'))) return;
     await fetch(`/api/automation/rules/${del.dataset.ruleDel}`, { method: 'DELETE' });
     autoRules = autoRules.filter((r) => r.id !== del.dataset.ruleDel);
     renderRules(); updateAutoTabCount();
@@ -2083,7 +2085,8 @@ function openAutoModal(kind, obj) {
   autoEditKind = kind;
   autoEditObj  = obj ? JSON.parse(JSON.stringify(obj)) : null;
   document.getElementById('auto-modal-title').textContent =
-    obj ? (kind === 'rule' ? 'Edit Rule' : 'Edit Scene') : (kind === 'rule' ? 'New Rule' : 'New Scene');
+    obj ? (kind === 'rule' ? at('edit_rule', 'Edit Rule') : at('edit_scene', 'Edit Scene'))
+        : (kind === 'rule' ? at('new_rule', 'New Rule') : at('new_scene', 'New Scene'));
   document.getElementById('auto-name').value = obj?.name || '';
   document.getElementById('auto-trigger-section').style.display = kind === 'rule' ? '' : 'none';
   document.getElementById('auto-btn-delete').style.display = obj ? '' : 'none';
@@ -2166,7 +2169,7 @@ function collectActions() {
 
 async function saveAutoModal() {
   const name = document.getElementById('auto-name').value.trim();
-  if (!name) return alert('Name is required');
+  if (!name) return alert(at('name_required', 'Name is required'));
   const actions = collectActions();
 
   if (autoEditKind === 'rule') {
@@ -2175,7 +2178,7 @@ async function saveAutoModal() {
     const key = trigDevEl.value === '__custom' || trigSenEl.tagName === 'INPUT'
       ? trigSenEl.value.trim()
       : `${trigDevEl.value}/${trigSenEl.value}`;
-    if (!key || key.endsWith('/')) return alert('Trigger sensor is required');
+    if (!key || key.endsWith('/')) return alert(at('trigger_required', 'Trigger sensor is required'));
     const rule = {
       ...(autoEditObj || {}),
       name, actions,
@@ -2202,7 +2205,7 @@ async function saveAutoModal() {
 
 async function deleteAutoModal() {
   if (!autoEditObj?.id) return closeAutoModal();
-  if (!confirm(`Delete this ${autoEditKind}?`)) return;
+  if (!confirm(autoEditKind === 'rule' ? at('confirm_rule', 'Delete this rule?') : at('confirm_scene', 'Delete this scene?'))) return;
   await fetch(`/api/automation/${autoEditKind}s/${autoEditObj.id}`, { method: 'DELETE' });
   closeAutoModal();
   loadAutomation();
