@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { resolveIcon } from './Icons'
+import { gt } from '../i18n'
 
 // ── Advanced device popup: full controls + history graphs ──────────────────
 // Design language: glow blobs, gradient border (CSS mask), gradient title,
@@ -106,7 +107,7 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
         {view === null && <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted,#8b949e)', fontSize: 12 }}>Loading…</div>}
         {view !== null && view.pts.length < 2 && (
           <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted,#8b949e)', fontSize: 12 }}>
-            Collecting data — check back in a few minutes
+            {gt('collecting', 'Collecting data — check back in a few minutes')}
           </div>
         )}
         {view !== null && view.pts.length > 1 && (

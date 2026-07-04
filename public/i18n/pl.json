@@ -325,5 +325,21 @@
     "waveshare_slave_hint": "(domyślnie 1)",
     "waveshare_count": "Liczba przekaźników",
     "waveshare_count_hint": "(liczba przekaźników na karcie)"
+  },
+  "graphs": {
+    "tab": "Wykresy",
+    "devices": "Urządzenia",
+    "active": "Aktywne teraz",
+    "series": "Śledzone serie",
+    "avg_temp": "Śr. temperatura",
+    "battery": "Bateria",
+    "solar": "Solar",
+    "filter_all": "Wszystkie",
+    "filter_temp": "Temperatura",
+    "filter_power": "Moc i energia",
+    "filter_humid": "Wilgotność",
+    "filter_other": "Inne",
+    "empty": "Brak czujników liczbowych — historia gromadzi się podczas pracy serwera.",
+    "collecting": "Zbieranie…"
   }
 }

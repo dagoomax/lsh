@@ -325,5 +325,21 @@
     "waveshare_slave_hint": "(por defecto 1)",
     "waveshare_count": "Número de relés",
     "waveshare_count_hint": "(número de relés en la placa)"
+  },
+  "graphs": {
+    "tab": "Gráficos",
+    "devices": "Dispositivos",
+    "active": "Activos ahora",
+    "series": "Series registradas",
+    "avg_temp": "Temp. media",
+    "battery": "Batería",
+    "solar": "Solar",
+    "filter_all": "Todos",
+    "filter_temp": "Temperatura",
+    "filter_power": "Potencia y energía",
+    "filter_humid": "Humedad",
+    "filter_other": "Otros",
+    "empty": "Sin sensores numéricos aún — el historial se acumula con el servidor en marcha.",
+    "collecting": "Recopilando…"
   }
 }

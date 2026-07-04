@@ -325,5 +325,21 @@
     "waveshare_slave_hint": "(predefinito 1)",
     "waveshare_count": "Numero di relè",
     "waveshare_count_hint": "(numero di relè sulla scheda)"
+  },
+  "graphs": {
+    "tab": "Grafici",
+    "devices": "Dispositivi",
+    "active": "Attivi ora",
+    "series": "Serie tracciate",
+    "avg_temp": "Temp. media",
+    "battery": "Batteria",
+    "solar": "Solare",
+    "filter_all": "Tutti",
+    "filter_temp": "Temperatura",
+    "filter_power": "Potenza ed energia",
+    "filter_humid": "Umidità",
+    "filter_other": "Altri",
+    "empty": "Nessun sensore numerico — lo storico si accumula durante il funzionamento.",
+    "collecting": "Raccolta…"
   }
 }

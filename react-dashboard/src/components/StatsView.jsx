@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react'
 import { Chart } from './DeviceModal'
 import { ChartIcon } from './Icons'
+import { gt } from '../i18n'
 
 // ── Graphs & Statistics tab — cross-device history charts + summary stats ──
 
 const FILTERS = [
-  { id: 'all',   label: 'All' },
-  { id: 'temp',  label: '🌡 Temperature' },
-  { id: 'power', label: '⚡ Power & Energy' },
-  { id: 'humid', label: '💧 Humidity' },
-  { id: 'other', label: '📈 Other' },
+  { id: 'all',   label: () => gt('filter_all', 'All') },
+  { id: 'temp',  label: () => '🌡 ' + gt('filter_temp', 'Temperature') },
+  { id: 'power', label: () => '⚡ ' + gt('filter_power', 'Power & Energy') },
+  { id: 'humid', label: () => '💧 ' + gt('filter_humid', 'Humidity') },
+  { id: 'other', label: () => '📈 ' + gt('filter_other', 'Other') },
 ]
 
 function classify(sensor) {
@@ -79,12 +80,12 @@ export default function StatsView({ devices, energy, onOpen }) {
 
       {/* Summary stat cards */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-        <StatCard label="Devices" value={devices.length} unit="" color="#79c0ff" />
-        <StatCard label="Active now" value={onCount} unit="on" color="#d29922" />
-        <StatCard label="Tracked series" value={graphable.length} unit="" color="#bc8cff" />
-        {avgTemp != null && <StatCard label="Avg temperature" value={avgTemp.toFixed(1)} unit="°C" color="#f0883e" />}
-        {soc != null && <StatCard label="Battery" value={Math.round(soc)} unit="%" color="#3fb950" />}
-        {solar != null && <StatCard label="Solar" value={Math.round(solar)} unit="W" color="#f0c000" />}
+        <StatCard label={gt('devices', 'Devices')} value={devices.length} unit="" color="#79c0ff" />
+        <StatCard label={gt('active', 'Active now')} value={onCount} unit="on" color="#d29922" />
+        <StatCard label={gt('series', 'Tracked series')} value={graphable.length} unit="" color="#bc8cff" />
+        {avgTemp != null && <StatCard label={gt('avg_temp', 'Avg temperature')} value={avgTemp.toFixed(1)} unit="°C" color="#f0883e" />}
+        {soc != null && <StatCard label={gt('battery', 'Battery')} value={Math.round(soc)} unit="%" color="#3fb950" />}
+        {solar != null && <StatCard label={gt('solar', 'Solar')} value={Math.round(solar)} unit="W" color="#f0c000" />}
       </div>
 
       {/* Type filter */}
@@ -97,7 +98,7 @@ export default function StatsView({ devices, energy, onOpen }) {
               background: active ? 'rgba(121,192,255,0.14)' : 'var(--card)',
               color: active ? '#c9e3ff' : 'var(--text2)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
             }}>
-              {f.label} <span style={{ opacity: 0.6 }}>({counts[f.id] || counts.all})</span>
+              {f.label()} <span style={{ opacity: 0.6 }}>({counts[f.id] || counts.all})</span>
             </button>
           )
         })}
@@ -107,7 +108,7 @@ export default function StatsView({ devices, energy, onOpen }) {
       {shown.length === 0 && (
         <div style={{ color: 'var(--text3)', fontSize: 13, textAlign: 'center', padding: 30 }}>
           <ChartIcon size={28} color="var(--text3)" />
-          <div style={{ marginTop: 8 }}>No numeric sensors reporting yet.</div>
+          <div style={{ marginTop: 8 }}>{gt('empty', 'No numeric sensors reporting yet.')}</div>
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
@@ -132,7 +133,7 @@ export default function StatsView({ devices, energy, onOpen }) {
       </div>
       {graphable.length > 30 && filter === 'all' && (
         <div style={{ color: 'var(--text3)', fontSize: 11.5, textAlign: 'center' }}>
-          Showing first 30 of {graphable.length} series — use the filters to narrow down.
+          {gt('showing', 'Showing first 30 of {n} series — use the filters to narrow down.', { n: graphable.length })}
         </div>
       )}
     </div>

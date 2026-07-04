@@ -322,5 +322,21 @@
     "waveshare_slave_hint": "(par défaut 1)",
     "waveshare_count": "Nombre de relais",
     "waveshare_count_hint": "(nombre de relais sur la carte)"
+  },
+  "graphs": {
+    "tab": "Graphiques",
+    "devices": "Appareils",
+    "active": "Actifs",
+    "series": "Séries suivies",
+    "avg_temp": "Temp. moyenne",
+    "battery": "Batterie",
+    "solar": "Solaire",
+    "filter_all": "Tous",
+    "filter_temp": "Température",
+    "filter_power": "Puissance & énergie",
+    "filter_humid": "Humidité",
+    "filter_other": "Autres",
+    "empty": "Aucun capteur numérique — l’historique se construit pendant le fonctionnement.",
+    "collecting": "Collecte…"
   }
 }

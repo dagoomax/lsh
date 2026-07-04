@@ -2357,12 +2357,14 @@ const graphsStats   = document.getElementById('graphs-stats');
 const graphsFilters = document.getElementById('graphs-filters');
 let graphsFilter = 'all', graphsRangeH = 6, graphsTimer = null;
 
+// Labels resolved at render time so the active language applies
+const gt = (k, fb) => { const v = window.t ? window.t('graphs.' + k) : null; return v && v !== 'graphs.' + k ? v : fb; };
 const GRAPH_FILTERS = [
-  { id: 'all',   label: 'All' },
-  { id: 'temp',  label: '🌡 Temperature' },
-  { id: 'power', label: '⚡ Power & Energy' },
-  { id: 'humid', label: '💧 Humidity' },
-  { id: 'other', label: '📈 Other' },
+  { id: 'all',   label: () => gt('filter_all', 'All') },
+  { id: 'temp',  label: () => '🌡 ' + gt('filter_temp', 'Temperature') },
+  { id: 'power', label: () => '⚡ ' + gt('filter_power', 'Power & Energy') },
+  { id: 'humid', label: () => '💧 ' + gt('filter_humid', 'Humidity') },
+  { id: 'other', label: () => '📈 ' + gt('filter_other', 'Other') },
 ];
 const GRAPH_ACCENT = { temp: '#f0883e', power: '#d29922', humid: '#39d353', other: '#79c0ff' };
 const GRAPH_ORDER  = { temp: 0, power: 1, humid: 2, other: 3 };
@@ -2411,12 +2413,12 @@ function renderGraphsTab() {
       <div class="graphs-stat-value">${value}<span>${unit}</span></div>
     </div>`;
   graphsStats.innerHTML =
-    statCard('Devices', knownDevices.size, '', '#79c0ff') +
-    statCard('Active now', activeOn, ' on', '#d29922') +
-    statCard('Tracked series', graphable.length, '', '#bc8cff') +
-    (avgTemp != null ? statCard('Avg temperature', avgTemp.toFixed(1), '°C', '#f0883e') : '') +
-    (typeof soc   === 'number' ? statCard('Battery', Math.round(soc), '%', '#3fb950') : '') +
-    (typeof solar === 'number' ? statCard('Solar', Math.round(solar), 'W', '#f0c000') : '');
+    statCard(gt('devices', 'Devices'), knownDevices.size, '', '#79c0ff') +
+    statCard(gt('active', 'Active now'), activeOn, ' on', '#d29922') +
+    statCard(gt('series', 'Tracked series'), graphable.length, '', '#bc8cff') +
+    (avgTemp != null ? statCard(gt('avg_temp', 'Avg temperature'), avgTemp.toFixed(1), '°C', '#f0883e') : '') +
+    (typeof soc   === 'number' ? statCard(gt('battery', 'Battery'), Math.round(soc), '%', '#3fb950') : '') +
+    (typeof solar === 'number' ? statCard(gt('solar', 'Solar'), Math.round(solar), 'W', '#f0c000') : '');
 
   // ── Filter chips ──
   const counts = { all: graphable.length };
@@ -2424,7 +2426,7 @@ function renderGraphsTab() {
   graphsFilters.innerHTML = GRAPH_FILTERS
     .filter((f) => f.id === 'all' || counts[f.id])
     .map((f) => `<button class="graphs-chip${graphsFilter === f.id ? ' active' : ''}" data-gfilter="${f.id}">
-      ${f.label} <span>(${counts[f.id] || counts.all})</span></button>`).join('');
+      ${f.label()} <span>(${counts[f.id] || counts.all})</span></button>`).join('');
 
   // ── Chart cards ──
   const shown = (graphsFilter === 'all' ? graphable : graphable.filter((g) => g.cls === graphsFilter)).slice(0, 30);
@@ -2441,7 +2443,7 @@ function renderGraphsTab() {
       <div class="graphs-card-stats" id="gstat-${i}"></div>
       <div class="graphs-canvas-wrap">
         <canvas id="gcanvas-${i}"></canvas>
-        <div class="hist-no-data" id="gnodata-${i}" style="display:none">Collecting…</div>
+        <div class="hist-no-data" id="gnodata-${i}" style="display:none">${gt('collecting', 'Collecting…')}</div>
       </div>
     </div>`).join('');
 

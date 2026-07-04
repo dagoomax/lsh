@@ -325,5 +325,21 @@
     "waveshare_slave_hint": "(default 1)",
     "waveshare_count": "Relay Count",
     "waveshare_count_hint": "(number of relays on the board)"
+  },
+  "graphs": {
+    "tab": "Graphs",
+    "devices": "Devices",
+    "active": "Active now",
+    "series": "Tracked series",
+    "avg_temp": "Avg temperature",
+    "battery": "Battery",
+    "solar": "Solar",
+    "filter_all": "All",
+    "filter_temp": "Temperature",
+    "filter_power": "Power & Energy",
+    "filter_humid": "Humidity",
+    "filter_other": "Other",
+    "empty": "No numeric sensors reporting yet — history builds up while the server runs.",
+    "collecting": "Collecting…"
   }
 }

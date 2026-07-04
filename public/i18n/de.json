@@ -325,5 +325,21 @@
     "waveshare_slave_hint": "(Standard 1)",
     "waveshare_count": "Anzahl Relais",
     "waveshare_count_hint": "(Anzahl der Relais auf dem Board)"
+  },
+  "graphs": {
+    "tab": "Diagramme",
+    "devices": "Geräte",
+    "active": "Aktiv jetzt",
+    "series": "Erfasste Reihen",
+    "avg_temp": "Ø Temperatur",
+    "battery": "Batterie",
+    "solar": "Solar",
+    "filter_all": "Alle",
+    "filter_temp": "Temperatur",
+    "filter_power": "Leistung & Energie",
+    "filter_humid": "Luftfeuchte",
+    "filter_other": "Sonstige",
+    "empty": "Noch keine numerischen Sensoren — die Historie baut sich im Betrieb auf.",
+    "collecting": "Sammeln…"
   }
 }

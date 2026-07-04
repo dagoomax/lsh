@@ -6,6 +6,7 @@ import {
 } from './Icons'
 import DeviceModal from './DeviceModal'
 import StatsView   from './StatsView'
+import { gt }      from '../i18n'
 import EnergyFlow from './EnergyFlow'
 import RelayPanel from './RelayPanel'
 
@@ -934,7 +935,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
               transition:'all 0.15s',
             }}>
               <CatIcon size={16} color={active ? 'var(--accent-lt)' : 'var(--text3)'} />
-              <span style={{ flex:1 }}>{c}</span>
+              <span style={{ flex:1 }}>{c === 'Graphs' ? gt('tab', 'Graphs') : c}</span>
               <span style={{
                 fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:8,
                 background: active ? 'rgba(88,166,255,0.3)' : 'rgba(255,255,255,0.06)',
@@ -1008,7 +1009,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
         <div className="desktop-grid-header" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px 10px', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             {(() => { const I = CAT_ICON_COMPONENT[cat]; return <I size={18} color="var(--accent-lt)"/>})()}
-            <span style={{ fontSize:15, fontWeight:700 }}>{cat}</span>
+            <span style={{ fontSize:15, fontWeight:700 }}>{cat === 'Graphs' ? gt('tab', 'Graphs') : cat}</span>
           </div>
           <div style={{ display:'flex', gap:6 }}>
             {onCount>0 && <span className="badge badge-yellow">{onCount} on</span>}
