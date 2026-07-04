@@ -39,21 +39,21 @@
   <div class="settings-toolbar">
     <div class="settings-filter-wrap">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--text-muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="settings-search" placeholder="Filter settings…" autocomplete="off">
+      <input type="text" id="settings-search" placeholder="Filter settings…" data-i18n-placeholder="s2.search_placeholder" autocomplete="off">
       <button id="btn-clear-search" style="display:none" aria-label="Clear">✕</button>
     </div>
     <div class="settings-cats" role="tablist">
-      <button class="cat-btn active" data-cat="all">All</button>
-      <button class="cat-btn" data-cat="energy">⚡ Energy</button>
-      <button class="cat-btn" data-cat="smarthome">🏠 Smart Home</button>
-      <button class="cat-btn" data-cat="security">🔒 Security</button>
-      <button class="cat-btn" data-cat="controllers">🎛️ Controllers</button>
-      <button class="cat-btn" data-cat="communication">📞 Communication</button>
-      <button class="cat-btn" data-cat="cameras">📷 Cameras</button>
-      <button class="cat-btn" data-cat="system">⚙️ System</button>
+      <button class="cat-btn active" data-cat="all" data-i18n="s2.cat_all">All</button>
+      <button class="cat-btn" data-cat="energy">⚡ <span data-i18n="s2.cat_energy">Energy</span></button>
+      <button class="cat-btn" data-cat="smarthome">🏠 <span data-i18n="s2.cat_smarthome">Smart Home</span></button>
+      <button class="cat-btn" data-cat="security">🔒 <span data-i18n="s2.cat_security">Security</span></button>
+      <button class="cat-btn" data-cat="controllers">🎛️ <span data-i18n="s2.cat_controllers">Controllers</span></button>
+      <button class="cat-btn" data-cat="communication">📞 <span data-i18n="s2.cat_communication">Communication</span></button>
+      <button class="cat-btn" data-cat="cameras">📷 <span data-i18n="s2.cat_cameras">Cameras</span></button>
+      <button class="cat-btn" data-cat="system">⚙️ <span data-i18n="s2.cat_system">System</span></button>
     </div>
   </div>
-  <div class="settings-no-results" id="settings-no-results" style="display:none">No settings match your filter.</div>
+  <div class="settings-no-results" id="settings-no-results" style="display:none" data-i18n="s2.no_results">No settings match your filter.</div>
 
   <main class="settings-main">
 
@@ -233,27 +233,27 @@
 
     <!-- Somfy TaHoma -->
     <section class="card settings-card" data-category="smarthome" data-title="Somfy TaHoma roller shutter blind awning gate">
-      <h2>Somfy TaHoma <span class="badge">Optional</span></h2>
+      <h2>Somfy TaHoma <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connects to a Somfy TaHoma or Connexoon box on your local network. Roller shutters, screens, venetian blinds, awnings, gates, and garage doors are auto-discovered and controllable from the dashboard.</p>
 
       <div class="form-row">
-        <label for="somfy-host">TaHoma Hostname / IP <span class="hint">(use <code>gateway-XXXX-XXXX-XXXX.local</code> for Developer Mode)</span></label>
+        <label for="somfy-host" data-i18n="s2.tahoma_hostname_ip">TaHoma Hostname / IP <span class="hint">(use <code>gateway-XXXX-XXXX-XXXX.local</code> for Developer Mode)</span></label>
         <input type="text" id="somfy-host" placeholder="gateway-2001-0001-1891.local">
       </div>
       <div class="form-row">
-        <label for="somfy-port">Port <span class="hint">(default 8443)</span></label>
+        <label for="somfy-port" data-i18n="s2.port">Port <span class="hint">(default 8443)</span></label>
         <input type="number" id="somfy-port" placeholder="8443" min="1" max="65535" style="max-width:120px">
       </div>
       <div class="form-row">
-        <label for="somfy-token">Developer Token <span class="hint">(preferred — from TaHoma Developer Mode)</span></label>
+        <label for="somfy-token" data-i18n="s2.developer_token">Developer Token <span class="hint">(preferred — from TaHoma Developer Mode)</span></label>
         <input type="password" id="somfy-token" placeholder="••••••••">
       </div>
       <div class="form-row">
-        <label for="somfy-email">Somfy Account Email <span class="hint">(only if no token)</span></label>
+        <label for="somfy-email" data-i18n="s2.somfy_account_email">Somfy Account Email <span class="hint">(only if no token)</span></label>
         <input type="email" id="somfy-email" placeholder="you@example.com">
       </div>
       <div class="form-row">
-        <label for="somfy-password">Password <span class="hint">(only if no token)</span></label>
+        <label for="somfy-password" data-i18n="s2.password">Password <span class="hint">(only if no token)</span></label>
         <input type="password" id="somfy-password" placeholder="••••••••">
       </div>
       <div class="form-row">
@@ -261,72 +261,72 @@
         <input type="text" id="somfy-devices" placeholder="Living Room Blind, Garage Door">
       </div>
       <div class="form-row">
-        <label for="somfy-poll">Poll Interval <span class="hint">(seconds, default 30)</span></label>
+        <label for="somfy-poll" data-i18n="s2.poll_interval">Poll Interval <span class="hint">(seconds, default 30)</span></label>
         <input type="number" id="somfy-poll" placeholder="30" min="10" max="300" style="max-width:120px">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-somfy">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-save-somfy">Save</button>
+        <button class="btn btn-secondary" id="btn-test-somfy" data-i18n="s2.test_connection">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-somfy" data-i18n="s2.save">Save</button>
         <span class="test-result" id="somfy-test-result"></span>
       </div>
     </section>
 
     <!-- Denon AVR -->
     <section class="card settings-card" data-category="smarthome" data-title="Denon AV receiver amplifier audio volume input">
-      <h2>Denon AVR <span class="badge">Optional</span></h2>
+      <h2>Denon AVR <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Controls Denon (and Marantz) AV receivers over the local network via the Telnet control protocol (port 23). Supports power on/standby, master volume, mute, and input selection.</p>
       <div class="form-group">
-        <label for="denon-host">Receiver IP / Hostname</label>
+        <label for="denon-host" data-i18n="s2.receiver_ip_hostname">Receiver IP / Hostname</label>
         <input type="text" id="denon-host" placeholder="192.168.1.100">
       </div>
       <div class="form-group">
-        <label for="denon-name">Display Name <span class="hint">(optional)</span></label>
+        <label for="denon-name" data-i18n="s2.display_name">Display Name <span class="hint">(optional)</span></label>
         <input type="text" id="denon-name" placeholder="Denon AVR-X2800H">
       </div>
       <div class="form-group">
-        <label for="denon-maxvol">Max Volume <span class="hint">(typically 80 or 98 depending on model)</span></label>
+        <label for="denon-maxvol" data-i18n="s2.max_volume">Max Volume <span class="hint">(typically 80 or 98 depending on model)</span></label>
         <input type="number" id="denon-maxvol" placeholder="80" min="50" max="98" style="max-width:120px">
       </div>
       <div class="form-group">
-        <label for="denon-inputs">Input sources <span class="hint">(Denon codes, one per line — e.g. CD, BD, NET, BT, GAME, SAT/CBL)</span></label>
+        <label for="denon-inputs" data-i18n="s2.input_sources">Input sources <span class="hint">(Denon codes, one per line — e.g. CD, BD, NET, BT, GAME, SAT/CBL)</span></label>
         <textarea id="denon-inputs" rows="4" placeholder="CD&#10;BD&#10;NET&#10;BT&#10;GAME&#10;SAT/CBL" style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
       </div>
       <div class="form-actions">
-        <button class="btn btn-primary" id="btn-save-denon">Save</button>
-        <button class="btn" id="btn-test-denon">Test connection</button>
+        <button class="btn btn-primary" id="btn-save-denon" data-i18n="s2.save">Save</button>
+        <button class="btn" id="btn-test-denon" data-i18n="s2.test_connection">Test connection</button>
         <span class="test-result" id="denon-result"></span>
       </div>
     </section>
 
     <!-- Sonos -->
     <section class="card settings-card" data-category="smarthome" data-title="Sonos speaker music play pause volume zone">
-      <h2>Sonos <span class="badge">Optional</span></h2>
+      <h2>Sonos <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Controls Sonos speakers on your local network via UPnP (port 1400). Auto-discovers all Zone Players via SSDP, or specify IPs manually. Provides play/pause, prev/next track, volume, and mute. No account required.</p>
       <div class="form-group">
-        <label for="sonos-hosts">Speaker IPs <span class="hint">(one per line — leave empty to use auto-discovery only)</span></label>
+        <label for="sonos-hosts" data-i18n="s2.speaker_ips">Speaker IPs <span class="hint">(one per line — leave empty to use auto-discovery only)</span></label>
         <textarea id="sonos-hosts" rows="3" placeholder="192.168.1.50&#10;192.168.1.51" style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px">
         <input type="checkbox" id="sonos-discover" style="width:16px;height:16px">
-        <label for="sonos-discover" style="margin:0">Auto-discover speakers via SSDP (recommended)</label>
+        <label for="sonos-discover" style="margin:0" data-i18n="s2.auto_discover_speakers_via_ssdp_recommen">Auto-discover speakers via SSDP (recommended)</label>
       </div>
       <div class="form-group">
-        <label for="sonos-poll">Poll Interval <span class="hint">(seconds, min 3)</span></label>
+        <label for="sonos-poll" data-i18n="s2.poll_interval">Poll Interval <span class="hint">(seconds, min 3)</span></label>
         <input type="number" id="sonos-poll" placeholder="5" min="3" max="60" style="max-width:120px">
       </div>
       <div class="form-actions">
-        <button class="btn btn-primary" id="btn-save-sonos">Save</button>
+        <button class="btn btn-primary" id="btn-save-sonos" data-i18n="s2.save">Save</button>
         <span class="test-result" id="sonos-result"></span>
       </div>
     </section>
 
     <!-- AuxAir (AC Freedom) -->
     <section class="card settings-card" data-category="smarthome" data-title="AuxAir AC Freedom air conditioner climate control">
-      <h2>AuxAir / AC Freedom <span class="badge">Optional</span></h2>
+      <h2>AuxAir / AC Freedom <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Controls AUX air conditioners via the AC Freedom cloud API. Supports on/off, temperature, mode (cool/heat/dry/fan/auto), and fan speed. Requires an AC Freedom account.</p>
       <div class="form-group">
-        <label for="auxair-region">Region</label>
+        <label for="auxair-region" data-i18n="s2.region">Region</label>
         <select id="auxair-region" style="background:#0d0e1a;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 12px">
           <option value="eu">Europe (EU)</option>
           <option value="usa">USA</option>
@@ -335,73 +335,73 @@
         </select>
       </div>
       <div class="form-group">
-        <label for="auxair-email">AC Freedom Account Email</label>
+        <label for="auxair-email" data-i18n="s2.ac_freedom_account_email">AC Freedom Account Email</label>
         <input type="email" id="auxair-email" placeholder="you@example.com">
       </div>
       <div class="form-group">
-        <label for="auxair-password">Password</label>
+        <label for="auxair-password" data-i18n="s2.password">Password</label>
         <input type="password" id="auxair-password" placeholder="••••••••">
       </div>
       <div class="form-group">
-        <label for="auxair-poll">Poll Interval <span class="hint">(seconds, min 10)</span></label>
+        <label for="auxair-poll" data-i18n="s2.poll_interval">Poll Interval <span class="hint">(seconds, min 10)</span></label>
         <input type="number" id="auxair-poll" placeholder="30" min="10" max="3600" style="max-width:120px">
       </div>
       <div class="form-actions">
-        <button class="btn btn-primary" id="btn-save-auxair">Save</button>
+        <button class="btn btn-primary" id="btn-save-auxair" data-i18n="s2.save">Save</button>
         <span class="test-result" id="auxair-result"></span>
       </div>
     </section>
 
     <!-- Suppla -->
     <section class="card settings-card" data-category="smarthome" data-title="Suppla smart home relay switches thermometer cloud Poland">
-      <h2>Suppla <span class="badge">Optional</span></h2>
+      <h2>Suppla <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connects to the Suppla cloud (cloud.supla.org) or a self-hosted Suppla server. Discovers all channels (switches, dimmers, thermometers, humidity sensors, shutters, gates) and groups them by device. Authentication uses a personal access token from the Suppla Cloud → Security → Personal Access Tokens page.</p>
 
       <div class="form-row">
-        <label for="suppla-token">Personal Access Token</label>
+        <label for="suppla-token" data-i18n="s2.personal_access_token">Personal Access Token</label>
         <input type="password" id="suppla-token" placeholder="••••••••" autocomplete="off">
       </div>
       <div class="form-row">
-        <label for="suppla-server">Server URL <span class="hint">(default: https://cloud.supla.org)</span></label>
+        <label for="suppla-server" data-i18n="s2.server_url">Server URL <span class="hint">(default: https://cloud.supla.org)</span></label>
         <input type="text" id="suppla-server" placeholder="https://cloud.supla.org">
       </div>
       <div class="form-row">
-        <label for="suppla-poll">Poll Interval <span class="hint">(seconds, min 10)</span></label>
+        <label for="suppla-poll" data-i18n="s2.poll_interval">Poll Interval <span class="hint">(seconds, min 10)</span></label>
         <input type="number" id="suppla-poll" placeholder="30" min="10" max="3600" style="max-width:120px">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-suppla">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-save-suppla">Save</button>
+        <button class="btn btn-secondary" id="btn-test-suppla" data-i18n="s2.test_connection">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-suppla" data-i18n="s2.save">Save</button>
         <span class="test-result" id="suppla-result"></span>
       </div>
     </section>
 
     <!-- Bayrol Pool Manager -->
     <section class="card settings-card" data-category="smarthome" data-title="Bayrol Pool Manager Connect pool chemistry pH ORP chlorine">
-      <h2>Bayrol Pool Manager Connect <span class="badge">Optional</span></h2>
+      <h2>Bayrol Pool Manager Connect <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connects to the Bayrol Pool Access cloud to read pH, ORP (redox), temperature, and free chlorine from a Pool Manager Connect device. Polling interval is 60 s by default.</p>
 
       <div class="form-row">
-        <label for="bayrol-pool-name">Pool Name</label>
+        <label for="bayrol-pool-name" data-i18n="s2.pool_name">Pool Name</label>
         <input type="text" id="bayrol-pool-name" placeholder="My Pool">
       </div>
       <div class="form-row">
-        <label for="bayrol-email">Bayrol Pool Access Email</label>
+        <label for="bayrol-email" data-i18n="s2.bayrol_pool_access_email">Bayrol Pool Access Email</label>
         <input type="email" id="bayrol-email" placeholder="you@example.com">
       </div>
       <div class="form-row">
-        <label for="bayrol-password">Password</label>
+        <label for="bayrol-password" data-i18n="s2.password">Password</label>
         <input type="password" id="bayrol-password" placeholder="••••••••">
       </div>
       <div class="form-row">
-        <label for="bayrol-poll">Poll Interval <span class="hint">(seconds, min 30)</span></label>
+        <label for="bayrol-poll" data-i18n="s2.poll_interval">Poll Interval <span class="hint">(seconds, min 30)</span></label>
         <input type="number" id="bayrol-poll" placeholder="60" min="30" max="3600" style="max-width:120px">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-secondary" id="btn-test-bayrol">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-save-bayrol">Save</button>
+        <button class="btn btn-secondary" id="btn-test-bayrol" data-i18n="s2.test_connection">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-bayrol" data-i18n="s2.save">Save</button>
         <span class="test-result" id="bayrol-test-result"></span>
       </div>
     </section>
@@ -464,14 +464,14 @@
       </div>
 
       <div class="form-row" style="margin-top:10px">
-        <label for="satel-output-count">Output / Relay count <span class="hint">(how many programmable outputs to monitor and control, 0 = disabled)</span></label>
+        <label for="satel-output-count" data-i18n="s2.output_relay_count">Output / Relay count <span class="hint">(how many programmable outputs to monitor and control, 0 = disabled)</span></label>
         <input type="number" id="satel-output-count" placeholder="0" min="0" max="128" style="max-width:100px">
       </div>
 
       <div class="names-section">
         <div class="names-header">
           <span class="names-title">Output / Relay Names</span>
-          <button class="btn btn-secondary btn-sm" id="btn-add-output-name">+ Add</button>
+          <button class="btn btn-secondary btn-sm" id="btn-add-output-name" data-i18n="s2.add">+ Add</button>
         </div>
         <div id="satel-output-names-list" class="names-list"></div>
       </div>
@@ -543,32 +543,32 @@
 
     <!-- Loxone Outbound Push -->
     <section class="card settings-card" data-category="controllers" data-title="Loxone Outbound Push virtual inputs">
-      <h2>Loxone Outbound Push <span class="badge">Optional</span></h2>
+      <h2>Loxone Outbound Push <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Pushes sensor values from LSH to Loxone Virtual Inputs in real time (on change, debounced 200 ms). Configure one mapping per line: <code>storeKey = VirtualInputName</code>. Example: <code>bayrol/19048/ph = PoolPH</code></p>
 
       <div class="form-row">
-        <label for="loxone-out-host">Miniserver Host / IP</label>
+        <label for="loxone-out-host" data-i18n="s2.miniserver_host_ip">Miniserver Host / IP</label>
         <input type="text" id="loxone-out-host" placeholder="192.168.1.100">
       </div>
       <div class="form-row">
-        <label for="loxone-out-port">Port <span class="hint">(default 80)</span></label>
+        <label for="loxone-out-port" data-i18n="s2.port">Port <span class="hint">(default 80)</span></label>
         <input type="number" id="loxone-out-port" placeholder="80" min="1" max="65535" style="max-width:120px">
       </div>
       <div class="form-row">
-        <label for="loxone-out-user">Username</label>
+        <label for="loxone-out-user" data-i18n="s2.username">Username</label>
         <input type="text" id="loxone-out-user" placeholder="admin">
       </div>
       <div class="form-row">
-        <label for="loxone-out-pass">Password</label>
+        <label for="loxone-out-pass" data-i18n="s2.password">Password</label>
         <input type="password" id="loxone-out-pass" placeholder="••••••••">
       </div>
       <div class="form-row">
-        <label for="loxone-out-mappings">Mappings <span class="hint">(storeKey = VirtualInputName, one per line)</span></label>
+        <label for="loxone-out-mappings" data-i18n="s2.mappings">Mappings <span class="hint">(storeKey = VirtualInputName, one per line)</span></label>
         <textarea id="loxone-out-mappings" rows="6" placeholder="bayrol/19048/ph = PoolPH&#10;bayrol/19048/orp = PoolORP&#10;bayrol/19048/temperature = PoolTemp&#10;fibaro/room_5/42/value = FibaroRelay1" style="width:100%;font-family:monospace;font-size:12px;background:#0d0e1a;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px"></textarea>
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-primary" id="btn-save-loxone-out">Save</button>
+        <button class="btn btn-primary" id="btn-save-loxone-out" data-i18n="s2.save">Save</button>
         <span class="test-result" id="loxone-out-result"></span>
       </div>
     </section>
@@ -579,22 +579,22 @@
       <p class="section-desc">Generates ready-to-import <strong>Virtual Output</strong> (commands) and <strong>Virtual HTTP Input</strong> (feedback) templates for Loxone Config 17.1 from your connected devices. Filter by brand, pick the API token to embed, and download — then import via <em>Virtual Outputs / Virtual HTTP Inputs → template import</em> in Loxone Config.</p>
 
       <div class="form-row">
-        <label>Brands / Integrations <span class="hint">(connected devices, none checked = all)</span></label>
+        <label data-i18n="s2.brands_integrations">Brands / Integrations <span class="hint">(connected devices, none checked = all)</span></label>
         <div id="loxxml-brands" class="loxxml-brands"><span class="hint">Loading devices…</span></div>
       </div>
       <div class="form-row">
         <label class="loxxml-brand" style="cursor:pointer"><input type="checkbox" id="loxxml-named"> Named devices only <span class="hint">(skip unnamed Satel zones/outputs like "Zone 33")</span></label>
       </div>
       <div class="form-row">
-        <label for="loxxml-token">API Token <span class="hint">(embedded into the generated URLs)</span></label>
+        <label for="loxxml-token" data-i18n="s2.api_token">API Token <span class="hint">(embedded into the generated URLs)</span></label>
         <select id="loxxml-token" style="max-width:320px"></select>
       </div>
       <div class="form-row">
-        <label for="loxxml-host">LSH address as seen by the Miniserver <span class="hint">(host:port)</span></label>
+        <label for="loxxml-host" data-i18n="s2.lsh_address_as_seen_by_the_miniserver">LSH address as seen by the Miniserver <span class="hint">(host:port)</span></label>
         <input type="text" id="loxxml-host" placeholder="192.168.1.229:3000" style="max-width:320px">
       </div>
       <div class="form-row">
-        <label for="loxxml-polling">Input polling <span class="hint">(ms, inputs.xml only)</span></label>
+        <label for="loxxml-polling" data-i18n="s2.input_polling">Input polling <span class="hint">(ms, inputs.xml only)</span></label>
         <input type="number" id="loxxml-polling" placeholder="5000" min="1000" step="500" style="max-width:120px">
       </div>
 
@@ -607,25 +607,25 @@
 
     <!-- KNX -->
     <section class="card settings-card" data-category="controllers" data-title="KNX bus building automation group addresses">
-      <h2>KNX <span class="badge">Optional</span></h2>
+      <h2>KNX <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connects to a KNXnet/IP gateway or IP router over TCP/IP. Group addresses are mapped to dashboard device cards with read/write support. Requires <code>npm install knx</code>.</p>
 
       <div class="form-row">
-        <label for="knx-host">Gateway Host / IP</label>
+        <label for="knx-host" data-i18n="s2.gateway_host_ip">Gateway Host / IP</label>
         <input type="text" id="knx-host" placeholder="192.168.1.100">
       </div>
       <div class="form-row">
-        <label for="knx-port">Port <span class="hint">(default 3671)</span></label>
+        <label for="knx-port" data-i18n="s2.port">Port <span class="hint">(default 3671)</span></label>
         <input type="number" id="knx-port" placeholder="3671" min="1" max="65535" style="width:120px">
       </div>
 
       <h3 style="font-size:0.85rem;color:var(--text-muted);margin:16px 0 8px">Group Addresses</h3>
       <div id="knx-ga-list"></div>
-      <button class="btn btn-secondary" id="btn-add-knx-ga" style="margin-top:8px">+ Add Group Address</button>
+      <button class="btn btn-secondary" id="btn-add-knx-ga" style="margin-top:8px" data-i18n="s2.add_group_address">+ Add Group Address</button>
 
       <div class="form-actions" style="margin-top:16px">
-        <button class="btn btn-secondary" id="btn-test-knx">Test Connection</button>
-        <button class="btn btn-primary"   id="btn-save-knx">Save</button>
+        <button class="btn btn-secondary" id="btn-test-knx" data-i18n="s2.test_connection">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-knx" data-i18n="s2.save">Save</button>
         <span class="test-result" id="knx-test-result"></span>
       </div>
     </section>
@@ -687,11 +687,11 @@
         </select>
       </div>
       <div class="form-row">
-        <label for="lgthinq-login-email">LG Account Email <span class="hint">(used once to fetch tokens — never stored)</span></label>
+        <label for="lgthinq-login-email" data-i18n="s2.lg_account_email">LG Account Email <span class="hint">(used once to fetch tokens — never stored)</span></label>
         <input type="email" id="lgthinq-login-email" placeholder="you@example.com" autocomplete="off">
       </div>
       <div class="form-row">
-        <label for="lgthinq-login-pass">LG Account Password <span class="hint">(used once — never stored)</span></label>
+        <label for="lgthinq-login-pass" data-i18n="s2.lg_account_password">LG Account Password <span class="hint">(used once — never stored)</span></label>
         <input type="password" id="lgthinq-login-pass" placeholder="••••••••" autocomplete="off">
       </div>
       <div class="form-actions" style="margin-bottom:12px">
@@ -702,15 +702,15 @@
       <details style="margin-bottom:12px">
         <summary style="cursor:pointer;color:var(--text-muted,#888);font-size:.85em">Or paste tokens manually</summary>
         <div class="form-row" style="margin-top:8px">
-          <label for="lgthinq-access-token">Access Token</label>
+          <label for="lgthinq-access-token" data-i18n="s2.access_token">Access Token</label>
           <input type="password" id="lgthinq-access-token" placeholder="••••••••••••••••••••••••••••••••">
         </div>
         <div class="form-row">
-          <label for="lgthinq-refresh-token">Refresh Token</label>
+          <label for="lgthinq-refresh-token" data-i18n="s2.refresh_token">Refresh Token</label>
           <input type="password" id="lgthinq-refresh-token" placeholder="••••••••••••••••••••••••••••••••">
         </div>
         <div class="form-row">
-          <label for="lgthinq-user-number">User Number <span class="hint">(e.g. EU0123456789)</span></label>
+          <label for="lgthinq-user-number" data-i18n="s2.user_number">User Number <span class="hint">(e.g. EU0123456789)</span></label>
           <input type="text" id="lgthinq-user-number" placeholder="EU0123456789">
         </div>
       </details>
@@ -793,65 +793,65 @@
 
     <!-- SmartBob -->
     <section class="card settings-card" data-category="controllers" data-title="SmartBob MQTT sensors switches automation">
-      <h2>SmartBob <span class="badge">Optional</span></h2>
+      <h2>SmartBob <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Connects to SmartBob via MQTT. Add the broker address and define each entity with its state topic, optional command topic, and type.</p>
 
       <div class="form-row">
-        <label for="smartbob-name">Device Name</label>
+        <label for="smartbob-name" data-i18n="s2.device_name">Device Name</label>
         <input type="text" id="smartbob-name" placeholder="SmartBob">
       </div>
       <div class="form-row">
-        <label for="smartbob-host">MQTT Broker Host</label>
+        <label for="smartbob-host" data-i18n="s2.mqtt_broker_host">MQTT Broker Host</label>
         <input type="text" id="smartbob-host" placeholder="192.168.1.100">
       </div>
       <div class="form-row">
-        <label for="smartbob-port">Port <span class="hint">(default 1883)</span></label>
+        <label for="smartbob-port" data-i18n="s2.port">Port <span class="hint">(default 1883)</span></label>
         <input type="number" id="smartbob-port" placeholder="1883" min="1" max="65535" style="width:120px">
       </div>
       <div class="form-row">
-        <label for="smartbob-user">Username <span class="hint">(optional)</span></label>
+        <label for="smartbob-user" data-i18n="s2.username">Username <span class="hint">(optional)</span></label>
         <input type="text" id="smartbob-user" placeholder="(none)" autocomplete="off">
       </div>
       <div class="form-row">
-        <label for="smartbob-pass">Password <span class="hint">(optional)</span></label>
+        <label for="smartbob-pass" data-i18n="s2.password">Password <span class="hint">(optional)</span></label>
         <input type="password" id="smartbob-pass" placeholder="••••••••" autocomplete="off">
       </div>
 
       <h3 style="font-size:0.85rem;color:var(--text-muted);margin:16px 0 8px">Entities</h3>
       <div id="smartbob-entity-list"></div>
-      <button class="btn btn-secondary" id="btn-add-smartbob-entity" style="margin-top:8px">+ Add Entity</button>
+      <button class="btn btn-secondary" id="btn-add-smartbob-entity" style="margin-top:8px" data-i18n="s2.add_entity">+ Add Entity</button>
 
       <div class="form-actions" style="margin-top:16px">
-        <button class="btn btn-secondary" id="btn-test-smartbob">Test Broker</button>
-        <button class="btn btn-primary"   id="btn-save-smartbob">Save</button>
+        <button class="btn btn-secondary" id="btn-test-smartbob" data-i18n="s2.test_broker">Test Broker</button>
+        <button class="btn btn-primary"   id="btn-save-smartbob" data-i18n="s2.save">Save</button>
         <span class="test-result" id="smartbob-test-result"></span>
       </div>
     </section>
 
     <!-- Arduino MQTT -->
     <section class="card settings-card" data-category="controllers" data-title="Arduino MQTT sensors switches microcontroller ESP32 ESP8266">
-      <h2>Arduino / Generic MQTT <span class="badge">Optional</span></h2>
+      <h2>Arduino / Generic MQTT <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Subscribe to any MQTT topic and map JSON fields to sensor readings or controllable switches. Works with Arduino, ESP32, Tasmota custom firmware, or any device publishing JSON over MQTT.</p>
 
       <div class="form-group">
-        <label for="arduino-host">MQTT Broker Host <span class="hint">(leave blank to reuse the main MQTT broker)</span></label>
+        <label for="arduino-host" data-i18n="s2.mqtt_broker_host">MQTT Broker Host <span class="hint">(leave blank to reuse the main MQTT broker)</span></label>
         <input type="text" id="arduino-host" placeholder="192.168.1.100 (defaults to Cerbo GX broker)">
       </div>
       <div class="form-group">
-        <label for="arduino-port">Port <span class="hint">(default 1883)</span></label>
+        <label for="arduino-port" data-i18n="s2.port">Port <span class="hint">(default 1883)</span></label>
         <input type="number" id="arduino-port" placeholder="1883" min="1" max="65535" style="width:120px">
       </div>
       <div class="form-group">
-        <label for="arduino-user">Username <span class="hint">(optional)</span></label>
+        <label for="arduino-user" data-i18n="s2.username">Username <span class="hint">(optional)</span></label>
         <input type="text" id="arduino-user" placeholder="(none)" autocomplete="off">
       </div>
       <div class="form-group">
-        <label for="arduino-pass">Password <span class="hint">(optional)</span></label>
+        <label for="arduino-pass" data-i18n="s2.password">Password <span class="hint">(optional)</span></label>
         <input type="password" id="arduino-pass" placeholder="••••••••" autocomplete="off">
       </div>
 
       <div class="form-group">
-        <label for="arduino-devices">Devices <span class="hint">(JSON array — see example below)</span></label>
+        <label for="arduino-devices" data-i18n="s2.devices">Devices <span class="hint">(JSON array — see example below)</span></label>
         <textarea id="arduino-devices" rows="14" style="font-family:monospace;font-size:12px;resize:vertical" placeholder='[
   {
     "name": "Sensor Board",
@@ -872,7 +872,7 @@
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-primary" id="btn-save-arduino">Save</button>
+        <button class="btn btn-primary" id="btn-save-arduino" data-i18n="s2.save">Save</button>
         <span class="test-result" id="arduino-result"></span>
       </div>
     </section>
@@ -884,10 +884,10 @@
       <p class="section-desc">Connects to ESP32/ESP8266 devices running ESPHome with the <code>web_server:</code> component enabled. Sensors, switches, binary sensors, lights, and covers are auto-discovered via the device event stream.</p>
 
       <div id="esphome-devices-list"></div>
-      <button class="btn btn-secondary" id="btn-add-esphome">+ Add Device</button>
+      <button class="btn btn-secondary" id="btn-add-esphome" data-i18n="s2.add_device">+ Add Device</button>
 
       <div class="form-actions" style="margin-top:16px">
-        <button class="btn btn-primary" id="btn-save-esphome">Save Devices</button>
+        <button class="btn btn-primary" id="btn-save-esphome" data-i18n="s2.save_devices">Save Devices</button>
         <span class="test-result" id="esphome-save-result"></span>
       </div>
     </section>
@@ -1045,28 +1045,28 @@
 
     <!-- FFmpeg RTSP Proxy -->
     <section class="card settings-card" data-category="cameras" data-title="FFmpeg RTSP proxy Loxone restream cameras">
-      <h2>FFmpeg RTSP Proxy <span class="badge">Optional</span></h2>
+      <h2>FFmpeg RTSP Proxy <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Re-streams each camera's RTSP URL through a built-in RTSP server so Loxone (or any RTSP client) can connect to a single clean URL. Requires <code>ffmpeg</code> installed on the server. Each camera gets a dedicated port starting at Base Port.</p>
 
       <div class="form-row">
-        <label>Enable RTSP Proxy</label>
+        <label data-i18n="s2.enable_rtsp_proxy">Enable RTSP Proxy</label>
         <label class="toggle-switch">
           <input type="checkbox" id="ffrtsp-enabled">
           <span class="toggle-slider"></span>
         </label>
       </div>
       <div class="form-row">
-        <label>Base Port</label>
+        <label data-i18n="s2.base_port">Base Port</label>
         <input type="number" id="ffrtsp-base-port" placeholder="8554" min="1024" max="65000" style="width:120px">
       </div>
       <div class="form-row">
-        <label>FFmpeg Path</label>
+        <label data-i18n="s2.ffmpeg_path">FFmpeg Path</label>
         <input type="text" id="ffrtsp-path" placeholder="ffmpeg" style="width:240px">
         <span class="field-hint">Leave as <code>ffmpeg</code> if it's on your PATH</span>
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-primary" id="btn-save-ffrtsp">Save</button>
+        <button class="btn btn-primary" id="btn-save-ffrtsp" data-i18n="s2.save">Save</button>
         <span class="test-result" id="ffrtsp-save-result"></span>
       </div>
 
