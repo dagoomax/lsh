@@ -1,10 +1,12 @@
 const { EventEmitter } = require('events');
 const { DEVICE_TYPES, KNOWN_SERVICES } = require('./device-definitions');
+const { translateDevice } = require('./server-i18n');
 
 class SensorRegistry extends EventEmitter {
-  constructor(store) {
+  constructor(store, language) {
     super();
     this.store = store;
+    this.language = language || 'en';
     this.devices = new Map(); // deviceKey → device descriptor
     this.setMaxListeners(100);
 
@@ -38,6 +40,7 @@ class SensorRegistry extends EventEmitter {
       homekit: def.homekit,
     };
 
+    translateDevice(device, this.language);
     this.devices.set(deviceKey, device);
     console.log(`[Sensors] Discovered: ${device.label} (${deviceKey})`);
     this.emit('device-discovered', device);
@@ -45,6 +48,7 @@ class SensorRegistry extends EventEmitter {
 
   registerDevice(device) {
     if (this.devices.has(device.key)) return;
+    translateDevice(device, this.language);
     this.devices.set(device.key, device);
     console.log(`[Sensors] Registered: ${device.label} (${device.key})`);
     this.emit('device-discovered', device);

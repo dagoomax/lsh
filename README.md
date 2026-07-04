@@ -1702,6 +1702,12 @@ Runs a per-camera **FFmpeg RTSP proxy** so Loxone, VLC, or any RTSP client can c
 
 ---
 
+## Server-side translation
+
+Set `"language"` in `config.json` (`en`, `pl`, `de`, `fr`, `es`, `it`, `ua`) and LSH translates device and sensor labels **once, centrally, in the sensor registry** — so every consumer gets localized names: the REST API, Socket.IO events, both dashboards, **HomeKit accessories (Siri speaks your language)**, generated Loxone XML templates, and Node-RED. Fallback labels are localized too (`Zone 33` → `Wejście 33`, `Output 5` → `Wyjście 5`). Unknown terms and user-defined names (panel zone names, room names) pass through unchanged. Polish has full coverage; other languages cover the core vocabulary and fall back to English. Requires a restart to change.
+
+---
+
 ## Automation, Scenes & History
 
 ### Sensor history + charts

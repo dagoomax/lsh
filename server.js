@@ -25,7 +25,7 @@ async function main() {
   store.startPersistence(); // restore saved sensor data + history, save every 5 min and on shutdown
   const connectionMgr   = new ConnectionManager(config, store);
   const relayController = new RelayController(config, store);
-  const sensorRegistry  = new SensorRegistry(store);
+  const sensorRegistry  = new SensorRegistry(store, config.language); // server-side label translation
 
   // Start optional integrations before wiring API routes so unifiProtect is available
   let satelClient = null;

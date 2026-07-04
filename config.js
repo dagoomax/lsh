@@ -19,6 +19,11 @@ function loadConfig() {
   }
 
   return {
+    // Pass through everything from config.json (language, smarttub, zway,
+    // wirenboard, homey, broadlink, waveshare, mc6, roborock, dreame,
+    // dirigera, tradfri, …) — curated keys below override with env-var and
+    // default handling.
+    ...fileConfig,
     mqtt: {
       host: process.env.VICTRON_MQTT_HOST || fileConfig.mqtt?.host || '192.168.1.100',
       port: parseInt(process.env.VICTRON_MQTT_PORT || fileConfig.mqtt?.port || 1883),
