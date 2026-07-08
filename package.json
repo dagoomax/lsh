@@ -26,5 +26,8 @@
     "node-tradfri-client": "^3.2.0",
     "sip": "^0.0.6",
     "socket.io": "^4.5.4"
+  },
+  "devDependencies": {
+    "swagger-ui-dist": "^5.17.14"
   }
 }

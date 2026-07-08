@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LSH API — Swagger UI</title>
-<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css">
+<link rel="stylesheet" href="/lib/swagger-ui/swagger-ui.css">
 <style>
   body { margin: 0; background: #0f1117; }
   .topbar { display: none; }               /* hide Swagger's URL bar */
@@ -30,8 +30,8 @@
 <!-- The spec is injected inline by the /api-docs route (which is auth-gated), so
      there is no separate unauthenticated fetch of /openapi.json to hang on. -->
 <script>window.__LSH_OPENAPI__ = __OPENAPI_SPEC__;</script>
-<script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js" crossorigin></script>
-<script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js" crossorigin></script>
+<script src="/lib/swagger-ui/swagger-ui-bundle.js"></script>
+<script src="/lib/swagger-ui/swagger-ui-standalone-preset.js"></script>
 <script>
   function lshDownloadSpec() {
     const blob = new Blob([JSON.stringify(window.__LSH_OPENAPI__, null, 2)], { type: 'application/json' });
@@ -48,7 +48,7 @@
     }
     if (typeof SwaggerUIBundle === 'undefined') {
       document.getElementById('swagger-ui').innerHTML =
-        '<div class="lsh-err">Swagger UI failed to load from the CDN (no internet on this network?). ' +
+        '<div class="lsh-err">Swagger UI assets failed to load (/lib/swagger-ui/). ' +
         'The spec is available via the Download button above.</div>';
       return;
     }
