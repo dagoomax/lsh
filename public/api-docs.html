@@ -14,7 +14,8 @@
     padding: 12px 20px; display: flex; align-items: center; gap: 10px;
   }
   .lsh-head .pill { font-weight: 500; font-size: 12px; color: #9aa4b0; background: #1b2028; border: 1px solid #2a2f3a; border-radius: 999px; padding: 3px 10px; }
-  .lsh-head a { margin-left: auto; color: #5ea0ff; text-decoration: none; font-weight: 500; font-size: 13px; }
+  .lsh-head button { margin-left: auto; color: #5ea0ff; background: none; border: none; cursor: pointer; font-weight: 500; font-size: 13px; }
+  .lsh-err { color: #ff8a95; padding: 20px; font: 14px/1.5 ui-monospace, Menlo, monospace; max-width: 900px; margin: 0 auto; }
   #swagger-ui { max-width: 1100px; margin: 0 auto; }
 </style>
 </head>
@@ -22,16 +23,37 @@
 <div class="lsh-head">
   🧩 LSH — LoxoneSwaggerHelper API
   <span class="pill">OpenAPI 3.0</span>
-  <a href="/openapi.json" download>Download openapi.json</a>
+  <button onclick="lshDownloadSpec()">Download openapi.json</button>
 </div>
 <div id="swagger-ui"></div>
 
+<!-- The spec is injected inline by the /api-docs route (which is auth-gated), so
+     there is no separate unauthenticated fetch of /openapi.json to hang on. -->
+<script>window.__LSH_OPENAPI__ = __OPENAPI_SPEC__;</script>
 <script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js" crossorigin></script>
 <script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js" crossorigin></script>
 <script>
+  function lshDownloadSpec() {
+    const blob = new Blob([JSON.stringify(window.__LSH_OPENAPI__, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'openapi.json'; a.click();
+    URL.revokeObjectURL(a.href);
+  }
   window.onload = function () {
+    var spec = window.__LSH_OPENAPI__;
+    if (!spec || typeof spec !== 'object' || !spec.openapi) {
+      document.getElementById('swagger-ui').innerHTML =
+        '<div class="lsh-err">Could not load the API spec. Regenerate it with <code>npm run openapi</code> and reload.</div>';
+      return;
+    }
+    if (typeof SwaggerUIBundle === 'undefined') {
+      document.getElementById('swagger-ui').innerHTML =
+        '<div class="lsh-err">Swagger UI failed to load from the CDN (no internet on this network?). ' +
+        'The spec is available via the Download button above.</div>';
+      return;
+    }
     window.ui = SwaggerUIBundle({
-      url: '/openapi.json',
+      spec: spec,
       dom_id: '#swagger-ui',
       deepLinking: true,
       docExpansion: 'none',
