@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UniFi Door Station — Setup Manual (LSH + Loxone)</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1d21; --muted: #5b6470; --accent: #0a6cff;
+    --border: #d9dee5; --code-bg: #f2f4f7; --th-bg: #eef1f5; --warn: #b45309;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171b; --fg: #e6e9ed; --muted: #9aa4b0; --accent: #5ea0ff;
+      --border: #2c333c; --code-bg: #1e2329; --th-bg: #1b2027; --warn: #f0a44a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    position: sticky; top: 0; z-index: 10; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem; padding: .6rem 1.2rem;
+  }
+  header .title { font-weight: 600; flex: 1; font-size: .95rem; }
+  .langbtn {
+    border: 1px solid var(--border); background: none; color: var(--fg);
+    padding: .3rem .9rem; border-radius: 6px; cursor: pointer; font-size: .85rem;
+  }
+  .langbtn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  main { max-width: 880px; margin: 0 auto; padding: 1.5rem 1.2rem 4rem; }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: .5rem 0 1rem; }
+  h2 { font-size: 1.25rem; margin: 2.2rem 0 .6rem; padding-top: .6rem; border-top: 1px solid var(--border); }
+  h3 { font-size: 1.05rem; margin: 1.6rem 0 .4rem; }
+  p, ul, ol { margin: .5rem 0 .9rem; }
+  li { margin: .25rem 0; }
+  code {
+    background: var(--code-bg); border-radius: 4px; padding: .1em .35em;
+    font: .875em ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: .9rem 1rem; overflow-x: auto;
+    font: .8rem/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  table { border-collapse: collapse; width: 100%; margin: .8rem 0 1.2rem; font-size: .92rem; }
+  th, td { border: 1px solid var(--border); padding: .45rem .7rem; text-align: left; vertical-align: top; }
+  th { background: var(--th-bg); }
+  .lead { color: var(--muted); }
+  .note { border-left: 3px solid var(--warn); padding: .1rem .9rem; margin: 1rem 0; color: var(--muted); }
+  a { color: var(--accent); }
+  @media print {
+    header { display: none; }
+    body { font-size: 12px; }
+    pre, table { break-inside: avoid; }
+    h2 { break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="title">UniFi Door Station · LSH + Loxone</span>
+  <button class="langbtn" id="btn-en" onclick="setLang('en')">English</button>
+  <button class="langbtn" id="btn-pl" onclick="setLang('pl')">Polski</button>
+</header>
+
+<main>
+
+<!-- ══════════════════════════ ENGLISH ══════════════════════════ -->
+<div id="lang-en">
+
+<h1>UniFi Door Station — Setup Manual (LSH + Loxone)</h1>
+
+<p class="lead">Complete integration of a UniFi door station (G4 Doorbell, G4 Doorbell Pro
+or UniFi Intercom) with the LSH server and a Loxone Miniserver:</p>
+<ul>
+  <li><strong>Video &amp; events in LSH</strong> — snapshots, doorbell ring and motion as dashboard
+      devices and HomeKit accessories (contact + motion sensor).</li>
+  <li><strong>Answering the door in the browser</strong> — the LSH dashboard registers as a UniFi Talk
+      softphone; press the doorbell → the dashboard rings → answer, talk, and unlock the door with a DTMF key.</li>
+  <li><strong>Loxone integration</strong> — ring and motion events are pushed instantly to Miniserver
+      Virtual Inputs, so you can trigger chimes, lights, notifications or a Door Controller block.</li>
+</ul>
+
+<h2>1. Architecture</h2>
+<pre>
+                 ┌────────────────────────── UniFi console (UDM, 192.168.1.1) ──┐
+Door station ──► │  UniFi Protect  (camera, snapshots, ring/motion events)      │
+                 │  UniFi Talk     (SIP PBX, wss://192.168.1.1:5443)            │
+                 └───────┬──────────────────────────────┬───────────────────────┘
+                         │ HTTPS API (poll)             │ SIP over WebSocket
+                         ▼                              ▼
+                 LSH  unifi-protect-client      LSH dashboard softphone (ext 101)
+                         │                              answer / talk / "#" unlock
+        store keys: unifi/&lt;camId&gt;/doorbell (pulse), unifi/&lt;camId&gt;/motion
+                         │
+                         ▼
+                 LSH  loxoneOut  ──► http://MINISERVER/dev/sps/io/&lt;VI&gt;/&lt;value&gt;
+                                      VI_UnifiDoorbell, VI_UnifiDoorMotion
+</pre>
+<p>Two independent paths:</p>
+<table>
+  <tr><th>Path</th><th>Purpose</th><th>Latency</th></tr>
+  <tr><td>Protect API poll</td><td>ring/motion → LSH → Loxone</td><td>~<code>ringPollInterval</code> (default 3 s)</td></tr>
+  <tr><td>UniFi Talk SIP</td><td>live call + door unlock in the dashboard</td><td>instant (real call)</td></tr>
+</table>
+
+<h2>2. Prerequisites</h2>
+<ul>
+  <li>Door station adopted in UniFi Protect on the console (UDM at <code>192.168.1.1</code>).</li>
+  <li>UniFi Talk subscription/app active on the console (for the call path).</li>
+  <li>LSH server running — in this installation <code>192.168.1.229</code>, HTTP port <code>3001</code>, HTTPS <code>3443</code>.</li>
+  <li>Loxone Miniserver reachable from the LSH server over HTTP.</li>
+</ul>
+
+<h2>3. UniFi console configuration</h2>
+
+<h3>3.1 Protect — API access</h3>
+<p>Pick <strong>one</strong> of the two (API key is preferred — no session expiry):</p>
+<ul>
+  <li><strong>API key:</strong> UniFi console → <em>Settings → Control Plane → Integrations</em> →
+      create an API key. Paste it into <code>unifi.apiKey</code> in <code>config.json</code>.</li>
+  <li><strong>Local admin:</strong> create a <em>local access only</em> admin with Protect <strong>view</strong>
+      permission and fill <code>unifi.username</code> / <code>unifi.password</code> instead.</li>
+</ul>
+
+<h3>3.2 Talk — call routing to the dashboard</h3>
+<ol>
+  <li>In UniFi Talk, the door station gets its own extension automatically when assigned to Talk.</li>
+  <li>Create (or reuse) extension <strong>101</strong> for the LSH dashboard — this must match
+      <code>sip.username</code> in <code>config.json</code>. Note its SIP password → <code>sip.password</code>.</li>
+  <li>Set the door station's <strong>call destination</strong> to extension 101 (or a ring group that
+      contains it) — this is what makes the dashboard ring when the button is pressed.</li>
+  <li>Configure the door lock relay in UniFi so that DTMF <strong><code>#</code></strong> during a call triggers
+      the door release. <code>#</code> is the default <code>sip.dtmfUnlock</code>; change both sides together
+      if you use a different key.</li>
+</ol>
+
+<h3>3.3 Optional — live RTSP video</h3>
+<p>Snapshots work out of the box through the LSH proxy. For <strong>live video</strong>
+(dashboard stream / HomeKit live view):</p>
+<ol>
+  <li>Protect → doorbell camera → <em>Advanced</em> → enable an RTSPS stream (pick a resolution).
+      Protect shows a URL like <code>rtsps://192.168.1.1:7441/AbCdEfGh?enableSrtp</code>.</li>
+  <li>Add it to <code>config.json</code>:
+<pre><code>"cameras": [
+  { "name": "Door Station", "url": "rtsps://192.168.1.1:7441/AbCdEfGh?enableSrtp" }
+]</code></pre>
+      The <code>ffmpegRtsp</code> re-streamer (already enabled, base port 8554) picks it up.</li>
+</ol>
+
+<h2>4. LSH server configuration</h2>
+<p>All settings live in <code>config.json</code> (server restart required after edits).</p>
+
+<h3>4.1 <code>unifi</code> — Protect client</h3>
+<pre><code>"unifi": {
+  "host": "192.168.1.1",
+  "username": "",
+  "password": "",
+  "apiKey": "PASTE_API_KEY",
+  "ringPollInterval": 3
+}</code></pre>
+<table>
+  <tr><th>Field</th><th>Meaning</th></tr>
+  <tr><td><code>host</code></td><td>UniFi console IP (Protect + API live here)</td></tr>
+  <tr><td><code>apiKey</code></td><td>API key from §3.1 — leave <code>username</code>/<code>password</code> empty when set</td></tr>
+  <tr><td><code>username</code>/<code>password</code></td><td>local admin credentials (alternative to <code>apiKey</code>)</td></tr>
+  <tr><td><code>ringPollInterval</code></td><td>seconds between doorbell ring polls (default 3). Regular sensors poll every 30 s regardless.</td></tr>
+</table>
+
+<h3>4.2 <code>sip</code> — dashboard softphone (already configured)</h3>
+<pre><code>"sip": {
+  "wsUrl": "wss://192.168.1.1:5443",
+  "username": "101",
+  "domain": "192.168.1.1",
+  "password": "…",
+  "displayName": "LSH Dashboard",
+  "dtmfUnlock": "#",
+  "relayIndex": null
+}</code></pre>
+<table>
+  <tr><th>Field</th><th>Meaning</th></tr>
+  <tr><td><code>wsUrl</code></td><td>UniFi Talk SIP-over-WebSocket endpoint on the console</td></tr>
+  <tr><td><code>username</code>/<code>password</code></td><td>Talk extension of the dashboard (§3.2)</td></tr>
+  <tr><td><code>dtmfUnlock</code></td><td>DTMF key sent by the "unlock" button during a call</td></tr>
+  <tr><td><code>relayIndex</code></td><td>optional Victron relay to pulse on unlock; <code>null</code> = DTMF only</td></tr>
+</table>
+<p>These settings can also be edited at runtime in <em>Settings → SIP</em> in the dashboard.</p>
+
+<h3>4.3 First start — find the camera ID</h3>
+<p>Restart LSH (<code>node server.js</code>). On startup you should see:</p>
+<pre>[UniFi Protect] Authenticated
+[UniFi Protect] Doorbell "Front Door" — store keys unifi/66a1b2c3d4e5f6a7b8c9d0e1/doorbell, unifi/66a1b2c3d4e5f6a7b8c9d0e1/motion
+[UniFi Protect] Started — 3 camera(s), 2 sensor(s)</pre>
+<p>The hex string is the <strong>camera ID</strong> — you need it for the <code>loxoneOut</code> mappings (§5.3)
+and the snapshot URL (§5.6). It is also visible in <code>GET /api/devices?token=…</code>.</p>
+
+<h3>4.4 What appears automatically</h3>
+<ul>
+  <li><strong>Dashboard:</strong> a 🔔 device with <em>Doorbell</em> and <em>Motion</em> readings; all Protect
+      cameras (snapshot view) on the cameras panel.</li>
+  <li><strong>HomeKit:</strong> the doorbell as a <em>contact sensor</em> (ring) + <em>motion sensor</em> —
+      usable in Home-app automations.</li>
+  <li><strong>Snapshot proxy:</strong> <code>GET /api/unifi/snapshot/&lt;cameraId&gt;</code> — JPEG, credentials
+      stay server-side (used by the dashboard and by Loxone in §5.6).</li>
+</ul>
+
+<h3>4.5 Ring semantics</h3>
+<p>On a button press the store key <code>unifi/&lt;cameraId&gt;/doorbell</code> goes to <strong><code>1</code> and returns
+to <code>0</code> after 3 seconds</strong> — a clean pulse, so edge-triggered logic in Loxone and HomeKit works
+reliably. Motion follows Protect's <code>isMotionDetected</code> and only emits on change.</p>
+
+<h2>5. Loxone integration</h2>
+
+<h3>5.1 How it works</h3>
+<p>LSH's <code>loxoneOut</code> module listens to store changes and pushes mapped keys to Miniserver
+<strong>Virtual Inputs</strong> via <code>http://MINISERVER/dev/sps/io/&lt;virtualInput&gt;/&lt;value&gt;</code>
+(HTTP GET, Basic auth, debounced 200 ms). This is push — no polling on the Loxone side, ring
+arrives within ~<code>ringPollInterval</code> + a few hundred ms.</p>
+
+<h3>5.2 Miniserver user</h3>
+<p>Create a dedicated user (e.g. <code>lsh</code>) in Loxone Config with permission to use the web
+API/app. Use its credentials in <code>loxoneOut</code>.</p>
+
+<h3>5.3 <code>loxoneOut</code> config</h3>
+<pre><code>"loxoneOut": {
+  "host": "MINISERVER_IP",
+  "port": 80,
+  "username": "lsh",
+  "password": "…",
+  "mappings": [
+    { "storeKey": "unifi/66a1b2c3d4e5f6a7b8c9d0e1/doorbell", "virtualInput": "VI_UnifiDoorbell" },
+    { "storeKey": "unifi/66a1b2c3d4e5f6a7b8c9d0e1/motion",   "virtualInput": "VI_UnifiDoorMotion" }
+  ]
+}</code></pre>
+<p>Replace the camera ID with the one from §4.3. The module only starts when <code>host</code> is
+non-empty and at least one mapping exists; startup log:
+<code>[LoxoneOut] Started — 2 mapping(s) → MINISERVER_IP</code>.</p>
+
+<h3>5.4 Virtual Inputs in Loxone Config</h3>
+<ol>
+  <li>In the periphery tree: <em>Virtual Inputs → right-click → New Virtual Input</em>.</li>
+  <li>Create a <strong>digital</strong> input and set its <strong>name (connection) to exactly</strong>
+      <code>VI_UnifiDoorbell</code> — the URL LSH calls is <code>/dev/sps/io/VI_UnifiDoorbell/1</code>, and the
+      Miniserver resolves it by that name. Repeat for <code>VI_UnifiDoorMotion</code> (optional).</li>
+  <li>Save into the Miniserver.</li>
+</ol>
+
+<h3>5.5 Example bell logic</h3>
+<p>Drag <code>VI_UnifiDoorbell</code> into a page and connect it to, for example:</p>
+<ul>
+  <li>a <strong>chime output</strong> (relay/audio) directly — the 3 s pulse is a natural bell,</li>
+  <li>a <strong>Notification / Caller</strong> block → push notification "Someone is at the door" to the Loxone app,</li>
+  <li>the bell input of a <strong>Door Controller (Intercom)</strong> block if you model the door in Loxone,</li>
+  <li><code>VI_UnifiDoorMotion</code> → e.g. front-light logic at night.</li>
+</ul>
+
+<h3>5.6 Door station image in the Loxone app</h3>
+<p>Point an <strong>Intercom / Webpage</strong> block's image URL at the LSH snapshot proxy:</p>
+<pre><code>http://192.168.1.229:3001/api/unifi/snapshot/&lt;cameraId&gt;?token=YOUR_LSH_TOKEN</code></pre>
+<p>Create the API token in the LSH dashboard under <em>Settings → API Tokens</em> (or
+<code>POST /api/auth/tokens</code>); tokens are stored in <code>persist/api-tokens.json</code>.
+The image refreshes on each poll of the block.</p>
+
+<h3>5.7 Alternative: polling instead of push</h3>
+<div class="note"><p>If you prefer the pattern used by the other LSH↔Loxone templates
+(<code>docs/loxone/</code>), the Miniserver can poll <code>/api/devices?token=…</code> with a Virtual HTTP
+Input and extract <code>unifi/&lt;cameraId&gt;/doorbell</code> with a <code>Check</code> pattern.
+<strong>Not recommended for the doorbell</strong> — with 5 s polling a 3 s pulse can be missed;
+use the push path (§5.1) for ring events.</p></div>
+
+<h2>6. Test checklist</h2>
+<ol>
+  <li><strong>Restart LSH</strong> — expect the log lines from §4.3 plus
+      <code>[LoxoneOut] Started — 2 mapping(s) → …</code>.</li>
+  <li><strong>Press the doorbell:</strong>
+    <ul>
+      <li>log: <code>[UniFi Protect] 🔔 Ring: Front Door</code>,</li>
+      <li>Loxone Config live view: <code>VI_UnifiDoorbell</code> goes 1 → 0 after ~3 s,</li>
+      <li>the dashboard softphone rings — answer, talk, press the unlock button (sends <code>#</code>) → door opens,</li>
+      <li>Home app: contact sensor triggers.</li>
+    </ul>
+  </li>
+  <li><strong>Walk in front of the camera:</strong> <code>VI_UnifiDoorMotion</code> follows motion.</li>
+</ol>
+
+<h2>7. Troubleshooting</h2>
+<table>
+  <tr><th>Symptom</th><th>Check</th></tr>
+  <tr><td><code>UniFi auth failed: HTTP 4xx</code></td><td>API key valid? Local admin has Protect access? <code>host</code> right?</td></tr>
+  <tr><td>Doorbell not discovered</td><td>Is the device a doorbell in Protect? Discovery log line missing → check <code>/proxy/protect/api/cameras</code> reachability</td></tr>
+  <tr><td>Ring arrives late/never in Loxone</td><td><code>loxoneOut.host</code> set? Mapping <code>storeKey</code> matches the logged key exactly? <code>[LoxoneOut] HTTP 401</code> → wrong Miniserver user; <code>HTTP 404</code> → VI name mismatch (§5.4)</td></tr>
+  <tr><td>Dashboard doesn't ring</td><td><code>sip.password</code> = Talk password of ext 101? Door station call destination includes 101? Browser must be on HTTPS for microphone access</td></tr>
+  <tr><td>Unlock doesn't work</td><td>DTMF key in UniFi matches <code>sip.dtmfUnlock</code>? Relay configured on the door station?</td></tr>
+  <tr><td>Snapshot empty / 503</td><td><code>unifi</code> section configured and client started? Camera ID correct?</td></tr>
+</table>
+
+<h2>8. Reference</h2>
+<table>
+  <tr><th>Item</th><th>Value</th></tr>
+  <tr><td>Store keys</td><td><code>unifi/&lt;cameraId&gt;/doorbell</code> (pulse 1→0, 3 s), <code>unifi/&lt;cameraId&gt;/motion</code></td></tr>
+  <tr><td>Snapshot proxy</td><td><code>GET /api/unifi/snapshot/&lt;cameraId&gt;</code></td></tr>
+  <tr><td>Device list</td><td><code>GET /api/devices?token=…</code></td></tr>
+  <tr><td>Loxone push URL</td><td><code>http://&lt;miniserver&gt;/dev/sps/io/&lt;VI&gt;/&lt;value&gt;</code> (Basic auth)</td></tr>
+  <tr><td>Source</td><td><code>src/unifi-protect-client.js</code>, <code>src/loxone-out-client.js</code>, <code>public/sip-phone.js</code></td></tr>
+  <tr><td>Related docs</td><td><code>docs/loxone/README.md</code> (Loxone XML templates for LSH devices)</td></tr>
+</table>
+
+</div>
+
+<!-- ══════════════════════════ POLSKI ══════════════════════════ -->
+<div id="lang-pl" hidden>
+
+<h1>Stacja bramowa UniFi — instrukcja konfiguracji (LSH + Loxone)</h1>
+
+<p class="lead">Pełna integracja stacji bramowej UniFi (G4 Doorbell, G4 Doorbell Pro lub
+UniFi Intercom) z serwerem LSH oraz Miniserverem Loxone:</p>
+<ul>
+  <li><strong>Obraz i zdarzenia w LSH</strong> — zrzuty z kamery, dzwonek i ruch jako urządzenia na
+      dashboardzie oraz akcesoria HomeKit (czujnik kontaktu + ruchu).</li>
+  <li><strong>Odbieranie dzwonka w przeglądarce</strong> — dashboard LSH rejestruje się jako softfon
+      UniFi Talk; naciśnięcie dzwonka → dashboard dzwoni → odbierasz, rozmawiasz i otwierasz drzwi klawiszem DTMF.</li>
+  <li><strong>Integracja z Loxone</strong> — zdarzenia dzwonka i ruchu są natychmiast wypychane na
+      Wejścia Wirtualne Miniservera, dzięki czemu można wyzwalać gong, światła, powiadomienia lub
+      blok sterowania drzwiami.</li>
+</ul>
+
+<h2>1. Architektura</h2>
+<pre>
+                 ┌──────────────────────── Konsola UniFi (UDM, 192.168.1.1) ────┐
+Stacja bramowa ─►│  UniFi Protect  (kamera, zrzuty, zdarzenia dzwonka/ruchu)    │
+                 │  UniFi Talk     (centrala SIP, wss://192.168.1.1:5443)       │
+                 └───────┬──────────────────────────────┬───────────────────────┘
+                         │ API HTTPS (odpytywanie)      │ SIP przez WebSocket
+                         ▼                              ▼
+                 LSH  unifi-protect-client      softfon dashboardu LSH (nr wewn. 101)
+                         │                              odbiór / rozmowa / „#” otwiera
+        klucze store: unifi/&lt;camId&gt;/doorbell (impuls), unifi/&lt;camId&gt;/motion
+                         │
+                         ▼
+                 LSH  loxoneOut  ──► http://MINISERVER/dev/sps/io/&lt;VI&gt;/&lt;wartość&gt;
+                                      VI_UnifiDoorbell, VI_UnifiDoorMotion
+</pre>
+<p>Dwie niezależne ścieżki:</p>
+<table>
+  <tr><th>Ścieżka</th><th>Cel</th><th>Opóźnienie</th></tr>
+  <tr><td>Odpytywanie API Protect</td><td>dzwonek/ruch → LSH → Loxone</td><td>~<code>ringPollInterval</code> (domyślnie 3 s)</td></tr>
+  <tr><td>UniFi Talk SIP</td><td>rozmowa na żywo + otwarcie drzwi z dashboardu</td><td>natychmiast (prawdziwe połączenie)</td></tr>
+</table>
+
+<h2>2. Wymagania wstępne</h2>
+<ul>
+  <li>Stacja bramowa dodana (adopted) w UniFi Protect na konsoli (UDM, <code>192.168.1.1</code>).</li>
+  <li>Aktywna aplikacja/usługa UniFi Talk na konsoli (dla ścieżki połączeń).</li>
+  <li>Działający serwer LSH — w tej instalacji <code>192.168.1.229</code>, HTTP port <code>3001</code>, HTTPS <code>3443</code>.</li>
+  <li>Miniserver Loxone osiągalny z serwera LSH po HTTP.</li>
+</ul>
+
+<h2>3. Konfiguracja konsoli UniFi</h2>
+
+<h3>3.1 Protect — dostęp do API</h3>
+<p>Wybierz <strong>jedną</strong> z dwóch opcji (klucz API jest zalecany — sesja nie wygasa):</p>
+<ul>
+  <li><strong>Klucz API:</strong> konsola UniFi → <em>Settings → Control Plane → Integrations</em> →
+      utwórz klucz API. Wklej go do <code>unifi.apiKey</code> w <code>config.json</code>.</li>
+  <li><strong>Administrator lokalny:</strong> utwórz administratora <em>tylko z dostępem lokalnym</em>
+      z uprawnieniem <strong>podglądu</strong> Protect i wypełnij <code>unifi.username</code> / <code>unifi.password</code>.</li>
+</ul>
+
+<h3>3.2 Talk — kierowanie połączeń na dashboard</h3>
+<ol>
+  <li>W UniFi Talk stacja bramowa dostaje własny numer wewnętrzny automatycznie po przypisaniu do Talk.</li>
+  <li>Utwórz (lub użyj istniejącego) numeru <strong>101</strong> dla dashboardu LSH — musi się zgadzać z
+      <code>sip.username</code> w <code>config.json</code>. Zanotuj hasło SIP → <code>sip.password</code>.</li>
+  <li>Ustaw <strong>cel połączenia</strong> stacji bramowej na numer 101 (lub grupę dzwonienia, która go
+      zawiera) — dzięki temu dashboard dzwoni po naciśnięciu przycisku.</li>
+  <li>Skonfiguruj w UniFi przekaźnik zamka tak, aby DTMF <strong><code>#</code></strong> podczas rozmowy wyzwalał
+      otwarcie drzwi. <code>#</code> to domyślna wartość <code>sip.dtmfUnlock</code>; przy zmianie klawisza
+      zmień obie strony.</li>
+</ol>
+
+<h3>3.3 Opcjonalnie — obraz na żywo (RTSP)</h3>
+<p>Zrzuty działają od razu przez proxy LSH. Dla <strong>obrazu na żywo</strong> (strumień na dashboardzie /
+podgląd w HomeKit):</p>
+<ol>
+  <li>Protect → kamera stacji bramowej → <em>Advanced</em> → włącz strumień RTSPS (wybierz rozdzielczość).
+      Protect pokaże adres typu <code>rtsps://192.168.1.1:7441/AbCdEfGh?enableSrtp</code>.</li>
+  <li>Dodaj go do <code>config.json</code>:
+<pre><code>"cameras": [
+  { "name": "Stacja bramowa", "url": "rtsps://192.168.1.1:7441/AbCdEfGh?enableSrtp" }
+]</code></pre>
+      Restreamer <code>ffmpegRtsp</code> (już włączony, port bazowy 8554) przejmie strumień.</li>
+</ol>
+
+<h2>4. Konfiguracja serwera LSH</h2>
+<p>Wszystkie ustawienia znajdują się w <code>config.json</code> (po zmianach wymagany restart serwera).</p>
+
+<h3>4.1 <code>unifi</code> — klient Protect</h3>
+<pre><code>"unifi": {
+  "host": "192.168.1.1",
+  "username": "",
+  "password": "",
+  "apiKey": "WKLEJ_KLUCZ_API",
+  "ringPollInterval": 3
+}</code></pre>
+<table>
+  <tr><th>Pole</th><th>Znaczenie</th></tr>
+  <tr><td><code>host</code></td><td>IP konsoli UniFi (tu działa Protect i API)</td></tr>
+  <tr><td><code>apiKey</code></td><td>klucz API z §3.1 — gdy ustawiony, zostaw <code>username</code>/<code>password</code> puste</td></tr>
+  <tr><td><code>username</code>/<code>password</code></td><td>dane administratora lokalnego (alternatywa dla <code>apiKey</code>)</td></tr>
+  <tr><td><code>ringPollInterval</code></td><td>co ile sekund sprawdzany jest dzwonek (domyślnie 3). Zwykłe czujniki są odpytywane co 30 s niezależnie.</td></tr>
+</table>
+
+<h3>4.2 <code>sip</code> — softfon dashboardu (już skonfigurowany)</h3>
+<pre><code>"sip": {
+  "wsUrl": "wss://192.168.1.1:5443",
+  "username": "101",
+  "domain": "192.168.1.1",
+  "password": "…",
+  "displayName": "LSH Dashboard",
+  "dtmfUnlock": "#",
+  "relayIndex": null
+}</code></pre>
+<table>
+  <tr><th>Pole</th><th>Znaczenie</th></tr>
+  <tr><td><code>wsUrl</code></td><td>punkt końcowy SIP-przez-WebSocket UniFi Talk na konsoli</td></tr>
+  <tr><td><code>username</code>/<code>password</code></td><td>numer wewnętrzny Talk dashboardu (§3.2)</td></tr>
+  <tr><td><code>dtmfUnlock</code></td><td>klawisz DTMF wysyłany przyciskiem „otwórz” podczas rozmowy</td></tr>
+  <tr><td><code>relayIndex</code></td><td>opcjonalny przekaźnik Victron impulsowany przy otwarciu; <code>null</code> = tylko DTMF</td></tr>
+</table>
+<p>Te ustawienia można też edytować na żywo w <em>Ustawienia → SIP</em> na dashboardzie.</p>
+
+<h3>4.3 Pierwsze uruchomienie — odczytaj ID kamery</h3>
+<p>Zrestartuj LSH (<code>node server.js</code>). Przy starcie powinno pojawić się:</p>
+<pre>[UniFi Protect] Authenticated
+[UniFi Protect] Doorbell "Front Door" — store keys unifi/66a1b2c3d4e5f6a7b8c9d0e1/doorbell, unifi/66a1b2c3d4e5f6a7b8c9d0e1/motion
+[UniFi Protect] Started — 3 camera(s), 2 sensor(s)</pre>
+<p>Ciąg szesnastkowy to <strong>ID kamery</strong> — potrzebny do mapowań <code>loxoneOut</code> (§5.3) oraz
+adresu zrzutu (§5.6). Widać go też w <code>GET /api/devices?token=…</code>.</p>
+
+<h3>4.4 Co pojawia się automatycznie</h3>
+<ul>
+  <li><strong>Dashboard:</strong> urządzenie 🔔 z odczytami <em>Doorbell</em> i <em>Motion</em>; wszystkie kamery
+      Protect (podgląd zrzutów) w panelu kamer.</li>
+  <li><strong>HomeKit:</strong> dzwonek jako <em>czujnik kontaktu</em> (dzwonienie) + <em>czujnik ruchu</em> —
+      do użycia w automatyzacjach aplikacji Dom.</li>
+  <li><strong>Proxy zrzutów:</strong> <code>GET /api/unifi/snapshot/&lt;cameraId&gt;</code> — JPEG, dane logowania
+      pozostają po stronie serwera (używane przez dashboard i Loxone, §5.6).</li>
+</ul>
+
+<h3>4.5 Semantyka dzwonka</h3>
+<p>Po naciśnięciu przycisku klucz store <code>unifi/&lt;cameraId&gt;/doorbell</code> przechodzi na
+<strong><code>1</code> i wraca na <code>0</code> po 3 sekundach</strong> — czysty impuls, więc logika wyzwalana
+zboczem w Loxone i HomeKit działa niezawodnie. Ruch podąża za <code>isMotionDetected</code> z Protect
+i jest wysyłany tylko przy zmianie.</p>
+
+<h2>5. Integracja z Loxone</h2>
+
+<h3>5.1 Zasada działania</h3>
+<p>Moduł <code>loxoneOut</code> w LSH nasłuchuje zmian w store i wypycha zmapowane klucze na
+<strong>Wejścia Wirtualne</strong> Miniservera przez
+<code>http://MINISERVER/dev/sps/io/&lt;wejścieWirtualne&gt;/&lt;wartość&gt;</code> (HTTP GET, Basic auth,
+debounce 200 ms). To model push — bez odpytywania po stronie Loxone; dzwonek dociera w
+~<code>ringPollInterval</code> + kilkaset ms.</p>
+
+<h3>5.2 Użytkownik na Miniserverze</h3>
+<p>Utwórz w Loxone Config dedykowanego użytkownika (np. <code>lsh</code>) z uprawnieniem do korzystania
+z API/aplikacji. Jego dane wpisz w <code>loxoneOut</code>.</p>
+
+<h3>5.3 Konfiguracja <code>loxoneOut</code></h3>
+<pre><code>"loxoneOut": {
+  "host": "IP_MINISERVERA",
+  "port": 80,
+  "username": "lsh",
+  "password": "…",
+  "mappings": [
+    { "storeKey": "unifi/66a1b2c3d4e5f6a7b8c9d0e1/doorbell", "virtualInput": "VI_UnifiDoorbell" },
+    { "storeKey": "unifi/66a1b2c3d4e5f6a7b8c9d0e1/motion",   "virtualInput": "VI_UnifiDoorMotion" }
+  ]
+}</code></pre>
+<p>Podmień ID kamery na to z §4.3. Moduł startuje tylko, gdy <code>host</code> nie jest pusty i istnieje
+co najmniej jedno mapowanie; log przy starcie:
+<code>[LoxoneOut] Started — 2 mapping(s) → IP_MINISERVERA</code>.</p>
+
+<h3>5.4 Wejścia Wirtualne w Loxone Config</h3>
+<ol>
+  <li>W drzewie peryferii: <em>Wejścia wirtualne → prawy przycisk → Nowe wejście wirtualne</em>.</li>
+  <li>Utwórz wejście <strong>cyfrowe</strong> i ustaw jego <strong>nazwę (połączenie) dokładnie</strong> na
+      <code>VI_UnifiDoorbell</code> — LSH wywołuje adres <code>/dev/sps/io/VI_UnifiDoorbell/1</code>,
+      a Miniserver rozpoznaje wejście po tej nazwie. Powtórz dla <code>VI_UnifiDoorMotion</code> (opcjonalnie).</li>
+  <li>Zapisz do Miniservera.</li>
+</ol>
+
+<h3>5.5 Przykładowa logika dzwonka</h3>
+<p>Przeciągnij <code>VI_UnifiDoorbell</code> na stronę i podłącz np. do:</p>
+<ul>
+  <li><strong>wyjścia gongu</strong> (przekaźnik/audio) bezpośrednio — 3-sekundowy impuls działa jak naturalny dzwonek,</li>
+  <li>bloku <strong>Powiadomienie / Caller</strong> → push „Ktoś jest przy drzwiach” w aplikacji Loxone,</li>
+  <li>wejścia dzwonka bloku <strong>sterowania drzwiami (Intercom)</strong>, jeśli drzwi są zamodelowane w Loxone,</li>
+  <li><code>VI_UnifiDoorMotion</code> → np. logika oświetlenia przed wejściem w nocy.</li>
+</ul>
+
+<h3>5.6 Obraz stacji bramowej w aplikacji Loxone</h3>
+<p>Ustaw adres obrazu w bloku <strong>Intercom / Strona WWW</strong> na proxy zrzutów LSH:</p>
+<pre><code>http://192.168.1.229:3001/api/unifi/snapshot/&lt;cameraId&gt;?token=TWÓJ_TOKEN_LSH</code></pre>
+<p>Token API utworzysz na dashboardzie LSH w <em>Ustawienia → Tokeny API</em> (lub
+<code>POST /api/auth/tokens</code>); tokeny są zapisywane w <code>persist/api-tokens.json</code>.
+Obraz odświeża się przy każdym odpytaniu bloku.</p>
+
+<h3>5.7 Alternatywa: odpytywanie zamiast push</h3>
+<div class="note"><p>Jeśli wolisz wzorzec używany przez pozostałe szablony LSH↔Loxone
+(<code>docs/loxone/</code>), Miniserver może odpytywać <code>/api/devices?token=…</code> przez Wirtualne
+Wejście HTTP i wyciągać <code>unifi/&lt;cameraId&gt;/doorbell</code> wzorcem <code>Check</code>.
+<strong>Dla dzwonka niezalecane</strong> — przy odpytywaniu co 5 s impuls 3 s może zostać pominięty;
+dla zdarzeń dzwonka używaj ścieżki push (§5.1).</p></div>
+
+<h2>6. Lista kontrolna testów</h2>
+<ol>
+  <li><strong>Restart LSH</strong> — oczekuj wpisów z §4.3 oraz
+      <code>[LoxoneOut] Started — 2 mapping(s) → …</code>.</li>
+  <li><strong>Naciśnij dzwonek:</strong>
+    <ul>
+      <li>log: <code>[UniFi Protect] 🔔 Ring: Front Door</code>,</li>
+      <li>podgląd na żywo w Loxone Config: <code>VI_UnifiDoorbell</code> przechodzi 1 → 0 po ~3 s,</li>
+      <li>softfon na dashboardzie dzwoni — odbierz, porozmawiaj, naciśnij przycisk otwarcia
+          (wysyła <code>#</code>) → drzwi się otwierają,</li>
+      <li>aplikacja Dom: czujnik kontaktu się wyzwala.</li>
+    </ul>
+  </li>
+  <li><strong>Przejdź przed kamerą:</strong> <code>VI_UnifiDoorMotion</code> podąża za ruchem.</li>
+</ol>
+
+<h2>7. Rozwiązywanie problemów</h2>
+<table>
+  <tr><th>Objaw</th><th>Sprawdź</th></tr>
+  <tr><td><code>UniFi auth failed: HTTP 4xx</code></td><td>Klucz API prawidłowy? Administrator lokalny ma dostęp do Protect? Poprawny <code>host</code>?</td></tr>
+  <tr><td>Dzwonek nie został wykryty</td><td>Czy urządzenie jest dzwonkiem w Protect? Brak wpisu o odkryciu → sprawdź osiągalność <code>/proxy/protect/api/cameras</code></td></tr>
+  <tr><td>Dzwonek dociera do Loxone późno / wcale</td><td><code>loxoneOut.host</code> ustawiony? <code>storeKey</code> mapowania zgodny co do znaku z kluczem z logu? <code>[LoxoneOut] HTTP 401</code> → zły użytkownik Miniservera; <code>HTTP 404</code> → niezgodna nazwa VI (§5.4)</td></tr>
+  <tr><td>Dashboard nie dzwoni</td><td><code>sip.password</code> = hasło Talk numeru 101? Cel połączenia stacji zawiera 101? Przeglądarka musi działać po HTTPS, żeby mieć dostęp do mikrofonu</td></tr>
+  <tr><td>Otwieranie nie działa</td><td>Klawisz DTMF w UniFi zgodny z <code>sip.dtmfUnlock</code>? Przekaźnik skonfigurowany na stacji?</td></tr>
+  <tr><td>Pusty zrzut / 503</td><td>Sekcja <code>unifi</code> skonfigurowana i klient wystartował? Poprawne ID kamery?</td></tr>
+</table>
+
+<h2>8. Ściągawka</h2>
+<table>
+  <tr><th>Element</th><th>Wartość</th></tr>
+  <tr><td>Klucze store</td><td><code>unifi/&lt;cameraId&gt;/doorbell</code> (impuls 1→0, 3 s), <code>unifi/&lt;cameraId&gt;/motion</code></td></tr>
+  <tr><td>Proxy zrzutów</td><td><code>GET /api/unifi/snapshot/&lt;cameraId&gt;</code></td></tr>
+  <tr><td>Lista urządzeń</td><td><code>GET /api/devices?token=…</code></td></tr>
+  <tr><td>Adres push do Loxone</td><td><code>http://&lt;miniserver&gt;/dev/sps/io/&lt;VI&gt;/&lt;wartość&gt;</code> (Basic auth)</td></tr>
+  <tr><td>Kod źródłowy</td><td><code>src/unifi-protect-client.js</code>, <code>src/loxone-out-client.js</code>, <code>public/sip-phone.js</code></td></tr>
+  <tr><td>Powiązane dokumenty</td><td><code>docs/loxone/README.md</code> (szablony XML Loxone dla urządzeń LSH)</td></tr>
+</table>
+
+</div>
+
+</main>
+
+<script>
+function setLang(lang) {
+  document.getElementById('lang-en').hidden = lang !== 'en';
+  document.getElementById('lang-pl').hidden = lang !== 'pl';
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  document.getElementById('btn-pl').classList.toggle('active', lang === 'pl');
+  document.documentElement.lang = lang;
+  try { localStorage.setItem('doorstation-manual-lang', lang); } catch (e) {}
+}
+setLang(
+  (function () {
+    try { var s = localStorage.getItem('doorstation-manual-lang'); if (s) return s; } catch (e) {}
+    return (navigator.language || '').toLowerCase().startsWith('pl') ? 'pl' : 'en';
+  })()
+);
+</script>
+
+</body>
+</html>

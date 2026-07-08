@@ -17,6 +17,10 @@ class UnifiProtectClient extends EventEmitter {
     this.devices        = [];
     this._cameras       = [];
     this.pollTimer      = null;
+    this.ringTimer      = null;
+    this._lastRing      = {}; // doorbell cameraId → last ring timestamp
+    this._motionState   = {}; // doorbell cameraId → last motion value
+    this._ringResets    = {}; // doorbell cameraId → reset-to-0 timer
   }
 
   async start() {
@@ -29,6 +33,9 @@ class UnifiProtectClient extends EventEmitter {
 
   stop() {
     clearInterval(this.pollTimer);
+    clearInterval(this.ringTimer);
+    for (const t of Object.values(this._ringResets)) clearTimeout(t);
+    this._ringResets = {};
   }
 
   getCameras() {
@@ -86,7 +93,75 @@ class UnifiProtectClient extends EventEmitter {
       snapshotUrl:   `/api/unifi/snapshot/${cam.id}`,
       fetchSnapshot: () => this.fetchSnapshotBuffer(cam.id),
     }));
+
+    const doorbells = cams.filter(c => c.featureFlags?.isDoorbell || /doorbell/i.test(c.type || ''));
+    for (const cam of doorbells) this._registerDoorbell(cam);
+    if (doorbells.length > 0) {
+      const seconds  = this.cfg.ringPollInterval || 3;
+      this.ringTimer = setInterval(() => this._pollRings().catch(() => {}), seconds * 1000);
+    }
+
     this.emit('cameras-discovered', this._cameras);
+  }
+
+  // ── Doorbell (door station) ───────────────────────────────
+
+  _registerDoorbell(cam) {
+    this._lastRing[cam.id] = cam.lastRing || 0;
+
+    const device = {
+      key:      `unifi/${cam.id}`,
+      type:     'unifi',
+      instance: cam.id,
+      label:    cam.name || cam.id,
+      icon:     '🔔',
+      color:    'blue',
+      sensors: [
+        { path: 'doorbell', name: 'Doorbell', format: 'on-off', homekit: 'contact' },
+        { path: 'motion',   name: 'Motion',   format: 'on-off', homekit: 'motion'  },
+      ],
+      homekit: ['contact', 'motion'],
+    };
+    this.devices.push(device);
+    this.sensorRegistry.registerDevice(device);
+
+    this.store.update(`unifi/${cam.id}/doorbell`, 0);
+    this._setMotion(cam);
+    console.log(`[UniFi Protect] Doorbell "${cam.name}" — store keys unifi/${cam.id}/doorbell, unifi/${cam.id}/motion`);
+  }
+
+  async _pollRings() {
+    let cams;
+    try {
+      cams = await this._get('/proxy/protect/api/cameras');
+    } catch (err) {
+      if (err.status === 401) await this._authenticate().catch(() => {});
+      return;
+    }
+
+    for (const cam of cams) {
+      if (!(cam.id in this._lastRing)) continue;
+      this._setMotion(cam);
+
+      if (cam.lastRing && cam.lastRing > this._lastRing[cam.id]) {
+        this._lastRing[cam.id] = cam.lastRing;
+        const key = `unifi/${cam.id}/doorbell`;
+        this.store.update(key, 1);
+        this.emit('doorbell-ring', { id: cam.id, name: cam.name });
+        console.log(`[UniFi Protect] 🔔 Ring: ${cam.name}`);
+        // Pulse: back to 0 after 3 s so Loxone virtual inputs see an edge
+        clearTimeout(this._ringResets[cam.id]);
+        this._ringResets[cam.id] = setTimeout(() => this.store.update(key, 0), 3000);
+      }
+    }
+  }
+
+  _setMotion(cam) {
+    if (cam.isMotionDetected === undefined) return;
+    const val = cam.isMotionDetected ? 1 : 0;
+    if (this._motionState[cam.id] === val) return; // avoid re-emitting unchanged state
+    this._motionState[cam.id] = val;
+    this.store.update(`unifi/${cam.id}/motion`, val);
   }
 
   fetchSnapshotBuffer(cameraId) {

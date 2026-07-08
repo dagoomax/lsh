@@ -79,7 +79,24 @@
     "host": "192.168.1.1",
     "username": "admin",
     "password": "",
-    "apiKey": ""
+    "apiKey": "",
+    "ringPollInterval": 3
+  },
+  "loxone": {
+    "host": "192.168.1.x",
+    "port": 80,
+    "username": "admin",
+    "password": ""
+  },
+  "loxoneOut": {
+    "host": "192.168.1.x",
+    "port": 80,
+    "username": "admin",
+    "password": "",
+    "mappings": [
+      { "storeKey": "unifi/CAMERA_ID/doorbell", "virtualInput": "VI_UnifiDoorbell" },
+      { "storeKey": "unifi/CAMERA_ID/motion", "virtualInput": "VI_UnifiDoorMotion" }
+    ]
   },
   "somfy": {
     "mode": "local",
