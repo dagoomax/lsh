@@ -219,6 +219,35 @@ The image is a multi-stage build (Node 20, `ffmpeg` for the RTSP proxy, `tini` f
 
 ---
 
+## Running as a service (PM2)
+
+For unattended, always-on deployments use [PM2](https://pm2.keymetrics.io/) — it keeps the server running, restarts it on crash, and brings it back after a reboot. An [`ecosystem.config.js`](ecosystem.config.js) is included.
+
+```bash
+npm install -g pm2                # one-time, installs PM2 globally
+pm2 start ecosystem.config.js     # start LSHServer (or: npm run pm2:start)
+pm2 save                          # remember the process list
+pm2 startup                       # print the command to enable boot-time start (run it once)
+```
+
+The app is registered under the name **`lsh`** in fork mode (single instance — the server binds fixed HTTP(S)/HomeKit/RTSP ports and holds long-lived MQTT/WebSocket connections, so cluster mode would create instances fighting over the same ports). It restarts automatically and is recycled if it exceeds 300 MB of RAM.
+
+Convenience `npm` scripts wrap the common PM2 commands:
+
+| Command | Action |
+|---|---|
+| `npm run pm2:start` | Start the server under PM2 |
+| `npm run pm2:stop` | Stop the process |
+| `npm run pm2:restart` | Hard restart |
+| `npm run pm2:reload` | Zero-downtime reload |
+| `npm run pm2:delete` | Remove from PM2 |
+| `npm run pm2:logs` | Tail PM2 stdout/stderr |
+| `npm run pm2:status` | Show process status |
+
+PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.log`; the server additionally writes structured per-category logs to `logs/*.log` (see [`src/logger.js`](src/logger.js)) and exposes them in the **Logs** page.
+
+---
+
 ## Configuration
 
 `config.json` (gitignored) is the single source of truth. Copy `config.example.json` as a starting point. The file is read on startup and rewritten by the Settings page.
