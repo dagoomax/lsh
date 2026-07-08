@@ -1,6 +1,7 @@
 'use strict';
 
 const https = require('https');
+const platformStatus = require('./platform-status');
 
 // SmartTub cloud API (Jacuzzi / Sundance / Watkins etc.)
 const AUTH_URL   = 'https://api.smarttub.io/idp/signin';
@@ -34,6 +35,7 @@ class SmartTubClient {
     if (!cfg?.email || !cfg?.password) return;
 
     console.log('[SmartTub] Starting…');
+    platformStatus.set('smarttub', false); // badge appears; goes green once polling succeeds
     await this._login();
 
     const spas = await this._req('GET', `spas?ownerId=${encodeURIComponent(this._accountId)}`);
@@ -169,13 +171,16 @@ class SmartTubClient {
   // ── Polling ─────────────────────────────────────────────────────────────
 
   async _poll() {
+    let ok = false;
     for (const spa of this._spas) {
       try {
         await this._pollSpa(spa);
+        ok = true;
       } catch (err) {
         console.error(`[SmartTub] Poll error (${spa.id}): ${err.message}`);
       }
     }
+    platformStatus.set('smarttub', ok);
   }
 
   async _pollSpa(spa) {

@@ -177,6 +177,7 @@ async function sendCommand(key, sensor, value) {
 function getGroup(d) {
   if (['vebus','battery','solarcharger'].includes(d.type)) return 'Victron'
   if (d.type === 'auxair') return 'Climate'
+  if (d.type === 'smarttub') return 'Climate'
   if (d.type === 'sonos')  return 'Media'
   if (d.type === 'denon')  return 'Media'
   const r = d.readings || {}
@@ -310,9 +311,12 @@ function DeviceTile({ device, onCommand, onOpen }) {
   const isAC      = device.type === 'auxair'
   const isSonos  = device.type === 'sonos'
   const isDenon  = device.type === 'denon'
+  const isSpa    = device.type === 'smarttub'
 
   const AC_MODES  = ['Cool','Heat','Dry','Fan','Auto']
   const FAN_NAMES = ['Auto','Low','Med','High','Turbo','Mute']
+  // Mirrors HEAT_MODES order in src/smarttub-client.js — value is the index
+  const SPA_MODES = ['Eco','Day','Auto','Ready','Rest']
 
   const denonPower      = isDenon ? (merged.power?.value  === 1 || merged.power?.value  === true) : false
   const denonVolume     = isDenon ? (merged.volume?.value ?? 50) : 50
@@ -329,6 +333,16 @@ function DeviceTile({ device, onCommand, onOpen }) {
   const sonosMute    = isSonos ? (merged.mute?.value    === 1 || merged.mute?.value === true) : false
   const sonosTrack   = isSonos ? (merged.track?.value   ?? '') : ''
   const sonosArtist  = isSonos ? (merged.artist?.value  ?? '') : ''
+
+  const spaWater   = isSpa ? (merged.water_temp?.value ?? r.water_temp?.value) : null
+  const spaSetTemp = isSpa ? (merged.set_temp?.value   ?? r.set_temp?.value)   : null
+  const spaMode    = isSpa ? (merged.heat_mode?.value  ?? r.heat_mode?.value ?? 2) : 2
+  const spaHeater  = isSpa ? (merged.heater?.value === 1 || merged.heater?.value === true) : false
+  const spaOnline  = isSpa ? ((merged.online?.value ?? r.online?.value ?? 1) === 1) : true
+  // Pump/light toggle rows — path-keyed readings like the other platforms
+  const spaSensors = isSpa ? (device.sensors || [])
+    .filter(s => s.type === 'boolean' && s.controllable)
+    .map(s => ({ ...s, value: (merged[s.path] ?? r[s.path])?.value })) : []
 
   const acPwr     = isAC ? (merged.pwr?.value ?? r.pwr?.value) : null
   const acOn      = acPwr === 1 || acPwr === true
@@ -420,6 +434,14 @@ function DeviceTile({ device, onCommand, onOpen }) {
       if (fibaroTemps.length)    parts.push(`${Number(fibaroTemps[0].value).toFixed(1)}°C`)
       return parts.join(' · ') || `${fibaroSensors.length} sensors`
     }
+    if (isSpa) {
+      if (!spaOnline) return 'Offline'
+      const parts = []
+      if (spaWater   != null) parts.push(`${Number(spaWater).toFixed(1)}°C`)
+      if (spaSetTemp != null) parts.push(`→ ${Number(spaSetTemp).toFixed(1)}°C`)
+      parts.push(spaHeater ? 'Heating' : (SPA_MODES[spaMode] || 'Auto'))
+      return parts.join(' · ')
+    }
     if (isPool) {
       const ph  = merged.ph?.value
       const orp = merged.orp?.value
@@ -437,7 +459,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
     return isOn ? 'On' : 'Off'
   })()
 
-  const tileOn = (isOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying) || (isDenon && denonPower)
+  const tileOn = (isOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying) || (isDenon && denonPower) || (isSpa && spaHeater)
 
   return (
     <div onClick={() => onOpen?.(device.key)} style={{
@@ -553,6 +575,36 @@ function DeviceTile({ device, onCommand, onOpen }) {
             <button onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.min(30, acSetTemp + 1)) }}
               style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'#e2e8f0', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
             <span style={{ fontSize:10, color:'#4a5568', marginLeft:4 }}>{FAN_NAMES[acFan] || 'auto'} fan</span>
+          </div>
+        </div>
+      )}
+
+      {/* SmartTub controls: heat mode pills + set temp */}
+      {isSpa && spaOnline && (
+        <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:6 }}>
+          {/* Heat mode pills */}
+          <div style={{ display:'flex', gap:3, flexWrap:'wrap' }}>
+            {SPA_MODES.map((m, i) => (
+              <button key={m} onClick={e => { e.stopPropagation(); cmd('heat_mode', i) }}
+                style={{
+                  fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
+                  background: spaMode === i ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
+                  color: spaMode === i ? '#fff' : '#8b949e', cursor:'pointer',
+                }}>
+                {m}
+              </button>
+            ))}
+          </div>
+          {/* Set temp +/- (spa range 15–40°C, 0.5° steps — see smarttub-client.js) */}
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <button onClick={e => { e.stopPropagation(); if (spaSetTemp != null) cmd('set_temp', Math.max(15, spaSetTemp - 0.5)) }}
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'#e2e8f0', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+            <span style={{ fontSize:12, fontWeight:700, color:'#79c0ff', minWidth:42, textAlign:'center' }}>
+              {spaSetTemp != null ? `${Number(spaSetTemp).toFixed(1)}°C` : '—'}
+            </span>
+            <button onClick={e => { e.stopPropagation(); if (spaSetTemp != null) cmd('set_temp', Math.min(40, spaSetTemp + 0.5)) }}
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'#e2e8f0', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+            {spaHeater && <span style={{ fontSize:10, color:'var(--orange)', marginLeft:4 }}>heating</span>}
           </div>
         </div>
       )}
@@ -857,6 +909,23 @@ function DeviceTile({ device, onCommand, onOpen }) {
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
                     : <span style={{ fontSize:10, color: iconColor, fontWeight:600 }}>{on ? 'Yes' : 'No'}</span>
                   }
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {isSpa && spaSensors.length > 0 && (
+          <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
+            {spaSensors.slice(0,5).map(s => {
+              const on   = s.value === 1 || s.value === true
+              const Icon = s.path.startsWith('light_') ? BulbIcon : RelayIcon
+              return (
+                <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
+                    <Icon size={12} color={on ? '#79c0ff' : '#4a5568'} />
+                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
+                  </div>
+                  <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
                 </div>
               )
             })}
