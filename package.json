@@ -11,7 +11,8 @@
     "pm2:reload": "pm2 reload ecosystem.config.js",
     "pm2:delete": "pm2 delete ecosystem.config.js",
     "pm2:logs": "pm2 logs lsh",
-    "pm2:status": "pm2 status"
+    "pm2:status": "pm2 status",
+    "openapi": "node scripts/gen-openapi.js"
   },
   "dependencies": {
     "acme-client": "^5.4.0",
