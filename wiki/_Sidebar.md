@@ -9,6 +9,7 @@
 **Configure**
 - [Configuration](Configuration)
 - [Architecture](Architecture)
+- [Modules Index](Modules)
 - [Automation](Automation)
 - [i18n](Internationalization)
 
