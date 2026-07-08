@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LSH — SIP Intercom Client (React Demo)</title>
+<style>
+  :root{
+    --bg:#0a0c12; --surface:#12151d; --surface2:#171b25; --text:#eef1f6; --text2:#aeb6c4;
+    --text3:#6d7788; --green:#37c978; --red:#ff5a6a; --gold:#d9b45b; --accent:#5ea0ff;
+    --border:rgba(255,255,255,0.09);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(1200px 700px at 70% -10%, #1a2438 0%, var(--bg) 55%);
+    color:var(--text); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100%; display:flex; flex-direction:column;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:28px 20px 60px; width:100%}
+  h1{font-size:22px; margin:0 0 2px; display:flex; align-items:center; gap:10px}
+  .sub{color:var(--text3); font-size:13px; margin-bottom:22px}
+  .panel{
+    background:linear-gradient(180deg,var(--surface),var(--surface2));
+    border:1px solid var(--border); border-radius:16px; padding:18px 18px 20px; margin-bottom:18px;
+  }
+  .panel h2{font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--text3); margin:0 0 12px}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .btn{
+    border:none; border-radius:11px; padding:11px 16px; font-size:14px; font-weight:600;
+    cursor:pointer; color:#0b0d13; display:inline-flex; align-items:center; gap:7px; transition:transform .08s, filter .15s;
+  }
+  .btn:hover{filter:brightness(1.06)} .btn:active{transform:scale(.96)}
+  .btn.ghost{background:var(--surface2); color:var(--text2); border:1px solid var(--border)}
+  .btn.green{background:var(--green)} .btn.red{background:var(--red); color:#fff} .btn.gold{background:var(--gold)} .btn.blue{background:var(--accent); color:#04122b}
+  .btn[disabled]{opacity:.4; cursor:not-allowed}
+  .pill{font-size:12px; padding:3px 10px; border-radius:999px; background:var(--surface2); color:var(--text2); border:1px solid var(--border)}
+  .foot{color:var(--text3); font-size:12px; margin-top:8px}
+  code{background:#0006; padding:.05em .4em; border-radius:4px; font-family:ui-monospace,Menlo,monospace; font-size:.86em}
+
+  /* ── Call overlay ───────────────────────────── */
+  .backdrop{position:fixed; inset:0; z-index:50; background:rgba(5,7,15,.78);
+    -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+    display:flex; align-items:center; justify-content:center; padding:20px; animation:fade .2s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .card{position:relative; width:min(420px,94vw); border-radius:24px; background:var(--surface);
+    overflow:hidden; box-shadow:0 24px 80px rgba(0,0,0,.6); animation:pop .28s cubic-bezier(.2,.8,.2,1.1)}
+  @keyframes pop{from{transform:scale(.9) translateY(24px); opacity:0}to{transform:none; opacity:1}}
+  .card::before{content:""; position:absolute; inset:0; border-radius:24px; padding:1px; pointer-events:none;
+    background:linear-gradient(160deg,rgba(255,255,255,.22),rgba(255,255,255,.02) 40%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude}
+
+  /* Simulated door camera */
+  .cam{position:relative; height:244px; overflow:hidden; background:#05070d}
+  .cam .scene{position:absolute; inset:0;
+    background:
+      radial-gradient(120px 80px at 50% 120%, rgba(255,214,140,.28), transparent 70%),
+      linear-gradient(180deg,#0c1220 0%, #0a1a24 60%, #07131a 100%);}
+  .cam .porch{position:absolute; left:0; right:0; bottom:0; height:46%; background:linear-gradient(180deg,#10202b,#0a151c)}
+  .cam .door{position:absolute; left:50%; bottom:14%; transform:translateX(-50%); width:96px; height:150px; border-radius:6px 6px 2px 2px;
+    background:linear-gradient(180deg,#3a2b1e,#25190f); box-shadow:0 0 0 3px #1a120b, inset 0 0 24px rgba(0,0,0,.5)}
+  .cam .door::after{content:""; position:absolute; right:12px; top:50%; width:7px; height:7px; border-radius:50%; background:var(--gold); box-shadow:0 0 8px var(--gold)}
+  .cam .visitor{position:absolute; left:50%; bottom:26%; transform:translateX(-50%); width:48px; height:70px; border-radius:24px 24px 10px 10px;
+    background:radial-gradient(circle at 50% 26%, #4a5568 0 34%, #2b3442 36%); opacity:.92; filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
+  .cam .visitor::before{content:""; position:absolute; left:50%; top:-14px; transform:translateX(-50%); width:26px; height:26px; border-radius:50%; background:#586274}
+  .cam .grain{position:absolute; inset:0; opacity:.06; pointer-events:none;
+    background-image:radial-gradient(rgba(255,255,255,.8) 1px, transparent 1px); background-size:3px 3px; animation:grain .5s steps(2) infinite}
+  @keyframes grain{to{transform:translate(1px,1px)}}
+  .cam .scan{position:absolute; left:0; right:0; height:38%; top:-38%;
+    background:linear-gradient(180deg,transparent, rgba(120,180,255,.06), transparent); animation:scan 4.5s linear infinite}
+  @keyframes scan{to{top:110%}}
+  .cam.off .scene,.cam.off .porch,.cam.off .door,.cam.off .visitor,.cam.off .scan{opacity:0; transition:opacity .4s}
+  .cam .nocam{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--text3); font-size:13px}
+  .cam .live{position:absolute; top:12px; left:12px; display:flex; align-items:center; gap:7px; font-size:12px; font-weight:600; text-shadow:0 1px 4px #000}
+  .cam .dot{width:9px; height:9px; border-radius:50%; background:var(--red)}
+  .cam.ring .dot{animation:pulse 1.1s infinite}
+  .cam .dot.green{background:var(--green)}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.55}}
+  .cam .ts{position:absolute; right:12px; bottom:10px; font-size:11px; font-family:ui-monospace,monospace; color:#dfe6f0; text-shadow:0 1px 3px #000; opacity:.85}
+
+  .body{padding:20px; display:flex; flex-direction:column; gap:16px}
+  .who{text-align:center}
+  .who .lbl{font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--text3)}
+  .who .name{font-size:20px; font-weight:700; margin-top:4px; word-break:break-all}
+  .acts{display:flex; gap:10px}
+  .acts .btn{flex:1; min-width:120px; justify-content:center; padding:14px 16px; font-size:15px}
+  .toast{position:fixed; left:50%; bottom:34px; transform:translateX(-50%); z-index:60;
+    background:#0e2a1a; color:#c9ffe4; border:1px solid #1f6b45; padding:10px 16px; border-radius:12px; font-size:14px; font-weight:600;
+    box-shadow:0 10px 30px rgba(0,0,0,.5); animation:pop .25s}
+  .lockwrap{display:flex; align-items:center; justify-content:center; gap:10px; color:var(--gold); font-weight:600; font-size:13px}
+  .lockbar{height:6px; border-radius:3px; background:#2a2f3a; overflow:hidden; margin-top:2px}
+  .lockbar > i{display:block; height:100%; width:0; background:linear-gradient(90deg,var(--gold),#f0d98a); animation:fill 3s linear forwards}
+  @keyframes fill{to{width:100%}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="module">
+import React, { useState, useEffect, useRef, useCallback } from 'https://esm.sh/react@18.3.1'
+import { createRoot } from 'https://esm.sh/react-dom@18.3.1/client'
+import htm from 'https://esm.sh/htm@3.1.1'
+const html = htm.bind(React.createElement)
+
+// ── Mock SIP state machine ───────────────────────────────────────────────
+// In the real app this state comes from the `sip-call` Socket.IO event and the
+// actions POST to /api/sip/{answer,reject,hangup,open-door}. Here it is local
+// so the flow can be demoed without a SIP doorbell.
+const CALLERS = ['sip:doorbell@lsh.local', 'Front Gate', 'sip:101@192.168.1.1', 'Garden Intercom']
+
+function useMockSip(){
+  const [call, setCall] = useState({ state:'idle', caller:null, since:null, cameraName:'Front Door', canOpenDoor:true })
+  const ring = useCallback(()=> setCall(c=>({ ...c, state:'ringing', caller:CALLERS[Math.floor(Math.random()*CALLERS.length)], since:null })), [])
+  const answer = useCallback(()=> setCall(c=>({ ...c, state:'in-call', since:Date.now() })), [])
+  const reject = useCallback(()=> setCall(c=>({ ...c, state:'idle', caller:null, since:null })), [])
+  const hangup = reject
+  return { call, ring, answer, reject, hangup, setCall }
+}
+
+// Best-effort ringtone (WebAudio) — matches useRingtone in IncomingCall.jsx
+function useRingtone(active){
+  const ctx = useRef(null)
+  useEffect(()=>{
+    if(!active) return
+    let stop=false, loop=null
+    try{
+      const C = window.AudioContext||window.webkitAudioContext; if(!C) return
+      const ac = ctx.current || (ctx.current = new C())
+      const beep=()=>{ if(stop||ac.state==='suspended') return
+        const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.value=620
+        g.gain.setValueAtTime(.0001,ac.currentTime); g.gain.exponentialRampToValueAtTime(.14,ac.currentTime+.05)
+        g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+.4); o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime+.42) }
+      beep(); loop=setInterval(beep,1600)
+    }catch{}
+    return ()=>{ stop=true; if(loop) clearInterval(loop) }
+  },[active])
+}
+
+function useTimer(active, since){
+  const [t,setT]=useState('0:00')
+  useEffect(()=>{ if(!active){ setT('0:00'); return }
+    const s0=since||Date.now(); const f=()=>{ const s=Math.max(0,Math.floor((Date.now()-s0)/1000)); setT(`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`) }
+    f(); const iv=setInterval(f,1000); return ()=>clearInterval(iv)
+  },[active,since]); return t
+}
+
+function Clock(){ const [n,setN]=useState(''); useEffect(()=>{ const f=()=>setN(new Date().toLocaleString('en-GB',{hour12:false})); f(); const i=setInterval(f,1000); return ()=>clearInterval(i)},[]); return n }
+
+function CameraView({ state }){
+  const ringing = state==='ringing', inCall = state==='in-call'
+  const [ts,setTs]=useState('')
+  useEffect(()=>{ const f=()=>setTs(new Date().toLocaleTimeString('en-GB',{hour12:false})); f(); const i=setInterval(f,1000); return ()=>clearInterval(i)},[])
+  return html`
+    <div className=${'cam '+(ringing?'ring':'')}>
+      <div className="scene"></div><div className="porch"></div>
+      <div className="door"></div><div className="visitor"></div>
+      <div className="scan"></div><div className="grain"></div>
+      <div className="live"><span className=${'dot '+(inCall?'green':'')}></span><span>${ringing?'INCOMING':'LIVE'} · Front Door</span></div>
+      <div className="ts">${ts}</div>
+    </div>`
+}
+
+function CallCard({ sip }){
+  const { call, answer, reject, hangup, setCall } = sip
+  const ringing = call.state==='ringing', inCall = call.state==='in-call'
+  const timer = useTimer(inCall, call.since)
+  useRingtone(ringing)
+  const [toast,setToast]=useState(null)
+  const [unlocking,setUnlocking]=useState(false)
+
+  const openDoor = ()=>{
+    // Real app: POST /api/sip/open-door → pulses config.sip.doorRelay
+    setUnlocking(true); setToast('🔓 Door unlocked — relay pulsed 3s')
+    setTimeout(()=>{ setUnlocking(false) }, 3000)
+    setTimeout(()=> setToast(null), 3200)
+  }
+
+  if(call.state==='idle') return null
+  return html`
+    <div className="backdrop">
+      <div className="card">
+        <${CameraView} state=${call.state} />
+        <div className="body">
+          <div className="who">
+            <div className="lbl">${call.cameraName}</div>
+            <div className="name">${call.caller||'Unknown caller'}</div>
+          </div>
+          ${ringing && html`
+            <div className="acts">
+              <button className="btn red" onClick=${reject}>✕ Decline</button>
+              <button className="btn green" onClick=${answer}>📞 Answer</button>
+            </div>`}
+          ${inCall && html`
+            <div style=${{display:'flex',flexDirection:'column',gap:10}}>
+              <div style=${{textAlign:'center',fontSize:13,color:'var(--text3)'}}>In call · ${timer}</div>
+              ${unlocking
+                ? html`<div><div className="lockwrap">🔓 Unlocking door strike…</div><div className="lockbar"><i></i></div></div>`
+                : html`<div className="acts">
+                    ${call.canOpenDoor && html`<button className="btn gold" onClick=${openDoor}>🔓 Open door</button>`}
+                    <button className="btn red" onClick=${hangup}>✕ Hang up</button>
+                  </div>`}
+            </div>`}
+        </div>
+      </div>
+      ${toast && html`<div className="toast">${toast}</div>`}
+    </div>`
+}
+
+function App(){
+  const sip = useMockSip()
+  const s = sip.call.state
+  return html`
+    <div className="wrap">
+      <h1>🔔 LSH SIP Intercom <span className="pill">React demo</span></h1>
+      <div className="sub">Front-end demo of the doorbell call client — simulated live camera, answer/decline, and door unlock. No SIP hardware required.</div>
+
+      <div className="panel">
+        <h2>Demo controls</h2>
+        <div className="row">
+          <button className="btn blue" disabled=${s!=='idle'} onClick=${sip.ring}>📞 Simulate doorbell ring</button>
+          <button className="btn ghost" disabled=${s==='idle'} onClick=${sip.reject}>Reset</button>
+          <span className="pill">state: <b>${s}</b></span>
+        </div>
+        <div className="foot">Ring → the call overlay appears with a live camera view → <b>Answer</b> → <b>Open door</b> pulses the door relay.</div>
+      </div>
+
+      <div className="panel">
+        <h2>How it maps to the real app</h2>
+        <div style=${{fontSize:13.5,color:'var(--text2)',lineHeight:1.7}}>
+          Backend emits <code>sip-call</code> over Socket.IO; the client seeds from <code>GET /api/sip/status</code>.
+          Buttons call <code>POST /api/sip/answer</code>, <code>/reject</code>, <code>/hangup</code>, <code>/open-door</code>.
+          The camera view is the door station snapshot (matched by <code>cameraName</code> from <code>/api/cameras</code>, polled every 2s).
+          Open door pulses <code>config.sip.doorRelay</code> for <code>doorPulseMs</code>.
+          Live component: <code>react-dashboard/src/components/IncomingCall.jsx</code>.
+        </div>
+      </div>
+
+      <${CallCard} sip=${sip} />
+    </div>`
+}
+
+createRoot(document.getElementById('root')).render(html`<${App} />`)
+</script>
+</body>
+</html>

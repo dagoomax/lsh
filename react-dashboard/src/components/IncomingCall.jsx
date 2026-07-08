@@ -4,10 +4,11 @@ import { gt } from '../i18n'
 import { useSipCall } from '../hooks/useSipCall'
 
 // ── Doorbell intercom call overlay ─────────────────────────────────────────
-// Full-screen answer/decline UI driven by useSipCall(). Shows the door camera
-// snapshot (matched by name from /api/cameras), a ring pulse while ringing, and
-// an in-call timer with an Open Door control. Design language matches
-// DeviceModal (blurred backdrop, gradient border, glow blobs).
+// CallOverlay is the presentational call UI (blurred backdrop, gradient border,
+// camera slot, ring pulse, answer/decline/open-door). It is driven by a call
+// state + action set and takes the camera view as a node, so it is reused by
+// both the live intercom (default export below, real snapshot) and the demo
+// (SipDemo, simulated camera). Design language matches DeviceModal.
 
 function useDoorSnapshot(active, cameraName) {
   const [src, setSrc] = useState(null)
@@ -97,14 +98,23 @@ function CallButton({ color, onClick, glow, children }) {
   )
 }
 
-export default function IncomingCall() {
-  const { call, answer, reject, hangup, openDoor } = useSipCall()
+// Default "no camera" fill used by the live intercom when no snapshot is available.
+export function NoCameraFill() {
+  return (
+    <div style={{ color: 'var(--text3)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 40, opacity: 0.5 }}>📷</span>
+      {gt('sip.no_camera', 'No camera')}
+    </div>
+  )
+}
+
+// Presentational overlay. `camera` is a node rendered as the camera view fill.
+export function CallOverlay({ call, answer, reject, hangup, openDoor, camera }) {
   const ringing = call.state === 'ringing'
   const inCall  = call.state === 'in-call'
   const visible = ringing || inCall
 
-  const snapshot = useDoorSnapshot(visible, call.cameraName)
-  const timer    = useCallTimer(call.state, call.since)
+  const timer = useCallTimer(call.state, call.since)
   useRingtone(ringing)
 
   const [doorPulsed, setDoorPulsed] = useState(false)
@@ -156,13 +166,7 @@ export default function IncomingCall() {
               position: 'relative', height: 240, background: '#05070d',
               display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
             }}>
-              {snapshot
-                ? <img src={snapshot} alt={call.cameraName || 'Door camera'}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <div style={{ color: 'var(--text3)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 40, opacity: 0.5 }}>📷</span>
-                    {gt('sip.no_camera', 'No camera')}
-                  </div>}
+              {camera}
 
               {/* ring pulse badge */}
               <div style={{ position: 'absolute', top: 14, left: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -215,4 +219,17 @@ export default function IncomingCall() {
       )}
     </AnimatePresence>
   )
+}
+
+// Live intercom: real SIP state + real door-camera snapshot.
+export default function IncomingCall() {
+  const { call, answer, reject, hangup, openDoor } = useSipCall()
+  const visible  = call.state === 'ringing' || call.state === 'in-call'
+  const snapshot = useDoorSnapshot(visible, call.cameraName)
+
+  const camera = snapshot
+    ? <img src={snapshot} alt={call.cameraName || 'Door camera'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    : <NoCameraFill />
+
+  return <CallOverlay call={call} answer={answer} reject={reject} hangup={hangup} openDoor={openDoor} camera={camera} />
 }

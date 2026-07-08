@@ -85,6 +85,9 @@ body {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+/* Simulated door-camera scene (SipDemo) */
+@keyframes camScan { to { top: 110%; } }
+@keyframes camGrain { to { transform: translate(1px, 1px); } }
 
 /* Header nav — vanilla GitHub-dark / blue palette */
 .header-nav-react {
