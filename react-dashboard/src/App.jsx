@@ -4,6 +4,7 @@ import { useLSH }            from './hooks/useLSH'
 import Header                from './components/Header'
 import PlatformBar           from './components/PlatformBar'
 import DeviceList, { Toast } from './components/DeviceList'
+import IncomingCall          from './components/IncomingCall'
 
 // Single unified view: the "Rooms & Categories" device browser with the
 // Energy flow + relays rendered as the top section (see DeviceList). No more
@@ -22,6 +23,7 @@ export default function App() {
   return (
     <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--bg)', overflow:'hidden' }}>
       <Toast />
+      <IncomingCall />
       <Header connection={connection} connected={connected} />
 
       <div style={{ flex:1, paddingTop:56, overflow:'hidden', display:'flex', flexDirection:'column' }}>
