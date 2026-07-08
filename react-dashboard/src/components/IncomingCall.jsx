@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gt } from '../i18n'
 import { useSipCall } from '../hooks/useSipCall'
 
 // ── Doorbell intercom call overlay ─────────────────────────────────────────
 // CallOverlay is the presentational call UI (blurred backdrop, gradient border,
-// camera slot, ring pulse, answer/decline/open-door). It is driven by a call
-// state + action set and takes the camera view as a node, so it is reused by
-// both the live intercom (default export below, real snapshot) and the demo
-// (SipDemo, simulated camera). Design language matches DeviceModal.
+// camera slot + camera chooser, ring pulse, answer/decline/open-door, and a row
+// of relay/device control chips). It is driven by a call state + action set and
+// takes the camera view as a node, so it is reused by both the live intercom
+// (default export below, real snapshot + real relays) and the demo (SipDemo,
+// simulated camera + mock devices). Design language matches DeviceModal.
 
 function useDoorSnapshot(active, cameraName) {
   const [src, setSrc] = useState(null)
@@ -33,6 +34,42 @@ function useDoorSnapshot(active, cameraName) {
     return () => { stop = true; if (timer) clearInterval(timer) }
   }, [active, cameraName])
   return src
+}
+
+// Camera names available on the server (for the chooser).
+function useCameraList(active) {
+  const [names, setNames] = useState([])
+  useEffect(() => {
+    if (!active) return
+    let stop = false
+    fetch('/api/cameras', { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(j => { if (!stop) setNames((j?.data || []).map(c => c.name).filter(Boolean)) })
+      .catch(() => {})
+    return () => { stop = true }
+  }, [active])
+  return names
+}
+
+// Relays exposed as in-call control chips (toggle any relay — gate, garage…).
+// Uses the same REST endpoints Loxone/other clients use, so it also covers
+// connected devices: relays via /api/relay/:i/state, and any device via
+// /api/device/:key/set (extend `actions` in the caller for those).
+function useRelayActions(active) {
+  const [relays, setRelays] = useState([])
+  const load = useCallback(() => {
+    fetch('/api/relays', { credentials: 'same-origin' })
+      .then(r => r.json()).then(j => setRelays(j?.data || [])).catch(() => {})
+  }, [])
+  useEffect(() => { if (active) load() }, [active, load])
+  const toggle = useCallback(async (index, next) => {
+    await fetch(`/api/relay/${index}/state`, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: next }),
+    }).catch(() => {})
+    load()
+  }, [load])
+  return { relays, toggle }
 }
 
 function useCallTimer(state, since) {
@@ -98,6 +135,29 @@ function CallButton({ color, onClick, glow, children }) {
   )
 }
 
+// A relay/device control chip. `action` = { label, icon?, active?, run() }.
+function ActionChip({ action }) {
+  const [busy, setBusy] = useState(false)
+  const click = async () => {
+    setBusy(true)
+    try { await action.run() } finally { setTimeout(() => setBusy(false), 600) }
+  }
+  return (
+    <motion.button
+      whileTap={{ scale: 0.95 }} onClick={click}
+      style={{
+        border: '1px solid var(--border, rgba(255,255,255,0.14))', borderRadius: 999,
+        padding: '7px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        background: action.active ? 'var(--gold, #d9b45b)' : 'var(--surface2, #171b25)',
+        color: action.active ? '#0b0d13' : 'var(--text2, #aeb6c4)',
+      }}
+    >
+      <span>{action.icon || '⚙️'}</span>{action.label}{busy ? ' …' : ''}
+    </motion.button>
+  )
+}
+
 // Default "no camera" fill used by the live intercom when no snapshot is available.
 export function NoCameraFill() {
   return (
@@ -108,8 +168,11 @@ export function NoCameraFill() {
   )
 }
 
-// Presentational overlay. `camera` is a node rendered as the camera view fill.
-export function CallOverlay({ call, answer, reject, hangup, openDoor, camera }) {
+// Presentational overlay. `camera` is a node rendered as the camera view fill;
+// `cameras`/`selectedCamera`/`onSelectCamera` drive the chooser; `actions` is an
+// optional array of control chips shown while in a call.
+export function CallOverlay({ call, answer, reject, hangup, openDoor, camera,
+  cameras = [], selectedCamera, onSelectCamera, actions = [] }) {
   const ringing = call.state === 'ringing'
   const inCall  = call.state === 'in-call'
   const visible = ringing || inCall
@@ -127,6 +190,7 @@ export function CallOverlay({ call, answer, reject, hangup, openDoor, camera }) 
   const stateLabel = ringing
     ? gt('sip.incoming_call', 'Incoming call')
     : gt('sip.in_call', 'In call')
+  const camLabel = selectedCamera || call.cameraName || gt('sip.door_station', 'Door station')
 
   return (
     <AnimatePresence>
@@ -179,18 +243,47 @@ export function CallOverlay({ call, answer, reject, hangup, openDoor, camera }) 
                   {stateLabel}{inCall ? ` · ${timer}` : ''}
                 </span>
               </div>
+
+              {/* camera chooser */}
+              {cameras.length > 1 && (
+                <select
+                  value={selectedCamera || ''}
+                  onChange={e => onSelectCamera && onSelectCamera(e.target.value)}
+                  title={gt('sip.choose_camera', 'Choose camera')}
+                  style={{
+                    position: 'absolute', top: 12, right: 12, maxWidth: '55%',
+                    background: 'rgba(5,7,15,0.72)', color: '#fff', border: '1px solid rgba(255,255,255,0.18)',
+                    borderRadius: 8, fontSize: 12, padding: '5px 8px', cursor: 'pointer',
+                    backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+                  }}
+                >
+                  {cameras.map(name => <option key={name} value={name} style={{ color: '#000' }}>{name}</option>)}
+                </select>
+              )}
             </div>
 
             {/* Caller + actions */}
             <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)' }}>
-                  {call.cameraName || gt('sip.door_station', 'Door station')}
+                  {camLabel}
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginTop: 4, wordBreak: 'break-all' }}>
                   {call.caller || gt('sip.unknown_caller', 'Unknown caller')}
                 </div>
               </div>
+
+              {/* relay / connected-device controls (in-call) */}
+              {inCall && actions.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)' }}>
+                    {gt('sip.controls', 'Controls')}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                    {actions.map(a => <ActionChip key={a.id} action={a} />)}
+                  </div>
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: 10 }}>
                 {ringing && <>
@@ -221,15 +314,35 @@ export function CallOverlay({ call, answer, reject, hangup, openDoor, camera }) 
   )
 }
 
-// Live intercom: real SIP state + real door-camera snapshot.
+// Live intercom: real SIP state, real door-camera snapshot, real relays.
 export default function IncomingCall() {
   const { call, answer, reject, hangup, openDoor } = useSipCall()
   const visible  = call.state === 'ringing' || call.state === 'in-call'
-  const snapshot = useDoorSnapshot(visible, call.cameraName)
+
+  const cameras  = useCameraList(visible)
+  const [selected, setSelected] = useState(null)
+  useEffect(() => {
+    if (!visible) { setSelected(null); return }
+    if (!selected) setSelected(call.cameraName || cameras[0] || null)
+  }, [visible, call.cameraName, cameras, selected])
+  const activeCam = selected || call.cameraName
+  const snapshot  = useDoorSnapshot(visible, activeCam)
+
+  const { relays, toggle } = useRelayActions(visible)
+  const actions = relays.map(r => ({
+    id: `relay-${r.index}`, label: r.name || `Relay ${r.index + 1}`, icon: '⚡',
+    active: !!r.on, run: () => toggle(r.index, !r.on),
+  }))
 
   const camera = snapshot
-    ? <img src={snapshot} alt={call.cameraName || 'Door camera'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    ? <img src={snapshot} alt={activeCam || 'Door camera'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     : <NoCameraFill />
 
-  return <CallOverlay call={call} answer={answer} reject={reject} hangup={hangup} openDoor={openDoor} camera={camera} />
+  return (
+    <CallOverlay
+      call={call} answer={answer} reject={reject} hangup={hangup} openDoor={openDoor}
+      camera={camera} cameras={cameras} selectedCamera={activeCam} onSelectCamera={setSelected}
+      actions={actions}
+    />
+  )
 }

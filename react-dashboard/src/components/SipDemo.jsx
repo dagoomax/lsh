@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import '../styles/global.css'
 import { CallOverlay } from './IncomingCall'
 import SimulatedCamera from './SimulatedCamera'
@@ -6,9 +7,26 @@ import { useMockSipCall } from '../hooks/useMockSipCall'
 // SIP intercom demo page (reachable at /react/?demo=sip). Drives the real
 // CallOverlay with a local mock call and a simulated camera — no SIP hardware,
 // no /api/sip/* traffic. Chosen at the app root in main.jsx.
+const DEMO_CAMERAS = ['Front Door', 'Front Gate', 'Garden']
+
 export default function SipDemo() {
   const sip = useMockSipCall()
   const s = sip.call.state
+
+  // Camera chooser (mock list)
+  const [cam, setCam] = useState(DEMO_CAMERAS[0])
+
+  // Relay / connected-device controls (mock). In production these map to
+  // /api/relay/:i/state and /api/device/<key>/set (Loxone, Fibaro, …).
+  const [devices, setDevices] = useState([
+    { id: 'gate',   label: 'Gate',        icon: '🚪', active: false, via: 'Loxone' },
+    { id: 'garage', label: 'Garage',      icon: '🅿️', active: false, via: 'relay 0' },
+    { id: 'porch',  label: 'Porch light', icon: '💡', active: false, via: 'Loxone' },
+  ])
+  const actions = devices.map(d => ({
+    id: d.id, label: d.label, icon: d.icon, active: d.active,
+    run: async () => setDevices(xs => xs.map(x => x.id === d.id ? { ...x, active: !x.active } : x)),
+  }))
 
   const btn = (bg, color = '#0b0d13') => ({
     border: 'none', borderRadius: 11, padding: '11px 16px', fontSize: 14, fontWeight: 600,
@@ -46,7 +64,7 @@ export default function SipDemo() {
             </span>
           </div>
           <div style={{ color: 'var(--text3,#6d7788)', fontSize: 12, marginTop: 8 }}>
-            Ring → the overlay appears with a live camera view → <b>Answer</b> → <b>Open door</b> pulses the door relay.
+            Ring → the overlay appears with a live camera view (use the top-right <b>chooser</b> to switch cameras) → <b>Answer</b> → <b>Open door</b> pulses the door relay, and the <b>Controls</b> chips toggle a relay / Loxone device.
           </div>
         </div>
 
@@ -54,10 +72,12 @@ export default function SipDemo() {
           <h2 style={h2}>How it maps to the real app</h2>
           <div style={{ fontSize: 13.5, color: 'var(--text2,#aeb6c4)', lineHeight: 1.7 }}>
             In production the backend emits <code>sip-call</code> over Socket.IO and the client seeds from
-            <code> GET /api/sip/status</code>; the buttons POST <code>/api/sip/answer</code>, <code>/reject</code>,
-            <code> /hangup</code>, <code>/open-door</code> (which pulses <code>config.sip.doorRelay</code>). The camera view
-            is the door-station snapshot matched by <code>cameraName</code> from <code>/api/cameras</code>. Live component:
-            <code> src/components/IncomingCall.jsx</code> — this demo renders the same <code>CallOverlay</code> with a mock driver.
+            <code> GET /api/sip/status</code>; the call buttons POST <code>/api/sip/answer</code>, <code>/reject</code>,
+            <code> /hangup</code>, <code>/open-door</code> (which pulses <code>config.sip.doorRelay</code>). The camera
+            chooser lists <code>/api/cameras</code> and shows the matching snapshot. The <b>Controls</b> chips toggle
+            LSH relays via <code>/api/relay/:i/state</code> and any connected device (Loxone, Fibaro, …) via
+            <code> /api/device/&lt;key&gt;/set</code>. Live component: <code>src/components/IncomingCall.jsx</code> —
+            this demo renders the same <code>CallOverlay</code> with a mock driver.
           </div>
         </div>
       </div>
@@ -68,7 +88,11 @@ export default function SipDemo() {
         reject={sip.reject}
         hangup={sip.hangup}
         openDoor={sip.openDoor}
-        camera={<SimulatedCamera state={sip.call.state} />}
+        camera={<SimulatedCamera state={sip.call.state} variant={cam} />}
+        cameras={DEMO_CAMERAS}
+        selectedCamera={cam}
+        onSelectCamera={setCam}
+        actions={actions}
       />
     </div>
   )
