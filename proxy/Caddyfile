@@ -1,0 +1,35 @@
+# HTTPS reverse proxy in front of LSH (TLS termination → http://127.0.0.1:3001)
+#
+# Deployed copy: /opt/homebrew/etc/Caddyfile (brew services start caddy).
+# This file in the repo is the source of truth — copy it there after edits:
+#   cp proxy/Caddyfile /opt/homebrew/etc/Caddyfile && brew services restart caddy
+#
+# Certificates come from Caddy's built-in local CA (local_certs). To make
+# browsers/devices trust them, install the root CA once per machine:
+#   caddy trust        (on this Mac; other devices: import
+#   ~/Library/Application Support/Caddy/pki/authorities/local/root.crt)
+
+{
+	local_certs
+	# Caddy's admin API — localhost only
+	admin localhost:2019
+}
+
+# Hostnames/IPs the proxy answers on — the local CA issues one cert
+# covering all of them. Add names here if the machine gets a new address.
+https://localhost, https://lsh.local, https://192.168.1.56, https://192.168.1.229 {
+	reverse_proxy 127.0.0.1:3001 {
+		# preserve client IP for LSH logs
+		header_up X-Real-IP {remote_host}
+	}
+
+	# Socket.IO / WebSocket upgrades are proxied automatically by Caddy.
+
+	encode gzip
+}
+
+# Redirect plain HTTP on :80 to HTTPS (LSH itself keeps serving :3001 directly,
+# so existing Loxone HTTP URLs continue to work unchanged).
+http:// {
+	redir https://{host}{uri} permanent
+}

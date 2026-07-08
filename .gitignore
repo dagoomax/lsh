@@ -5,3 +5,6 @@ logs/
 .claude/
 motor_control/
 automations.json
+
+# macOS
+.DS_Store
