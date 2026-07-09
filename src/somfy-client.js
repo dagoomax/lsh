@@ -216,7 +216,9 @@ class SomfyClient {
         key:   deviceKey,
         label: label,
         type:  'somfy',
-        homekit: [],
+        // Bridge tilt-capable io venetian blinds to HomeKit as a WindowCovering
+        // (position + horizontal slat tilt). Other covers stay dashboard-only.
+        homekit: hasTilt ? ['somfy-cover'] : [],
         sensors: [
           {
             path: 'switch', label: 'Open/Close', format: 'on-off',

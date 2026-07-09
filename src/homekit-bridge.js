@@ -419,8 +419,11 @@ function addLockService(accessory, name, storePath, store, writeCallback) {
  * Adds a WindowCovering service.
  * store value: 0=closed, 1=open (binary) OR 0-100 (position %)
  * If levelPath is provided, uses that for position; otherwise binary.
+ * If tiltPath is provided, exposes a horizontal slat-tilt characteristic
+ * (store value is "% open": 0=closed slats, 100=open) mapped to a 0–90° angle;
+ * tiltWrite(pct) sends the tilt command.
  */
-function addWindowCoveringService(accessory, name, storePath, store, writeCallback, levelPath) {
+function addWindowCoveringService(accessory, name, storePath, store, writeCallback, levelPath, tiltPath, tiltWrite) {
   const svc = accessory.addService(Service.WindowCovering, name);
 
   function getPos() {
@@ -448,6 +451,29 @@ function addWindowCoveringService(accessory, name, storePath, store, writeCallba
   svc.getCharacteristic(Characteristic.PositionState)
     .onGet(() => 2); // 2 = STOPPED
 
+  // Slat tilt: HomeKit uses a signed angle; map "% open" 0-100 → 0-90°.
+  const toAngle = (pct) => clamp(Math.round((pct ?? 0) * 0.9), 0, 90);
+  const toPct   = (ang) => clamp(Math.round(ang / 0.9), 0, 100);
+  if (tiltPath) {
+    // Seed a valid value before narrowing props (default is -90°, below our min).
+    const initTilt = toAngle(store.get(tiltPath));
+    svc.getCharacteristic(Characteristic.CurrentHorizontalTiltAngle)
+      .updateValue(initTilt)
+      .setProps({ minValue: 0, maxValue: 90 })
+      .onGet(() => toAngle(store.get(tiltPath)));
+
+    svc.getCharacteristic(Characteristic.TargetHorizontalTiltAngle)
+      .updateValue(initTilt)
+      .setProps({ minValue: 0, maxValue: 90 })
+      .onGet(() => toAngle(store.get(tiltPath)))
+      .onSet(async (ang) => {
+        if (!tiltWrite) return;
+        const pct = toPct(ang);
+        await tiltWrite(pct);
+        store.update(tiltPath, pct);
+      });
+  }
+
   const update = () => {
     const pos = getPos();
     svc.getCharacteristic(Characteristic.CurrentPosition).updateValue(pos);
@@ -456,6 +482,11 @@ function addWindowCoveringService(accessory, name, storePath, store, writeCallba
 
   store.on('change', ({ key }) => {
     if (key === storePath || key === levelPath) update();
+    if (tiltPath && key === tiltPath) {
+      const ang = toAngle(store.get(tiltPath));
+      svc.getCharacteristic(Characteristic.CurrentHorizontalTiltAngle).updateValue(ang);
+      svc.getCharacteristic(Characteristic.TargetHorizontalTiltAngle).updateValue(ang);
+    }
   });
 
   return svc;
@@ -871,6 +902,23 @@ function buildDeviceAccessory(device, store) {
         addWindowCoveringService(acc, device.label, `${device.key}/${s.path}`, store,
           (cmd, args = []) => device._writeCapability('windowShade', cmd, args),
           level ? `${device.key}/${level.path}` : null);
+      }
+    }
+
+    if (hkType === 'somfy-cover') {
+      // Somfy covers expose switch/level (+ tilt on io venetian blinds). Map to
+      // a WindowCovering: position via the position capability, tilt via
+      // orientation. `level.writeCmd` is the device's setPosition/setClosure.
+      const level = device.sensors.find(s => s.path === 'level');
+      const tilt  = device.sensors.find(s => s.path === 'tilt');
+      if (device._writeCapability) {
+        addWindowCoveringService(acc, device.label, `${device.key}/switch`, store,
+          (cmd, args = []) => cmd === 'setLevel'
+            ? device._writeCapability('position', level.writeCmd, args)
+            : device._writeCapability('toggle', cmd === 'open' ? 'on' : 'off'),
+          level ? `${device.key}/${level.path}` : null,
+          tilt  ? `${device.key}/${tilt.path}` : null,
+          tilt  ? (pct) => device._writeCapability('orientation', 'setOrientation', [pct]) : null);
       }
     }
 
