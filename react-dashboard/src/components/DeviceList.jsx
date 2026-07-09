@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import {
   resolveIcon, CAT_ICON_COMPONENT, GridPowerIcon,
   SwitchOutletIcon, BulbIcon, ShutterIcon, ThermometerIcon,
-  HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon, RelayIcon,
+  HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon, RelayIcon, MyIcon,
 } from './Icons'
 import DeviceModal from './DeviceModal'
 import StatsView   from './StatsView'
@@ -554,11 +554,10 @@ function DeviceTile({ device, onCommand, onOpen }) {
       {hasMy && (
         <button onClick={e => { e.stopPropagation(); cmd('my', 1) }}
           title="Move to favourite (My) position"
-          style={{ marginTop:8, width:'100%', padding:'8px 10px', borderRadius:9,
+          style={{ marginTop:8, width:'100%', padding:'7px 10px', borderRadius:9,
             border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text2)',
-            fontSize:13, fontWeight:600, cursor:'pointer', display:'flex',
-            alignItems:'center', justifyContent:'center', gap:6 }}>
-          ★ My
+            cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <MyIcon size={18} />
         </button>
       )}
 
