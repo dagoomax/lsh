@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { resolveIcon } from './Icons'
+import { resolveIcon, MyIcon } from './Icons'
 import { gt } from '../i18n'
 
 // ── Advanced device popup: full controls + history graphs ──────────────────
@@ -307,7 +307,14 @@ export default function DeviceModal({ device, onClose, onCommand }) {
                               boxShadow: '0 4px 14px rgba(88,166,255,0.3)',
                             }}>▶ Run</button>
                           )}
-                          {s.type !== 'range' && s.type !== 'color-temp' && s.type !== 'trigger' && (
+                          {s.path === 'my' && s.type !== 'range' && (
+                            <button onClick={() => cmd('my', 1)} title="Move to favourite (My) position" style={{
+                              marginLeft: 'auto', padding: '6px 16px', borderRadius: 10, cursor: 'pointer',
+                              border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)',
+                              color: 'var(--text2,#aeb6c4)', display: 'flex', alignItems: 'center',
+                            }}><MyIcon size={18} /></button>
+                          )}
+                          {s.type !== 'range' && s.type !== 'color-temp' && s.type !== 'trigger' && s.path !== 'my' && (
                             <span style={{ marginLeft: 'auto' }}>
                               <BigToggle on={isOn} onChange={on => cmd(s.path, on ? 1 : 0)} />
                             </span>
