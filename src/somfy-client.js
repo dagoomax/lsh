@@ -203,6 +203,10 @@ class SomfyClient {
       const cmds = (dev.definition?.commands || []).map(c => c.commandName || c.name || c);
       const hasSetPosition = cmds.includes('setPosition');
       const posCmd = hasSetPosition ? 'setPosition' : 'setClosure';
+      // The "my" favourite (Somfy remote's middle button). Advertised by io
+      // covers; RTS motors report incomplete command lists, so include it when
+      // the device lists it OR reports no commands at all.
+      const hasMy = cmds.includes('my') || cmds.length === 0;
 
       const device = {
         key:   deviceKey,
@@ -229,6 +233,13 @@ class SomfyClient {
             writeOn: 'stop', writeOff: 'stop',
             capabilityId: 'stop', homekit: null,
           },
+          ...(hasMy ? [{
+            // Momentary: move to the stored "my" favourite position.
+            path: 'my', label: 'My', format: 'on-off',
+            controllable: true, type: 'toggle',
+            writeOn: 'my', writeOff: 'my',
+            capabilityId: 'my', homekit: null,
+          }] : []),
         ],
         _writeCapability: (capId, command, args) =>
           this._executeCommand(cfg, url, capId, command, args),
@@ -343,6 +354,9 @@ class SomfyClient {
       // Halt an in-motion cover. RTS motors use `stop`; some io covers expose
       // `stopIdentify` — `stop` is accepted by both via exec/apply.
       cmd = { name: 'stop', parameters: [] };
+    } else if (capId === 'my') {
+      // Move to the stored "my" favourite position (Somfy remote middle button).
+      cmd = { name: 'my', parameters: [] };
     } else if (capId === 'position') {
       const pct = Math.round(args?.[0] ?? 0);
       // setPosition: 0=closed, 100=open  |  setClosure: 0=open, 100=closed
