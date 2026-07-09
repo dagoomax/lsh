@@ -395,6 +395,7 @@ async function main() {
     const SonosClient = tryRequire('./src/sonos-client');
     if (SonosClient) {
       const sonos = new SonosClient(config, store, sensorRegistry);
+      apiClients.sonos = sonos; // expose for /api/sonos/* (announce, play-url)
       sonos.start().catch((err) => console.error(`[Sonos] Start failed: ${err.message}`));
     }
   }

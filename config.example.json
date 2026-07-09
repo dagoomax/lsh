@@ -97,6 +97,16 @@
     "password": "",
     "pollInterval": 60
   },
+  "sonos": {
+    "discover": true,
+    "hosts": [],
+    "pollInterval": 5,
+    "tts": {
+      "lang": "en",
+      "maxSeconds": 30,
+      "urlTemplate": ""
+    }
+  },
   "loxone": {
     "host": "192.168.1.x",
     "port": 80,

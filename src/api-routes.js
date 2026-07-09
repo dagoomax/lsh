@@ -456,6 +456,49 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // ── Sonos: URL playback + TTS announcements ───────────────
+  // GET + POST so Loxone/automations can trigger with a simple query too.
+  const sonosParam = (req, name) => req.body?.[name] ?? req.query[name];
+
+  router.get('/sonos/players', (req, res) => {
+    const sonos = clients.sonos;
+    res.json({ success: true, data: sonos ? sonos.getPlayers() : [] });
+  });
+
+  const announceHandler = async (req, res) => {
+    const sonos = clients.sonos;
+    if (!sonos) return res.status(503).json({ success: false, error: 'Sonos not enabled' });
+    const text = sonosParam(req, 'text');
+    if (!text) return res.status(400).json({ success: false, error: 'text required' });
+    const volume = sonosParam(req, 'volume');
+    try {
+      const players = await sonos.announceMany(sonosParam(req, 'host'), String(text), {
+        lang: sonosParam(req, 'lang'),
+        volume: volume != null && volume !== '' ? Number(volume) : undefined,
+      });
+      res.json({ success: true, players });
+    } catch (err) {
+      res.status(err.message.includes('No matching') ? 404 : 500).json({ success: false, error: err.message });
+    }
+  };
+  router.post('/sonos/announce', announceHandler);
+  router.get('/sonos/announce', announceHandler);
+
+  const playUrlHandler = async (req, res) => {
+    const sonos = clients.sonos;
+    if (!sonos) return res.status(503).json({ success: false, error: 'Sonos not enabled' });
+    const url = sonosParam(req, 'url');
+    if (!url) return res.status(400).json({ success: false, error: 'url required' });
+    try {
+      const players = await sonos.playUrlMany(sonosParam(req, 'host'), String(url), sonosParam(req, 'meta'));
+      res.json({ success: true, players });
+    } catch (err) {
+      res.status(err.message.includes('No matching') ? 404 : 500).json({ success: false, error: err.message });
+    }
+  };
+  router.post('/sonos/play-url', playUrlHandler);
+  router.get('/sonos/play-url', playUrlHandler);
+
   // SmartThings camera snapshot proxy — fetches the stored image URL and proxies the bytes
   router.get('/smartthings-camera/:deviceId/snapshot', async (req, res) => {
     const { deviceId } = req.params;

@@ -243,6 +243,103 @@ class SonosClient {
     setTimeout(() => this._pollPlayer(host).catch(() => {}), 700);
   }
 
+  // ── URL playback + TTS announcements ───────────────────────────────────────
+
+  getPlayers() {
+    return Object.entries(this._players).map(([host, p]) => ({ host, label: p.label, deviceKey: p.deviceKey }));
+  }
+
+  _resolveHosts(host) {
+    if (host) return this._players[host] ? [host] : [];
+    return Object.keys(this._players);
+  }
+
+  // Set the transport to an arbitrary stream URL and play it.
+  async playUrl(host, uri, metadata = '') {
+    await this._soap(host, AV_CTRL, AV_NS, 'SetAVTransportURI',
+      `<InstanceID>0</InstanceID><CurrentURI>${xmlEsc(uri)}</CurrentURI>` +
+      `<CurrentURIMetaData>${metadata ? xmlEsc(metadata) : ''}</CurrentURIMetaData>`);
+    await this._soap(host, AV_CTRL, AV_NS, 'Play', '<InstanceID>0</InstanceID><Speed>1</Speed>');
+    setTimeout(() => this._pollPlayer(host).catch(() => {}), 700);
+  }
+
+  async playUrlMany(host, uri, metadata) {
+    const hosts = this._resolveHosts(host);
+    if (!hosts.length) throw new Error('No matching Sonos player');
+    await Promise.all(hosts.map(h => this.playUrl(h, uri, metadata)));
+    return hosts;
+  }
+
+  // Build a TTS stream URL. Default: Google Translate TTS (public, ~200 char
+  // limit). Override with config.sonos.tts.urlTemplate ({text}/{lang} tokens)
+  // to use a self-hosted engine.
+  _ttsUrl(text, lang) {
+    const tts = this._config.sonos?.tts || {};
+    const l   = lang || tts.lang || 'en';
+    if (tts.urlTemplate) {
+      return tts.urlTemplate.replace('{lang}', encodeURIComponent(l)).replace('{text}', encodeURIComponent(text));
+    }
+    return `http://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob` +
+           `&tl=${encodeURIComponent(l)}&q=${encodeURIComponent(text)}`;
+  }
+
+  // Speak `text`: snapshot current playback + volume, play the clip, then
+  // restore what was playing (and the volume, if we changed it).
+  async announce(host, text, opts = {}) {
+    if (!text) throw new Error('announce: text required');
+    const url = this._ttsUrl(text, opts.lang);
+
+    const media = await this._soap(host, AV_CTRL, AV_NS, 'GetMediaInfo',     '<InstanceID>0</InstanceID>').catch(() => '');
+    const info  = await this._soap(host, AV_CTRL, AV_NS, 'GetTransportInfo', '<InstanceID>0</InstanceID>').catch(() => '');
+    const volRes = await this._soap(host, RC_CTRL, RC_NS, 'GetVolume', '<InstanceID>0</InstanceID><Channel>Master</Channel>').catch(() => '');
+    const prevUri  = tag(media, 'CurrentURI') || '';
+    const prevMeta = tag(media, 'CurrentURIMetaData') || '';
+    const wasPlaying = tag(info, 'CurrentTransportState') === 'PLAYING';
+    const prevVol = parseInt(tag(volRes, 'CurrentVolume') || '', 10);
+
+    if (opts.volume != null) {
+      await this._soap(host, RC_CTRL, RC_NS, 'SetVolume',
+        `<InstanceID>0</InstanceID><Channel>Master</Channel><DesiredVolume>${Math.round(opts.volume)}</DesiredVolume>`).catch(() => {});
+    }
+
+    await this.playUrl(host, url);
+    const maxMs = (opts.maxSeconds || this._config.sonos?.tts?.maxSeconds || 30) * 1000;
+    await this._waitStopped(host, maxMs);
+
+    if (opts.volume != null && Number.isFinite(prevVol)) {
+      await this._soap(host, RC_CTRL, RC_NS, 'SetVolume',
+        `<InstanceID>0</InstanceID><Channel>Master</Channel><DesiredVolume>${prevVol}</DesiredVolume>`).catch(() => {});
+    }
+    if (prevUri) {
+      await this._soap(host, AV_CTRL, AV_NS, 'SetAVTransportURI',
+        `<InstanceID>0</InstanceID><CurrentURI>${xmlEsc(prevUri)}</CurrentURI>` +
+        `<CurrentURIMetaData>${xmlEsc(prevMeta)}</CurrentURIMetaData>`).catch(() => {});
+      if (wasPlaying) {
+        await this._soap(host, AV_CTRL, AV_NS, 'Play', '<InstanceID>0</InstanceID><Speed>1</Speed>').catch(() => {});
+      }
+    }
+    setTimeout(() => this._pollPlayer(host).catch(() => {}), 700);
+  }
+
+  async announceMany(host, text, opts) {
+    const hosts = this._resolveHosts(host);
+    if (!hosts.length) throw new Error('No matching Sonos player');
+    await Promise.all(hosts.map(h => this.announce(h, text, opts)));
+    return hosts;
+  }
+
+  // Poll transport until the clip stops (or a timeout), so restore happens after.
+  async _waitStopped(host, maxMs) {
+    const start = Date.now();
+    await new Promise(r => setTimeout(r, 800)); // let it start
+    while (Date.now() - start < maxMs) {
+      const info = await this._soap(host, AV_CTRL, AV_NS, 'GetTransportInfo', '<InstanceID>0</InstanceID>').catch(() => '');
+      const st = tag(info, 'CurrentTransportState');
+      if (st && st !== 'PLAYING' && st !== 'TRANSITIONING') return;
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+
   // ── SOAP / HTTP Helpers ────────────────────────────────────────────────────
 
   _soap(host, path, ns, action, body) {
@@ -294,6 +391,11 @@ function tag(xml, name) {
   if (!xml) return null;
   const m = xml.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`, 'i'));
   return m ? m[1].trim() : null;
+}
+
+function xmlEsc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 module.exports = SonosClient;

@@ -3,7 +3,7 @@
   "info": {
     "title": "LSH — LoxoneSwaggerHelper API",
     "version": "1.0.0",
-    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 140 endpoints.",
+    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 145 endpoints.",
     "license": {
       "name": "Repository",
       "url": "https://github.com/dagoomax/lsh"
@@ -50,6 +50,10 @@
     },
     {
       "name": "SIP doorbell intercom",
+      "description": "5 endpoints"
+    },
+    {
+      "name": "Sonos: URL playback + TTS announcements",
       "description": "11 endpoints"
     },
     {
@@ -1972,10 +1976,181 @@
         }
       }
     },
+    "/sonos/players": {
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /sonos/players",
+        "operationId": "get_sonos_players",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sonos/announce": {
+      "post": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "POST /sonos/announce",
+        "operationId": "post_sonos_announce",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /sonos/announce",
+        "operationId": "get_sonos_announce",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sonos/play-url": {
+      "post": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "POST /sonos/play-url",
+        "operationId": "post_sonos_play_url",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /sonos/play-url",
+        "operationId": "get_sonos_play_url",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/smartthings-camera/{deviceId}/snapshot": {
       "get": {
         "tags": [
-          "SIP doorbell intercom"
+          "Sonos: URL playback + TTS announcements"
         ],
         "summary": "GET /smartthings-camera/:deviceId/snapshot",
         "operationId": "get_smartthings_camera_deviceId_snapshot",
@@ -2016,7 +2191,7 @@
     "/smartthings-camera/{deviceId}/take": {
       "post": {
         "tags": [
-          "SIP doorbell intercom"
+          "Sonos: URL playback + TTS announcements"
         ],
         "summary": "POST /smartthings-camera/:deviceId/take",
         "operationId": "post_smartthings_camera_deviceId_take",
@@ -2067,7 +2242,7 @@
     "/camera-log": {
       "get": {
         "tags": [
-          "SIP doorbell intercom"
+          "Sonos: URL playback + TTS announcements"
         ],
         "summary": "GET /camera-log",
         "operationId": "get_camera_log",
@@ -2098,7 +2273,7 @@
     "/unifi/snapshot/{cameraId}": {
       "get": {
         "tags": [
-          "SIP doorbell intercom"
+          "Sonos: URL playback + TTS announcements"
         ],
         "summary": "GET /unifi/snapshot/:cameraId",
         "operationId": "get_unifi_snapshot_cameraId",
@@ -2139,7 +2314,7 @@
     "/reolink/snapshot/{idx}": {
       "get": {
         "tags": [
-          "SIP doorbell intercom"
+          "Sonos: URL playback + TTS announcements"
         ],
         "summary": "GET /reolink/snapshot/:idx",
         "operationId": "get_reolink_snapshot_idx",
@@ -2180,7 +2355,7 @@
     "/settings/cameras": {
       "post": {
         "tags": [
-          "SIP doorbell intercom"
+          "Sonos: URL playback + TTS announcements"
         ],
         "summary": "POST /settings/cameras",
         "operationId": "post_settings_cameras",
