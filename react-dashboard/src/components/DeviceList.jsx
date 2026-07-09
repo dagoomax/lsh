@@ -283,6 +283,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
   const ct       = merged.colorTemperature?.value ?? 4000
   const hasSwitch= r.switch != null
   const hasLevel = r.level != null
+  const hasMy    = (device.sensors || []).some(s => s.path === 'my') // Somfy "my" favourite
   const hasCT    = r.colorTemperature != null
   const hasTemp  = r.temperature != null
   const hasHum   = r.humidity != null
@@ -547,6 +548,18 @@ function DeviceTile({ device, onCommand, onOpen }) {
           {hasLevel && <Slider value={level} onCommit={v => cmd('level', v)} />}
           {hasCT    && <CTSlider value={ct}  onCommit={v => cmd('colorTemperature', v)} />}
         </div>
+      )}
+
+      {/* Somfy "My" favourite position */}
+      {hasMy && (
+        <button onClick={e => { e.stopPropagation(); cmd('my', 1) }}
+          title="Move to favourite (My) position"
+          style={{ marginTop:8, width:'100%', padding:'8px 10px', borderRadius:9,
+            border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text2)',
+            fontSize:13, fontWeight:600, cursor:'pointer', display:'flex',
+            alignItems:'center', justifyContent:'center', gap:6 }}>
+          ★ My
+        </button>
       )}
 
       {/* AC controls: mode pills + temp */}
