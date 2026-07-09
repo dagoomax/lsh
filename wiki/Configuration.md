@@ -355,7 +355,7 @@ Connects to a **Somfy TaHoma** installation and discovers roller shutters, awnin
 
 **`devices`** — optional name filter array. Leave empty to discover all. Example: `["Salon", "Bedroom"]`.
 
-**Control:** Each device exposes a switch (open/close) and a level slider (0 = closed, 100 = open).
+**Control:** Each device exposes `switch` (toggle: on=open/off=close), `level` (range 0–100 position), `stop` (momentary halt), and `my` (momentary — move to the stored **My** favourite position, Overkiz `my`). Trigger via `GET /api/device/<key>/set?sensor=my&value=1`.
 
 ---
 

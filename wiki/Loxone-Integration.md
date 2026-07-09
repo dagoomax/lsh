@@ -74,7 +74,7 @@ Then in Loxone Config: **Virtual Outputs → Import Virtual Output…** and **Vi
 
 | File | Contents |
 |---|---|
-| `loxone-lsh-somfy.xml` | 14 Somfy blinds: Open/Close, Stop, Position (0–100) |
+| `loxone-lsh-somfy.xml` | 14 Somfy blinds: Open/Close, Stop, My (favourite), Position (0–100) |
 | `loxone-lsh-fibaro-all.xml` | 44 Fibaro devices: switches, shutters, dimmers |
 | `loxone-lsh-fibaro-dimmers.xml` | just the Fibaro dimmers |
 | `loxone-lsh-fibaro-all-input.xml` | feedback for all Fibaro devices |

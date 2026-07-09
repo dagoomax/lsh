@@ -434,7 +434,7 @@ Integrates **Somfy TaHoma** roller shutters and covers via the local HTTPS API (
 
 **Authentication:** `POST /enduser-mobile-web/1/enduserAPI/login` with email + password → `JSESSIONID` cookie. Session is refreshed automatically on 401.
 
-**Discovery:** `GET .../setup/devices` — filters to controllable device classes (RollerShutter, Gate, Awning, Window, etc.). Each device gets a `switch` sensor (open/close toggle) and a `level` sensor (0–100 position slider, inverted from the TaHoma `core:ClosureState` which uses 0 = open).
+**Discovery:** `GET .../setup/devices` — filters to controllable device classes (RollerShutter, Gate, Awning, Window, etc.). Each device gets a `switch` sensor (open/close toggle), a `level` sensor (0–100 position slider, inverted from the TaHoma `core:ClosureState` which uses 0 = open), a `stop` momentary, and a `my` momentary (favourite position via the Overkiz `my` command).
 
 **Polling:** `GET .../setup/devices/<url>/states` every `pollInterval` seconds. `core:ClosureState` → `level = 100 - closure`.
 

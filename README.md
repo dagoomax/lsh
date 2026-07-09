@@ -601,7 +601,16 @@ Connects to a **Somfy TaHoma** installation and discovers roller shutters, awnin
 
 **`devices`** — optional name filter array. Leave empty to discover all. Example: `["Salon", "Bedroom"]`.
 
-**Control:** Each device exposes a switch (open/close) and a level slider (0 = closed, 100 = open).
+**Control:** Each device exposes these sensors, controllable via `GET /api/device/<key>/set?sensor=<path>&value=<v>` (or `POST /api/device/<key>/command`):
+
+| Sensor | Type | Command |
+|---|---|---|
+| `switch` | toggle | `on` = open, `off` = close |
+| `level` | range 0–100 | position (0 = closed, 100 = open) |
+| `stop` | momentary | any value halts the motor (`stop`) |
+| `my` | momentary | move to the stored **"My"** favourite position (the Somfy remote's middle button) |
+
+The `my` control is exposed when the cover advertises the Overkiz `my` command, or reports no command list (RTS motors). It requires a My position to be stored on the motor first (press-and-hold **My** on the physical remote).
 
 ---
 
@@ -1518,11 +1527,11 @@ Integrates **Somfy TaHoma** roller shutters and covers via the local HTTPS API (
 
 **Authentication:** `POST /enduser-mobile-web/1/enduserAPI/login` with email + password → `JSESSIONID` cookie. Session is refreshed automatically on 401.
 
-**Discovery:** `GET .../setup/devices` — filters to controllable device classes (RollerShutter, Gate, Awning, Window, etc.). Each device gets a `switch` sensor (open/close toggle) and a `level` sensor (0–100 position slider, inverted from the TaHoma `core:ClosureState` which uses 0 = open).
+**Discovery:** `GET .../setup/devices` — filters to controllable device classes (RollerShutter, Gate, Awning, Window, etc.). Each device gets a `switch` sensor (open/close toggle), a `level` sensor (0–100 position slider, inverted from the TaHoma `core:ClosureState` which uses 0 = open), a `stop` momentary, and a `my` momentary (favourite position, Overkiz `my` command — shown when advertised or when the device reports no command list, e.g. RTS motors).
 
 **Polling:** `GET .../setup/devices/<url>/states` every `pollInterval` seconds. `core:ClosureState` → `level = 100 - closure`.
 
-**Control:** `POST .../exec/apply` with a JSON action list.
+**Control:** `POST .../exec/apply` with a JSON action list — `open`/`close`/`stop`/`my`/`setPosition`/`setClosure`.
 
 **Config:** See [`somfy`](#somfy) config section above.
 
