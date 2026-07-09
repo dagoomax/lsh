@@ -10,8 +10,9 @@ const s = (color = 'currentColor', size = 24) => ({
   strokeLinejoin: 'round',
 })
 
-// Somfy "my" favourite — the rounded "my" button from a Somfy remote.
-export function MyIcon({ color = 'currentColor', size = 20 }) {
+// Somfy "my" favourite — the rounded "my" button from a Somfy remote,
+// in Somfy's signature golden-yellow brand colour.
+export function MyIcon({ color = '#FFCE00', size = 20 }) {
   return (
     <svg width={size * 1.6} height={size} viewBox="0 0 32 20" fill="none">
       <rect x="1" y="1" width="30" height="18" rx="9" fill="none" stroke={color} strokeWidth="1.6"/>
