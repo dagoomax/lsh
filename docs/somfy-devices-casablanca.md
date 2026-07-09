@@ -37,18 +37,20 @@ Notes:
 
 ## Other devices (not covers — no cover control)
 
-| Label | uiClass | deviceURL |
-|-------|---------|-----------|
-| LIGHT VAR io | Light | `io://2028-5589-5601/6616650` |
-| Box | Pod | `internal://2028-5589-5601/pod/0` |
-| INTERNAL wifi | Wifi | `internal://2028-5589-5601/wifi/0` |
-| HOMEKIT (stack) | ProtocolGateway | `homekit://2028-5589-5601/stack` |
-| IO (10271951) | ProtocolGateway | `io://2028-5589-5601/10271951` |
-| ZIGBEE (65535) | ProtocolGateway | `zigbee://2028-5589-5601/65535` |
-| OGP KNX Bridge | ProtocolGateway | `ogp://2028-5589-5601/00000BE8` |
-| OGP Sonos Bridge | ProtocolGateway | `ogp://2028-5589-5601/0003FEF3` |
-| OGP Siegenia Bridge | ProtocolGateway | `ogp://2028-5589-5601/039575E9` |
-| OGP Intesis Bridge | ProtocolGateway | `ogp://2028-5589-5601/09E45393` |
+| Label | uiClass | deviceURL | States endpoint (URL-encoded) |
+|-------|---------|-----------|-------------------------------|
+| LIGHT VAR io | Light | `io://2028-5589-5601/6616650` | `GET {base}/setup/devices/io%3A%2F%2F2028-5589-5601%2F6616650/states` |
+| Box | Pod | `internal://2028-5589-5601/pod/0` | `GET {base}/setup/devices/internal%3A%2F%2F2028-5589-5601%2Fpod%2F0/states` |
+| INTERNAL wifi | Wifi | `internal://2028-5589-5601/wifi/0` | `GET {base}/setup/devices/internal%3A%2F%2F2028-5589-5601%2Fwifi%2F0/states` |
+| HOMEKIT (stack) | ProtocolGateway | `homekit://2028-5589-5601/stack` | `GET {base}/setup/devices/homekit%3A%2F%2F2028-5589-5601%2Fstack/states` |
+| IO (10271951) | ProtocolGateway | `io://2028-5589-5601/10271951` | `GET {base}/setup/devices/io%3A%2F%2F2028-5589-5601%2F10271951/states` |
+| ZIGBEE (65535) | ProtocolGateway | `zigbee://2028-5589-5601/65535` | `GET {base}/setup/devices/zigbee%3A%2F%2F2028-5589-5601%2F65535/states` |
+| OGP KNX Bridge | ProtocolGateway | `ogp://2028-5589-5601/00000BE8` | `GET {base}/setup/devices/ogp%3A%2F%2F2028-5589-5601%2F00000BE8/states` |
+| OGP Sonos Bridge | ProtocolGateway | `ogp://2028-5589-5601/0003FEF3` | `GET {base}/setup/devices/ogp%3A%2F%2F2028-5589-5601%2F0003FEF3/states` |
+| OGP Siegenia Bridge | ProtocolGateway | `ogp://2028-5589-5601/039575E9` | `GET {base}/setup/devices/ogp%3A%2F%2F2028-5589-5601%2F039575E9/states` |
+| OGP Intesis Bridge | ProtocolGateway | `ogp://2028-5589-5601/09E45393` | `GET {base}/setup/devices/ogp%3A%2F%2F2028-5589-5601%2F09E45393/states` |
+
+`{base}` = local `https://192.168.1.105:8443/enduser-mobile-web/1/enduserAPI` or cloud `https://ha101-1.overkiz.com/enduser-mobile-web/enduserAPI`. Gateways/Pod/Wifi expose diagnostic states (e.g. RSSI, connectivity) rather than controllable ones; `LIGHT VAR io` is a dimmable light (`core:LightIntensityState`, `core:OnOffState`) that the dashboard does not register as a cover.
 
 ## API endpoints (reference)
 
