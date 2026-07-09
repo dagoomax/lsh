@@ -207,6 +207,10 @@ class SomfyClient {
       // covers; RTS motors report incomplete command lists, so include it when
       // the device lists it OR reports no commands at all.
       const hasMy = cmds.includes('my') || cmds.length === 0;
+      // Absolute slat tilt (venetian blinds / orientable pergolas). Only io
+      // covers expose `setOrientation`; RTS venetians offer relative tilt only
+      // (tiltPositive/tiltNegative), which a slider can't drive, so skip those.
+      const hasTilt = cmds.includes('setOrientation');
 
       const device = {
         key:   deviceKey,
@@ -239,6 +243,13 @@ class SomfyClient {
             controllable: true, type: 'toggle',
             writeOn: 'my', writeOff: 'my',
             capabilityId: 'my', homekit: null,
+          }] : []),
+          ...(hasTilt ? [{
+            // Absolute slat angle: 0 = closed slats, 100 = open slats.
+            path: 'tilt', label: 'Tilt', format: 'percent',
+            controllable: true, type: 'range',
+            writeCmd: 'setOrientation', capabilityId: 'orientation',
+            min: 0, max: 100, rangeFormat: 'percent',
           }] : []),
         ],
         _writeCapability: (capId, command, args) =>
@@ -340,6 +351,9 @@ class SomfyClient {
       this._store.update(`${deviceKey}/switch`, closure < 100 ? 1 : 0);
     } else if (name === 'core:OpenClosedState' || name === 'core:OpenClosedUnknownState') {
       this._store.update(`${deviceKey}/switch`, value === 'open' ? 1 : 0);
+    } else if (name === 'core:SlateOrientationState') {
+      // Raw orientation is 0 = open, 100 = closed; expose as "% open" to match level.
+      this._store.update(`${deviceKey}/tilt`, 100 - Number(value));
     }
   }
 
@@ -357,6 +371,11 @@ class SomfyClient {
     } else if (capId === 'my') {
       // Move to the stored "my" favourite position (Somfy remote middle button).
       cmd = { name: 'my', parameters: [] };
+    } else if (capId === 'orientation') {
+      // Slat tilt slider is "% open" (0 = closed, 100 = open) to match the
+      // position slider; Somfy's setOrientation uses 0 = open, 100 = closed.
+      const pct = Math.round(args?.[0] ?? 0);
+      cmd = { name: command, parameters: [100 - pct] };
     } else if (capId === 'position') {
       const pct = Math.round(args?.[0] ?? 0);
       // setPosition: 0=closed, 100=open  |  setClosure: 0=open, 100=closed
