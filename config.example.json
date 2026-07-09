@@ -82,6 +82,15 @@
     "apiKey": "",
     "ringPollInterval": 3
   },
+  "vents": {
+    "host": "192.168.1.x",
+    "port": 4000,
+    "deviceId": "0123456789ABCDEF",
+    "password": "1111",
+    "name": "Ventilation",
+    "pollInterval": 30,
+    "params": {}
+  },
   "loxone": {
     "host": "192.168.1.x",
     "port": 80,

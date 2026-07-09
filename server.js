@@ -372,6 +372,15 @@ async function main() {
     }
   }
 
+  // Start VENTS / Blauberg ventilation client if configured
+  if (config.vents?.host) {
+    const VentsClient = tryRequire('./src/vents-client');
+    if (VentsClient) {
+      const vents = new VentsClient(config, store, sensorRegistry);
+      vents.start().catch((err) => console.error(`[VENTS] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Sonos client if configured or auto-discovery enabled
   if (config.sonos) {
     const SonosClient = tryRequire('./src/sonos-client');
