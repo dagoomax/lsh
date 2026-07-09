@@ -381,6 +381,15 @@ async function main() {
     }
   }
 
+  // Start Worx Landroid mower client if configured
+  if (config.landroid?.email && config.landroid?.password) {
+    const LandroidClient = tryRequire('./src/landroid-client');
+    if (LandroidClient) {
+      const landroid = new LandroidClient(config, store, sensorRegistry);
+      landroid.start().catch((err) => console.error(`[Landroid] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Sonos client if configured or auto-discovery enabled
   if (config.sonos) {
     const SonosClient = tryRequire('./src/sonos-client');
