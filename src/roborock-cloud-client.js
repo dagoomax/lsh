@@ -66,6 +66,15 @@ const FAN_NAMES  = ['Quiet', 'Balanced', 'Turbo', 'Max'];
 const WATER_LEVELS = [200, 201, 202, 203];
 const WATER_NAMES  = ['Off', 'Low', 'Medium', 'High'];
 
+// Consumable lifespans (seconds of use before replacement) → % remaining.
+const LIFESPANS = {
+  main_brush: 300 * 3600, // 300 h
+  side_brush: 200 * 3600, // 200 h
+  filter:     150 * 3600, // 150 h
+  sensor:      30 * 3600, //  30 h
+};
+const CONSUMABLE_MS = 300_000; // refresh consumables at most every 5 min
+
 // Dock actions (auto-empty dock + mop wash/dry) → [method, params].
 const DOCK_ACTIONS = {
   dock_empty: ['app_start_collect_dust', []],
@@ -400,6 +409,10 @@ class RoborockCloudClient {
         { path: 'error',      name: 'Error',      format: 'string',  raw: true },
         { path: 'clean_time', name: 'Clean time', format: 'number',  unit: 'min' },
         { path: 'clean_area', name: 'Clean area', format: 'number',  unit: 'm²' },
+        { path: 'main_brush', name: 'Main brush', format: 'percent', unit: '%' },
+        { path: 'side_brush', name: 'Side brush', format: 'percent', unit: '%' },
+        { path: 'filter',     name: 'Filter',     format: 'percent', unit: '%' },
+        { path: 'sensor',     name: 'Sensor',     format: 'percent', unit: '%' },
         {
           path: 'cleaning',  name: 'Cleaning', format: 'on-off',
           controllable: true, type: 'toggle',  homekit: 'switch-rw',
@@ -615,6 +628,25 @@ class RoborockCloudClient {
     await Promise.allSettled(this._devs.map(d => this._poll(d)));
   }
 
+  // Consumables change slowly — refresh at most every CONSUMABLE_MS.
+  async _pollConsumables(dev, k) {
+    const now = Date.now();
+    if (dev._consumableAt && now - dev._consumableAt < CONSUMABLE_MS) return;
+    dev._consumableAt = now;
+    try {
+      const r = await this._sendCommand(dev, 'get_consumable');
+      const c = Array.isArray(r) ? r[0] : r;
+      if (!c || typeof c !== 'object') return;
+      const pct = (used, life) => Math.max(0, Math.min(100, Math.round(100 - ((used ?? 0) / life) * 100)));
+      this._store.update(`${k}/main_brush`, pct(c.main_brush_work_time, LIFESPANS.main_brush));
+      this._store.update(`${k}/side_brush`, pct(c.side_brush_work_time, LIFESPANS.side_brush));
+      this._store.update(`${k}/filter`,     pct(c.filter_work_time,     LIFESPANS.filter));
+      this._store.update(`${k}/sensor`,     pct(c.sensor_dirty_time,    LIFESPANS.sensor));
+    } catch (err) {
+      dev._consumableAt = 0; // allow retry next cycle
+    }
+  }
+
   async _poll(dev) {
     try {
       const result = await this._sendCommand(dev, 'get_status');
@@ -632,6 +664,7 @@ class RoborockCloudClient {
       if (fanIdx >= 0) this._store.update(`${k}/fan`, fanIdx);
       const waterIdx = WATER_LEVELS.indexOf(status.water_box_mode);
       if (waterIdx >= 0) this._store.update(`${k}/water`, waterIdx);
+      await this._pollConsumables(dev, k);
     } catch (err) {
       console.error(`[RoborockCloud] Poll failed for ${dev.name}: ${err.message}`);
     }
