@@ -296,12 +296,21 @@ async function main() {
     }
   }
 
-  // Start Roborock client if configured
+  // Start Roborock client if configured (miio protocol: host + token)
   if (config.roborock?.devices?.length) {
     const RoborockClient = tryRequire('./src/roborock-client');
     if (RoborockClient) {
       const roborock = new RoborockClient(config, store, sensorRegistry);
       roborock.start().catch((err) => console.error(`[Roborock] Start failed: ${err.message}`));
+    }
+  }
+
+  // Start Roborock cloud client if configured (Roborock-app devices, e.g. Q Revo)
+  if (config.roborock?.cloud?.email) {
+    const RoborockCloudClient = tryRequire('./src/roborock-cloud-client');
+    if (RoborockCloudClient) {
+      const roborockCloud = new RoborockCloudClient(config, store, sensorRegistry);
+      roborockCloud.start().catch((err) => console.error(`[RoborockCloud] Start failed: ${err.message}`));
     }
   }
 

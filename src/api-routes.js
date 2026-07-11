@@ -1036,6 +1036,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         d.token ? { ...d, token: '••••••••' } : d
       );
     }
+    if (safe.roborock?.cloud?.password) safe.roborock.cloud.password = '••••••••';
     if (safe.esphome?.devices) {
       safe.esphome.devices = safe.esphome.devices.map(d =>
         d.password ? { ...d, password: '••••••••' } : d
@@ -1263,8 +1264,48 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       };
     }).filter(d => d.host && d.token);
     try {
-      writeConfigFile({ ...current, roborock: { devices: sanitized } });
+      writeConfigFile({ ...current, roborock: { ...current.roborock, devices: sanitized } });
       res.json({ success: true, message: `${sanitized.length} device(s) saved. Restart to apply.` });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Roborock cloud (Roborock-app devices, e.g. Q Revo) — login test + save
+  router.post('/settings/test-roborock-cloud', async (req, res) => {
+    const current = readConfigFile();
+    const { email } = req.body;
+    let { password } = req.body;
+    if (password && password.includes('•')) password = current.roborock?.cloud?.password || '';
+    if (!email || !password) return res.status(400).json({ success: false, error: 'email and password are required' });
+
+    let roborockLogin;
+    try { ({ roborockLogin } = require('./roborock-cloud-client')); }
+    catch (err) { return res.status(500).json({ success: false, error: `Module load failed: ${err.message}` }); }
+
+    try {
+      const { devices } = await roborockLogin(email.trim(), password);
+      res.json({
+        success: true,
+        message: `Login OK — ${devices.length} device(s) found`,
+        data: { devices: devices.map(d => ({ name: d.name, model: d.model, duid: d.duid, pv: d.pv, online: d.online })) },
+      });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/roborock-cloud', (req, res) => {
+    const current = readConfigFile();
+    const { email, duid } = req.body;
+    let { password } = req.body;
+    const prev = current.roborock?.cloud || {};
+    if (!password || password.includes('•')) password = prev.password || '';
+    const cloud = { email: (email || '').trim(), password, duid: (duid || '').trim() };
+    if (!cloud.email || !cloud.password) return res.status(400).json({ success: false, error: 'email and password are required' });
+    try {
+      writeConfigFile({ ...current, roborock: { ...current.roborock, cloud } });
+      res.json({ success: true, message: 'Roborock cloud saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

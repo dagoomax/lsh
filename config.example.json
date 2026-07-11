@@ -18,6 +18,14 @@
     "token": "",
     "deviceIds": []
   },
+  "roborock": {
+    "cloud": {
+      "email": "",
+      "password": "",
+      "duid": ""
+    },
+    "devices": []
+  },
   "dreame": {
     "devices": [
       { "name": "L10S Vacuum", "host": "192.168.1.x", "token": "00000000000000000000000000000000", "type": "vacuum" }
