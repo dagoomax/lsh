@@ -73,5 +73,5 @@ http://192.168.1.229:3001/api/roborock/ZXqqOvdMt639d/cmd/start?token=<TOKEN>
 http://192.168.1.229:3001/api/roborock/6vXyhvV4INscI/cmd/clean?rooms=16,19&token=<TOKEN>
 
 # Set water flow to Medium
-http://192.168.1.229:3001/api/roborock/ZXqRE1nGvdMt639d/cmd/water?value=2&token=<TOKEN>
+http://192.168.1.229:3001/api/roborock/ZXwdf1nGvdMt639d/cmd/water?value=2&token=<TOKEN>
 ```
