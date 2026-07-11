@@ -1317,6 +1317,26 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, devices: rc ? rc.listDevices() : [] });
   });
 
+  // Room list (segment ids + names) for a Roborock cloud device.
+  router.get('/roborock/:duid/rooms', (req, res) => {
+    const rc = clients.roborockCloud;
+    if (!rc) return res.status(503).json({ success: false, error: 'Roborock cloud client not running' });
+    res.json({ success: true, rooms: rc.getRooms(req.params.duid) });
+  });
+
+  // Start a room/segment clean. Body: { segments: [16, 17] } or { segment: 16 }.
+  router.post('/roborock/:duid/clean-room', async (req, res) => {
+    const rc = clients.roborockCloud;
+    if (!rc) return res.status(503).json({ success: false, error: 'Roborock cloud client not running' });
+    const segs = req.body.segments ?? req.body.segment;
+    try {
+      const cleaned = await rc.cleanRoom(req.params.duid, segs);
+      res.json({ success: true, message: `Cleaning segment(s) ${cleaned.join(', ')}`, segments: cleaned });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
   // On-demand live map PNG for a Roborock cloud device (rendered server-side,
   // cached ~5 s). Used by an <img> in the dashboard graphs section.
   router.get('/roborock/:duid/map.png', async (req, res) => {

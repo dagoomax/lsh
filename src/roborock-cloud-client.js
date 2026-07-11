@@ -257,7 +257,7 @@ async function fetchHomeDevices(email, userData) {
   if (!home || !home.success || !home.result) throw new Error(`Home data failed: ${JSON.stringify(home).slice(0, 200)}`);
 
   const products = new Map((home.result.products || []).map(x => [x.id, x]));
-  return [...(home.result.devices || []), ...(home.result.receivedDevices || [])].map(d => ({
+  const devices = [...(home.result.devices || []), ...(home.result.receivedDevices || [])].map(d => ({
     duid:     d.duid,
     name:     d.name,
     localKey: d.localKey,
@@ -265,12 +265,15 @@ async function fetchHomeDevices(email, userData) {
     online:   d.online,
     model:    products.get(d.productId)?.model || d.productId || 'unknown',
   }));
+  // Home-level room names, keyed by iot room id (matches get_room_mapping iot_id).
+  const rooms = new Map((home.result.rooms || []).map(r => [String(r.id), r.name]));
+  return { devices, rooms };
 }
 
 // Password login + device fetch (used by the CLI self-test and API test route).
 async function roborockLogin(email, password) {
   const userData = await passwordLogin(email, password);
-  const devices  = await fetchHomeDevices(email, userData);
+  const { devices } = await fetchHomeDevices(email, userData);
   return { userData, rriot: userData.rriot, devices };
 }
 
@@ -328,16 +331,16 @@ class RoborockCloudClient {
       saveUserData(userData);
     }
 
-    let devices;
+    let devices, rooms;
     try {
-      devices = await fetchHomeDevices(email, userData);
+      ({ devices, rooms } = await fetchHomeDevices(email, userData));
     } catch (err) {
       // Cached session may be stale — retry once with password if available.
       if (password) {
         console.log(`[RoborockCloud] Cached session failed (${err.message}); re-logging in with password`);
         userData = await passwordLogin(email, password);
         saveUserData(userData);
-        devices = await fetchHomeDevices(email, userData);
+        ({ devices, rooms } = await fetchHomeDevices(email, userData));
       } else {
         throw new Error(`${err.message}. Re-run scripts/roborock-cloud-auth.js to refresh the session.`);
       }
@@ -345,13 +348,21 @@ class RoborockCloudClient {
     if (!devices.length) throw new Error('No Roborock devices found on the account');
 
     const rriot = userData.rriot;
-    this._rriot   = rriot;
-    this._mParams = mqttParams(rriot);
-    const filter  = cloud.duid ? devices.filter(d => d.duid === cloud.duid) : devices;
+    this._rriot     = rriot;
+    this._homeRooms = rooms || new Map();
+    this._mParams   = mqttParams(rriot);
+    const filter    = cloud.duid ? devices.filter(d => d.duid === cloud.duid) : devices;
     if (!filter.length) throw new Error(`Configured duid ${cloud.duid} not found on account`);
 
-    for (const d of filter) this._registerDevice(d);
+    // Build entries first so MQTT can subscribe, then discover each device's
+    // rooms (needs MQTT), then register (room-clean triggers need the room list).
+    for (const d of filter) this._devs.push({ ...d, deviceKey: `roborock/${d.duid}`, rooms: [] });
     await this._connectMqtt();
+    for (const entry of this._devs) {
+      try { entry.rooms = await this._discoverRooms(entry); }
+      catch (err) { console.error(`[RoborockCloud] Room discovery failed for ${entry.name}: ${err.message}`); }
+      this._registerDevice(entry);
+    }
 
     platformStatus.set('roborock', true);
     this._timer = setInterval(() => this._pollAll(), POLL_MS);
@@ -366,13 +377,18 @@ class RoborockCloudClient {
     console.log('[RoborockCloud] Stopped');
   }
 
-  _registerDevice(d) {
-    const deviceKey = `roborock/${d.duid}`;
-    const entry = { ...d, deviceKey };
+  _registerDevice(entry) {
+    // One "Clean <room>" trigger per discovered room segment.
+    const roomTriggers = (entry.rooms || []).map(r => ({
+      path: `clean_room_${r.segmentId}`,
+      name: `Clean ${r.name}`,
+      type: 'trigger', controllable: true,
+      capabilityId: 'clean_room', writeOn: String(r.segmentId),
+    }));
     this._registry.registerDevice({
-      key:   deviceKey,
+      key:   entry.deviceKey,
       type:  'roborock',
-      label: d.name,
+      label: entry.name,
       icon:  '🤖',
       color: 'blue',
       sensors: [
@@ -397,15 +413,32 @@ class RoborockCloudClient {
           capabilityId: 'water', writeCmd: 'setWater',
         },
         {
+          path: 'dock', name: 'Return to base', type: 'trigger',
+          controllable: true, capabilityId: 'dock', writeOn: 'dock',
+        },
+        {
           path: 'locate', name: 'Find robot', type: 'trigger',
           controllable: true, capabilityId: 'locate', writeOn: 'locate',
         },
+        ...roomTriggers,
       ],
       homekit: ['battery-level', 'switch-rw'],
       _writeCapability: (capId, command, args = []) => this._writeCap(entry, capId, command, args),
     });
-    this._devs.push(entry);
-    console.log(`[RoborockCloud] Registered ${d.name} (${d.model}, ${d.duid})`);
+    console.log(`[RoborockCloud] Registered ${entry.name} (${entry.model}, ${entry.duid}) — ${roomTriggers.length} room(s)`);
+  }
+
+  // get_room_mapping → [{ segmentId, iotId, name }] using home-level room names.
+  async _discoverRooms(entry) {
+    const mapping = await this._sendCommand(entry, 'get_room_mapping');
+    if (!Array.isArray(mapping)) return [];
+    return mapping
+      .filter(m => Array.isArray(m) && m.length >= 1)
+      .map(([segmentId, iotId]) => ({
+        segmentId,
+        iotId: iotId != null ? String(iotId) : null,
+        name:  this._homeRooms.get(String(iotId)) || `Room ${segmentId}`,
+      }));
   }
 
   _connectMqtt() {
@@ -515,6 +548,18 @@ class RoborockCloudClient {
   // Public helpers for the API/dashboard.
   listDevices() { return this._devs.map(d => ({ duid: d.duid, name: d.name, model: d.model })); }
   getDevice(duid) { return this._devs.find(d => d.duid === duid); }
+  getRooms(duid) {
+    const dev = this.getDevice(duid);
+    return dev ? (dev.rooms || []).map(r => ({ segmentId: r.segmentId, name: r.name })) : [];
+  }
+  async cleanRoom(duid, segmentIds) {
+    const dev = this.getDevice(duid);
+    if (!dev) throw new Error(`Device ${duid} not found`);
+    const segs = (Array.isArray(segmentIds) ? segmentIds : [segmentIds]).map(Number).filter(Number.isFinite);
+    if (!segs.length) throw new Error('No valid segment ids');
+    await this._cleanSegments(dev, segs);
+    return segs;
+  }
 
   // Fetch + render a device's map to a PNG, cached briefly to avoid hammering.
   async fetchMapPng(duid) {
@@ -607,7 +652,22 @@ class RoborockCloudClient {
       catch (err) { console.error(`[RoborockCloud] Find robot failed for ${dev.name}: ${err.message}`); }
       return;
     }
+    if (capId === 'clean_room') {
+      const seg = parseInt(command, 10);
+      if (Number.isFinite(seg)) await this._cleanSegments(dev, [seg]);
+      return;
+    }
     return this._command(dev, command);
+  }
+
+  // Start a room/segment clean. params shape used by Q-series firmware.
+  async _cleanSegments(dev, segmentIds) {
+    try {
+      await this._sendCommand(dev, 'app_segment_clean', [{ segments: segmentIds, repeat: 1 }]);
+      setTimeout(() => this._poll(dev), 2000);
+    } catch (err) {
+      console.error(`[RoborockCloud] Clean segments [${segmentIds}] failed for ${dev.name}: ${err.message}`);
+    }
   }
 
   async _command(dev, command) {
