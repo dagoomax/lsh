@@ -61,6 +61,11 @@ const CLEANING_STATES = [5, 6, 11, 15, 16, 17, 18];
 const FAN_LEVELS = [101, 102, 103, 104];
 const FAN_NAMES  = ['Quiet', 'Balanced', 'Turbo', 'Max'];
 
+// Water flow / mop intensity (set_water_box_custom_mode) — Q Revo codes.
+// Slider index 0..3 → water_box_mode code.
+const WATER_LEVELS = [200, 201, 202, 203];
+const WATER_NAMES  = ['Off', 'Low', 'Medium', 'High'];
+
 // ── small crypto/util helpers ────────────────────────────────────────────────
 const md5hex  = s => crypto.createHash('md5').update(s).digest('hex');
 const md5b    = b => crypto.createHash('md5').update(b).digest();
@@ -386,6 +391,11 @@ class RoborockCloudClient {
           controllable: true, min: 0, max: FAN_LEVELS.length - 1,
           capabilityId: 'fan', writeCmd: 'setFan',
         },
+        {
+          path: 'water',  name: 'Water flow', type: 'range', format: 'roborock-water',
+          controllable: true, min: 0, max: WATER_LEVELS.length - 1,
+          capabilityId: 'water', writeCmd: 'setWater',
+        },
       ],
       homekit: ['battery-level', 'switch-rw'],
       _writeCapability: (capId, command, args = []) => this._writeCap(entry, capId, command, args),
@@ -557,6 +567,8 @@ class RoborockCloudClient {
       this._store.update(`${k}/cleaning`,   CLEANING_STATES.includes(stateCode) ? 1 : 0);
       const fanIdx = FAN_LEVELS.indexOf(status.fan_power);
       if (fanIdx >= 0) this._store.update(`${k}/fan`, fanIdx);
+      const waterIdx = WATER_LEVELS.indexOf(status.water_box_mode);
+      if (waterIdx >= 0) this._store.update(`${k}/water`, waterIdx);
     } catch (err) {
       console.error(`[RoborockCloud] Poll failed for ${dev.name}: ${err.message}`);
     }
@@ -572,6 +584,17 @@ class RoborockCloudClient {
         setTimeout(() => this._poll(dev), 1500);
       } catch (err) {
         console.error(`[RoborockCloud] Set fan "${FAN_NAMES[idx]}" failed for ${dev.name}: ${err.message}`);
+      }
+      return;
+    }
+    if (capId === 'water') {
+      const idx = Math.max(0, Math.min(WATER_LEVELS.length - 1, Math.round(Number(args[0]) || 0)));
+      try {
+        await this._sendCommand(dev, 'set_water_box_custom_mode', [WATER_LEVELS[idx]]);
+        this._store.update(`${dev.deviceKey}/water`, idx);
+        setTimeout(() => this._poll(dev), 1500);
+      } catch (err) {
+        console.error(`[RoborockCloud] Set water "${WATER_NAMES[idx]}" failed for ${dev.name}: ${err.message}`);
       }
       return;
     }

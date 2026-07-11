@@ -1009,6 +1009,7 @@ function formatRangeDisplay(rangeFormat, value) {
   if (rangeFormat === 'percent') return `${v}%`;
   if (rangeFormat === 'color-temp') return `${v}K`;
   if (rangeFormat === 'roborock-fan') return ['Quiet', 'Balanced', 'Turbo', 'Max'][v] ?? String(v);
+  if (rangeFormat === 'roborock-water') return ['Off', 'Low', 'Medium', 'High'][v] ?? String(v);
   return String(v);
 }
 
