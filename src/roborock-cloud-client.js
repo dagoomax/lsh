@@ -448,6 +448,22 @@ class RoborockCloudClient {
           path: 'dock_dry', name: 'Dry mop', type: 'trigger',
           controllable: true, capabilityId: 'dock_dry', writeOn: 'dry',
         },
+        {
+          path: 'reset_main_brush', name: 'Reset main brush', type: 'trigger',
+          controllable: true, capabilityId: 'reset', writeOn: 'main_brush_work_time',
+        },
+        {
+          path: 'reset_side_brush', name: 'Reset side brush', type: 'trigger',
+          controllable: true, capabilityId: 'reset', writeOn: 'side_brush_work_time',
+        },
+        {
+          path: 'reset_filter', name: 'Reset filter', type: 'trigger',
+          controllable: true, capabilityId: 'reset', writeOn: 'filter_work_time',
+        },
+        {
+          path: 'reset_sensor', name: 'Reset sensor', type: 'trigger',
+          controllable: true, capabilityId: 'reset', writeOn: 'sensor_dirty_time',
+        },
       ],
       homekit: ['battery-level', 'switch-rw'],
       _writeCapability: (capId, command, args = []) => this._writeCap(entry, capId, command, args),
@@ -703,6 +719,17 @@ class RoborockCloudClient {
       const [method, params] = DOCK_ACTIONS[capId];
       try { await this._sendCommand(dev, method, params); setTimeout(() => this._poll(dev), 2000); }
       catch (err) { console.error(`[RoborockCloud] Dock action ${capId} failed for ${dev.name}: ${err.message}`); }
+      return;
+    }
+    if (capId === 'reset') {
+      // command is the consumable field name (e.g. main_brush_work_time).
+      try {
+        await this._sendCommand(dev, 'reset_consumable', [command]);
+        dev._consumableAt = 0; // force a consumable refresh on the next poll
+        setTimeout(() => this._poll(dev), 1500);
+      } catch (err) {
+        console.error(`[RoborockCloud] Reset consumable ${command} failed for ${dev.name}: ${err.message}`);
+      }
       return;
     }
     return this._command(dev, command);
