@@ -56,6 +56,11 @@ const ERROR = {
 };
 const CLEANING_STATES = [5, 6, 11, 15, 16, 17, 18];
 
+// Fan speed (set_custom_mode) — S7-family codes used by the Q Revo (a75).
+// Slider index 0..3 → fan_power code.
+const FAN_LEVELS = [101, 102, 103, 104];
+const FAN_NAMES  = ['Quiet', 'Balanced', 'Turbo', 'Max'];
+
 // ── small crypto/util helpers ────────────────────────────────────────────────
 const md5hex  = s => crypto.createHash('md5').update(s).digest('hex');
 const md5b    = b => crypto.createHash('md5').update(b).digest();
@@ -376,9 +381,14 @@ class RoborockCloudClient {
           controllable: true, type: 'toggle',  homekit: 'switch-rw',
           writeOn: 'start',   writeOff: 'dock', capabilityId: 'cleaning',
         },
+        {
+          path: 'fan',  name: 'Fan speed', type: 'range', format: 'roborock-fan',
+          controllable: true, min: 0, max: FAN_LEVELS.length - 1,
+          capabilityId: 'fan', writeCmd: 'setFan',
+        },
       ],
       homekit: ['battery-level', 'switch-rw'],
-      _writeCapability: (_capId, command) => this._command(entry, command),
+      _writeCapability: (capId, command, args = []) => this._writeCap(entry, capId, command, args),
     });
     this._devs.push(entry);
     console.log(`[RoborockCloud] Registered ${d.name} (${d.model}, ${d.duid})`);
@@ -545,9 +555,27 @@ class RoborockCloudClient {
       this._store.update(`${k}/clean_time`, Math.round((status.clean_time ?? 0) / 60));
       this._store.update(`${k}/clean_area`, Math.round((status.clean_area ?? 0) / 1_000_000));
       this._store.update(`${k}/cleaning`,   CLEANING_STATES.includes(stateCode) ? 1 : 0);
+      const fanIdx = FAN_LEVELS.indexOf(status.fan_power);
+      if (fanIdx >= 0) this._store.update(`${k}/fan`, fanIdx);
     } catch (err) {
       console.error(`[RoborockCloud] Poll failed for ${dev.name}: ${err.message}`);
     }
+  }
+
+  // Dispatch a controllable write: 'cleaning' toggle (start/dock) or 'fan' range.
+  async _writeCap(dev, capId, command, args = []) {
+    if (capId === 'fan') {
+      const idx = Math.max(0, Math.min(FAN_LEVELS.length - 1, Math.round(Number(args[0]) || 0)));
+      try {
+        await this._sendCommand(dev, 'set_custom_mode', [FAN_LEVELS[idx]]);
+        this._store.update(`${dev.deviceKey}/fan`, idx);
+        setTimeout(() => this._poll(dev), 1500);
+      } catch (err) {
+        console.error(`[RoborockCloud] Set fan "${FAN_NAMES[idx]}" failed for ${dev.name}: ${err.message}`);
+      }
+      return;
+    }
+    return this._command(dev, command);
   }
 
   async _command(dev, command) {

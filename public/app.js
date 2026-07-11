@@ -1008,6 +1008,7 @@ function formatRangeDisplay(rangeFormat, value) {
   const v = Math.round(value);
   if (rangeFormat === 'percent') return `${v}%`;
   if (rangeFormat === 'color-temp') return `${v}K`;
+  if (rangeFormat === 'roborock-fan') return ['Quiet', 'Balanced', 'Turbo', 'Max'][v] ?? String(v);
   return String(v);
 }
 
