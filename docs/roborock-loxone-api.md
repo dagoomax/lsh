@@ -11,8 +11,8 @@ has been created for this purpose.
 
 - LSH base URL: `http://192.168.1.229:3001`
 - Device ids (`duid`):
-  - `ZXqqO8pTRE1nGvdMt639d` — Qrevo piętro (upstairs)
-  - `6vXyhTPRR3gEUVvV4INscI` — Q Revo parter (downstairs)
+  - `ZXqqO8pTR639d` — 1(upstairs)
+  - `6vEUVvV4INscI` — 2parter (downstairs)
 
 ## Status — Virtual HTTP Input
 
@@ -67,11 +67,11 @@ then a **Virtual Output Command** whose *Command for ON* is the path above
 
 ```
 # Start the upstairs vacuum
-http://192.168.1.229:3001/api/roborock/ZXqqO8pTRE1nGvdMt639d/cmd/start?token=<TOKEN>
+http://192.168.1.229:3001/api/roborock/ZXqqOvdMt639d/cmd/start?token=<TOKEN>
 
 # Clean kitchen + hallway downstairs
-http://192.168.1.229:3001/api/roborock/6vXyhTPRR3gEUVvV4INscI/cmd/clean?rooms=16,19&token=<TOKEN>
+http://192.168.1.229:3001/api/roborock/6vXyhvV4INscI/cmd/clean?rooms=16,19&token=<TOKEN>
 
 # Set water flow to Medium
-http://192.168.1.229:3001/api/roborock/ZXqqO8pTRE1nGvdMt639d/cmd/water?value=2&token=<TOKEN>
+http://192.168.1.229:3001/api/roborock/ZXqRE1nGvdMt639d/cmd/water?value=2&token=<TOKEN>
 ```
