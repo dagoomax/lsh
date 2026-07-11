@@ -2641,3 +2641,10 @@ footer {
 .rr-room-chip input { accent-color: var(--accent); cursor: pointer; }
 .rr-clean-selected { padding: 6px 14px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
 .rr-clean-selected:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Roborock consumable life bars (device popup) ──────────────────── */
+.rr-consumable { display: flex; align-items: center; gap: 12px; padding: 4px 2px; }
+.rr-cons-name { font-size: 0.8rem; color: var(--text-muted); min-width: 90px; }
+.rr-cons-bar { flex: 1; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.rr-cons-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+.rr-cons-val { font-size: 0.8rem; font-weight: 700; min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }

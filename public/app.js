@@ -1186,6 +1186,26 @@ function addOrUpdateDevice(device) {
 }
 
 // ── Device control events (toggle, range, color) ──────────────────────────
+// Roborock consumable life bars (rendered in the device popup).
+function buildRoborockConsumables(device, readings) {
+  if (device.type !== 'roborock') return '';
+  const items = [
+    { path: 'main_brush', name: 'Main brush' },
+    { path: 'side_brush', name: 'Side brush' },
+    { path: 'filter',     name: 'Filter' },
+    { path: 'sensor',     name: 'Sensor' },
+  ].map((c) => ({ ...c, v: readings[c.path]?.value })).filter((c) => typeof c.v === 'number');
+  if (!items.length) return '';
+  const color = (v) => (v > 50 ? '#3fb950' : v > 20 ? '#d29922' : '#f85149');
+  return `<div class="dev-section-label">${gt('consumables', 'Consumables')}</div>` +
+    items.map((c) => `
+      <div class="rr-consumable">
+        <span class="rr-cons-name">${esc(c.name)}</span>
+        <div class="rr-cons-bar"><div class="rr-cons-fill" style="width:${c.v}%;background:${color(c.v)}"></div></div>
+        <span class="rr-cons-val" style="color:${color(c.v)}">${c.v}%</span>
+      </div>`).join('');
+}
+
 // Roborock multi-room clean panel (rendered for roborock devices with rooms).
 function buildRoomsPanel(device) {
   if (device.type !== 'roborock' || !Array.isArray(device.rooms) || !device.rooms.length) return '';
@@ -2303,10 +2323,12 @@ function openDevModal(deviceKey) {
 
   // Controls — reuse the standard sensor rows (delegated handlers attached)
   const ctrl = sensors.filter((s) => s.controllable);
-  devBody.innerHTML = ctrl.length
-    ? `<div class="dev-section-label">Controls</div>` +
-      ctrl.map((s) => buildSensorRow(s, readings, deviceKey)).join('')
-    : '';
+  devBody.innerHTML =
+    (ctrl.length
+      ? `<div class="dev-section-label">Controls</div>` +
+        ctrl.map((s) => buildSensorRow(s, readings, deviceKey)).join('')
+      : '') +
+    buildRoborockConsumables(device, readings);
 
   // Graph chips — anything with a numeric live value
   const graphable = sensors.filter((s) => typeof liveValues.get(`${deviceKey}/${s.path}`) === 'number'
