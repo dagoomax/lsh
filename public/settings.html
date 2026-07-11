@@ -272,6 +272,45 @@
       </div>
     </section>
 
+    <section class="card settings-card" data-category="smarthome" data-title="Roborock vacuum robot Q Revo cloud miio token">
+      <h2>Roborock <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Roborock-app vacuums (e.g. Q Revo) connect via the Roborock cloud with your account email + password. Older Xiaomi-paired robots use a local IP + miio token instead.</p>
+
+      <h3 style="margin:8px 0 4px;font-size:0.95rem">Cloud account (Q Revo / app devices)</h3>
+      <div class="form-row">
+        <label for="roborock-email">Roborock Account Email</label>
+        <input type="email" id="roborock-email" placeholder="you@example.com">
+      </div>
+      <div class="form-row">
+        <label for="roborock-password">Password</label>
+        <input type="password" id="roborock-password" placeholder="••••••••">
+      </div>
+      <div class="form-row">
+        <label for="roborock-duid">Device DUID <span class="hint">(optional — limit to one robot; shown after Test)</span></label>
+        <input type="text" id="roborock-duid" placeholder="ZXqqO8pTRE1nGvdMt639d">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-roborock">Test Login</button>
+        <button class="btn btn-primary"   id="btn-save-roborock">Save Cloud</button>
+        <span class="test-result" id="roborock-test-result"></span>
+      </div>
+
+      <h3 style="margin:16px 0 4px;font-size:0.95rem">Local device (Xiaomi-paired, miio token)</h3>
+      <div class="form-row">
+        <label for="roborock-host">Device IP</label>
+        <input type="text" id="roborock-host" placeholder="192.168.1.50">
+      </div>
+      <div class="form-row">
+        <label for="roborock-token">Token <span class="hint">(32 hex characters)</span></label>
+        <input type="password" id="roborock-token" placeholder="••••••••">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-roborock-local">Test Device</button>
+        <button class="btn btn-primary"   id="btn-save-roborock-local">Save Device</button>
+        <span class="test-result" id="roborock-local-test-result"></span>
+      </div>
+    </section>
+
     <!-- Denon AVR -->
     <section class="card settings-card" data-category="smarthome" data-title="Denon AV receiver amplifier audio volume input">
       <h2>Denon AVR <span class="badge" data-i18n="common.optional">Optional</span></h2>

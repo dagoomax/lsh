@@ -38,6 +38,13 @@ async function loadSettings() {
     setVal('somfy-devices',  (data.somfy?.devices || []).join(', '));
     setVal('somfy-poll',     data.somfy?.pollInterval ?? 30);
 
+    setVal('roborock-email',    data.roborock?.cloud?.email    || '');
+    setVal('roborock-password', data.roborock?.cloud?.password || '');
+    setVal('roborock-duid',     data.roborock?.cloud?.duid     || '');
+    const rrDev = (data.roborock?.devices || [])[0] || {};
+    setVal('roborock-host',  rrDev.host  || '');
+    setVal('roborock-token', rrDev.token || '');
+
     // Denon
     setVal('denon-host',   data.denon?.host      || '');
     setVal('denon-name',   data.denon?.name      || '');
@@ -871,6 +878,105 @@ document.getElementById('btn-save-somfy').addEventListener('click', async () => 
         devices:      getVal('somfy-devices').split(',').map(s => s.trim()).filter(Boolean),
         pollInterval: parseInt(getVal('somfy-poll') || '30'),
       }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Roborock cloud (Q Revo / app devices) ──
+document.getElementById('btn-test-roborock')?.addEventListener('click', async () => {
+  const resultEl = document.getElementById('roborock-test-result');
+  const email = getVal('roborock-email');
+  const password = getVal('roborock-password');
+  if (!email || !password) {
+    resultEl.textContent = 'Enter email and password first';
+    resultEl.className = 'test-result err';
+    return;
+  }
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result loading';
+  try {
+    const res = await fetch('/api/settings/test-roborock-cloud', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      const list = (json.data?.devices || []).map((d) => `${d.name} (${d.duid})`).join(', ');
+      resultEl.textContent = '✓ ' + json.message + (list ? ' — ' + list : '');
+    } else {
+      resultEl.textContent = '✗ ' + json.error;
+    }
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-roborock')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-roborock');
+  const resultEl = document.getElementById('roborock-test-result');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/settings/roborock-cloud', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: getVal('roborock-email'), password: getVal('roborock-password'), duid: getVal('roborock-duid') }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Roborock local device (Xiaomi-paired, miio token) ──
+document.getElementById('btn-test-roborock-local')?.addEventListener('click', async () => {
+  const resultEl = document.getElementById('roborock-local-test-result');
+  const host = getVal('roborock-host');
+  const token = getVal('roborock-token');
+  if (!host || !token) {
+    resultEl.textContent = 'Enter device IP and token first';
+    resultEl.className = 'test-result err';
+    return;
+  }
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result loading';
+  try {
+    const res = await fetch('/api/settings/test-roborock', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host, token }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-roborock-local')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-roborock-local');
+  const resultEl = document.getElementById('roborock-local-test-result');
+  btn.disabled = true;
+  try {
+    const host = getVal('roborock-host');
+    const token = getVal('roborock-token');
+    const res = await fetch('/api/settings/roborock', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(host ? [{ name: 'Roborock', host, token }] : []),
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
