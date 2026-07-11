@@ -34,7 +34,7 @@ const ask = q => new Promise(res => {
 
   console.log('\nLogging in…');
   const userData = await codeLogin(email, code);
-  const devices  = await fetchHomeDevices(email, userData);
+  const { devices } = await fetchHomeDevices(email, userData);
 
   const p = mqttParams(userData.rriot);
   console.log(`\n✓ Login OK. MQTT broker: ${p.host}:${p.port} (tls=${p.tls})`);
