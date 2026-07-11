@@ -187,6 +187,31 @@ function RangeControl({ sensor, value, onCommit, accent }) {
 
 // ── Modal ───────────────────────────────────────────────────────────────────
 
+// Live map view for Roborock devices.
+function RoborockMapView({ device }) {
+  const [t, setT] = useState(Date.now())
+  const [err, setErr] = useState(false)
+  if (device.type !== 'roborock') return null
+  const duid = String(device.key).split('/')[1]
+  const src = `/api/roborock/${encodeURIComponent(duid)}/map.png?t=${t}`
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)' }}>{gt('live_map', 'Live map')}</div>
+        <button onClick={() => { setErr(false); setT(Date.now()) }} title={gt('refresh', 'Refresh')}
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--muted,#8b949e)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>↻</button>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.25)',
+        border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 10, minHeight: 200 }}>
+        {err
+          ? <span style={{ color: 'var(--muted,#8b949e)', fontSize: 12.5 }}>{gt('map_unavailable', 'Map unavailable')}</span>
+          : <img src={src} alt="map" onError={() => setErr(true)}
+              style={{ maxWidth: '100%', maxHeight: 380, imageRendering: 'pixelated', borderRadius: 10 }} />}
+      </div>
+    </div>
+  )
+}
+
 // Multi-room clean panel for Roborock devices.
 function RoborockRoomsPanel({ device }) {
   const [sel, setSel] = useState(() => new Set())
@@ -331,6 +356,9 @@ export default function DeviceModal({ device, onClose, onCommand }) {
 
             {/* body */}
             <div style={{ position: 'relative', overflowY: 'auto', padding: '4px 20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* Roborock live map */}
+              <RoborockMapView device={device} />
 
               {/* Controls */}
               {controls.length > 0 && (
