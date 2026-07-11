@@ -1317,6 +1317,62 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, devices: rc ? rc.listDevices() : [] });
   });
 
+  // Loxone-friendly flat status (HTTP Virtual Input can parse each field).
+  //   GET /api/roborock/:duid/status?token=<apiToken>
+  router.get('/roborock/:duid/status', (req, res) => {
+    const k = `roborock/${req.params.duid}`;
+    const g = (p) => store.get(`${k}/${p}`);
+    res.json({
+      success:    true,
+      duid:       req.params.duid,
+      battery:    g('battery'),
+      state:      g('state'),
+      error:      g('error'),
+      cleaning:   g('cleaning'),
+      fan:        g('fan'),
+      water:      g('water'),
+      clean_time: g('clean_time'),
+      clean_area: g('clean_area'),
+      main_brush: g('main_brush'),
+      side_brush: g('side_brush'),
+      filter:     g('filter'),
+      sensor:     g('sensor'),
+    });
+  });
+
+  // Loxone-friendly single command endpoint (Virtual Output → HTTP GET).
+  //   GET /api/roborock/:duid/cmd/<action>?token=<apiToken>
+  //   actions: start | dock | pause | stop | locate | empty | wash | dry
+  //            fan?value=0..3 | water?value=0..3 | clean?rooms=16,17
+  router.get('/roborock/:duid/cmd/:action', async (req, res) => {
+    if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
+    const key    = `roborock/${req.params.duid}`;
+    const action = String(req.params.action).toLowerCase();
+    const value  = req.query.value ?? req.query.level;
+    const SENSOR = {
+      start: ['cleaning', 1], dock: ['dock', 1], return: ['dock', 1], stop: ['dock', 1],
+      pause: ['cleaning', 0], locate: ['locate', 1], find: ['locate', 1],
+      empty: ['dock_empty', 1], wash: ['dock_wash', 1], dry: ['dock_dry', 1],
+      fan: ['fan', value], water: ['water', value],
+    };
+    try {
+      if (action === 'clean' || action === 'rooms') {
+        const rc = clients.roborockCloud;
+        if (!rc) return res.status(503).json({ success: false, error: 'Roborock cloud client not running' });
+        const segs = String(req.query.rooms ?? req.query.segments ?? '').split(',').map(s => s.trim()).filter(Boolean);
+        const cleaned = await rc.cleanRoom(req.params.duid, segs);
+        return res.json({ success: true, action, segments: cleaned });
+      }
+      const m = SENSOR[action];
+      if (!m) return res.status(400).json({ success: false, error: `Unknown action '${action}'` });
+      if (m[1] === undefined) return res.status(400).json({ success: false, error: `Action '${action}' requires ?value=` });
+      await sensorRegistry.sendCommand(key, m[0], m[1]);
+      res.json({ success: true, action });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
   // Room list (segment ids + names) for a Roborock cloud device.
   router.get('/roborock/:duid/rooms', (req, res) => {
     const rc = clients.roborockCloud;
