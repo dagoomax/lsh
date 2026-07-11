@@ -66,6 +66,13 @@ const FAN_NAMES  = ['Quiet', 'Balanced', 'Turbo', 'Max'];
 const WATER_LEVELS = [200, 201, 202, 203];
 const WATER_NAMES  = ['Off', 'Low', 'Medium', 'High'];
 
+// Dock actions (auto-empty dock + mop wash/dry) → [method, params].
+const DOCK_ACTIONS = {
+  dock_empty: ['app_start_collect_dust', []],
+  dock_wash:  ['app_start_wash', []],
+  dock_dry:   ['app_set_dryer_status', [{ status: 1 }]],
+};
+
 // ── small crypto/util helpers ────────────────────────────────────────────────
 const md5hex  = s => crypto.createHash('md5').update(s).digest('hex');
 const md5b    = b => crypto.createHash('md5').update(b).digest();
@@ -416,6 +423,18 @@ class RoborockCloudClient {
           path: 'locate', name: 'Find robot', type: 'trigger',
           controllable: true, capabilityId: 'locate', writeOn: 'locate',
         },
+        {
+          path: 'dock_empty', name: 'Empty dust bin', type: 'trigger',
+          controllable: true, capabilityId: 'dock_empty', writeOn: 'empty',
+        },
+        {
+          path: 'dock_wash', name: 'Wash mop', type: 'trigger',
+          controllable: true, capabilityId: 'dock_wash', writeOn: 'wash',
+        },
+        {
+          path: 'dock_dry', name: 'Dry mop', type: 'trigger',
+          controllable: true, capabilityId: 'dock_dry', writeOn: 'dry',
+        },
       ],
       homekit: ['battery-level', 'switch-rw'],
       _writeCapability: (capId, command, args = []) => this._writeCap(entry, capId, command, args),
@@ -645,6 +664,12 @@ class RoborockCloudClient {
     if (capId === 'locate') {
       try { await this._sendCommand(dev, 'find_me'); }
       catch (err) { console.error(`[RoborockCloud] Find robot failed for ${dev.name}: ${err.message}`); }
+      return;
+    }
+    if (DOCK_ACTIONS[capId]) {
+      const [method, params] = DOCK_ACTIONS[capId];
+      try { await this._sendCommand(dev, method, params); setTimeout(() => this._poll(dev), 2000); }
+      catch (err) { console.error(`[RoborockCloud] Dock action ${capId} failed for ${dev.name}: ${err.message}`); }
       return;
     }
     return this._command(dev, command);
