@@ -34,6 +34,8 @@ const POLL_MS       = 30_000;
 const CMD_TIMEOUT   = 10_000;
 const RPC_REQUEST   = 101;
 const RPC_RESPONSE  = 102;
+const MAP_RESPONSE  = 301;
+const MAP_TIMEOUT   = 15_000;
 
 // Roborock/miio status + error code maps (identical code space to roborock-client.js).
 const STATE = {
@@ -75,6 +77,17 @@ function encryptEcb(plain, key) {
 function decryptEcb(enc, key) {
   const d = crypto.createDecipheriv('aes-128-ecb', key, null);
   return Buffer.concat([d.update(enc), d.final()]);
+}
+// AES-128-CBC with a zero IV — used to decrypt map (301) payloads keyed by the
+// request's 16-byte security nonce.
+function decryptCbc(enc, key16) {
+  for (const pad of [true, false]) {
+    try {
+      const d = crypto.createDecipheriv('aes-128-cbc', key16, Buffer.alloc(16));
+      d.setAutoPadding(pad);
+      return Buffer.concat([d.update(enc), d.final()]);
+    } catch (e) { if (pad === false) throw e; }
+  }
 }
 
 // ── v1 message framing (MQTT, non-prefixed) ──────────────────────────────────
@@ -281,10 +294,11 @@ class RoborockCloudClient {
     this._config   = config;
     this._store    = store;
     this._registry = sensorRegistry;
-    this._devs     = [];
-    this._pending  = new Map();
-    this._timer    = null;
-    this._mqtt     = null;
+    this._devs      = [];
+    this._pending   = new Map();
+    this._pendingMap = new Map();
+    this._timer     = null;
+    this._mqtt      = null;
   }
 
   async start() {
@@ -417,6 +431,22 @@ class RoborockCloudClient {
     catch (err) { console.error(`[RoborockCloud] Parse error from ${dev.name}: ${err.message}`); return; }
 
     for (const msg of messages) {
+      // Map (301) response: 24-byte header (endpoint[8], _[8], requestId u16 LE, _[6]),
+      // then AES-128-CBC(body, key=request nonce) then gzip.
+      if (msg.protocol === MAP_RESPONSE && msg.payload && msg.payload.length >= 24) {
+        const requestId = msg.payload.readUInt16LE(16);
+        const pend = this._pendingMap.get(requestId);
+        if (!pend) continue;
+        clearTimeout(pend.timer);
+        this._pendingMap.delete(requestId);
+        try {
+          const body = msg.payload.slice(24);
+          const raw  = zlib.gunzipSync(decryptCbc(body, pend.nonce));
+          pend.resolve(raw);
+        } catch (err) { pend.reject(new Error(`Map decode failed: ${err.message}`)); }
+        continue;
+      }
+
       if (msg.protocol !== RPC_RESPONSE || !msg.payload || !msg.payload.length) continue;
       let dps;
       try { dps = JSON.parse(msg.payload.toString()).dps; } catch { continue; }
@@ -432,6 +462,29 @@ class RoborockCloudClient {
         else pend.resolve(inner.result);
       }
     }
+  }
+
+  // Fetch the raw (decrypted, gunzipped) Roborock map blob for a device.
+  fetchMap(dev) {
+    if (!this._mqtt || !this._mqtt.connected) return Promise.reject(new Error('MQTT not connected'));
+    const requestId = randInt(10000, 32767);
+    const timestamp = Math.floor(Date.now() / 1000);
+    const nonce     = crypto.randomBytes(16);
+    const endpoint  = md5b(Buffer.from(this._rriot.k, 'utf8')).slice(8, 14).toString('base64');
+    const inner = { id: requestId, method: 'get_map_v1', params: [], security: { endpoint, nonce: nonce.toString('hex') } };
+    const payload = Buffer.from(JSON.stringify({ dps: { '101': JSON.stringify(inner) }, t: timestamp }));
+    const frame = buildV1Message(
+      { version: '1.0', seq: randInt(100000, 999999), random: randInt(10000, 99999), timestamp, protocol: RPC_REQUEST, payload },
+      dev.localKey);
+    const topic = `rr/m/i/${this._rriot.u}/${this._mParams.username}/${dev.duid}`;
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { this._pendingMap.delete(requestId); reject(new Error('Map request timed out')); }, MAP_TIMEOUT);
+      this._pendingMap.set(requestId, { resolve, reject, timer, nonce, endpoint });
+      this._mqtt.publish(topic, frame, { qos: 1 }, err => {
+        if (err) { clearTimeout(timer); this._pendingMap.delete(requestId); reject(err); }
+      });
+    });
   }
 
   _sendCommand(dev, method, params = []) {
