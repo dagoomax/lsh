@@ -188,7 +188,7 @@ class RoborockClient {
       this._store.update(`${deviceKey}/state`,      STATE[stateCode] ?? `State ${stateCode}`);
       this._store.update(`${deviceKey}/error`,      ERROR[status.error_code] ?? `Error ${status.error_code}`);
       this._store.update(`${deviceKey}/clean_time`, Math.round((status.clean_time ?? 0) / 60));
-      this._store.update(`${deviceKey}/clean_area`, Math.round((status.clean_area ?? 0) / 10000));
+      this._store.update(`${deviceKey}/clean_area`, Math.round((status.clean_area ?? 0) / 1000000));
       this._store.update(`${deviceKey}/cleaning`,   [5, 6, 11, 15, 16, 17, 18].includes(stateCode) ? 1 : 0);
     } catch (err) {
       console.error(`[Roborock] Poll failed for ${name}: ${err.message}`);

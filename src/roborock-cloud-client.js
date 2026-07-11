@@ -15,8 +15,13 @@
 const crypto         = require('crypto');
 const https          = require('https');
 const zlib           = require('zlib');
+const fs             = require('fs');
+const path           = require('path');
 const mqtt           = require('mqtt');
 const platformStatus = require('./platform-status');
+
+const USERDATA_CACHE = path.join(__dirname, '..', 'persist', 'roborock-userdata.json');
+const DEVICEID_CACHE = path.join(__dirname, '..', 'persist', 'roborock-deviceid.txt');
 
 const SALT      = 'TXdfu$jyZ#TZHsg4';
 const BASE_URLS = [
@@ -140,23 +145,37 @@ function hawkAuth(rriot, path) {
   return `Hawk id="${rriot.u}",s="${rriot.s}",ts="${ts}",nonce="${nonce}",mac="${mac}"`;
 }
 
-async function roborockLogin(email, password) {
-  const deviceId = crypto.randomBytes(16).toString('base64url');
-  const clientId = headerClientId(email, deviceId);
+// Stable per-install device id — MUST be identical between sendEmailCode and
+// codeLogin, otherwise Roborock rejects the code (2018). Persisted to disk so it
+// survives across separate process invocations.
+function getDeviceId() {
+  try { const id = fs.readFileSync(DEVICEID_CACHE, 'utf8').trim(); if (id) return id; } catch { /* generate below */ }
+  const id = crypto.randomBytes(16).toString('base64url');
+  try { fs.mkdirSync(path.dirname(DEVICEID_CACHE), { recursive: true }); fs.writeFileSync(DEVICEID_CACHE, id); } catch { /* non-fatal */ }
+  return id;
+}
+function clientIdFor(email) {
+  return headerClientId(email, getDeviceId());
+}
 
-  // 1. Resolve the account's regional base URL.
-  let baseUrl = null, lastMsg = '';
+// Resolve the account's regional base URL (usiot/euiot/…).
+async function resolveBaseUrl(email) {
+  let lastMsg = '';
   for (const iot of BASE_URLS) {
     let r;
     try { r = await httpJson('POST', iot, '/api/v1/getUrlByEmail', { params: { email, needtwostepauth: 'false' } }); }
     catch (e) { lastMsg = e.message; continue; }
-    if (r && r.code === 200 && r.data && r.data.url) { baseUrl = r.data.url; break; }
+    if (r && r.code === 200 && r.data && r.data.url) return r.data.url;
     lastMsg = r ? `${r.msg} (code ${r.code})` : lastMsg;
     if (r && (r.code === 2003 || r.code === 1001)) throw new Error(`Login lookup failed: ${lastMsg}`);
   }
-  if (!baseUrl) throw new Error(`Could not resolve Roborock server for ${email}: ${lastMsg || 'no response'}`);
+  throw new Error(`Could not resolve Roborock server for ${email}: ${lastMsg || 'no response'}`);
+}
 
-  // 2. Password login.
+// Password login → userData (may fail with code 70016 if the account requires code login).
+async function passwordLogin(email, password) {
+  const clientId = clientIdFor(email);
+  const baseUrl  = await resolveBaseUrl(email);
   const login = await httpJson('POST', baseUrl, '/api/v1/login', {
     params: { username: email, password, needtwostepauth: 'false' },
     headers: { header_clientid: clientId },
@@ -164,11 +183,45 @@ async function roborockLogin(email, password) {
   if (!login || login.code !== 200 || !login.data) {
     throw new Error(`Roborock login failed: ${login ? `${login.msg} (code ${login.code})` : 'no response'}`);
   }
-  const userData = login.data;
-  const rriot = userData.rriot;
-  if (!rriot || !rriot.r || !rriot.r.m) throw new Error('Login response missing rriot/MQTT info');
+  return login.data;
+}
 
-  // 3. Home id, then Hawk-signed home data.
+// Email-code login (Roborock's current default). Step 1: send code to inbox.
+async function sendEmailCode(email) {
+  const clientId = clientIdFor(email);
+  const baseUrl  = await resolveBaseUrl(email);
+  const r = await httpJson('POST', baseUrl, '/api/v1/sendEmailCode', {
+    params: { username: email, type: 'auth' },
+    headers: { header_clientid: clientId },
+  });
+  if (!r || r.code !== 200) {
+    if (r && r.code === 2008) throw new Error('Account does not exist for password/email login — it may be an Apple/Google/Xiaomi SSO account (no email-code path).');
+    if (r && r.code === 9002) throw new Error('Too many code requests — wait and try again later.');
+    throw new Error(`Send code failed: ${r ? `${r.msg} (code ${r.code})` : 'no response'}`);
+  }
+  return true;
+}
+
+// Step 2: exchange the emailed code for userData.
+async function codeLogin(email, code) {
+  const clientId = clientIdFor(email);
+  const baseUrl  = await resolveBaseUrl(email);
+  const r = await httpJson('POST', baseUrl, '/api/v1/loginWithCode', {
+    params: { username: email, verifycode: code, verifycodetype: 'AUTH_EMAIL_CODE' },
+    headers: { header_clientid: clientId },
+  });
+  if (!r || r.code !== 200 || !r.data) {
+    throw new Error(`Code login failed: ${r ? `${r.msg} (code ${r.code})` : 'no response'}`);
+  }
+  return r.data;
+}
+
+// Given a userData session, fetch home id + Hawk-signed home data → devices.
+async function fetchHomeDevices(email, userData) {
+  const rriot = userData.rriot;
+  if (!rriot || !rriot.r || !rriot.r.m) throw new Error('User data missing rriot/MQTT info');
+  const clientId = clientIdFor(email);
+  const baseUrl  = await resolveBaseUrl(email);
   const homeDetail = await httpJson('GET', baseUrl, '/api/v1/getHomeDetail', {
     headers: { header_clientid: clientId, Authorization: userData.token },
   });
@@ -176,12 +229,12 @@ async function roborockLogin(email, password) {
     throw new Error(`getHomeDetail failed: ${homeDetail ? `${homeDetail.msg} (code ${homeDetail.code})` : 'no response'}`);
   }
   const homeId = homeDetail.data.rrHomeId;
-  const path   = `/user/homes/${homeId}`;
-  const home   = await httpJson('GET', rriot.r.a, path, { headers: { Authorization: hawkAuth(rriot, path) } });
+  const p      = `/user/homes/${homeId}`;
+  const home   = await httpJson('GET', rriot.r.a, p, { headers: { Authorization: hawkAuth(rriot, p) } });
   if (!home || !home.success || !home.result) throw new Error(`Home data failed: ${JSON.stringify(home).slice(0, 200)}`);
 
-  const products = new Map((home.result.products || []).map(p => [p.id, p]));
-  const devices  = [...(home.result.devices || []), ...(home.result.receivedDevices || [])].map(d => ({
+  const products = new Map((home.result.products || []).map(x => [x.id, x]));
+  return [...(home.result.devices || []), ...(home.result.receivedDevices || [])].map(d => ({
     duid:     d.duid,
     name:     d.name,
     localKey: d.localKey,
@@ -189,8 +242,25 @@ async function roborockLogin(email, password) {
     online:   d.online,
     model:    products.get(d.productId)?.model || d.productId || 'unknown',
   }));
+}
 
-  return { userData, rriot, devices };
+// Password login + device fetch (used by the CLI self-test and API test route).
+async function roborockLogin(email, password) {
+  const userData = await passwordLogin(email, password);
+  const devices  = await fetchHomeDevices(email, userData);
+  return { userData, rriot: userData.rriot, devices };
+}
+
+// ── cached session (persist/) ────────────────────────────────────────────────
+function saveUserData(userData) {
+  try {
+    fs.mkdirSync(path.dirname(USERDATA_CACHE), { recursive: true });
+    fs.writeFileSync(USERDATA_CACHE, JSON.stringify(userData));
+  } catch (err) { console.error(`[RoborockCloud] Could not cache session: ${err.message}`); }
+}
+function loadUserData() {
+  try { return JSON.parse(fs.readFileSync(USERDATA_CACHE, 'utf8')); }
+  catch { return null; }
 }
 
 // mqtt username/password + broker params from rriot
@@ -221,11 +291,35 @@ class RoborockCloudClient {
     const cloud = this._config.roborock?.cloud || {};
     const email    = process.env.ROBOROCK_EMAIL    || cloud.email;
     const password = process.env.ROBOROCK_PASSWORD || cloud.password;
-    if (!email || !password) throw new Error('roborock.cloud.email and roborock.cloud.password are required');
+    if (!email) throw new Error('roborock.cloud.email is required');
 
-    const { rriot, devices } = await roborockLogin(email, password);
+    // Prefer a cached session (from email-code login); fall back to password.
+    let userData = loadUserData();
+    if (!userData) {
+      if (!password) {
+        throw new Error('No cached Roborock session and no password set. Run: node scripts/roborock-cloud-auth.js to sign in with an email code.');
+      }
+      userData = await passwordLogin(email, password);
+      saveUserData(userData);
+    }
+
+    let devices;
+    try {
+      devices = await fetchHomeDevices(email, userData);
+    } catch (err) {
+      // Cached session may be stale — retry once with password if available.
+      if (password) {
+        console.log(`[RoborockCloud] Cached session failed (${err.message}); re-logging in with password`);
+        userData = await passwordLogin(email, password);
+        saveUserData(userData);
+        devices = await fetchHomeDevices(email, userData);
+      } else {
+        throw new Error(`${err.message}. Re-run scripts/roborock-cloud-auth.js to refresh the session.`);
+      }
+    }
     if (!devices.length) throw new Error('No Roborock devices found on the account');
 
+    const rriot = userData.rriot;
     this._rriot   = rriot;
     this._mParams = mqttParams(rriot);
     const filter  = cloud.duid ? devices.filter(d => d.duid === cloud.duid) : devices;
@@ -377,7 +471,7 @@ class RoborockCloudClient {
       this._store.update(`${k}/state`,      STATE[stateCode] ?? `State ${stateCode}`);
       this._store.update(`${k}/error`,      ERROR[status.error_code] ?? `Error ${status.error_code}`);
       this._store.update(`${k}/clean_time`, Math.round((status.clean_time ?? 0) / 60));
-      this._store.update(`${k}/clean_area`, Math.round((status.clean_area ?? 0) / 10000));
+      this._store.update(`${k}/clean_area`, Math.round((status.clean_area ?? 0) / 1_000_000));
       this._store.update(`${k}/cleaning`,   CLEANING_STATES.includes(stateCode) ? 1 : 0);
     } catch (err) {
       console.error(`[RoborockCloud] Poll failed for ${dev.name}: ${err.message}`);
@@ -398,7 +492,13 @@ class RoborockCloudClient {
 }
 
 module.exports = RoborockCloudClient;
-module.exports.roborockLogin = roborockLogin;
+module.exports.roborockLogin   = roborockLogin;
+module.exports.passwordLogin   = passwordLogin;
+module.exports.sendEmailCode   = sendEmailCode;
+module.exports.codeLogin       = codeLogin;
+module.exports.fetchHomeDevices = fetchHomeDevices;
+module.exports.saveUserData    = saveUserData;
+module.exports.mqttParams      = mqttParams;
 
 // ── CLI self-test: `node src/roborock-cloud-client.js` lists devices ─────────
 if (require.main === module) {

@@ -1,4 +1,5 @@
 config.json
+config.json.bak
 node_modules/
 persist/
 logs/
