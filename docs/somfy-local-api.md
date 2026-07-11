@@ -5,11 +5,12 @@ against the box (✅ = returned 200).
 
 **Box:** `192.168.1.105:8443` · gateway PIN `2028-5589-5601`
 **Base:** `https://192.168.1.105:8443/enduser-mobile-web/1/enduserAPI`
-**Auth header (every request):** `Authorization: Bearer 6a428e3946d66be54591`
+**Auth header (every request):** `Authorization: Bearer <TOKEN>` — the Developer
+Mode token, generated in the Somfy/TaHoma app and stored in LSH config, not here.
 **TLS:** self-signed cert → `curl -k` (`-sk`).
 
 > The box is only reachable on the LSH LAN. From outside, wrap each call:
-> `ssh casablanca "curl -sk -H 'Authorization: Bearer 6a428e3946d66be54591' <url>"`
+> `ssh casablanca "curl -sk -H 'Authorization: Bearer <TOKEN>' <url>"`
 > (casablanca = the LSH host at 192.168.1.229, on the same LAN as the box.)
 
 For the device inventory and live readings see
@@ -63,7 +64,7 @@ RTS covers (last four) are one-way — their `/states` returns `[]` (no feedback
 
 ```
 POST https://192.168.1.105:8443/enduser-mobile-web/1/enduserAPI/exec/apply
-Authorization: Bearer 6a428e3946d66be54591
+Authorization: Bearer <TOKEN>
 Content-Type: application/json
 
 {"label":"cmd","actions":[{"deviceURL":"io://2028-5589-5601/11600128","commands":[{"name":"setPosition","parameters":[50]}]}]}
@@ -79,7 +80,7 @@ open/close/up/down/my/stop only.
 
 ```bash
 B="https://192.168.1.105:8443/enduser-mobile-web/1/enduserAPI"
-H="Authorization: Bearer 6a428e3946d66be54591"
+H="Authorization: Bearer <TOKEN>"
 
 ssh casablanca "curl -sk -H '$H' $B/apiVersion"
 ssh casablanca "curl -sk -H '$H' $B/setup/gateways"
