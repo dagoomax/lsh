@@ -79,7 +79,7 @@ const CONSUMABLE_MS = 300_000; // refresh consumables at most every 5 min
 const DOCK_ACTIONS = {
   dock_empty: ['app_start_collect_dust', []],
   dock_wash:  ['app_start_wash', []],
-  dock_dry:   ['app_set_dryer_status', [{ status: 1 }]],
+  dock_dry:   ['app_set_dryer_status', { status: 1 }],
 };
 
 // ── small crypto/util helpers ────────────────────────────────────────────────
