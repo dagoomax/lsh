@@ -42,8 +42,36 @@ function StatCard({ label, value, unit, color }) {
   )
 }
 
+// Roborock live-map card — rendered server-side PNG, refreshable.
+function RoborockMapCard({ duid, label }) {
+  const [t, setT] = useState(Date.now())
+  const [err, setErr] = useState(false)
+  const src = `/api/roborock/${encodeURIComponent(duid)}/map.png?t=${t}`
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '12px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>🤖 {label}</span>
+        <span style={{ fontSize: 11.5, color: 'var(--text3)' }}>{gt('live_map', 'Live map')}</span>
+        <button onClick={() => { setErr(false); setT(Date.now()) }} title={gt('refresh', 'Refresh')}
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 15, lineHeight: 1 }}>↻</button>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.25)',
+        border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 8, minHeight: 220 }}>
+        {err
+          ? <span style={{ color: 'var(--text3)', fontSize: 12.5 }}>{gt('map_unavailable', 'Map unavailable')}</span>
+          : <img src={src} alt={`${label} map`} onError={() => setErr(true)}
+              style={{ maxWidth: '100%', maxHeight: 360, imageRendering: 'pixelated', borderRadius: 8 }} />}
+      </div>
+    </div>
+  )
+}
+
 export default function StatsView({ devices, energy, onOpen }) {
   const [filter, setFilter] = useState('all')
+
+  const roboMaps = useMemo(() => devices
+    .filter(d => String(d.key).startsWith('roborock/'))
+    .map(d => ({ duid: String(d.key).split('/')[1], label: d.label || d.name || d.key })), [devices])
 
   // Every sensor with a live numeric value is graphable
   const graphable = useMemo(() => {
@@ -104,8 +132,15 @@ export default function StatsView({ devices, energy, onOpen }) {
         })}
       </div>
 
+      {/* Roborock live maps */}
+      {filter === 'all' && roboMaps.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+          {roboMaps.map(m => <RoborockMapCard key={m.duid} duid={m.duid} label={m.label} />)}
+        </div>
+      )}
+
       {/* Chart grid */}
-      {shown.length === 0 && (
+      {shown.length === 0 && !(filter === 'all' && roboMaps.length) && (
         <div style={{ color: 'var(--text3)', fontSize: 13, textAlign: 'center', padding: 30 }}>
           <ChartIcon size={28} color="var(--text3)" />
           <div style={{ marginTop: 8 }}>{gt('empty', 'No numeric sensors reporting yet.')}</div>
