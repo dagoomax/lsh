@@ -2397,6 +2397,49 @@ function collectGraphable() {
   return out;
 }
 
+// ── Roborock live map cards (shown in the Graphs tab) ──
+function collectRoborockMaps() {
+  const out = [];
+  for (const [key, device] of knownDevices) {
+    if (String(key).startsWith('roborock/')) {
+      const duid = String(key).split('/')[1];
+      if (duid) out.push({ duid, label: device.label || device.name || duid });
+    }
+  }
+  return out;
+}
+function roborockMapUrl(duid) {
+  return `/api/roborock/${encodeURIComponent(duid)}/map.png?t=${Date.now()}`;
+}
+function roborockMapCardHtml(m) {
+  return `
+    <div class="graphs-card graphs-map-card">
+      <div class="graphs-card-hdr">
+        <span class="graphs-card-dev">🤖 ${esc(m.label)}</span>
+        <span class="graphs-card-sensor">${gt('live_map', 'Live map')}</span>
+        <button class="graphs-map-refresh" data-map-refresh="${esc(m.duid)}" title="${gt('refresh', 'Refresh')}">↻</button>
+      </div>
+      <div class="graphs-map-wrap">
+        <img class="graphs-map-img" data-map-duid="${esc(m.duid)}" src="${roborockMapUrl(m.duid)}" alt="${esc(m.label)} map">
+        <div class="graphs-map-err" style="display:none">${gt('map_unavailable', 'Map unavailable')}</div>
+      </div>
+    </div>`;
+}
+function wireRoborockMapCards() {
+  graphsGrid.querySelectorAll('.graphs-map-img').forEach((img) => {
+    const err = img.parentElement.querySelector('.graphs-map-err');
+    img.onerror = () => { img.style.display = 'none'; if (err) err.style.display = ''; };
+    img.onload  = () => { img.style.display = ''; if (err) err.style.display = 'none'; };
+  });
+  graphsGrid.querySelectorAll('[data-map-refresh]').forEach((btn) => {
+    btn.onclick = () => {
+      const duid = btn.getAttribute('data-map-refresh');
+      const img = graphsGrid.querySelector(`.graphs-map-img[data-map-duid="${duid}"]`);
+      if (img) { btn.classList.add('spin'); img.src = roborockMapUrl(duid); img.onload && img.addEventListener('load', () => btn.classList.remove('spin'), { once: true }); }
+    };
+  });
+}
+
 function renderGraphsTab() {
   const graphable = collectGraphable();
 
@@ -2431,12 +2474,16 @@ function renderGraphsTab() {
     .map((f) => `<button class="graphs-chip${graphsFilter === f.id ? ' active' : ''}" data-gfilter="${f.id}">
       ${f.label()} <span>(${counts[f.id] || counts.all})</span></button>`).join('');
 
+  // ── Roborock live-map cards (only on the "all" filter) ──
+  const roboMaps = (graphsFilter === 'all') ? collectRoborockMaps() : [];
+  const mapsHtml = roboMaps.map(roborockMapCardHtml).join('');
+
   // ── Chart cards ──
   const shown = (graphsFilter === 'all' ? graphable : graphable.filter((g) => g.cls === graphsFilter)).slice(0, 30);
-  document.getElementById('graphs-empty').style.display = shown.length ? 'none' : '';
+  document.getElementById('graphs-empty').style.display = (shown.length || roboMaps.length) ? 'none' : '';
   document.getElementById('tab-count-graphs').textContent = graphable.length;
 
-  graphsGrid.innerHTML = shown.map(({ device, sensor, value, cls }, i) => `
+  graphsGrid.innerHTML = mapsHtml + shown.map(({ device, sensor, value, cls }, i) => `
     <div class="graphs-card">
       <div class="graphs-card-hdr" data-open-dev="${esc(device.key)}">
         <span class="graphs-card-dev">${esc(device.label)}</span>
@@ -2451,6 +2498,7 @@ function renderGraphsTab() {
     </div>`).join('');
 
   shown.forEach(({ device, sensor }, i) => loadGraphCard(device.key, sensor, i));
+  wireRoborockMapCards();
 
   clearInterval(graphsTimer);
   graphsTimer = setInterval(() => {

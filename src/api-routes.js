@@ -1311,6 +1311,27 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // List Roborock cloud devices that have a live map (for the dashboard).
+  router.get('/roborock/devices', (req, res) => {
+    const rc = clients.roborockCloud;
+    res.json({ success: true, devices: rc ? rc.listDevices() : [] });
+  });
+
+  // On-demand live map PNG for a Roborock cloud device (rendered server-side,
+  // cached ~5 s). Used by an <img> in the dashboard graphs section.
+  router.get('/roborock/:duid/map.png', async (req, res) => {
+    const rc = clients.roborockCloud;
+    if (!rc) return res.status(503).send('Roborock cloud client not running');
+    try {
+      const buf = await rc.fetchMapPng(req.params.duid);
+      res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'no-cache');
+      res.send(buf);
+    } catch (err) {
+      res.status(500).send('Map error: ' + err.message);
+    }
+  });
+
   // ── Homey ──────────────────────────────────────────────────────────────
 
   router.post('/settings/test-homey', async (req, res) => {

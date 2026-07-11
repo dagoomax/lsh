@@ -182,20 +182,24 @@ const auth = {
     return (req, res, next) => {
       const p = req.path;
 
-      // Static assets needed by unauthenticated pages — always public
+      // Static assets needed by unauthenticated pages — always public.
+      // Never applies to /api/* (dynamic data must authenticate even when the
+      // path looks like an asset, e.g. /api/roborock/:duid/map.png).
       if (
-        PUBLIC_HTML.has(p) ||
-        PUBLIC_JS.has(p) ||
-        p.endsWith('.css') ||
-        p.endsWith('.svg') ||
-        p.endsWith('.ico') ||
-        p.endsWith('.png') ||
-        p.endsWith('.woff2') ||
-        p.endsWith('.woff') ||
-        p.startsWith('/lib/') ||
-        p.startsWith('/i18n/') ||
-        p.startsWith('/socket.io/') ||
-        p.startsWith('/.well-known/')
+        !p.startsWith('/api/') && (
+          PUBLIC_HTML.has(p) ||
+          PUBLIC_JS.has(p) ||
+          p.endsWith('.css') ||
+          p.endsWith('.svg') ||
+          p.endsWith('.ico') ||
+          p.endsWith('.png') ||
+          p.endsWith('.woff2') ||
+          p.endsWith('.woff') ||
+          p.startsWith('/lib/') ||
+          p.startsWith('/i18n/') ||
+          p.startsWith('/socket.io/') ||
+          p.startsWith('/.well-known/')
+        )
       ) return next();
 
       // Login/setup API endpoints are always public

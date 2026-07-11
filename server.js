@@ -310,6 +310,7 @@ async function main() {
     const RoborockCloudClient = tryRequire('./src/roborock-cloud-client');
     if (RoborockCloudClient) {
       const roborockCloud = new RoborockCloudClient(config, store, sensorRegistry);
+      apiClients.roborockCloud = roborockCloud; // expose for /api/roborock/* (map)
       roborockCloud.start().catch((err) => console.error(`[RoborockCloud] Start failed: ${err.message}`));
     }
   }

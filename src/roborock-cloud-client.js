@@ -297,6 +297,7 @@ class RoborockCloudClient {
     this._devs      = [];
     this._pending   = new Map();
     this._pendingMap = new Map();
+    this._mapCache   = new Map();
     this._timer     = null;
     this._mqtt      = null;
   }
@@ -485,6 +486,24 @@ class RoborockCloudClient {
         if (err) { clearTimeout(timer); this._pendingMap.delete(requestId); reject(err); }
       });
     });
+  }
+
+  // Public helpers for the API/dashboard.
+  listDevices() { return this._devs.map(d => ({ duid: d.duid, name: d.name, model: d.model })); }
+  getDevice(duid) { return this._devs.find(d => d.duid === duid); }
+
+  // Fetch + render a device's map to a PNG, cached briefly to avoid hammering.
+  async fetchMapPng(duid) {
+    const dev = this.getDevice(duid);
+    if (!dev) throw new Error(`Device ${duid} not found`);
+    const now = Date.now();
+    const cached = this._mapCache.get(duid);
+    if (cached && now - cached.t < 5000) return cached.buf;
+    const { renderMap } = require('./roborock-map');
+    const raw = await this.fetchMap(dev);
+    const { buf } = renderMap(raw);
+    this._mapCache.set(duid, { t: now, buf });
+    return buf;
   }
 
   _sendCommand(dev, method, params = []) {
