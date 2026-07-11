@@ -396,6 +396,10 @@ class RoborockCloudClient {
           controllable: true, min: 0, max: WATER_LEVELS.length - 1,
           capabilityId: 'water', writeCmd: 'setWater',
         },
+        {
+          path: 'locate', name: 'Find robot', type: 'trigger',
+          controllable: true, capabilityId: 'locate', writeOn: 'locate',
+        },
       ],
       homekit: ['battery-level', 'switch-rw'],
       _writeCapability: (capId, command, args = []) => this._writeCap(entry, capId, command, args),
@@ -596,6 +600,11 @@ class RoborockCloudClient {
       } catch (err) {
         console.error(`[RoborockCloud] Set water "${WATER_NAMES[idx]}" failed for ${dev.name}: ${err.message}`);
       }
+      return;
+    }
+    if (capId === 'locate') {
+      try { await this._sendCommand(dev, 'find_me'); }
+      catch (err) { console.error(`[RoborockCloud] Find robot failed for ${dev.name}: ${err.message}`); }
       return;
     }
     return this._command(dev, command);
