@@ -2631,3 +2631,13 @@ footer {
   max-width: 100%; max-height: 360px; image-rendering: pixelated; border-radius: 8px;
 }
 .graphs-map-err { position: absolute; color: var(--text-muted); font-size: 0.78rem; }
+
+/* ── Roborock multi-room clean panel ───────────────────────────────── */
+.rr-rooms { margin-top: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--bg) 60%, transparent); }
+.rr-rooms-hdr { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px; }
+.rr-rooms-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.rr-room-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.78rem; cursor: pointer; user-select: none; }
+.rr-room-chip:has(.rr-room-cb:checked) { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: var(--accent); }
+.rr-room-chip input { accent-color: var(--accent); cursor: pointer; }
+.rr-clean-selected { padding: 6px 14px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.rr-clean-selected:disabled { opacity: 0.45; cursor: not-allowed; }

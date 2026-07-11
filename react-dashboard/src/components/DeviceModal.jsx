@@ -187,6 +187,58 @@ function RangeControl({ sensor, value, onCommit, accent }) {
 
 // ── Modal ───────────────────────────────────────────────────────────────────
 
+// Multi-room clean panel for Roborock devices.
+function RoborockRoomsPanel({ device }) {
+  const [sel, setSel] = useState(() => new Set())
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  if (device.type !== 'roborock' || !Array.isArray(device.rooms) || !device.rooms.length) return null
+  const duid = String(device.key).split('/')[1]
+  const toggle = id => setSel(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const clean = async () => {
+    const segments = [...sel]
+    if (!segments.length) return
+    setBusy(true); setMsg('')
+    try {
+      const res = await fetch(`/api/roborock/${encodeURIComponent(duid)}/clean-room`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+        body: JSON.stringify({ segments }),
+      })
+      setMsg(res.ok ? '✓ Cleaning' : '✗ Failed')
+    } catch { setMsg('✗ Failed') }
+    setBusy(false)
+    setTimeout(() => setMsg(''), 3000)
+  }
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)', marginBottom: 8 }}>
+        {gt('clean_rooms', 'Clean rooms')}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        {device.rooms.map(r => {
+          const on = sel.has(r.segmentId)
+          return (
+            <button key={r.segmentId} onClick={() => toggle(r.segmentId)} style={{
+              padding: '5px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: 600,
+              border: `1px solid ${on ? 'rgba(88,166,255,0.6)' : 'rgba(255,255,255,0.12)'}`,
+              background: on ? 'rgba(88,166,255,0.18)' : 'rgba(255,255,255,0.04)',
+              color: on ? '#c9e3ff' : 'var(--text2,#aeb6c4)',
+            }}>{r.name}</button>
+          )
+        })}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button onClick={clean} disabled={busy || !sel.size} style={{
+          padding: '7px 18px', borderRadius: 10, border: 'none', cursor: sel.size ? 'pointer' : 'not-allowed',
+          background: 'linear-gradient(135deg,#3fb950,#58a6ff)', color: '#fff', fontWeight: 700, fontSize: 12,
+          opacity: sel.size ? 1 : 0.45,
+        }}>{gt('clean_selected', 'Clean selected')}{sel.size ? ` (${sel.size})` : ''}</button>
+        {msg && <span style={{ fontSize: 12, color: 'var(--text3,#8b949e)' }}>{msg}</span>}
+      </div>
+    </div>
+  )
+}
+
 export default function DeviceModal({ device, onClose, onCommand }) {
   const [selected, setSelected] = useState(null)
   const [localState, setLocalState] = useState({})
@@ -325,6 +377,9 @@ export default function DeviceModal({ device, onClose, onCommand }) {
                   </div>
                 </div>
               )}
+
+              {/* Roborock multi-room clean */}
+              <RoborockRoomsPanel device={device} />
 
               {/* Sensor chips + chart */}
               {graphable.length > 0 && (

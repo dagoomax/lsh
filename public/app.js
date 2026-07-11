@@ -1166,7 +1166,8 @@ function addOrUpdateDevice(device) {
       </div>
       <button class="card-size-btn" title="Resize card">${SIZE_ICONS.normal}</button>
     </div>
-    <div class="sensor-list">${sensorRows}</div>`;
+    <div class="sensor-list">${sensorRows}</div>
+    ${buildRoomsPanel(device)}`;
 
   devicesGrid.appendChild(card);
 
@@ -1185,8 +1186,52 @@ function addOrUpdateDevice(device) {
 }
 
 // ── Device control events (toggle, range, color) ──────────────────────────
+// Roborock multi-room clean panel (rendered for roborock devices with rooms).
+function buildRoomsPanel(device) {
+  if (device.type !== 'roborock' || !Array.isArray(device.rooms) || !device.rooms.length) return '';
+  const duid = String(device.key).split('/')[1];
+  const chips = device.rooms.map((r) => `
+    <label class="rr-room-chip">
+      <input type="checkbox" class="rr-room-cb" value="${r.segmentId}">
+      <span>${esc(r.name)}</span>
+    </label>`).join('');
+  return `
+    <div class="rr-rooms" data-rr-duid="${esc(duid)}">
+      <div class="rr-rooms-hdr">${gt('clean_rooms', 'Clean rooms')}</div>
+      <div class="rr-rooms-chips">${chips}</div>
+      <button class="rr-clean-selected" disabled>${gt('clean_selected', 'Clean selected')}</button>
+    </div>`;
+}
+
 function attachSensorControlHandlers(container) {
+// Room-checkbox toggles enable/disable the "Clean selected" button.
+container.addEventListener('change', (e) => {
+  const cb = e.target.closest('.rr-room-cb');
+  if (!cb) return;
+  const panel = cb.closest('.rr-rooms');
+  const btn = panel?.querySelector('.rr-clean-selected');
+  if (btn) btn.disabled = !panel.querySelector('.rr-room-cb:checked');
+});
 container.addEventListener('click', async (e) => {
+  const cleanBtn = e.target.closest('.rr-clean-selected');
+  if (cleanBtn && !cleanBtn.disabled) {
+    const panel = cleanBtn.closest('.rr-rooms');
+    const duid  = panel?.dataset.rrDuid;
+    const segs  = [...panel.querySelectorAll('.rr-room-cb:checked')].map((c) => Number(c.value));
+    if (!segs.length) return;
+    cleanBtn.disabled = true;
+    const orig = cleanBtn.textContent;
+    cleanBtn.textContent = '…';
+    try {
+      const res = await fetch(`/api/roborock/${encodeURIComponent(duid)}/clean-room`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ segments: segs }),
+      });
+      cleanBtn.textContent = res.ok ? '✓' : '✗';
+    } catch { cleanBtn.textContent = '✗'; }
+    setTimeout(() => { cleanBtn.textContent = orig; cleanBtn.disabled = false; }, 2500);
+    return;
+  }
   const btn = e.target.closest('.sensor-trigger-btn');
   if (!btn || btn.disabled) return;
   const deviceKey  = btn.dataset.deviceKey;

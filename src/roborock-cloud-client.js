@@ -378,19 +378,15 @@ class RoborockCloudClient {
   }
 
   _registerDevice(entry) {
-    // One "Clean <room>" trigger per discovered room segment.
-    const roomTriggers = (entry.rooms || []).map(r => ({
-      path: `clean_room_${r.segmentId}`,
-      name: `Clean ${r.name}`,
-      type: 'trigger', controllable: true,
-      capabilityId: 'clean_room', writeOn: String(r.segmentId),
-    }));
+    // Room list is consumed by the dashboard multi-room clean panel.
+    const rooms = (entry.rooms || []).map(r => ({ segmentId: r.segmentId, name: r.name }));
     this._registry.registerDevice({
       key:   entry.deviceKey,
       type:  'roborock',
       label: entry.name,
       icon:  '🤖',
       color: 'blue',
+      rooms,
       sensors: [
         { path: 'battery',    name: 'Battery',    format: 'percent', unit: '%', homekit: 'battery-level' },
         { path: 'state',      name: 'State',      format: 'string',  raw: true },
@@ -420,12 +416,11 @@ class RoborockCloudClient {
           path: 'locate', name: 'Find robot', type: 'trigger',
           controllable: true, capabilityId: 'locate', writeOn: 'locate',
         },
-        ...roomTriggers,
       ],
       homekit: ['battery-level', 'switch-rw'],
       _writeCapability: (capId, command, args = []) => this._writeCap(entry, capId, command, args),
     });
-    console.log(`[RoborockCloud] Registered ${entry.name} (${entry.model}, ${entry.duid}) — ${roomTriggers.length} room(s)`);
+    console.log(`[RoborockCloud] Registered ${entry.name} (${entry.model}, ${entry.duid}) — ${rooms.length} room(s)`);
   }
 
   // get_room_mapping → [{ segmentId, iotId, name }] using home-level room names.
@@ -650,11 +645,6 @@ class RoborockCloudClient {
     if (capId === 'locate') {
       try { await this._sendCommand(dev, 'find_me'); }
       catch (err) { console.error(`[RoborockCloud] Find robot failed for ${dev.name}: ${err.message}`); }
-      return;
-    }
-    if (capId === 'clean_room') {
-      const seg = parseInt(command, 10);
-      if (Number.isFinite(seg)) await this._cleanSegments(dev, [seg]);
       return;
     }
     return this._command(dev, command);
