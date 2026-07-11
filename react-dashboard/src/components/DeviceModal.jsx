@@ -212,6 +212,39 @@ function RoborockMapView({ device }) {
   )
 }
 
+// Consumable life bars for Roborock devices.
+const RR_CONSUMABLES = [
+  { path: 'main_brush', name: 'Main brush' },
+  { path: 'side_brush', name: 'Side brush' },
+  { path: 'filter',     name: 'Filter' },
+  { path: 'sensor',     name: 'Sensor' },
+]
+function RoborockConsumables({ device }) {
+  if (device.type !== 'roborock') return null
+  const r = device.readings || {}
+  const items = RR_CONSUMABLES.map(c => ({ ...c, v: r[c.path]?.value })).filter(c => typeof c.v === 'number')
+  if (!items.length) return null
+  const color = v => (v > 50 ? '#3fb950' : v > 20 ? '#d29922' : '#f85149')
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)', marginBottom: 8 }}>
+        {gt('consumables', 'Consumables')}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {items.map(c => (
+          <div key={c.path} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 12.5, minWidth: 90, color: 'var(--text2,#aeb6c4)' }}>{c.name}</span>
+            <div style={{ flex: 1, height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+              <div style={{ width: `${c.v}%`, height: '100%', background: color(c.v), borderRadius: 999 }} />
+            </div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, minWidth: 38, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: color(c.v) }}>{c.v}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // Multi-room clean panel for Roborock devices.
 function RoborockRoomsPanel({ device }) {
   const [sel, setSel] = useState(() => new Set())
@@ -405,6 +438,9 @@ export default function DeviceModal({ device, onClose, onCommand }) {
                   </div>
                 </div>
               )}
+
+              {/* Roborock consumable life */}
+              <RoborockConsumables device={device} />
 
               {/* Roborock multi-room clean */}
               <RoborockRoomsPanel device={device} />
