@@ -113,3 +113,35 @@ Note: Ogród lewa shows Closure 70 but TargetClosure 0 — settled at 30% open (
 | Żagiel taras góra | Awning | no states reported |
 
 RTS is one-way RF — the box has no position feedback for these four (empty state list is expected).
+
+---
+
+## Live readings — 2026-07-11 09:39 CEST (cloud)
+
+Open % = 100 − ClosureState; Tilt % (open slats) = 100 − SlateOrientationState. All io covers available this pull (Korytarz and Pergola back online).
+
+### io covers (with feedback)
+
+| Label | Closure | Open % | Orient | Tilt % | Moving | RSSI |
+|-------|:-------:|:------:|:------:|:------:|:------:|:----:|
+| Ogród front | 0 | 100% (open) | 0 | 100% | no | 42 |
+| Ogród front praw | 98 | 2% (nearly closed) | 26 | 74% | no | 50 |
+| Ogród lewy front | 100 | 0% (closed) | 88 | 12% | no | 66 |
+| Ogród lewa | 100 | 0% (closed) | 100 | 0% | no | 74 |
+| Sypialnia pole | 97 | 3% (nearly closed) | 0 | 100% | no | 52 |
+| Sypialnia droga | 100 | 0% (closed) | 0 | 100% | no | 64 |
+| Roleta gościnny | 100 | 0% (closed) | 7 | 93% | no | 34 |
+| Korytarz | 0 | 100% (open) | 0 | 100% | no | 42 |
+| Blanka | 100 | 0% (closed) | 0 | 100% | no | 56 |
+| Pergola | — | orientation-only | 44 | 56% | no | 26 |
+
+### rts covers (no feedback — one-way)
+
+| Label | uiClass | State |
+|-------|---------|-------|
+| Żaluzja ogród | VenetianBlind | no states reported |
+| Żagiel taras na dole | RollerShutter | no states reported |
+| RTS (16743992) | ExteriorScreen | no states reported |
+| Żagiel taras góra | Awning | no states reported |
+
+RTS is one-way RF — the box has no position/tilt feedback for these four (empty state list is expected).
