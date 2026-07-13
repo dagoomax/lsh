@@ -270,6 +270,10 @@ function DeviceTile({ device, onCommand, onOpen }) {
   const [localState, setLocalState] = useState({})
   const r = device.readings || {}
 
+  useEffect(() => {
+    setLocalState({})
+  }, [device.readings])
+
   const merged = { ...r }
   Object.entries(localState).forEach(([k,v]) => {
     merged[k] = { ...(merged[k]||{}), value: v }
