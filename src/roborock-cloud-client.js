@@ -426,6 +426,10 @@ class RoborockCloudClient {
           writeOn: 'start',   writeOff: 'dock', capabilityId: 'cleaning',
         },
         {
+          path: 'pause',  name: 'Pause cleaning', type: 'trigger',
+          controllable: true, capabilityId: 'pause', writeOn: 'pause',
+        },
+        {
           path: 'fan',  name: 'Fan speed', type: 'range', format: 'roborock-fan',
           controllable: true, min: 0, max: FAN_LEVELS.length - 1,
           capabilityId: 'fan', writeCmd: 'setFan',
