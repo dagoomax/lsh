@@ -66,6 +66,13 @@ const FAN_NAMES  = ['Quiet', 'Balanced', 'Turbo', 'Max'];
 const WATER_LEVELS = [200, 201, 202, 203];
 const WATER_NAMES  = ['Off', 'Low', 'Medium', 'High'];
 
+// Cleaning modes — Q Revo mop dock status control
+// Mode 0 = Vacuum + Mop (normal)
+// Mode 1 = Vacuum only (mop lifted, no water)
+// Mode 2 = Vacuum then Mop (sequential)
+const CLEANING_MODES = [0, 1, 2];
+const CLEANING_MODE_NAMES = ['Vacuum + Mop', 'Vacuum Only', 'Vacuum then Mop'];
+
 // Consumable lifespans (seconds of use before replacement) → % remaining.
 const LIFESPANS = {
   main_brush: 300 * 3600, // 300 h
@@ -429,6 +436,11 @@ class RoborockCloudClient {
           capabilityId: 'water', writeCmd: 'setWater',
         },
         {
+          path: 'clean_mode',  name: 'Cleaning mode', type: 'range', format: 'roborock-clean-mode',
+          controllable: true, min: 0, max: CLEANING_MODES.length - 1,
+          capabilityId: 'clean_mode', writeCmd: 'setCleanMode',
+        },
+        {
           path: 'dock', name: 'Return to base', type: 'trigger',
           controllable: true, capabilityId: 'dock', writeOn: 'dock',
         },
@@ -707,6 +719,20 @@ class RoborockCloudClient {
         setTimeout(() => this._poll(dev), 1500);
       } catch (err) {
         console.error(`[RoborockCloud] Set water "${WATER_NAMES[idx]}" failed for ${dev.name}: ${err.message}`);
+      }
+      return;
+    }
+    if (capId === 'clean_mode') {
+      const idx = Math.max(0, Math.min(CLEANING_MODES.length - 1, Math.round(Number(args[0]) || 0)));
+      const mode = CLEANING_MODES[idx];
+      try {
+        // Set mop dock status: 0 = normal, 1 = no mop, 2 = vacuum then mop
+        await this._sendCommand(dev, 'set_mop_dock_status', [mode]);
+        this._store.update(`${dev.deviceKey}/clean_mode`, idx);
+        console.log(`[RoborockCloud] Set cleaning mode to "${CLEANING_MODE_NAMES[idx]}" for ${dev.name}`);
+        setTimeout(() => this._poll(dev), 1500);
+      } catch (err) {
+        console.error(`[RoborockCloud] Set cleaning mode "${CLEANING_MODE_NAMES[idx]}" failed for ${dev.name}: ${err.message}`);
       }
       return;
     }
