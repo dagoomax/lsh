@@ -1001,12 +1001,22 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
     const c = new URLSearchParams(window.location.search).get('cat')
     return CATS.includes(c) ? c : 'All'
   })
+  const [typeFilter, setTypeFilter] = useState('All')
 
   const onCommand = useCallback((key, sensor, value) => {
     sendCommand(key, sensor, value)
   }, [])
 
-  const visible = cat === 'All' ? devices : devices.filter(d => getGroup(d) === cat)
+  // Count devices by type
+  const typeCounts = {}
+  for (const d of devices) {
+    const t = d.type || 'unknown'
+    typeCounts[t] = (typeCounts[t] || 0) + 1
+  }
+  const allTypes = ['All', ...Object.keys(typeCounts).sort()]
+
+  const visible = (cat === 'All' ? devices : devices.filter(d => getGroup(d) === cat))
+    .filter(d => typeFilter === 'All' || d.type === typeFilter)
   const onCount = devices.filter(d => { const sw=d.readings?.switch?.value; return sw===1||sw==='on'||sw===true }).length
   const liveCount = devices.filter(d => Object.values(d.readings||{}).some(v=>v?.value!=null)).length
 
@@ -1058,6 +1068,40 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
             </button>
           )
         })}
+
+        {/* Device Type Filter */}
+        <div style={{ marginTop:16, paddingTop:12, borderTop:'1px solid var(--sep)' }}>
+          <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em',
+            color:'var(--text3)', padding:'0 6px', marginBottom:8 }}>
+            Device Type
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            {allTypes.map(t => {
+              const cnt = t === 'All' ? devices.length : typeCounts[t] || 0
+              const active = typeFilter === t
+              return (
+                <button key={t} onClick={() => setTypeFilter(t)} style={{
+                  display:'flex', alignItems:'center', gap:8,
+                  padding:'6px 10px', borderRadius:8, border:'none', cursor:'pointer',
+                  background: active ? 'rgba(88,166,255,0.2)' : 'transparent',
+                  color: active ? 'var(--accent-lt)' : 'var(--text2)',
+                  fontSize:12, fontWeight: active?600:400,
+                  textAlign:'left', width:'100%',
+                  transition:'all 0.15s',
+                  textTransform: 'capitalize',
+                }}>
+                  <span style={{ flex:1 }}>{t}</span>
+                  <span style={{
+                    fontSize:10, fontWeight:600, padding:'1px 5px', borderRadius:6,
+                    background: active ? 'rgba(88,166,255,0.3)' : 'rgba(255,255,255,0.06)',
+                    color: active ? 'var(--accent-lt)' : 'var(--text3)',
+                    minWidth: '24px', textAlign: 'center'
+                  }}>{cnt}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         {/* Stats footer */}
         <div style={{ marginTop:'auto', padding:'12px 6px 0', borderTop:'1px solid var(--sep)' }}>
