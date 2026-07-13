@@ -12,7 +12,7 @@ const platformStatus = require('./platform-status');
 const cameraLog      = require('./camera-log');
 
 const BASE_URL = 'https://api.smartthings.com/v1';
-const POLL_INTERVAL_MS = 30000;
+const POLL_INTERVAL_MS = 5000;
 
 // Capability → sensor metadata.
 // type: 'toggle' | 'range' | 'color' | 'color-temp' (controls UI rendering)
