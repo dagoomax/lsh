@@ -1001,22 +1001,40 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
     const c = new URLSearchParams(window.location.search).get('cat')
     return CATS.includes(c) ? c : 'All'
   })
-  const [typeFilter, setTypeFilter] = useState('All')
+  const [originFilter, setOriginFilter] = useState(() => {
+    const saved = localStorage.getItem('originFilter')
+    return saved ? new Set(JSON.parse(saved)) : new Set()
+  })
 
   const onCommand = useCallback((key, sensor, value) => {
     sendCommand(key, sensor, value)
   }, [])
 
-  // Count devices by type
-  const typeCounts = {}
+  // Count devices by origin
+  const originCounts = {}
   for (const d of devices) {
-    const t = d.type || 'unknown'
-    typeCounts[t] = (typeCounts[t] || 0) + 1
+    const o = d.type || 'unknown'
+    originCounts[o] = (originCounts[o] || 0) + 1
   }
-  const allTypes = ['All', ...Object.keys(typeCounts).sort()]
+  const allOrigins = ['All', ...Object.keys(originCounts).sort()]
+
+  const toggleOriginFilter = (origin) => {
+    const newFilter = new Set(originFilter)
+    if (origin === 'All') {
+      newFilter.clear()
+    } else {
+      if (newFilter.has(origin)) {
+        newFilter.delete(origin)
+      } else {
+        newFilter.add(origin)
+      }
+    }
+    setOriginFilter(newFilter)
+    localStorage.setItem('originFilter', JSON.stringify(Array.from(newFilter)))
+  }
 
   const visible = (cat === 'All' ? devices : devices.filter(d => getGroup(d) === cat))
-    .filter(d => typeFilter === 'All' || d.type === typeFilter)
+    .filter(d => !originFilter.has(d.type || 'unknown'))
   const onCount = devices.filter(d => { const sw=d.readings?.switch?.value; return sw===1||sw==='on'||sw===true }).length
   const liveCount = devices.filter(d => Object.values(d.readings||{}).some(v=>v?.value!=null)).length
 
@@ -1069,32 +1087,45 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
           )
         })}
 
-        {/* Device Type Filter */}
+        {/* Origin Filter */}
         <div style={{ marginTop:16, paddingTop:12, borderTop:'1px solid var(--sep)' }}>
           <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em',
             color:'var(--text3)', padding:'0 6px', marginBottom:8 }}>
-            Device Type
+            Origin / Platform
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-            {allTypes.map(t => {
-              const cnt = t === 'All' ? devices.length : typeCounts[t] || 0
-              const active = typeFilter === t
+            {allOrigins.map(o => {
+              const cnt = o === 'All' ? devices.length : originCounts[o] || 0
+              const hidden = o !== 'All' && originFilter.has(o)
               return (
-                <button key={t} onClick={() => setTypeFilter(t)} style={{
+                <button key={o} onClick={() => toggleOriginFilter(o)} style={{
                   display:'flex', alignItems:'center', gap:8,
                   padding:'6px 10px', borderRadius:8, border:'none', cursor:'pointer',
-                  background: active ? 'rgba(88,166,255,0.2)' : 'transparent',
-                  color: active ? 'var(--accent-lt)' : 'var(--text2)',
-                  fontSize:12, fontWeight: active?600:400,
+                  background: hidden ? 'rgba(248,81,73,0.1)' : 'transparent',
+                  color: hidden ? 'var(--text3)' : 'var(--text2)',
+                  fontSize:12, fontWeight: hidden?400:400,
                   textAlign:'left', width:'100%',
                   transition:'all 0.15s',
                   textTransform: 'capitalize',
+                  opacity: hidden ? 0.6 : 1,
                 }}>
-                  <span style={{ flex:1 }}>{t}</span>
+                  <div style={{
+                    width:16, height:16, borderRadius:4, border:'1.5px solid var(--border)',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    background: hidden ? 'transparent' : 'transparent',
+                    flexShrink:0,
+                  }}>
+                    {!hidden && o !== 'All' ? (
+                      <div style={{ width:8, height:8, background:'var(--accent)', borderRadius:2 }}/>
+                    ) : o === 'All' && originFilter.size === 0 ? (
+                      <div style={{ width:8, height:8, background:'var(--accent)', borderRadius:2 }}/>
+                    ) : null}
+                  </div>
+                  <span style={{ flex:1 }}>{o}</span>
                   <span style={{
                     fontSize:10, fontWeight:600, padding:'1px 5px', borderRadius:6,
-                    background: active ? 'rgba(88,166,255,0.3)' : 'rgba(255,255,255,0.06)',
-                    color: active ? 'var(--accent-lt)' : 'var(--text3)',
+                    background: 'rgba(255,255,255,0.06)',
+                    color: 'var(--text3)',
                     minWidth: '24px', textAlign: 'center'
                   }}>{cnt}</span>
                 </button>
