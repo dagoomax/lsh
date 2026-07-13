@@ -317,7 +317,7 @@ class SatelClient extends EventEmitter {
       fetch(CMD_PART_ALARM),
       fetch(CMD_PART_FIRE_ALARM),
       fetch(CMD_OUTPUTS_STATE),
-      fetch(CMD_INPUTS_STATE),
+      this.cfg.inputs && this.cfg.inputs.length > 0 ? this._query(CMD_INPUTS_STATE) : Promise.resolve(null),
     ]);
 
     if (violations || tampers || zoneAlarms) this._updateZones(violations, tampers, zoneAlarms);
