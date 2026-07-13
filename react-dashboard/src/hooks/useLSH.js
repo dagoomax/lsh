@@ -48,6 +48,31 @@ export function useLSH() {
     socket.on('devices', readings => {
       if (Array.isArray(readings) && readings.length) setDevices(readings)
     })
+    // Live per-sensor updates: server emits { "<deviceKey>/<sensorPath>": value }
+    // on every store change — merge into the matching device readings so tiles
+    // refresh immediately instead of waiting for the 15s poll.
+    socket.on('update', changes => {
+      if (!changes || typeof changes !== 'object') return
+      setDevices(prev => {
+        let touched = false
+        const next = prev.map(d => {
+          let readings = d.readings
+          let devTouched = false
+          const apply = (path, sensor) => {
+            const full = `${d.key}/${path}`
+            if (!(full in changes)) return
+            if (!devTouched) { readings = { ...(readings || {}) }; devTouched = true }
+            readings[path] = { ...(readings[path] || sensor || {}), value: changes[full] }
+          }
+          Object.keys(d.readings || {}).forEach(p => apply(p))
+          ;(d.sensors || []).forEach(s => { if (!(d.readings || {})[s.path]) apply(s.path, s) })
+          if (!devTouched) return d
+          touched = true
+          return { ...d, readings }
+        })
+        return touched ? next : prev
+      })
+    })
     socket.on('platform-status', s => setPlatforms(s || {}))
 
     return () => { clearInterval(iv); socket.disconnect() }
