@@ -130,6 +130,11 @@ class SmartThingsClient {
     await this._discoverDevices();
     this.connected = true;
     platformStatus.set('smartthings', true);
+
+    // Try to register webhook for real-time updates
+    await this._registerWebhook();
+
+    // Keep polling as fallback (longer interval for redundancy)
     this.pollTimer = setInterval(() => this._pollAll(), POLL_INTERVAL_MS);
     console.log(`[SmartThings] Started — ${this.devices.length} device(s), polling every ${POLL_INTERVAL_MS / 1000}s`);
   }
@@ -138,6 +143,86 @@ class SmartThingsClient {
     if (this.pollTimer) clearInterval(this.pollTimer);
     this.connected = false;
     console.log('[SmartThings] Stopped');
+  }
+
+  // Handle webhook events from SmartThings (called by API route)
+  handleWebhookEvent(payload) {
+    if (!payload?.events) return;
+
+    for (const event of payload.events) {
+      const { deviceId, componentId = 'main', capability, value } = event;
+      const device = this.devices.find(d => d.instance === deviceId);
+      if (!device) continue;
+
+      const def = CAPABILITIES[capability];
+      if (!def) continue;
+
+      if (def.type === 'color') {
+        // Handle color capability
+        if (capability === 'colorControl') {
+          if (value?.hue != null) this.store.update(`${device.key}/hue`, value.hue);
+          if (value?.saturation != null) this.store.update(`${device.key}/saturation`, value.saturation);
+        }
+        continue;
+      }
+
+      if (def.multi) {
+        // Multi-attribute capability
+        for (const m of def.multi) {
+          if (value?.[m.storeAttr] != null) {
+            this.store.update(`${device.key}/${m.storeAttr}`, value[m.storeAttr]);
+          }
+        }
+        continue;
+      }
+
+      if (!def.storeAttr) continue;
+
+      let val = value?.value;
+      if (val == null) continue;
+
+      // Normalise string state values to 1/0
+      if (!def.raw && typeof val === 'string') {
+        if (['on', 'open', 'active', 'present', 'unlocked', 'detected'].includes(val)) val = 1;
+        else if (['off', 'closed', 'inactive', 'not present', 'locked', 'clear', 'not detected'].includes(val)) val = 0;
+      }
+
+      this.store.update(`${device.key}/${def.storeAttr}`, val);
+    }
+  }
+
+  // ── Webhooks ─────────────────────────────────────────────
+
+  async _registerWebhook() {
+    try {
+      const webhookUrl = this.config.smartthings?.webhookUrl;
+      if (!webhookUrl) {
+        console.log('[SmartThings] Webhook URL not configured — real-time updates disabled');
+        return;
+      }
+
+      // List existing webhooks to avoid duplicates
+      const existing = await this._get('/installedapps/subscriptions');
+      const hasWebhook = existing?.items?.some(w => w.targetUrl === webhookUrl);
+
+      if (hasWebhook) {
+        console.log('[SmartThings] Webhook already registered');
+        return;
+      }
+
+      // Register webhook for all device events
+      await this._post('/installedapps/subscriptions', {
+        sourceId: 'smartthings',
+        capability: '*',
+        value: '*',
+        subscriptionName: 'lsh-realtime-sync',
+        targetUrl: webhookUrl,
+      });
+
+      console.log('[SmartThings] Webhook registered for real-time state sync');
+    } catch (err) {
+      console.warn(`[SmartThings] Webhook registration failed: ${err.message} — falling back to polling`);
+    }
   }
 
   // ── Discovery ────────────────────────────────────────────

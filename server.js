@@ -225,10 +225,12 @@ async function main() {
   }
 
   // Start SmartThings client if configured
+  let smartThings = null;
   if (config.smartthings?.token) {
     const SmartThingsClient = tryRequire('./src/smartthings-client');
     if (SmartThingsClient) {
-      const smartThings = new SmartThingsClient(config, store, sensorRegistry);
+      smartThings = new SmartThingsClient(config, store, sensorRegistry);
+      apiClients.smartThings = smartThings;
       smartThings.start().catch((err) => console.error(`[SmartThings] Start failed: ${err.message}`));
     }
   }

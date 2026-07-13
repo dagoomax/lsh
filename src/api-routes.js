@@ -19,7 +19,7 @@ function writeConfigFile(data) {
 }
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
-  const { unifiProtect, reolink, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer } = clients;
+  const { unifiProtect, reolink, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, smartThings } = clients;
   const router = Router();
 
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -693,12 +693,13 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   router.post('/settings/smartthings', (req, res) => {
     const current = readConfigFile();
-    const { token, deviceIds } = req.body;
+    const { token, deviceIds, webhookUrl } = req.body;
     const updated = {
       ...current,
       smartthings: {
         token: (token && !token.includes('•')) ? token : (current.smartthings?.token ?? ''),
         deviceIds: Array.isArray(deviceIds) ? deviceIds : (current.smartthings?.deviceIds ?? []),
+        webhookUrl: webhookUrl || (current.smartthings?.webhookUrl ?? ''),
       },
     };
     try {
@@ -706,6 +707,19 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       res.json({ success: true, message: 'SmartThings settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // SmartThings webhook endpoint for real-time state updates
+  router.post('/webhooks/smartthings', (req, res) => {
+    if (!smartThings) return res.status(503).json({ success: false, error: 'SmartThings not configured' });
+
+    try {
+      smartThings.handleWebhookEvent(req.body);
+      res.json({ success: true });
+    } catch (err) {
+      console.error(`[SmartThings Webhook] Error: ${err.message}`);
+      res.status(400).json({ success: false, error: err.message });
     }
   });
 
