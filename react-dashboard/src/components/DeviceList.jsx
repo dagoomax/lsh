@@ -750,11 +750,49 @@ function DeviceTile({ device, onCommand, onOpen }) {
         )}
         {isSmartthings && smartthingsSensors.length > 0 && (
           <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
+            {/* Color picker for devices with color control */}
+            {(() => {
+              const hueSensor = smartthingsSensors.find(s => s.path === 'hue')
+              const satSensor = smartthingsSensors.find(s => s.path === 'saturation')
+              if (hueSensor && satSensor) {
+                const h = hueSensor.value ?? 0
+                const s = satSensor.value ?? 100
+                const hslColor = `hsl(${h}, ${s}%, 50%)`
+                return (
+                  <div key="color-picker" style={{ marginBottom:3 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                      <span style={{ fontSize:10, color:'#8b949e', flex:1 }}>RGB Color</span>
+                      <input type="color" value={hslColor} onChange={e => {
+                        const rgb = e.target.value
+                        const r = parseInt(rgb.slice(1, 3), 16)
+                        const g = parseInt(rgb.slice(3, 5), 16)
+                        const b = parseInt(rgb.slice(5, 7), 16)
+                        const max = Math.max(r, g, b), min = Math.min(r, g, b)
+                        let h = 0
+                        if (max !== min) {
+                          const d = max - min
+                          h = max === r ? (60 * ((g - b) / d) + 360) % 360
+                            : max === g ? (60 * ((b - r) / d) + 120) % 360
+                            : (60 * ((r - g) / d) + 240) % 360
+                        }
+                        const sat = max === 0 ? 0 : (d / max) * 100
+                        cmd('hue', Math.round(h))
+                        cmd('saturation', Math.round(sat))
+                      }} style={{ width:32, height:32, border:'none', borderRadius:6, cursor:'pointer' }} />
+                    </div>
+                  </div>
+                )
+              }
+              return null
+            })()}
             {smartthingsSensors.slice(0,5).map(s => {
               const on   = s.value === 1 || s.value === true
               const Icon = SMARTTHINGS_SENSOR_ICON[s.sensorType] || SensorIcon
               const isToggle = s.type === 'toggle'
               const isRange  = s.type === 'range'
+              const isColor  = s.type === 'color'
+              if (isColor) return null
+              if (s.path === 'hue' || s.path === 'saturation') return null
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>

@@ -19,7 +19,7 @@ const POLL_INTERVAL_MS = 5000;
 const CAPABILITIES = {
   switch:                      { storeAttr: 'switch',           name: 'Switch',       sensorType: 'switch',      format: 'on-off',      homekit: 'switch-rw',   controllable: true, type: 'toggle',     writeOn: 'on',                 writeOff: 'off',     capabilityId: 'switch' },
   switchLevel:                 { storeAttr: 'level',            name: 'Brightness',   sensorType: 'dimmer',      format: 'percent',                             controllable: true, type: 'range',      writeCmd: 'setLevel',          capabilityId: 'switchLevel',   min: 0,   max: 100 },
-  colorControl:                { storeAttr: null,               name: 'Color',        sensorType: 'dimmer',      format: 'color',                               controllable: true, type: 'color',                                     capabilityId: 'colorControl' },
+  colorControl:                { storeAttr: 'color',            name: 'Color',        sensorType: 'dimmer',      format: 'color',                               controllable: true, type: 'color', writeCmd: 'setColor', capabilityId: 'colorControl' },
   colorTemperature:            { storeAttr: 'colorTemperature', name: 'Color Temp',   sensorType: 'dimmer',      format: 'color-temp',                          controllable: true, type: 'color-temp', writeCmd: 'setColorTemperature', capabilityId: 'colorTemperature', min: 2700, max: 6500 },
   powerMeter:                  { storeAttr: 'power',            name: 'Power',        sensorType: 'power',       format: 'power' },
   energyMeter:                 { storeAttr: 'energy',           name: 'Energy',       sensorType: 'energy',      format: 'energy' },
@@ -160,8 +160,8 @@ class SmartThingsClient {
       if (def.type === 'color') {
         // Handle color capability
         if (capability === 'colorControl') {
-          if (value?.hue != null) this.store.update(`${device.key}/hue`, value.hue);
-          if (value?.saturation != null) this.store.update(`${device.key}/saturation`, value.saturation);
+          if (value?.hue?.value != null) this.store.update(`${device.key}/hue`, value.hue.value);
+          if (value?.saturation?.value != null) this.store.update(`${device.key}/saturation`, value.saturation.value);
         }
         continue;
       }
