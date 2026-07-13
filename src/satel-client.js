@@ -16,6 +16,7 @@ const CMD_PART_ARMED       = 0x0A; // ArmedPartitionsReally
 const CMD_PART_ALARM       = 0x13; // PartitionsAlarm
 const CMD_PART_FIRE_ALARM  = 0x14;
 const CMD_OUTPUTS_STATE    = 0x17;
+const CMD_INPUTS_STATE     = 0x15;
 const CMD_NEW_DATA         = 0x7F;
 const CMD_READ_NAME        = 0xEE; // read element name; request: EE <type> <number>
 
@@ -23,6 +24,7 @@ const CMD_READ_NAME        = 0xEE; // read element name; request: EE <type> <num
 const NAME_TYPE_PARTITION  = 0;
 const NAME_TYPE_ZONE       = 1;
 const NAME_TYPE_OUTPUT     = 4;
+const NAME_TYPE_INPUT      = 6;
 const NAME_TIMEOUT         = 1_000; // names answer fast; keep well under QUERY_TIMEOUT
 
 // Check if a command's data changed (new_data response uses cmd code as bit index)
@@ -149,7 +151,7 @@ class SatelClient extends EventEmitter {
     this.reconnTimer    = null;
     this._running       = false;
     this.registered     = new Set();
-    this.names          = { partition: {}, zone: {}, output: {} }; // names read from the panel
+    this.names          = { partition: {}, zone: {}, output: {}, input: {} }; // names read from the panel
     // Name loading briefly stacks one-shot 'frame' listeners; lift the default cap.
     this.setMaxListeners(50);
   }
@@ -268,18 +270,20 @@ class SatelClient extends EventEmitter {
     });
   }
 
-  // Download zone / output / partition names from the panel once, sequentially
+  // Download zone / output / partition / input names from the panel once, sequentially
   // (one outstanding query at a time keeps the socket and listeners sane).
   async _loadNames() {
     const range  = (n) => Array.from({ length: n }, (_, i) => i + 1);
     const zoneN  = this.cfg.zones      || range(this.cfg.zoneCount   || 0);
     const outN   = this.cfg.outputs    || range(this.cfg.outputCount || 0);
     const partN  = this.cfg.partitions || [1];
+    const inpN   = this.cfg.inputs     || [];
 
     for (const [type, nums, bucket] of [
       [NAME_TYPE_PARTITION, partN, this.names.partition],
       [NAME_TYPE_ZONE,      zoneN, this.names.zone],
       [NAME_TYPE_OUTPUT,    outN,  this.names.output],
+      [NAME_TYPE_INPUT,     inpN,  this.names.input],
     ]) {
       // Up to 3 passes: a single dropped/timed-out frame must not permanently
       // lose that element's name (unnamed elements stay silent each pass)
@@ -294,7 +298,7 @@ class SatelClient extends EventEmitter {
         pending = missing;
       }
     }
-    console.log(`[Satel] Names from panel — ${Object.keys(this.names.output).length} output(s), ${Object.keys(this.names.zone).length} zone(s), ${Object.keys(this.names.partition).length} partition(s)`);
+    console.log(`[Satel] Names from panel — ${Object.keys(this.names.output).length} output(s), ${Object.keys(this.names.zone).length} zone(s), ${Object.keys(this.names.partition).length} partition(s), ${Object.keys(this.names.input).length} input(s)`);
   }
 
   // ── Polling ───────────────────────────────────────────────────────────────
@@ -305,7 +309,7 @@ class SatelClient extends EventEmitter {
 
     const fetch = (cmd) => (force || changed(nd, cmd)) ? this._query(cmd) : Promise.resolve(null);
 
-    const [violations, tampers, zoneAlarms, partArmed, partAlarm, partFire, outputs] = await Promise.all([
+    const [violations, tampers, zoneAlarms, partArmed, partAlarm, partFire, outputs, inputs] = await Promise.all([
       fetch(CMD_ZONES_VIOLATION),
       fetch(CMD_ZONES_TAMPER),
       fetch(CMD_ZONES_ALARM),
@@ -313,11 +317,13 @@ class SatelClient extends EventEmitter {
       fetch(CMD_PART_ALARM),
       fetch(CMD_PART_FIRE_ALARM),
       fetch(CMD_OUTPUTS_STATE),
+      fetch(CMD_INPUTS_STATE),
     ]);
 
     if (violations || tampers || zoneAlarms) this._updateZones(violations, tampers, zoneAlarms);
     if (partArmed  || partAlarm || partFire)  this._updatePartitions(partArmed, partAlarm, partFire);
     if (outputs)                              this._updateOutputs(outputs);
+    if (inputs)                               this._updateInputs(inputs);
   }
 
   // ── Zones ─────────────────────────────────────────────────────────────────
@@ -459,6 +465,40 @@ class SatelClient extends EventEmitter {
         return this.setOutput(num, command === 'on')
           .catch(err => console.error(`[Satel] Output ${num} failed: ${err.message}`));
       },
+    });
+  }
+
+  // ── Inputs ────────────────────────────────────────────────────────────────
+
+  _updateInputs(data) {
+    const nums = this.cfg.inputs || [];
+
+    for (const num of nums) {
+      if (data) this.store.update(`satel/input/${num}/state`, getBit(data, num) ? 1 : 0);
+      if (!this.registered.has(`i${num}`)) this._registerInput(num);
+    }
+  }
+
+  _registerInput(num) {
+    this.registered.add(`i${num}`);
+    const explicit = this.cfg.inputNames?.[num] || this.cfg.inputNames?.[String(num)]
+      || this.names.input[num];
+    const label = explicit || `Input ${num}`;
+    this.sensorRegistry.registerDevice({
+      key:     `satel/input/${num}`,
+      type:    'satel',
+      label,
+      named:   !!explicit,
+      homekit: [],
+      sensors: [
+        {
+          path:       'state',
+          label:      'State',
+          sensorType: 'input',
+          format:     'on-off',
+          homekit:    null,
+        },
+      ],
     });
   }
 }

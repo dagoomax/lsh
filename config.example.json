@@ -45,7 +45,9 @@
     "zoneCount": 64,
     "zoneNames": { "1": "Front Door", "2": "Back Door" },
     "partitions": [1],
-    "partitionNames": { "1": "House" }
+    "partitionNames": { "1": "House" },
+    "inputs": [8, 9, 12, 13],
+    "inputNames": { "8": "Battery", "9": "AC Mains", "12": "GSM", "13": "Temperature" }
   },
   "boneio": {
     "host": "192.168.1.100",
