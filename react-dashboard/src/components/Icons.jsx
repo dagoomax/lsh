@@ -298,6 +298,24 @@ export function GridPowerIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function SignalIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M2 20h20"/>
+      <path d="M5 18v-3M9 18v-6M13 18v-9M17 18v-12M21 18v-15"/>
+    </svg>
+  )
+}
+
+export function PowerIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+      <path d="M12 2v10"/>
+    </svg>
+  )
+}
+
 export function HomeIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>

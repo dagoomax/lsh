@@ -3,6 +3,7 @@ import {
   resolveIcon, CAT_ICON_COMPONENT, GridPowerIcon,
   SwitchOutletIcon, BulbIcon, ShutterIcon, ThermometerIcon,
   HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon, RelayIcon, MyIcon,
+  BatteryIcon, SignalIcon, PowerIcon,
 } from './Icons'
 import DeviceModal from './DeviceModal'
 import StatsView   from './StatsView'
@@ -31,6 +32,7 @@ const SATEL_SENSOR_ICON = {
   alarm:      SecurityIcon,
   fire_alarm: SecurityIcon,
   output:     RelayIcon,
+  input:      SensorIcon,
 }
 
 const SUPPLA_SENSOR_ICON = {
@@ -399,6 +401,17 @@ function DeviceTile({ device, onCommand, onOpen }) {
     ...s,
     value: (merged[s.path] ?? r[s.path])?.value,
   })) : []
+
+  // System inputs (8, 9, 12, 13) have special display with icons
+  const systemInputLabels = { 8: 'Battery', 9: 'AC Mains', 12: 'GSM', 13: 'Temperature' }
+  const systemInputIcons = { 8: BatteryIcon, 9: PowerIcon, 12: SignalIcon, 13: ThermometerIcon }
+  const satelSystemInputs = isSatel ? satelSensors.filter(s => {
+    const inputNum = parseInt(s.path.split('/')[2])
+    return systemInputLabels[inputNum]
+  }).map(s => {
+    const inputNum = parseInt(s.path.split('/')[2])
+    return { ...s, inputNum, label: systemInputLabels[inputNum], icon: systemInputIcons[inputNum] }
+  }) : []
 
   // For Fibaro rooms: extract sensor values from numeric-path readings
   const fibaroSensors = isFibaro ? (device.sensors || []).map(s => ({
@@ -921,6 +934,26 @@ function DeviceTile({ device, onCommand, onOpen }) {
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
                     : <span style={{ fontSize:10, color: iconColor, fontWeight:600 }}>{on ? 'Yes' : 'No'}</span>
                   }
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {satelSystemInputs.length > 0 && (
+          <div style={{ marginTop:12, paddingTop:8, borderTop:'1px solid #21262d', display:'flex', flexDirection:'column', gap:3 }}>
+            <div style={{ fontSize:9, fontWeight:600, color:'#8b949e', textTransform:'uppercase', letterSpacing:'0.5px' }}>System Inputs</div>
+            {satelSystemInputs.map(s => {
+              const ok = s.value === 1 || s.value === true
+              const Icon = s.icon
+              const statusColor = ok ? '#3fb950' : 'var(--red,#f85149)'
+              const statusText = ok ? 'OK' : 'FAULT'
+              return (
+                <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
+                    <Icon size={12} color={statusColor} />
+                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
+                  </div>
+                  <span style={{ fontSize:10, color: statusColor, fontWeight:700 }}>{statusText}</span>
                 </div>
               )
             })}
