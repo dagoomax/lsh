@@ -16,7 +16,7 @@ const TOKEN_TTL    = '7d';
 // Paths that never require authentication
 const PUBLIC_HTML = new Set(['/login.html', '/setup.html']);
 const PUBLIC_JS   = new Set(['/login.js', '/setup.js', '/theme.js', '/common.js', '/i18n.js']);
-const PUBLIC_API  = ['/api/auth/login', '/api/auth/setup'];
+const PUBLIC_API  = ['/api/auth/login', '/api/auth/setup', '/api/webhooks/smartthings'];
 
 function ensurePersist() {
   if (!fs.existsSync(PERSIST_DIR)) fs.mkdirSync(PERSIST_DIR, { recursive: true });
