@@ -311,6 +311,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
   const isShelly  = device.type === 'shelly'
   const isLoxone       = device.type === 'loxone'
   const isSmartthings  = device.type === 'smartthings'
+  const isTradfri      = device.type === 'tradfri'
   const isAC      = device.type === 'auxair'
   const isSonos  = device.type === 'sonos'
   const isDenon  = device.type === 'denon'
@@ -398,6 +399,12 @@ function DeviceTile({ device, onCommand, onOpen }) {
 
   // For Satel: extract sensor values from path-keyed readings
   const satelSensors = isSatel ? (device.sensors || []).map(s => ({
+    ...s,
+    value: (merged[s.path] ?? r[s.path])?.value,
+  })) : []
+
+  // For TRADFRI: extract sensor values from path-keyed readings
+  const tradfriSensors = isTradfri ? (device.sensors || []).map(s => ({
     ...s,
     value: (merged[s.path] ?? r[s.path])?.value,
   })) : []
@@ -801,6 +808,65 @@ function DeviceTile({ device, onCommand, onOpen }) {
                   </div>
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
+                    : s.value != null
+                      ? <span style={{ fontSize:10, color:'#8b949e' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      : <span style={{ fontSize:10, color:'#4a5568' }}>—</span>
+                  }
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {isTradfri && tradfriSensors.length > 0 && (
+          <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
+            {/* Color picker for TRADFRI RGB lights */}
+            {(() => {
+              const hueSensor = tradfriSensors.find(s => s.path === 'hue')
+              const satSensor = tradfriSensors.find(s => s.path === 'saturation')
+              if (hueSensor && satSensor) {
+                const h = hueSensor.value ?? 0
+                const s = satSensor.value ?? 100
+                const hslColor = `hsl(${h}, ${s}%, 50%)`
+                return (
+                  <div key="color-picker" style={{ marginBottom:3 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                      <span style={{ fontSize:10, color:'#8b949e', flex:1 }}>RGB Color</span>
+                      <input type="color" value={hslColor} onChange={e => {
+                        const rgb = e.target.value
+                        const r = parseInt(rgb.slice(1, 3), 16)
+                        const g = parseInt(rgb.slice(3, 5), 16)
+                        const b = parseInt(rgb.slice(5, 7), 16)
+                        const max = Math.max(r, g, b), min = Math.min(r, g, b)
+                        let h = 0
+                        if (max !== min) {
+                          const d = max - min
+                          h = max === r ? (60 * ((g - b) / d) + 360) % 360
+                            : max === g ? (60 * ((b - r) / d) + 120) % 360
+                            : (60 * ((r - g) / d) + 240) % 360
+                        }
+                        const sat = max === 0 ? 0 : (d / max) * 100
+                        cmd('hue', Math.round(h))
+                        cmd('saturation', Math.round(sat))
+                      }} style={{ width:32, height:32, border:'none', borderRadius:6, cursor:'pointer' }} />
+                    </div>
+                  </div>
+                )
+              }
+              return null
+            })()}
+            {tradfriSensors.slice(0,5).map(s => {
+              const on   = s.value === 1 || s.value === true
+              const isToggle = s.type === 'toggle'
+              const isRange  = s.type === 'range'
+              if (s.path === 'hue' || s.path === 'saturation') return null
+              return (
+                <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
+                    <span style={{ fontSize:12, color:'#79c0ff' }}>◆</span>
+                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
+                  </div>
+                  {isToggle
+                    ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||1) : (s.writeOff||0))} />
                     : s.value != null
                       ? <span style={{ fontSize:10, color:'#8b949e' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
                       : <span style={{ fontSize:10, color:'#4a5568' }}>—</span>
