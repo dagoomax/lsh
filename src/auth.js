@@ -168,7 +168,7 @@ const auth = {
     res.cookie(COOKIE_NAME, token, {
       httpOnly: true,
       secure:   !!isSecure,
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge:   7 * 24 * 60 * 60 * 1000,
     });
   },
