@@ -46,6 +46,8 @@
     "zoneNames": { "1": "Front Door", "2": "Back Door" },
     "partitions": [1],
     "partitionNames": { "1": "House" },
+    "outputs": [1, 2, 3, 4, 5, 6, 7],
+    "outputNames": { "5": "Garage Gate" },
     "inputs": [8, 9, 12, 13],
     "inputNames": { "8": "Battery", "9": "AC Mains", "12": "GSM", "13": "Temperature" }
   },
