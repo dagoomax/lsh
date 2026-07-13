@@ -299,6 +299,9 @@ class SatelClient extends EventEmitter {
       }
     }
     console.log(`[Satel] Names from panel — ${Object.keys(this.names.output).length} output(s), ${Object.keys(this.names.zone).length} zone(s), ${Object.keys(this.names.partition).length} partition(s), ${Object.keys(this.names.input).length} input(s)`);
+    if (Object.keys(this.names.output).length > 0) {
+      console.log('[Satel] Outputs:', Object.entries(this.names.output).map(([n, name]) => `${n}=${name}`).join(', '));
+    }
   }
 
   // ── Polling ───────────────────────────────────────────────────────────────
