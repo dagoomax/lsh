@@ -102,6 +102,7 @@ class TradfriWrapper {
 
       this._known.set(instanceId, { key, type });
       this._registry.registerDevice(device);
+      console.log(`[Tradfri] Discovered: ${name}`);
     }
 
     this._applyState(key, type, acc);
@@ -159,15 +160,25 @@ class TradfriWrapper {
     const light = acc.lightList?.[0];
     const plug  = acc.plugList?.[0];
     const blind = acc.blindList?.[0];
+    const updates = [];
 
     if (type === TYPE_LIGHT && light) {
-      this._store.update(`${key}/switch`, light.onOff ? 1 : 0);
-      if (light.dimmer != null) this._store.update(`${key}/level`, light.dimmer);
+      const onOff = light.onOff ? 1 : 0;
+      this._store.update(`${key}/switch`, onOff);
+      updates.push(`switch=${onOff}`);
+
+      if (light.dimmer != null) {
+        this._store.update(`${key}/level`, light.dimmer);
+        updates.push(`level=${light.dimmer}%`);
+      }
+
       if (light.colorTemperature != null) {
         // Tradfri colorTemperature: 0 (warm) – 100 (cool) — convert to Kelvin
         const k = Math.round(2202 + light.colorTemperature * 40); // ~2200K–6200K
         this._store.update(`${key}/colorTemperature`, k);
+        updates.push(`temp=${k}K`);
       }
+
       if (light.color) {
         // node-tradfri-client exposes hue/saturation via .color.hue/.saturation
         // Values are already 0-100 range
@@ -175,16 +186,27 @@ class TradfriWrapper {
         const s = light.color.saturation ?? 0;
         this._store.update(`${key}/hue`, h);
         this._store.update(`${key}/saturation`, s);
+        updates.push(`color=H${h}S${s}`);
       }
     } else if (type === TYPE_PLUG && plug) {
-      this._store.update(`${key}/switch`, plug.onOff ? 1 : 0);
+      const onOff = plug.onOff ? 1 : 0;
+      this._store.update(`${key}/switch`, onOff);
+      updates.push(`switch=${onOff}`);
     } else if (type === TYPE_BLIND && blind) {
       const pos = blind.position ?? 0;
       this._store.update(`${key}/level`, pos);
       this._store.update(`${key}/windowShade`, pos >= 50 ? 1 : 0);
+      updates.push(`position=${pos}%`);
     }
 
-    if (acc.battery != null) this._store.update(`${key}/battery`, acc.battery);
+    if (acc.battery != null) {
+      this._store.update(`${key}/battery`, acc.battery);
+      updates.push(`battery=${acc.battery}%`);
+    }
+
+    if (updates.length > 0) {
+      console.log(`[Tradfri] ${acc.name}: ${updates.join(', ')}`);
+    }
   }
 
   // ── Write (HomeKit → Tradfri API) ────────────────────────────────────────
