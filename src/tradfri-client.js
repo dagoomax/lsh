@@ -102,7 +102,8 @@ class TradfriWrapper {
 
       this._known.set(instanceId, { key, type });
       this._registry.registerDevice(device);
-      console.log(`[Tradfri] Discovered: ${name}`);
+      const spectrum = acc.lightList?.[0]?.spectrum;
+      console.log(`[Tradfri] Discovered: ${name}${spectrum ? ` (spectrum: ${spectrum})` : ''}`);
     }
 
     this._applyState(key, type, acc);
@@ -128,9 +129,13 @@ class TradfriWrapper {
         { controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off', capabilityId: 'switch' });
       if (light.dimmer != null) add('level', 'Brightness', 'percent');
       if (light.colorTemperature != null) add('colorTemperature', 'Color Temp', 'number');
-      if (light.color) {
+      // node-tradfri-client: hue/saturation only exist on RGB (CWS) bulbs;
+      // light.color is a hex string, not an object
+      if (light.spectrum === 'rgb') {
         add('hue',        'Hue',        'number', null, { hidden: true });
         add('saturation', 'Saturation', 'number', null, { hidden: true });
+        add('color',      'Color',      'color',  null,
+          { controllable: true, type: 'color', capabilityId: 'colorControl' });
       }
     } else if (type === TYPE_PLUG && plug) {
       add('switch', 'Power', 'on-off', 'switch-rw',
@@ -179,11 +184,10 @@ class TradfriWrapper {
         updates.push(`temp=${k}K`);
       }
 
-      if (light.color) {
-        // node-tradfri-client exposes hue/saturation via .color.hue/.saturation
-        // Values are already 0-100 range
-        const h = light.color.hue ?? 0;
-        const s = light.color.saturation ?? 0;
+      if (light.spectrum === 'rgb') {
+        // hue: 0-360 degrees, saturation: 0-100
+        const h = Math.round(light.hue ?? 0);
+        const s = Math.round(light.saturation ?? 0);
         this._store.update(`${key}/hue`, h);
         this._store.update(`${key}/saturation`, s);
         updates.push(`color=H${h}S${s}`);

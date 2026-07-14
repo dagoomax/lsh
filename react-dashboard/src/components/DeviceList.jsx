@@ -265,6 +265,41 @@ function CTSlider({ value, onCommit }) {
   )
 }
 
+// ── RGB color picker ──────────────────────────────────────────────────────────
+function hslToHex(h, s, l = 50) {
+  s /= 100; l /= 100
+  const k = n => (n + h / 30) % 12
+  const a = s * Math.min(l, 1 - l)
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))
+  const hex = x => Math.round(x * 255).toString(16).padStart(2, '0')
+  return `#${hex(f(0))}${hex(f(4))}${hex(f(8))}`
+}
+
+// hueDeg: 0-360, sat: 0-100; onCommit(hueDeg, sat)
+function ColorPicker({ hueDeg, sat, onCommit }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:3 }}>
+      <span style={{ fontSize:10, color:'#8b949e', flex:1 }}>RGB Color</span>
+      <input type="color" value={hslToHex(hueDeg ?? 0, sat ?? 100)}
+        onClick={e => e.stopPropagation()}
+        onChange={e => {
+          const v = e.target.value
+          const r = parseInt(v.slice(1,3),16), g = parseInt(v.slice(3,5),16), b = parseInt(v.slice(5,7),16)
+          const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min
+          let h = 0
+          if (d) {
+            h = max === r ? (60*((g-b)/d)+360)%360
+              : max === g ? (60*((b-r)/d)+120)%360
+              : (60*((r-g)/d)+240)%360
+          }
+          const s = max === 0 ? 0 : (d/max)*100
+          onCommit(Math.round(h), Math.round(s))
+        }}
+        style={{ width:32, height:32, border:'none', borderRadius:6, cursor:'pointer' }} />
+    </div>
+  )
+}
+
 // ── Device Tile ───────────────────────────────────────────────────────────────
 function DeviceTile({ device, onCommand, onOpen }) {
   const [localState, setLocalState] = useState({})
@@ -761,40 +796,18 @@ function DeviceTile({ device, onCommand, onOpen }) {
         )}
         {isSmartthings && smartthingsSensors.length > 0 && (
           <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
-            {/* Color picker for devices with color control */}
+            {/* Color picker for devices with color control (SmartThings hue is 0-100) */}
             {(() => {
               const hueSensor = smartthingsSensors.find(s => s.path === 'hue')
               const satSensor = smartthingsSensors.find(s => s.path === 'saturation')
-              if (hueSensor && satSensor) {
-                const h = hueSensor.value ?? 0
-                const s = satSensor.value ?? 100
-                const hslColor = `hsl(${h}, ${s}%, 50%)`
-                return (
-                  <div key="color-picker" style={{ marginBottom:3 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                      <span style={{ fontSize:10, color:'#8b949e', flex:1 }}>RGB Color</span>
-                      <input type="color" value={hslColor} onChange={e => {
-                        const rgb = e.target.value
-                        const r = parseInt(rgb.slice(1, 3), 16)
-                        const g = parseInt(rgb.slice(3, 5), 16)
-                        const b = parseInt(rgb.slice(5, 7), 16)
-                        const max = Math.max(r, g, b), min = Math.min(r, g, b)
-                        let h = 0
-                        if (max !== min) {
-                          const d = max - min
-                          h = max === r ? (60 * ((g - b) / d) + 360) % 360
-                            : max === g ? (60 * ((b - r) / d) + 120) % 360
-                            : (60 * ((r - g) / d) + 240) % 360
-                        }
-                        const sat = max === 0 ? 0 : (d / max) * 100
-                        cmd('hue', Math.round(h))
-                        cmd('saturation', Math.round(sat))
-                      }} style={{ width:32, height:32, border:'none', borderRadius:6, cursor:'pointer' }} />
-                    </div>
-                  </div>
-                )
-              }
-              return null
+              if (!hueSensor || !satSensor) return null
+              return (
+                <ColorPicker key="color-picker"
+                  hueDeg={(hueSensor.value ?? 0) * 3.6}
+                  sat={satSensor.value ?? 100}
+                  onCommit={(h, s) => cmd('color', { hue: Math.round(h / 3.6), saturation: s })}
+                />
+              )
             })()}
             {smartthingsSensors.slice(0,5).map(s => {
               const on   = s.value === 1 || s.value === true
@@ -823,46 +836,24 @@ function DeviceTile({ device, onCommand, onOpen }) {
         )}
         {isTradfri && tradfriSensors.length > 0 && (
           <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
-            {/* Color picker for TRADFRI RGB lights */}
+            {/* Color picker for TRADFRI RGB lights (hue is 0-360 degrees) */}
             {(() => {
               const hueSensor = tradfriSensors.find(s => s.path === 'hue')
               const satSensor = tradfriSensors.find(s => s.path === 'saturation')
-              if (hueSensor && satSensor) {
-                const h = hueSensor.value ?? 0
-                const s = satSensor.value ?? 100
-                const hslColor = `hsl(${h}, ${s}%, 50%)`
-                return (
-                  <div key="color-picker" style={{ marginBottom:3 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                      <span style={{ fontSize:10, color:'#8b949e', flex:1 }}>RGB Color</span>
-                      <input type="color" value={hslColor} onChange={e => {
-                        const rgb = e.target.value
-                        const r = parseInt(rgb.slice(1, 3), 16)
-                        const g = parseInt(rgb.slice(3, 5), 16)
-                        const b = parseInt(rgb.slice(5, 7), 16)
-                        const max = Math.max(r, g, b), min = Math.min(r, g, b)
-                        let h = 0
-                        if (max !== min) {
-                          const d = max - min
-                          h = max === r ? (60 * ((g - b) / d) + 360) % 360
-                            : max === g ? (60 * ((b - r) / d) + 120) % 360
-                            : (60 * ((r - g) / d) + 240) % 360
-                        }
-                        const sat = max === 0 ? 0 : (d / max) * 100
-                        cmd('hue', Math.round(h))
-                        cmd('saturation', Math.round(sat))
-                      }} style={{ width:32, height:32, border:'none', borderRadius:6, cursor:'pointer' }} />
-                    </div>
-                  </div>
-                )
-              }
-              return null
+              if (!hueSensor || !satSensor) return null
+              return (
+                <ColorPicker key="color-picker"
+                  hueDeg={hueSensor.value ?? 0}
+                  sat={satSensor.value ?? 100}
+                  onCommit={(h, s) => cmd('color', { hue: h, saturation: s })}
+                />
+              )
             })()}
             {tradfriSensors.slice(0,5).map(s => {
               const on   = s.value === 1 || s.value === true
               const isToggle = s.type === 'toggle'
               const isRange  = s.type === 'range'
-              if (s.path === 'hue' || s.path === 'saturation') return null
+              if (s.path === 'hue' || s.path === 'saturation' || s.path === 'color') return null
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
