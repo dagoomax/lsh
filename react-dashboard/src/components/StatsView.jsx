@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Chart } from './DeviceModal'
 import { ChartIcon } from './Icons'
 import { gt } from '../i18n'
@@ -66,8 +67,89 @@ function RoborockMapCard({ duid, label }) {
   )
 }
 
+// Fullscreen zoom popup for a single history chart.
+function ChartZoomModal({ zoom, devices, onClose, onOpenDevice }) {
+  useEffect(() => {
+    if (!zoom) return
+    const esc = e => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [zoom, onClose])
+
+  // Look up live objects each render so the header value stays fresh
+  const device = zoom ? devices.find(d => d.key === zoom.key) : null
+  const sensor = device?.sensors?.find(s => s.path === zoom.path)
+  const value  = device?.readings?.[zoom.path]?.value
+  const accent = zoom ? CLASS_ACCENT[zoom.cls] : 'var(--accent-lt)'
+
+  return (
+    <AnimatePresence>
+      {zoom && device && sensor && (
+        <motion.div key="zoom-backdrop"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
+          onClick={onClose}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 300,
+            background: 'rgba(5,7,15,0.72)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18,
+          }}>
+          <motion.div key="zoom-card"
+            initial={{ opacity: 0, scale: 0.9, y: 22 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.94, y: 14 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            onClick={e => e.stopPropagation()}
+            className="device-modal-glow"
+            style={{
+              position: 'relative', width: 'min(960px, 100%)', maxHeight: '90vh',
+              display: 'flex', flexDirection: 'column',
+              background: 'linear-gradient(160deg, #131a28 0%, #0c111c 100%)',
+              border: '1px solid rgba(121,192,255,0.22)',
+              borderRadius: 22, overflow: 'hidden', padding: '16px 20px 20px',
+            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{ width: 9, height: 9, borderRadius: 3, background: accent, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 8, overflow: 'hidden' }}>
+                <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {device.label}
+                </span>
+                <span style={{ fontSize: 12.5, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {sensor.name || sensor.label || sensor.path}
+                </span>
+              </div>
+              {typeof value === 'number' && (
+                <span style={{ fontSize: 20, fontWeight: 800, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                  {Number.isInteger(value) ? value : value.toFixed(1)}{sensor.unit || ''}
+                </span>
+              )}
+              <button onClick={() => { onClose(); onOpenDevice?.(device.key) }}
+                title={gt('open_device', 'Open device')}
+                style={{
+                  padding: '5px 12px', borderRadius: 999, cursor: 'pointer', flexShrink: 0,
+                  border: '1px solid rgba(121,192,255,0.4)', background: 'rgba(121,192,255,0.12)',
+                  color: '#c9e3ff', fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap',
+                }}>
+                {gt('open_device', 'Open device')} →
+              </button>
+              <button onClick={onClose} style={{
+                width: 30, height: 30, borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
+                background: 'rgba(255,255,255,0.05)', color: 'var(--text2)', fontSize: 13, flexShrink: 0,
+              }}>✕</button>
+            </div>
+            <div style={{ overflowY: 'auto' }}>
+              <Chart deviceKey={device.key} sensor={sensor} accent={accent}
+                height={Math.max(260, Math.min(440, Math.round(window.innerHeight * 0.5)))} />
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 export default function StatsView({ devices, energy, onOpen }) {
   const [filter, setFilter] = useState('all')
+  const [zoom, setZoom] = useState(null) // { key, path, cls }
 
   const roboMaps = useMemo(() => devices
     .filter(d => String(d.key).startsWith('roborock/'))
@@ -145,8 +227,10 @@ export default function StatsView({ devices, energy, onOpen }) {
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
         {shown.map(({ device, sensor, value, cls }) => (
-          <div key={`${device.key}/${sensor.path}`} className="chart-card">
-            <div onClick={() => onOpen?.(device.key)} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, cursor: 'pointer' }}>
+          <div key={`${device.key}/${sensor.path}`} className="chart-card"
+            onClick={() => setZoom({ key: device.key, path: sensor.path, cls })}
+            style={{ cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
               <span style={{ width: 7, height: 7, borderRadius: 2, background: CLASS_ACCENT[cls], flexShrink: 0, alignSelf: 'center' }} />
               <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {device.label}
@@ -167,6 +251,8 @@ export default function StatsView({ devices, energy, onOpen }) {
           {gt('showing', 'Showing first 30 of {n} series — use the filters to narrow down.', { n: graphable.length })}
         </div>
       )}
+
+      <ChartZoomModal zoom={zoom} devices={devices} onClose={() => setZoom(null)} onOpenDevice={onOpen} />
     </div>
   )
 }

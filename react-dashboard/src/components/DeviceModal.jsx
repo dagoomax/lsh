@@ -90,7 +90,7 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
     <div ref={wrapRef}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         {RANGES.map(r => (
-          <button key={r.label} onClick={() => setRangeH(r.h)} style={{
+          <button key={r.label} onClick={e => { e.stopPropagation(); setRangeH(r.h) }} style={{
             background: rangeH === r.h ? 'rgba(121,192,255,0.15)' : 'rgba(255,255,255,0.04)',
             color: rangeH === r.h ? accent : 'var(--muted, #8b949e)',
             border: `1px solid ${rangeH === r.h ? 'rgba(121,192,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
