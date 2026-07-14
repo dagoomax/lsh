@@ -34,10 +34,36 @@ function smoothPath(pts) {
   return d
 }
 
+// Step path (H/V segments) — the honest form for state/boolean series
+function stepPath(pts) {
+  if (pts.length < 2) return ''
+  let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`
+  for (let i = 1; i < pts.length; i++) d += ` H ${pts[i][0].toFixed(1)} V ${pts[i][1].toFixed(1)}`
+  return d
+}
+
+const CHART_TYPES = [
+  { id: 'line', title: 'Line', icon: <path d="M1 9 L4 4.5 L7 6.5 L11 2.5" fill="none" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> },
+  { id: 'bar',  title: 'Bars', icon: <><rect x="1.5" y="6" width="2.2" height="4.5" rx="0.8"/><rect x="4.9" y="3" width="2.2" height="7.5" rx="0.8"/><rect x="8.3" y="4.5" width="2.2" height="6" rx="0.8"/></> },
+  { id: 'step', title: 'Step', icon: <path d="M1 9.5 H4.5 V5.5 H8 V2.5 H11" fill="none" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> },
+]
+
 export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
   const [points, setPoints] = useState(null)
   const [rangeH, setRangeH] = useState(6)
   const [hover, setHover] = useState(null) // index into view.pts
+  const typeKey = `lsh-chart-type:${deviceKey}/${sensor.path}`
+  const [chartType, setChartType] = useState(() => {
+    try {
+      const t = localStorage.getItem(typeKey)
+      if (['line', 'bar', 'step'].includes(t)) return t
+    } catch { /* ignore */ }
+    return (sensor.type === 'boolean' || sensor.type === 'toggle') ? 'step' : 'line'
+  })
+  const pickType = t => {
+    setChartType(t)
+    try { localStorage.setItem(typeKey, t) } catch { /* ignore */ }
+  }
   const wrapRef = useRef(null)
   const [w, setW] = useState(560)
   const H = height, padL = 42, padR = 14, padT = 14, padB = 24
@@ -60,14 +86,46 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
   const view = useMemo(() => {
     if (!points) return null
     const cutoff = rangeH ? Date.now() - rangeH * 3600_000 : 0
-    const pts = points.filter(p => p[0] >= cutoff)
+    let pts = points.filter(p => p[0] >= cutoff)
     if (pts.length < 2) return { pts: [] }
 
-    let vMin = Infinity, vMax = -Infinity, sum = 0
-    for (const [, v] of pts) { if (v < vMin) vMin = v; if (v > vMax) vMax = v; sum += v }
-    const realMin = vMin, realMax = vMax, avg = sum / pts.length
-    if (vMin === vMax) { vMin -= 1; vMax += 1 }
-    const pad = (vMax - vMin) * 0.1; vMin -= pad; vMax += pad
+    let realMin = Infinity, realMax = -Infinity, sum = 0
+    for (const [, v] of pts) { if (v < realMin) realMin = v; if (v > realMax) realMax = v; sum += v }
+    const avg = sum / pts.length
+
+    // Bars: bucket the series so bars stay readable at any width
+    let bars = null
+    if (chartType === 'bar') {
+      const plotW = w - padL - padR
+      const n = Math.max(10, Math.min(64, Math.floor(plotW / 9)))
+      const t0 = pts[0][0], t1 = pts[pts.length - 1][0]
+      const span = Math.max(1, t1 - t0)
+      const acc = Array.from({ length: n }, () => ({ sum: 0, cnt: 0 }))
+      for (const [t, v] of pts) {
+        const i = Math.min(n - 1, Math.floor(((t - t0) / span) * n))
+        acc[i].sum += v; acc[i].cnt++
+      }
+      bars = []
+      for (let i = 0; i < n; i++) {
+        if (!acc[i].cnt) continue
+        bars.push([t0 + span * (i + 0.5) / n, acc[i].sum / acc[i].cnt])
+      }
+      pts = bars // hover/tooltip index into the bucketed series
+    }
+
+    // Bars encode magnitude from a zero baseline; lines/steps use a padded band
+    let vMin, vMax
+    if (chartType === 'bar') {
+      vMin = Math.min(0, realMin)
+      vMax = Math.max(0, realMax)
+      if (vMin === vMax) vMax += 1
+      vMax += (vMax - vMin) * 0.08
+      if (vMin < 0) vMin -= (vMax - vMin) * 0.08
+    } else {
+      vMin = realMin; vMax = realMax
+      if (vMin === vMax) { vMin -= 1; vMax += 1 }
+      const pad = (vMax - vMin) * 0.1; vMin -= pad; vMax += pad
+    }
 
     const t0 = pts[0][0], t1 = pts[pts.length - 1][0]
     const X = t => padL + ((t - t0) / Math.max(1, t1 - t0)) * (w - padL - padR)
@@ -81,14 +139,15 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
     const fmtT = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     const times = [{ x: X(t0), l: fmtT(t0) }, { x: X((t0 + t1) / 2), l: fmtT((t0 + t1) / 2) }, { x: X(t1), l: fmtT(t1) }]
 
-    return { pts, xy, grid, times, realMin, realMax, avg, last: xy[xy.length - 1] }
-  }, [points, rangeH, w])
+    const barW = bars ? Math.max(2, (w - padL - padR) / bars.length - 2) : 0
+    return { pts, xy, grid, times, realMin, realMax, avg, last: xy[xy.length - 1], zeroY: Y(Math.max(0, vMin)), barW }
+  }, [points, rangeH, w, chartType])
 
   const u = sensor.unit || ''
 
   return (
     <div ref={wrapRef}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap', rowGap: 4 }}>
         {RANGES.map(r => (
           <button key={r.label} onClick={e => { e.stopPropagation(); setRangeH(r.h) }} style={{
             background: rangeH === r.h ? 'rgba(121,192,255,0.15)' : 'rgba(255,255,255,0.04)',
@@ -97,8 +156,25 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
             borderRadius: 8, padding: '3px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}>{r.label}</button>
         ))}
+        <div style={{ display: 'flex', gap: 2, marginLeft: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 2 }}>
+          {CHART_TYPES.map(t => (
+            <button key={t.id} title={t.title} aria-label={t.title}
+              onClick={e => { e.stopPropagation(); pickType(t.id) }}
+              style={{
+                width: 24, height: 20, borderRadius: 6, border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: chartType === t.id ? 'rgba(121,192,255,0.18)' : 'transparent',
+              }}>
+              <svg width="12" height="12" viewBox="0 0 12 12"
+                fill={chartType === t.id ? accent : 'var(--text3,#647084)'}
+                stroke={chartType === t.id ? accent : 'var(--text3,#647084)'}>
+                {t.icon}
+              </svg>
+            </button>
+          ))}
+        </div>
         {view?.pts.length > 1 && (
-          <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--muted, #8b949e)', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--muted, #8b949e)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             min {view.realMin.toFixed(1)}{u} · avg {view.avg.toFixed(1)}{u} · max {view.realMax.toFixed(1)}{u}
           </span>
         )}
@@ -138,9 +214,24 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
             {view.times.map((t, i) => (
               <text key={i} x={t.x} y={H - 8} textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'} fontSize="9.5" fill="#8b949e" fontFamily="system-ui">{t.l}</text>
             ))}
-            <path d={`${smoothPath(view.xy)} L ${view.xy[view.xy.length - 1][0]} ${H - padB} L ${view.xy[0][0]} ${H - padB} Z`} fill={`url(#fill_${uid})`} />
-            <path d={smoothPath(view.xy)} fill="none" stroke={accent} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-            {hover == null && (
+            {chartType !== 'bar' && (() => {
+              const line = chartType === 'step' ? stepPath(view.xy) : smoothPath(view.xy)
+              return (
+                <>
+                  <path d={`${line} L ${view.xy[view.xy.length - 1][0]} ${H - padB} L ${view.xy[0][0]} ${H - padB} Z`} fill={`url(#fill_${uid})`} />
+                  <path d={line} fill="none" stroke={accent} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                </>
+              )
+            })()}
+            {chartType === 'bar' && view.xy.map(([x, y], i) => {
+              const top = Math.min(y, view.zeroY)
+              const h = Math.max(1.5, Math.abs(y - view.zeroY))
+              return (
+                <rect key={i} x={x - view.barW / 2} y={top} width={view.barW} height={h} rx={Math.min(3, view.barW / 2)}
+                  fill={accent} opacity={hover == null || hover === i ? 0.9 : 0.45} />
+              )
+            })}
+            {chartType !== 'bar' && hover == null && (
               <circle cx={view.last[0]} cy={view.last[1]} r="4" fill={accent}>
                 <animate attributeName="opacity" values="1;0.35;1" dur="2s" repeatCount="indefinite" />
               </circle>
@@ -149,8 +240,10 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
               <g pointerEvents="none">
                 <line x1={view.xy[hover][0]} x2={view.xy[hover][0]} y1={padT} y2={H - padB}
                   stroke="rgba(255,255,255,0.18)" strokeDasharray="3 3" />
-                <circle cx={view.xy[hover][0]} cy={view.xy[hover][1]} r="4.5"
-                  fill={accent} stroke="rgba(0,0,0,0.55)" strokeWidth="2" />
+                {chartType !== 'bar' && (
+                  <circle cx={view.xy[hover][0]} cy={view.xy[hover][1]} r="4.5"
+                    fill={accent} stroke="rgba(0,0,0,0.55)" strokeWidth="2" />
+                )}
               </g>
             )}
           </svg>

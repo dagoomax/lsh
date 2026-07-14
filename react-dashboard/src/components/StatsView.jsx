@@ -149,6 +149,7 @@ function ChartZoomModal({ zoom, devices, onClose, onOpenDevice }) {
 
 export default function StatsView({ devices, energy, onOpen }) {
   const [filter, setFilter] = useState('all')
+  const [origin, setOrigin] = useState('all') // device.type (platform) filter
   const [zoom, setZoom] = useState(null) // { key, path, cls }
 
   const roboMaps = useMemo(() => devices
@@ -170,7 +171,17 @@ export default function StatsView({ devices, energy, onOpen }) {
     return out
   }, [devices])
 
-  const shown = (filter === 'all' ? graphable : graphable.filter(g => g.cls === filter)).slice(0, 30)
+  const shown = graphable
+    .filter(g => (filter === 'all' || g.cls === filter) && (origin === 'all' || (g.device.type || 'unknown') === origin))
+    .slice(0, 30)
+
+  // Series count per origin (platform)
+  const originCounts = {}
+  for (const g of graphable) {
+    const o = g.device.type || 'unknown'
+    originCounts[o] = (originCounts[o] || 0) + 1
+  }
+  const origins = Object.keys(originCounts).sort()
 
   // Summary stats
   const temps = graphable.filter(g => g.cls === 'temp').map(g => g.value)
@@ -211,8 +222,28 @@ export default function StatsView({ devices, energy, onOpen }) {
         })}
       </div>
 
+      {/* Origin / platform filter */}
+      {origins.length > 1 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text3)', marginRight: 2 }}>
+            {gt('origin', 'Origin')}
+          </span>
+          <button onClick={() => setOrigin('all')}
+            className="cat-pill" data-variant="soft" data-active={String(origin === 'all')}>
+            {gt('filter_all', 'All')} <span style={{ opacity: 0.6 }}>({graphable.length})</span>
+          </button>
+          {origins.map(o => (
+            <button key={o} onClick={() => setOrigin(o === origin ? 'all' : o)}
+              className="cat-pill" data-variant="soft" data-active={String(origin === o)}
+              style={{ textTransform: 'capitalize' }}>
+              {o} <span style={{ opacity: 0.6 }}>({originCounts[o]})</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Roborock live maps */}
-      {filter === 'all' && roboMaps.length > 0 && (
+      {filter === 'all' && (origin === 'all' || origin === 'roborock') && roboMaps.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
           {roboMaps.map(m => <RoborockMapCard key={m.duid} duid={m.duid} label={m.label} />)}
         </div>
@@ -246,7 +277,7 @@ export default function StatsView({ devices, energy, onOpen }) {
           </div>
         ))}
       </div>
-      {graphable.length > 30 && filter === 'all' && (
+      {graphable.length > 30 && filter === 'all' && origin === 'all' && (
         <div style={{ color: 'var(--text3)', fontSize: 11.5, textAlign: 'center' }}>
           {gt('showing', 'Showing first 30 of {n} series — use the filters to narrow down.', { n: graphable.length })}
         </div>
