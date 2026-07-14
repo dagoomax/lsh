@@ -279,7 +279,7 @@ function hslToHex(h, s, l = 50) {
 function ColorPicker({ hueDeg, sat, onCommit }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:3 }}>
-      <span style={{ fontSize:10, color:'#8b949e', flex:1 }}>RGB Color</span>
+      <span style={{ fontSize:10, color:'var(--text2)', flex:1 }}>RGB Color</span>
       <input type="color" value={hslToHex(hueDeg ?? 0, sat ?? 100)}
         onClick={e => e.stopPropagation()}
         onChange={e => {
@@ -522,23 +522,10 @@ function DeviceTile({ device, onCommand, onOpen }) {
   const tileOn = (isOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying) || (isDenon && denonPower) || (isSpa && spaHeater)
 
   return (
-    <div onClick={() => onOpen?.(device.key)} style={{
-      cursor: 'pointer',
-      background: tileOn
-        ? 'linear-gradient(145deg, #1a0f3a 0%, #231550 100%)'
-        : '#14152a',
-      border: `1px solid ${tileOn ? 'rgba(121,192,255,0.22)' : 'rgba(255,255,255,0.06)'}`,
-      borderRadius: 18,
+    <div onClick={() => onOpen?.(device.key)} className="device-tile" data-on={String(tileOn)} style={{
       padding: '12px',
       display: 'flex', flexDirection: 'column',
       minHeight: 118,
-      boxShadow: tileOn
-        ? '0 4px 24px rgba(88,166,255,0.18)'
-        : '0 2px 6px rgba(0,0,0,0.2)',
-      transition: 'all 0.2s ease',
-      animation: 'fadeIn 0.2s ease',
-      position: 'relative',
-      overflow: 'hidden',
     }}>
 
       {/* Top glow bar when on */}
@@ -571,7 +558,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
               style={{
                 width:34, height:34, borderRadius:10, border:'none', cursor:'pointer',
                 background: sonosPlaying ? 'rgba(88,166,255,0.25)' : 'rgba(255,255,255,0.08)',
-                color: sonosPlaying ? '#79c0ff' : '#8b949e',
+                color: sonosPlaying ? '#79c0ff' : 'var(--text2)',
                 fontSize:15, display:'flex', alignItems:'center', justifyContent:'center',
                 boxShadow: sonosPlaying ? '0 0 12px rgba(88,166,255,0.3)' : 'none',
                 WebkitTapHighlightColor:'transparent',
@@ -588,7 +575,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
           {!isSonos && !isAC && !hasSwitch && (hasMot||hasPres) && (
             <span style={{
               width:9, height:9, borderRadius:'50%', display:'block', marginTop:3,
-              background: (motActive||presActive) ? 'var(--orange)' : '#2d3748',
+              background: (motActive||presActive) ? 'var(--orange)' : 'rgba(255,255,255,0.12)',
               boxShadow: (motActive||presActive) ? '0 0 8px var(--orange)' : 'none',
             }}/>
           )}
@@ -630,7 +617,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
                 style={{
                   fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
                   background: acMode === i ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
-                  color: acMode === i ? '#fff' : '#8b949e', cursor:'pointer',
+                  color: acMode === i ? '#fff' : 'var(--text2)', cursor:'pointer',
                 }}>
                 {m}
               </button>
@@ -639,13 +626,13 @@ function DeviceTile({ device, onCommand, onOpen }) {
           {/* Temp +/- */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
             <button onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.max(16, acSetTemp - 1)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'#e2e8f0', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
             <span style={{ fontSize:12, fontWeight:700, color:'#79c0ff', minWidth:36, textAlign:'center' }}>
               {acSetTemp != null ? `${Number(acSetTemp).toFixed(0)}°C` : '—'}
             </span>
             <button onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.min(30, acSetTemp + 1)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'#e2e8f0', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
-            <span style={{ fontSize:10, color:'#4a5568', marginLeft:4 }}>{FAN_NAMES[acFan] || 'auto'} fan</span>
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+            <span style={{ fontSize:10, color:'var(--text3)', marginLeft:4 }}>{FAN_NAMES[acFan] || 'auto'} fan</span>
           </div>
         </div>
       )}
@@ -660,7 +647,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
                 style={{
                   fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
                   background: spaMode === i ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
-                  color: spaMode === i ? '#fff' : '#8b949e', cursor:'pointer',
+                  color: spaMode === i ? '#fff' : 'var(--text2)', cursor:'pointer',
                 }}>
                 {m}
               </button>
@@ -669,12 +656,12 @@ function DeviceTile({ device, onCommand, onOpen }) {
           {/* Set temp +/- (spa range 15–40°C, 0.5° steps — see smarttub-client.js) */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
             <button onClick={e => { e.stopPropagation(); if (spaSetTemp != null) cmd('set_temp', Math.max(15, spaSetTemp - 0.5)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'#e2e8f0', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
             <span style={{ fontSize:12, fontWeight:700, color:'#79c0ff', minWidth:42, textAlign:'center' }}>
               {spaSetTemp != null ? `${Number(spaSetTemp).toFixed(1)}°C` : '—'}
             </span>
             <button onClick={e => { e.stopPropagation(); if (spaSetTemp != null) cmd('set_temp', Math.min(40, spaSetTemp + 0.5)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'#e2e8f0', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
             {spaHeater && <span style={{ fontSize:10, color:'var(--orange)', marginLeft:4 }}>heating</span>}
           </div>
         </div>
@@ -691,7 +678,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
                   style={{
                     fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
                     background: denonInputIdx === i ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
-                    color: denonInputIdx === i ? '#fff' : '#8b949e', cursor:'pointer',
+                    color: denonInputIdx === i ? '#fff' : 'var(--text2)', cursor:'pointer',
                     WebkitTapHighlightColor:'transparent',
                   }}>
                   {name}
@@ -705,12 +692,12 @@ function DeviceTile({ device, onCommand, onOpen }) {
               style={{
                 width:24, height:24, borderRadius:7, border:'none', cursor:'pointer', flexShrink:0,
                 background: denonMute ? 'rgba(248,81,73,0.2)' : 'rgba(255,255,255,0.07)',
-                color: denonMute ? '#f87171' : '#8b949e', fontSize:11,
+                color: denonMute ? '#f87171' : 'var(--text2)', fontSize:11,
                 WebkitTapHighlightColor:'transparent',
               }}>
               {denonMute ? '🔇' : '🔊'}
             </button>
-            <span style={{ fontSize:9, color:'#4a5568', flexShrink:0, minWidth:22, textAlign:'right' }}>
+            <span style={{ fontSize:9, color:'var(--text3)', flexShrink:0, minWidth:22, textAlign:'right' }}>
               {Math.round(denonVolume)}
             </span>
             <Slider value={denonVolume} onCommit={v => cmd('volume', v)} color="var(--accent)" />
@@ -722,7 +709,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
       {isSonos && (
         <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:5 }}>
           {sonosArtist && (
-            <div style={{ fontSize:9, color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            <div style={{ fontSize:9, color:'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
               {sonosArtist}
             </div>
           )}
@@ -730,23 +717,23 @@ function DeviceTile({ device, onCommand, onOpen }) {
           <div style={{ display:'flex', alignItems:'center', gap:4 }}>
             <button onClick={e => { e.stopPropagation(); cmd('prev', true) }}
               style={{ flex:1, height:24, borderRadius:7, border:'none', cursor:'pointer',
-                background:'rgba(255,255,255,0.07)', color:'#8b949e', fontSize:12,
+                background:'rgba(255,255,255,0.07)', color:'var(--text2)', fontSize:12,
                 WebkitTapHighlightColor:'transparent' }}>⏮</button>
             <button onClick={e => { e.stopPropagation(); cmd('next', true) }}
               style={{ flex:1, height:24, borderRadius:7, border:'none', cursor:'pointer',
-                background:'rgba(255,255,255,0.07)', color:'#8b949e', fontSize:12,
+                background:'rgba(255,255,255,0.07)', color:'var(--text2)', fontSize:12,
                 WebkitTapHighlightColor:'transparent' }}>⏭</button>
             <button onClick={e => { e.stopPropagation(); cmd('mute', sonosMute ? 0 : 1) }}
               style={{ width:28, height:24, borderRadius:7, border:'none', cursor:'pointer',
                 background: sonosMute ? 'rgba(248,81,73,0.2)' : 'rgba(255,255,255,0.07)',
-                color: sonosMute ? '#f87171' : '#8b949e', fontSize:12,
+                color: sonosMute ? '#f87171' : 'var(--text2)', fontSize:12,
                 WebkitTapHighlightColor:'transparent' }}>
               {sonosMute ? '🔇' : '🔊'}
             </button>
           </div>
           {/* Volume slider */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <span style={{ fontSize:9, color:'#4a5568', flexShrink:0, width:22, textAlign:'right' }}>{sonosVolume}%</span>
+            <span style={{ fontSize:9, color:'var(--text3)', flexShrink:0, width:22, textAlign:'right' }}>{sonosVolume}%</span>
             <Slider value={sonosVolume} onCommit={v => cmd('volume', v)} color="var(--accent)" />
           </div>
         </div>
@@ -756,7 +743,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
       <div style={{ marginTop:'auto', paddingTop:10 }}>
         <div style={{
           fontSize:12, fontWeight:600, lineHeight:1.2,
-          color: hasSwitch && !isOn ? '#4a5568' : '#e2e8f0',
+          color: hasSwitch && !isOn ? 'var(--text3)' : 'var(--text)',
           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
         }}>
           {device.label}
@@ -766,7 +753,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
           color: tileOn ? '#79c0ff'
                : (motActive||presActive) ? 'var(--orange)'
                : !hasSwitch ? activeColor
-               : '#4a5568',
+               : 'var(--text3)',
         }}>
           {statusText}
         </div>
@@ -780,14 +767,14 @@ function DeviceTile({ device, onCommand, onOpen }) {
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
-                    <Icon size={12} color={on ? '#79c0ff' : '#4a5568'} />
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
+                    <Icon size={12} color={on ? '#79c0ff' : 'var(--text3)'} />
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
                   </div>
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
                     : isReadBool
-                      ? <span style={{ fontSize:10, color: on ? '#79c0ff' : '#4a5568', fontWeight:600 }}>{on ? 'Yes' : 'No'}</span>
-                      : <span style={{ fontSize:10, color:'#8b949e' }}>{s.value != null ? `${Number(s.value).toFixed(s.unit === '°C' ? 1 : 0)}${s.unit || ''}` : '—'}</span>
+                      ? <span style={{ fontSize:10, color: on ? '#79c0ff' : 'var(--text3)', fontWeight:600 }}>{on ? 'Yes' : 'No'}</span>
+                      : <span style={{ fontSize:10, color:'var(--text2)' }}>{s.value != null ? `${Number(s.value).toFixed(s.unit === '°C' ? 1 : 0)}${s.unit || ''}` : '—'}</span>
                   }
                 </div>
               )
@@ -820,14 +807,14 @@ function DeviceTile({ device, onCommand, onOpen }) {
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
-                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : '#4a5568'} />
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label || s.name}</span>
+                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : 'var(--text3)'} />
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label || s.name}</span>
                   </div>
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'#8b949e' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
-                      : <span style={{ fontSize:10, color:'#4a5568' }}>—</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
               )
@@ -858,13 +845,13 @@ function DeviceTile({ device, onCommand, onOpen }) {
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
                     <span style={{ fontSize:12, color:'#79c0ff' }}>◆</span>
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
                   </div>
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||1) : (s.writeOff||0))} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'#8b949e' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
-                      : <span style={{ fontSize:10, color:'#4a5568' }}>—</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
               )
@@ -881,14 +868,14 @@ function DeviceTile({ device, onCommand, onOpen }) {
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
-                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : '#4a5568'} />
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
+                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : 'var(--text3)'} />
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
                   </div>
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'#8b949e' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
-                      : <span style={{ fontSize:10, color:'#4a5568' }}>—</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
               )
@@ -905,14 +892,14 @@ function DeviceTile({ device, onCommand, onOpen }) {
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
-                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : '#4a5568'} />
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
+                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : 'var(--text3)'} />
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
                   </div>
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'#8b949e' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
-                      : <span style={{ fontSize:10, color:'#4a5568' }}>—</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
               )
@@ -928,14 +915,14 @@ function DeviceTile({ device, onCommand, onOpen }) {
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
-                    <Icon size={12} color={on ? '#79c0ff' : '#4a5568'} />
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label || s.name}</span>
+                    <Icon size={12} color={on ? '#79c0ff' : 'var(--text3)'} />
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label || s.name}</span>
                   </div>
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'#8b949e' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
-                      : <span style={{ fontSize:10, color:'#4a5568' }}>—</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
               )
@@ -952,14 +939,14 @@ function DeviceTile({ device, onCommand, onOpen }) {
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
-                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : '#4a5568'} />
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
+                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : 'var(--text3)'} />
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
                   </div>
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'#8b949e' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
-                      : <span style={{ fontSize:10, color:'#4a5568' }}>—</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
               )
@@ -976,14 +963,14 @@ function DeviceTile({ device, onCommand, onOpen }) {
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
-                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : '#4a5568'} />
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
+                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : 'var(--text3)'} />
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
                   </div>
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'#8b949e' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
-                      : <span style={{ fontSize:10, color:'#4a5568' }}>—</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
               )
@@ -1000,14 +987,14 @@ function DeviceTile({ device, onCommand, onOpen }) {
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
-                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : '#4a5568'} />
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
+                    <Icon size={12} color={on || (isRange && s.value > 0) ? '#79c0ff' : 'var(--text3)'} />
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
                   </div>
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'#8b949e' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
-                      : <span style={{ fontSize:10, color:'#4a5568' }}>—</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
               )
@@ -1019,15 +1006,15 @@ function DeviceTile({ device, onCommand, onOpen }) {
             {satelSensors.map(s => {
               const on   = s.value === 1 || s.value === true
               const Icon = SATEL_SENSOR_ICON[s.sensorType] || SecurityIcon
-              const iconColor = s.sensorType === 'fire_alarm' ? (on ? '#f0883e'            : '#4a5568')
-                              : s.sensorType === 'alarm'     ? (on ? 'var(--red,#f85149)' : '#4a5568')
-                              : s.sensorType === 'violation' ? (on ? 'var(--orange)'       : '#4a5568')
-                              : on ? '#79c0ff' : '#4a5568'
+              const iconColor = s.sensorType === 'fire_alarm' ? (on ? '#f0883e'            : 'var(--text3)')
+                              : s.sensorType === 'alarm'     ? (on ? 'var(--red,#f85149)' : 'var(--text3)')
+                              : s.sensorType === 'violation' ? (on ? 'var(--orange)'       : 'var(--text3)')
+                              : on ? '#79c0ff' : 'var(--text3)'
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
                     <Icon size={12} color={iconColor} />
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
                   </div>
                   {s.controllable
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
@@ -1040,7 +1027,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
         )}
         {satelSystemInputs.length > 0 && (
           <div style={{ marginTop:12, paddingTop:8, borderTop:'1px solid #21262d', display:'flex', flexDirection:'column', gap:3 }}>
-            <div style={{ fontSize:9, fontWeight:600, color:'#8b949e', textTransform:'uppercase', letterSpacing:'0.5px' }}>System Inputs</div>
+            <div style={{ fontSize:9, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.5px' }}>System Inputs</div>
             {satelSystemInputs.map(s => {
               const ok = s.value === 1 || s.value === true
               const Icon = s.icon
@@ -1050,7 +1037,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
                     <Icon size={12} color={statusColor} />
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.label}</span>
                   </div>
                   <span style={{ fontSize:10, color: statusColor, fontWeight:700 }}>{statusText}</span>
                 </div>
@@ -1066,8 +1053,8 @@ function DeviceTile({ device, onCommand, onOpen }) {
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
-                    <Icon size={12} color={on ? '#79c0ff' : '#4a5568'} />
-                    <span style={{ fontSize:10, color:'#8b949e', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
+                    <Icon size={12} color={on ? '#79c0ff' : 'var(--text3)'} />
+                    <span style={{ fontSize:10, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
                   </div>
                   <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
                 </div>
@@ -1082,7 +1069,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
           if (temp != null) parts.push(`${Number(temp).toFixed(1)}°C`)
           if (salt != null) parts.push(`${Number(salt).toFixed(1)} g/L`)
           return parts.length > 0 ? (
-            <div style={{ fontSize:10, marginTop:2, color:'#4a5568', fontWeight:500 }}>
+            <div style={{ fontSize:10, marginTop:2, color:'var(--text3)', fontWeight:500 }}>
               {parts.join(' · ')}
             </div>
           ) : null
@@ -1166,15 +1153,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
           const active = cat === c
           const CatIcon = CAT_ICON_COMPONENT[c]
           return (
-            <button key={c} onClick={() => setCat(c)} style={{
-              display:'flex', alignItems:'center', gap:8,
-              padding:'8px 10px', borderRadius:10, border:'none', cursor:'pointer',
-              background: active ? 'rgba(88,166,255,0.2)' : 'transparent',
-              color: active ? 'var(--accent-lt)' : 'var(--text2)',
-              fontSize:13, fontWeight: active?600:400,
-              textAlign:'left', width:'100%',
-              transition:'all 0.15s',
-            }}>
+            <button key={c} onClick={() => setCat(c)} className="side-btn" data-active={String(active)}>
               <CatIcon size={16} color={active ? 'var(--accent-lt)' : 'var(--text3)'} />
               <span style={{ flex:1 }}>{c === 'Graphs' ? gt('tab', 'Graphs') : c}</span>
               <span style={{
@@ -1197,16 +1176,10 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
               const cnt = o === 'All' ? devices.length : originCounts[o] || 0
               const hidden = o !== 'All' && originFilter.has(o)
               return (
-                <button key={o} onClick={() => toggleOriginFilter(o)} style={{
-                  display:'flex', alignItems:'center', gap:8,
-                  padding:'6px 10px', borderRadius:8, border:'none', cursor:'pointer',
-                  background: hidden ? 'rgba(248,81,73,0.1)' : 'transparent',
-                  color: hidden ? 'var(--text3)' : 'var(--text2)',
-                  fontSize:12, fontWeight: hidden?400:400,
-                  textAlign:'left', width:'100%',
-                  transition:'all 0.15s',
-                  textTransform: 'capitalize',
-                  opacity: hidden ? 0.6 : 1,
+                <button key={o} onClick={() => toggleOriginFilter(o)} className="side-btn" style={{
+                  padding:'6px 10px', fontSize:12,
+                  textTransform:'capitalize',
+                  ...(hidden ? { background:'rgba(248,81,73,0.1)', color:'var(--text3)', opacity:0.6 } : {}),
                 }}>
                   <div style={{
                     width:16, height:16, borderRadius:4, border:'1.5px solid var(--border)',
@@ -1270,17 +1243,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
             const active = cat === c
             const CatIcon = CAT_ICON_COMPONENT[c]
             return (
-              <button key={c} onClick={() => setCat(c)} style={{
-                display:'inline-flex', alignItems:'center', gap:4,
-                padding:'6px 11px', borderRadius:20, border:'none', cursor:'pointer',
-                flexShrink:0,
-                background: active ? 'var(--accent)' : 'rgba(255,255,255,0.07)',
-                color: active ? '#fff' : 'var(--text2)',
-                fontSize:12, fontWeight:active?600:400,
-                boxShadow: active ? '0 2px 12px rgba(88,166,255,0.38)' : 'none',
-                transition:'all 0.15s',
-                WebkitTapHighlightColor:'transparent',
-              }}>
+              <button key={c} onClick={() => setCat(c)} className="cat-pill" data-active={String(active)}>
                 <CatIcon size={13} color={active ? '#fff' : 'var(--text3)'} />
                 {c}
                 {active && counts[c] && (
@@ -1312,9 +1275,8 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
           )}
           {/* Energy as the top section of the overview */}
           {cat !== 'Graphs' && cat === 'All' && energy && (
-            <div style={{
+            <div className="card" style={{
               margin:'8px 0 12px',
-              background:'var(--card)', border:'1px solid var(--border)',
               borderRadius:'var(--radius-lg)', overflow:'hidden',
             }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 14px 8px' }}>
@@ -1324,7 +1286,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
               <div style={{ padding:'0 12px 12px' }}>
                 <EnergyFlow energy={energy} />
                 {energy.relays && (
-                  <div style={{ marginTop:12, background:'var(--bg)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)' }}>
+                  <div style={{ marginTop:12, background:'rgba(0,0,0,0.25)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)' }}>
                     <RelayPanel relays={energy.relays} onToggle={onToggleRelay} />
                   </div>
                 )}

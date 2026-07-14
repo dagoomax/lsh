@@ -28,13 +28,7 @@ function Arc({ pct = 0, color, size = 64 }) {
 // ── Mini energy card ─────────────────────────────────────────────────────────
 function ECard({ icon, label, value, sub, color, pct }) {
   return (
-    <div style={{
-      flex: 1, background: 'var(--card)', border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg)', padding: '14px 16px',
-      display: 'flex', alignItems: 'center', gap: 14,
-      boxShadow: `0 0 20px ${color}18`,
-      borderLeft: `2px solid ${color}`,
-    }}>
+    <div className="ecard" style={{ '--c': color }}>
       {pct != null && (
         <div className="energy-card-arc" style={{ position:'relative', flexShrink:0, width:64, height:64 }}>
           <Arc pct={pct} color={color} size={64}/>
@@ -56,7 +50,7 @@ function ECard({ icon, label, value, sub, color, pct }) {
         <div style={{ fontSize:11, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:3 }}>
           {label}
         </div>
-        <div style={{ fontSize:22, fontWeight:700, color, fontVariantNumeric:'tabular-nums', letterSpacing:'-0.5px', lineHeight:1 }}>
+        <div className="ecard-value" style={{ fontSize:22, fontWeight:700, color, fontVariantNumeric:'tabular-nums', letterSpacing:'-0.5px', lineHeight:1, whiteSpace:'nowrap' }}>
           {value}
         </div>
         {sub && (
@@ -109,7 +103,7 @@ export default function EnergyFlow({ energy }) {
         gap:10,
       }}>
         {/* Battery detail */}
-        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', padding:'12px 14px' }}>
+        <div className="detail-card">
           <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text3)', marginBottom:8 }}>
             🔋 Battery
           </div>
@@ -120,7 +114,7 @@ export default function EnergyFlow({ energy }) {
         </div>
 
         {/* Solar detail */}
-        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', padding:'12px 14px' }}>
+        <div className="detail-card">
           <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text3)', marginBottom:8 }}>
             ☀️ Solar MPPT
           </div>
@@ -131,7 +125,7 @@ export default function EnergyFlow({ energy }) {
         </div>
 
         {/* Grid detail */}
-        <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', padding:'12px 14px' }}>
+        <div className="detail-card">
           <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text3)', marginBottom:8 }}>
             🔌 Grid
           </div>

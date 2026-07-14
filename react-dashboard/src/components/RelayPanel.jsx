@@ -38,13 +38,7 @@ export default function RelayPanel({ relays, onToggle }) {
 
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
         {relays?.map(r => (
-          <div key={r.index} style={{
-            display:'flex', alignItems:'center', justifyContent:'space-between',
-            padding:'10px 12px', borderRadius:10,
-            background: r.on ? 'rgba(88,166,255,0.12)' : 'rgba(255,255,255,0.03)',
-            border: `1px solid ${r.on ? 'rgba(88,166,255,0.25)' : 'var(--border)'}`,
-            transition:'all 0.2s',
-          }}>
+          <div key={r.index} className="relay-row" data-on={String(r.on)}>
             <div>
               <div style={{ fontSize:13, fontWeight:500, color: r.on ? 'var(--text)' : 'var(--text2)' }}>
                 {r.name}

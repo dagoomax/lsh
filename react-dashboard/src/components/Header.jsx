@@ -16,10 +16,11 @@ export default function Header({ connection, connected }) {
     <header style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
       height: 56,
-      background: 'rgba(13,17,23,0.85)',            // #0d1117 (vanilla --bg)
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      borderBottom: '1px solid #21262d',            // vanilla --card-border
+      background: 'rgba(9,12,18,0.8)',
+      backdropFilter: 'blur(18px) saturate(1.4)',
+      WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+      borderBottom: '1px solid var(--border)',
+      boxShadow: '0 1px 0 rgba(255,255,255,0.03), 0 8px 24px rgba(0,0,0,0.25)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: 12,
       padding: '0 20px', flexShrink: 0,
@@ -52,12 +53,12 @@ export default function Header({ connection, connected }) {
           onChange={e => setLang(e.target.value)}
           title="Language"
           style={{
-            background: 'rgba(255,255,255,0.06)', color: 'var(--text2, #8b949e)',
-            border: '1px solid #21262d', borderRadius: 8,
+            background: 'rgba(255,255,255,0.06)', color: 'var(--text2)',
+            border: '1px solid var(--border)', borderRadius: 8,
             padding: '4px 6px', fontSize: 12, fontWeight: 600, cursor: 'pointer', outline: 'none',
           }}>
           {LANGUAGES.map(([code, label]) => (
-            <option key={code} value={code} style={{ background: '#161b22' }}>{label}</option>
+            <option key={code} value={code} style={{ background: '#12161f' }}>{label}</option>
           ))}
         </select>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6,
@@ -75,8 +76,8 @@ export default function Header({ connection, connected }) {
             {live ? 'Connected' : 'Offline'}
           </span>
         </div>
-        <span className="header-source" style={{ fontSize: 11, color: '#8b949e',
-          background: '#161b22', padding: '3px 8px', borderRadius: 8, border: '1px solid #21262d' }}>
+        <span className="header-source" style={{ fontSize: 11, color: 'var(--text2)',
+          background: 'rgba(255,255,255,0.04)', padding: '3px 8px', borderRadius: 8, border: '1px solid var(--border)' }}>
           {source}
         </span>
       </div>

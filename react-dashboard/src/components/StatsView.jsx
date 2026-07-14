@@ -23,19 +23,19 @@ function classify(sensor) {
 }
 
 const CLASS_ORDER = { temp: 0, power: 1, humid: 2, other: 3 }
-const CLASS_ACCENT = { temp: '#f0883e', power: '#d29922', humid: '#39d353', other: '#79c0ff' }
+// CVD-validated on the dark surface (worst adjacent deutan ΔE 15.7, all ≥3:1)
+const CLASS_ACCENT = { temp: '#d95926', power: '#9085e9', humid: '#199e70', other: '#3987e5' }
 
 function StatCard({ label, value, unit, color }) {
   return (
-    <div style={{
-      flex: '1 1 120px', minWidth: 120, padding: '12px 16px',
-      background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14,
-      position: 'relative', overflow: 'hidden',
-    }}>
+    <div className="stat-card">
       <div style={{ position: 'absolute', top: -20, right: -20, width: 70, height: 70, borderRadius: '50%',
-        background: `radial-gradient(circle, ${color}22, transparent 70%)` }} />
-      <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text3)' }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, color, fontVariantNumeric: 'tabular-nums', lineHeight: 1.3 }}>
+        background: `radial-gradient(circle, ${color}26, transparent 70%)` }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <span style={{ width: 7, height: 7, borderRadius: 2, background: color, flexShrink: 0 }} />
+        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text3)' }}>{label}</span>
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.3, letterSpacing: '-0.02em' }}>
         {value}<span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', marginLeft: 3 }}>{unit}</span>
       </div>
     </div>
@@ -48,7 +48,7 @@ function RoborockMapCard({ duid, label }) {
   const [err, setErr] = useState(false)
   const src = `/api/roborock/${encodeURIComponent(duid)}/map.png?t=${t}`
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '12px 14px' }}>
+    <div className="chart-card">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
         <span style={{ fontSize: 13, fontWeight: 700 }}>🤖 {label}</span>
         <span style={{ fontSize: 11.5, color: 'var(--text3)' }}>{gt('live_map', 'Live map')}</span>
@@ -121,11 +121,8 @@ export default function StatsView({ devices, energy, onOpen }) {
         {FILTERS.filter(f => f.id === 'all' || counts[f.id]).map(f => {
           const active = filter === f.id
           return (
-            <button key={f.id} onClick={() => setFilter(f.id)} style={{
-              padding: '5px 13px', borderRadius: 999, border: `1px solid ${active ? 'rgba(121,192,255,0.45)' : 'var(--border)'}`,
-              background: active ? 'rgba(121,192,255,0.14)' : 'var(--card)',
-              color: active ? '#c9e3ff' : 'var(--text2)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            }}>
+            <button key={f.id} onClick={() => setFilter(f.id)}
+              className="cat-pill" data-variant="soft" data-active={String(active)}>
               {f.label()} <span style={{ opacity: 0.6 }}>({counts[f.id] || counts.all})</span>
             </button>
           )
@@ -148,17 +145,16 @@ export default function StatsView({ devices, energy, onOpen }) {
       )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
         {shown.map(({ device, sensor, value, cls }) => (
-          <div key={`${device.key}/${sensor.path}`} style={{
-            background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 16, padding: '12px 14px',
-          }}>
+          <div key={`${device.key}/${sensor.path}`} className="chart-card">
             <div onClick={() => onOpen?.(device.key)} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, cursor: 'pointer' }}>
+              <span style={{ width: 7, height: 7, borderRadius: 2, background: CLASS_ACCENT[cls], flexShrink: 0, alignSelf: 'center' }} />
               <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {device.label}
               </span>
               <span style={{ fontSize: 11.5, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {sensor.name || sensor.label || sensor.path}
               </span>
-              <span style={{ marginLeft: 'auto', fontSize: 15, fontWeight: 800, color: CLASS_ACCENT[cls], fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+              <span style={{ marginLeft: 'auto', fontSize: 15, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
                 {Number.isInteger(value) ? value : value.toFixed(1)}{sensor.unit || ''}
               </span>
             </div>

@@ -37,6 +37,7 @@ function smoothPath(pts) {
 export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
   const [points, setPoints] = useState(null)
   const [rangeH, setRangeH] = useState(6)
+  const [hover, setHover] = useState(null) // index into view.pts
   const wrapRef = useRef(null)
   const [w, setW] = useState(560)
   const H = height, padL = 42, padR = 14, padT = 14, padB = 24
@@ -111,15 +112,21 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
           </div>
         )}
         {view !== null && view.pts.length > 1 && (
-          <svg width={w} height={H} style={{ display: 'block' }}>
+          <svg width={w} height={H} style={{ display: 'block', touchAction: 'pan-y' }}
+            onPointerMove={e => {
+              const x = e.clientX - e.currentTarget.getBoundingClientRect().left
+              let best = 0, bestD = Infinity
+              for (let i = 0; i < view.xy.length; i++) {
+                const d = Math.abs(view.xy[i][0] - x)
+                if (d < bestD) { bestD = d; best = i }
+              }
+              setHover(best)
+            }}
+            onPointerLeave={() => setHover(null)}>
             <defs>
               <linearGradient id={`fill_${uid}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={accent} stopOpacity="0.35" />
                 <stop offset="100%" stopColor={accent} stopOpacity="0" />
-              </linearGradient>
-              <linearGradient id={`stroke_${uid}`} x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#3fb950" />
-                <stop offset="100%" stopColor={accent} />
               </linearGradient>
             </defs>
             {view.grid.map((g, i) => (
@@ -132,11 +139,37 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
               <text key={i} x={t.x} y={H - 8} textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'} fontSize="9.5" fill="#8b949e" fontFamily="system-ui">{t.l}</text>
             ))}
             <path d={`${smoothPath(view.xy)} L ${view.xy[view.xy.length - 1][0]} ${H - padB} L ${view.xy[0][0]} ${H - padB} Z`} fill={`url(#fill_${uid})`} />
-            <path d={smoothPath(view.xy)} fill="none" stroke={`url(#stroke_${uid})`} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
-            <circle cx={view.last[0]} cy={view.last[1]} r="4" fill={accent}>
-              <animate attributeName="opacity" values="1;0.35;1" dur="2s" repeatCount="indefinite" />
-            </circle>
+            <path d={smoothPath(view.xy)} fill="none" stroke={accent} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+            {hover == null && (
+              <circle cx={view.last[0]} cy={view.last[1]} r="4" fill={accent}>
+                <animate attributeName="opacity" values="1;0.35;1" dur="2s" repeatCount="indefinite" />
+              </circle>
+            )}
+            {hover != null && view.xy[hover] && (
+              <g pointerEvents="none">
+                <line x1={view.xy[hover][0]} x2={view.xy[hover][0]} y1={padT} y2={H - padB}
+                  stroke="rgba(255,255,255,0.18)" strokeDasharray="3 3" />
+                <circle cx={view.xy[hover][0]} cy={view.xy[hover][1]} r="4.5"
+                  fill={accent} stroke="rgba(0,0,0,0.55)" strokeWidth="2" />
+              </g>
+            )}
           </svg>
+        )}
+        {view !== null && hover != null && view.pts[hover] && (
+          <div style={{
+            position: 'absolute', top: 8, pointerEvents: 'none',
+            left: Math.min(Math.max(view.xy[hover][0] - 52, 4), w - 112),
+            background: 'rgba(13,17,26,0.92)', border: '1px solid rgba(255,255,255,0.14)',
+            borderRadius: 8, padding: '4px 9px', backdropFilter: 'blur(6px)',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.45)', whiteSpace: 'nowrap',
+          }}>
+            <span style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text,#e9eef5)' }}>
+              {Number(view.pts[hover][1]).toFixed(1)}{u}
+            </span>
+            <span style={{ fontSize: 10.5, color: 'var(--text3,#647084)', marginLeft: 6, fontVariantNumeric: 'tabular-nums' }}>
+              {new Date(view.pts[hover][0]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
         )}
       </div>
     </div>
@@ -348,14 +381,14 @@ export default function DeviceModal({ device, onClose, onCommand }) {
             style={{
               position: 'relative', width: 'min(680px, 100%)', maxHeight: '88vh',
               display: 'flex', flexDirection: 'column',
-              background: 'linear-gradient(160deg, #12142a 0%, #0d0e1e 100%)',
+              background: 'linear-gradient(160deg, #131a28 0%, #0c111c 100%)',
               borderRadius: 22, overflow: 'hidden',
             }}>
 
             {/* gradient border via CSS mask */}
             <div style={{
               position: 'absolute', inset: 0, borderRadius: 22, padding: 1, pointerEvents: 'none',
-              background: 'linear-gradient(140deg, rgba(212,175,55,0.75), rgba(245,224,152,0.55) 45%, rgba(154,125,30,0.45))',
+              background: 'linear-gradient(140deg, rgba(88,166,255,0.7), rgba(57,197,207,0.45) 45%, rgba(94,80,190,0.4))',
               WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
               WebkitMaskComposite: 'xor', maskComposite: 'exclude',
             }} />
@@ -371,13 +404,13 @@ export default function DeviceModal({ device, onClose, onCommand }) {
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '18px 20px 12px' }}>
               <div style={{
                 width: 44, height: 44, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
-                background: 'linear-gradient(135deg, rgba(212,175,55,0.20), rgba(154,125,30,0.15))',
-                border: '1px solid rgba(212,175,55,0.35)', boxShadow: '0 0 20px rgba(212,175,55,0.18)',
-              }}>{(() => { const I = resolveIcon(device); return <I size={24} color="#F5E098"/> })()}</div>
+                background: 'linear-gradient(135deg, rgba(88,166,255,0.20), rgba(57,197,207,0.12))',
+                border: '1px solid rgba(121,192,255,0.35)', boxShadow: '0 0 20px rgba(88,166,255,0.18)',
+              }}>{(() => { const I = resolveIcon(device); return <I size={24} color="#a5d1ff"/> })()}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  background: 'linear-gradient(90deg, #D4AF37 0%, #F5E098 50%, #D4AF37 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  background: 'linear-gradient(90deg, #a5d1ff 0%, #e9eef5 50%, #79c0ff 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 }}>{device.label}</div>
                 <div style={{ fontSize: 11, color: 'var(--muted, #8b949e)' }}>{device.key}</div>
               </div>

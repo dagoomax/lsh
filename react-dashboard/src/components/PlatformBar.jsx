@@ -33,14 +33,8 @@ export default function PlatformBar({ platforms }) {
       {visible.map(p => {
         const on = !!platforms[p.key]
         return (
-          <div key={p.key} title={`${p.label}: ${on ? 'connected' : 'disconnected'}`} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '3px 10px 3px 4px', borderRadius: 999,
-            background: 'var(--card, rgba(255,255,255,0.04))',
-            border: `1px solid ${on ? 'rgba(63,185,80,0.35)' : 'rgba(248,81,73,0.35)'}`,
-            opacity: on ? 1 : 0.55,
-            fontSize: 11.5, color: 'var(--text2, #8b949e)', userSelect: 'none',
-          }}>
+          <div key={p.key} title={`${p.label}: ${on ? 'connected' : 'disconnected'}`}
+            className="platform-chip" data-on={String(on)}>
             <span style={{ width: 18, height: 18, display: 'block', color: p.color }}>{p.svg}</span>
             {p.label}
             <span style={{
