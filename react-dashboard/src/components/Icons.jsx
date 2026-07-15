@@ -325,6 +325,46 @@ export function HomeIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+// ── Energy-flow icons ────────────────────────────────────────────────────────
+
+export function SunIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2.5V5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>
+    </svg>
+  )
+}
+
+export function PylonIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 3 7.5 21M12 3l4.5 18"/>
+      <path d="M4.5 8.5h15"/>
+      <path d="M7 14.5h10"/>
+      <path d="m9.1 14.5 7.4 6.5M14.9 14.5 7.5 21"/>
+    </svg>
+  )
+}
+
+export function BatteryCellIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="7.5" y="4.5" width="9" height="17" rx="2"/>
+      <path d="M10 2h4"/>
+      <path d="m12.9 9.5-2.4 3.2h3l-2.4 3.2"/>
+    </svg>
+  )
+}
+
+export function BoltIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
 export function RouterIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>

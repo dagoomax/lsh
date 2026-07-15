@@ -386,3 +386,66 @@ input[type="range"]::-moz-range-thumb {
   from { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 55px rgba(88,166,255,0.22), 0 0 130px rgba(57,197,207,0.10); }
   to   { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 95px rgba(121,192,255,0.34), 0 0 200px rgba(88,166,255,0.18); }
 }
+
+/* ── Energy flow diagram ─────────────────────────────────────────────── */
+.eflow-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+}
+.eflow-svg {
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  display: block;
+}
+.eflow-track {
+  stroke: rgba(255,255,255,0.07);
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+}
+.eflow-flow {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 5 13;                 /* dash+gap = 18, matches keyframe */
+  animation: eflow-dash 1s linear infinite;
+  filter: drop-shadow(0 0 5px var(--fc));
+}
+.eflow-rev { animation-direction: reverse; }
+@keyframes eflow-dash { to { stroke-dashoffset: -18; } }
+.eflow-hub-ring {
+  animation: eflow-spin 14s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes eflow-spin { to { transform: rotate(360deg); } }
+.eflow-label {
+  fill: var(--text3);
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.eflow-value {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+.eflow-sub {
+  fill: var(--text3);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+/* Halo: knock the conduit lines out from behind the text */
+.eflow-label, .eflow-value, .eflow-sub {
+  paint-order: stroke;
+  stroke: var(--card);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+@media (prefers-reduced-motion: reduce) {
+  .eflow-flow, .eflow-hub-ring { animation: none; }
+}
