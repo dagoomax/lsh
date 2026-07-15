@@ -1091,6 +1091,12 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
     const saved = localStorage.getItem('originFilter')
     return saved ? new Set(JSON.parse(saved)) : new Set()
   })
+  const [energyHidden, setEnergyHidden] = useState(() => localStorage.getItem('hideEnergy') === '1')
+  const toggleEnergy = () => {
+    const next = !energyHidden
+    localStorage.setItem('hideEnergy', next ? '1' : '0')
+    setEnergyHidden(next)
+  }
 
   const onCommand = useCallback((key, sensor, value) => {
     sendCommand(key, sensor, value)
@@ -1279,18 +1285,36 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
               margin:'8px 0 12px',
               borderRadius:'var(--radius-lg)', overflow:'hidden',
             }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 14px 8px' }}>
+              <div
+                onClick={toggleEnergy}
+                title={energyHidden ? 'Show energy module' : 'Hide energy module'}
+                style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', userSelect:'none',
+                         padding: energyHidden ? '12px 14px' : '12px 14px 8px' }}
+              >
                 <GridPowerIcon size={15} color="var(--orange)" />
                 <span style={{ fontSize:13, fontWeight:700 }}>Energy</span>
+                <span style={{
+                  marginLeft:'auto', color:'var(--text3)', fontSize:11,
+                  display:'inline-flex', alignItems:'center', gap:6,
+                }}>
+                  {energyHidden && <span>hidden</span>}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ transform: energyHidden ? 'rotate(-90deg)' : 'none', transition:'transform 0.2s ease' }}>
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </span>
               </div>
-              <div style={{ padding:'0 12px 12px' }}>
-                <EnergyFlow energy={energy} />
-                {energy.relays && (
-                  <div style={{ marginTop:12, background:'rgba(0,0,0,0.25)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)' }}>
-                    <RelayPanel relays={energy.relays} onToggle={onToggleRelay} />
-                  </div>
-                )}
-              </div>
+              {!energyHidden && (
+                <div style={{ padding:'0 12px 12px' }}>
+                  <EnergyFlow energy={energy} />
+                  {energy.relays && (
+                    <div style={{ marginTop:12, background:'rgba(0,0,0,0.25)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)' }}>
+                      <RelayPanel relays={energy.relays} onToggle={onToggleRelay} />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {cat !== 'Graphs' && visible.length === 0 && (
