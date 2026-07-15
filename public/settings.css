@@ -969,3 +969,21 @@ select.sb-type:focus, select.sb-hk:focus {
   font-size: 0.88em; cursor: pointer; user-select: none;
 }
 .loxxml-brand input { accent-color: var(--accent, #58a6ff); }
+
+/* Checkboxes must not inherit the full-width bordered text-input styling */
+.form-row input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  margin: 0;
+  flex: none;
+}
+/* Brand checkbox labels read as content, not as field captions */
+.form-row label.loxxml-brand {
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+  font-size: 0.88rem;
+}
+/* Sensor-count hints inside the download buttons stay legible */
+.form-actions .btn .hint { color: inherit; opacity: 0.75; }
