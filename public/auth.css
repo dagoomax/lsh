@@ -5,12 +5,16 @@
 /* Background */
 .auth-page {
   min-height: 100vh;
+  min-height: 100dvh; /* mobile: exclude browser chrome from the viewport */
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   position: relative;
-  overflow: hidden;
+  /* keep the glow blobs clipped horizontally, but allow vertical scroll —
+     with the on-screen keyboard open the card is taller than the viewport */
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--bg);
   /* subtle dot grid */
   background-image:
@@ -64,6 +68,9 @@
   padding: 52px 48px 48px;
   width: 100%;
   max-width: 420px;
+  /* auto margins instead of pure flex centering: when the card is taller
+     than the viewport, flex centering clips its top edge off-screen */
+  margin: auto;
   box-shadow:
     0 0 0 1px var(--border),
     0 24px 72px rgba(0,0,0,.55),
@@ -291,6 +298,21 @@
   margin-top: 20px;
   font-size: .8rem;
   color: var(--text-muted);
+}
+
+/* ── Mobile ───────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .auth-page { padding: 14px; }
+  .auth-card {
+    padding: 34px 24px 30px;
+    border-radius: 18px;
+  }
+  .auth-card::before { border-radius: 18px; }
+  .auth-logo-svg { width: 68px; height: 68px; }
+  .auth-logo-wrap { margin-bottom: 14px; }
+  .auth-header { margin-bottom: 26px; }
+  /* ≥16px stops iOS Safari from zooming into the field on focus */
+  .auth-field-wrap input { font-size: 16px; }
 }
 
 /* ─────────────────────────────────────────────────────────
