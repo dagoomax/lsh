@@ -16,6 +16,8 @@
   },
   "smartthings": {
     "token": "",
+    "clientId": "",
+    "clientSecret": "",
     "deviceIds": []
   },
   "roborock": {

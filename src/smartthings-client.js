@@ -5,14 +5,27 @@
  * Device data is written to the store under smartthings/{deviceId}/{attribute}
  * and devices are registered with SensorRegistry so they appear in the dashboard.
  *
- * Auth: Personal Access Token from https://account.smartthings.com/tokens
+ * Auth, either of:
+ *  - OAuth (preferred): `clientId`/`clientSecret` in config + a one-time
+ *    `node scripts/smartthings-auth.js` run. Access tokens expire after 24 h;
+ *    the client refreshes them automatically and persists the rotated refresh
+ *    token in persist/smartthings-oauth.json.
+ *  - Personal Access Token (`token`): PATs created after Dec 2024 expire
+ *    after 24 h, so this only makes sense for legacy long-lived PATs.
  */
+
+const fs   = require('fs');
+const path = require('path');
 
 const platformStatus = require('./platform-status');
 const cameraLog      = require('./camera-log');
 
-const BASE_URL = 'https://api.smartthings.com/v1';
+const BASE_URL  = 'https://api.smartthings.com/v1';
+const OAUTH_URL = 'https://api.smartthings.com/oauth/token';
+const OAUTH_FILE = path.join(__dirname, '..', 'persist', 'smartthings-oauth.json');
 const POLL_INTERVAL_MS = 5000;
+// Refresh the access token this long before it actually expires
+const TOKEN_REFRESH_MARGIN_MS = 10 * 60 * 1000;
 
 // Capability → sensor metadata.
 // type: 'toggle' | 'range' | 'color' | 'color-temp' (controls UI rendering)
@@ -121,11 +134,24 @@ class SmartThingsClient {
     this.connected        = false;
     this.devices          = []; // discovered device descriptors
     this._prevCamState    = new Map(); // tracks prev value for change-detection on camera devices
+    this._oauth           = null; // { access_token, refresh_token, expires_at }
+    this._refreshing      = null; // in-flight refresh promise (dedupes concurrent refreshes)
   }
 
   async start() {
-    const { token } = this.config.smartthings;
-    if (!token) throw new Error('SmartThings token is required');
+    const { token, clientId, clientSecret } = this.config.smartthings;
+
+    if (clientId && clientSecret) {
+      try {
+        this._oauth = JSON.parse(fs.readFileSync(OAUTH_FILE, 'utf8'));
+      } catch {
+        throw new Error(`OAuth configured but ${OAUTH_FILE} is missing — run: node scripts/smartthings-auth.js`);
+      }
+      if (!this._oauth.refresh_token) throw new Error(`${OAUTH_FILE} has no refresh_token — re-run: node scripts/smartthings-auth.js`);
+      console.log('[SmartThings] Using OAuth with automatic token refresh');
+    } else if (!token) {
+      throw new Error('SmartThings needs either clientId+clientSecret (OAuth) or a token (PAT)');
+    }
 
     await this._discoverDevices();
     this.connected = true;
@@ -365,27 +391,80 @@ class SmartThingsClient {
     }
   }
 
+  // ── Auth ─────────────────────────────────────────────────
+
+  // Current valid bearer token (refreshes OAuth access token when near expiry).
+  // Also used by the camera routes in api-routes.js.
+  async getToken() {
+    if (!this._oauth) return this.config.smartthings.token;
+    if (Date.now() > (this._oauth.expires_at || 0) - TOKEN_REFRESH_MARGIN_MS) await this._refreshToken();
+    return this._oauth.access_token;
+  }
+
+  _refreshToken() {
+    // Dedupe: pollers fire every 5 s, but only one refresh may run at a time
+    // (SmartThings rotates the refresh token on every use)
+    if (!this._refreshing) {
+      this._refreshing = this._doRefreshToken().finally(() => { this._refreshing = null; });
+    }
+    return this._refreshing;
+  }
+
+  async _doRefreshToken() {
+    const { clientId, clientSecret } = this.config.smartthings;
+    const res = await fetch(OAUTH_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type:    'refresh_token',
+        client_id:     clientId,
+        refresh_token: this._oauth.refresh_token,
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      throw new Error(`OAuth refresh failed: HTTP ${res.status} ${detail} — if the refresh token expired (30 days unused), re-run scripts/smartthings-auth.js`);
+    }
+    const t = await res.json();
+    this._oauth = {
+      access_token:  t.access_token,
+      refresh_token: t.refresh_token || this._oauth.refresh_token,
+      expires_at:    Date.now() + (t.expires_in || 86400) * 1000,
+    };
+    fs.writeFileSync(OAUTH_FILE, JSON.stringify(this._oauth, null, 2));
+    console.log(`[SmartThings] Access token refreshed — valid until ${new Date(this._oauth.expires_at).toISOString()}`);
+  }
+
   // ── HTTP ─────────────────────────────────────────────────
 
-  async _get(path) {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      headers: { Authorization: `Bearer ${this.config.smartthings.token}` },
+  async _fetch(path, options = {}) {
+    const doFetch = async () => fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: { ...options.headers, Authorization: `Bearer ${await this.getToken()}` },
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
+    let res = await doFetch();
+    // Stale access token (e.g. revoked or clock skew) → force one refresh and retry
+    if (res.status === 401 && this._oauth) {
+      await this._refreshToken();
+      res = await doFetch();
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${options.method || 'GET'} ${path}`);
     return res.json();
   }
 
+  async _get(path) {
+    return this._fetch(path);
+  }
+
   async _post(path, body) {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    return this._fetch(path, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.config.smartthings.token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status} for POST ${path}`);
-    return res.json();
   }
 
   async _writeDevice(deviceId, capability, command, args = []) {

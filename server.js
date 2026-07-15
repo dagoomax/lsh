@@ -226,7 +226,7 @@ async function main() {
 
   // Start SmartThings client if configured
   let smartThings = null;
-  if (config.smartthings?.token) {
+  if (config.smartthings?.token || (config.smartthings?.clientId && config.smartthings?.clientSecret)) {
     const SmartThingsClient = tryRequire('./src/smartthings-client');
     if (SmartThingsClient) {
       smartThings = new SmartThingsClient(config, store, sensorRegistry);

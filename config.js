@@ -40,8 +40,10 @@ function loadConfig() {
       apiKey: process.env.SOLAREDGE_API_KEY || fileConfig.solaredge?.apiKey || '',
     },
     smartthings: {
-      token:     process.env.SMARTTHINGS_TOKEN || fileConfig.smartthings?.token || '',
-      deviceIds: fileConfig.smartthings?.deviceIds || [],
+      token:        process.env.SMARTTHINGS_TOKEN         || fileConfig.smartthings?.token        || '',
+      clientId:     process.env.SMARTTHINGS_CLIENT_ID     || fileConfig.smartthings?.clientId     || '',
+      clientSecret: process.env.SMARTTHINGS_CLIENT_SECRET || fileConfig.smartthings?.clientSecret || '',
+      deviceIds:    fileConfig.smartthings?.deviceIds || [],
     },
     satel: {
       host:           fileConfig.satel?.host           || '',

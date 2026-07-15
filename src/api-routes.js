@@ -528,7 +528,8 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // Trigger SmartThings imageCapture.take command
   router.post('/smartthings-camera/:deviceId/take', async (req, res) => {
     const { deviceId } = req.params;
-    const token = readConfigFile().smartthings?.token;
+    const token = smartThings ? await smartThings.getToken().catch(() => null)
+                              : readConfigFile().smartthings?.token;
     if (!token) return res.status(401).json({ success: false, error: 'No SmartThings token configured' });
     try {
       const r = await fetch(`https://api.smartthings.com/v1/devices/${deviceId}/commands`, {
@@ -1032,6 +1033,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.vrm?.apiToken) safe.vrm.apiToken = '••••••••';
     if (safe.solaredge?.apiKey) safe.solaredge.apiKey = '••••••••';
     if (safe.smartthings?.token) safe.smartthings.token = '••••••••';
+    if (safe.smartthings?.clientSecret) safe.smartthings.clientSecret = '••••••••';
     if (safe.satel?.armCode) safe.satel.armCode = '••••••••';
     if (safe.unifi?.password) safe.unifi.password = '••••••••';
     if (safe.unifi?.apiKey) safe.unifi.apiKey = '••••••••';
@@ -1113,6 +1115,10 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         token: (body.smartthings?.token && !body.smartthings.token.includes('•'))
           ? body.smartthings.token
           : current.smartthings?.token ?? '',
+        clientId: body.smartthings?.clientId ?? current.smartthings?.clientId ?? '',
+        clientSecret: (body.smartthings?.clientSecret && !body.smartthings.clientSecret.includes('•'))
+          ? body.smartthings.clientSecret
+          : current.smartthings?.clientSecret ?? '',
         deviceIds: body.smartthings?.deviceIds ?? current.smartthings?.deviceIds ?? [],
       },
       relays: body.relays || current.relays,

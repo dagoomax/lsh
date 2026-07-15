@@ -331,12 +331,22 @@ Polls the SolarEdge cloud API every 15 minutes (API rate limit). Data appears on
 
 ```json
 "smartthings": {
-  "token": "your-PAT",
+  "clientId": "your-oauth-client-id",
+  "clientSecret": "your-oauth-client-secret",
+  "token": "",
   "deviceIds": []
 }
 ```
 
 Leave `deviceIds` empty to discover all devices. Or supply a list of device UUIDs to limit discovery.
+
+**Auth — OAuth (recommended).** SmartThings Personal Access Tokens created after Dec 2024 expire every 24 hours, so LSH uses OAuth with automatic refresh instead:
+
+1. One-time, create an OAuth app with the [SmartThings CLI](https://github.com/SmartThingsCommunity/smartthings-cli) (needs any valid PAT, a 24 h one is fine): `smartthings apps:create` → *OAuth-In App* → redirect URI `http://localhost:8123/callback`, scopes `r:devices:* x:devices:* r:locations:*`. Note the client id + secret.
+2. Put `clientId`/`clientSecret` in `config.json` and run `node scripts/smartthings-auth.js` — it prints an authorization URL, catches the redirect, and saves the token pair to `persist/smartthings-oauth.json`.
+3. Restart LSH. The client refreshes the access token automatically before expiry and persists the rotated refresh token, so no further manual steps. (The refresh token only dies after 30 days *unused* — i.e. if LSH is off that long — in which case re-run step 2.)
+
+**Auth — PAT (legacy).** A `token` from [account.smartthings.com/tokens](https://account.smartthings.com/tokens) still works, but only pre-2025 tokens are long-lived.
 
 ### `loxone`
 
@@ -1303,11 +1313,11 @@ Polls the **SolarEdge Monitoring API** (`monitoringapi.solaredge.com`) every 15 
 
 Polls the **Samsung SmartThings cloud API** every 10 s. Discovers all devices (or the list in `deviceIds`) and maps capabilities to sensor descriptors. Supports control of switches, dimmers, thermostats, locks, covers, and color lights.
 
-**Setup:** Generate a Personal Access Token at [account.smartthings.com/tokens](https://account.smartthings.com/tokens).
+**Setup:** OAuth via `scripts/smartthings-auth.js` (see the `smartthings` config reference above) — tokens then refresh automatically. A legacy Personal Access Token also works.
 
 **Config:**
 ```json
-"smartthings": { "token": "...", "deviceIds": [] }
+"smartthings": { "clientId": "...", "clientSecret": "...", "deviceIds": [] }
 ```
 
 ---
