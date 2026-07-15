@@ -1195,6 +1195,18 @@
         <span class="test-result" id="change-pw-result"></span>
       </div>
 
+      <!-- Dashboard edit lock PIN -->
+      <h3 class="settings-sub">Dashboard Edit PIN</h3>
+      <p class="hint">Locks room / icon / name edits in the dashboard behind a PIN. Leave empty to allow editing without a PIN.</p>
+      <div class="form-row">
+        <label for="edit-pin">Edit PIN <span class="hint">(4–8 digits, empty = unlocked)</span></label>
+        <input type="password" id="edit-pin" inputmode="numeric" autocomplete="off" placeholder="••••" style="max-width:180px">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-save-edit-pin">Save PIN</button>
+        <span class="test-result" id="edit-pin-result"></span>
+      </div>
+
       <!-- Users (admin only) -->
       <h3 class="settings-sub" data-i18n="s.users">Users</h3>
       <div id="users-list" class="token-list"><span class="token-empty">Loading…</span></div>

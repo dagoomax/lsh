@@ -2,7 +2,11 @@
 // language choice (localStorage 'lsh-lang') so both UIs switch together.
 // English lives in the gt() fallbacks at the call sites.
 const DICT = {
-  pl: { tab: 'Wykresy', devices: 'Urządzenia', active: 'Aktywne teraz', series: 'Śledzone serie',
+  pl: {
+        rooms: 'Pokoje', edit: 'Edytuj', edit_name: 'Nazwa', edit_room: 'Pokój',
+        edit_room_ph: 'np. Salon — puste usuwa pokój', edit_icon: 'Ikona', edit_icon_default: 'Domyślna ikona',
+        save: 'Zapisz', cancel: 'Anuluj', pin_prompt: 'Podaj PIN edycji', wrong_pin: 'Błędny PIN',
+        tab: 'Wykresy', devices: 'Urządzenia', active: 'Aktywne teraz', series: 'Śledzone serie',
         avg_temp: 'Śr. temperatura', battery: 'Bateria', solar: 'Solar',
         filter_all: 'Wszystkie', filter_temp: 'Temperatura', filter_power: 'Moc i energia',
         filter_humid: 'Wilgotność', filter_other: 'Inne',
@@ -28,7 +32,11 @@ const DICT = {
         r_soc: 'SoC', r_power: 'Moc', r_voltage: 'Napięcie', r_current: 'Prąd', r_state: 'Stan',
         r_ttg: 'Pozostały czas', r_today: 'Dzisiaj', r_share: 'Udział w obciążeniu', r_total: 'Razem',
         r_l1: 'Moc L1', r_l2: 'Moc L2', r_l3: 'Moc L3', r_freq: 'Częstotliwość' },
-  de: { tab: 'Diagramme', devices: 'Geräte', active: 'Aktiv jetzt', series: 'Erfasste Reihen',
+  de: {
+        rooms: 'Räume', edit: 'Bearbeiten', edit_name: 'Name', edit_room: 'Raum',
+        edit_room_ph: 'z. B. Wohnzimmer — leer entfernt den Raum', edit_icon: 'Symbol', edit_icon_default: 'Standardsymbol',
+        save: 'Speichern', cancel: 'Abbrechen', pin_prompt: 'Bearbeitungs-PIN eingeben', wrong_pin: 'Falsche PIN',
+        tab: 'Diagramme', devices: 'Geräte', active: 'Aktiv jetzt', series: 'Erfasste Reihen',
         avg_temp: 'Ø Temperatur', battery: 'Batterie', solar: 'Solar',
         filter_all: 'Alle', filter_temp: 'Temperatur', filter_power: 'Leistung & Energie',
         filter_humid: 'Luftfeuchte', filter_other: 'Sonstige',
@@ -54,7 +62,11 @@ const DICT = {
         r_soc: 'SoC', r_power: 'Leistung', r_voltage: 'Spannung', r_current: 'Strom', r_state: 'Status',
         r_ttg: 'Restzeit', r_today: 'Heute', r_share: 'Anteil an Last', r_total: 'Gesamt',
         r_l1: 'Leistung L1', r_l2: 'Leistung L2', r_l3: 'Leistung L3', r_freq: 'Frequenz' },
-  fr: { tab: 'Graphiques', devices: 'Appareils', active: 'Actifs', series: 'Séries suivies',
+  fr: {
+        rooms: 'Pièces', edit: 'Modifier', edit_name: 'Nom', edit_room: 'Pièce',
+        edit_room_ph: 'ex. Salon — vide supprime la pièce', edit_icon: 'Icône', edit_icon_default: 'Icône par défaut',
+        save: 'Enregistrer', cancel: 'Annuler', pin_prompt: 'Saisir le PIN d’édition', wrong_pin: 'PIN incorrect',
+        tab: 'Graphiques', devices: 'Appareils', active: 'Actifs', series: 'Séries suivies',
         avg_temp: 'Temp. moyenne', battery: 'Batterie', solar: 'Solaire',
         filter_all: 'Tous', filter_temp: 'Température', filter_power: 'Puissance & énergie',
         filter_humid: 'Humidité', filter_other: 'Autres',
@@ -80,7 +92,11 @@ const DICT = {
         r_soc: 'SoC', r_power: 'Puissance', r_voltage: 'Tension', r_current: 'Courant', r_state: 'État',
         r_ttg: 'Temps restant', r_today: 'Aujourd’hui', r_share: 'Part de la conso', r_total: 'Total',
         r_l1: 'Puissance L1', r_l2: 'Puissance L2', r_l3: 'Puissance L3', r_freq: 'Fréquence' },
-  es: { tab: 'Gráficos', devices: 'Dispositivos', active: 'Activos ahora', series: 'Series registradas',
+  es: {
+        rooms: 'Habitaciones', edit: 'Editar', edit_name: 'Nombre', edit_room: 'Habitación',
+        edit_room_ph: 'p. ej. Salón — vacío quita la habitación', edit_icon: 'Icono', edit_icon_default: 'Icono predeterminado',
+        save: 'Guardar', cancel: 'Cancelar', pin_prompt: 'Introduce el PIN de edición', wrong_pin: 'PIN incorrecto',
+        tab: 'Gráficos', devices: 'Dispositivos', active: 'Activos ahora', series: 'Series registradas',
         avg_temp: 'Temp. media', battery: 'Batería', solar: 'Solar',
         filter_all: 'Todos', filter_temp: 'Temperatura', filter_power: 'Potencia y energía',
         filter_humid: 'Humedad', filter_other: 'Otros',
@@ -106,7 +122,11 @@ const DICT = {
         r_soc: 'SoC', r_power: 'Potencia', r_voltage: 'Tensión', r_current: 'Corriente', r_state: 'Estado',
         r_ttg: 'Tiempo restante', r_today: 'Hoy', r_share: 'Cuota del consumo', r_total: 'Total',
         r_l1: 'Potencia L1', r_l2: 'Potencia L2', r_l3: 'Potencia L3', r_freq: 'Frecuencia' },
-  it: { tab: 'Grafici', devices: 'Dispositivi', active: 'Attivi ora', series: 'Serie tracciate',
+  it: {
+        rooms: 'Stanze', edit: 'Modifica', edit_name: 'Nome', edit_room: 'Stanza',
+        edit_room_ph: 'es. Soggiorno — vuoto rimuove la stanza', edit_icon: 'Icona', edit_icon_default: 'Icona predefinita',
+        save: 'Salva', cancel: 'Annulla', pin_prompt: 'Inserisci il PIN di modifica', wrong_pin: 'PIN errato',
+        tab: 'Grafici', devices: 'Dispositivi', active: 'Attivi ora', series: 'Serie tracciate',
         avg_temp: 'Temp. media', battery: 'Batteria', solar: 'Solare',
         filter_all: 'Tutti', filter_temp: 'Temperatura', filter_power: 'Potenza ed energia',
         filter_humid: 'Umidità', filter_other: 'Altri',
@@ -132,7 +152,11 @@ const DICT = {
         r_soc: 'SoC', r_power: 'Potenza', r_voltage: 'Tensione', r_current: 'Corrente', r_state: 'Stato',
         r_ttg: 'Tempo residuo', r_today: 'Oggi', r_share: 'Quota dei consumi', r_total: 'Totale',
         r_l1: 'Potenza L1', r_l2: 'Potenza L2', r_l3: 'Potenza L3', r_freq: 'Frequenza' },
-  uk: { tab: 'Графіки', devices: 'Пристрої', active: 'Активні зараз', series: 'Відстежувані серії',
+  uk: {
+        rooms: 'Кімнати', edit: 'Редагувати', edit_name: 'Назва', edit_room: 'Кімната',
+        edit_room_ph: 'напр. Вітальня — порожнє видаляє кімнату', edit_icon: 'Іконка', edit_icon_default: 'Стандартна іконка',
+        save: 'Зберегти', cancel: 'Скасувати', pin_prompt: 'Введіть PIN редагування', wrong_pin: 'Невірний PIN',
+        tab: 'Графіки', devices: 'Пристрої', active: 'Активні зараз', series: 'Відстежувані серії',
         avg_temp: 'Сер. температура', battery: 'Батарея', solar: 'Сонячна',
         filter_all: 'Усі', filter_temp: 'Температура', filter_power: 'Потужність та енергія',
         filter_humid: 'Вологість', filter_other: 'Інше',

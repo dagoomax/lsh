@@ -676,6 +676,15 @@ export function AwningIcon({ color = 'currentColor', size = 24 }) {
 }
 
 export function resolveIcon(device) {
+  // User-chosen emoji override (set via the dashboard edit panel)
+  if (device.customIcon) {
+    const emoji = device.customIcon
+    const EmojiIcon = ({ size = 24 }) => (
+      <span style={{ fontSize: Math.round(size * 0.86), lineHeight: 1, display: 'inline-block' }}>{emoji}</span>
+    )
+    return EmojiIcon
+  }
+
   const custom = LABEL_MAP[device.label?.toLowerCase()]
   if (custom) return custom
 

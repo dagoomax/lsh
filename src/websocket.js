@@ -60,6 +60,9 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, 
 
   // Forward device discovery
   if (sensorRegistry) {
+    sensorRegistry.on('devices-changed', () => {
+      io.emit('devices', sensorRegistry.getAllReadings());
+    });
     sensorRegistry.on('device-discovered', (device) => {
       io.emit('device-discovered', device);
     });

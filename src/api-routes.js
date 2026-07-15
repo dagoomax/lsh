@@ -254,6 +254,47 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, key: req.params.key, points: store.getHistory(req.params.key) });
   });
 
+  // ── Device customization (room / icon / label) ────────────
+  // Optionally locked with a PIN (config.editPin, set in Settings → Security).
+  const editPinOk = (req) => {
+    const pin = String(readConfigFile().editPin || '');
+    return !pin || String(req.body?.pin || '') === pin;
+  };
+
+  router.get('/edit-pin/status', (req, res) => {
+    res.json({ success: true, enabled: !!readConfigFile().editPin });
+  });
+
+  router.post('/edit-pin/verify', (req, res) => {
+    res.json({ success: true, ok: editPinOk(req) });
+  });
+
+  router.post('/device/:key/customize', (req, res) => {
+    if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
+    if (!editPinOk(req)) return res.status(403).json({ success: false, error: 'PIN_REQUIRED' });
+    try {
+      const dev = sensorRegistry.setOverride(req.params.key, req.body || {});
+      res.json({ success: true, device: { key: dev.key, label: dev.label, room: dev.room || null, customIcon: dev.customIcon || null } });
+    } catch (err) {
+      res.status(404).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/edit-pin', (req, res) => {
+    const pin = String(req.body?.pin ?? '').trim();
+    if (pin && !/^\d{4,8}$/.test(pin)) {
+      return res.status(400).json({ success: false, error: 'PIN must be 4–8 digits' });
+    }
+    try {
+      const cfg = readConfigFile();
+      cfg.editPin = pin;
+      writeConfigFile(cfg);
+      res.json({ success: true, message: pin ? 'Edit PIN enabled' : 'Edit PIN disabled' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // ── Loxone Config XML templates ───────────────────────────
   // Ready-to-import Virtual Output / Virtual HTTP Input templates.
   // ?device=<key> or ?type=<integration> filters; ?host= overrides the LSH
@@ -1033,6 +1074,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.vrm?.apiToken) safe.vrm.apiToken = '••••••••';
     if (safe.solaredge?.apiKey) safe.solaredge.apiKey = '••••••••';
     if (safe.smartthings?.token) safe.smartthings.token = '••••••••';
+    if (safe.editPin) safe.editPin = '••••••••';
     if (safe.smartthings?.clientSecret) safe.smartthings.clientSecret = '••••••••';
     if (safe.satel?.armCode) safe.satel.armCode = '••••••••';
     if (safe.unifi?.password) safe.unifi.password = '••••••••';

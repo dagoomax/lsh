@@ -208,11 +208,11 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
             {view.grid.map((g, i) => (
               <g key={i}>
                 <line x1={padL} x2={w - padR} y1={g.y} y2={g.y} stroke="var(--white-05)" />
-                <text x={padL - 8} y={g.y + 3} textAnchor="end" fontSize="9.5" fill="#8b949e" fontFamily="system-ui">{g.label}</text>
+                <text x={padL - 8} y={g.y + 3} textAnchor="end" fontSize="9.5" fill="var(--text3)" fontFamily="system-ui">{g.label}</text>
               </g>
             ))}
             {view.times.map((t, i) => (
-              <text key={i} x={t.x} y={H - 8} textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'} fontSize="9.5" fill="#8b949e" fontFamily="system-ui">{t.l}</text>
+              <text key={i} x={t.x} y={H - 8} textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'} fontSize="9.5" fill="var(--text3)" fontFamily="system-ui">{t.l}</text>
             ))}
             {chartType !== 'bar' && (() => {
               const line = chartType === 'step' ? stepPath(view.xy) : smoothPath(view.xy)
@@ -252,7 +252,7 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
           <div style={{
             position: 'absolute', top: 8, pointerEvents: 'none',
             left: Math.min(Math.max(view.xy[hover][0] - 52, 4), w - 112),
-            background: 'rgba(13,17,26,0.92)', border: '1px solid var(--white-14)',
+            background: 'var(--tooltip-bg)', border: '1px solid var(--white-14)',
             borderRadius: 8, padding: '4px 9px', backdropFilter: 'blur(6px)',
             boxShadow: '0 4px 14px rgba(0,0,0,0.45)', whiteSpace: 'nowrap',
           }}>
@@ -423,11 +423,104 @@ function RoborockRoomsPanel({ device }) {
   )
 }
 
-export default function DeviceModal({ device, onClose, onCommand }) {
+// ── Edit panel: room / icon / name, optionally locked with a PIN ─────────────
+const EDIT_EMOJI = ['💡','🛋','🛏','🚪','🪟','🌡','💧','🔌','📺','🔊','🍳','🚿','🧺','🌿','🚗','☀️','🔥','❄️','⚡','🔒','📷','🌀','🧹','🏊','⛱','🎛']
+
+function EditPanel({ device, rooms, onClose }) {
+  const [label, setLabel] = useState(device.label || '')
+  const [room,  setRoom]  = useState(device.room || '')
+  const [icon,  setIcon]  = useState(device.customIcon || '')
+  const [busy,  setBusy]  = useState(false)
+  const [err,   setErr]   = useState(null)
+
+  const save = async () => {
+    setBusy(true); setErr(null)
+    let pin = sessionStorage.getItem('lsh-edit-pin') || ''
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch(`/api/device/${encodeURIComponent(device.key)}/customize`, {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label, room, icon, pin }),
+        })
+        if (res.status === 403) {
+          const entered = window.prompt(gt('pin_prompt', 'Enter edit PIN'))
+          if (entered == null) { setBusy(false); return }
+          pin = entered.trim()
+          sessionStorage.setItem('lsh-edit-pin', pin)
+          continue
+        }
+        const d = await res.json()
+        if (!d.success) throw new Error(d.error || 'Save failed')
+        setBusy(false); onClose()
+        return
+      } catch (e) { setErr(e.message); setBusy(false); return }
+    }
+    setErr(gt('wrong_pin', 'Wrong PIN')); setBusy(false)
+  }
+
+  const field = { width: '100%', background: 'var(--white-05)', border: '1px solid var(--white-12)',
+    borderRadius: 8, color: 'var(--text)', padding: '8px 10px', fontSize: 13, outline: 'none' }
+  const lbl = { fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+    color: 'var(--muted,#8b949e)', marginBottom: 4, display: 'block' }
+
+  return (
+    <div style={{ background: 'var(--white-04)', border: '1px solid var(--white-10)', borderRadius: 12, padding: 14,
+      display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <label style={lbl}>{gt('edit_name', 'Name')}</label>
+        <input style={field} value={label} onChange={e => setLabel(e.target.value)} maxLength={60}/>
+      </div>
+      <div>
+        <label style={lbl}>{gt('edit_room', 'Room')}</label>
+        <input style={field} value={room} onChange={e => setRoom(e.target.value)} maxLength={40}
+          list="lsh-room-list" placeholder={gt('edit_room_ph', 'e.g. Living room — empty removes the room')}/>
+        <datalist id="lsh-room-list">
+          {rooms.map(r => <option key={r} value={r}/>)}
+        </datalist>
+      </div>
+      <div>
+        <label style={lbl}>{gt('edit_icon', 'Icon')}</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          <button onClick={() => setIcon('')} title={gt('edit_icon_default', 'Default icon')}
+            style={{ width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 11, fontWeight: 700,
+              border: `1.5px solid ${icon === '' ? 'var(--accent)' : 'var(--white-12)'}`,
+              background: icon === '' ? 'var(--accent-dim)' : 'var(--white-05)', color: 'var(--text2)' }}>
+            {'</>'}
+          </button>
+          {EDIT_EMOJI.map(e => (
+            <button key={e} onClick={() => setIcon(e)}
+              style={{ width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 17, lineHeight: 1,
+                border: `1.5px solid ${icon === e ? 'var(--accent)' : 'var(--white-12)'}`,
+                background: icon === e ? 'var(--accent-dim)' : 'var(--white-05)' }}>
+              {e}
+            </button>
+          ))}
+        </div>
+      </div>
+      {err && <div style={{ fontSize: 12, color: 'var(--red,#f85149)' }}>{err}</div>}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button onClick={onClose} disabled={busy}
+          style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--white-12)', cursor: 'pointer',
+            background: 'var(--white-05)', color: 'var(--text2)', fontSize: 12, fontWeight: 600 }}>
+          {gt('cancel', 'Cancel')}
+        </button>
+        <button onClick={save} disabled={busy}
+          style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 700, opacity: busy ? 0.6 : 1 }}>
+          {busy ? '…' : gt('save', 'Save')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) {
   const [selected, setSelected] = useState(null)
   const [localState, setLocalState] = useState({})
+  const [editing, setEditing] = useState(false)
 
-  useEffect(() => { setSelected(null); setLocalState({}) }, [device?.key])
+  useEffect(() => { setSelected(null); setLocalState({}); setEditing(false) }, [device?.key])
   useEffect(() => {
     const esc = e => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', esc)
@@ -474,7 +567,7 @@ export default function DeviceModal({ device, onClose, onCommand }) {
             style={{
               position: 'relative', width: 'min(680px, 100%)', maxHeight: '88vh',
               display: 'flex', flexDirection: 'column',
-              background: 'linear-gradient(160deg, #131a28 0%, #0c111c 100%)',
+              background: 'var(--modal-grad)',
               borderRadius: 22, overflow: 'hidden',
             }}>
 
@@ -497,16 +590,20 @@ export default function DeviceModal({ device, onClose, onCommand }) {
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '18px 20px 12px' }}>
               <div style={{
                 width: 44, height: 44, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
-                background: 'linear-gradient(135deg, rgba(88,166,255,0.20), rgba(57,197,207,0.12))',
-                border: '1px solid rgba(121,192,255,0.35)', boxShadow: '0 0 20px rgba(88,166,255,0.18)',
-              }}>{(() => { const I = resolveIcon(device); return <I size={24} color="#a5d1ff"/> })()}</div>
+                background: 'var(--modal-chip-bg)',
+                border: '1px solid var(--modal-chip-border)', boxShadow: '0 0 20px rgba(88,166,255,0.12)',
+              }}>{(() => { const I = resolveIcon(device); return <I size={24} color="var(--modal-chip-ink)"/> })()}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
+                <div className="modal-device-title" style={{
                   fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  background: 'linear-gradient(90deg, #a5d1ff 0%, #e9eef5 50%, #79c0ff 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 }}>{device.label}</div>
                 <div style={{ fontSize: 11, color: 'var(--muted, #8b949e)' }}>{device.key}</div>
               </div>
+              <button onClick={() => setEditing(e => !e)} title={gt('edit', 'Edit')} style={{
+                width: 32, height: 32, borderRadius: 10, cursor: 'pointer', fontSize: 14,
+                border: `1px solid ${editing ? 'var(--accent)' : 'var(--white-10)'}`,
+                background: editing ? 'var(--accent-dim)' : 'var(--white-05)', color: 'var(--muted,#8b949e)',
+              }}>✎</button>
               <button onClick={onClose} style={{
                 width: 32, height: 32, borderRadius: 10, border: '1px solid var(--white-10)', cursor: 'pointer',
                 background: 'var(--white-05)', color: 'var(--muted,#8b949e)', fontSize: 14,
@@ -515,6 +612,8 @@ export default function DeviceModal({ device, onClose, onCommand }) {
 
             {/* body */}
             <div style={{ position: 'relative', overflowY: 'auto', padding: '4px 20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {editing && <EditPanel device={device} rooms={rooms} onClose={() => setEditing(false)}/>}
 
               {/* Roborock live map */}
               <RoborockMapView device={device} />
@@ -584,7 +683,7 @@ export default function DeviceModal({ device, onClose, onCommand }) {
                           display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
                           background: active ? 'rgba(121,192,255,0.14)' : 'var(--white-04)',
                           border: `1px solid ${active ? 'rgba(121,192,255,0.45)' : 'var(--white-08)'}`,
-                          color: active ? '#c9e3ff' : 'var(--muted,#8b949e)', fontSize: 11.5, fontWeight: 600,
+                          color: active ? 'var(--tile-on-ink)' : 'var(--muted,#8b949e)', fontSize: 11.5, fontWeight: 600,
                           boxShadow: active ? '0 0 14px rgba(121,192,255,0.15)' : 'none', transition: 'all .15s ease',
                         }}>
                           {s.name || s.label || s.path}

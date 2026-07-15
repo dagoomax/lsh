@@ -3274,3 +3274,26 @@ document.getElementById('btn-save-ffrtsp').addEventListener('click', async () =>
 
   load();
 })();
+
+// ── Dashboard edit PIN ───────────────────────────────────────────────────────
+(() => {
+  const btn = document.getElementById('btn-save-edit-pin');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const resultEl = document.getElementById('edit-pin-result');
+    const pin = document.getElementById('edit-pin').value.trim();
+    try {
+      const r = await fetch('/api/settings/edit-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const d = await r.json();
+      resultEl.textContent = d.success ? '✓ ' + d.message : d.error;
+      resultEl.className = 'test-result ' + (d.success ? 'success' : 'error');
+    } catch (err) {
+      resultEl.textContent = err.message;
+      resultEl.className = 'test-result error';
+    }
+  });
+})();

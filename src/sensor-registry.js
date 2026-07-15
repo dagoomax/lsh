@@ -1,6 +1,12 @@
 const { EventEmitter } = require('events');
+const fs   = require('fs');
+const path = require('path');
 const { DEVICE_TYPES, KNOWN_SERVICES } = require('./device-definitions');
 const { translateDevice } = require('./server-i18n');
+
+// User customizations (room / icon / label per device), edited from the
+// dashboard and applied on top of whatever the integrations register.
+const OVERRIDES_FILE = path.join(__dirname, '..', 'persist', 'device-overrides.json');
 
 class SensorRegistry extends EventEmitter {
   constructor(store, language) {
@@ -10,7 +16,52 @@ class SensorRegistry extends EventEmitter {
     this.devices = new Map(); // deviceKey → device descriptor
     this.setMaxListeners(100);
 
+    try { this.overrides = JSON.parse(fs.readFileSync(OVERRIDES_FILE, 'utf8')); }
+    catch { this.overrides = {}; }
+
     store.on('change', ({ key }) => this._checkTopic(key));
+  }
+
+  _applyOverride(device) {
+    const o = this.overrides[device.key];
+    if (!o) return;
+    if (o.room) device.room = o.room;
+    if (o.icon) device.customIcon = o.icon;
+    if (o.label) { device._origLabel = device.label; device.label = o.label; }
+  }
+
+  // Persist a user customization and apply it to the live descriptor.
+  // Empty-string fields clear the override for that field.
+  setOverride(deviceKey, { room, icon, label } = {}) {
+    const device = this.devices.get(deviceKey);
+    if (!device) throw new Error(`Unknown device: ${deviceKey}`);
+
+    const o = { ...(this.overrides[deviceKey] || {}) };
+    if (room !== undefined) {
+      const v = String(room).trim().slice(0, 40);
+      if (v) { o.room = v; device.room = v; } else { delete o.room; delete device.room; }
+    }
+    if (icon !== undefined) {
+      const v = String(icon).trim().slice(0, 8);
+      if (v) { o.icon = v; device.customIcon = v; } else { delete o.icon; delete device.customIcon; }
+    }
+    if (label !== undefined) {
+      const v = String(label).trim().slice(0, 60);
+      if (v) {
+        if (device._origLabel == null) device._origLabel = device.label;
+        o.label = v; device.label = v;
+      } else {
+        delete o.label;
+        if (device._origLabel != null) { device.label = device._origLabel; delete device._origLabel; }
+      }
+    }
+
+    if (Object.keys(o).length) this.overrides[deviceKey] = o;
+    else delete this.overrides[deviceKey];
+    fs.writeFileSync(OVERRIDES_FILE, JSON.stringify(this.overrides, null, 2));
+
+    this.emit('devices-changed');
+    return device;
   }
 
   _checkTopic(topicPath) {
@@ -41,6 +92,7 @@ class SensorRegistry extends EventEmitter {
     };
 
     translateDevice(device, this.language);
+    this._applyOverride(device);
     this.devices.set(deviceKey, device);
     console.log(`[Sensors] Discovered: ${device.label} (${deviceKey})`);
     this.emit('device-discovered', device);
@@ -49,6 +101,7 @@ class SensorRegistry extends EventEmitter {
   registerDevice(device) {
     if (this.devices.has(device.key)) return;
     translateDevice(device, this.language);
+    this._applyOverride(device);
     this.devices.set(device.key, device);
     console.log(`[Sensors] Registered: ${device.label} (${device.key})`);
     this.emit('device-discovered', device);
