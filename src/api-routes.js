@@ -286,6 +286,14 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       pollingMs: Math.max(1000, Number(req.query.polling) || 5000),
     };
     const xml  = kind === 'inputs' ? buildInputsXml(devices, opts) : buildOutputsXml(devices, opts);
+    if (!xml) {
+      return res.status(404).json({
+        success: false,
+        error: kind === 'outputs'
+          ? 'Matching devices have no controllable sensors — use inputs.xml for read-only devices'
+          : 'Matching devices have no readable sensors',
+      });
+    }
     const name = ['lsh-loxone', kind, req.query.type || (req.query.device || '').replace(/\//g, '-')]
       .filter(Boolean).join('-') + '.xml';
     res.set('Content-Type', 'application/xml; charset=utf-8');

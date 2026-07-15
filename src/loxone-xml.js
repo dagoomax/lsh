@@ -60,6 +60,8 @@ function buildInputsXml(devices, { host, token, pollingMs = 5000 } = {}) {
     }
   }
 
+  if (!cmds.length) return null;
+
   const title = devices.length === 1 ? `LSH ${devices[0].label}` : 'LSH Devices';
   return `<?xml version="1.0" encoding="utf-8"?>\n` +
     `<VirtualInHttp Title="${xmlEsc(title)} (feedback)" ` +
@@ -106,6 +108,8 @@ function buildOutputsXml(devices, { host, token } = {}) {
       }
     }
   }
+
+  if (!cmds.length) return null;
 
   const title = devices.length === 1 ? `LSH ${devices[0].label}` : 'LSH Devices';
   return `<?xml version="1.0" encoding="UTF-8"?>\n` +
