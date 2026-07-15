@@ -10,3 +10,6 @@ automations.json
 
 # macOS
 .DS_Store
+
+# macOS client build output
+macos-client/build/
