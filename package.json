@@ -1,6 +1,6 @@
 {
   "name": "victron-dashboard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Victron Energy dashboard with relay control and HomeKit integration",
   "main": "server.js",
   "scripts": {
