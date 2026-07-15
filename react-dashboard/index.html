@@ -14,6 +14,7 @@
     <link rel="manifest" href="/react/manifest.json" />
 
     <title>LSH — Dashboard</title>
+    <script>document.documentElement.setAttribute('data-theme', new URLSearchParams(location.search).get('theme') || localStorage.getItem('lsh-theme') || 'dark')</script>
   </head>
   <body>
     <div id="root"></div>

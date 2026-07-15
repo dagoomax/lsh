@@ -40,7 +40,7 @@ function RelayPill({ label, on }) {
       display: 'flex', alignItems: 'center', gap: 8,
       padding: '6px 14px',
       borderRadius: 20,
-      background: on ? 'rgba(61,186,110,0.1)' : 'rgba(255,255,255,0.03)',
+      background: on ? 'rgba(61,186,110,0.1)' : 'var(--white-03)',
       border: `1px solid ${on ? 'rgba(61,186,110,0.3)' : 'rgba(212,175,55,0.15)'}`,
     }}>
       <div style={{

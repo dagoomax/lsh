@@ -57,7 +57,7 @@ function RoborockMapCard({ duid, label }) {
           style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 15, lineHeight: 1 }}>↻</button>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.25)',
-        border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 8, minHeight: 220 }}>
+        border: '1px solid var(--white-06)', borderRadius: 12, padding: 8, minHeight: 220 }}>
         {err
           ? <span style={{ color: 'var(--text3)', fontSize: 12.5 }}>{gt('map_unavailable', 'Map unavailable')}</span>
           : <img src={src} alt={`${label} map`} onError={() => setErr(true)}
@@ -132,8 +132,8 @@ function ChartZoomModal({ zoom, devices, onClose, onOpenDevice }) {
                 {gt('open_device', 'Open device')} →
               </button>
               <button onClick={onClose} style={{
-                width: 30, height: 30, borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-                background: 'rgba(255,255,255,0.05)', color: 'var(--text2)', fontSize: 13, flexShrink: 0,
+                width: 30, height: 30, borderRadius: 10, border: '1px solid var(--white-10)', cursor: 'pointer',
+                background: 'var(--white-05)', color: 'var(--text2)', fontSize: 13, flexShrink: 0,
               }}>✕</button>
             </div>
             <div style={{ overflowY: 'auto' }}>

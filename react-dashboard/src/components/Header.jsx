@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { LANGUAGES, getLang, setLang, gt } from '../i18n'
 
 const NAV = [
@@ -8,6 +9,15 @@ const NAV = [
 ]
 
 export default function Header({ connection, connected }) {
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
+  })
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    document.documentElement.setAttribute('data-theme', next)
+    try { localStorage.setItem('lsh-theme', next) } catch { /* ignore */ }
+    setTheme(next)
+  }
   const source = connection?.source === 'vrm'  ? 'VRM Cloud'
                : connection?.source === 'mqtt' ? 'MQTT Local' : '—'
   const live = connected && (connection?.vrm?.connected || connection?.mqtt?.connected)
@@ -16,11 +26,11 @@ export default function Header({ connection, connected }) {
     <header style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
       height: 56,
-      background: 'rgba(9,12,18,0.8)',
+      background: 'var(--sidebar)',
       backdropFilter: 'blur(18px) saturate(1.4)',
       WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
       borderBottom: '1px solid var(--border)',
-      boxShadow: '0 1px 0 rgba(255,255,255,0.03), 0 8px 24px rgba(0,0,0,0.25)',
+      boxShadow: '0 1px 0 var(--white-03), 0 8px 24px rgba(0,0,0,0.25)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: 12,
       padding: '0 20px', flexShrink: 0,
@@ -48,17 +58,27 @@ export default function Header({ connection, connected }) {
 
       {/* Connection status + source (right) — vanilla green/red + neutral chip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <button
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+          style={{
+            background: 'var(--white-06)', color: 'var(--text2)',
+            border: '1px solid var(--border)', borderRadius: 8,
+            padding: '4px 8px', fontSize: 13, lineHeight: 1, cursor: 'pointer',
+          }}>
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
         <select
           value={getLang()}
           onChange={e => setLang(e.target.value)}
           title="Language"
           style={{
-            background: 'rgba(255,255,255,0.06)', color: 'var(--text2)',
+            background: 'var(--white-06)', color: 'var(--text2)',
             border: '1px solid var(--border)', borderRadius: 8,
             padding: '4px 6px', fontSize: 12, fontWeight: 600, cursor: 'pointer', outline: 'none',
           }}>
           {LANGUAGES.map(([code, label]) => (
-            <option key={code} value={code} style={{ background: '#12161f' }}>{label}</option>
+            <option key={code} value={code} style={{ background: 'var(--card)' }}>{label}</option>
           ))}
         </select>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6,
@@ -77,7 +97,7 @@ export default function Header({ connection, connected }) {
           </span>
         </div>
         <span className="header-source" style={{ fontSize: 11, color: 'var(--text2)',
-          background: 'rgba(255,255,255,0.04)', padding: '3px 8px', borderRadius: 8, border: '1px solid var(--border)' }}>
+          background: 'var(--white-04)', padding: '3px 8px', borderRadius: 8, border: '1px solid var(--border)' }}>
           {source}
         </span>
       </div>

@@ -26,7 +26,7 @@ function Arc({ pct = 0, color, size = 64 }) {
   return (
     <svg width={size} height={size} style={{ transform:'rotate(135deg)' }}>
       <circle cx={size/2} cy={size/2} r={r}
-        fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5"
+        fill="none" stroke="var(--white-06)" strokeWidth="5"
         strokeDasharray={`${dash} ${gap}`} strokeLinecap="round"/>
       <circle cx={size/2} cy={size/2} r={r}
         fill="none" stroke={color} strokeWidth="5"
@@ -102,7 +102,7 @@ function FlowNode({ x, y, icon: Icon, label, color, value, sub, active = true, s
   return (
     <g className="eflow-node" style={{ opacity: active ? 1 : 0.45, transition: 'opacity 0.6s ease' }}>
       <text x={x} y={y - R - 13} textAnchor="middle" className="eflow-label">{label}</text>
-      <circle cx={x} cy={y} r={R} fill="var(--card)" stroke="rgba(255,255,255,0.09)" strokeWidth="2"/>
+      <circle cx={x} cy={y} r={R} fill="var(--card)" stroke="var(--white-09)" strokeWidth="2"/>
       {socPct == null && (
         <circle cx={x} cy={y} r={R} fill="none" stroke={color} strokeWidth="2"
           style={active ? { filter: `drop-shadow(0 0 5px ${color})` } : undefined}/>
@@ -144,7 +144,7 @@ function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, l
         <FlowPath d={`M ${hub.x + 42} ${hub.y} L 532 ${hub.y}`} color="var(--accent-lt)" watts={loadW} reverse/>
 
         {/* inverter hub */}
-        <circle cx={hub.x} cy={hub.y} r="30" fill="var(--card)" stroke="rgba(255,255,255,0.09)" strokeWidth="2"/>
+        <circle cx={hub.x} cy={hub.y} r="30" fill="var(--card)" stroke="var(--white-09)" strokeWidth="2"/>
         <circle className="eflow-hub-ring" cx={hub.x} cy={hub.y} r="30" fill="none"
           stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="4 9" strokeLinecap="round" opacity="0.7"/>
         <g transform={`translate(${hub.x - 11}, ${hub.y - 11})`}>

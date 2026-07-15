@@ -9,9 +9,9 @@
   --card-on:   #17233a;
   --surface:   #12161f;
   --surface2:  #1a2029;
-  --border:    rgba(255,255,255,0.07);
-  --border-lt: rgba(255,255,255,0.12);
-  --sep:       rgba(255,255,255,0.05);
+  --border:    var(--white-07);
+  --border-lt: var(--white-12);
+  --sep:       var(--white-05);
 
   /* ── Ink ── */
   --text:      #e9eef5;
@@ -40,8 +40,79 @@
   /* ── Elevation ── */
   --shadow-1: 0 1px 2px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.25);
   --shadow-2: 0 4px 12px rgba(0,0,0,0.35), 0 12px 32px rgba(0,0,0,0.3);
-  --inner-hl: inset 0 1px 0 rgba(255,255,255,0.04);
+  --inner-hl: inset 0 1px 0 var(--white-04);
+
+  /* ── Theme-aware washes (white on dark, slate on light) ── */
+  --white-03: rgba(255,255,255,0.03);
+  --white-04: rgba(255,255,255,0.04);
+  --white-05: rgba(255,255,255,0.05);
+  --white-06: rgba(255,255,255,0.06);
+  --white-07: rgba(255,255,255,0.07);
+  --white-08: rgba(255,255,255,0.08);
+  --white-09: rgba(255,255,255,0.09);
+  --white-10: rgba(255,255,255,0.1);
+  --white-12: rgba(255,255,255,0.12);
+  --white-14: rgba(255,255,255,0.14);
+  --white-18: rgba(255,255,255,0.18);
+  --white-20: rgba(255,255,255,0.2);
 }
+
+/* ── Light theme ─────────────────────────────────────────────────────────
+   Palette mirrors the vanilla pages' GitHub-light scheme (public/style.css)
+   so both UIs read as one product. Toggled via data-theme on <html>,
+   shared localStorage key 'lsh-theme'. */
+[data-theme="light"] {
+  /* Surfaces */
+  --bg:        #f6f8fa;
+  --sidebar:   rgba(246,248,250,0.7);
+  --card:      #ffffff;
+  --card-grad: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+  --card-on:   #dbeafe;
+  --surface:   #ffffff;
+  --surface2:  #eef1f4;
+  --border:    rgba(15,23,42,0.12);
+  --border-lt: rgba(15,23,42,0.18);
+  --sep:       rgba(15,23,42,0.07);
+
+  /* Ink */
+  --text:      #1f2328;
+  --text2:     #57606a;
+  --text3:     #6e7781;
+  --muted:     #57606a;
+
+  /* Accent & status — darker steps for contrast on white */
+  --accent:     #0969da;
+  --accent-lt:  #0969da;
+  --accent-dim: rgba(9,105,218,0.12);
+  --blue:       #0969da;
+  --green:      #1a7f37;
+  --orange:     #bc4c00;
+  --yellow:     #9a6700;
+  --red:        #cf222e;
+  --teal:       #1b7c83;
+  --violet:     #6639ba;
+  --gold:       #9a6700;
+
+  /* Elevation — much softer on light */
+  --shadow-1: 0 1px 2px rgba(31,35,40,0.06), 0 2px 8px rgba(31,35,40,0.05);
+  --shadow-2: 0 4px 12px rgba(31,35,40,0.08), 0 12px 32px rgba(31,35,40,0.07);
+  --inner-hl: inset 0 1px 0 rgba(255,255,255,0.6);
+
+  /* Washes flip to dark-on-light */
+  --white-03: rgba(15,23,42,0.03);
+  --white-04: rgba(15,23,42,0.04);
+  --white-05: rgba(15,23,42,0.05);
+  --white-06: rgba(15,23,42,0.06);
+  --white-07: rgba(15,23,42,0.07);
+  --white-08: rgba(15,23,42,0.08);
+  --white-09: rgba(15,23,42,0.09);
+  --white-10: rgba(15,23,42,0.1);
+  --white-12: rgba(15,23,42,0.12);
+  --white-14: rgba(15,23,42,0.14);
+  --white-18: rgba(15,23,42,0.18);
+  --white-20: rgba(15,23,42,0.2);
+}
+
 
 html, body { height: 100%; }
 
@@ -94,7 +165,7 @@ input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
   width: 16px; height: 16px; border-radius: 50%;
   background: #fff; border: none; cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 0 4px rgba(255,255,255,0.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 0 4px var(--white-08);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
@@ -105,7 +176,7 @@ input[type="range"]:active::-webkit-slider-thumb {
 input[type="range"]::-moz-range-thumb {
   width: 16px; height: 16px; border-radius: 50%;
   background: #fff; border: none; cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 0 4px rgba(255,255,255,0.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 0 4px var(--white-08);
 }
 
 .card {
@@ -124,7 +195,7 @@ input[type="range"]::-moz-range-thumb {
 .badge-blue   { background: rgba(88,166,255,0.15);  color: var(--blue); }
 .badge-red    { background: rgba(248,81,73,0.15);   color: var(--red); }
 .badge-orange { background: rgba(240,136,62,0.15);  color: var(--orange); }
-.badge-gray   { background: rgba(255,255,255,0.07); color: var(--text2); }
+.badge-gray   { background: var(--white-07); color: var(--text2); }
 .badge-yellow { background: rgba(210,153,34,0.15);   color: var(--yellow); }
 .badge-accent { background: rgba(88,166,255,0.2);   color: var(--accent-lt); }
 
@@ -169,7 +240,7 @@ input[type="range"]::-moz-range-thumb {
   transition: background 0.15s ease, color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.side-btn:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+.side-btn:hover { background: var(--white-05); color: var(--text); }
 .side-btn[data-active="true"] {
   background: var(--accent-dim);
   color: var(--accent-lt);
@@ -181,7 +252,7 @@ input[type="range"]::-moz-range-thumb {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 6px 12px; border-radius: 999px; cursor: pointer; flex-shrink: 0;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.04); color: var(--text2);
+  background: var(--white-04); color: var(--text2);
   font-size: 12px; font-weight: 500; font-family: inherit;
   transition: all 0.15s ease;
   -webkit-tap-highlight-color: transparent;
@@ -274,11 +345,11 @@ input[type="range"]::-moz-range-thumb {
 .relay-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 12px; border-radius: 10px;
-  background: rgba(255,255,255,0.03);
+  background: var(--white-03);
   border: 1px solid var(--border);
   transition: all 0.2s ease;
 }
-.relay-row:hover { border-color: var(--border-lt); background: rgba(255,255,255,0.05); }
+.relay-row:hover { border-color: var(--border-lt); background: var(--white-05); }
 .relay-row[data-on="true"] {
   background: rgba(88,166,255,0.1);
   border-color: rgba(88,166,255,0.25);
@@ -304,7 +375,7 @@ input[type="range"]::-moz-range-thumb {
 .header-nav-react {
   display: flex;
   gap: 6px;
-  background: rgba(255,255,255,0.04);
+  background: var(--white-04);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 4px;
@@ -319,7 +390,7 @@ input[type="range"]::-moz-range-thumb {
   white-space: nowrap;
   transition: color 0.15s, background 0.15s;
 }
-.header-nav-react a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.header-nav-react a:hover { color: var(--text); background: var(--white-06); }
 .header-nav-react a.active {
   color: #fff;
   background: var(--accent);
@@ -400,7 +471,7 @@ input[type="range"]::-moz-range-thumb {
   display: block;
 }
 .eflow-track {
-  stroke: rgba(255,255,255,0.07);
+  stroke: var(--white-07);
   stroke-width: 2;
   fill: none;
   stroke-linecap: round;

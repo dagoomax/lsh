@@ -202,7 +202,7 @@ function Toggle({ on, onChange }) {
       onClick={e => { e.stopPropagation(); onChange(!on) }}
       style={{
         width:48, height:28, borderRadius:14,
-        background: on ? 'var(--accent)' : 'rgba(255,255,255,0.12)',
+        background: on ? 'var(--accent)' : 'var(--white-12)',
         position:'relative', cursor:'pointer', flexShrink:0,
         transition:'background 0.2s',
         boxShadow: on ? '0 0 12px rgba(88,166,255,0.5)' : 'none',
@@ -235,7 +235,7 @@ function Slider({ value, onCommit, color='var(--accent-lt)' }) {
       onClick={e => e.stopPropagation()}
       style={{
         width:'100%', height:4, appearance:'none', WebkitAppearance:'none',
-        background:`linear-gradient(to right, ${color} ${local}%, rgba(255,255,255,0.1) ${local}%)`,
+        background:`linear-gradient(to right, ${color} ${local}%, var(--white-10) ${local}%)`,
         borderRadius:2, outline:'none', cursor:'pointer',
         padding:'10px 0', margin:'-10px 0',
       }}
@@ -541,7 +541,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div style={{
           width:40, height:40, borderRadius:12, flexShrink:0,
-          background: tileOn ? 'rgba(88,166,255,0.22)' : 'rgba(255,255,255,0.06)',
+          background: tileOn ? 'rgba(88,166,255,0.22)' : 'var(--white-06)',
           display:'flex', alignItems:'center', justifyContent:'center',
           boxShadow: tileOn ? '0 0 16px rgba(88,166,255,0.3)' : 'none',
           transition:'all 0.2s',
@@ -557,7 +557,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
             <button onClick={e => { e.stopPropagation(); cmd('playing', sonosPlaying ? 0 : 1) }}
               style={{
                 width:34, height:34, borderRadius:10, border:'none', cursor:'pointer',
-                background: sonosPlaying ? 'rgba(88,166,255,0.25)' : 'rgba(255,255,255,0.08)',
+                background: sonosPlaying ? 'rgba(88,166,255,0.25)' : 'var(--white-08)',
                 color: sonosPlaying ? '#79c0ff' : 'var(--text2)',
                 fontSize:15, display:'flex', alignItems:'center', justifyContent:'center',
                 boxShadow: sonosPlaying ? '0 0 12px rgba(88,166,255,0.3)' : 'none',
@@ -575,7 +575,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
           {!isSonos && !isAC && !hasSwitch && (hasMot||hasPres) && (
             <span style={{
               width:9, height:9, borderRadius:'50%', display:'block', marginTop:3,
-              background: (motActive||presActive) ? 'var(--orange)' : 'rgba(255,255,255,0.12)',
+              background: (motActive||presActive) ? 'var(--orange)' : 'var(--white-12)',
               boxShadow: (motActive||presActive) ? '0 0 8px var(--orange)' : 'none',
             }}/>
           )}
@@ -616,7 +616,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
               <button key={m} onClick={e => { e.stopPropagation(); cmd('ac_mode', i) }}
                 style={{
                   fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
-                  background: acMode === i ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
+                  background: acMode === i ? 'var(--accent)' : 'var(--white-08)',
                   color: acMode === i ? '#fff' : 'var(--text2)', cursor:'pointer',
                 }}>
                 {m}
@@ -626,12 +626,12 @@ function DeviceTile({ device, onCommand, onOpen }) {
           {/* Temp +/- */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
             <button onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.max(16, acSetTemp - 1)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'var(--white-10)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
             <span style={{ fontSize:12, fontWeight:700, color:'#79c0ff', minWidth:36, textAlign:'center' }}>
               {acSetTemp != null ? `${Number(acSetTemp).toFixed(0)}°C` : '—'}
             </span>
             <button onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.min(30, acSetTemp + 1)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'var(--white-10)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
             <span style={{ fontSize:10, color:'var(--text3)', marginLeft:4 }}>{FAN_NAMES[acFan] || 'auto'} fan</span>
           </div>
         </div>
@@ -646,7 +646,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
               <button key={m} onClick={e => { e.stopPropagation(); cmd('heat_mode', i) }}
                 style={{
                   fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
-                  background: spaMode === i ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
+                  background: spaMode === i ? 'var(--accent)' : 'var(--white-08)',
                   color: spaMode === i ? '#fff' : 'var(--text2)', cursor:'pointer',
                 }}>
                 {m}
@@ -656,12 +656,12 @@ function DeviceTile({ device, onCommand, onOpen }) {
           {/* Set temp +/- (spa range 15–40°C, 0.5° steps — see smarttub-client.js) */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
             <button onClick={e => { e.stopPropagation(); if (spaSetTemp != null) cmd('set_temp', Math.max(15, spaSetTemp - 0.5)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'var(--white-10)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
             <span style={{ fontSize:12, fontWeight:700, color:'#79c0ff', minWidth:42, textAlign:'center' }}>
               {spaSetTemp != null ? `${Number(spaSetTemp).toFixed(1)}°C` : '—'}
             </span>
             <button onClick={e => { e.stopPropagation(); if (spaSetTemp != null) cmd('set_temp', Math.min(40, spaSetTemp + 0.5)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'rgba(255,255,255,0.1)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+              style={{ width:22, height:22, borderRadius:6, border:'none', background:'var(--white-10)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
             {spaHeater && <span style={{ fontSize:10, color:'var(--orange)', marginLeft:4 }}>heating</span>}
           </div>
         </div>
@@ -677,7 +677,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
                 <button key={name} onClick={e => { e.stopPropagation(); cmd('input_idx', i) }}
                   style={{
                     fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
-                    background: denonInputIdx === i ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
+                    background: denonInputIdx === i ? 'var(--accent)' : 'var(--white-08)',
                     color: denonInputIdx === i ? '#fff' : 'var(--text2)', cursor:'pointer',
                     WebkitTapHighlightColor:'transparent',
                   }}>
@@ -691,7 +691,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
             <button onClick={e => { e.stopPropagation(); cmd('mute', denonMute ? 0 : 1) }}
               style={{
                 width:24, height:24, borderRadius:7, border:'none', cursor:'pointer', flexShrink:0,
-                background: denonMute ? 'rgba(248,81,73,0.2)' : 'rgba(255,255,255,0.07)',
+                background: denonMute ? 'rgba(248,81,73,0.2)' : 'var(--white-07)',
                 color: denonMute ? '#f87171' : 'var(--text2)', fontSize:11,
                 WebkitTapHighlightColor:'transparent',
               }}>
@@ -717,15 +717,15 @@ function DeviceTile({ device, onCommand, onOpen }) {
           <div style={{ display:'flex', alignItems:'center', gap:4 }}>
             <button onClick={e => { e.stopPropagation(); cmd('prev', true) }}
               style={{ flex:1, height:24, borderRadius:7, border:'none', cursor:'pointer',
-                background:'rgba(255,255,255,0.07)', color:'var(--text2)', fontSize:12,
+                background:'var(--white-07)', color:'var(--text2)', fontSize:12,
                 WebkitTapHighlightColor:'transparent' }}>⏮</button>
             <button onClick={e => { e.stopPropagation(); cmd('next', true) }}
               style={{ flex:1, height:24, borderRadius:7, border:'none', cursor:'pointer',
-                background:'rgba(255,255,255,0.07)', color:'var(--text2)', fontSize:12,
+                background:'var(--white-07)', color:'var(--text2)', fontSize:12,
                 WebkitTapHighlightColor:'transparent' }}>⏭</button>
             <button onClick={e => { e.stopPropagation(); cmd('mute', sonosMute ? 0 : 1) }}
               style={{ width:28, height:24, borderRadius:7, border:'none', cursor:'pointer',
-                background: sonosMute ? 'rgba(248,81,73,0.2)' : 'rgba(255,255,255,0.07)',
+                background: sonosMute ? 'rgba(248,81,73,0.2)' : 'var(--white-07)',
                 color: sonosMute ? '#f87171' : 'var(--text2)', fontSize:12,
                 WebkitTapHighlightColor:'transparent' }}>
               {sonosMute ? '🔇' : '🔊'}
@@ -1164,7 +1164,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
               <span style={{ flex:1 }}>{c === 'Graphs' ? gt('tab', 'Graphs') : gt('cat_' + c.toLowerCase(), c)}</span>
               <span style={{
                 fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:8,
-                background: active ? 'rgba(88,166,255,0.3)' : 'rgba(255,255,255,0.06)',
+                background: active ? 'rgba(88,166,255,0.3)' : 'var(--white-06)',
                 color: active ? 'var(--accent-lt)' : 'var(--text3)',
               }}>{cnt}</span>
             </button>
@@ -1202,7 +1202,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
                   <span style={{ flex:1 }}>{o}</span>
                   <span style={{
                     fontSize:10, fontWeight:600, padding:'1px 5px', borderRadius:6,
-                    background: 'rgba(255,255,255,0.06)',
+                    background: 'var(--white-06)',
                     color: 'var(--text3)',
                     minWidth: '24px', textAlign: 'center'
                   }}>{cnt}</span>
@@ -1253,7 +1253,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
                 <CatIcon size={13} color={active ? '#fff' : 'var(--text3)'} />
                 {c}
                 {active && counts[c] && (
-                  <span style={{ fontSize:10, fontWeight:700, background:'rgba(255,255,255,0.2)', borderRadius:8, padding:'1px 5px' }}>
+                  <span style={{ fontSize:10, fontWeight:700, background:'var(--white-20)', borderRadius:8, padding:'1px 5px' }}>
                     {c === 'All' ? devices.length : counts[c]}
                   </span>
                 )}

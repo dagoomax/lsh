@@ -3,7 +3,7 @@ function Toggle({ on, onChange }) {
   return (
     <div onClick={() => onChange(!on)} style={{
       width:42, height:24, borderRadius:12,
-      background: on ? 'var(--accent)' : 'rgba(255,255,255,0.12)',
+      background: on ? 'var(--accent)' : 'var(--white-12)',
       position:'relative', cursor:'pointer',
       transition:'background 0.2s', flexShrink:0,
       boxShadow: on ? '0 0 10px rgba(88,166,255,0.5)' : 'none',

@@ -23,7 +23,7 @@ function SensorRow({ sensor }) {
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
       padding: '8px 12px',
-      background: 'rgba(255,255,255,0.03)',
+      background: 'var(--white-03)',
       border: '1px solid rgba(212,175,55,0.08)',
       borderRadius: 10,
       animation: 'fadeInUp 0.3s ease',
@@ -92,7 +92,7 @@ export default function RoomPanel({ room, sensors, onClose }) {
         <button
           onClick={onClose}
           style={{
-            background: 'rgba(255,255,255,0.05)',
+            background: 'var(--white-05)',
             border: '1px solid rgba(212,175,55,0.2)',
             borderRadius: 8,
             color: 'var(--muted)',
@@ -147,7 +147,7 @@ export default function RoomPanel({ room, sensors, onClose }) {
                 <span style={{ fontSize: 12, fontWeight: 500 }}>{s.label || s.key}</span>
                 <div style={{
                   width: 36, height: 20, borderRadius: 10,
-                  background: s.value ? 'var(--green)' : 'rgba(255,255,255,0.1)',
+                  background: s.value ? 'var(--green)' : 'var(--white-10)',
                   border: '1px solid rgba(212,175,55,0.2)',
                   position: 'relative', cursor: 'pointer',
                   transition: 'background 0.2s',
