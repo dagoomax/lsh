@@ -1,4 +1,4 @@
-import { LANGUAGES, getLang, setLang } from '../i18n'
+import { LANGUAGES, getLang, setLang, gt } from '../i18n'
 
 const NAV = [
   { label: 'Dashboard', href: '/react/',        active: true  },
@@ -42,7 +42,7 @@ export default function Header({ connection, connected }) {
       {/* Nav (center) — styled in global.css to match vanilla */}
       <nav className="header-nav-react">
         {NAV.map(({ label, href, active }) => (
-          <a key={label} href={href} className={active ? 'active' : undefined}>{label}</a>
+          <a key={label} href={href} className={active ? 'active' : undefined}>{gt('nav_' + label.toLowerCase(), label)}</a>
         ))}
       </nav>
 
@@ -73,7 +73,7 @@ export default function Header({ connection, connected }) {
             animation: live ? 'none' : 'pulse 2s infinite',
           }}/>
           <span style={{ fontSize: 11, fontWeight: 600, color: live ? '#3fb950' : '#f85149' }}>
-            {live ? 'Connected' : 'Offline'}
+            {live ? gt('connected', 'Connected') : gt('offline', 'Offline')}
           </span>
         </div>
         <span className="header-source" style={{ fontSize: 11, color: 'var(--text2)',

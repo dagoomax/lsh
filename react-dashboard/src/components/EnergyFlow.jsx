@@ -1,4 +1,5 @@
 import { SunIcon, PylonIcon, BatteryCellIcon, BoltIcon, HomeIcon } from './Icons'
+import { gt } from '../i18n'
 
 const fmtW  = v => v==null||isNaN(v) ? '—' : Math.abs(v)>=1000 ? `${(Math.abs(v)/1000).toFixed(2)} kW` : `${Math.round(Math.abs(v))} W`
 const fmtV  = v => v==null ? '—' : `${Number(v).toFixed(1)} V`
@@ -11,6 +12,7 @@ const fmtDur = s => {
 }
 
 const BATT_STATES = { 0:'Idle', 1:'Charging', 2:'Discharging', 3:'Absorption', 4:'Float', 5:'Storage', 6:'Equalise', 9:'Inverting' }
+const BATT_STATE_KEYS = { 0:'st_idle', 1:'st_charging', 2:'st_discharging', 3:'st_absorption', 4:'st_float', 5:'st_storage', 6:'st_equalise', 9:'st_inverting' }
 const CHARGING_STATES    = [1, 3, 4, 6]
 const DISCHARGING_STATES = [2, 9]
 
@@ -150,13 +152,13 @@ function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, l
         </g>
 
         {/* nodes */}
-        <FlowNode x={340} y={57}  icon={SunIcon} label="Solar" color="var(--orange)"
+        <FlowNode x={340} y={57}  icon={SunIcon} label={gt('e_solar','Solar')} color="var(--orange)"
           value={fmtW(solarW)} active={Math.abs(solarW ?? 0) > 5}/>
-        <FlowNode x={105} y={183} icon={PylonIcon} label={exporting ? 'Grid · export' : 'Grid · import'} color={gridColor}
+        <FlowNode x={105} y={183} icon={PylonIcon} label={exporting ? gt('e_grid_export','Grid · export') : gt('e_grid_import','Grid · import')} color={gridColor}
           value={fmtW(gridW)} active={Math.abs(gridW ?? 0) > 5}/>
-        <FlowNode x={575} y={183} icon={HomeIcon} label="Home" color="var(--accent-lt)"
+        <FlowNode x={575} y={183} icon={HomeIcon} label={gt('e_home','Home')} color="var(--accent-lt)"
           value={fmtW(loadW)} active={Math.abs(loadW ?? 0) > 5}/>
-        <FlowNode x={340} y={309} icon={BatteryCellIcon} label={battCharging ? 'Battery · charging' : 'Battery · discharging'}
+        <FlowNode x={340} y={309} icon={BatteryCellIcon} label={battCharging ? gt('e_batt_chg','Battery · charging') : gt('e_batt_dis','Battery · discharging')}
           color={battColor} value={fmtW(battW)} sub={battSoc != null ? `${battSoc}%` : null}
           active={Math.abs(battW ?? 0) > 5} socPct={battSoc}/>
       </svg>
@@ -197,7 +199,7 @@ export default function EnergyFlow({ energy }) {
   const gridColor  = exporting ? 'var(--green)' : 'var(--red)'
   const battPct    = b?.soc ?? 0
   const battColor  = battPct > 50 ? 'var(--green)' : battPct > 20 ? 'var(--orange)' : 'var(--red)'
-  const battState  = BATT_STATES[b?.state] ?? 'Unknown'
+  const battState  = BATT_STATES[b?.state] != null ? gt(BATT_STATE_KEYS[b.state], BATT_STATES[b.state]) : gt('st_unknown', 'Unknown')
   const battW      = b?.power ?? ((b?.voltage != null && b?.current != null) ? b.voltage * b.current : null)
   const battCharging = CHARGING_STATES.includes(b?.state) ? true
                      : DISCHARGING_STATES.includes(b?.state) ? false
@@ -210,13 +212,13 @@ export default function EnergyFlow({ energy }) {
 
       {/* ── Top 4-card strip ── */}
       <div className="energy-strip" style={{ display:'flex', gap:10 }}>
-        <ECard icon={<SunIcon color="var(--orange)" size={24}/>} label="Solar" value={fmtW(s?.power)} color="var(--orange)"
-          pct={solarPct} sub={`${(s?.dailyYield??0).toFixed(2)} kWh today`} />
-        <ECard icon={<BatteryCellIcon color={battColor} size={24}/>} label="Battery" value={`${battPct}%`} color={battColor}
+        <ECard icon={<SunIcon color="var(--orange)" size={24}/>} label={gt('e_solar','Solar')} value={fmtW(s?.power)} color="var(--orange)"
+          pct={solarPct} sub={`${(s?.dailyYield??0).toFixed(2)} ${gt('kwh_today','kWh today')}`} />
+        <ECard icon={<BatteryCellIcon color={battColor} size={24}/>} label={gt('e_battery','Battery')} value={`${battPct}%`} color={battColor}
           pct={battPct} sub={`${battState} · ${fmtW(battW)}`} />
-        <ECard icon={<HomeIcon color="var(--accent-lt)" size={24}/>} label="Loads" value={fmtW(loadTotal)} color="var(--accent-lt)"
+        <ECard icon={<HomeIcon color="var(--accent-lt)" size={24}/>} label={gt('e_loads','Loads')} value={fmtW(loadTotal)} color="var(--accent-lt)"
           sub={`L1 ${fmtW(l?.power)} · L2 ${fmtW(l?.powerL2)} · L3 ${fmtW(l?.powerL3)}`} />
-        <ECard icon={<PylonIcon color={gridColor} size={24}/>} label={exporting?'Exporting':'Importing'}
+        <ECard icon={<PylonIcon color={gridColor} size={24}/>} label={exporting?gt('e_exporting','Exporting'):gt('e_importing','Importing')}
           value={fmtW(gridTotal)} color={gridColor}
           sub={`${fmtV(g?.voltage)} · ${fmtHz(g?.frequency)}`} />
       </div>
@@ -233,39 +235,39 @@ export default function EnergyFlow({ energy }) {
         display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',
         gap:10,
       }}>
-        <DetailCard icon={<BatteryCellIcon color="var(--text3)" size={13}/>} title="Battery">
-          <DetailRow label="SoC"     value={`${battPct}%`}    color={battColor} />
-          <DetailRow label="Power"   value={fmtW(battW)}      color={battColor} />
-          <DetailRow label="Voltage" value={fmtV(b?.voltage)} />
-          <DetailRow label="Current" value={fmtA(b?.current)} color={(b?.current??0)>0?'var(--green)':'var(--text2)'} />
-          <DetailRow label="State"   value={battState}        color="var(--text2)" />
-          {timeToGo && <DetailRow label="Time to go" value={timeToGo} color="var(--text2)" />}
+        <DetailCard icon={<BatteryCellIcon color="var(--text3)" size={13}/>} title={gt('t_battery','Battery')}>
+          <DetailRow label={gt('r_soc','SoC')}     value={`${battPct}%`}    color={battColor} />
+          <DetailRow label={gt('r_power','Power')}   value={fmtW(battW)}      color={battColor} />
+          <DetailRow label={gt('r_voltage','Voltage')} value={fmtV(b?.voltage)} />
+          <DetailRow label={gt('r_current','Current')} value={fmtA(b?.current)} color={(b?.current??0)>0?'var(--green)':'var(--text2)'} />
+          <DetailRow label={gt('r_state','State')}   value={battState}        color="var(--text2)" />
+          {timeToGo && <DetailRow label={gt('r_ttg','Time to go')} value={timeToGo} color="var(--text2)" />}
         </DetailCard>
 
-        <DetailCard icon={<SunIcon color="var(--text3)" size={13}/>} title="Solar MPPT">
-          <DetailRow label="Power"   value={fmtW(s?.power)}   color="var(--orange)" />
-          <DetailRow label="Today"   value={`${(s?.dailyYield??0).toFixed(2)} kWh`} color="var(--orange)" />
-          {s?.current != null && <DetailRow label="Current" value={fmtA(s.current)} />}
-          {s?.panelVoltage != null && <DetailRow label="PV Voltage" value={fmtV(s.panelVoltage)} />}
-          <DetailRow label="Share of loads" value={
+        <DetailCard icon={<SunIcon color="var(--text3)" size={13}/>} title={gt('t_solar','Solar MPPT')}>
+          <DetailRow label={gt('r_power','Power')}   value={fmtW(s?.power)}   color="var(--orange)" />
+          <DetailRow label={gt('r_today','Today')}   value={`${(s?.dailyYield??0).toFixed(2)} kWh`} color="var(--orange)" />
+          {s?.current != null && <DetailRow label={gt('r_current','Current')} value={fmtA(s.current)} />}
+          {s?.panelVoltage != null && <DetailRow label={'PV ' + gt('r_voltage','Voltage')} value={fmtV(s.panelVoltage)} />}
+          <DetailRow label={gt('r_share','Share of loads')} value={
             loadTotal > 0 ? `${Math.min(100, Math.round(num(s?.power) / loadTotal * 100))}%` : '—'
           } color="var(--text2)" />
         </DetailCard>
 
-        <DetailCard icon={<PylonIcon color="var(--text3)" size={13}/>} title="Grid">
-          <DetailRow label="Total"     value={fmtW(gridTotal)}  color={gridColor} />
-          <DetailRow label="L1 Power"  value={fmtW(g?.power)}   color={gridColor} />
-          <DetailRow label="L2 Power"  value={fmtW(g?.powerL2)} color={gridColor} />
-          <DetailRow label="L3 Power"  value={fmtW(g?.powerL3)} color={gridColor} />
-          <DetailRow label="Voltage"   value={fmtV(g?.voltage)} />
-          <DetailRow label="Frequency" value={fmtHz(g?.frequency)} color="var(--text2)" />
+        <DetailCard icon={<PylonIcon color="var(--text3)" size={13}/>} title={gt('t_grid','Grid')}>
+          <DetailRow label={gt('r_total','Total')}     value={fmtW(gridTotal)}  color={gridColor} />
+          <DetailRow label={gt('r_l1','L1 Power')}  value={fmtW(g?.power)}   color={gridColor} />
+          <DetailRow label={gt('r_l2','L2 Power')}  value={fmtW(g?.powerL2)} color={gridColor} />
+          <DetailRow label={gt('r_l3','L3 Power')}  value={fmtW(g?.powerL3)} color={gridColor} />
+          <DetailRow label={gt('r_voltage','Voltage')}   value={fmtV(g?.voltage)} />
+          <DetailRow label={gt('r_freq','Frequency')} value={fmtHz(g?.frequency)} color="var(--text2)" />
         </DetailCard>
 
-        <DetailCard icon={<HomeIcon color="var(--text3)" size={13}/>} title="AC Loads">
-          <DetailRow label="Total"    value={fmtW(loadTotal)}  color="var(--accent-lt)" />
-          <DetailRow label="L1 Power" value={fmtW(l?.power)}   />
-          <DetailRow label="L2 Power" value={fmtW(l?.powerL2)} />
-          <DetailRow label="L3 Power" value={fmtW(l?.powerL3)} />
+        <DetailCard icon={<HomeIcon color="var(--text3)" size={13}/>} title={gt('t_loads','AC Loads')}>
+          <DetailRow label={gt('r_total','Total')}    value={fmtW(loadTotal)}  color="var(--accent-lt)" />
+          <DetailRow label={gt('r_l1','L1 Power')} value={fmtW(l?.power)}   />
+          <DetailRow label={gt('r_l2','L2 Power')} value={fmtW(l?.powerL2)} />
+          <DetailRow label={gt('r_l3','L3 Power')} value={fmtW(l?.powerL3)} />
         </DetailCard>
       </div>
 

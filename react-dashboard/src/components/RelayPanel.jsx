@@ -1,3 +1,4 @@
+import { gt } from '../i18n'
 function Toggle({ on, onChange }) {
   return (
     <div onClick={() => onChange(!on)} style={{
@@ -25,14 +26,14 @@ export default function RelayPanel({ relays, onToggle }) {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
         <div style={{ display:'flex', alignItems:'center', gap:7 }}>
           <span style={{ fontSize:16 }}>🔁</span>
-          <span style={{ fontSize:13, fontWeight:600 }}>Relay Control</span>
+          <span style={{ fontSize:13, fontWeight:600 }}>{gt('relay_control', 'Relay Control')}</span>
         </div>
-        <span className={`badge ${activeCount>0?'badge-accent':'badge-gray'}`}>{activeCount} on</span>
+        <span className={`badge ${activeCount>0?'badge-accent':'badge-gray'}`}>{activeCount} {gt('b_on', 'on')}</span>
       </div>
 
       {(!relays||relays.length===0) && (
         <div style={{ color:'var(--text3)', fontSize:12, textAlign:'center', padding:'8px 0' }}>
-          No relays configured
+          {gt('no_relays', 'No relays configured')}
         </div>
       )}
 
@@ -45,7 +46,7 @@ export default function RelayPanel({ relays, onToggle }) {
               </div>
               <div style={{ fontSize:11, marginTop:1,
                 color: r.on ? 'var(--accent-lt)' : 'var(--text3)' }}>
-                {r.on ? '● Active' : 'Inactive'}
+                {r.on ? '● ' + gt('active', 'Active') : gt('inactive', 'Inactive')}
               </div>
             </div>
             <Toggle on={r.on} onChange={state => onToggle(r.index, state)} />

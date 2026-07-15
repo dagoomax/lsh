@@ -1151,7 +1151,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
       }}>
         <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em',
           color:'var(--text3)', padding:'0 6px', marginBottom:8 }}>
-          Rooms & Categories
+          {gt('rooms_cats', 'Rooms & Categories')}
         </div>
 
         {CATS.filter(c => c==='All' || c==='Graphs' || counts[c]).map(c => {
@@ -1161,7 +1161,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
           return (
             <button key={c} onClick={() => setCat(c)} className="side-btn" data-active={String(active)}>
               <CatIcon size={16} color={active ? 'var(--accent-lt)' : 'var(--text3)'} />
-              <span style={{ flex:1 }}>{c === 'Graphs' ? gt('tab', 'Graphs') : c}</span>
+              <span style={{ flex:1 }}>{c === 'Graphs' ? gt('tab', 'Graphs') : gt('cat_' + c.toLowerCase(), c)}</span>
               <span style={{
                 fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:8,
                 background: active ? 'rgba(88,166,255,0.3)' : 'rgba(255,255,255,0.06)',
@@ -1175,7 +1175,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
         <div style={{ marginTop:16, paddingTop:12, borderTop:'1px solid var(--sep)' }}>
           <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em',
             color:'var(--text3)', padding:'0 6px', marginBottom:8 }}>
-            Origin / Platform
+            {gt('origin_platform', 'Origin / Platform')}
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
             {allOrigins.map(o => {
@@ -1266,12 +1266,12 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
         <div className="desktop-grid-header" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px 10px', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             {(() => { const I = CAT_ICON_COMPONENT[cat]; return <I size={18} color="var(--accent-lt)"/>})()}
-            <span style={{ fontSize:15, fontWeight:700 }}>{cat === 'Graphs' ? gt('tab', 'Graphs') : cat}</span>
+            <span style={{ fontSize:15, fontWeight:700 }}>{cat === 'Graphs' ? gt('tab', 'Graphs') : gt('cat_' + cat.toLowerCase(), cat)}</span>
           </div>
           <div style={{ display:'flex', gap:6 }}>
-            {onCount>0 && <span className="badge badge-yellow">{onCount} on</span>}
-            <span className="badge badge-green">{liveCount} live</span>
-            <span className="badge badge-gray">{visible.length} shown</span>
+            {onCount>0 && <span className="badge badge-yellow">{onCount} {gt('b_on', 'on')}</span>}
+            <span className="badge badge-green">{liveCount} {gt('b_live', 'live')}</span>
+            <span className="badge badge-gray">{visible.length} {gt('b_shown', 'shown')}</span>
           </div>
         </div>
 
@@ -1292,12 +1292,12 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
                          padding: energyHidden ? '12px 14px' : '12px 14px 8px' }}
               >
                 <GridPowerIcon size={15} color="var(--orange)" />
-                <span style={{ fontSize:13, fontWeight:700 }}>Energy</span>
+                <span style={{ fontSize:13, fontWeight:700 }}>{gt('energy', 'Energy')}</span>
                 <span style={{
                   marginLeft:'auto', color:'var(--text3)', fontSize:11,
                   display:'inline-flex', alignItems:'center', gap:6,
                 }}>
-                  {energyHidden && <span>hidden</span>}
+                  {energyHidden && <span>{gt('hidden', 'hidden')}</span>}
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                     style={{ transform: energyHidden ? 'rotate(-90deg)' : 'none', transition:'transform 0.2s ease' }}>
@@ -1319,7 +1319,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
           )}
           {cat !== 'Graphs' && visible.length === 0 && (
             <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>
-              No devices in this category
+              {gt('no_devices', 'No devices in this category')}
             </div>
           )}
           {cat !== 'Graphs' && <div className="device-grid" style={{
