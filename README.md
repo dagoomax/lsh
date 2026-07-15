@@ -342,7 +342,7 @@ Leave `deviceIds` empty to discover all devices. Or supply a list of device UUID
 
 **Auth — OAuth (recommended).** SmartThings Personal Access Tokens created after Dec 2024 expire every 24 hours, so LSH uses OAuth with automatic refresh instead:
 
-1. One-time, create an OAuth app with the [SmartThings CLI](https://github.com/SmartThingsCommunity/smartthings-cli) (needs any valid PAT, a 24 h one is fine): `smartthings apps:create` → *OAuth-In App* → redirect URI `http://localhost:8123/callback`, scopes `r:devices:* x:devices:* r:locations:*`. Note the client id + secret.
+1. One-time, create an OAuth app with the [SmartThings CLI](https://github.com/SmartThingsCommunity/smartthings-cli) (needs any valid PAT, a 24 h one is fine): `smartthings apps:create` → *OAuth-In App* → redirect URI `https://lsh-callback.invalid/callback` (SmartThings rejects localhost redirects; the auth script uses a paste-the-URL flow instead), scopes `r:devices:* x:devices:* r:locations:*`. Note the client id + secret.
 2. Put `clientId`/`clientSecret` in `config.json` and run `node scripts/smartthings-auth.js` — it prints an authorization URL, catches the redirect, and saves the token pair to `persist/smartthings-oauth.json`.
 3. Restart LSH. The client refreshes the access token automatically before expiry and persists the rotated refresh token, so no further manual steps. (The refresh token only dies after 30 days *unused* — i.e. if LSH is off that long — in which case re-run step 2.)
 

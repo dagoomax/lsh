@@ -14,7 +14,8 @@
  *
  *   smartthings apps:create
  *     → OAuth-In App
- *     → redirect URI: http://localhost:8123/callback
+ *     → redirect URI: https://lsh-callback.invalid/callback
+ *       (SmartThings 403s localhost redirects — any dead HTTPS URL works)
  *     → scopes: r:devices:* x:devices:* r:locations:*
  *
  *   Note the client id + secret it prints, put them in config.json:
@@ -22,22 +23,23 @@
  *
  * Then run:  node scripts/smartthings-auth.js
  *
- * The script opens a local callback server on port 8123, prints the
- * authorization URL to visit, and exchanges the returned code. If the
- * redirect can't reach this machine, paste the full redirect URL (or just
- * the code) at the prompt instead.
+ * The script prints the authorization URL to visit; after authorizing, the
+ * browser lands on a DNS-error page for the dead redirect host — copy its
+ * full URL (which carries ?code=…) and paste it at the prompt.
  */
 
 const fs       = require('fs');
-const http     = require('http');
 const path     = require('path');
 const readline = require('readline');
 
 const OAUTH_AUTHORIZE = 'https://api.smartthings.com/oauth/authorize';
 const OAUTH_TOKEN     = 'https://api.smartthings.com/oauth/token';
 const OAUTH_FILE      = path.join(__dirname, '..', 'persist', 'smartthings-oauth.json');
-const CALLBACK_PORT   = 8123;
-const REDIRECT_URI    = `http://localhost:${CALLBACK_PORT}/callback`;
+// SmartThings rejects localhost redirect URIs with 403 Forbidden, so the app
+// registers a deliberately dead HTTPS address: after authorizing, the browser
+// lands on a DNS-error page whose address bar still carries ?code=… — paste
+// that URL (or just the code) into this script's prompt.
+const REDIRECT_URI    = 'https://lsh-callback.invalid/callback';
 const SCOPES          = 'r:devices:* x:devices:* r:locations:*';
 
 function loadConfig() {
@@ -63,28 +65,10 @@ async function exchangeCode(clientId, clientSecret, code) {
   return res.json();
 }
 
-function waitForCallback() {
-  return new Promise((resolve, reject) => {
-    const server = http.createServer((req, res) => {
-      const url = new URL(req.url, REDIRECT_URI);
-      if (url.pathname !== '/callback') { res.writeHead(404).end(); return; }
-      const code = url.searchParams.get('code');
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(code
-        ? '<h2>LSH: SmartThings authorized — you can close this tab.</h2>'
-        : `<h2>LSH: authorization failed: ${url.searchParams.get('error') || 'no code'}</h2>`);
-      server.close();
-      code ? resolve(code) : reject(new Error(url.searchParams.get('error') || 'No code in callback'));
-    });
-    server.on('error', reject);
-    server.listen(CALLBACK_PORT);
-  });
-}
-
 function askForCode() {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve) => {
-    rl.question('…or paste the redirect URL / code here: ', (answer) => {
+    rl.question('Paste the full redirect URL (or just the code) here: ', (answer) => {
       rl.close();
       answer = answer.trim();
       try { resolve(new URL(answer).searchParams.get('code') || answer); }
@@ -108,9 +92,9 @@ function askForCode() {
 
   console.log('\nOpen this URL in a browser and authorize your location:\n');
   console.log('  ' + authUrl + '\n');
-  console.log(`Waiting for the redirect on ${REDIRECT_URI} …`);
+  console.log('After authorizing, the browser lands on a "site can\'t be reached" page — that is expected.');
 
-  const code = await Promise.race([waitForCallback(), askForCode()]);
+  const code = await askForCode();
   const t = await exchangeCode(clientId, clientSecret, code);
 
   fs.mkdirSync(path.dirname(OAUTH_FILE), { recursive: true });
