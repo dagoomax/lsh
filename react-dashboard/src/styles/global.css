@@ -55,6 +55,16 @@
   --white-14: rgba(255,255,255,0.14);
   --white-18: rgba(255,255,255,0.18);
   --white-20: rgba(255,255,255,0.2);
+
+  /* ── Active-tile & modal accents ── */
+  --tile-on-ink:  #79c0ff;
+  --tile-on-chip: rgba(88,166,255,0.22);
+  --tile-on-glow: 0 0 16px rgba(88,166,255,0.3);
+  --modal-grad:        linear-gradient(160deg, #131a28 0%, #0c111c 100%);
+  --modal-chip-bg:     linear-gradient(135deg, rgba(88,166,255,0.20), rgba(57,197,207,0.12));
+  --modal-chip-border: rgba(121,192,255,0.35);
+  --modal-chip-ink:    #a5d1ff;
+  --tooltip-bg:        rgba(13,17,26,0.92);
 }
 
 /* ── Light theme ─────────────────────────────────────────────────────────
@@ -111,6 +121,16 @@
   --white-14: rgba(15,23,42,0.14);
   --white-18: rgba(15,23,42,0.18);
   --white-20: rgba(15,23,42,0.2);
+
+  /* Active-tile & modal accents */
+  --tile-on-ink:  #0857b0;
+  --tile-on-chip: rgba(9,105,218,0.14);
+  --tile-on-glow: 0 0 16px rgba(9,105,218,0.18);
+  --modal-grad:        linear-gradient(160deg, #ffffff 0%, #f2f5f8 100%);
+  --modal-chip-bg:     linear-gradient(135deg, rgba(9,105,218,0.12), rgba(27,124,131,0.08));
+  --modal-chip-border: rgba(9,105,218,0.3);
+  --modal-chip-ink:    #0969da;
+  --tooltip-bg:        rgba(255,255,255,0.96);
 }
 
 
@@ -228,6 +248,28 @@ input[type="range"]::-moz-range-thumb {
   transform: translateY(-2px);
   border-color: rgba(121,192,255,0.45);
   box-shadow: 0 8px 32px rgba(56,110,200,0.32), var(--inner-hl);
+}
+[data-theme="light"] .device-tile[data-on="true"] {
+  background: linear-gradient(160deg, #dbeafe 0%, #ecf4ff 100%);
+  border-color: rgba(9,105,218,0.35);
+  box-shadow: 0 4px 20px rgba(9,105,218,0.14), var(--inner-hl);
+}
+[data-theme="light"] .device-tile[data-on="true"]:hover {
+  border-color: rgba(9,105,218,0.55);
+  box-shadow: 0 8px 28px rgba(9,105,218,0.2), var(--inner-hl);
+}
+
+/* Device modal title — gradient ink on dark, solid ink on light */
+.modal-device-title {
+  background: linear-gradient(90deg, #a5d1ff 0%, #e9eef5 50%, #79c0ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+[data-theme="light"] .modal-device-title {
+  background: none;
+  -webkit-text-fill-color: var(--text);
+  color: var(--text);
 }
 
 /* ── Sidebar buttons ────────────────────────────────────────────────────── */
@@ -452,6 +494,10 @@ input[type="range"]::-moz-range-thumb {
 .device-modal-glow {
   box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px rgba(88,166,255,0.28), 0 0 160px rgba(88,166,255,0.12);
   animation: modalBreathe 4.5s ease-in-out infinite alternate;
+}
+[data-theme="light"] .device-modal-glow {
+  box-shadow: 0 24px 80px rgba(31,35,40,0.25), 0 4px 24px rgba(31,35,40,0.12);
+  animation: none;
 }
 @keyframes modalBreathe {
   from { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 55px rgba(88,166,255,0.22), 0 0 130px rgba(57,197,207,0.10); }
