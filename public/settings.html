@@ -760,6 +760,65 @@
       </div>
     </section>
 
+    <!-- Home Connect (Bosch/Siemens/Gaggenau) -->
+    <section class="card settings-card" data-category="smarthome" data-title="Home Connect Bosch Siemens Gaggenau Neff appliances dishwasher oven washer">
+      <h2>Home Connect <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Bosch, Siemens, Gaggenau and Neff appliances via the official Home Connect cloud. Register a free app at <a href="https://developer.home-connect.com" target="_blank" rel="noopener">developer.home-connect.com</a> (OAuth flow: <b>Device Flow</b>), save the credentials here, then run <code>node scripts/homeconnect-auth.js</code> on the server once to authorize. Tokens refresh automatically afterwards.</p>
+
+      <div class="form-row">
+        <label for="homeconnect-client-id">Client ID</label>
+        <input type="text" id="homeconnect-client-id" placeholder="" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="homeconnect-client-secret">Client Secret</label>
+        <input type="password" id="homeconnect-client-secret" placeholder="••••••••" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="homeconnect-simulator">Environment</label>
+        <select id="homeconnect-simulator">
+          <option value="false">Production (real appliances)</option>
+          <option value="true">Simulator (developer.home-connect.com/simulator)</option>
+        </select>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-homeconnect" data-i18n="common.save">Save</button>
+        <span class="test-result" id="homeconnect-test-result"></span>
+      </div>
+    </section>
+
+    <!-- Miele -->
+    <section class="card settings-card" data-category="smarthome" data-title="Miele home appliances washer dryer dishwasher oven">
+      <h2>Miele@home <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Miele appliances via the official 3rd Party API. Register a free app at <a href="https://developer.miele.com" target="_blank" rel="noopener">developer.miele.com</a>, then enter its credentials plus your Miele account login — the server signs in directly. If the direct login is rejected, run <code>node scripts/miele-auth.js</code> on the server once instead.</p>
+
+      <div class="form-row">
+        <label for="miele-client-id">Client ID</label>
+        <input type="text" id="miele-client-id" placeholder="" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="miele-client-secret">Client Secret</label>
+        <input type="password" id="miele-client-secret" placeholder="••••••••" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="miele-username">Miele Account Email</label>
+        <input type="email" id="miele-username" placeholder="you@example.com" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="miele-password">Miele Account Password</label>
+        <input type="password" id="miele-password" placeholder="••••••••" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="miele-country">Country <span class="hint">(account region, e.g. de-DE, pl-PL, en-GB)</span></label>
+        <input type="text" id="miele-country" placeholder="de-DE" style="max-width:140px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-miele" data-i18n="common.save">Save</button>
+        <span class="test-result" id="miele-test-result"></span>
+      </div>
+    </section>
+
     <!-- IKEA Dirigera -->
     <section class="card settings-card" data-category="smarthome" data-title="IKEA Dirigera hub lights bulbs">
       <h2><span data-i18n="s.dirigera_title">IKEA Dirigera</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>

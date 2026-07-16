@@ -151,6 +151,18 @@ async function loadSettings() {
     setVal('lgthinq-user-number',   data.lgthinq?.userNumber || '');
     setVal('lgthinq-country', data.lgthinq?.country || 'EU');
 
+    // Home Connect
+    setVal('homeconnect-client-id',     data.homeConnect?.clientId || '');
+    setVal('homeconnect-client-secret', data.homeConnect?.clientSecret ? '••••••••' : '');
+    setVal('homeconnect-simulator',     String(!!data.homeConnect?.simulator));
+
+    // Miele
+    setVal('miele-client-id',     data.miele?.clientId || '');
+    setVal('miele-client-secret', data.miele?.clientSecret ? '••••••••' : '');
+    setVal('miele-username',      data.miele?.username || '');
+    setVal('miele-password',      data.miele?.password ? '••••••••' : '');
+    setVal('miele-country',       data.miele?.country || 'de-DE');
+
     // SmartBob
     setVal('smartbob-name', data.smartbob?.name || 'SmartBob');
     setVal('smartbob-host', data.smartbob?.host || '');
@@ -803,6 +815,58 @@ document.getElementById('btn-test-homey').addEventListener('click', async () => 
   } catch (err) {
     resultEl.textContent = '✗ ' + err.message;
     resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-homeconnect').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-homeconnect');
+  const resultEl = document.getElementById('homeconnect-test-result');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/settings/homeconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId:     getVal('homeconnect-client-id'),
+        clientSecret: getVal('homeconnect-client-secret'),
+        simulator:    getVal('homeconnect-simulator') === 'true',
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-save-miele').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-miele');
+  const resultEl = document.getElementById('miele-test-result');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/settings/miele', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId:     getVal('miele-client-id'),
+        clientSecret: getVal('miele-client-secret'),
+        username:     getVal('miele-username'),
+        password:     getVal('miele-password'),
+        country:      getVal('miele-country'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
   }
 });
 

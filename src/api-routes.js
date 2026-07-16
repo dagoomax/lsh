@@ -1183,6 +1183,9 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.sip?.password)     safe.sip.password     = '••••••••';
     if (safe.tradfri?.securityCode) safe.tradfri.securityCode = '••••••••';
     if (safe.homey?.token)          safe.homey.token          = '••••••••';
+    if (safe.homeConnect?.clientSecret) safe.homeConnect.clientSecret = '••••••••';
+    if (safe.miele?.clientSecret)   safe.miele.clientSecret   = '••••••••';
+    if (safe.miele?.password)       safe.miele.password       = '••••••••';
     if (safe.fibaro?.password)      safe.fibaro.password      = '••••••••';
     if (safe.bayrol?.password)      safe.bayrol.password      = '••••••••';
     if (safe.somfy?.password)       safe.somfy.password       = '••••••••';
@@ -1653,6 +1656,46 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       res.json({ success: true, message: `Connected — ${count} device(s) found` });
     } catch (err) {
       res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/homeconnect', (req, res) => {
+    const current = readConfigFile();
+    const { clientId, clientSecret, simulator } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        homeConnect: {
+          ...current.homeConnect,
+          clientId:     clientId || current.homeConnect?.clientId || '',
+          clientSecret: (clientSecret && !clientSecret.includes('•')) ? clientSecret : (current.homeConnect?.clientSecret || ''),
+          simulator:    !!simulator,
+        },
+      });
+      res.json({ success: true, message: 'Home Connect settings saved. Run scripts/homeconnect-auth.js to authorize, then restart.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/miele', (req, res) => {
+    const current = readConfigFile();
+    const { clientId, clientSecret, username, password, country } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        miele: {
+          ...current.miele,
+          clientId:     clientId || current.miele?.clientId || '',
+          clientSecret: (clientSecret && !clientSecret.includes('•')) ? clientSecret : (current.miele?.clientSecret || ''),
+          username:     username || current.miele?.username || '',
+          password:     (password && !password.includes('•')) ? password : (current.miele?.password || ''),
+          country:      country || current.miele?.country || 'de-DE',
+        },
+      });
+      res.json({ success: true, message: 'Miele settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
     }
   });
 
