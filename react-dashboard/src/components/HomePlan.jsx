@@ -30,7 +30,17 @@ const ROOM_THEMES = [
 ]
 const GENERIC_ITEMS = ['🪑', '🪴', '🖼', '📚', '🕰️', '🧺']
 
+const decorCache = new Map()
 function roomDecorations(room) {
+  const cacheKey = `${room.name}|${room.w}x${room.d}`
+  const hit = decorCache.get(cacheKey)
+  if (hit) return hit
+  const items = computeDecorations(room)
+  decorCache.set(cacheKey, items)
+  return items
+}
+
+function computeDecorations(room) {
   let h = 2166136261
   for (const c of room.name) h = (h ^ c.charCodeAt(0)) * 16777619 >>> 0
   const rand = () => { h = (h * 1664525 + 1013904223) >>> 0; return h / 2 ** 32 }
@@ -132,7 +142,9 @@ function DecorItem({ item, board, U, angle, mode3d, onMove, onRemove }) {
 // Device chip, absolutely positioned inside its room and draggable.
 // Screen-space pointer deltas are mapped back into plan space by inverting
 // the board rotation (rotateZ) and tilt (rotateX foreshortening).
-function PositionedChip({ device, room, U, angle, mode3d, defaultPos, onOpen }) {
+// Dragging is clamped to the board, not the room, so a chip can roam the
+// whole floor plan; the parent's onDropPos decides where it is persisted.
+function PositionedChip({ device, room, origin = { x: 0, y: 0 }, board, U, angle, mode3d, defaultPos, onOpen, onDropPos }) {
   const [livePos, setLivePos] = useState(null)
   const drag = useRef(null)
 
@@ -157,10 +169,12 @@ function PositionedChip({ device, room, U, angle, mode3d, defaultPos, onOpen }) 
     const b = dys / (mode3d ? Math.cos((55 * Math.PI) / 180) : 1) // undo tilt foreshortening
     const dx = dxs * Math.cos(rz) + b * Math.sin(rz)              // undo board rotation
     const dy = -dxs * Math.sin(rz) + b * Math.cos(rz)
-    setLivePos({
-      x: Math.min(0.94, Math.max(0.06, d.x + dx / (room.w * U))),
-      y: Math.min(0.9,  Math.max(0.1,  d.y + dy / (room.d * U))),
-    })
+    const bw = board?.w ?? room.w
+    const bd = board?.d ?? room.d
+    // clamp in board space, then map back to room-relative for rendering
+    const bx = Math.min(0.98, Math.max(0.02, (origin.x + (d.x + dx / (room.w * U)) * room.w) / bw))
+    const by = Math.min(0.98, Math.max(0.02, (origin.y + (d.y + dy / (room.d * U)) * room.d) / bd))
+    setLivePos({ x: (bx * bw - origin.x) / room.w, y: (by * bd - origin.y) / room.d })
   }
   const onPointerUp = async () => {
     const d = drag.current
@@ -169,7 +183,11 @@ function PositionedChip({ device, room, U, angle, mode3d, defaultPos, onOpen }) 
     if (!d.moved) { setLivePos(null); onOpen?.(device.key); return }
     const p = livePos
     if (p) {
-      const ok = await saveChipPos(device.key, p.x, p.y)
+      const bw = board?.w ?? room.w
+      const bd = board?.d ?? room.d
+      const ok = onDropPos
+        ? await onDropPos((origin.x + p.x * room.w) / bw, (origin.y + p.y * room.d) / bd, p)
+        : await saveChipPos(device.key, p.x, p.y)
       if (ok) setLivePos(null) // server broadcast takes over
     }
   }
@@ -299,10 +317,37 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
   const freeDevs = devices.filter((d) => d.planFloor === activeFloor)
   const boardRoom = { name: '__board', w: maxX, d: maxY }
   const placeDevice = async (key) => {
-    await saveChipPlacement(key, { planFloor: activeFloor, planX: 0.5, planY: 0.5 })
+    // stagger new placements so consecutive adds don't pile up on one spot
+    const n = freeDevs.length
+    await saveChipPlacement(key, {
+      planFloor: activeFloor,
+      planX: Math.min(0.92, 0.5 + (n % 6) * 0.05),
+      planY: Math.min(0.92, 0.5 + Math.floor(n / 6) * 0.06),
+    })
   }
   const unplaceDevice = async (key) => {
     await saveChipPlacement(key, { planFloor: '' })
+  }
+
+  // Chip dragged from inside a room: dropped within it → keep the room-relative
+  // spot; dragged beyond it → promote to a free board placement on this floor.
+  const dropRoomChip = (device, p, bx, by) => {
+    if (p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1) {
+      return saveChipPlacement(device.key, { planX: p.x, planY: p.y })
+    }
+    return saveChipPlacement(device.key, { planFloor: activeFloor, planX: bx, planY: by })
+  }
+  // Board-level chip dropped back inside its assigned room → return it there.
+  const dropBoardChip = (device, bx, by) => {
+    const home = floorRooms.find((r) => r.name === device.room)
+    if (home) {
+      const rx = (bx * maxX - home.x) / home.w
+      const ry = (by * maxY - home.y) / home.d
+      if (rx >= 0 && rx <= 1 && ry >= 0 && ry <= 1) {
+        return saveChipPlacement(device.key, { planFloor: '', planX: rx, planY: ry })
+      }
+    }
+    return saveChipPlacement(device.key, { planX: bx, planY: by })
   }
 
   // Category filter — only categories that exist among room-assigned devices
@@ -414,22 +459,8 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
             boxShadow: 'var(--shadow-2)',
           } : {}),
         }}>
-          {showFurniture && (decor[activeFloor] || []).map((item) => (
-            <div key={item.id} className="plan-devices">
-              <DecorItem item={item} board={boardRoom} U={U} angle={angle} mode3d={mode3d}
-                onMove={(id, x, y) => decorOp({ op: 'move', id, x, y })}
-                onRemove={(id) => decorOp({ op: 'remove', id })}/>
-            </div>
-          ))}
-          {showAppliances && freeDevs.map((d, i) => (
-            <div key={d.key} className="plan-devices">
-              <PositionedChip device={d} room={boardRoom} U={U}
-                angle={angle} mode3d={mode3d} onOpen={onOpen}
-                defaultPos={{ x: 0.5, y: 0.5 }}/>
-            </div>
-          ))}
           {floorRooms.map((room) => {
-            const devs = devices.filter((d) => d.room === room.name && matches(d))
+            const devs = devices.filter((d) => d.room === room.name && !d.planFloor && matches(d))
             const onCount = devs.filter(isOn).length
             return (
               <div key={room.name} className="plan-room" data-active={String(onCount > 0)} style={{
@@ -459,7 +490,9 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
                 {showAppliances && <div className="plan-devices">
                   {devs.map((d, i) => (
                     <PositionedChip key={d.key} device={d} room={room} U={U}
+                      origin={{ x: room.x, y: room.y }} board={boardRoom}
                       angle={angle} mode3d={mode3d} onOpen={onOpen}
+                      onDropPos={(bx, by, p) => dropRoomChip(d, p, bx, by)}
                       defaultPos={{
                         x: Math.min(0.9, 0.14 + (i % 4) * 0.24),
                         y: Math.min(0.88, 0.32 + Math.floor(i / 4) * 0.3),
@@ -469,6 +502,36 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
               </div>
             )
           })}
+          {showFurniture && (decor[activeFloor] || []).map((item) => (
+            <div key={item.id} className="plan-devices">
+              <DecorItem item={item} board={boardRoom} U={U} angle={angle} mode3d={mode3d}
+                onMove={(id, x, y) => decorOp({ op: 'move', id, x, y })}
+                onRemove={(id) => decorOp({ op: 'remove', id })}/>
+            </div>
+          ))}
+          {showAppliances && (() => {
+            // chips saved on the exact same spot hide each other — fan out
+            // duplicates so every deployed device stays visible and clickable
+            const seen = new Map()
+            return freeDevs.map((d) => {
+              const k = `${(d.planX ?? 0.5).toFixed(2)}|${(d.planY ?? 0.5).toFixed(2)}`
+              const n = seen.get(k) || 0
+              seen.set(k, n + 1)
+              const dev = n === 0 ? d : {
+                ...d,
+                planX: Math.min(0.98, (d.planX ?? 0.5) + 0.05 * n),
+                planY: Math.min(0.98, (d.planY ?? 0.5) + 0.035 * n),
+              }
+              return (
+                <div key={d.key} className="plan-devices">
+                  <PositionedChip device={dev} room={boardRoom} board={boardRoom} U={U}
+                    angle={angle} mode3d={mode3d} onOpen={onOpen}
+                    onDropPos={(bx, by) => dropBoardChip(d, bx, by)}
+                    defaultPos={{ x: 0.5, y: 0.5 }}/>
+                </div>
+              )
+            })
+          })()}
         </div>
       </div>
       </div>

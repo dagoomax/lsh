@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { io } from 'socket.io-client'
 
 // Auth: /react is served same-origin as /api, so requests carry the
@@ -20,11 +20,17 @@ export function useLSH() {
   const [platforms, setPlatforms] = useState({})
   const [roomsMeta, setRoomsMeta] = useState({})
 
-  const fetchAll = useCallback(async () => {
+  const liveRef = useRef(false) // socket connected → device list stays fresh via events
+
+  const fetchAll = useCallback(async (withDevices = true) => {
+    // While the socket is live, 'devices'/'update' events keep the device
+    // list current — skip the expensive full refetch that would rebuild
+    // every device object (and re-render every memoized tile) each poll.
+    const wantDevices = withDevices || !liveRef.current
     const [status, conn, devs] = await Promise.all([
       apiFetch('/api/status'),
       apiFetch('/api/connection'),
-      apiFetch('/api/devices'),
+      wantDevices ? apiFetch('/api/devices') : Promise.resolve(null),
     ])
     if (status) setEnergy({
       battery: status.battery,
@@ -40,11 +46,11 @@ export function useLSH() {
 
   useEffect(() => {
     fetchAll()
-    const iv = setInterval(fetchAll, 15000)
+    const iv = setInterval(() => fetchAll(false), 15000)
 
     const socket = io('/', { transports: ['websocket','polling'] })
-    socket.on('connect',    () => setConnected(true))
-    socket.on('disconnect', () => setConnected(false))
+    socket.on('connect',    () => { liveRef.current = true; setConnected(true) })
+    socket.on('disconnect', () => { liveRef.current = false; setConnected(false) })
     socket.on('connection-status', d => setConn(d))
     socket.on('devices', readings => {
       if (Array.isArray(readings) && readings.length) setDevices(readings)

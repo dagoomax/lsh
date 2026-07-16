@@ -1,0 +1,196 @@
+<svg viewBox="-255 -231 1710 1510" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="Top-down furnished floor plan base for the LSH home plan board.">
+  <style>
+    .wall  { fill: #2B2E2E; }
+    .furn  { fill: #FCFBF8; stroke: #2B2E2E; stroke-width: 3; }
+    .furnln{ fill: none; stroke: #2B2E2E; stroke-width: 2.5; }
+    .soft  { fill: none; stroke: #6F756F; stroke-width: 2; }
+    .rug   { fill: none; stroke: #6F756F; stroke-width: 2.5; stroke-dasharray: 10 8; }
+    .deck  { stroke: #6F756F; stroke-width: 1.5; opacity: .55; }
+    .leaf  { stroke: #2B2E2E; stroke-width: 4; }
+    .swing { fill: none; stroke: #6F756F; stroke-width: 1.75; stroke-dasharray: 7 6; }
+    .win   { fill: #FCFBF8; stroke: #2B2E2E; stroke-width: 2.5; }
+    .winln { stroke: #2B2E2E; stroke-width: 1.75; }
+    .rail  { fill: none; stroke: #2B2E2E; stroke-width: 8; }
+  </style>
+
+  <!-- paper ground (board ~38% larger than the apartment for margin) -->
+  <rect x="-255" y="-231" width="1710" height="1510" fill="#FCFBF8"/>
+
+  <!-- room floor tints -->
+  <rect fill="#E9EFE4" x="0"   y="0"   width="520" height="900"/>
+  <rect fill="#F2F0E8" x="520" y="0"   width="180" height="900"/>
+  <rect fill="#F2EAD9" x="700" y="0"   width="500" height="350"/>
+  <rect fill="#DFE8EE" x="700" y="350" width="250" height="200"/>
+  <rect fill="#DFE8EE" x="950" y="350" width="250" height="200"/>
+  <rect fill="#F2EAD9" x="700" y="550" width="500" height="350"/>
+  <rect fill="#E2EADF" x="0"   y="900" width="500" height="160"/>
+
+  <!-- balcony decking -->
+  <g class="deck">
+    <line x1="45"  y1="902" x2="45"  y2="1056"/><line x1="90"  y1="902" x2="90"  y2="1056"/>
+    <line x1="135" y1="902" x2="135" y2="1056"/><line x1="180" y1="902" x2="180" y2="1056"/>
+    <line x1="225" y1="902" x2="225" y2="1056"/><line x1="270" y1="902" x2="270" y2="1056"/>
+    <line x1="315" y1="902" x2="315" y2="1056"/><line x1="360" y1="902" x2="360" y2="1056"/>
+    <line x1="405" y1="902" x2="405" y2="1056"/><line x1="450" y1="902" x2="450" y2="1056"/>
+  </g>
+  <path class="rail" d="M 4 902 L 4 1056 L 496 1056 L 496 902"/>
+
+  <!-- walls -->
+  <path class="wall" fill-rule="evenodd"
+        d="M -20 -20 H 1220 V 920 H -20 Z M 0 0 V 900 H 1200 V 0 Z"/>
+  <rect class="wall" x="515" y="0"   width="10" height="250"/>
+  <rect class="wall" x="515" y="750" width="10" height="150"/>
+  <rect class="wall" x="695" y="0"   width="10" height="150"/>
+  <rect class="wall" x="695" y="240" width="10" height="170"/>
+  <rect class="wall" x="695" y="490" width="10" height="130"/>
+  <rect class="wall" x="695" y="710" width="10" height="190"/>
+  <rect class="wall" x="695"  y="345" width="315" height="10"/>
+  <rect class="wall" x="1100" y="345" width="105" height="10"/>
+  <rect class="wall" x="695" y="545" width="510" height="10"/>
+  <rect class="wall" x="945" y="345" width="10" height="210"/>
+
+  <!-- entry door -->
+  <rect x="540" y="-20" width="100" height="20" fill="#FCFBF8"/>
+  <line class="leaf" x1="540" y1="0" x2="540" y2="100"/>
+  <path class="swing" d="M 640 0 A 100 100 0 0 1 540 100"/>
+
+  <!-- balcony sliding door -->
+  <rect x="120" y="900" width="260" height="20" fill="#FCFBF8"/>
+  <rect class="furn" x="120" y="902" width="140" height="7"/>
+  <rect class="furn" x="240" y="911" width="140" height="7"/>
+
+  <!-- windows -->
+  <g>
+    <rect class="win" x="80"   y="-20"  width="220" height="20"/><line class="winln" x1="80" y1="-10" x2="300" y2="-10"/>
+    <rect class="win" x="850"  y="-20"  width="200" height="20"/><line class="winln" x1="850" y1="-10" x2="1050" y2="-10"/>
+    <rect class="win" x="-20"  y="400"  width="20"  height="250"/><line class="winln" x1="-10" y1="400" x2="-10" y2="650"/>
+    <rect class="win" x="1200" y="400"  width="20"  height="90"/><line class="winln" x1="1210" y1="400" x2="1210" y2="490"/>
+    <rect class="win" x="880"  y="900"  width="200" height="20"/><line class="winln" x1="880" y1="910" x2="1080" y2="910"/>
+  </g>
+
+  <!-- interior doors -->
+  <line class="leaf" x1="700" y1="150" x2="790" y2="150"/>
+  <path class="swing" d="M 790 150 A 90 90 0 0 1 700 240"/>
+  <line class="leaf" x1="700" y1="410" x2="780" y2="410"/>
+  <path class="swing" d="M 780 410 A 80 80 0 0 1 700 490"/>
+  <line class="leaf" x1="700" y1="710" x2="790" y2="710"/>
+  <path class="swing" d="M 700 620 A 90 90 0 0 1 790 710"/>
+  <line class="leaf" x1="1010" y1="350" x2="1010" y2="440"/>
+  <path class="swing" d="M 1100 350 A 90 90 0 0 1 1010 440"/>
+
+  <!-- kitchen -->
+  <g>
+    <rect class="furn" x="0" y="0" width="300" height="65"/>
+    <rect class="furn" x="0" y="65" width="65" height="335"/>
+    <rect class="furnln" x="152" y="12" width="34" height="40" rx="6"/>
+    <rect class="furnln" x="194" y="12" width="34" height="40" rx="6"/>
+    <circle class="furnln" cx="190" cy="8" r="4"/>
+    <circle class="furnln" cx="22" cy="180" r="11"/><circle class="furnln" cx="47" cy="180" r="11"/>
+    <circle class="furnln" cx="22" cy="212" r="11"/><circle class="furnln" cx="47" cy="212" r="11"/>
+    <rect class="furn" x="445" y="5" width="72" height="70"/>
+    <line class="furnln" x1="481" y1="5" x2="481" y2="75"/>
+    <rect class="furn" x="160" y="200" width="230" height="90" rx="4"/>
+    <line class="soft" x1="160" y1="245" x2="390" y2="245"/>
+    <circle class="furn" cx="212" cy="322" r="17"/>
+    <circle class="furn" cx="275" cy="322" r="17"/>
+    <circle class="furn" cx="338" cy="322" r="17"/>
+  </g>
+
+  <!-- dining -->
+  <g>
+    <rect class="furn" x="130" y="400" width="250" height="120" rx="6"/>
+    <rect class="furn" x="160" y="358" width="52" height="36" rx="8"/>
+    <rect class="furn" x="298" y="358" width="52" height="36" rx="8"/>
+    <rect class="furn" x="160" y="526" width="52" height="36" rx="8"/>
+    <rect class="furn" x="298" y="526" width="52" height="36" rx="8"/>
+    <rect class="furn" x="92"  y="435" width="32" height="50" rx="8"/>
+    <rect class="furn" x="386" y="435" width="32" height="50" rx="8"/>
+  </g>
+
+  <!-- living -->
+  <g>
+    <rect class="rug" x="60" y="600" width="400" height="240" rx="4"/>
+    <rect class="furn" x="5" y="690" width="40" height="170" rx="3"/>
+    <rect class="wall" x="48" y="712" width="8" height="126" rx="3"/>
+    <rect class="furn" x="335" y="625" width="95" height="220" rx="14"/>
+    <line class="furnln" x1="408" y1="638" x2="408" y2="832"/>
+    <line class="furnln" x1="335" y1="735" x2="408" y2="735"/>
+    <circle class="furn" cx="222" cy="718" r="46"/>
+    <circle class="soft" cx="222" cy="718" r="28"/>
+    <rect class="furn" x="78" y="592" width="84" height="84" rx="16"/>
+    <line class="furnln" x1="92" y1="662" x2="148" y2="662"/>
+    <circle class="furn" cx="472" cy="862" r="25"/>
+    <path class="soft" d="M 458 852 Q 472 838 486 852 M 460 872 Q 472 884 484 872 M 472 842 V 882"/>
+  </g>
+
+  <!-- balcony furniture -->
+  <g>
+    <circle class="furn" cx="250" cy="985" r="32"/>
+    <rect class="furn" x="168" y="962" width="40" height="46" rx="10"/>
+    <rect class="furn" x="292" y="962" width="40" height="46" rx="10"/>
+    <circle class="furn" cx="55"  cy="985" r="22"/>
+    <path class="soft" d="M 44 977 Q 55 964 66 977 M 55 968 V 998"/>
+    <circle class="furn" cx="445" cy="985" r="22"/>
+    <path class="soft" d="M 434 977 Q 445 964 456 977 M 445 968 V 998"/>
+  </g>
+
+  <!-- hall -->
+  <g>
+    <rect class="rug" x="545" y="15" width="95" height="58" rx="3"/>
+    <rect class="furn" x="532" y="120" width="38" height="115" rx="3"/>
+    <rect class="rug" x="565" y="330" width="90" height="330" rx="3"/>
+  </g>
+
+  <!-- bedroom 1 (master) -->
+  <g>
+    <rect class="furn" x="880" y="20" width="160" height="215" rx="4"/>
+    <rect class="furn" x="892" y="30" width="62" height="44" rx="8"/>
+    <rect class="furn" x="966" y="30" width="62" height="44" rx="8"/>
+    <line class="furnln" x1="880" y1="170" x2="1040" y2="170"/>
+    <rect class="furn" x="812" y="20" width="55" height="55" rx="3"/>
+    <rect class="furn" x="1053" y="20" width="55" height="55" rx="3"/>
+    <rect class="furn" x="730" y="285" width="230" height="58"/>
+    <line class="furnln" x1="730" y1="314" x2="960" y2="314"/>
+    <line class="furnln" x1="845" y1="285" x2="845" y2="343"/>
+    <rect class="furn" x="1145" y="130" width="48" height="110" rx="3"/>
+  </g>
+
+  <!-- bath 1 -->
+  <g>
+    <rect class="furn" x="855" y="362" width="85" height="178" rx="8"/>
+    <rect class="furnln" x="866" y="374" width="63" height="154" rx="24"/>
+    <circle class="furnln" cx="898" cy="392" r="6"/>
+    <rect class="furn" x="737" y="512" width="58" height="30" rx="4"/>
+    <ellipse class="furn" cx="766" cy="480" rx="24" ry="30"/>
+    <rect class="furn" x="758" y="358" width="118" height="48"/>
+    <ellipse class="furnln" cx="817" cy="382" rx="34" ry="15"/>
+  </g>
+
+  <!-- bath 2 (ensuite) -->
+  <g>
+    <rect class="furn" x="1105" y="452" width="90" height="90"/>
+    <path class="furnln" d="M 1105 452 L 1195 542 M 1195 452 L 1105 542"/>
+    <circle class="furn" cx="1183" cy="464" r="7"/>
+    <rect class="furn" x="1028" y="512" width="58" height="30" rx="4"/>
+    <ellipse class="furn" cx="1057" cy="480" rx="24" ry="30"/>
+    <rect class="furn" x="958" y="362" width="48" height="110"/>
+    <ellipse class="furnln" cx="982" cy="417" rx="14" ry="32"/>
+  </g>
+
+  <!-- bedroom 2 -->
+  <g>
+    <rect class="furn" x="1000" y="565" width="150" height="210" rx="4"/>
+    <rect class="furn" x="1012" y="574" width="56" height="42" rx="8"/>
+    <rect class="furn" x="1082" y="574" width="56" height="42" rx="8"/>
+    <line class="furnln" x1="1000" y1="710" x2="1150" y2="710"/>
+    <rect class="furn" x="938" y="565" width="50" height="50" rx="3"/>
+    <rect class="furn" x="720" y="560" width="200" height="56"/>
+    <line class="furnln" x1="720" y1="588" x2="920" y2="588"/>
+    <line class="furnln" x1="820" y1="560" x2="820" y2="616"/>
+    <rect class="furn" x="715" y="748" width="56" height="148" rx="3"/>
+    <rect class="furn" x="786" y="800" width="46" height="46" rx="12"/>
+    <circle class="furn" cx="1168" cy="868" r="22"/>
+    <path class="soft" d="M 1157 860 Q 1168 847 1179 860 M 1168 851 V 881"/>
+  </g>
+</svg>

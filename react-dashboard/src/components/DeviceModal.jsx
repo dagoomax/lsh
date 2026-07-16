@@ -18,8 +18,20 @@ async function fetchHistory(deviceKey, path) {
   try {
     const r = await fetch(`/api/history/${deviceKey}/${path}`, { credentials: 'same-origin' })
     const j = await r.json()
-    return j.points || []
+    return downsample(j.points || [], 400)
   } catch { return [] }
+}
+
+// Cap retained history: charts can't show more points than pixels anyway,
+// and 30 Graphs charts × full 6h buffers add up. Stride-sample, keeping the
+// last point so the "now" value is always exact.
+function downsample(pts, max) {
+  if (pts.length <= max) return pts
+  const stride = pts.length / max
+  const out = []
+  for (let i = 0; i < max - 1; i++) out.push(pts[Math.floor(i * stride)])
+  out.push(pts[pts.length - 1])
+  return out
 }
 
 // Catmull-Rom → bezier smoothing for a silky line

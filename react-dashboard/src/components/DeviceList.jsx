@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, memo } from 'react'
 import {
   resolveIcon, CAT_ICON_COMPONENT, GridPowerIcon,
   SwitchOutletIcon, BulbIcon, ShutterIcon, ThermometerIcon,
@@ -303,7 +303,9 @@ function ColorPicker({ hueDeg, sat, onCommit }) {
 }
 
 // ── Device Tile ───────────────────────────────────────────────────────────────
-function DeviceTile({ device, onCommand, onOpen }) {
+// memo: the useLSH update merge keeps object identity for untouched devices,
+// so a socket tick only re-renders the tiles whose readings actually changed
+const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
   const [localState, setLocalState] = useState({})
   const r = device.readings || {}
 
@@ -1079,7 +1081,7 @@ function DeviceTile({ device, onCommand, onOpen }) {
       </div>
     </div>
   )
-}
+})
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 // Small popover to pick a room's sidebar icon (PIN-gated like device edits)

@@ -616,9 +616,11 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 0 22px rgba(9,105,218,0.14), var(--shadow-1);
 }
 
-/* Billboard: counter-rotate children so text/icons face the viewer */
+/* Billboard: counter-rotate children so text/icons face the viewer;
+   the final translateY stands the marker ON its floor anchor instead of
+   half-sinking through the board plane */
 .plan-bill {
-  transform: rotateZ(calc(var(--plan-rz, -45deg) * -1)) rotateX(calc(var(--plan-rx, 55deg) * -1));
+  transform: rotateZ(calc(var(--plan-rz, -45deg) * -1)) rotateX(calc(var(--plan-rx, 55deg) * -1)) translateY(-42%);
   transform-style: flat;
   transition: transform 0.55s cubic-bezier(.4,.1,.2,1);
 }
@@ -658,11 +660,17 @@ input[type="range"]::-moz-range-thumb {
   /* each placed device/decor lives in its own full-board layer — the layer
      itself must not intercept clicks meant for chips in layers below */
   pointer-events: none;
+  /* keep the 3D context alive so .plan-bill can truly billboard the chip
+     (a flattened subtree paints chips squashed onto the floor plane) */
+  transform-style: preserve-3d;
 }
 .plan-devices .plan-chip-pos { pointer-events: auto; }
 .plan-chip-pos {
   position: absolute;
-  transform: translate(-50%, -50%);
+  /* lifted off the floor plane: coplanar chips z-fight the board/room
+     plates and randomly lose hit-testing (unclickable chips) */
+  transform: translate(-50%, -50%) translateZ(14px);
+  transform-style: preserve-3d;
   touch-action: none;
   cursor: grab;
 }
@@ -745,8 +753,8 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* Plan furniture / appliance decorations */
-.plan-furniture { position: absolute; inset: 0; pointer-events: none; }
-.plan-furn-pos { position: absolute; transform: translate(-50%, -50%); }
+.plan-furniture { position: absolute; inset: 0; pointer-events: none; transform-style: preserve-3d; }
+.plan-furn-pos { position: absolute; transform: translate(-50%, -50%) translateZ(6px); transform-style: preserve-3d; }
 .plan-furn {
   font-size: 72px;
   line-height: 1;
