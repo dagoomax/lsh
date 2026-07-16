@@ -31,8 +31,15 @@ function setUrl(deviceKey, sensorPath, value, token) {
     `?sensor=${encodeURIComponent(sensorPath)}&value=${value}&token=${token}`;
 }
 
+// Momentary buttons (Somfy up/down/stop/my, Grenton blind commands):
+// declared as toggles for the dashboard, but writeOn === writeOff means
+// firing them is the whole action — stateless, pulse-only.
+function isMomentary(s) {
+  return s.controllable && s.type === 'toggle' && s.writeOn && s.writeOn === s.writeOff;
+}
+
 function isInputSensor(s) {
-  return !s.hidden && s.type !== 'color' && s.type !== 'trigger';
+  return !s.hidden && s.type !== 'color' && s.type !== 'trigger' && !isMomentary(s);
 }
 
 function isOutputSensor(s) {
@@ -89,8 +96,10 @@ function buildOutputsXml(devices, { host, token } = {}) {
           `CmdOn="${xmlEsc(setUrl(device.key, sensor.path, '<v>', token))}" ` +
           `CmdOffMethod="GET" CmdOnMethod="GET"/>`
         );
-      } else if (sensor.type === 'trigger') {
-        // Momentary: pulse fires CmdOn only
+      } else if (sensor.type === 'trigger' || isMomentary(sensor)) {
+        // Momentary (trigger, or toggle with writeOn === writeOff — e.g. RTS
+        // up/down/stop/my): pulse fires CmdOn only; an off-edge must not
+        // re-fire the same command.
         cmds.push(
           `\t<VirtualOutCmd ${common} Analog="false" ` +
           `CmdOffPost="" CmdOffHTTP="" CmdOff="" CmdOnPost="" CmdOnHTTP="" ` +
