@@ -3297,3 +3297,129 @@ document.getElementById('btn-save-ffrtsp').addEventListener('click', async () =>
     }
   });
 })();
+
+// ── Home Plan editor ─────────────────────────────────────────────────────────
+(() => {
+  const list = document.getElementById('home-plan-list');
+  if (!list) return;
+
+  const row = (r = {}) => {
+    const div = document.createElement('div');
+    div.className = 'token-row';
+    div.style.gap = '6px';
+    div.innerHTML = `
+      <input type="text" class="hp-name" placeholder="Room name" value="${(r.name || '').replace(/"/g, '&quot;')}" style="flex:1;min-width:110px">
+      <select class="hp-floor" style="width:110px">
+        <option value="cellar"${r.floor === 'cellar' ? ' selected' : ''}>Cellar</option>
+        <option value="floor1"${(!r.floor || r.floor === 'floor1') ? ' selected' : ''}>1st Floor</option>
+        <option value="floor2"${r.floor === 'floor2' ? ' selected' : ''}>2nd Floor</option>
+      </select>
+      ${['x', 'y', 'w', 'd'].map((k) => `
+        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--text-muted)">${k.toUpperCase()}
+          <input type="number" class="hp-${k}" min="0" max="40" value="${r[k] ?? (k === 'w' || k === 'd' ? 3 : 0)}" style="width:52px">
+        </label>`).join('')}
+      <button class="token-row-del" title="Remove">✕</button>`;
+    div.querySelector('.token-row-del').addEventListener('click', () => div.remove());
+    return div;
+  };
+
+  const render = (rooms) => {
+    list.innerHTML = '';
+    if (!rooms.length) list.innerHTML = '<span class="token-empty">No rooms yet — add one below.</span>';
+    for (const r of rooms) list.appendChild(row(r));
+  };
+
+  // Per-floor background image (architectural render/plan) + its grid size
+  const floorBox = document.createElement('div');
+  floorBox.style.margin = '10px 0';
+  floorBox.innerHTML = `
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text);margin:2px 0 10px;cursor:pointer">
+      <input type="checkbox" id="hp-single-floor" style="width:auto">
+      Single floor plan — one picture, hide the floor switcher in the dashboard
+    </label>` + ['cellar', 'floor1', 'floor2'].map((f) => `
+    <div class="token-row" style="gap:6px" data-floor="${f}">
+      <span style="width:70px;font-size:11px;color:var(--text-muted)">${{ cellar: 'Cellar', floor1: '1st Floor', floor2: '2nd Floor' }[f]}</span>
+      <input type="text" class="hpf-image" placeholder="Background image URL (optional)" style="flex:1">
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--text-muted)">W
+        <input type="number" class="hpf-w" min="4" max="40" value="12" style="width:52px"></label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--text-muted)">D
+        <input type="number" class="hpf-h" min="4" max="40" value="9" style="width:52px"></label>
+    </div>`).join('');
+  list.parentNode.insertBefore(floorBox, list);
+
+  fetch('/api/home-plan').then((r) => r.json())
+    .then((d) => {
+      render(d.plan?.rooms || []);
+      document.getElementById('hp-single-floor').checked = !!d.plan?.singleFloor;
+      const floors = d.plan?.floors || {};
+      for (const el of floorBox.querySelectorAll('[data-floor]')) {
+        const f = floors[el.dataset.floor];
+        if (!f) continue;
+        el.querySelector('.hpf-image').value = f.image || '';
+        el.querySelector('.hpf-w').value = f.w ?? 12;
+        el.querySelector('.hpf-h').value = f.h ?? 9;
+      }
+    })
+    .catch(() => { list.innerHTML = '<span class="token-empty">Failed to load.</span>'; });
+
+  document.getElementById('btn-add-plan-room').addEventListener('click', () => {
+    const empty = list.querySelector('.token-empty');
+    if (empty) empty.remove();
+    list.appendChild(row());
+  });
+
+  document.getElementById('btn-save-home-plan').addEventListener('click', async () => {
+    const resultEl = document.getElementById('home-plan-result');
+    const rooms = [...list.querySelectorAll('.token-row')].map((el) => ({
+      name: el.querySelector('.hp-name').value,
+      floor: el.querySelector('.hp-floor').value,
+      x: el.querySelector('.hp-x').value, y: el.querySelector('.hp-y').value,
+      w: el.querySelector('.hp-w').value, d: el.querySelector('.hp-d').value,
+    }));
+    try {
+      const r = await fetch('/api/settings/home-plan', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+        singleFloor: document.getElementById('hp-single-floor').checked,
+        rooms,
+        floors: Object.fromEntries([...document.querySelectorAll('#home-plan-list ~ * [data-floor], [data-floor]')]
+          .filter((el) => el.dataset && el.dataset.floor && el.querySelector('.hpf-image'))
+          .map((el) => [el.dataset.floor, {
+            image: el.querySelector('.hpf-image').value,
+            w: el.querySelector('.hpf-w').value,
+            h: el.querySelector('.hpf-h').value,
+          }])),
+      }),
+      });
+      const d = await r.json();
+      resultEl.textContent = d.success ? '✓ ' + d.message : d.error;
+      resultEl.className = 'test-result ' + (d.success ? 'success' : 'error');
+    } catch (err) {
+      resultEl.textContent = err.message;
+      resultEl.className = 'test-result error';
+    }
+  });
+})();
+
+// ── Dashboard lock PIN ───────────────────────────────────────────────────────
+(() => {
+  const btn = document.getElementById('btn-save-dashboard-pin');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const resultEl = document.getElementById('dashboard-pin-result');
+    const pin = document.getElementById('dashboard-pin').value.trim();
+    try {
+      const r = await fetch('/api/settings/dashboard-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const d = await r.json();
+      resultEl.textContent = d.success ? '✓ ' + d.message : d.error;
+      resultEl.className = 'test-result ' + (d.success ? 'success' : 'error');
+    } catch (err) {
+      resultEl.textContent = err.message;
+      resultEl.className = 'test-result error';
+    }
+  });
+})();

@@ -18,6 +18,7 @@ export function useLSH() {
   const [connected, setConnected] = useState(false)
   const [lastUpdate,setLastUpdate]= useState(null)
   const [platforms, setPlatforms] = useState({})
+  const [roomsMeta, setRoomsMeta] = useState({})
 
   const fetchAll = useCallback(async () => {
     const [status, conn, devs] = await Promise.all([
@@ -74,6 +75,7 @@ export function useLSH() {
       })
     })
     socket.on('platform-status', s => setPlatforms(s || {}))
+    socket.on('rooms', r => setRoomsMeta(r || {}))
 
     return () => { clearInterval(iv); socket.disconnect() }
   }, [fetchAll])
@@ -88,5 +90,5 @@ export function useLSH() {
     })
   }, [])
 
-  return { energy, devices, connection, connected, lastUpdate, platforms, toggleRelay }
+  return { energy, devices, connection, connected, lastUpdate, platforms, roomsMeta, toggleRelay }
 }

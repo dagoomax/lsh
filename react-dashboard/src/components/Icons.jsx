@@ -718,6 +718,15 @@ export function ChartIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function PlanIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <path d="M3 12h8M11 3v9M11 12v9M16 12v4M11 16h10"/>
+    </svg>
+  )
+}
+
 export const CAT_ICON_COMPONENT = {
   All:      HomeIcon,
   Victron:  GridPowerIcon,
@@ -728,5 +737,6 @@ export const CAT_ICON_COMPONENT = {
   Security: SecurityIcon,
   Sensors:  SensorIcon,
   Other:    RouterIcon,
+  Plan:     PlanIcon,
   Graphs:   ChartIcon,
 }

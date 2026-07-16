@@ -8,7 +8,9 @@ import {
 import DeviceModal from './DeviceModal'
 import StatsView   from './StatsView'
 import { gt }      from '../i18n'
+import { EDIT_EMOJI } from '../emoji'
 import EnergyFlow from './EnergyFlow'
+import HomePlan from './HomePlan'
 import RelayPanel from './RelayPanel'
 
 const FIBARO_SENSOR_ICON = {
@@ -192,7 +194,7 @@ function getGroup(d) {
   return 'Other'
 }
 
-const CATS = ['All','Victron','Lighting','Switches','Climate','Media','Security','Sensors','Other','Graphs']
+const CATS = ['All','Victron','Lighting','Switches','Climate','Media','Security','Sensors','Other','Plan','Graphs']
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 function Toggle({ on, onChange }) {
@@ -1080,7 +1082,81 @@ function DeviceTile({ device, onCommand, onOpen }) {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function DeviceList({ devices, energy, onToggleRelay }) {
+// Small popover to pick a room's sidebar icon (PIN-gated like device edits)
+function RoomIconEditor({ room, current, onClose }) {
+  const [icon, setIcon] = useState(current || '')
+  const [busy, setBusy] = useState(false)
+  const [err,  setErr]  = useState(null)
+
+  const save = async () => {
+    setBusy(true); setErr(null)
+    let pin = sessionStorage.getItem('lsh-edit-pin') || ''
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch(`/api/room/${encodeURIComponent(room)}/icon`, {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ icon, pin }),
+        })
+        if (res.status === 403) {
+          const entered = window.prompt(gt('pin_prompt', 'Enter edit PIN'))
+          if (entered == null) { setBusy(false); return }
+          pin = entered.trim()
+          sessionStorage.setItem('lsh-edit-pin', pin)
+          continue
+        }
+        const d = await res.json()
+        if (!d.success) throw new Error(d.error || 'Save failed')
+        setBusy(false); onClose()
+        return
+      } catch (e) { setErr(e.message); setBusy(false); return }
+    }
+    setErr(gt('wrong_pin', 'Wrong PIN')); setBusy(false)
+  }
+
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.45)',
+      display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width:'min(340px, 92vw)', background:'var(--card)',
+        border:'1px solid var(--border-lt)', borderRadius:16, padding:16, boxShadow:'var(--shadow-2)' }}>
+        <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>
+          {gt('room_icon', 'Room icon')} — {room}
+        </div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:12 }}>
+          <button onClick={() => setIcon('')} title={gt('edit_icon_default', 'Default icon')}
+            style={{ width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:13,
+              border:`1.5px solid ${icon === '' ? 'var(--accent)' : 'var(--white-12)'}`,
+              background: icon === '' ? 'var(--accent-dim)' : 'var(--white-05)' }}>
+            🏠
+          </button>
+          {EDIT_EMOJI.map(e => (
+            <button key={e} onClick={() => setIcon(e)}
+              style={{ width:32, height:32, borderRadius:8, cursor:'pointer', fontSize:17, lineHeight:1,
+                border:`1.5px solid ${icon === e ? 'var(--accent)' : 'var(--white-12)'}`,
+                background: icon === e ? 'var(--accent-dim)' : 'var(--white-05)' }}>
+              {e}
+            </button>
+          ))}
+        </div>
+        {err && <div style={{ fontSize:12, color:'var(--red)', marginBottom:8 }}>{err}</div>}
+        <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+          <button onClick={onClose} disabled={busy}
+            style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--white-12)', cursor:'pointer',
+              background:'var(--white-05)', color:'var(--text2)', fontSize:12, fontWeight:600 }}>
+            {gt('cancel', 'Cancel')}
+          </button>
+          <button onClick={save} disabled={busy}
+            style={{ padding:'7px 16px', borderRadius:8, border:'none', cursor:'pointer',
+              background:'var(--accent)', color:'#fff', fontSize:12, fontWeight:700, opacity: busy ? 0.6 : 1 }}>
+            {busy ? '…' : gt('save', 'Save')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRelay }) {
   const [openKey, setOpenKey] = useState(() => new URLSearchParams(window.location.search).get('device'))
   const openDevice = openKey ? devices.find(d => d.key === openKey) : null
   const [cat, setCat] = useState(() => {
@@ -1092,6 +1168,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
     return saved ? new Set(JSON.parse(saved)) : new Set()
   })
   const [roomFilter, setRoomFilter] = useState(null)
+  const [editingRoom, setEditingRoom] = useState(null)
   const [energyHidden, setEnergyHidden] = useState(() => localStorage.getItem('hideEnergy') === '1')
   const toggleEnergy = () => {
     const next = !energyHidden
@@ -1158,8 +1235,8 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
           {gt('rooms_cats', 'Rooms & Categories')}
         </div>
 
-        {CATS.filter(c => c==='All' || c==='Graphs' || counts[c]).map(c => {
-          const cnt    = c==='All' ? devices.length : c==='Graphs' ? '📊' : (counts[c]||0)
+        {CATS.filter(c => c==='All' || c==='Graphs' || c==='Plan' || counts[c]).map(c => {
+          const cnt    = c==='All' ? devices.length : c==='Graphs' ? '📊' : c==='Plan' ? '🗺' : (counts[c]||0)
           const active = cat === c
           const CatIcon = CAT_ICON_COMPONENT[c]
           return (
@@ -1187,9 +1264,12 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
               const cnt = devices.filter(d => d.room === r).length
               return (
                 <button key={r} onClick={() => { setRoomFilter(active ? null : r); setCat('All') }}
-                  className="side-btn" data-active={String(active)}>
-                  <span style={{ fontSize:13 }}>🏠</span>
+                  className="side-btn room-btn" data-active={String(active)}>
+                  <span style={{ fontSize:13 }}>{roomsMeta[r]?.icon || '🏠'}</span>
                   <span style={{ flex:1 }}>{r}</span>
+                  <span className="room-edit" title={gt('room_icon', 'Room icon')}
+                    onClick={e => { e.stopPropagation(); setEditingRoom(r) }}
+                    style={{ fontSize:11, color:'var(--text3)', padding:'0 2px' }}>✎</span>
                   <span style={{
                     fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:8,
                     background: active ? 'rgba(88,166,255,0.3)' : 'var(--white-06)',
@@ -1275,7 +1355,7 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
           scrollbarWidth:'none',
           WebkitOverflowScrolling:'touch',
         }}>
-          {CATS.filter(c => c==='All' || c==='Graphs' || counts[c]).map(c => {
+          {CATS.filter(c => c==='All' || c==='Graphs' || c==='Plan' || counts[c]).map(c => {
             const active = cat === c
             const CatIcon = CAT_ICON_COMPONENT[c]
             return (
@@ -1309,8 +1389,11 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
           {cat === 'Graphs' && (
             <StatsView devices={devices} energy={energy} onOpen={setOpenKey} />
           )}
+          {cat === 'Plan' && (
+            <HomePlan devices={devices} roomsMeta={roomsMeta} groupOf={getGroup} onOpen={setOpenKey} />
+          )}
           {/* Energy as the top section of the overview */}
-          {cat !== 'Graphs' && cat === 'All' && energy && (
+          {cat === 'All' && energy && (
             <div className="card" style={{
               margin:'8px 0 12px',
               borderRadius:'var(--radius-lg)', overflow:'hidden',
@@ -1347,12 +1430,12 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
               )}
             </div>
           )}
-          {cat !== 'Graphs' && visible.length === 0 && (
+          {cat !== 'Graphs' && cat !== 'Plan' && visible.length === 0 && (
             <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>
               {gt('no_devices', 'No devices in this category')}
             </div>
           )}
-          {cat !== 'Graphs' && <div className="device-grid" style={{
+          {cat !== 'Graphs' && cat !== 'Plan' && <div className="device-grid" style={{
             display:'grid',
             gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
             gap:10,
@@ -1364,6 +1447,9 @@ export default function DeviceList({ devices, energy, onToggleRelay }) {
           </div>}
         </div>
       </div>
+      {editingRoom && (
+        <RoomIconEditor room={editingRoom} current={roomsMeta[editingRoom]?.icon} onClose={() => setEditingRoom(null)}/>
+      )}
       <DeviceModal device={openDevice} rooms={rooms} onClose={() => setOpenKey(null)} onCommand={onCommand} />
     </div>
   )

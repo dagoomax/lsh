@@ -8,7 +8,7 @@ const NAV = [
   { label: 'MQTT',      href: '/mqtt.html',     active: false },
 ]
 
-export default function Header({ connection, connected }) {
+export default function Header({ connection, connected, onLock }) {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
   })
@@ -58,6 +58,20 @@ export default function Header({ connection, connected }) {
 
       {/* Connection status + source (right) — vanilla green/red + neutral chip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <button
+          onClick={onLock}
+          title={gt('lock', 'Lock dashboard')}
+          style={{
+            background: 'var(--white-06)', color: 'var(--text2)',
+            border: '1px solid var(--border)', borderRadius: 8,
+            padding: '4px 8px', fontSize: 13, lineHeight: 1, cursor: 'pointer',
+          }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+            <rect x="4" y="11" width="16" height="10" rx="2"/>
+            <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+          </svg>
+        </button>
         <button
           onClick={toggleTheme}
           title={theme === 'dark' ? 'Light theme' : 'Dark theme'}

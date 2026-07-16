@@ -28,11 +28,14 @@ class SensorRegistry extends EventEmitter {
     if (o.room) device.room = o.room;
     if (o.icon) device.customIcon = o.icon;
     if (o.label) { device._origLabel = device.label; device.label = o.label; }
+    if (o.planX != null) device.planX = o.planX;
+    if (o.planY != null) device.planY = o.planY;
+    if (o.planFloor) device.planFloor = o.planFloor;
   }
 
   // Persist a user customization and apply it to the live descriptor.
   // Empty-string fields clear the override for that field.
-  setOverride(deviceKey, { room, icon, label } = {}) {
+  setOverride(deviceKey, { room, icon, label, planX, planY, planFloor } = {}) {
     const device = this.devices.get(deviceKey);
     if (!device) throw new Error(`Unknown device: ${deviceKey}`);
 
@@ -56,12 +59,91 @@ class SensorRegistry extends EventEmitter {
       }
     }
 
+    if (planFloor !== undefined) {
+      const v = String(planFloor);
+      if (['cellar', 'floor1', 'floor2'].includes(v)) { o.planFloor = v; device.planFloor = v; }
+      else { delete o.planFloor; delete device.planFloor; }
+    }
+    for (const [field, val] of [['planX', planX], ['planY', planY]]) {
+      if (val === undefined) continue;
+      const v = Number(val);
+      if (Number.isFinite(v)) {
+        o[field] = Math.min(1, Math.max(0, +v.toFixed(3)));
+        device[field] = o[field];
+      } else {
+        delete o[field]; delete device[field];
+      }
+    }
+
     if (Object.keys(o).length) this.overrides[deviceKey] = o;
     else delete this.overrides[deviceKey];
     fs.writeFileSync(OVERRIDES_FILE, JSON.stringify(this.overrides, null, 2));
 
     this.emit('devices-changed');
     return device;
+  }
+
+  // Manual plan decorations (furniture emoji placed from the dashboard),
+  // stored under the reserved "_decor" key: { <floor>: [{id, emoji, x, y}] }
+  getDecor() {
+    return this.overrides._decor || {};
+  }
+
+  _saveDecor(decor) {
+    if (Object.values(decor).some((arr) => arr.length)) this.overrides._decor = decor;
+    else delete this.overrides._decor;
+    fs.writeFileSync(OVERRIDES_FILE, JSON.stringify(this.overrides, null, 2));
+    return this.getDecor();
+  }
+
+  addDecor(floor, emoji, x = 0.5, y = 0.5) {
+    if (!['cellar', 'floor1', 'floor2'].includes(floor)) throw new Error('Bad floor');
+    const e = String(emoji || '').trim().slice(0, 8);
+    if (!e) throw new Error('Emoji required');
+    const decor = { ...this.getDecor() };
+    const item = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      emoji: e,
+      x: Math.min(1, Math.max(0, Number(x) || 0.5)),
+      y: Math.min(1, Math.max(0, Number(y) || 0.5)),
+    };
+    decor[floor] = [...(decor[floor] || []), item];
+    return this._saveDecor(decor);
+  }
+
+  moveDecor(id, x, y) {
+    const decor = { ...this.getDecor() };
+    for (const f of Object.keys(decor)) {
+      decor[f] = decor[f].map((it) => it.id === id
+        ? { ...it, x: Math.min(1, Math.max(0, Number(x) || 0)), y: Math.min(1, Math.max(0, Number(y) || 0)) }
+        : it);
+    }
+    return this._saveDecor(decor);
+  }
+
+  removeDecor(id) {
+    const decor = { ...this.getDecor() };
+    for (const f of Object.keys(decor)) decor[f] = decor[f].filter((it) => it.id !== id);
+    return this._saveDecor(decor);
+  }
+
+  // Room metadata (icon) lives in the same overrides file under the
+  // reserved "_rooms" key (device keys always contain a slash).
+  getRoomMeta() {
+    return this.overrides._rooms || {};
+  }
+
+  setRoomIcon(room, icon) {
+    const name = String(room || '').trim().slice(0, 40);
+    if (!name) throw new Error('Room name required');
+    const rooms = (this.overrides._rooms = this.overrides._rooms || {});
+    const v = String(icon || '').trim().slice(0, 8);
+    if (v) rooms[name] = { icon: v };
+    else delete rooms[name];
+    if (!Object.keys(rooms).length) delete this.overrides._rooms;
+    fs.writeFileSync(OVERRIDES_FILE, JSON.stringify(this.overrides, null, 2));
+    this.emit('rooms-changed');
+    return this.getRoomMeta();
   }
 
   _checkTopic(topicPath) {

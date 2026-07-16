@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { resolveIcon, MyIcon } from './Icons'
 import { gt } from '../i18n'
+import { EDIT_EMOJI } from '../emoji'
 
 // ── Advanced device popup: full controls + history graphs ──────────────────
 // Design language: glow blobs, gradient border (CSS mask), gradient title,
@@ -424,7 +425,6 @@ function RoborockRoomsPanel({ device }) {
 }
 
 // ── Edit panel: room / icon / name, optionally locked with a PIN ─────────────
-const EDIT_EMOJI = ['💡','🛋','🛏','🚪','🪟','🌡','💧','🔌','📺','🔊','🍳','🚿','🧺','🌿','🚗','☀️','🔥','❄️','⚡','🔒','📷','🌀','🧹','🏊','⛱','🎛']
 
 function EditPanel({ device, rooms, onClose }) {
   const [label, setLabel] = useState(device.label || '')

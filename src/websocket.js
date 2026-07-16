@@ -33,6 +33,7 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, 
     // Send current state immediately
     socket.emit('snapshot', store.getAll());
     socket.emit('devices', sensorRegistry ? sensorRegistry.getAllReadings() : []);
+    socket.emit('rooms', sensorRegistry ? sensorRegistry.getRoomMeta() : {});
     if (connectionMgr) {
       socket.emit('connection-status', connectionMgr.getStatus());
     }
@@ -62,6 +63,9 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, 
   if (sensorRegistry) {
     sensorRegistry.on('devices-changed', () => {
       io.emit('devices', sensorRegistry.getAllReadings());
+    });
+    sensorRegistry.on('rooms-changed', () => {
+      io.emit('rooms', sensorRegistry.getRoomMeta());
     });
     sensorRegistry.on('device-discovered', (device) => {
       io.emit('device-discovered', device);

@@ -280,6 +280,103 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  router.get('/rooms', (req, res) => {
+    if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
+    res.json({ success: true, rooms: sensorRegistry.getRoomMeta() });
+  });
+
+  router.post('/room/:name/icon', (req, res) => {
+    if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
+    if (!editPinOk(req)) return res.status(403).json({ success: false, error: 'PIN_REQUIRED' });
+    try {
+      res.json({ success: true, rooms: sensorRegistry.setRoomIcon(req.params.name, req.body?.icon) });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  router.get('/plan-decor', (req, res) => {
+    if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
+    res.json({ success: true, decor: sensorRegistry.getDecor() });
+  });
+
+  router.post('/plan-decor', (req, res) => {
+    if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
+    if (!editPinOk(req)) return res.status(403).json({ success: false, error: 'PIN_REQUIRED' });
+    const { op, floor, emoji, id, x, y } = req.body || {};
+    try {
+      let decor;
+      if (op === 'add') decor = sensorRegistry.addDecor(floor, emoji, x, y);
+      else if (op === 'move') decor = sensorRegistry.moveDecor(id, x, y);
+      else if (op === 'remove') decor = sensorRegistry.removeDecor(id);
+      else return res.status(400).json({ success: false, error: `Unknown op '${op}'` });
+      res.json({ success: true, decor });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Home plan (isometric floor plan for the dashboard) ────
+  router.get('/home-plan', (req, res) => {
+    res.json({ success: true, plan: readConfigFile().homePlan || { rooms: [] } });
+  });
+
+  router.post('/settings/home-plan', (req, res) => {
+    const rooms = (Array.isArray(req.body?.rooms) ? req.body.rooms : [])
+      .map((r) => ({
+        name: String(r.name || '').trim().slice(0, 40),
+        x: Math.max(0, Math.min(40, Number(r.x) || 0)),
+        y: Math.max(0, Math.min(40, Number(r.y) || 0)),
+        w: Math.max(1, Math.min(20, Number(r.w) || 2)),
+        d: Math.max(1, Math.min(20, Number(r.d) || 2)),
+        floor: ['cellar', 'floor1', 'floor2'].includes(r.floor) ? r.floor : 'floor1',
+      }))
+      .filter((r) => r.name);
+    const floors = {};
+    if (req.body?.floors && typeof req.body.floors === 'object') {
+      for (const f of ['cellar', 'floor1', 'floor2']) {
+        const src = req.body.floors[f];
+        if (!src) continue;
+        const image = String(src.image || '').trim().slice(0, 400);
+        if (!image) continue;
+        floors[f] = {
+          image,
+          w: Math.max(4, Math.min(40, Number(src.w) || 12)),
+          h: Math.max(4, Math.min(40, Number(src.h) || 9)),
+        };
+      }
+    }
+    try {
+      const cfg = readConfigFile();
+      cfg.homePlan = { rooms, floors, singleFloor: !!req.body?.singleFloor };
+      writeConfigFile(cfg);
+      res.json({ success: true, message: `Saved ${rooms.length} room(s), ${Object.keys(floors).length} floor image(s)` });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Dashboard lock PIN (screen lock, default 0000) ────────
+  router.post('/dashboard-pin/verify', (req, res) => {
+    const pin = String(readConfigFile().dashboardPin || '0000');
+    res.json({ success: true, ok: String(req.body?.pin || '') === pin });
+  });
+
+  router.post('/settings/dashboard-pin', (req, res) => {
+    const pin = String(req.body?.pin ?? '').trim();
+    if (pin && !/^\d{4,8}$/.test(pin)) {
+      return res.status(400).json({ success: false, error: 'PIN must be 4–8 digits' });
+    }
+    try {
+      const cfg = readConfigFile();
+      cfg.dashboardPin = pin; // empty falls back to the default 0000
+      writeConfigFile(cfg);
+      res.json({ success: true, message: pin ? 'Dashboard PIN set' : 'Dashboard PIN reset to default 0000' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   router.post('/settings/edit-pin', (req, res) => {
     const pin = String(req.body?.pin ?? '').trim();
     if (pin && !/^\d{4,8}$/.test(pin)) {
@@ -1075,6 +1172,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.solaredge?.apiKey) safe.solaredge.apiKey = '••••••••';
     if (safe.smartthings?.token) safe.smartthings.token = '••••••••';
     if (safe.editPin) safe.editPin = '••••••••';
+    if (safe.dashboardPin) safe.dashboardPin = '••••••••';
     if (safe.smartthings?.clientSecret) safe.smartthings.clientSecret = '••••••••';
     if (safe.satel?.armCode) safe.satel.armCode = '••••••••';
     if (safe.unifi?.password) safe.unifi.password = '••••••••';

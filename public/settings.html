@@ -1171,6 +1171,18 @@
       </div>
     </section>
 
+    <!-- Home Plan -->
+    <section class="card settings-card" data-category="system" data-title="Home plan floor plan isometric rooms layout dashboard">
+      <h2>Home Plan <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Arrange your rooms on a grid for the dashboard's isometric <strong>Plan</strong> view. Room names must match the rooms assigned to devices (dashboard → device → ✎). Coordinates are grid cells: X/Y position, W/D size.</p>
+      <div id="home-plan-list" class="token-list"><span class="token-empty">Loading…</span></div>
+      <button class="btn btn-secondary" id="btn-add-plan-room" style="margin-top:8px">+ Add Room</button>
+      <div class="form-actions" style="margin-top:12px">
+        <button class="btn btn-primary" id="btn-save-home-plan">Save Plan</button>
+        <span class="test-result" id="home-plan-result"></span>
+      </div>
+    </section>
+
     <!-- Security & Authentication -->
     <section class="card settings-card" data-category="system" data-title="Security authentication users passwords tokens HTTPS TLS">
       <h2 data-i18n="s.security_title">Security &amp; Authentication</h2>
@@ -1205,6 +1217,18 @@
       <div class="form-actions">
         <button class="btn btn-secondary" id="btn-save-edit-pin">Save PIN</button>
         <span class="test-result" id="edit-pin-result"></span>
+      </div>
+
+      <!-- Dashboard lock PIN -->
+      <h3 class="settings-sub">Dashboard Lock PIN</h3>
+      <p class="hint">PIN for the padlock screen-lock in the dashboard header. Default when unset: <code>0000</code>.</p>
+      <div class="form-row">
+        <label for="dashboard-pin">Lock PIN <span class="hint">(4–8 digits, empty = default 0000)</span></label>
+        <input type="password" id="dashboard-pin" inputmode="numeric" autocomplete="off" placeholder="0000" style="max-width:180px">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-save-dashboard-pin">Save PIN</button>
+        <span class="test-result" id="dashboard-pin-result"></span>
       </div>
 
       <!-- Users (admin only) -->

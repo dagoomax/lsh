@@ -566,3 +566,326 @@ input[type="range"]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   .eflow-flow, .eflow-hub-ring { animation: none; }
 }
+
+/* Room icon edit affordance — visible on row hover */
+.room-btn .room-edit { opacity: 0; transition: opacity 0.15s; }
+.room-btn:hover .room-edit { opacity: 1; }
+.room-btn .room-edit:hover { color: var(--accent-lt); }
+
+/* ── Isometric home plan ─────────────────────────────────────────────── */
+.plan-viewport {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  padding: 30px 20px 60px;
+}
+.plan-stage {
+  margin: auto;
+  perspective: 1600px;
+  flex-shrink: 0;
+}
+.plan-board {
+  position: relative;
+  transform: rotateX(var(--plan-rx, 55deg)) rotateZ(var(--plan-rz, -45deg));
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(.4,.1,.2,1);
+}
+.plan-room {
+  position: absolute;
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 12px, var(--white-03) 12px 13px),
+    repeating-linear-gradient(90deg, transparent 0 12px, var(--white-03) 12px 13px),
+    linear-gradient(160deg, var(--surface2) 0%, var(--card) 100%);
+  border: 1.5px solid var(--border-lt);
+  box-shadow: var(--shadow-1);
+  transform-style: preserve-3d;
+  transition: box-shadow 0.25s, border-color 0.25s, transform 0.25s;
+}
+.plan-room:hover {
+  border-color: var(--accent);
+  transform: translateZ(10px);
+  box-shadow: var(--shadow-2);
+}
+.plan-room[data-active="true"] {
+  border-color: rgba(88,166,255,0.45);
+  box-shadow: 0 0 22px rgba(88,166,255,0.18), var(--shadow-1);
+}
+[data-theme="light"] .plan-room[data-active="true"] {
+  border-color: rgba(9,105,218,0.45);
+  box-shadow: 0 0 22px rgba(9,105,218,0.14), var(--shadow-1);
+}
+
+/* Billboard: counter-rotate children so text/icons face the viewer */
+.plan-bill {
+  transform: rotateZ(calc(var(--plan-rz, -45deg) * -1)) rotateX(calc(var(--plan-rx, 55deg) * -1));
+  transform-style: flat;
+  transition: transform 0.55s cubic-bezier(.4,.1,.2,1);
+}
+.plan-room-label-wrap {
+  /* zero-size anchor pinned to the middle of the room's north edge;
+     the billboarded label centers itself on this point */
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.plan-room-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.plan-on-badge {
+  background: var(--accent-dim);
+  color: var(--accent-lt);
+  font-size: 9.5px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 0 5px;
+}
+.plan-devices {
+  position: absolute;
+  inset: 0;
+  /* each placed device/decor lives in its own full-board layer — the layer
+     itself must not intercept clicks meant for chips in layers below */
+  pointer-events: none;
+}
+.plan-devices .plan-chip-pos { pointer-events: auto; }
+.plan-chip-pos {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+  cursor: grab;
+}
+.plan-chip-pos:active { cursor: grabbing; }
+.plan-chip {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-lt);
+  background: var(--card);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-1);
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.plan-chip:hover {
+  transform: scale(1.25);
+  border-color: var(--accent);
+  z-index: 5;
+}
+.plan-chip[data-on="true"] {
+  border-color: var(--accent);
+  background: var(--card-on);
+  box-shadow: 0 0 10px rgba(88,166,255,0.4);
+}
+[data-theme="light"] .plan-chip[data-on="true"] {
+  box-shadow: 0 0 10px rgba(9,105,218,0.3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .plan-room, .plan-chip { transition: none; }
+}
+
+/* Plan view category filter pills */
+.plan-filter-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 4px 2px;
+}
+.plan-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--white-04);
+  color: var(--text2);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.plan-filter-pill:hover { border-color: var(--border-lt); color: var(--text); }
+.plan-filter-pill[data-active="true"] {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+
+/* Pseudo-3D room walls (extruded from the floor plate edges) */
+.plan-wall {
+  position: absolute;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--white-10), var(--white-04));
+  border: 1px solid var(--border);
+  opacity: 0.5;
+  transition: opacity 0.4s;
+  backface-visibility: visible;
+}
+.plan-wall-n { left: 0; right: 0; top: 0;    height: 20px; transform-origin: top;    transform: rotateX(-90deg); }
+.plan-wall-s { left: 0; right: 0; bottom: 0; height: 20px; transform-origin: bottom; transform: rotateX(90deg); }
+.plan-wall-w { top: 0; bottom: 0; left: 0;   width: 20px;  transform-origin: left;   transform: rotateY(90deg); }
+.plan-wall-e { top: 0; bottom: 0; right: 0;  width: 20px;  transform-origin: right;  transform: rotateY(-90deg); }
+.plan-board[data-3d="false"] .plan-wall { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .plan-board, .plan-bill { transition: none; }
+}
+
+/* Plan furniture / appliance decorations */
+.plan-furniture { position: absolute; inset: 0; pointer-events: none; }
+.plan-furn-pos { position: absolute; transform: translate(-50%, -50%); }
+.plan-furn {
+  font-size: 72px;
+  line-height: 1;
+  display: inline-block;
+  opacity: 0.9;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.35));
+}
+
+/* Image-mode plan: rooms become translucent overlays over the render */
+.plan-board[data-img="true"] .plan-room {
+  background: rgba(88,166,255,0.04);
+  border-color: rgba(88,166,255,0.25);
+}
+.plan-board[data-img="true"] .plan-wall { opacity: 0.25; }
+
+/* Add-device panel */
+.plan-add-panel {
+  position: absolute;
+  top: 34px;
+  left: 0;
+  z-index: 200;
+  width: 300px;
+  background: var(--card);
+  border: 1px solid var(--border-lt);
+  border-radius: 12px;
+  box-shadow: var(--shadow-2);
+  padding: 8px;
+}
+.plan-add-head {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+  padding: 6px 6px 4px;
+}
+.plan-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--text);
+}
+.plan-add-clickable { cursor: pointer; }
+.plan-add-clickable:hover { background: var(--white-06); }
+.plan-add-x {
+  background: none;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 12px;
+}
+.plan-add-x:hover { color: var(--red); }
+
+/* Manual decor: remove button on hover; emoji picker in the add panel */
+.plan-decor .plan-bill { position: relative; }
+.plan-decor-x {
+  position: absolute;
+  top: -6px;
+  right: -14px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--border-lt);
+  background: var(--card);
+  color: var(--text3);
+  font-size: 10px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.plan-decor:hover .plan-decor-x { opacity: 1; }
+.plan-decor-x:hover { color: var(--red); border-color: var(--red); }
+.plan-add-emoji {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid var(--white-08);
+  background: var(--white-04);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.plan-add-emoji:hover { border-color: var(--accent); background: var(--accent-dim); }
+
+/* ── Dashboard lock screen ─────────────────────────────────────────── */
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lock-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  background: var(--card);
+  border: 1px solid var(--border-lt);
+  border-radius: 18px;
+  padding: 36px 44px;
+  box-shadow: var(--shadow-2);
+}
+.lock-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.lock-input {
+  width: 180px;
+  text-align: center;
+  font-size: 18px;
+  letter-spacing: 6px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border-lt);
+  background: var(--white-05);
+  color: var(--text);
+  outline: none;
+}
+.lock-input:focus { border-color: var(--accent); }
+.lock-btn {
+  width: 180px;
+  padding: 9px 0;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.lock-btn:disabled { opacity: 0.5; cursor: default; }
+.lock-err { font-size: 12px; color: var(--red); }
+.lock-shake { animation: auth-shake-react 0.35s ease; }
+@keyframes auth-shake-react {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  60% { transform: translateX(5px); }
+  80% { transform: translateX(-3px); }
+}
