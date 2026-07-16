@@ -557,6 +557,8 @@ Setup:
 2. Add your Miele account `username`/`password` (`country` is the account region, e.g. `de-DE`, `pl-PL`, `en-GB`) — the client logs in directly
 3. If the password grant is rejected for your account, run `node scripts/miele-auth.js` once instead (browser login, paste the redirect URL)
 
+For development without appliances, run `node scripts/miele-simulator.js` and point the client at it with `"host": "127.0.0.1", "port": 8299` (any credentials) — it simulates a running washer with countdown, a heating oven and a fridge over the same API including the SSE stream.
+
 Tokens live in `persist/miele-tokens.json` and refresh automatically. Each appliance registers with `power` (controllable on/off), `status`, `program`, `phase`, `remaining` minutes, `temperature`/`target` °C, `door` contact, `failure` alarm, and `connected`. Live updates arrive over the `/devices/all/events` SSE stream; a periodic re-sync (`pollInterval` seconds, default 300) also picks up newly added appliances. Optional `language` sets the locale of status/program names.
 
 ### `grenton`

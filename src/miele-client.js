@@ -1,6 +1,7 @@
 'use strict';
 
 const https          = require('https');
+const http           = require('http');
 const fs             = require('fs');
 const path           = require('path');
 const platformStatus = require('./platform-status');
@@ -16,6 +17,14 @@ const platformStatus = require('./platform-status');
 
 const TOKENS_FILE = path.join(__dirname, '..', 'persist', 'miele-tokens.json');
 const API_HOST    = 'api.mcs3.miele.com';
+
+// host/port are configurable so scripts/miele-simulator.js can stand in for
+// the cloud during development (plain http when a non-443 port is set)
+function endpoint(cfg = {}) {
+  const host = cfg.host || API_HOST;
+  const port = cfg.port || 443;
+  return { host, port, mod: port === 443 ? https : http };
+}
 
 // ident.type.value_raw → icon
 const TYPE_ICONS = {
@@ -228,8 +237,10 @@ class MieleClient {
     try { await this._ensureToken(); }
     catch (err) { console.error(`[Miele] Token refresh failed: ${err.message}`); }
 
-    const req = https.request({
-      hostname: API_HOST,
+    const ep = endpoint(this._config.miele);
+    const req = ep.mod.request({
+      hostname: ep.host,
+      port: ep.port,
       path: '/v1/devices/all/events',
       headers: {
         'Accept':          'text/event-stream',
@@ -312,9 +323,10 @@ class MieleClient {
   }
 
   _req(method, reqPath, body, headers = {}) {
+    const ep = endpoint(this._config.miele);
     return new Promise((resolve, reject) => {
-      const req = https.request({
-        hostname: API_HOST, path: reqPath, method, timeout: 15000,
+      const req = ep.mod.request({
+        hostname: ep.host, port: ep.port, path: reqPath, method, timeout: 15000,
         headers: { ...headers, ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}) },
       }, (res) => {
         let data = '';
