@@ -103,8 +103,8 @@ function ChartZoomModal({ zoom, devices, onClose, onOpenDevice }) {
             style={{
               position: 'relative', width: 'min(960px, 100%)', maxHeight: '90vh',
               display: 'flex', flexDirection: 'column',
-              background: 'linear-gradient(160deg, #131a28 0%, #0c111c 100%)',
-              border: '1px solid rgba(121,192,255,0.22)',
+              background: 'var(--modal-grad)',
+              border: '1px solid var(--modal-chip-border)',
               borderRadius: 22, overflow: 'hidden', padding: '16px 20px 20px',
             }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -126,8 +126,8 @@ function ChartZoomModal({ zoom, devices, onClose, onOpenDevice }) {
                 title={gt('open_device', 'Open device')}
                 style={{
                   padding: '5px 12px', borderRadius: 999, cursor: 'pointer', flexShrink: 0,
-                  border: '1px solid rgba(121,192,255,0.4)', background: 'rgba(121,192,255,0.12)',
-                  color: '#c9e3ff', fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap',
+                  border: '1px solid var(--modal-chip-border)', background: 'var(--accent-dim)',
+                  color: 'var(--tile-on-ink)', fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap',
                 }}>
                 {gt('open_device', 'Open device')} →
               </button>
