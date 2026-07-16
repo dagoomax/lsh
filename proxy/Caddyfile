@@ -17,7 +17,7 @@
 
 # Hostnames/IPs the proxy answers on — the local CA issues one cert
 # covering all of them. Add names here if the machine gets a new address.
-https://localhost, https://lsh.local, https://192.168.1.56, https://192.168.1.229 {
+https://localhost, https://lsh.local, https://192.168.1.x, https://192.168.1.2xx {
 	reverse_proxy 127.0.0.1:3001 {
 		# preserve client IP for LSH logs
 		header_up X-Real-IP {remote_host}
