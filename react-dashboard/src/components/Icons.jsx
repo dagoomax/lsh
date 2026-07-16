@@ -539,6 +539,8 @@ const TYPE_MAP = {
   knx:          KnxBusIcon,
   loxone:       LoxoneIcon,
   lgthinq:      LgAppliianceIcon,
+  homeconnect:  OvenIcon,
+  miele:        OvenIcon,
   mc6:          ThermostatIcon,
   broadlink:    RemoteIcon,
   boneio:       DinRailIcon,
@@ -654,6 +656,124 @@ export function RelayOutputIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+// ── Home appliances (Home Connect / Miele / LG ThinQ) ────────────────────────
+
+export function DishwasherIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="4" y="3" width="16" height="18" rx="2"/>
+      <path d="M4 8h16"/>
+      <circle cx="7" cy="5.5" r="0.9" fill={color} stroke="none"/>
+      <path d="M16 5.5h2"/>
+      <circle cx="12" cy="14.5" r="3.5"/>
+      <path d="M12 11v7M8.5 14.5h7"/>
+    </svg>
+  )
+}
+
+export function OvenIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="4" y="3" width="16" height="18" rx="2"/>
+      <path d="M4 8h16"/>
+      <circle cx="7" cy="5.5" r="0.9" fill={color} stroke="none"/>
+      <circle cx="10.5" cy="5.5" r="0.9" fill={color} stroke="none"/>
+      <path d="M16 5.5h2"/>
+      <rect x="7" y="11" width="10" height="7" rx="1"/>
+      <path d="M9 13h6"/>
+    </svg>
+  )
+}
+
+export function CoffeeMakerIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M5 3h14v4H5z"/>
+      <path d="M9 7v2M15 7v2"/>
+      <path d="M8 12h8v4a4 4 0 0 1-8 0v-4z"/>
+      <path d="M16 12h2a2 2 0 0 1 0 4h-2"/>
+      <path d="M5 21h14"/>
+    </svg>
+  )
+}
+
+export function FridgeIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="5" y="2.5" width="14" height="19" rx="2"/>
+      <path d="M5 9.5h14"/>
+      <path d="M8 5.5V7M8 12v3"/>
+    </svg>
+  )
+}
+
+export function HoodIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M10 3h4v5h-4z"/>
+      <path d="M4 12l6-4h4l6 4z"/>
+      <path d="M4 12h16v3H4z"/>
+      <path d="M8 18v.5M12 18v2M16 18v.5"/>
+    </svg>
+  )
+}
+
+export function HobIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <circle cx="8.5" cy="8.5" r="2.5"/>
+      <circle cx="15.5" cy="8.5" r="2"/>
+      <circle cx="8.5" cy="15.5" r="2"/>
+      <circle cx="15.5" cy="15.5" r="2.5"/>
+    </svg>
+  )
+}
+
+export function WineCoolerIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="5" y="2.5" width="14" height="19" rx="2"/>
+      <path d="M5 7h14M5 11.5h14M5 16h14"/>
+      <circle cx="9" cy="9.2" r="0.9" fill={color} stroke="none"/>
+      <circle cx="12" cy="9.2" r="0.9" fill={color} stroke="none"/>
+      <circle cx="9" cy="13.7" r="0.9" fill={color} stroke="none"/>
+      <circle cx="15" cy="13.7" r="0.9" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
+export function MicrowaveIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2.5" y="6" width="19" height="12" rx="2"/>
+      <rect x="5.5" y="9" width="9" height="6" rx="1"/>
+      <path d="M17.5 9v2M17.5 14h.01"/>
+    </svg>
+  )
+}
+
+// keyword → icon for appliance platforms; matches EN/PL/DE label fragments
+const APPLIANCE_MATCHERS = [
+  [/dishwash|zmywark|geschirr|spül/i,                DishwasherIcon],
+  [/washer.?dryer|pralko.?susz/i,                    WashingMachineIcon],
+  [/wash|pralk|wasch/i,                              WashingMachineIcon],
+  [/dry|susz|trockner/i,                             DryerIcon],
+  [/microwave|mikrofal|mikrowelle/i,                 MicrowaveIcon],
+  [/oven|piekarnik|backofen|steam/i,                 OvenIcon],
+  [/coffee|espresso|ekspres|kaffee/i,                CoffeeMakerIcon],
+  [/wine|wino|wein/i,                                WineCoolerIcon],
+  [/fridge|freez|refriger|lodówk|lodowk|zamrażar|kühl|cool/i, FridgeIcon],
+  [/hood|okap|dunst/i,                               HoodIcon],
+  [/hob|płyt|plyt|induction|kochfeld/i,              HobIcon],
+  [/robot|vacuum|odkurzacz|saug/i,                   RobotVacuumIcon],
+]
+
+function applianceIcon(label = '') {
+  for (const [re, Icon] of APPLIANCE_MATCHERS) if (re.test(label)) return Icon
+  return null
+}
+
 export function VenetianIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -703,6 +823,11 @@ export function resolveIcon(device) {
     if (/żaluzj|zaluzj|venetian|blind/.test(l))       return VenetianIcon
     if (/żagiel|zagiel|awning|screen|markiz/.test(l)) return AwningIcon
     return ShutterIcon
+  }
+  // appliance platforms: pick the icon from what the appliance is
+  if (device.type === 'homeconnect' || device.type === 'miele' || device.type === 'lgthinq') {
+    const a = applianceIcon(device.label)
+    if (a) return a
   }
 
   return TYPE_MAP[device.type]
