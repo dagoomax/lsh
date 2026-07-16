@@ -1614,8 +1614,13 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (!dev) return res.status(404).json({ success: false, error: 'Cover not found' });
     const action = String(req.params.action).toLowerCase();
     const value  = req.query.value ?? req.query.level;
+    // Prefer the dedicated up/down sensors (real RTS up()/down() commands);
+    // fall back to the open/close toggle for covers that don't expose them.
+    const hasUpDown = (dev.sensors || []).some((s) => s.path === 'up');
     const MAP = {
-      open: ['switch', 1], up: ['switch', 1], close: ['switch', 0], down: ['switch', 0],
+      open: ['switch', 1], close: ['switch', 0],
+      up:   hasUpDown ? ['up', 1]   : ['switch', 1],
+      down: hasUpDown ? ['down', 1] : ['switch', 0],
       stop: ['stop', 1], my: ['my', 1],
       position: ['level', value], level: ['level', value], tilt: ['tilt', value],
     };
