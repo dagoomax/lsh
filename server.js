@@ -346,6 +346,16 @@ async function main() {
     }
   }
 
+  // Start Miele client if configured (OAuth password grant, or one-off
+  // scripts/miele-auth.js; tokens persisted + auto-refreshed)
+  if (config.miele) {
+    const MieleClient = tryRequire('./src/miele-client');
+    if (MieleClient) {
+      const miele = new MieleClient(config, store, sensorRegistry);
+      miele.start().catch((err) => console.error(`[Miele] Start failed: ${err.message}`));
+    }
+  }
+
   // Start LG ThinQ client if configured (token-based — no credentials needed)
   if (config.lgthinq) {
     const LGThinQClient = tryRequire('./src/lgthinq-client');

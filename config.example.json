@@ -68,6 +68,13 @@
     "clientSecret": "",
     "simulator": false
   },
+  "miele": {
+    "clientId": "",
+    "clientSecret": "",
+    "username": "you@example.com",
+    "password": "",
+    "country": "de-DE"
+  },
   "fibaro": {
     "host": "192.168.1.x",
     "port": 80,
