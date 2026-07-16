@@ -29,6 +29,11 @@ const CONTROLLABLE = [
   'GarageDoor', 'Awning', 'Window', 'Blind',
 ];
 
+// Lights and on/off plugs (io DimmableLight, RTS light receivers, OnOff
+// modules) — different sensor set than covers: on/off toggle plus an
+// intensity slider when the device takes setIntensity (variable lights).
+const LIGHT_CLASSES = ['Light', 'OnOff'];
+
 // Events that carry device state changes
 const STATE_EVENTS = new Set(['DeviceStateChangedEvent', 'DeviceCreatedEvent', 'DeviceUpdatedEvent']);
 
@@ -188,7 +193,8 @@ class SomfyClient {
         || dev.widget || dev.definition?.widgetName || dev.controllableName || '';
       // Exact match — substring matching mis-classified gateways
       // (e.g. 'Gate' ⊂ 'ProtocolGateway') as controllable shutters.
-      if (!CONTROLLABLE.includes(uiClass)) continue;
+      const isLight = LIGHT_CLASSES.includes(uiClass);
+      if (!CONTROLLABLE.includes(uiClass) && !isLight) continue;
 
       const url   = dev.deviceURL || dev.deviceUrl || '';
       const label = dev.label || url.split('/').pop() || url;
@@ -201,6 +207,35 @@ class SomfyClient {
 
       // Determine position command from available commands list
       const cmds = (dev.definition?.commands || []).map(c => c.commandName || c.name || c);
+
+      if (isLight) {
+        const hasIntensity = cmds.includes('setIntensity');
+        const sensors = [
+          {
+            path: 'switch', label: 'Light', format: 'on-off',
+            sensorType: hasIntensity ? 'dimmer' : 'switch',
+            controllable: true, type: 'toggle',
+            writeOn: 'on', writeOff: 'off',
+            capabilityId: 'light', homekit: 'switch-rw',
+          },
+          ...(hasIntensity ? [{
+            path: 'level', label: 'Brightness', format: 'percent', sensorType: 'dimmer',
+            controllable: true, type: 'range',
+            writeCmd: 'setIntensity', capabilityId: 'intensity',
+            min: 0, max: 100, rangeFormat: 'percent',
+          }] : []),
+        ];
+        this._registry.registerDevice({
+          key: deviceKey, label, type: 'somfy',
+          homekit: sensors.map(s => s.homekit).filter(Boolean),
+          sensors,
+          _writeCapability: (capId, command, args) =>
+            this._executeCommand(cfg, url, capId, command, args),
+        });
+        this._devices[url] = { label, deviceKey, uiClass };
+        console.log(`[Somfy] Registered: ${label} (${uiClass}${hasIntensity ? ', dimmable' : ''})`);
+        continue;
+      }
       const isRts = (dev.controllableName || dev.definition?.controllableName || '').startsWith('rts:');
       const hasSetPosition = cmds.includes('setPosition');
       const posCmd = hasSetPosition ? 'setPosition' : 'setClosure';
@@ -376,6 +411,10 @@ class SomfyClient {
       this._store.update(`${deviceKey}/switch`, closure < 100 ? 1 : 0);
     } else if (name === 'core:OpenClosedState' || name === 'core:OpenClosedUnknownState') {
       this._store.update(`${deviceKey}/switch`, value === 'open' ? 1 : 0);
+    } else if (name === 'core:OnOffState') {
+      this._store.update(`${deviceKey}/switch`, value === 'on' ? 1 : 0);
+    } else if (name === 'core:LightIntensityState' || name === 'core:IntensityState') {
+      this._store.update(`${deviceKey}/level`, Number(value));
     } else if (name === 'core:SlateOrientationState') {
       // Raw orientation is 0 = open, 100 = closed; expose as "% open" to match level.
       this._store.update(`${deviceKey}/tilt`, 100 - Number(value));
@@ -394,6 +433,10 @@ class SomfyClient {
     } else if (capId === 'updown') {
       // Momentary ▲/▼ buttons — the command IS the direction.
       cmd = { name: command, parameters: [] };
+    } else if (capId === 'light') {
+      cmd = { name: command === 'on' ? 'on' : 'off', parameters: [] };
+    } else if (capId === 'intensity') {
+      cmd = { name: 'setIntensity', parameters: [Math.round(args?.[0] ?? 0)] };
     } else if (capId === 'stop') {
       // Halt an in-motion cover. RTS motors use `stop`; some io covers expose
       // `stopIdentify` — `stop` is accepted by both via exec/apply.

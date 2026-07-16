@@ -819,6 +819,8 @@ export function resolveIcon(device) {
     return SensorIcon
   }
   if (device.type === 'somfy') {
+    // TaHoma lights / on-off modules register with a 'light' capability
+    if ((device.sensors || []).some((s) => s.capabilityId === 'light')) return BulbIcon
     const l = (device.label || '').toLowerCase()
     if (/żaluzj|zaluzj|venetian|blind/.test(l))       return VenetianIcon
     if (/żagiel|zagiel|awning|screen|markiz/.test(l)) return AwningIcon
