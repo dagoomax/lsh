@@ -329,6 +329,7 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
   const hasSwitch= r.switch != null
   const hasLevel = r.level != null
   const hasMy    = (device.sensors || []).some(s => s.path === 'my') // Somfy "my" favourite
+  const hasUpDn  = (device.sensors || []).some(s => s.path === 'up') // Somfy RTS ▲/▼
   const hasCT    = r.colorTemperature != null
   const hasTemp  = r.temperature != null
   const hasHum   = r.humidity != null
@@ -600,15 +601,35 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
         </div>
       )}
 
-      {/* Somfy "My" favourite position */}
-      {hasMy && (
-        <button onClick={e => { e.stopPropagation(); cmd('my', 1) }}
-          title="Move to favourite (My) position"
-          style={{ marginTop:8, width:'100%', padding:'7px 10px', borderRadius:9,
-            border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text2)',
-            cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <MyIcon size={18} />
-        </button>
+      {/* Somfy RTS ▲ / My / ▼ (or lone My for io covers) */}
+      {(hasMy || hasUpDn) && (
+        <div style={{ marginTop:8, display:'flex', gap:6 }}>
+          {hasUpDn && (
+            <button onClick={e => { e.stopPropagation(); cmd('up', 1) }} title="Up"
+              style={{ flex:1, padding:'7px 10px', borderRadius:9, fontSize:13, fontWeight:700,
+                border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text2)',
+                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              ▲
+            </button>
+          )}
+          {hasMy && (
+            <button onClick={e => { e.stopPropagation(); cmd('my', 1) }}
+              title="Move to favourite (My) position"
+              style={{ flex:1, padding:'7px 10px', borderRadius:9,
+                border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text2)',
+                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <MyIcon size={18} />
+            </button>
+          )}
+          {hasUpDn && (
+            <button onClick={e => { e.stopPropagation(); cmd('down', 1) }} title="Down"
+              style={{ flex:1, padding:'7px 10px', borderRadius:9, fontSize:13, fontWeight:700,
+                border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text2)',
+                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              ▼
+            </button>
+          )}
+        </div>
       )}
 
       {/* AC controls: mode pills + temp */}

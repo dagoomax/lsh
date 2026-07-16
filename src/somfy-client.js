@@ -201,12 +201,22 @@ class SomfyClient {
 
       // Determine position command from available commands list
       const cmds = (dev.definition?.commands || []).map(c => c.commandName || c.name || c);
+      const isRts = (dev.controllableName || dev.definition?.controllableName || '').startsWith('rts:');
       const hasSetPosition = cmds.includes('setPosition');
       const posCmd = hasSetPosition ? 'setPosition' : 'setClosure';
+      // RTS motors have no position feedback, so an absolute slider can't work;
+      // only offer it when the device actually takes a position command
+      // (io covers with empty command lists keep it as a benign fallback).
+      const hasPosition = hasSetPosition || cmds.includes('setClosure') || (!isRts && cmds.length === 0);
+      // RTS up/down motors (awnings, exterior screens — UpDownRTSComponent)
+      // take `up`/`down` instead of `open`/`close`.
+      const hasOpenClose = cmds.includes('open') || cmds.includes('close');
+      const hasUpDown    = cmds.includes('up')   || cmds.includes('down');
+      const upDownToggle = hasUpDown && !hasOpenClose;
       // The "my" favourite (Somfy remote's middle button). Advertised by io
       // covers; RTS motors report incomplete command lists, so include it when
       // the device lists it OR reports no commands at all.
-      const hasMy = cmds.includes('my') || cmds.length === 0;
+      const hasMy = cmds.includes('my') || cmds.length === 0 || isRts;
       // Absolute slat tilt (venetian blinds / orientable pergolas). Only io
       // covers expose `setOrientation`; RTS venetians offer relative tilt only
       // (tiltPositive/tiltNegative), which a slider can't drive, so skip those.
@@ -226,12 +236,25 @@ class SomfyClient {
             writeOn: 'on', writeOff: 'off',
             capabilityId: 'toggle', homekit: 'switch-rw',
           },
-          {
+          ...(hasPosition ? [{
             path: 'level', label: 'Position', format: 'percent',
             controllable: true, type: 'range',
             writeCmd: posCmd, capabilityId: 'position',
             min: 0, max: 100, rangeFormat: 'percent',
-          },
+          }] : []),
+          ...(hasUpDown || isRts ? [{
+            // Momentary: raise the RTS motor (remote's ▲ button).
+            path: 'up', label: 'Up', format: 'on-off',
+            controllable: true, type: 'toggle',
+            writeOn: 'up', writeOff: 'up',
+            capabilityId: 'updown', homekit: null,
+          }, {
+            // Momentary: lower the RTS motor (remote's ▼ button).
+            path: 'down', label: 'Down', format: 'on-off',
+            controllable: true, type: 'toggle',
+            writeOn: 'down', writeOff: 'down',
+            capabilityId: 'updown', homekit: null,
+          }] : []),
           {
             // Momentary: any value halts the motor (Somfy/Overkiz `stop`).
             path: 'stop', label: 'Stop', format: 'on-off',
@@ -255,7 +278,7 @@ class SomfyClient {
           }] : []),
         ],
         _writeCapability: (capId, command, args) =>
-          this._executeCommand(cfg, url, capId, command, args),
+          this._executeCommand(cfg, url, capId, command, args, { upDownToggle }),
       };
 
       this._registry.registerDevice(device);
@@ -361,11 +384,16 @@ class SomfyClient {
 
   // ── Command dispatch ──────────────────────────────────────────────────────
 
-  async _executeCommand(cfg, deviceUrl, capId, command, args) {
+  async _executeCommand(cfg, deviceUrl, capId, command, args, opts = {}) {
     await this._ensureToken();
     let cmd;
     if (capId === 'toggle') {
-      cmd = { name: command === 'on' ? 'open' : 'close', parameters: [] };
+      // RTS up/down motors (awnings, screens) reject open/close — use up/down
+      const [onCmd, offCmd] = opts.upDownToggle ? ['up', 'down'] : ['open', 'close'];
+      cmd = { name: command === 'on' ? onCmd : offCmd, parameters: [] };
+    } else if (capId === 'updown') {
+      // Momentary ▲/▼ buttons — the command IS the direction.
+      cmd = { name: command, parameters: [] };
     } else if (capId === 'stop') {
       // Halt an in-motion cover. RTS motors use `stop`; some io covers expose
       // `stopIdentify` — `stop` is accepted by both via exec/apply.
