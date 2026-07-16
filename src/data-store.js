@@ -86,6 +86,11 @@ class DataStore extends EventEmitter {
     this.emit('change', { key, value });
   }
 
+  // alias — several integration clients (and CLAUDE.md) write via store.set()
+  set(key, value) {
+    this.update(key, value);
+  }
+
   _record(key, value) {
     const v = typeof value === 'boolean' ? (value ? 1 : 0) : value;
     if (typeof v !== 'number' || !Number.isFinite(v)) return;
