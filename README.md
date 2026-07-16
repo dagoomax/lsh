@@ -559,6 +559,31 @@ Setup:
 
 Tokens live in `persist/miele-tokens.json` and refresh automatically. Each appliance registers with `power` (controllable on/off), `status`, `program`, `phase`, `remaining` minutes, `temperature`/`target` °C, `door` contact, `failure` alarm, and `connected`. Live updates arrive over the `/devices/all/events` SSE stream; a periodic re-sync (`pollInterval` seconds, default 300) also picks up newly added appliances. Optional `language` sets the locale of status/program names.
 
+### `grenton`
+
+**Grenton** smart home (CLU controllers) via the **GATE HTTP** module. There is no discovery API — devices are declared explicitly, addressed by their Object Manager names.
+
+```json
+"grenton": {
+  "host": "192.168.1.x",
+  "port": 80,
+  "path": "/lsh",
+  "token": "",
+  "pollInterval": 5,
+  "devices": [
+    { "name": "Lampa salon", "object": "DOU8272", "type": "light" },
+    { "name": "Ściemniacz",  "object": "DIM1234", "type": "dimmer", "scale": 1 },
+    { "name": "Roleta",      "object": "ROL4321", "type": "blind",
+      "commands": { "up": "ROL4321:execute(0,0)", "down": "ROL4321:execute(1,0)", "stop": "ROL4321:execute(3,0)" } },
+    { "name": "Temp. salon", "object": "PANELSENSTEMP1", "type": "temperature" }
+  ]
+}
+```
+
+Setup on the Grenton side (once, in Object Manager): add an **HttpListener** to your GATE HTTP with Path `/lsh`, attach the script from [`docs/grenton-gate-lsh.lua`](docs/grenton-gate-lsh.lua) to its OnRequest event, and send the config to the GATE. LSH then polls object states (`pollInterval` seconds) and sends commands through the same listener.
+
+Device `type`: `light` / `switch` (on-off, HomeKit-exposed), `dimmer` (adds a brightness slider; `scale: 1` for Grenton's 0–1 DIM range), `blind` (position slider plus optional momentary `up`/`down`/`stop` buttons driven by the raw Grenton calls in `commands`), `temperature`, `sensor` (read-only value, optional `unit`). Optional per-device `getIndex`/`setIndex` select the object feature index (default 0), and `token` adds a shared secret checked by the listener script.
+
 ### `esphome`
 
 ```json

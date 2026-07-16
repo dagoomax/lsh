@@ -346,6 +346,15 @@ async function main() {
     }
   }
 
+  // Start Grenton client if configured (GATE HTTP module + LSH listener script)
+  if (config.grenton?.host && config.grenton?.devices?.length) {
+    const GrentonClient = tryRequire('./src/grenton-client');
+    if (GrentonClient) {
+      const grenton = new GrentonClient(config, store, sensorRegistry);
+      grenton.start().catch((err) => console.error(`[Grenton] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Miele client if configured (OAuth password grant, or one-off
   // scripts/miele-auth.js; tokens persisted + auto-refreshed)
   if (config.miele) {

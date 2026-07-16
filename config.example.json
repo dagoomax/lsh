@@ -75,6 +75,17 @@
     "password": "",
     "country": "de-DE"
   },
+  "grenton": {
+    "host": "192.168.1.x",
+    "port": 80,
+    "path": "/lsh",
+    "token": "",
+    "pollInterval": 5,
+    "devices": [
+      { "name": "Lampa salon", "object": "DOU8272", "type": "light" },
+      { "name": "Temperatura", "object": "PANELSENSTEMP1", "type": "temperature" }
+    ]
+  },
   "fibaro": {
     "host": "192.168.1.x",
     "port": 80,
