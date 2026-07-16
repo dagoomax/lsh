@@ -535,7 +535,7 @@ Setup:
 2. Run `node scripts/homeconnect-auth.js`, open the printed URL, and enter the code to authorize
 3. Restart the server — tokens live in `persist/homeconnect-tokens.json` and refresh automatically
 
-Each appliance registers as a device with `power` (controllable on/off/standby), `operation` state, active `program`, `progress` %, `remaining` minutes, `door` contact, and `connected`. Live updates arrive over the account-wide SSE event stream (with a slow periodic re-sync, `pollInterval` seconds, default 900 — the API allows ~1000 requests/day). Set `"simulator": true` to develop against the [Home Connect appliance simulator](https://developer.home-connect.com/simulator) instead of real appliances.
+Each appliance registers as a device with `power` (controllable on/off/standby), `operation` state, active `program`, `progress` %, `remaining` minutes, `door` contact, and `connected`. Live updates arrive over the account-wide SSE event stream (with a slow periodic re-sync, `pollInterval` seconds, default 21600 — the API allows only ~1000 requests/day, so the re-sync is rare by design). Set `"simulator": true` to develop against the [Home Connect appliance simulator](https://developer.home-connect.com/simulator) instead of real appliances.
 
 ### `miele`
 

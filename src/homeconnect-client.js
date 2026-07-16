@@ -59,17 +59,26 @@ class HomeConnectClient {
       await this._discover();
       platformStatus.set('homeconnect', true);
       this._openStream();
-      const resync = Math.max(300, cfg.pollInterval || 900) * 1000;
+      // SSE carries all live updates; the re-sync is only a safety net and the
+      // API budget is ~1000 req/day, so keep it rare (default every 6 h)
+      const resync = Math.max(3600, cfg.pollInterval || 21600) * 1000;
       this._syncTimer = setInterval(() => this._syncAll().catch(() => {}), resync);
     } catch (err) {
       platformStatus.set('homeconnect', false);
       console.error(`[HomeConnect] Start failed: ${err.message}`);
+      if (this._stopped) return;
+      // rate-limited (HTTP 429) → wait out the advertised block, else retry in 30 min
+      const blocked = err.message.match(/remaining period of (\d+) seconds/);
+      const delay = blocked ? (Number(blocked[1]) + 60) * 1000 : 30 * 60 * 1000;
+      console.log(`[HomeConnect] Retrying start in ${Math.round(delay / 60000)} min`);
+      this._retryTimer = setTimeout(() => this.start(), delay);
     }
   }
 
   stop() {
     this._stopped = true;
     if (this._syncTimer) clearInterval(this._syncTimer);
+    if (this._retryTimer) clearTimeout(this._retryTimer);
     if (this._stream) { this._stream.destroy(); this._stream = null; }
   }
 
@@ -146,9 +155,15 @@ class HomeConnectClient {
 
   async _syncAll() {
     await this._ensureToken();
-    for (const haId of Object.keys(this._appliances)) {
-      if (this._store.get(`${this._appliances[haId].deviceKey}/connected`) === false) continue;
-      await this._syncAppliance(haId).catch(() => {});
+    // one request for the connected flags — SSE carries everything else; a
+    // full per-appliance sync (3 requests each) only on reconnection
+    const res = await this._api('GET', '/api/homeappliances');
+    for (const ha of res?.data?.homeappliances || []) {
+      const meta = this._appliances[ha.haId];
+      if (!meta) continue;
+      const was = this._store.get(`${meta.deviceKey}/connected`);
+      this._store.set(`${meta.deviceKey}/connected`, !!ha.connected);
+      if (ha.connected && was === false) await this._syncAppliance(ha.haId).catch(() => {});
     }
   }
 
@@ -210,6 +225,9 @@ class HomeConnectClient {
       if (res.statusCode !== 200) {
         res.resume();
         console.error(`[HomeConnect] Event stream HTTP ${res.statusCode}`);
+        // 429 = daily quota exhausted — hammering it every few minutes only
+        // burns more budget; retry hourly until the block lifts
+        if (res.statusCode === 429) this._streamRetry = Math.max(this._streamRetry, 3600000);
         return this._scheduleReconnect();
       }
       this._streamRetry = 5000;
