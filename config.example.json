@@ -63,6 +63,11 @@
     "country": "EU",
     "lang": "en-US"
   },
+  "homeConnect": {
+    "clientId": "",
+    "clientSecret": "",
+    "simulator": false
+  },
   "fibaro": {
     "host": "192.168.1.x",
     "port": 80,

@@ -517,6 +517,26 @@ Token file schema (`persist/lgthinq-tokens.json`):
 }
 ```
 
+### `homeConnect`
+
+**Home Connect** appliances (dishwasher, oven, washer, dryer, coffee machine, fridge, hood, …) via the official cloud API. Covers all BSH brands on one account: **Bosch, Siemens, Gaggenau, Neff, Thermador, Balay, Constructa**.
+
+```json
+"homeConnect": {
+  "clientId": "",
+  "clientSecret": "",
+  "simulator": false
+}
+```
+
+Setup:
+
+1. Register a (free) application at [developer.home-connect.com](https://developer.home-connect.com) — choose OAuth flow **Device Flow** — and paste its `clientId`/`clientSecret` here
+2. Run `node scripts/homeconnect-auth.js`, open the printed URL, and enter the code to authorize
+3. Restart the server — tokens live in `persist/homeconnect-tokens.json` and refresh automatically
+
+Each appliance registers as a device with `power` (controllable on/off/standby), `operation` state, active `program`, `progress` %, `remaining` minutes, `door` contact, and `connected`. Live updates arrive over the account-wide SSE event stream (with a slow periodic re-sync, `pollInterval` seconds, default 900 — the API allows ~1000 requests/day). Set `"simulator": true` to develop against the [Home Connect appliance simulator](https://developer.home-connect.com/simulator) instead of real appliances.
+
 ### `esphome`
 
 ```json

@@ -336,6 +336,16 @@ async function main() {
     }
   }
 
+  // Start Home Connect client if configured — Bosch/Siemens/Gaggenau/Neff
+  // (OAuth device flow via scripts/homeconnect-auth.js; tokens persisted + auto-refreshed)
+  if (config.homeConnect) {
+    const HomeConnectClient = tryRequire('./src/homeconnect-client');
+    if (HomeConnectClient) {
+      const homeConnect = new HomeConnectClient(config, store, sensorRegistry);
+      homeConnect.start().catch((err) => console.error(`[HomeConnect] Start failed: ${err.message}`));
+    }
+  }
+
   // Start LG ThinQ client if configured (token-based — no credentials needed)
   if (config.lgthinq) {
     const LGThinQClient = tryRequire('./src/lgthinq-client');
