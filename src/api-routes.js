@@ -1619,10 +1619,12 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     const hasUpDown = (dev.sensors || []).some((s) => s.path === 'up');
     const MAP = {
       open: ['switch', 1], close: ['switch', 0],
+      on:   ['switch', 1], off:   ['switch', 0],   // TaHoma lights / on-off modules
       up:   hasUpDown ? ['up', 1]   : ['switch', 1],
       down: hasUpDown ? ['down', 1] : ['switch', 0],
       stop: ['stop', 1], my: ['my', 1],
       position: ['level', value], level: ['level', value], tilt: ['tilt', value],
+      brightness: ['level', value],                 // alias for lights
     };
     const m = MAP[action];
     if (!m) return res.status(400).json({ success: false, error: `Unknown action '${action}'` });
