@@ -56,6 +56,15 @@ async function main() {
     if (n) console.log(`[Reolink] ${n} camera(s) configured`);
   }
 
+  // Always construct — same live-config pattern as Reolink
+  let kenik = null;
+  const KenikClient = tryRequire('./src/kenik-client');
+  if (KenikClient) {
+    kenik = new KenikClient();
+    const n = kenik.getCameras().length;
+    if (n) console.log(`[KENIK] ${n} camera(s) configured`);
+  }
+
   let mqttExplorer = null;
   if (config.mqtt?.host) {
     const MqttExplorer = tryRequire('./src/mqtt-explorer');
@@ -128,7 +137,7 @@ async function main() {
   const AutomationEngine = tryRequire('./src/automation-engine');
   if (AutomationEngine) automation = new AutomationEngine(store, sensorRegistry, relayController);
 
-  const apiClients = { unifiProtect, reolink, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
+  const apiClients = { unifiProtect, reolink, kenik, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────
@@ -361,6 +370,15 @@ async function main() {
     if (AmpioClient) {
       const ampio = new AmpioClient(config, store, sensorRegistry);
       ampio.start();
+    }
+  }
+
+  // Start Aqara client if configured (gateway LAN protocol, UDP 9898)
+  if (config.aqara?.gateways?.length) {
+    const AqaraClient = tryRequire('./src/aqara-client');
+    if (AqaraClient) {
+      const aqara = new AqaraClient(config, store, sensorRegistry);
+      aqara.start();
     }
   }
 

@@ -613,6 +613,26 @@ Device `type`: `light` / `switch` (relay output `o`, on/off, HomeKit-exposed), `
 
 For development without hardware, run `node scripts/ampio-simulator.js` (a self-contained MQTT broker + fake modules `1C4A`/`3910` on port 1884) and point the config at `"host": "127.0.0.1", "port": 1884` with the example devices above.
 
+### `aqara`
+
+**Aqara / Xiaomi Zigbee** devices via the gateway **LAN protocol** (UDP 9898). Works with hubs that support "developer mode" / LAN protocol (Xiaomi Gateway v2/v3, Aqara Hub v1, AC Partner) — enable it in the Mi Home / Aqara app, which also reveals the 16-character LAN password needed for control.
+
+```json
+"aqara": {
+  "pollInterval": 30,
+  "gateways": [
+    { "host": "192.168.1.x", "port": 9898, "password": "16charLANkey0000", "name": "Hub" }
+  ],
+  "names": { "158d0001a2b3c4": "Czujnik salon" }
+}
+```
+
+Child devices are **auto-discovered** through the hub (`get_id_list` → `read` per device); live updates arrive via `report`/`heartbeat` multicasts on `224.0.0.50:9898`, with a periodic re-read (`pollInterval` seconds) as safety net. If the multicast port is taken LSH falls back to poll-only mode automatically. The optional `names` map assigns labels by Zigbee sid (otherwise devices are named by model + sid suffix).
+
+Supported models: temperature/humidity (`sensor_ht`) and weather (`weather.v1`, adds pressure), door/window contact, motion (with lux), water leak, buttons/cube (last action), smart plugs (controllable, with power), 1/2-channel wall switches (controllable), and the gateway itself (illumination + light on/off). Battery sensors report an estimated percentage from cell voltage. Contact/motion/leak/temperature/humidity and switches are HomeKit-exposed. Writes are signed with the rotating gateway token encrypted with the LAN `password` — without it the integration is read-only.
+
+For development without hardware, run `node scripts/aqara-simulator.js` (a fake hub on UDP 19898 with temp/contact/motion sensors and a plug) and point the config at `"host": "127.0.0.1", "port": 19898, "password": "abcdefghijklmnop"`.
+
 ### `esphome`
 
 ```json
@@ -1110,7 +1130,9 @@ WebSocket SIP. `dtmfUnlock` is the DTMF tone sent when the **Unlock** button is 
 ]
 ```
 
-Priority order for the live preview: `webrtcUrl` → `mjpegUrl` → `snapshotUrl` (polled every 2 s). UniFi Protect and Reolink cameras are automatically added to this list.
+Priority order for the live preview: `webrtcUrl` → `mjpegUrl` → `snapshotUrl` (polled every 2 s). UniFi Protect, Reolink and KENIK cameras are automatically added to this list.
+
+Any manual camera with an `"onvif": { "host": "192.168.1.x", "port": 80, "username": "", "password": "" }` section gets a press-and-hold **PTZ pad** in the camera modal (pan/tilt/zoom over ONVIF `ContinuousMove`; also see `ptz: true` for Reolink and `onvif` per KENIK channel).
 
 ### `reolink`
 
@@ -1127,6 +1149,36 @@ Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standa
 - `channel` — 0 for a standalone camera, or the NVR channel index
 - `stream` — `main` (full-res) or `sub` (low-res); default `main`
 - `https` / `port` — override the snapshot transport (defaults: HTTP on port 80)
+- `ptz: true` — shows a PTZ pad in the camera modal, driven by Reolink's `PtzCtrl` API (press-and-hold arrows / zoom, released = stop)
+
+### `kenik`
+
+```json
+"kenik": {
+  "host": "192.168.1.90",
+  "username": "admin",
+  "password": "",
+  "urlStyle": "kenik",
+  "channels": [
+    { "name": "Podjazd", "channel": 1 },
+    { "name": "Ogród",  "channel": 2, "stream": "sub" },
+    { "name": "Furtka", "host": "192.168.1.91", "urlStyle": "simple", "channel": 1 }
+  ]
+}
+```
+
+Support for **KENIK (Eltrox) cameras and DVR/XVR recorders**. The top-level `host`/`username`/`password`/`urlStyle`/`rtspPort` are defaults for every channel; a DVR is one `host` with one entry per `channel`, and standalone IP cameras override `host` per entry. Cameras appear in the dashboard camera list alongside UniFi/Reolink ones.
+
+KENIK shipped several RTSP URL generations — pick the `urlStyle` that matches the device:
+
+- `kenik` (default) — DVR/XVR recorders: `rtsp://user:pass@host:554/mode=real&idc=<ch>&ids=<1|2>` (`ids` 2 = sub stream)
+- `xm` — older XiongMai-based devices: `rtsp://host:554/user=…&password=…&channel=<ch>&stream=<0|1>.sdp?real_stream`
+- `simple` — newer cameras and doorphones: `rtsp://user:pass@host:8554/ch<NN>`
+- or set `urlTemplate` per channel with `{host}` `{port}` `{user}` `{pass}` `{ch}` `{ch2}` placeholders for anything else
+
+KENIK has no uniform HTTP snapshot API, so LSH grabs one frame from the RTSP stream with **ffmpeg** (requires ffmpeg installed; honors `ffmpegRtsp.ffmpegPath`), caches it for 10 s, and proxies it at `/api/kenik/snapshot/<index>` — **the browser never sees the camera password**. `stream: "sub"` is recommended for DVR channels used as dashboard tiles. Set `webrtcUrl` to a go2rtc endpoint for in-dashboard live view, and add the built RTSP URL to `ffmpegRtsp` / `cameras` if you want HomeKit exposure.
+
+For PTZ cameras, add `"onvif": { "port": 80, "username": "", "password": "" }` to the channel (host/credentials default to the KENIK ones; `profileToken`/`ptzPath`/`mediaPath` override ONVIF specifics) — the camera modal then shows a press-and-hold PTZ pad driven over ONVIF `ContinuousMove`.
 
 Configure cameras in **Settings → 📷 Cameras → Reolink** — add a row per camera, hit **Test** to pull a live snapshot, then **Save**. Changes apply **live, without a restart** (the client reads the camera list from config on demand). Passwords are stored server-side and returned **masked** to the browser.
 

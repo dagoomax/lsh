@@ -96,6 +96,15 @@
       { "name": "Temp. salon", "mac": "3910", "type": "temperature", "index": 1 }
     ]
   },
+  "aqara": {
+    "pollInterval": 30,
+    "gateways": [
+      { "host": "192.168.1.x", "port": 9898, "password": "16charLANkey0000", "name": "Hub" }
+    ],
+    "names": {
+      "158d0001a2b3c4": "Czujnik salon"
+    }
+  },
   "fibaro": {
     "host": "192.168.1.x",
     "port": 80,
@@ -230,6 +239,17 @@
   "reolink": {
     "cameras": [
       { "name": "Driveway", "host": "192.168.1.50", "username": "admin", "password": "", "channel": 0, "stream": "main", "https": false, "port": 0, "webrtcUrl": "" }
+    ]
+  },
+  "kenik": {
+    "host": "192.168.1.90",
+    "username": "admin",
+    "password": "",
+    "urlStyle": "kenik",
+    "channels": [
+      { "name": "Podjazd", "channel": 1 },
+      { "name": "Ogród", "channel": 2, "stream": "sub" },
+      { "name": "Furtka", "host": "192.168.1.91", "urlStyle": "simple", "channel": 1, "onvif": { "port": 80 } }
     ]
   },
   "relays": [
