@@ -90,7 +90,7 @@ async function saveChipPlacement(deviceKey, patch) {
 }
 
 // Manually placed furniture item — draggable, removable on hover
-function DecorItem({ item, board, U, angle, mode3d, onMove, onRemove }) {
+function DecorItem({ item, board, U, angle, mode3d, zoomScale = 1, onMove, onRemove }) {
   const [livePos, setLivePos] = useState(null)
   const drag = useRef(null)
   const x = livePos?.x ?? item.x
@@ -105,8 +105,8 @@ function DecorItem({ item, board, U, angle, mode3d, onMove, onRemove }) {
   const onPointerMove = (e) => {
     const d = drag.current
     if (!d) return
-    const dxs = e.clientX - d.sx
-    const dys = e.clientY - d.sy
+    const dxs = (e.clientX - d.sx) / zoomScale
+    const dys = (e.clientY - d.sy) / zoomScale
     if (!d.moved && Math.abs(dxs) + Math.abs(dys) < 5) return
     d.moved = true
     const rz = (angle * Math.PI) / 180
@@ -139,12 +139,94 @@ function DecorItem({ item, board, U, angle, mode3d, onMove, onRemove }) {
   )
 }
 
+// ── Camera field-of-view cone ──
+// Rendered flat on the floor plane (not billboarded) under a camera chip.
+// Direction/range live in plan space (camAngle deg, 0 = plan north, clockwise;
+// camRange in grid cells) so the cone stays glued to the layout under any
+// board rotation. Dragging the handle at the cone tip sets both at once.
+const CAM_ICONS = ['📷', '📹', '🎥']
+const isCamera = (d) =>
+  d.camRange != null || d.camAngle != null || d.type === 'unifi' || CAM_ICONS.includes(d.customIcon)
+
+function CamCone({ device, U, angle, mode3d, zoomScale = 1 }) {
+  const [live, setLive] = useState(null)
+  const drag = useRef(null)
+
+  const dir   = live?.dir   ?? device.camAngle ?? 0
+  const range = live?.range ?? device.camRange ?? 2.2
+  const fov   = Math.min(170, Math.max(20, device.camFov ?? 70))
+  const R     = range * U
+  const rad   = (deg) => (deg * Math.PI) / 180
+  const pt    = (deg, r) => [r * Math.sin(rad(deg)), -r * Math.cos(rad(deg))]
+  const [x0, y0] = pt(dir - fov / 2, R)
+  const [x1, y1] = pt(dir + fov / 2, R)
+  const [hx, hy] = pt(dir, R)
+  const gid = 'camg-' + device.key.replace(/[^a-zA-Z0-9]/g, '_')
+
+  const onPointerDown = (e) => {
+    e.preventDefault(); e.stopPropagation()
+    drag.current = { sx: e.clientX, sy: e.clientY, hx, hy }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onPointerMove = (e) => {
+    const d = drag.current
+    if (!d) return
+    // screen deltas → plan deltas: undo focus zoom, board rotation, tilt
+    const dxs = (e.clientX - d.sx) / zoomScale
+    const dys = (e.clientY - d.sy) / zoomScale
+    const rz = rad(angle)
+    const b = dys / (mode3d ? Math.cos(rad(55)) : 1)
+    const dx = dxs * Math.cos(rz) + b * Math.sin(rz)
+    const dy = -dxs * Math.sin(rz) + b * Math.cos(rz)
+    const vx = d.hx + dx
+    const vy = d.hy + dy
+    const newDir = ((Math.atan2(vx, -vy) * 180) / Math.PI + 360) % 360
+    const newRange = Math.min(12, Math.max(0.5, Math.hypot(vx, vy) / U))
+    setLive({ dir: newDir, range: newRange })
+  }
+  const onPointerUp = async () => {
+    if (!drag.current) return
+    drag.current = null
+    const p = live
+    if (p) {
+      const ok = await saveChipPlacement(device.key, {
+        camAngle: +p.dir.toFixed(1),
+        camRange: +p.range.toFixed(2),
+      })
+      if (ok) setLive(null)   // server broadcast takes over
+    }
+  }
+
+  const pad = 12
+  return (
+    <svg className="plan-cam-cone"
+      width={2 * (R + pad)} height={2 * (R + pad)}
+      viewBox={`${-(R + pad)} ${-(R + pad)} ${2 * (R + pad)} ${2 * (R + pad)}`}
+      style={{ position: 'absolute', left: `calc(50% - ${R + pad}px)`, top: `calc(50% - ${R + pad}px)` }}>
+      <defs>
+        <radialGradient id={gid} gradientUnits="userSpaceOnUse" cx="0" cy="0" r={R}>
+          <stop offset="0%"   stopColor="var(--accent)" stopOpacity="0.34"/>
+          <stop offset="55%"  stopColor="var(--accent)" stopOpacity="0.16"/>
+          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.03"/>
+        </radialGradient>
+      </defs>
+      <path d={`M0,0 L${x0},${y0} A${R},${R} 0 0 1 ${x1},${y1} Z`}
+        fill={`url(#${gid})`} stroke="var(--accent)" strokeOpacity="0.4" strokeWidth="1.2"/>
+      <line x1="0" y1="0" x2={hx} y2={hy} stroke="var(--accent)" strokeOpacity="0.3"
+        strokeWidth="1" strokeDasharray="3 5"/>
+      <circle className="plan-cam-handle" cx={hx} cy={hy} r="7"
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp} onPointerCancel={() => { drag.current = null; setLive(null) }}/>
+    </svg>
+  )
+}
+
 // Device chip, absolutely positioned inside its room and draggable.
 // Screen-space pointer deltas are mapped back into plan space by inverting
 // the board rotation (rotateZ) and tilt (rotateX foreshortening).
 // Dragging is clamped to the board, not the room, so a chip can roam the
 // whole floor plan; the parent's onDropPos decides where it is persisted.
-function PositionedChip({ device, room, origin = { x: 0, y: 0 }, board, U, angle, mode3d, defaultPos, onOpen, onDropPos }) {
+function PositionedChip({ device, room, origin = { x: 0, y: 0 }, board, U, angle, mode3d, zoomScale = 1, defaultPos, onOpen, onDropPos }) {
   const [livePos, setLivePos] = useState(null)
   const drag = useRef(null)
 
@@ -161,8 +243,8 @@ function PositionedChip({ device, room, origin = { x: 0, y: 0 }, board, U, angle
   const onPointerMove = (e) => {
     const d = drag.current
     if (!d) return
-    const dxs = e.clientX - d.sx
-    const dys = e.clientY - d.sy
+    const dxs = (e.clientX - d.sx) / zoomScale
+    const dys = (e.clientY - d.sy) / zoomScale
     if (!d.moved && Math.abs(dxs) + Math.abs(dys) < 5) return
     d.moved = true
     const rz = (angle * Math.PI) / 180
@@ -196,6 +278,9 @@ function PositionedChip({ device, room, origin = { x: 0, y: 0 }, board, U, angle
     <div className="plan-chip-pos" style={{ left: `${x * 100}%`, top: `${y * 100}%` }}
       onPointerDown={onPointerDown} onPointerMove={onPointerMove}
       onPointerUp={onPointerUp} onPointerCancel={() => { drag.current = null; setLivePos(null) }}>
+      {isCamera(device) && (
+        <CamCone device={device} U={U} angle={angle} mode3d={mode3d} zoomScale={zoomScale}/>
+      )}
       <div className="plan-bill">
         <div className="plan-chip" data-on={String(on)} title={device.label} role="button">
           {device.customIcon
@@ -242,6 +327,55 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
     localStorage.setItem('plan3d', m ? '0' : '1')
     return !m
   })
+
+  // ── Room focus-zoom: click a room to fill the viewport with it ──
+  // Rects are measured in screen space (so the 3D tilt/rotation is accounted
+  // for) while un-zoomed, cached, and turned into a translate+scale on the
+  // stage. Clicking the focused room again, Esc, or the back pill zooms out.
+  const viewportRef = useRef(null)
+  const stageRef    = useRef(null)
+  const roomRefs    = useRef({})
+  const rectCache   = useRef(null)
+  const [focusRoom, setFocusRoom] = useState(null)
+  const [focusT, setFocusT]       = useState(null)
+  const unfocus = () => { setFocusRoom(null); setFocusT(null); rectCache.current = null }
+
+  const focusOnRoom = (name) => {
+    if (focusRoom === name) return unfocus()
+    let c = rectCache.current
+    if (!focusRoom || !c) {
+      if (!viewportRef.current || !stageRef.current) return
+      const rooms = {}
+      for (const [n, el] of Object.entries(roomRefs.current)) {
+        if (el) rooms[n] = el.getBoundingClientRect()
+      }
+      c = rectCache.current = {
+        vp: viewportRef.current.getBoundingClientRect(),
+        st: stageRef.current.getBoundingClientRect(),
+        rooms,
+      }
+    }
+    const r = c.rooms[name]
+    if (!r || !r.width) return
+    const s = Math.min(3.5, Math.max(1.15,
+      Math.min((c.vp.width * 0.86) / r.width, (c.vp.height * 0.86) / r.height)))
+    const scx = c.st.left + c.st.width / 2,  scy = c.st.top + c.st.height / 2
+    const vcx = c.vp.left + c.vp.width / 2,  vcy = c.vp.top + c.vp.height / 2
+    const rcx = r.left + r.width / 2,        rcy = r.top + r.height / 2
+    setFocusT({ x: vcx - scx - s * (rcx - scx), y: vcy - scy - s * (rcy - scy), s })
+    setFocusRoom(name)
+  }
+
+  useEffect(() => {           // any view change invalidates the measured rects
+    unfocus()
+  }, [floor, angle, mode3d, zoom]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!focusRoom) return
+    const onKey = (e) => { if (e.key === 'Escape') unfocus() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [focusRoom]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [decor, setDecor] = useState({})
   useEffect(() => {
@@ -447,9 +581,19 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
             title="Isometric / flat">3D</button>
         </div>
       </div>
-      <div className="plan-viewport">
-      <div className="plan-stage" style={{ width: maxX * U, height: maxY * U }}>
-        <div className="plan-board" data-3d={String(mode3d)} data-img={String(!!floorCfg?.image)} style={{
+      <div className="plan-viewport" ref={viewportRef}
+        style={{ position: 'relative', overflow: focusRoom ? 'hidden' : undefined }}>
+      {focusRoom && (
+        <button className="plan-filter-pill plan-zoom-back" onClick={unfocus}>
+          ⤺ {roomsMeta[focusRoom]?.icon || '🏠'} {focusRoom}
+        </button>
+      )}
+      <div className="plan-stage" ref={stageRef} style={{
+        width: maxX * U, height: maxY * U,
+        transform: focusT ? `translate(${focusT.x}px, ${focusT.y}px) scale(${focusT.s})` : 'none',
+      }}>
+        <div className="plan-board" data-3d={String(mode3d)} data-img={String(!!floorCfg?.image)}
+          data-zoomed={String(!!focusRoom)} style={{
           width: maxX * U, height: maxY * U,
           '--plan-rz': `${angle}deg`, '--plan-rx': mode3d ? '55deg' : '0deg',
           ...(floorCfg?.image ? {
@@ -463,10 +607,17 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
             const devs = devices.filter((d) => d.room === room.name && !d.planFloor && matches(d))
             const onCount = devs.filter(isOn).length
             return (
-              <div key={room.name} className="plan-room" data-active={String(onCount > 0)} style={{
-                left: room.x * U, top: room.y * U,
-                width: room.w * U, height: room.d * U,
-              }}>
+              <div key={room.name} className="plan-room" data-active={String(onCount > 0)}
+                data-zoom-target={String(focusRoom === room.name)}
+                ref={(el) => { if (el) roomRefs.current[room.name] = el; else delete roomRefs.current[room.name] }}
+                onClick={(e) => {
+                  if (e.target.closest('.plan-chip-pos')) return   // chip clicks open the device
+                  focusOnRoom(room.name)
+                }}
+                style={{
+                  left: room.x * U, top: room.y * U,
+                  width: room.w * U, height: room.d * U,
+                }}>
                 <div className="plan-wall plan-wall-n"/>
                 <div className="plan-wall plan-wall-s"/>
                 <div className="plan-wall plan-wall-w"/>
@@ -491,7 +642,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
                   {devs.map((d, i) => (
                     <PositionedChip key={d.key} device={d} room={room} U={U}
                       origin={{ x: room.x, y: room.y }} board={boardRoom}
-                      angle={angle} mode3d={mode3d} onOpen={onOpen}
+                      angle={angle} mode3d={mode3d} zoomScale={focusT?.s || 1} onOpen={onOpen}
                       onDropPos={(bx, by, p) => dropRoomChip(d, p, bx, by)}
                       defaultPos={{
                         x: Math.min(0.9, 0.14 + (i % 4) * 0.24),
@@ -505,6 +656,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
           {showFurniture && (decor[activeFloor] || []).map((item) => (
             <div key={item.id} className="plan-devices">
               <DecorItem item={item} board={boardRoom} U={U} angle={angle} mode3d={mode3d}
+                zoomScale={focusT?.s || 1}
                 onMove={(id, x, y) => decorOp({ op: 'move', id, x, y })}
                 onRemove={(id) => decorOp({ op: 'remove', id })}/>
             </div>
@@ -525,7 +677,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
               return (
                 <div key={d.key} className="plan-devices">
                   <PositionedChip device={dev} room={boardRoom} board={boardRoom} U={U}
-                    angle={angle} mode3d={mode3d} onOpen={onOpen}
+                    angle={angle} mode3d={mode3d} zoomScale={focusT?.s || 1} onOpen={onOpen}
                     onDropPos={(bx, by) => dropBoardChip(d, bx, by)}
                     defaultPos={{ x: 0.5, y: 0.5 }}/>
                 </div>

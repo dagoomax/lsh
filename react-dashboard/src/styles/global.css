@@ -153,15 +153,32 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-/* Ambient depth — fixed aurora glows behind everything */
+/* Ambient depth — fixed aurora glows behind everything, drifting slowly */
 body::before {
   content: '';
-  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  position: fixed; inset: -8%; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(900px 600px at 12% -8%,  rgba(56,110,200,0.14), transparent 60%),
-    radial-gradient(800px 560px at 95% 0%,   rgba(57,197,207,0.07), transparent 55%),
-    radial-gradient(1000px 700px at 50% 115%, rgba(94,80,190,0.10), transparent 60%);
+    radial-gradient(900px 600px at 12% -8%,  rgba(56,110,200,0.16), transparent 60%),
+    radial-gradient(800px 560px at 95% 0%,   rgba(57,197,207,0.08), transparent 55%),
+    radial-gradient(700px 500px at 80% 60%,  rgba(217,180,91,0.045), transparent 60%),
+    radial-gradient(1000px 700px at 50% 115%, rgba(94,80,190,0.12), transparent 60%);
+  animation: lux-aurora 60s ease-in-out infinite alternate;
+  will-change: transform;
 }
+@keyframes lux-aurora {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-1.5%, 1%, 0) scale(1.05); }
+  100% { transform: translate3d(1.5%, -1%, 0) scale(1.02); }
+}
+
+/* Film grain — barely-there texture that kills flat-gradient banding */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+[data-theme="light"] body::after { opacity: 0.015; }
 
 #root {
   height: 100%;
@@ -583,6 +600,9 @@ input[type="range"]::-moz-range-thumb {
   margin: auto;
   perspective: 1600px;
   flex-shrink: 0;
+  /* room focus-zoom (click a room) animates a translate+scale on the stage */
+  transition: transform 0.65s cubic-bezier(0.3, 0.7, 0.25, 1);
+  will-change: transform;
 }
 .plan-board {
   position: relative;
@@ -593,6 +613,7 @@ input[type="range"]::-moz-range-thumb {
 .plan-room {
   position: absolute;
   border-radius: 8px;
+  cursor: pointer;
   background:
     repeating-linear-gradient(0deg, transparent 0 12px, var(--white-03) 12px 13px),
     repeating-linear-gradient(90deg, transparent 0 12px, var(--white-03) 12px 13px),
@@ -600,8 +621,39 @@ input[type="range"]::-moz-range-thumb {
   border: 1.5px solid var(--border-lt);
   box-shadow: var(--shadow-1);
   transform-style: preserve-3d;
-  transition: box-shadow 0.25s, border-color 0.25s, transform 0.25s;
+  transition: box-shadow 0.25s, border-color 0.25s, transform 0.25s, opacity 0.5s;
 }
+/* While a room is focused, its siblings recede */
+.plan-board[data-zoomed="true"] .plan-room:not([data-zoom-target="true"]) { opacity: 0.4; }
+.plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 26px rgba(88,166,255,0.22), var(--shadow-2);
+}
+[data-theme="light"] .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] {
+  box-shadow: 0 0 26px rgba(9,105,218,0.16), var(--shadow-2);
+}
+.plan-zoom-back {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  background: var(--card);
+  box-shadow: var(--shadow-2);
+}
+
+/* ── Camera field-of-view cones (home plan) ── */
+.plan-cam-cone { pointer-events: none; overflow: visible; }
+.plan-cam-handle {
+  pointer-events: auto;
+  cursor: grab;
+  fill: var(--card);
+  stroke: var(--accent);
+  stroke-width: 2;
+  transition: r 0.15s ease;
+}
+.plan-cam-handle:hover  { r: 9; }
+.plan-cam-handle:active { cursor: grabbing; }
 .plan-room:hover {
   border-color: var(--accent);
   transform: translateZ(10px);
@@ -749,7 +801,7 @@ input[type="range"]::-moz-range-thumb {
 .plan-wall-e { top: 0; bottom: 0; right: 0;  width: 20px;  transform-origin: right;  transform: rotateY(-90deg); }
 .plan-board[data-3d="false"] .plan-wall { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
-  .plan-board, .plan-bill { transition: none; }
+  .plan-board, .plan-bill, .plan-stage { transition: none; }
 }
 
 /* Plan furniture / appliance decorations */
@@ -896,4 +948,107 @@ input[type="range"]::-moz-range-thumb {
   20% { transform: translateX(-6px); }
   60% { transform: translateX(5px); }
   80% { transform: translateX(-3px); }
+}
+
+/* ── Luxury pass ─────────────────────────────────────────────────────────
+   Premium finishing on top of the base system: specular sheens, glassier
+   surfaces, gradient accents, richer numerals. Purely additive — every
+   rule keys off existing classes and both themes are covered. */
+
+/* Specular sheen — a light band sweeps across tiles/cards on hover */
+.device-tile::before, .ecard::before, .stat-card::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(115deg,
+    transparent 32%,
+    rgba(255,255,255,0.05) 44%,
+    rgba(160,200,255,0.11) 50%,
+    rgba(255,255,255,0.05) 56%,
+    transparent 68%);
+  transform: translateX(-130%) skewX(-8deg);
+  opacity: 0;
+}
+.device-tile:hover::before, .ecard:hover::before, .stat-card:hover::before {
+  animation: lux-sheen 0.9s cubic-bezier(0.25, 0.6, 0.35, 1);
+}
+@keyframes lux-sheen {
+  0%   { transform: translateX(-130%) skewX(-8deg); opacity: 1; }
+  100% { transform: translateX(130%)  skewX(-8deg); opacity: 1; }
+}
+[data-theme="light"] .device-tile::before,
+[data-theme="light"] .ecard::before,
+[data-theme="light"] .stat-card::before {
+  background: linear-gradient(115deg,
+    transparent 32%,
+    rgba(255,255,255,0.35) 44%,
+    rgba(255,255,255,0.6) 50%,
+    rgba(255,255,255,0.35) 56%,
+    transparent 68%);
+}
+
+/* Deeper, softer lift on hover */
+.device-tile:hover { transform: translateY(-3px); }
+.device-tile[data-on="true"]:hover { transform: translateY(-3px); }
+.ecard:hover, .stat-card:hover { transform: translateY(-3px); }
+
+/* Active tiles get a delicate gradient hairline instead of a flat border */
+.device-tile[data-on="true"]::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit; padding: 1px;
+  background: linear-gradient(160deg,
+    rgba(165,209,255,0.55) 0%, rgba(121,192,255,0.12) 35%,
+    transparent 60%, rgba(88,166,255,0.30) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+[data-theme="light"] .device-tile[data-on="true"]::after {
+  background: linear-gradient(160deg,
+    rgba(9,105,218,0.45) 0%, rgba(9,105,218,0.10) 35%,
+    transparent 60%, rgba(9,105,218,0.25) 100%);
+}
+
+/* Sidebar joins the glass system (header already blurs) */
+.device-sidebar {
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+}
+
+/* Gradient accent fills — nav pill, category pills, lock button */
+.header-nav-react a.active,
+.cat-pill[data-active="true"],
+.lock-btn {
+  background: linear-gradient(180deg, var(--accent-lt) -40%, var(--accent) 60%);
+  box-shadow: 0 2px 14px rgba(88,166,255,0.4), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+[data-theme="light"] .header-nav-react a.active,
+[data-theme="light"] .cat-pill[data-active="true"],
+[data-theme="light"] .lock-btn {
+  box-shadow: 0 2px 10px rgba(9,105,218,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.cat-pill[data-variant="soft"][data-active="true"] {
+  background: rgba(121,192,255,0.14);
+  box-shadow: none;
+}
+
+/* Platform chips glow softly when their platform is live */
+.platform-chip[data-on="true"] { box-shadow: 0 0 12px rgba(63,185,80,0.12), var(--inner-hl); }
+
+/* Jewelry-grade numerals — lining, tabular, tightly tracked */
+.ecard-value, .stat-card, .modal-device-title {
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Scrollbar thumb picks up a gradient */
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(148,166,190,0.32), rgba(148,166,190,0.16));
+}
+
+/* Luxury is quiet for those who ask for it */
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+  .device-tile::before, .ecard::before, .stat-card::before { display: none; }
 }

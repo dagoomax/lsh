@@ -31,11 +31,14 @@ class SensorRegistry extends EventEmitter {
     if (o.planX != null) device.planX = o.planX;
     if (o.planY != null) device.planY = o.planY;
     if (o.planFloor) device.planFloor = o.planFloor;
+    if (o.camAngle != null) device.camAngle = o.camAngle;
+    if (o.camFov   != null) device.camFov   = o.camFov;
+    if (o.camRange != null) device.camRange = o.camRange;
   }
 
   // Persist a user customization and apply it to the live descriptor.
   // Empty-string fields clear the override for that field.
-  setOverride(deviceKey, { room, icon, label, planX, planY, planFloor } = {}) {
+  setOverride(deviceKey, { room, icon, label, planX, planY, planFloor, camAngle, camFov, camRange } = {}) {
     const device = this.devices.get(deviceKey);
     if (!device) throw new Error(`Unknown device: ${deviceKey}`);
 
@@ -69,6 +72,25 @@ class SensorRegistry extends EventEmitter {
       const v = Number(val);
       if (Number.isFinite(v)) {
         o[field] = Math.min(1, Math.max(0, +v.toFixed(3)));
+        device[field] = o[field];
+      } else {
+        delete o[field]; delete device[field];
+      }
+    }
+
+    // Camera field-of-view on the home plan: viewing direction (deg, 0 = plan
+    // north, clockwise), cone width (deg) and range (plan grid cells)
+    for (const [field, val, lo, hi, dp] of [
+      ['camAngle', camAngle, 0, 360, 1],
+      ['camFov',   camFov,   20, 170, 0],
+      ['camRange', camRange, 0.4, 15, 2],
+    ]) {
+      if (val === undefined) continue;
+      const v = (val === '' || val === null) ? NaN : Number(val);
+      if (Number.isFinite(v)) {
+        o[field] = field === 'camAngle'
+          ? +(((v % 360) + 360) % 360).toFixed(dp)
+          : +Math.min(hi, Math.max(lo, v)).toFixed(dp);
         device[field] = o[field];
       } else {
         delete o[field]; delete device[field];
