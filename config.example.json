@@ -86,6 +86,16 @@
       { "name": "Temperatura", "object": "PANELSENSTEMP1", "type": "temperature" }
     ]
   },
+  "ampio": {
+    "host": "192.168.1.x",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "devices": [
+      { "name": "Lampa salon", "mac": "1C4A", "type": "light", "index": 1 },
+      { "name": "Temp. salon", "mac": "3910", "type": "temperature", "index": 1 }
+    ]
+  },
   "fibaro": {
     "host": "192.168.1.x",
     "port": 80,

@@ -586,6 +586,33 @@ Setup on the Grenton side (once, in Object Manager): add an **HttpListener** to 
 
 Device `type`: `light` / `switch` (on-off, HomeKit-exposed), `dimmer` (adds a brightness slider; `scale: 1` for Grenton's 0–1 DIM range), `blind` (position slider plus optional momentary `up`/`down`/`stop` buttons driven by the raw Grenton calls in `commands`), `temperature`, `sensor` (read-only value, optional `unit`). Optional per-device `getIndex`/`setIndex` select the object feature index (default 0), and `token` adds a shared secret checked by the listener script.
 
+### `ampio`
+
+**Ampio** smart home (CAN modules) via the MQTT broker on the **M-SERV** — enable it in Smart Home Konfigurator first; credentials are the same as for the Smart Home Manager app. There is no discovery API — devices are declared explicitly, addressed by the module MAC (as shown in the Konfigurator) and the input/output index.
+
+```json
+"ampio": {
+  "host": "192.168.1.x",
+  "port": 1883,
+  "username": "",
+  "password": "",
+  "devices": [
+    { "name": "Lampa salon",  "mac": "1C4A", "type": "light",       "index": 1 },
+    { "name": "Ściemniacz",   "mac": "1C4A", "type": "dimmer",      "index": 2 },
+    { "name": "Roleta",       "mac": "3910", "type": "blind",       "index": 1 },
+    { "name": "Temp. salon",  "mac": "3910", "type": "temperature", "index": 1 },
+    { "name": "Czujka ruchu", "mac": "3910", "type": "motion",      "index": 3 },
+    { "name": "Jasność",      "mac": "3910", "type": "sensor", "index": 1, "stateType": "a", "unit": "lx" }
+  ]
+}
+```
+
+States arrive on `ampio/from/<MAC>/state/<type>/<idx>` topics; commands publish to `ampio/to/<MAC>/o|f/<idx>/cmd`.
+
+Device `type`: `light` / `switch` (relay output `o`, on/off, HomeKit-exposed), `dimmer` (level from the 8-bit `au` state, 0–255 shown as %, on/off + brightness commands), `flag` (Ampio flag `f`, on/off), `blind` (momentary `up`/`down`/`stop` buttons — roller modules take 2/1/0 on the output command topic; position feedback would need raw CAN frames), `temperature` (`t` state), `contact` / `motion` (binary input `i`), `sensor` (read-only value, default analogue `a` state, optional `unit` and `scale` multiplier). Per-device `stateType` overrides the state-topic letter, and `stateTopic`/`commandTopic` override the full topics for anything unusual.
+
+For development without hardware, run `node scripts/ampio-simulator.js` (a self-contained MQTT broker + fake modules `1C4A`/`3910` on port 1884) and point the config at `"host": "127.0.0.1", "port": 1884` with the example devices above.
+
 ### `esphome`
 
 ```json

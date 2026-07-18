@@ -355,6 +355,15 @@ async function main() {
     }
   }
 
+  // Start Ampio client if configured (MQTT broker on the M-SERV)
+  if (config.ampio?.host && config.ampio?.devices?.length) {
+    const AmpioClient = tryRequire('./src/ampio-client');
+    if (AmpioClient) {
+      const ampio = new AmpioClient(config, store, sensorRegistry);
+      ampio.start();
+    }
+  }
+
   // Start Miele client if configured (OAuth password grant, or one-off
   // scripts/miele-auth.js; tokens persisted + auto-refreshed)
   if (config.miele) {
