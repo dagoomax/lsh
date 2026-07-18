@@ -2,7 +2,7 @@
 
 ‹ [Home](Home) · [Architecture](Architecture) ›
 
-Every JavaScript module in `src/` has a reference page below (54 modules). Pages are generated from source plus the README's module notes.
+Every JavaScript module in `src/` has a reference page below (63 modules). Pages are generated from source plus the README's module notes.
 
 ## Core
 
@@ -68,6 +68,8 @@ Every JavaScript module in `src/` has a reference page below (54 modules). Pages
 
 | Module | Lines | Config | Devices |
 |---|---|---|---|
+| [`ampio-client.js`](Module-ampio-client) | 191 | `ampio` | `ampio` |
+| [`aqara-client.js`](Module-aqara-client) | 280 | `aqara` | `aqara` |
 | [`arduino-client.js`](Module-arduino-client) | 200 | `arduino` `mqtt` | — |
 | [`auxair-client.js`](Module-auxair-client) | 250 | `auxair` | — |
 | [`bayrol-client.js`](Module-bayrol-client) | 230 | `bayrol` | — |
@@ -78,15 +80,21 @@ Every JavaScript module in `src/` has a reference page below (54 modules). Pages
 | [`dreame-client.js`](Module-dreame-client) | 286 | `dreame` | — |
 | [`esphome-client.js`](Module-esphome-client) | 295 | `esphome` | — |
 | [`fibaro-client.js`](Module-fibaro-client) | 259 | `fibaro` | — |
+| [`grenton-client.js`](Module-grenton-client) | 201 | `grenton` | `grenton` |
+| [`homeconnect-client.js`](Module-homeconnect-client) | 353 | `homeConnect` | `homeconnect` |
 | [`homey-client.js`](Module-homey-client) | 232 | `homey` | `homey` |
+| [`kenik-client.js`](Module-kenik-client) | 141 | `json` | — |
 | [`knx-client.js`](Module-knx-client) | 169 | `knx` | — |
+| [`landroid-client.js`](Module-landroid-client) | 226 | `landroid` | `landroid` |
 | [`lgthinq-client.js`](Module-lgthinq-client) | 474 | `lgthinq` | — |
 | [`loxone-client.js`](Module-loxone-client) | 474 | — | — |
 | [`loxone-out-client.js`](Module-loxone-out-client) | 61 | `loxoneOut` | — |
 | [`mc6-client.js`](Module-mc6-client) | 127 | `mc` | — |
+| [`miele-client.js`](Module-miele-client) | 353 | `miele` | `miele` |
 | [`mqtt-client.js`](Module-mqtt-client) | 142 | `mqtt` | — |
 | [`reolink-client.js`](Module-reolink-client) | 110 | `json` | — |
 | [`roborock-client.js`](Module-roborock-client) | 211 | `roborock` | — |
+| [`roborock-cloud-client.js`](Module-roborock-cloud-client) | 836 | `roborock` | `roborock` |
 | [`satel-client.js`](Module-satel-client) | 467 | `satel` | `satel` |
 | [`shelly-client.js`](Module-shelly-client) | 327 | `shelly` | — |
 | [`smartbob-client.js`](Module-smartbob-client) | 128 | `smartbob` | — |
@@ -98,6 +106,7 @@ Every JavaScript module in `src/` has a reference page below (54 modules). Pages
 | [`suppla-client.js`](Module-suppla-client) | 291 | `suppla` | — |
 | [`tradfri-client.js`](Module-tradfri-client) | 226 | `tradfri` | — |
 | [`unifi-protect-client.js`](Module-unifi-protect-client) | 312 | `unifi` | `unifi` |
+| [`vents-client.js`](Module-vents-client) | 183 | `vents` | `vents` |
 | [`vrm-client.js`](Module-vrm-client) | 220 | `vrm` | — |
 | [`waveshare-modbus-client.js`](Module-waveshare-modbus-client) | 282 | `waveshare` | — |
 | [`wirenboard-client.js`](Module-wirenboard-client) | 206 | `wirenboard` | — |

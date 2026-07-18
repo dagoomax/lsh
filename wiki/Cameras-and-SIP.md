@@ -29,7 +29,7 @@ A WebRTC-based SIP softphone is embedded in the dashboard. It supports:
 
 ## Cameras
 
-Camera tiles appear on the dashboard. Click any tile to open the full-screen modal with event log.
+Camera tiles appear on the dashboard. Click any tile to open the full-screen modal with event log. The list combines manual `cameras` entries with auto-added **UniFi Protect**, **Reolink**, **KENIK** and **SmartThings** cameras.
 
 ### Stream priorities
 

@@ -270,6 +270,17 @@ Adds **Reolink PoE cameras / NVRs** to the camera list. Reads `reolink.cameras` 
 
 ---
 
+### `src/kenik-client.js`
+
+Adds **KENIK (Eltrox) cameras and DVR/XVR recorders** to the camera list. Reads `kenik.channels` from config on demand (Settings edits apply without a restart). Builds each channel's RTSP URL in one of KENIK's three URL generations (`urlStyle`: `kenik` DVR, `xm` legacy, `simple` new cameras, or a raw `urlTemplate`). No uniform HTTP snapshot API exists, so `GET /api/kenik/snapshot/:idx` grabs one frame from the RTSP stream with ffmpeg (cached 10 s) — credentials never reach the browser.
+
+**Config:**
+```json
+"kenik": { "host": "192.168.1.90", "username": "admin", "password": "", "urlStyle": "kenik", "channels": [ { "name": "Podjazd", "channel": 1 } ] }
+```
+
+---
+
 ### `src/shelly-client.js`
 
 Polls **Shelly** devices every 15 s. Auto-detects Gen1 (REST `/status`) vs Gen2 (REST `/rpc/Shelly.GetStatus`). Registers sensors for power, voltage, current, and relay state. Supports toggling relays via `POST /api/device/:key/command`.
@@ -288,6 +299,28 @@ Discovers **BoneIO** relay board entities via **Home Assistant MQTT auto-discove
 **Config:**
 ```json
 "boneio": { "host": "192.168.1.100", "port": 1883 }
+```
+
+---
+
+### `src/ampio-client.js`
+
+**Ampio** smart home (CAN modules) via the MQTT broker on the **M-SERV**. States arrive on `ampio/from/<MAC>/state/<type>/<idx>` topics; commands publish to `ampio/to/<MAC>/o|f/<idx>/cmd`. No discovery API — devices are declared by module MAC + index (`light`, `switch`, `dimmer`, `flag`, `blind`, `temperature`, `contact`, `motion`, `sensor`). `scripts/ampio-simulator.js` is a self-contained broker + fake modules for hardware-free development.
+
+**Config:**
+```json
+"ampio": { "host": "192.168.1.x", "port": 1883, "devices": [ { "name": "Lampa salon", "mac": "1C4A", "type": "light", "index": 1 } ] }
+```
+
+---
+
+### `src/aqara-client.js`
+
+**Aqara / Xiaomi Zigbee** devices via the gateway LAN protocol (UDP 9898, developer mode). Auto-discovers child devices through the hub, tracks live state via `report` multicasts (poll fallback), and controls plugs / wall switches / the gateway light with token-signed writes (AES-128-CBC with the LAN password). `scripts/aqara-simulator.js` emulates a hub for hardware-free development.
+
+**Config:**
+```json
+"aqara": { "gateways": [ { "host": "192.168.1.x", "password": "16charLANkey0000" } ] }
 ```
 
 ---
