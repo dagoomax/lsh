@@ -65,6 +65,15 @@ async function main() {
     if (n) console.log(`[KENIK] ${n} camera(s) configured`);
   }
 
+  // Hardware simulator manager — spawns scripts/*-simulator.js per
+  // config.simulators; toggled live via /api/simulators
+  let simulators = null;
+  const SimulatorManager = tryRequire('./src/simulator-manager');
+  if (SimulatorManager) {
+    simulators = new SimulatorManager(config);
+    simulators.start();
+  }
+
   let mqttExplorer = null;
   if (config.mqtt?.host) {
     const MqttExplorer = tryRequire('./src/mqtt-explorer');
@@ -137,7 +146,7 @@ async function main() {
   const AutomationEngine = tryRequire('./src/automation-engine');
   if (AutomationEngine) automation = new AutomationEngine(store, sensorRegistry, relayController);
 
-  const apiClients = { unifiProtect, reolink, kenik, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
+  const apiClients = { unifiProtect, reolink, kenik, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────
@@ -370,6 +379,15 @@ async function main() {
     if (AmpioClient) {
       const ampio = new AmpioClient(config, store, sensorRegistry);
       ampio.start();
+    }
+  }
+
+  // Start Philips Hue client if configured (local bridge, CLIP v1 REST)
+  if (config.hue?.host && config.hue?.username) {
+    const HueClient = tryRequire('./src/hue-client');
+    if (HueClient) {
+      const hue = new HueClient(config, store, sensorRegistry);
+      hue.start().catch((err) => console.error(`[Hue] Start failed: ${err.message}`));
     }
   }
 

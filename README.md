@@ -487,6 +487,38 @@ One-time pairing: press the action button on the hub, then immediately run `node
 
 First run: set `securityCode` from the sticker on the gateway back. The server generates and logs `identity` and `psk` — copy those back into config and remove `securityCode`.
 
+### `hue`
+
+```json
+"hue": {
+  "host": "192.168.1.x",
+  "username": "",
+  "pollInterval": 5
+}
+```
+
+**Philips Hue** via the local bridge (CLIP v1 REST — works on every bridge generation). Pairing: press the round link button on the bridge, run `node scripts/hue-auth.js <bridge-ip>` within 30 s, and paste the printed `username`.
+
+Lights, plugs and Zigbee accessories are **auto-discovered** and polled every `pollInterval` seconds (default 5). Color/white-ambiance lights expose brightness, color temperature and hue/saturation (HomeKit `light-rw`, full color control); smart plugs are switches; Hue motion sensors register as one device with motion + temperature + lux + battery; dimmer switches report their last `buttonevent` and battery.
+
+For development without a bridge, run `node scripts/hue-simulator.js` (a fake bridge on port 8180 with a color light, dimmable light, plug, motion trio and a dimmer switch) and point the config at `"host": "127.0.0.1", "port": 8180, "username": "sim"`.
+
+### `simulators`
+
+```json
+"simulators": {
+  "grenton": false,
+  "miele": false,
+  "ampio": false,
+  "aqara": false,
+  "hue": { "enabled": true, "port": 8180 }
+}
+```
+
+LSH can run the bundled hardware simulators (`scripts/*-simulator.js` — Grenton GATE, Miele API, Ampio M-SERV, Aqara gateway, Hue bridge) itself as child processes, so a development install doesn't need PM2 or extra terminals. Each entry is `true`/`false` or `{ "enabled": bool, "port": n }` (default ports: grenton 8199, miele 8299, ampio 1884, aqara 19898, hue 8180). Simulator output appears in the LSH log prefixed `[sim:<name>]`, and a crashed simulator restarts after 5 s while enabled.
+
+Simulators can also be **enabled/disabled at runtime** — `GET /api/simulators` lists them with status, `POST /api/simulators/<name>` with `{ "enabled": false }` stops one and persists the choice back to `config.json` (Swagger UI at `/api-docs` under the *Simulators* tag).
+
 ### `lgthinq`
 
 ```json

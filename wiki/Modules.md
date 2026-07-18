@@ -2,7 +2,7 @@
 
 ‹ [Home](Home) · [Architecture](Architecture) ›
 
-Every JavaScript module in `src/` has a reference page below (63 modules). Pages are generated from source plus the README's module notes.
+Every JavaScript module in `src/` has a reference page below (65 modules). Pages are generated from source plus the README's module notes.
 
 ## Core
 
@@ -63,6 +63,7 @@ Every JavaScript module in `src/` has a reference page below (63 modules). Pages
 | [`logger.js`](Module-logger) | 131 | — | — |
 | [`platform-status.js`](Module-platform-status) | 21 | — | — |
 | [`server-i18n.js`](Module-server-i18n) | 142 | `json` | — |
+| [`simulator-manager.js`](Module-simulator-manager) | 120 | `simulators` | — |
 
 ## Integration client
 
@@ -83,6 +84,7 @@ Every JavaScript module in `src/` has a reference page below (63 modules). Pages
 | [`grenton-client.js`](Module-grenton-client) | 201 | `grenton` | `grenton` |
 | [`homeconnect-client.js`](Module-homeconnect-client) | 353 | `homeConnect` | `homeconnect` |
 | [`homey-client.js`](Module-homey-client) | 232 | `homey` | `homey` |
+| [`hue-client.js`](Module-hue-client) | 215 | `hue` | `hue` |
 | [`kenik-client.js`](Module-kenik-client) | 141 | `json` | — |
 | [`knx-client.js`](Module-knx-client) | 169 | `knx` | — |
 | [`landroid-client.js`](Module-landroid-client) | 226 | `landroid` | `landroid` |

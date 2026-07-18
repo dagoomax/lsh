@@ -131,6 +131,18 @@
     "identity": "",
     "psk": ""
   },
+  "hue": {
+    "host": "192.168.1.x",
+    "username": "",
+    "pollInterval": 5
+  },
+  "simulators": {
+    "grenton": false,
+    "miele": false,
+    "ampio": false,
+    "aqara": false,
+    "hue": { "enabled": false, "port": 8180 }
+  },
   "unifi": {
     "host": "192.168.1.1",
     "username": "admin",
