@@ -626,6 +626,9 @@ function openCameraModal(cam) {
     info.textContent     = '';
   }
 
+  // PTZ pad — only for cameras exposing a ptzUrl (Reolink `ptz: true`, ONVIF)
+  document.getElementById('cam-modal-ptz').style.display = cam.ptzUrl ? 'grid' : 'none';
+
   document.getElementById('cam-modal').style.display = 'flex';
   document.getElementById('cam-modal-close').focus();
 
@@ -659,6 +662,41 @@ function closeCameraModal() {
 
 document.getElementById('cam-modal-close').addEventListener('click', closeCameraModal);
 document.querySelector('.cam-modal-backdrop').addEventListener('click', closeCameraModal);
+
+// ── PTZ: continuous move — op on press, stop on release ─────────────────────
+let _ptzActive = false;
+
+async function _ptzSend(op) {
+  if (!_modalCam?.ptzUrl) return;
+  try {
+    const res = await fetch(_modalCam.ptzUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ op }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      document.getElementById('cam-modal-refresh').textContent = `PTZ: ${j.error || 'HTTP ' + res.status}`;
+    }
+  } catch { /* transient — a stop is always sent on release */ }
+}
+
+for (const btn of document.querySelectorAll('#cam-modal-ptz [data-ptz]')) {
+  const start = (e) => {
+    e.preventDefault();
+    _ptzActive = true;
+    _ptzSend(btn.dataset.ptz);
+  };
+  const stop = () => {
+    if (!_ptzActive) return;
+    _ptzActive = false;
+    _ptzSend('stop');
+  };
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', stop);
+  btn.addEventListener('pointerleave', stop);
+  btn.addEventListener('pointercancel', stop);
+}
 
 // ── Camera event log ─────────────────────────────────────────────────────────
 

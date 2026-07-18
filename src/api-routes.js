@@ -19,7 +19,7 @@ function writeConfigFile(data) {
 }
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
-  const { unifiProtect, reolink, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, smartThings } = clients;
+  const { unifiProtect, reolink, kenik, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, smartThings } = clients;
   const router = Router();
 
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -567,7 +567,11 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       : [];
 
     const reolinkCams = reolink ? reolink.getCameras() : [];
-    res.json({ success: true, data: [...(cfg.cameras || []), ...unifiCams, ...reolinkCams, ...stCams] });
+    const kenikCams   = kenik ? kenik.getCameras() : [];
+    // Manual cameras with an `onvif` section get PTZ through the generic proxy
+    const manualCams = (cfg.cameras || []).map((c, idx) =>
+      c.onvif ? { ...c, ptzUrl: `/api/camera/ptz/${idx}` } : c);
+    res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...stCams] });
   });
 
   // ── SIP doorbell intercom ─────────────────────────────────
@@ -704,13 +708,57 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     reolink.proxySnapshot(req.params.idx, res);
   });
 
+  // KENIK snapshot proxy — one ffmpeg-grabbed RTSP frame, credentials stay server-side
+  router.get('/kenik/snapshot/:idx', (req, res) => {
+    if (!kenik) return res.status(503).end();
+    kenik.proxySnapshot(req.params.idx, res);
+  });
+
+  // ── Camera PTZ ────────────────────────────────────────────
+  // Continuous move: the client POSTs { op } on press and { op: 'stop' } on
+  // release. op: left | right | up | down | zoomin | zoomout | stop
+  const PTZ_OPS = ['left', 'right', 'up', 'down', 'zoomin', 'zoomout', 'stop'];
+  const ptzHandler = (fn) => async (req, res) => {
+    const { op, speed } = req.body || {};
+    if (!PTZ_OPS.includes(op)) {
+      return res.status(400).json({ success: false, error: `op must be one of ${PTZ_OPS.join('/')}` });
+    }
+    try {
+      await fn(req.params.idx, op, speed);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(502).json({ success: false, error: err.message });
+    }
+  };
+
+  router.post('/reolink/ptz/:idx', ptzHandler((idx, op, speed) => {
+    if (!reolink) throw new Error('Reolink unavailable');
+    return reolink.ptz(idx, op, speed);
+  }));
+
+  router.post('/kenik/ptz/:idx', ptzHandler((idx, op, speed) => {
+    if (!kenik) throw new Error('KENIK unavailable');
+    return kenik.ptz(idx, op, speed);
+  }));
+
+  // Manual `cameras` entries with an `onvif: { host, port, username, password }` section
+  router.post('/camera/ptz/:idx', ptzHandler((idx, op, speed) => {
+    const cam = (readConfigFile().cameras || [])[Number(idx)];
+    if (!cam?.onvif?.host) throw new Error('Camera has no ONVIF config');
+    return require('./onvif-ptz').ptz(cam.onvif, op, speed);
+  }));
+
   router.post('/settings/cameras', (req, res) => {
     const current = readConfigFile();
     const cameras = req.body;
     if (!Array.isArray(cameras)) {
       return res.status(400).json({ success: false, error: 'Body must be an array of cameras' });
     }
-    const cleaned = cameras.map(({ name, url, snapshotUrl, mjpegUrl, webrtcUrl }) => ({
+    // `onvif` (PTZ) is config-file-only — keep it when the Settings form,
+    // which doesn't know the field, re-saves the list
+    const cleaned = cameras.map(({ name, url, snapshotUrl, mjpegUrl, webrtcUrl, onvif }, i) => ({
+      ...((onvif && typeof onvif === 'object') ? { onvif }
+        : (current.cameras?.[i]?.onvif ? { onvif: current.cameras[i].onvif } : {})),
       name:        String(name        || '').trim(),
       url:         String(url         || '').trim(),
       snapshotUrl: String(snapshotUrl || '').trim(),

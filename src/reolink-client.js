@@ -46,8 +46,55 @@ class ReolinkClient {
       snapshotUrl: `/api/reolink/snapshot/${idx}`,
       mjpegUrl:    '',
       webrtcUrl:   cam.webrtcUrl || '',
+      ...(cam.ptz ? { ptzUrl: `/api/reolink/ptz/${idx}` } : {}),
       _reolink:    true,
     }));
+  }
+
+  // PTZ via Reolink's HTTP API (cmd=PtzCtrl). Continuous — the frontend sends
+  // an op on press and 'stop' on release. op: left|right|up|down|zoomin|zoomout|stop
+  async ptz(idx, op, speed) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const OPS = { left: 'Left', right: 'Right', up: 'Up', down: 'Down',
+                  zoomin: 'ZoomInc', zoomout: 'ZoomDec', stop: 'Stop' };
+    if (!OPS[op]) throw new Error(`Unknown PTZ op: ${op}`);
+
+    const body = JSON.stringify([{
+      cmd: 'PtzCtrl', action: 0,
+      param: {
+        channel: Number(cam.channel) || 0,
+        op:      OPS[op],
+        ...(op !== 'stop' ? { speed: Math.min(64, Math.max(1, Math.round((speed || 0.5) * 64))) } : {}),
+      },
+    }]);
+
+    return new Promise((resolve, reject) => {
+      const proto = cam.https ? https : http;
+      const port  = Number(cam.port) || (cam.https ? 443 : 80);
+      const query = new URLSearchParams({ cmd: 'PtzCtrl', user: cam.username || '', password: cam.password || '' });
+      const req = proto.request({
+        hostname: cam.host, port,
+        path: `/cgi-bin/api.cgi?${query}`,
+        method: 'POST',
+        rejectUnauthorized: false,
+        timeout: 8000,
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      }, (up) => {
+        let data = '';
+        up.on('data', (c) => data += c);
+        up.on('end', () => {
+          try {
+            const j = JSON.parse(data);
+            if (j?.[0]?.code === 0) return resolve();
+            reject(new Error(j?.[0]?.error?.detail || `HTTP ${up.statusCode}`));
+          } catch { reject(new Error(`HTTP ${up.statusCode}`)); }
+        });
+      });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('Connection timeout')); });
+      req.end(body);
+    });
   }
 
   // Pipe a fresh snapshot for camera <idx> to the Express response.
