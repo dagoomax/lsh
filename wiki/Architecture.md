@@ -378,6 +378,17 @@ node scripts/dirigera-auth.js 192.168.x.x
 
 ---
 
+### `src/hue-client.js`
+
+**Philips Hue** via the local bridge (CLIP v1 REST). Auto-discovers lights, plugs and Zigbee accessories; polls every `pollInterval` s. Full color control (brightness / color temperature / hue-sat, HomeKit `light-rw`); motion sensors grouped by Zigbee MAC into one device (motion + °C + lux + battery). Pair once with `scripts/hue-auth.js` (link button); `scripts/hue-simulator.js` emulates a bridge for development.
+
+**Config:**
+```json
+"hue": { "host": "192.168.1.x", "username": "", "pollInterval": 5 }
+```
+
+---
+
 ### `src/tradfri-client.js`
 
 Integrates with the **IKEA Tradfri** gateway via CoAP/DTLS using the `node-tradfri-client` package.
