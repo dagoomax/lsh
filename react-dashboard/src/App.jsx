@@ -6,12 +6,13 @@ import PlatformBar           from './components/PlatformBar'
 import DeviceList, { Toast } from './components/DeviceList'
 import IncomingCall          from './components/IncomingCall'
 import LockScreen            from './components/LockScreen'
+import LoginScreen           from './components/LoginScreen'
 
 // Single unified view: the "Rooms & Categories" device browser with the
 // Energy flow + relays rendered as the top section (see DeviceList). No more
 // split screen between devices and energy.
 export default function App() {
-  const { energy, devices, connection, connected, platforms, roomsMeta, toggleRelay } = useLSH()
+  const { energy, devices, connection, connected, platforms, roomsMeta, toggleRelay, authRequired, onLogin } = useLSH()
   const [locked, setLocked] = useState(() => localStorage.getItem('lsh-locked') === '1')
   const lock   = () => { localStorage.setItem('lsh-locked', '1'); setLocked(true) }
   const unlock = () => { localStorage.setItem('lsh-locked', '0'); setLocked(false) }
@@ -23,6 +24,10 @@ export default function App() {
     window.addEventListener('lsh-lang-changed', bump)
     return () => window.removeEventListener('lsh-lang-changed', bump)
   }, [])
+
+  if (authRequired) {
+    return <LoginScreen onLogin={onLogin}/>
+  }
 
   if (locked) {
     return <LockScreen onUnlock={unlock}/>

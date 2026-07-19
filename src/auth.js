@@ -195,9 +195,18 @@ const auth = {
           p.endsWith('.png') ||
           p.endsWith('.woff2') ||
           p.endsWith('.woff') ||
+          p.endsWith('manifest.json') ||
           p.startsWith('/lib/') ||
           p.startsWith('/i18n/') ||
           p.startsWith('/socket.io/') ||
+          // React PWA shell: static files only (all data comes from /api,
+          // which stays authenticated). Must be public — the iOS home-screen
+          // webapp has manifest scope /react/, and a 302 to /login.html at
+          // launch would leave that scope (Safari opens out-of-scope pages in
+          // a separate context whose cookie the webapp never gets); the app
+          // shows its own in-app LoginScreen instead.
+          p === '/react' ||
+          p.startsWith('/react/') ||
           p.startsWith('/.well-known/')
         )
       ) return next();
