@@ -600,8 +600,10 @@ input[type="range"]::-moz-range-thumb {
   margin: auto;
   perspective: 1600px;
   flex-shrink: 0;
-  /* room focus-zoom (click a room) animates a translate+scale on the stage */
-  transition: transform 0.65s cubic-bezier(0.3, 0.7, 0.25, 1);
+  /* room focus-zoom (click a room) animates a translate+scale on the stage;
+     the curve overshoots ~4% then settles for a springy camera feel — keep
+     it identical to the chip counter-scale transition below */
+  transition: transform 0.7s cubic-bezier(0.34, 1.2, 0.35, 1);
   will-change: transform;
 }
 .plan-board {
@@ -621,16 +623,36 @@ input[type="range"]::-moz-range-thumb {
   border: 1.5px solid var(--border-lt);
   box-shadow: var(--shadow-1);
   transform-style: preserve-3d;
-  transition: box-shadow 0.25s, border-color 0.25s, transform 0.25s, opacity 0.5s;
+  transition: box-shadow 0.5s, border-color 0.5s, border-width 0.5s, transform 0.25s,
+    opacity 0.55s, filter 0.55s;
 }
-/* While a room is focused, its siblings recede */
-.plan-board[data-zoomed="true"] .plan-room:not([data-zoom-target="true"]) { opacity: 0.4; }
+/* Crisper floor grid, faded in when the room is the zoom target */
+.plan-room::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 12px, var(--white-06) 12px 13px),
+    repeating-linear-gradient(90deg, transparent 0 12px, var(--white-06) 12px 13px);
+  opacity: 0;
+  transition: opacity 0.55s;
+}
+/* While a room is focused, its siblings recede into a depth-of-field haze */
+.plan-board[data-zoomed="true"] .plan-room:not([data-zoom-target="true"]) {
+  opacity: 0.32;
+  filter: saturate(0.55) blur(1.2px);
+}
 .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] {
   border-color: var(--accent);
-  box-shadow: 0 0 26px rgba(88,166,255,0.22), var(--shadow-2);
+  border-width: 2px;
+  box-shadow: 0 0 30px rgba(88,166,255,0.28), var(--shadow-2);
 }
+.plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"]::after { opacity: 1; }
+.plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] .plan-wall { opacity: 0.85; }
 [data-theme="light"] .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] {
-  box-shadow: 0 0 26px rgba(9,105,218,0.16), var(--shadow-2);
+  box-shadow: 0 0 30px rgba(9,105,218,0.2), var(--shadow-2);
 }
 .plan-zoom-back {
   position: absolute;
@@ -681,7 +703,7 @@ input[type="range"]::-moz-range-thumb {
    so the compensation tracks the zoom animation */
 .plan-chip-pos:not(.plan-decor) > .plan-bill {
   transform: rotateZ(calc(var(--plan-rz, -45deg) * -1)) rotateX(calc(var(--plan-rx, 55deg) * -1)) translateY(-42%) scale(var(--chip-inv, 1));
-  transition: transform 0.65s cubic-bezier(0.3, 0.7, 0.25, 1);
+  transition: transform 0.7s cubic-bezier(0.34, 1.2, 0.35, 1);
 }
 .plan-room-label-wrap {
   /* zero-size anchor pinned to the middle of the room's north edge;
@@ -844,6 +866,10 @@ input[type="range"]::-moz-range-thumb {
   border-color: rgba(88,166,255,0.25);
 }
 .plan-board[data-img="true"] .plan-wall { opacity: 0.25; }
+/* Image-mode plans: the render provides its own detail — no grid overlay,
+   and the focused room's walls stay subtle over the picture */
+.plan-board[data-img="true"] .plan-room::after { display: none; }
+.plan-board[data-img="true"][data-zoomed="true"] .plan-room[data-zoom-target="true"] .plan-wall { opacity: 0.35; }
 
 /* Add-device panel */
 .plan-add-panel {
