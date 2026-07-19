@@ -64,6 +64,60 @@ export function WallSconceIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function ChandelierIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 2v3"/>
+      <path d="M12 5c-4.5 0-7 2.5-7 6M12 5c4.5 0 7 2.5 7 6M12 5v5.5"/>
+      <path d="M3.5 11h3M17.5 11h3"/>
+      <path d="M5 11v-2.5M19 11v-2.5"/>
+      <circle cx="12" cy="12.5" r="1.6"/>
+    </svg>
+  )
+}
+
+export function SpotlightIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M3 4h4M5 4v2"/>
+      <circle cx="7.5" cy="8.5" r="3"/>
+      <path d="M10 10.5 17 20M10.5 10 20 17"/>
+    </svg>
+  )
+}
+
+export function PendantLightIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 2v5"/>
+      <path d="M6 13c0-3.3 2.7-6 6-6s6 2.7 6 6z"/>
+      <path d="M12 16v.5"/>
+      <path d="M8 18l-.7 1M16 18l.7 1M12 18.5V20"/>
+    </svg>
+  )
+}
+
+export function FloorLampIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M9 3h6l2 5H7l2-5z"/>
+      <path d="M12 8v12"/>
+      <path d="M8 20h8"/>
+    </svg>
+  )
+}
+
+export function DeskLampIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M4 20h8"/>
+      <path d="M8 20l2-7 4.5-4.5"/>
+      <circle cx="15.8" cy="7.2" r="2.6"/>
+      <path d="M19 10l2 2M20 7.5h1.5"/>
+    </svg>
+  )
+}
+
 export function DimmerIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
@@ -795,9 +849,28 @@ export function AwningIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+// Named SVG icons pickable as a device icon (stored as customIcon "svg:<name>").
+// Keys are persisted in device overrides — never rename, only add.
+export const NAMED_ICONS = {
+  bulb: BulbIcon,
+  ceiling: CeilingLightIcon,
+  pendant: PendantLightIcon,
+  chandelier: ChandelierIcon,
+  spot: SpotlightIcon,
+  led: LedStripIcon,
+  sconce: WallSconceIcon,
+  'floor-lamp': FloorLampIcon,
+  'desk-lamp': DeskLampIcon,
+  dimmer: DimmerIcon,
+}
+
 export function resolveIcon(device) {
-  // User-chosen emoji override (set via the dashboard edit panel)
+  // User-chosen override (set via the dashboard edit panel): either a named
+  // SVG icon ("svg:<name>") or an emoji
   if (device.customIcon) {
+    if (device.customIcon.startsWith('svg:')) {
+      return NAMED_ICONS[device.customIcon.slice(4)] || HomeIcon
+    }
     const emoji = device.customIcon
     const EmojiIcon = ({ size = 24 }) => (
       <span style={{ fontSize: Math.round(size * 0.86), lineHeight: 1, display: 'inline-block' }}>{emoji}</span>

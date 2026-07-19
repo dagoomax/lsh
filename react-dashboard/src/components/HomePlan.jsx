@@ -331,7 +331,7 @@ function PositionedChip({ device, room, origin = { x: 0, y: 0 }, board, U, angle
       )}
       <div className="plan-bill">
         <div className="plan-chip" data-on={String(on)} title={device.label} role="button">
-          {device.customIcon
+          {device.customIcon && !device.customIcon.startsWith('svg:')
             ? <span style={{ fontSize: 28, lineHeight: 1 }}>{device.customIcon}</span>
             : <IconComp size={28} color={on ? 'var(--tile-on-ink)' : 'var(--text2)'}/>}
         </div>
@@ -608,7 +608,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
                   <div className="plan-add-head">{gt('on_this_floor', 'On this floor')}</div>
                   {freeDevs.map((d) => (
                     <div key={d.key} className="plan-add-row">
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.customIcon || ''} {d.label}</span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.customIcon?.startsWith('svg:') ? '' : d.customIcon || ''} {d.label}</span>
                       <button className="plan-add-x" title={gt('remove', 'Remove')}
                         onClick={() => unplaceDevice(d.key)}>✕</button>
                     </div>
@@ -640,7 +640,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
                   .map((d) => (
                     <div key={d.key} className="plan-add-row plan-add-clickable"
                       onClick={() => { placeDevice(d.key); setShowAdd(false) }}>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.customIcon || ''} {d.label}</span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.customIcon?.startsWith('svg:') ? '' : d.customIcon || ''} {d.label}</span>
                       <span style={{ color: 'var(--text3)', fontSize: 10 }}>{d.room || d.type}</span>
                     </div>
                   ))}

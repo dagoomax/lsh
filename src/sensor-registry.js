@@ -48,7 +48,9 @@ class SensorRegistry extends EventEmitter {
       if (v) { o.room = v; device.room = v; } else { delete o.room; delete device.room; }
     }
     if (icon !== undefined) {
-      const v = String(icon).trim().slice(0, 8);
+      // emoji (max 8 chars) or a named SVG icon reference like "svg:chandelier"
+      const t = String(icon).trim();
+      const v = t.startsWith('svg:') ? t.slice(0, 24) : t.slice(0, 8);
       if (v) { o.icon = v; device.customIcon = v; } else { delete o.icon; delete device.customIcon; }
     }
     if (label !== undefined) {

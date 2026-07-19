@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { resolveIcon, MyIcon } from './Icons'
+import { resolveIcon, MyIcon, NAMED_ICONS } from './Icons'
 import { gt } from '../i18n'
 import { EDIT_EMOJI } from '../emoji'
 
@@ -500,6 +500,15 @@ function EditPanel({ device, rooms, onClose }) {
               background: icon === '' ? 'var(--accent-dim)' : 'var(--white-05)', color: 'var(--text2)' }}>
             {'</>'}
           </button>
+          {Object.entries(NAMED_ICONS).map(([k, Ic]) => (
+            <button key={k} onClick={() => setIcon(`svg:${k}`)} title={k}
+              style={{ width: 32, height: 32, borderRadius: 8, cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', color: 'var(--text2)',
+                border: `1.5px solid ${icon === `svg:${k}` ? 'var(--accent)' : 'var(--white-12)'}`,
+                background: icon === `svg:${k}` ? 'var(--accent-dim)' : 'var(--white-05)' }}>
+              <Ic size={18}/>
+            </button>
+          ))}
           {EDIT_EMOJI.map(e => (
             <button key={e} onClick={() => setIcon(e)}
               style={{ width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 17, lineHeight: 1,
