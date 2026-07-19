@@ -821,6 +821,22 @@ input[type="range"]::-moz-range-thumb {
   opacity: 0.9;
   filter: drop-shadow(0 3px 4px rgba(0,0,0,0.35));
 }
+/* generated room furniture is draggable like manual decor */
+.plan-furn-drag {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+}
+.plan-furn-drag:active { cursor: grabbing; }
+/* uploaded furniture picture (manual decor item) */
+.plan-furn-img {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.35));
+}
 
 /* Image-mode plan: rooms become translucent overlays over the render */
 .plan-board[data-img="true"] .plan-room {

@@ -118,24 +118,42 @@ class SensorRegistry extends EventEmitter {
     return this.getDecor();
   }
 
-  addDecor(floor, emoji, x = 0.5, y = 0.5) {
+  // opts: { image, hideAuto } — image is an uploaded-picture URL used instead
+  // of an emoji; hideAuto records the id of the generated room furniture this
+  // item replaces (see hideAutoDecor)
+  addDecor(floor, emoji, x = 0.5, y = 0.5, opts = {}) {
     if (!['cellar', 'floor1', 'floor2'].includes(floor)) throw new Error('Bad floor');
     const e = String(emoji || '').trim().slice(0, 8);
-    if (!e) throw new Error('Emoji required');
+    const image = String(opts.image || '').trim().slice(0, 400);
+    if (image && !/^(\/|https?:\/\/)/.test(image)) throw new Error('Bad image URL');
+    if (!e && !image) throw new Error('Emoji or image required');
     const decor = { ...this.getDecor() };
     const item = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      emoji: e,
+      ...(image ? { image } : { emoji: e }),
       x: Math.min(1, Math.max(0, Number(x) || 0.5)),
       y: Math.min(1, Math.max(0, Number(y) || 0.5)),
     };
+    if (opts.hideAuto) item.autoId = String(opts.hideAuto).slice(0, 120);
     decor[floor] = [...(decor[floor] || []), item];
+    if (item.autoId) decor._hidden = [...new Set([...(decor._hidden || []), item.autoId])];
+    return this._saveDecor(decor);
+  }
+
+  // Auto-generated room furniture can't be deleted from its deterministic
+  // source, so hidden pieces are tracked by id under the "_hidden" key
+  hideAutoDecor(autoId) {
+    const id = String(autoId || '').trim().slice(0, 120);
+    if (!id) throw new Error('id required');
+    const decor = { ...this.getDecor() };
+    decor._hidden = [...new Set([...(decor._hidden || []), id])];
     return this._saveDecor(decor);
   }
 
   moveDecor(id, x, y) {
     const decor = { ...this.getDecor() };
     for (const f of Object.keys(decor)) {
+      if (f === '_hidden') continue;
       decor[f] = decor[f].map((it) => it.id === id
         ? { ...it, x: Math.min(1, Math.max(0, Number(x) || 0)), y: Math.min(1, Math.max(0, Number(y) || 0)) }
         : it);
@@ -145,8 +163,28 @@ class SensorRegistry extends EventEmitter {
 
   removeDecor(id) {
     const decor = { ...this.getDecor() };
-    for (const f of Object.keys(decor)) decor[f] = decor[f].filter((it) => it.id !== id);
+    let removed = null;
+    for (const f of Object.keys(decor)) {
+      if (f === '_hidden') continue;
+      removed = removed || decor[f].find((it) => it.id === id) || null;
+      decor[f] = decor[f].filter((it) => it.id !== id);
+    }
+    // deleting a converted piece restores the generated one it replaced
+    if (removed?.autoId && decor._hidden) decor._hidden = decor._hidden.filter((a) => a !== removed.autoId);
+    this._deleteDecorImage(removed, decor);
     return this._saveDecor(decor);
+  }
+
+  // Uploaded furniture pictures live in persist/plan-decor/ — unlink the
+  // backing file once no remaining decor item references it
+  _deleteDecorImage(removed, decor) {
+    const url = removed?.image || '';
+    const m = url.match(/^\/api\/plan-decor\/img\/([a-z0-9-]+\.(?:png|jpg|webp|gif))$/);
+    if (!m) return;
+    const stillUsed = Object.entries(decor)
+      .some(([f, arr]) => f !== '_hidden' && arr.some((it) => it.image === url));
+    if (stillUsed) return;
+    fs.unlink(path.join(__dirname, '..', 'persist', 'plan-decor', m[1]), () => {});
   }
 
   // Room metadata (icon) lives in the same overrides file under the

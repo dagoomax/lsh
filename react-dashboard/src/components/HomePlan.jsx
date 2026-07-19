@@ -63,43 +63,51 @@ const isOn = (d) => {
   return v === 1 || v === true || v === 'on'
 }
 
+// POST JSON to a PIN-gated endpoint. On 403 the user is prompted for the
+// edit PIN (up to twice) and the request is retried with the entered value.
+// Returns the parsed response, or null if the user cancelled the prompt.
+async function postWithPin(url, body) {
+  let pin = sessionStorage.getItem('lsh-edit-pin') || ''
+  for (let prompts = 0; ; prompts++) {
+    const res = await fetch(url, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, pin }),
+    })
+    if (res.status !== 403 || prompts >= 2) return res.json().catch(() => ({}))
+    const entered = window.prompt(gt('pin_prompt', 'Enter edit PIN'))
+    if (entered == null) return null
+    pin = entered.trim()
+    sessionStorage.setItem('lsh-edit-pin', pin)
+  }
+}
+
 // Persist a dragged chip position ({planX, planY} fractions), PIN-gated
 async function saveChipPos(deviceKey, x, y) {
   return saveChipPlacement(deviceKey, { planX: x, planY: y })
 }
 
 async function saveChipPlacement(deviceKey, patch) {
-  let pin = sessionStorage.getItem('lsh-edit-pin') || ''
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await fetch(`/api/device/${encodeURIComponent(deviceKey)}/customize`, {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...patch, pin }),
-    })
-    if (res.status === 403) {
-      const entered = window.prompt(gt('pin_prompt', 'Enter edit PIN'))
-      if (entered == null) return false
-      pin = entered.trim()
-      sessionStorage.setItem('lsh-edit-pin', pin)
-      continue
-    }
-    const d = await res.json().catch(() => ({}))
-    return !!d.success
-  }
-  return false
+  const d = await postWithPin(`/api/device/${encodeURIComponent(deviceKey)}/customize`, patch)
+  return !!d?.success
 }
 
-// Manually placed furniture item — draggable, removable on hover
-function DecorItem({ item, board, U, angle, mode3d, zoomScale = 1, onMove, onRemove }) {
+// Shared drag machinery for plan decor pieces: pointer capture, a 5px move
+// threshold, and un-projection of screen deltas through the board rotation
+// and 3D tilt. The piece's own coordinates map to board fractions via
+// toBoard/fromBoard. onDrop gets the final board position and returns
+// truthy to keep the live position (until the parent re-renders the piece
+// away) or falsy to snap back; onTap fires on a click without movement.
+function usePlanDrag({ pos, board, U, angle, mode3d, zoomScale = 1, toBoard, fromBoard, onDrop, onTap }) {
   const [livePos, setLivePos] = useState(null)
   const drag = useRef(null)
-  const x = livePos?.x ?? item.x
-  const y = livePos?.y ?? item.y
+  const x = livePos?.x ?? pos.x
+  const y = livePos?.y ?? pos.y
 
   const onPointerDown = (e) => {
     if (e.target.closest('.plan-decor-x')) return
     e.preventDefault(); e.stopPropagation()
-    drag.current = { sx: e.clientX, sy: e.clientY, x, y, moved: false }
+    drag.current = { sx: e.clientX, sy: e.clientY, ...toBoard(x, y), moved: false }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
   const onPointerMove = (e) => {
@@ -113,27 +121,67 @@ function DecorItem({ item, board, U, angle, mode3d, zoomScale = 1, onMove, onRem
     const b = dys / (mode3d ? Math.cos((55 * Math.PI) / 180) : 1)
     const dx = dxs * Math.cos(rz) + b * Math.sin(rz)
     const dy = -dxs * Math.sin(rz) + b * Math.cos(rz)
-    setLivePos({
-      x: Math.min(0.97, Math.max(0.03, d.x + dx / (board.w * U))),
-      y: Math.min(0.97, Math.max(0.03, d.y + dy / (board.d * U))),
-    })
+    setLivePos(fromBoard(
+      Math.min(0.98, Math.max(0.02, d.bx + dx / (board.w * U))),
+      Math.min(0.98, Math.max(0.02, d.by + dy / (board.d * U))),
+    ))
   }
-  const onPointerUp = () => {
+  const onPointerUp = async () => {
     const d = drag.current
     drag.current = null
-    if (!d || !d.moved) { setLivePos(null); return }
+    if (!d) return
+    if (!d.moved) { setLivePos(null); onTap?.(); return }
     const p = livePos
-    if (p) onMove(item.id, p.x, p.y)
-    setLivePos(null)
+    if (!p) { setLivePos(null); return }
+    const keep = await onDrop(toBoard(p.x, p.y))
+    if (!keep) setLivePos(null)
   }
+  const onPointerCancel = () => { drag.current = null; setLivePos(null) }
+
+  return { x, y, handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel } }
+}
+
+// Manually placed furniture item — draggable, removable on hover
+function DecorItem({ item, board, U, angle, mode3d, zoomScale = 1, onMove, onRemove }) {
+  const { x, y, handlers } = usePlanDrag({
+    pos: item, board, U, angle, mode3d, zoomScale,
+    toBoard: (x, y) => ({ bx: x, by: y }),
+    fromBoard: (bx, by) => ({ x: bx, y: by }),
+    onDrop: ({ bx, by }) => { onMove(item.id, bx, by); return false },
+  })
 
   return (
-    <div className="plan-chip-pos plan-decor" style={{ left: `${x * 100}%`, top: `${y * 100}%` }}
-      onPointerDown={onPointerDown} onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp} onPointerCancel={() => { drag.current = null; setLivePos(null) }}>
+    <div className="plan-chip-pos plan-decor" style={{ left: `${x * 100}%`, top: `${y * 100}%` }} {...handlers}>
       <div className="plan-bill">
-        <span className="plan-furn">{item.emoji}</span>
+        {item.image
+          ? <img className="plan-furn-img" src={item.image} alt="" draggable={false}/>
+          : <span className="plan-furn">{item.emoji}</span>}
         <button className="plan-decor-x" onClick={() => onRemove(item.id)}>✕</button>
+      </div>
+    </div>
+  )
+}
+
+// Auto-generated room furniture piece — dragging it converts it into a real
+// (persisted) decor item at the drop position and hides the generated one;
+// ✕ hides it without a replacement. Positions are fractions of the ROOM,
+// but dragging is clamped to the BOARD so a piece can leave its room.
+function AutoFurn({ f, autoId, room, board, U, angle, mode3d, zoomScale = 1, onConvert, onHide, onTap }) {
+  const { x, y, handlers } = usePlanDrag({
+    pos: f, board, U, angle, mode3d, zoomScale,
+    toBoard: (x, y) => ({ bx: (room.x + x * room.w) / board.w, by: (room.y + y * room.d) / board.d }),
+    fromBoard: (bx, by) => ({ x: (bx * board.w - room.x) / room.w, y: (by * board.d - room.y) / room.d }),
+    // on success keep the live position until the converted item arrives
+    // from the server; on failure/cancel snap back to the generated spot
+    onDrop: ({ bx, by }) => onConvert(f.emoji, bx, by, autoId),
+    onTap,
+  })
+
+  return (
+    <div className="plan-furn-pos plan-furn-drag plan-decor" style={{ left: `${x * 100}%`, top: `${y * 100}%` }} {...handlers}>
+      <div className="plan-bill">
+        <span className="plan-furn">{f.emoji}</span>
+        <button className="plan-decor-x" onClick={() => onHide(autoId)}>✕</button>
       </div>
     </div>
   )
@@ -389,24 +437,48 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
       .catch(() => {})
   }, [])
 
+  // Run a decor mutation and adopt the returned decor state. Returns true on
+  // success; a cancelled PIN prompt is silent, server errors are surfaced.
   const decorOp = async (body) => {
-    let pin = sessionStorage.getItem('lsh-edit-pin') || ''
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const res = await fetch('/api/plan-decor', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...body, pin }),
-      })
-      if (res.status === 403) {
-        const entered = window.prompt(gt('pin_prompt', 'Enter edit PIN'))
-        if (entered == null) return
-        pin = entered.trim()
-        sessionStorage.setItem('lsh-edit-pin', pin)
-        continue
+    const d = await postWithPin('/api/plan-decor', body)
+    if (d === null) return false
+    if (!d.success) { window.alert(d.error || gt('op_failed', 'Operation failed')); return false }
+    setDecor(d.decor || {})
+    return true
+  }
+
+  // Upload a furniture picture, then drop it on the active floor as a decor item
+  const uploadRef = useRef(null)
+  const [uploading, setUploading] = useState(false)
+  const uploadFurniture = async (file) => {
+    if (!file) return
+    setUploading(true)
+    try {
+      // the server rejects decoded images over 3 MB — catch it here so the
+      // user gets the real message instead of a body-parser 413
+      if (file.size > 3 * 1024 * 1024) {
+        window.alert(gt('img_too_large', 'Image too large (max 3 MB)'))
+        return
       }
-      const d = await res.json().catch(() => ({}))
-      if (d.success) setDecor(d.decor || {})
-      return
+      let data
+      try {
+        data = await new Promise((resolve, reject) => {
+          const fr = new FileReader()
+          fr.onload = () => resolve(fr.result)
+          fr.onerror = () => reject(fr.error)
+          fr.readAsDataURL(file)
+        })
+      } catch {
+        window.alert(gt('file_read_failed', 'Could not read the file'))
+        return
+      }
+      const d = await postWithPin('/api/plan-decor/upload', { name: file.name, data })
+      if (d === null) return
+      if (!d.success) { window.alert(d.error || 'Upload failed'); return }
+      if (await decorOp({ op: 'add', floor: activeFloor, image: d.url })) setShowAdd(false)
+    } finally {
+      setUploading(false)
+      if (uploadRef.current) uploadRef.current.value = ''
     }
   }
 
@@ -484,12 +556,14 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
     return saveChipPlacement(device.key, { planX: bx, planY: by })
   }
 
-  // Category filter — only categories that exist among room-assigned devices
-  const roomDevices = devices.filter((d) => d.room)
+  // Category filter — every device type present on the plan, whether the
+  // device sits in a room or is free-placed on the board
+  const planDevices = devices.filter((d) => d.room || d.planFloor)
   const cats = groupOf
-    ? [...new Set(roomDevices.map(groupOf))].sort()
+    ? [...new Set(planDevices.map(groupOf))].sort()
     : []
   const matches = (d) => !filter || (groupOf && groupOf(d) === filter)
+  const hiddenAuto = new Set(decor._hidden || [])
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -549,6 +623,14 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
                     {e}
                   </button>
                 ))}
+                <button className="plan-add-emoji plan-add-upload" disabled={uploading}
+                  title={gt('upload_furniture', 'Upload a picture (png/jpg/webp)')}
+                  onClick={() => uploadRef.current?.click()}>
+                  {uploading ? '…' : '📤'}
+                </button>
+                <input ref={uploadRef} type="file" style={{ display: 'none' }}
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={(e) => uploadFurniture(e.target.files?.[0])}/>
               </div>
               <div className="plan-add-head">{gt('add_device', 'Add device')}</div>
               <div style={{ maxHeight: 220, overflowY: 'auto' }}>
@@ -615,6 +697,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
                 ref={(el) => { if (el) roomRefs.current[room.name] = el; else delete roomRefs.current[room.name] }}
                 onClick={(e) => {
                   if (e.target.closest('.plan-chip-pos')) return   // chip clicks open the device
+                  if (e.target.closest('.plan-furn-drag')) return  // furniture clicks/drag ends
                   focusOnRoom(room.name)
                 }}
                 style={{
@@ -634,11 +717,22 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
                 </div>
                 {showFurniture && (
                   <div className="plan-furniture">
-                    {roomDecorations(room).map((f, i) => (
-                      <div key={i} className="plan-furn-pos" style={{ left: `${f.x * 100}%`, top: `${f.y * 100}%` }}>
-                        <div className="plan-bill"><span className="plan-furn">{f.emoji}</span></div>
-                      </div>
-                    ))}
+                    {roomDecorations(room).map((f) => {
+                      // content-based id (floor + room + emoji + position):
+                      // unique across floors, and when the generated set
+                      // changes (room resized/renamed) stale hidden ids
+                      // orphan harmlessly instead of hiding the wrong piece
+                      const autoId = `auto:${activeFloor}:${room.name}:${f.emoji}@${f.x.toFixed(3)},${f.y.toFixed(3)}`
+                      if (hiddenAuto.has(autoId)) return null
+                      return (
+                        <AutoFurn key={autoId} f={f} autoId={autoId} room={room} board={boardRoom}
+                          U={U} angle={angle} mode3d={mode3d} zoomScale={focusT?.s || 1}
+                          onConvert={(emoji, bx, by, aid) =>
+                            decorOp({ op: 'add', floor: activeFloor, emoji, x: bx, y: by, hideAuto: aid })}
+                          onHide={(aid) => decorOp({ op: 'hide', id: aid })}
+                          onTap={() => focusOnRoom(room.name)}/>
+                      )
+                    })}
                   </div>
                 )}
                 {showAppliances && <div className="plan-devices">
@@ -668,7 +762,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
             // chips saved on the exact same spot hide each other — fan out
             // duplicates so every deployed device stays visible and clickable
             const seen = new Map()
-            return freeDevs.map((d) => {
+            return freeDevs.filter(matches).map((d) => {
               const k = `${(d.planX ?? 0.5).toFixed(2)}|${(d.planY ?? 0.5).toFixed(2)}`
               const n = seen.get(k) || 0
               seen.set(k, n + 1)
