@@ -111,6 +111,15 @@
     "username": "admin",
     "password": ""
   },
+  "knx": {
+    "host": "192.168.1.x",
+    "port": 3671,
+    "groupAddresses": [
+      { "address": "1/1/1", "name": "Living Room Light", "dpt": "DPT1", "writable": true },
+      { "address": "1/2/1", "name": "Room Temperature", "dpt": "DPT9", "unit": "°C" },
+      { "address": "1/3/1", "name": "Blinds", "dpt": "DPT5", "writable": true, "homekitType": "WindowCovering" }
+    ]
+  },
   "broadlink": {
     "devices": [
       { "name": "Living Room", "host": "192.168.1.x", "mac": "AA:BB:CC:DD:EE:FF" }

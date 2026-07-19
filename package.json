@@ -22,6 +22,7 @@
     "hap-nodejs": "^0.12.2",
     "jsonwebtoken": "^9.0.3",
     "jssip": "^3.13.8",
+    "knx": "^2.5.4",
     "mqtt": "^4.1.0",
     "node-tradfri-client": "^3.2.0",
     "sip": "^0.0.6",
