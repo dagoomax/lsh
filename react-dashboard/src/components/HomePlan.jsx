@@ -281,7 +281,9 @@ function PositionedChip({ device, room, origin = { x: 0, y: 0 }, board, U, angle
   const x = livePos?.x ?? device.planX ?? defaultPos.x
   const y = livePos?.y ?? device.planY ?? defaultPos.y
   const on = isOn(device)
-  const IconComp = device.customIcon ? null : resolveIcon(device)
+  // resolveIcon handles customIcon too ("svg:<name>" → fixture icon component);
+  // plain emoji overrides are rendered as a span in the JSX below instead
+  const IconComp = resolveIcon(device)
 
   const onPointerDown = (e) => {
     e.preventDefault(); e.stopPropagation()
