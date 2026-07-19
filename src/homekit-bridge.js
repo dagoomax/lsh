@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const hap = require('hap-nodejs');
 const { generateSetupUri } = require('./homekit-uri');
 const { CameraDelegate, STREAMING_OPTIONS } = require('./homekit-camera');
@@ -1039,6 +1041,22 @@ function addCameraToBridge(cam, bridge) {
 // ── Main bridge factory ────────────────────────────────────────────────────
 
 function startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient, automation } = {}) {
+  // Give hap-nodejs its own folder inside persist/. Without this it falls back
+  // to node-persist's default "./persist" — the shared LSH state dir — and
+  // node-persist crashes on ANY subdirectory there (EISDIR on scan), e.g.
+  // persist/plan-decor. One-time migration moves existing pairing files over.
+  const persistRoot = path.join(__dirname, '..', 'persist');
+  const hapDir = path.join(persistRoot, 'homekit');
+  if (!fs.existsSync(hapDir)) {
+    fs.mkdirSync(hapDir, { recursive: true });
+    for (const f of fs.readdirSync(persistRoot)) {
+      if (/^(AccessoryInfo|IdentifierCache)\./.test(f)) {
+        fs.renameSync(path.join(persistRoot, f), path.join(hapDir, f));
+      }
+    }
+  }
+  hap.HAPStorage.setCustomStoragePath(hapDir);
+
   const bridge = new Bridge('Victron Energy', makeUUID('bridge'));
 
   setInfo(bridge, 'Victron Energy', 'Cerbo GX Dashboard', 'VICTRON-001');
