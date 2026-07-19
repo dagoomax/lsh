@@ -284,8 +284,8 @@ function PositionedChip({ device, room, origin = { x: 0, y: 0 }, board, U, angle
       <div className="plan-bill">
         <div className="plan-chip" data-on={String(on)} title={device.label} role="button">
           {device.customIcon
-            ? <span style={{ fontSize: 43, lineHeight: 1 }}>{device.customIcon}</span>
-            : <IconComp size={43} color={on ? 'var(--tile-on-ink)' : 'var(--text2)'}/>}
+            ? <span style={{ fontSize: 28, lineHeight: 1 }}>{device.customIcon}</span>
+            : <IconComp size={28} color={on ? 'var(--tile-on-ink)' : 'var(--text2)'}/>}
         </div>
       </div>
     </div>
@@ -591,6 +591,9 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
       <div className="plan-stage" ref={stageRef} style={{
         width: maxX * U, height: maxY * U,
         transform: focusT ? `translate(${focusT.x}px, ${focusT.y}px) scale(${focusT.s})` : 'none',
+        // device chips counter-scale by this so they keep their screen size
+        // when a room is focus-zoomed (rooms grow, icons don't)
+        '--chip-inv': focusT ? 1 / focusT.s : 1,
       }}>
         <div className="plan-board" data-3d={String(mode3d)} data-img={String(!!floorCfg?.image)}
           data-zoomed={String(!!focusRoom)} style={{

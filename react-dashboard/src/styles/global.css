@@ -676,6 +676,13 @@ input[type="range"]::-moz-range-thumb {
   transform-style: flat;
   transition: transform 0.55s cubic-bezier(.4,.1,.2,1);
 }
+/* Device chips only (not furniture/decor): undo the room focus-zoom scale so
+   icons keep the same on-screen size zoomed in or out; eased like .plan-stage
+   so the compensation tracks the zoom animation */
+.plan-chip-pos:not(.plan-decor) > .plan-bill {
+  transform: rotateZ(calc(var(--plan-rz, -45deg) * -1)) rotateX(calc(var(--plan-rx, 55deg) * -1)) translateY(-42%) scale(var(--chip-inv, 1));
+  transition: transform 0.65s cubic-bezier(0.3, 0.7, 0.25, 1);
+}
 .plan-room-label-wrap {
   /* zero-size anchor pinned to the middle of the room's north edge;
      the billboarded label centers itself on this point */
@@ -728,8 +735,8 @@ input[type="range"]::-moz-range-thumb {
 }
 .plan-chip-pos:active { cursor: grabbing; }
 .plan-chip {
-  width: 96px;
-  height: 96px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   border: 1.5px solid var(--border-lt);
   background: var(--card);
