@@ -365,6 +365,12 @@
   font-size: .85rem;
 }
 
+/* Phones: rows with many controls (Home Plan editor) wrap instead of
+   forcing the whole page wider than the viewport */
+@media (max-width: 640px) {
+  .token-row { flex-wrap: wrap; row-gap: 6px; }
+}
+
 .token-row-name  { flex: 1; font-weight: 500; }
 .token-row-meta  { color: var(--text-muted); font-size: .78rem; }
 

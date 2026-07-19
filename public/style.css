@@ -183,6 +183,36 @@ header {
   box-shadow: 0 2px 8px rgba(88,166,255,.35);
 }
 
+/* Header on phones: wrap into rows instead of forcing ~960px width */
+@media (max-width: 768px) {
+  header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+  .logo-svg  { width: 26px; height: 26px; }
+  .logo-text { font-size: 1.05rem; }
+  .header-nav {
+    order: 10;
+    flex: 1 1 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .header-nav::-webkit-scrollbar { display: none; }
+  .nav-link { flex: 1 0 auto; text-align: center; padding: 7px 12px; font-size: 0.8rem; }
+  .lang-switcher {
+    margin-left: auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .lang-switcher::-webkit-scrollbar { display: none; }
+  .lang-btn { padding: 4px 5px; }
+  .platform-bar { order: 11; flex-basis: 100%; }
+  .connection-status-wrap { order: 12; flex-basis: 100%; justify-content: flex-end; }
+}
+
 .connection-status-wrap {
   display: flex;
   align-items: center;
@@ -533,6 +563,12 @@ main {
   .fn-soc  { font-size: 1.4rem; }
   .fn-bat  { padding: 10px 10px; }
   .flow-conn-h { height: 32px; }
+}
+
+@media (max-width: 480px) {
+  .flow-diagram {
+    grid-template-columns: 1fr 40px 1fr 40px 1fr;
+  }
 }
 
 .metric-large {
@@ -1218,7 +1254,7 @@ footer {
 
 @media (max-width: 640px) {
   main {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     padding: 12px;
     gap: 12px;
   }
@@ -1759,7 +1795,10 @@ footer {
   .main-tab-bar {
     padding: 0 12px;
     overflow-x: auto;
+    /* stop the tab row's min-content width from widening the whole page */
+    contain: inline-size;
   }
+  .card-hdr { flex-wrap: wrap; gap: 8px; }
   .main-tab-btn {
     padding: 11px 14px;
     font-size: 0.82rem;
