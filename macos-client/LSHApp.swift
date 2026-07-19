@@ -176,20 +176,137 @@ struct ContentView: View {
     }
 }
 
+// ── Server list (Settings) ──────────────────────────────────────────────────
+// Named servers persisted as JSON in UserDefaults; the active one is whatever
+// "serverURL" points at, so older installs keep their configured address.
+struct Server: Codable, Identifiable, Equatable {
+    var id = UUID()
+    var name: String
+    var url: String
+}
+
+final class ServerStore: ObservableObject {
+    static let key = "servers"
+    @Published var servers: [Server] { didSet { save() } }
+    @Published var testResults: [UUID: Bool?] = [:]  // nil value = test in flight
+
+    func test(_ server: Server) {
+        guard let url = URL(string: server.url) else {
+            testResults[server.id] = false
+            return
+        }
+        testResults[server.id] = .some(nil)
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 5
+        URLSession.shared.dataTask(with: req) { _, response, error in
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            // any HTTP answer (including the login redirect) means the server is there
+            let ok = error == nil && (200..<500).contains(code)
+            DispatchQueue.main.async { self.testResults[server.id] = ok }
+        }.resume()
+    }
+
+    init() {
+        var list: [Server] = []
+        if let data = UserDefaults.standard.data(forKey: Self.key),
+           let decoded = try? JSONDecoder().decode([Server].self, from: data) {
+            list = decoded
+        }
+        if list.isEmpty {
+            list = [
+                Server(name: "Casablanca", url: "http://100.86.235.13:3000/react/"),
+                Server(name: "Local dev",  url: "http://localhost:3001/react/"),
+            ]
+        }
+        // keep a previously configured custom address visible in the list
+        if let current = UserDefaults.standard.string(forKey: "serverURL"),
+           !current.isEmpty, !list.contains(where: { $0.url == current }) {
+            list.insert(Server(name: "Current", url: current), at: 0)
+        }
+        servers = list
+        save()
+    }
+
+    private func save() {
+        if let data = try? JSONEncoder().encode(servers) {
+            UserDefaults.standard.set(data, forKey: Self.key)
+        }
+    }
+}
+
 struct SettingsView: View {
     @AppStorage("serverURL") private var serverURL = "http://100.86.235.13:3000/react/"
+    @StateObject private var store = ServerStore()
 
     var body: some View {
-        Form {
-            TextField("Server URL", text: $serverURL)
-                .textFieldStyle(.roundedBorder)
-                .frame(minWidth: 340)
-            Text("The dashboard address, e.g. http://100.86.235.13:3000/react/")
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Servers").font(.headline)
+            Text("Pick the LSH server the app connects to. Switching reloads the dashboard.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            ForEach($store.servers) { $server in
+                HStack(spacing: 8) {
+                    Button {
+                        serverURL = server.url
+                    } label: {
+                        Image(systemName: serverURL == server.url
+                              ? "largecircle.fill.circle" : "circle")
+                            .foregroundStyle(serverURL == server.url ? Color.accentColor : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Use this server")
+
+                    TextField("Name", text: $server.name)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 110)
+
+                    TextField("URL", text: $server.url)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: server.url) { old, new in
+                            if serverURL == old { serverURL = new }  // editing the active row follows along
+                        }
+
+                    testIndicator(for: server)
+
+                    Button { store.test(server) } label: {
+                        Image(systemName: "bolt.horizontal")
+                    }
+                    .help("Test connection")
+
+                    Button(role: .destructive) { remove(server) } label: {
+                        Image(systemName: "trash")
+                    }
+                    .disabled(store.servers.count == 1)
+                    .help("Remove server")
+                }
+            }
+
+            Button {
+                store.servers.append(Server(name: "New server", url: "http://192.168.1.x:3000/react/"))
+            } label: {
+                Label("Add server", systemImage: "plus")
+            }
         }
         .padding(20)
-        .frame(width: 480)
+        .frame(width: 560)
+    }
+
+    @ViewBuilder
+    private func testIndicator(for server: Server) -> some View {
+        switch store.testResults[server.id] {
+        case .some(.some(true)):  Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+        case .some(.some(false)): Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+        case .some(.none):        ProgressView().controlSize(.small)
+        case nil:                 Image(systemName: "circle.dotted").foregroundStyle(.tertiary)
+        }
+    }
+
+    private func remove(_ server: Server) {
+        store.servers.removeAll { $0.id == server.id }
+        if serverURL == server.url, let first = store.servers.first {
+            serverURL = first.url
+        }
     }
 }
 
