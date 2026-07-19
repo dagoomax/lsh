@@ -10,9 +10,16 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%230d0e1a'/><path d='M96 30L30 80v92h136V80z' fill='none' stroke='%237c3aed' stroke-width='10' stroke-linejoin='round'/><path d='M72 172v-60h48v60' fill='none' stroke='%237c3aed' stroke-width='10' stroke-linejoin='round'/></svg>",
+      "src": "/react/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/react/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

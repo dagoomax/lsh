@@ -109,9 +109,18 @@ async function main() {
   app.use(cookieParser());
 
   // React dashboard — public static files (API calls are Bearer-token protected)
+  // index.html must never be cached (iOS Safari otherwise serves a stale app
+  // shell referencing old bundles for days); the hashed assets stay cacheable.
   const reactDist = path.join(__dirname, 'react-dashboard', 'dist');
-  app.use('/react', express.static(reactDist));
-  app.get('/react/*', (req, res) => res.sendFile(path.join(reactDist, 'index.html')));
+  app.use('/react', express.static(reactDist, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('index.html') || filePath.endsWith('manifest.json')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    },
+  }));
+  app.get('/react/*', (req, res) =>
+    res.sendFile(path.join(reactDist, 'index.html'), { headers: { 'Cache-Control': 'no-cache' } }));
 
   app.use(auth.middleware(isSecure));
   app.use(express.json());

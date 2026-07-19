@@ -20,6 +20,13 @@ function writeConfigFile(data) {
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
   const { unifiProtect, reolink, kenik, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, smartThings } = clients;
+
+  // Secure cookie flag per request, not per server: with both HTTP and HTTPS
+  // listeners up, a login over plain http (e.g. phone → http://<lan-ip>:3001)
+  // must not get a Secure cookie — browsers silently drop it and the user
+  // loops on the login screen. Only localhost is exempt from that rule, which
+  // is why the bug never shows on the dev machine itself.
+  const reqIsSecure = (req) => req.secure || req.headers['x-forwarded-proto'] === 'https';
   const router = Router();
 
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -37,7 +44,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     try {
       const user  = await auth.createUser(adminUsername.trim(), adminPassword, 'admin');
       const token = auth.signToken(user);
-      auth.setCookie(res, token, isSecure);
+      auth.setCookie(res, token, reqIsSecure(req));
       res.json({ success: true, user });
     } catch (err) {
       res.status(400).json({ success: false, error: err.message });
@@ -51,9 +58,10 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       return res.status(400).json({ success: false, error: 'username and password required' });
     }
     const user = await auth.authenticate(username, password);
+    console.log(`[Auth] Login ${user ? 'OK' : 'FAILED'} for "${username}" from ${req.ip} over ${reqIsSecure(req) ? 'https' : 'http'} — ${(req.headers['user-agent'] || '?').slice(0, 200)}`);
     if (!user) return res.status(401).json({ success: false, error: 'Invalid username or password' });
     const token = auth.signToken(user);
-    auth.setCookie(res, token, isSecure);
+    auth.setCookie(res, token, reqIsSecure(req));
     res.json({ success: true, user });
   });
 
