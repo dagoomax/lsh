@@ -1,0 +1,6 @@
+# Home Assistant add-on repository metadata. Add this repo's URL under
+# Settings → Add-ons → Add-on Store → ⋮ → Repositories to pick up the
+# "LSH" add-on defined in ./lsh/ — see ../README.md (this folder) for details.
+name: "LSH"
+url: "https://github.com/dagoomax/lsh"
+maintainer: "dagoomax"

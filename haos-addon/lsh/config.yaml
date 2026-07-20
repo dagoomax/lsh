@@ -1,0 +1,26 @@
+name: "LSH"
+version: "1.0.1"
+slug: "lsh"
+description: "Victron / Loxone / KNX smart-home hub (~40 integrations) — Node.js, no external dependencies"
+url: "https://github.com/dagoomax/lsh"
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+# We ship our own tini-based ENTRYPOINT in the Dockerfile — don't let
+# Supervisor inject a second init on top of it.
+init: false
+# HomeKit advertises itself over mDNS, which only reaches the LAN with host
+# networking (same reason docker-compose.yml uses network_mode: host). This
+# also means every LSH port is exposed directly on the host, unmapped.
+host_network: true
+# LSH's own login guards every HTTP route (including /api/status), so an
+# HTTP watchdog would need to know whether a non-2xx counts as "healthy" —
+# a TCP check sidesteps that ambiguity: it only confirms the port accepts
+# connections, same spirit as the plain Docker image's own HEALTHCHECK.
+watchdog: "tcp://[HOST]:3000"
+# Persistent app data (config.json, persist/, certs/) lives under /data,
+# which Supervisor keeps across restarts, updates, and backups automatically
+# — see run.sh for how it's wired to the paths LSH's own code expects. No
+# `map:` entry needed: /data is provided to every app without one.

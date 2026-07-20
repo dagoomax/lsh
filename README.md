@@ -217,6 +217,10 @@ The image is a multi-stage build (Node 20, `ffmpeg` for the RTSP proxy, `tini` f
 
 > **Note:** Host networking is **Linux-only** — on Docker Desktop (macOS/Windows) HomeKit/mDNS won't work; switch to bridge networking with explicit `ports:` (the commented block in the compose file) if you don't need HomeKit.
 
+### Running on Home Assistant OS
+
+HAOS is a locked-down appliance OS — it won't let you `npm install` LSH directly on the host. [`haos-addon/`](haos-addon/) packages LSH as a proper Supervisor add-on instead (its own persistent `/data`, watchdog, host networking for HomeKit) so it installs and updates through the normal Add-on Store UI. See [`haos-addon/README.md`](haos-addon/README.md).
+
 ---
 
 ## Running as a service (PM2)
