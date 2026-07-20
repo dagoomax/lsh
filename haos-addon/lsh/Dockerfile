@@ -14,7 +14,7 @@
 # requirements are the io.hass.* labels below.
 FROM node:20-bookworm-slim
 
-LABEL io.hass.version="1.0.1" \
+LABEL io.hass.version="1.0.2" \
       io.hass.type="app" \
       io.hass.arch="amd64|aarch64"
 
