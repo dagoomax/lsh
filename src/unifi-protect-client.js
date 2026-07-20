@@ -45,7 +45,7 @@ class UnifiProtectClient extends EventEmitter {
   proxySnapshot(cameraId, res) {
     const req = https.request({
       hostname: this.cfg.host,
-      path:     `/proxy/protect/api/cameras/${cameraId}/snapshot`,
+      path:     `${this._protectBase()}/cameras/${cameraId}/snapshot`,
       method:   'GET',
       headers:  this._headers(),
       rejectUnauthorized: false,
@@ -86,7 +86,7 @@ class UnifiProtectClient extends EventEmitter {
   }
 
   async _discoverCameras() {
-    const cams = await this._get('/proxy/protect/api/cameras');
+    const cams = await this._get(`${this._protectBase()}/cameras`);
     this._cameras = cams.map(cam => ({
       name:          cam.name || cam.id,
       url:           null,
@@ -94,6 +94,11 @@ class UnifiProtectClient extends EventEmitter {
       fetchSnapshot: () => this.fetchSnapshotBuffer(cam.id),
     }));
 
+    // Ubiquiti's newer System-API-key-authenticated integration endpoint
+    // doesn't include featureFlags.isDoorbell/type/lastRing/isMotionDetected
+    // on camera list objects at all (confirmed empirically), so this filter
+    // — and the ring/motion polling below — only ever finds doorbells when
+    // authenticated via username/password against the legacy internal API.
     const doorbells = cams.filter(c => c.featureFlags?.isDoorbell || /doorbell/i.test(c.type || ''));
     for (const cam of doorbells) this._registerDoorbell(cam);
     if (doorbells.length > 0) {
@@ -133,7 +138,7 @@ class UnifiProtectClient extends EventEmitter {
   async _pollRings() {
     let cams;
     try {
-      cams = await this._get('/proxy/protect/api/cameras');
+      cams = await this._get(`${this._protectBase()}/cameras`);
     } catch (err) {
       if (err.status === 401) await this._authenticate().catch(() => {});
       return;
@@ -168,7 +173,7 @@ class UnifiProtectClient extends EventEmitter {
     return new Promise((resolve, reject) => {
       const req = https.request({
         hostname: this.cfg.host,
-        path:     `/proxy/protect/api/cameras/${cameraId}/snapshot`,
+        path:     `${this._protectBase()}/cameras/${cameraId}/snapshot`,
         method:   'GET',
         headers:  this._headers(),
         rejectUnauthorized: false,
@@ -183,7 +188,7 @@ class UnifiProtectClient extends EventEmitter {
   }
 
   async _discoverSensors() {
-    const sensors = await this._get('/proxy/protect/api/sensors');
+    const sensors = await this._get(`${this._protectBase()}/sensors`);
     for (const s of sensors) {
       const sensorDefs = [];
       const hkTypes    = [];
@@ -240,7 +245,7 @@ class UnifiProtectClient extends EventEmitter {
   async _pollSensors() {
     let sensors;
     try {
-      sensors = await this._get('/proxy/protect/api/sensors');
+      sensors = await this._get(`${this._protectBase()}/sensors`);
     } catch (err) {
       console.error(`[UniFi Protect] Poll failed: ${err.message}`);
       if (err.status === 401) await this._authenticate().catch(() => {});
@@ -260,6 +265,16 @@ class UnifiProtectClient extends EventEmitter {
   }
 
   // ── HTTP ─────────────────────────────────────────────────
+
+  // Ubiquiti's System API key (X-API-Key, generated from Network →
+  // Integrations) only authorizes against Protect's newer versioned
+  // "integration" endpoints — it 401s against the legacy internal proxy API
+  // even though that same key works fine for Network. Cookie-session auth
+  // (username/password login) is the reverse: it's what the legacy internal
+  // API expects and isn't known to work against the integration endpoints.
+  _protectBase() {
+    return this.cfg.apiKey ? '/proxy/protect/integration/v1' : '/proxy/protect/api';
+  }
 
   _headers() {
     const h = { 'Content-Type': 'application/json' };
