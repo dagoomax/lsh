@@ -1,5 +1,7 @@
 # LSH — Home Assistant add-on
 
+*Polska instrukcja instalacji: [`INSTALACJA.md`](INSTALACJA.md).*
+
 Packages LSH as a Home Assistant Supervisor app/add-on, for running it directly on Home Assistant OS instead of on separate hardware/Docker host. See `../README.md` (`## Docker`) for the plain-Docker deployment this mirrors, and the top-level conversation/README for why you'd run LSH alongside Home Assistant at all — short version: LSH's ~40 integrations plus HomeKit bridge run in ~80–130 MB as a single process, and Home Assistant can consume LSH's devices over its REST API.
 
 ## Install

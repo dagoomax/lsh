@@ -1,5 +1,7 @@
 # LSH
 
+*Polska instrukcja instalacji: [`INSTALACJA.md`](../INSTALACJA.md).*
+
 Victron / Loxone / KNX smart-home hub — ~40 integrations (Victron, Loxone, KNX, Shelly, Sonos, IKEA, Roborock, UniFi Protect/Access, SIP doorbells, …) in a single ~80–130 MB Node.js process.
 
 ## First run
