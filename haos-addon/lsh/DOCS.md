@@ -6,7 +6,7 @@ Victron / Loxone / KNX smart-home hub — ~40 integrations (Victron, Loxone, KNX
 
 ## First run
 
-1. Start the app. It clones and builds LSH from GitHub on first install (a couple of minutes), then seeds `config.json` from the example.
+1. Start the app. It clones and builds LSH from GitHub on first install (a couple of minutes), then seeds an empty `config.json` — not a copy of `config.example.json`, which has every integration's fields already filled with placeholder hosts and would auto-start all of them against a fake address.
 2. Open `http://<home-assistant-ip>:3000` — you'll land on `/setup.html` to create the admin account.
 3. Configure integrations from the **Settings** page in LSH's own UI (this is how LSH is normally configured — you rarely need to touch `config.json` by hand). See the main [README](https://github.com/dagoomax/lsh#readme) for every integration's config reference.
 
