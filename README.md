@@ -263,6 +263,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `loxone` | No | Loxone Miniserver local API |
 | `satel` | No | Satel INTEGRA alarm panel |
 | `unifi` | No | UniFi Protect cameras and NVR |
+| `unifiAccess` | No | UniFi Access door controllers (lock/unlock, door status) |
 | `shelly` | No | Shelly Gen1 / Gen2 devices |
 | `boneio` | No | BoneIO relay boards (MQTT auto-discovery) |
 | `dreame` | No | Dreame robot vacuums and air purifiers |
@@ -412,6 +413,19 @@ Speaks the Satel INTEGRA binary TCP protocol. Zone, output, and partition **name
 ```
 
 `apiKey` takes precedence over `username`/`password` when set (UniFi Network 8+ API keys).
+
+### `unifiAccess`
+
+```json
+"unifiAccess": {
+  "host": "192.168.1.1",
+  "apiKey": ""
+}
+```
+
+Connects to **UniFi Access**'s local "Developer API" (a separate product/token from UniFi Protect above, even on the same console) — fixed port `12445`, authenticated with a single Bearer token. Generate one in the Access console: **Settings → Security → Advanced → API Token**.
+
+Discovers every door and registers it as a device with two sensors: `contact` (door position: open/closed) and `lock` (current lock state, controllable — exposed to HomeKit as a lock). Only **unlock** is a real remote action; UniFi Access doors re-lock themselves on their own configured schedule/timeout, so there is no "lock now" call in the Developer API — sending `lock` is a no-op and the next poll (30 s) reconciles the dashboard back to the door's true state.
 
 ### `shelly`
 

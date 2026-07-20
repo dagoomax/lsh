@@ -17,6 +17,7 @@
 | `loxone` | No | Loxone Miniserver local API |
 | `satel` | No | Satel INTEGRA alarm panel |
 | `unifi` | No | UniFi Protect cameras and NVR |
+| `unifiAccess` | No | UniFi Access door controllers (lock/unlock, door status) |
 | `shelly` | No | Shelly Gen1 / Gen2 devices |
 | `boneio` | No | BoneIO relay boards (MQTT auto-discovery) |
 | `dreame` | No | Dreame robot vacuums and air purifiers |
@@ -156,6 +157,17 @@ Speaks the Satel INTEGRA binary TCP protocol. Zone, output, and partition **name
 ```
 
 `apiKey` takes precedence over `username`/`password` when set (UniFi Network 8+ API keys).
+
+### `unifiAccess`
+
+```json
+"unifiAccess": {
+  "host": "192.168.1.1",
+  "apiKey": ""
+}
+```
+
+A separate product/token from `unifi` (Protect) above, even on the same console — its own local "Developer API" on fixed port `12445`, Bearer-token auth (generate one in the Access console: **Settings → Security → Advanced → API Token**). Only **unlock** is a real remote action; Access doors re-lock themselves, so there is no "lock now" call.
 
 ### `shelly`
 

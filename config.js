@@ -64,6 +64,13 @@ function loadConfig() {
       password: process.env.UNIFI_PASS     || fileConfig.unifi?.password || '',
       apiKey:   process.env.UNIFI_API_KEY  || fileConfig.unifi?.apiKey   || '',
     },
+    // Separate product from UniFi Protect above — its own local "Developer
+    // API" on a fixed port (12445) with its own Bearer token, even when
+    // hosted on the same console.
+    unifiAccess: {
+      host:   process.env.UNIFI_ACCESS_HOST    || fileConfig.unifiAccess?.host   || '',
+      apiKey: process.env.UNIFI_ACCESS_API_KEY || fileConfig.unifiAccess?.apiKey || '',
+    },
     shelly: {
       devices: fileConfig.shelly?.devices || [],
     },

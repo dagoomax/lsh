@@ -159,6 +159,10 @@
     "apiKey": "",
     "ringPollInterval": 3
   },
+  "unifiAccess": {
+    "host": "192.168.1.1",
+    "apiKey": ""
+  },
   "vents": {
     "host": "192.168.1.x",
     "port": 4000,

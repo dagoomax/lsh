@@ -107,6 +107,7 @@ Every JavaScript module in `src/` has a reference page below (65 modules). Pages
 | [`sonos-client.js`](Module-sonos-client) | 300 | `sonos` | — |
 | [`suppla-client.js`](Module-suppla-client) | 291 | `suppla` | — |
 | [`tradfri-client.js`](Module-tradfri-client) | 226 | `tradfri` | — |
+| [`unifi-access-client.js`](Module-unifi-access-client) | 142 | `unifiAccess` | `unifiAccess` |
 | [`unifi-protect-client.js`](Module-unifi-protect-client) | 312 | `unifi` | `unifi` |
 | [`vents-client.js`](Module-vents-client) | 183 | `vents` | `vents` |
 | [`vrm-client.js`](Module-vrm-client) | 220 | `vrm` | — |

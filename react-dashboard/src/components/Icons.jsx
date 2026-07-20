@@ -195,6 +195,16 @@ export function DoorIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function LockIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="5" y="11" width="14" height="10" rx="2"/>
+      <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+      <circle cx="12" cy="16" r="1.5" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
 export function CameraIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
@@ -606,6 +616,8 @@ const TYPE_MAP = {
 
 function readingIcon(r = {}) {
   if (r.motion || r.presence)               return MotionIcon
+  if (r.lock != null)                       return LockIcon
+  if (r.contact != null)                    return DoorIcon
   if (r.temperature || r.humidity)          return ThermometerIcon
   if (r.level != null || r.colorTemperature != null) return BulbIcon
   if (r.switch != null)                     return SwitchOutletIcon
