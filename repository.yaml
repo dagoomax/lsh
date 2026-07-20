@@ -1,0 +1,7 @@
+# Home Assistant add-on repository metadata. Must live at the git repo root —
+# Supervisor only checks for repository.yaml/.json here, not recursively
+# (unlike add-on config.yaml discovery, which is recursive). See
+# haos-addon/README.md for the add-on itself, defined in haos-addon/lsh/.
+name: "LSH"
+url: "https://github.com/dagoomax/lsh"
+maintainer: "dagoomax"
