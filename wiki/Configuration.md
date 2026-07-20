@@ -42,7 +42,7 @@
 | `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
-| `reolink` | No | Reolink PoE cameras / NVR (proxied snapshots + RTSP) |
+| `reolink` | No | Reolink PoE cameras / NVR (proxied snapshots + RTSP + AI object detection) |
 | `relays` | No | Victron relay index + display name |
 | `homekit` | No | HomeKit bridge — requires `hap-nodejs` npm package |
 | `server` | Yes | HTTP port, HTTPS, and Let's Encrypt |
@@ -767,8 +767,9 @@ Priority order for the live preview: `webrtcUrl` → `mjpegUrl` → `snapshotUrl
 
 ```json
 "reolink": {
+  "aiPollInterval": 5,
   "cameras": [
-    { "name": "Driveway", "host": "192.168.1.50", "username": "admin", "password": "secret", "channel": 0, "stream": "main", "https": false, "port": 0, "webrtcUrl": "" }
+    { "name": "Driveway", "host": "192.168.1.50", "username": "admin", "password": "secret", "channel": 0, "stream": "main", "https": false, "port": 0, "webrtcUrl": "", "aiDetect": true }
   ]
 }
 ```
@@ -782,6 +783,8 @@ Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standa
 Configure cameras in **Settings → 📷 Cameras → Reolink** — add a row per camera, hit **Test** to pull a live snapshot, then **Save**. Changes apply **live, without a restart** (the client reads the camera list from config on demand). Passwords are stored server-side and returned **masked** to the browser.
 
 > **Note:** The auto-built RTSP URL and any `webrtcUrl` carry the credentials; the proxied snapshot (`/api/reolink/snapshot/<index>`) does not.
+
+**AI object detection:** cameras with onboard AI are polled every `aiPollInterval` seconds (default 5) via `cmd=GetAiState`. Every category a camera reports as supported — person, vehicle, pet, face, and anything newer models add — becomes its own device (`Driveway — Person`, etc.), each a HomeKit motion sensor, so different categories can drive different automations. Set `"aiDetect": false` on a camera to skip AI polling for it; unsupported categories on a given model are never registered.
 
 ### `relays`
 

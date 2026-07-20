@@ -55,13 +55,15 @@ async function main() {
   }
 
   // Always construct — the client reads cameras from config.json on demand, so
-  // cameras added via Settings apply live without a restart.
+  // cameras added via Settings apply live without a restart. AI object
+  // detection (start()) is a no-op until there's at least one camera.
   let reolink = null;
   const ReolinkClient = tryRequire('./src/reolink-client');
   if (ReolinkClient) {
-    reolink = new ReolinkClient();
+    reolink = new ReolinkClient(store, sensorRegistry);
     const n = reolink.getCameras().length;
     if (n) console.log(`[Reolink] ${n} camera(s) configured`);
+    reolink.start().catch((err) => console.error(`[Reolink] AI detection start failed: ${err.message}`));
   }
 
   // Always construct — same live-config pattern as Reolink

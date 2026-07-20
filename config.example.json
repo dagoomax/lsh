@@ -262,8 +262,9 @@
     { "name": "Front Door", "url": "rtsp://localhost:8554/FrontDoor", "snapshotUrl": "", "mjpegUrl": "", "webrtcUrl": "" }
   ],
   "reolink": {
+    "aiPollInterval": 5,
     "cameras": [
-      { "name": "Driveway", "host": "192.168.1.50", "username": "admin", "password": "", "channel": 0, "stream": "main", "https": false, "port": 0, "webrtcUrl": "" }
+      { "name": "Driveway", "host": "192.168.1.50", "username": "admin", "password": "", "channel": 0, "stream": "main", "https": false, "port": 0, "webrtcUrl": "", "aiDetect": true }
     ]
   },
   "kenik": {

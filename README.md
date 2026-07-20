@@ -292,7 +292,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
-| `reolink` | No | Reolink PoE cameras / NVR (proxied snapshots + RTSP) |
+| `reolink` | No | Reolink PoE cameras / NVR (proxied snapshots + RTSP + AI object detection) |
 | `relays` | No | Victron relay index + display name |
 | `homekit` | No | HomeKit bridge — requires `hap-nodejs` npm package |
 | `server` | Yes | HTTP port, HTTPS, and Let's Encrypt |
@@ -1188,8 +1188,9 @@ Any manual camera with an `"onvif": { "host": "192.168.1.x", "port": 80, "userna
 
 ```json
 "reolink": {
+  "aiPollInterval": 5,
   "cameras": [
-    { "name": "Driveway", "host": "192.168.1.50", "username": "admin", "password": "secret", "channel": 0, "stream": "main", "https": false, "port": 0, "webrtcUrl": "" }
+    { "name": "Driveway", "host": "192.168.1.50", "username": "admin", "password": "secret", "channel": 0, "stream": "main", "https": false, "port": 0, "webrtcUrl": "", "aiDetect": true }
   ]
 }
 ```
@@ -1200,6 +1201,8 @@ Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standa
 - `stream` — `main` (full-res) or `sub` (low-res); default `main`
 - `https` / `port` — override the snapshot transport (defaults: HTTP on port 80)
 - `ptz: true` — shows a PTZ pad in the camera modal, driven by Reolink's `PtzCtrl` API (press-and-hold arrows / zoom, released = stop)
+
+**AI object detection** — cameras with onboard AI (most PoE models) get polled every `aiPollInterval` seconds (top-level, default 5) via `cmd=GetAiState`. Each category the camera actually supports — **person**, **vehicle**, **pet**, **face**, and any newer category a model reports — shows up as its own device (`Driveway — Person`, `Driveway — Vehicle`, …), each exposed to HomeKit as a motion sensor, so "person detected" and "vehicle detected" can drive separate automations instead of one generic motion trigger. Set `"aiDetect": false` on a camera to skip AI polling for it (e.g. to cut down on request volume for a large NVR); cameras without AI hardware simply never register any detection devices, no toggle needed.
 
 ### `kenik`
 
