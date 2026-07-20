@@ -16,11 +16,11 @@ HAOS to zamknięty, jednozadaniowy system operacyjny — nie daje dostępu do in
 
 1. W Home Assistant przejdź do **Ustawienia → Dodatki → Sklep z dodatkami**.
 2. Kliknij ⋮ (trzy kropki, prawy górny róg) → **Repozytoria**.
-3. Wklej adres tego repozytorium:
+3. Wklej **czysty** adres repozytorium (nie link `/tree/...` do podfolderu — Supervisor wymaga adresu, który da się sklonować przez `git clone`):
    ```
    https://github.com/dagoomax/lsh
    ```
-4. Zatwierdź. Supervisor przeszukuje repozytorium **rekursywnie** w poszukiwaniu pliku `config.yaml` — znajdzie `haos-addon/lsh/config.yaml` automatycznie, nie trzeba wskazywać podfolderu ręcznie.
+4. Zatwierdź. Supervisor czyta `repository.yaml` z **głównego katalogu** repozytorium, a następnie przeszukuje je **rekursywnie** w poszukiwaniu pliku `config.yaml` — znajdzie `haos-addon/lsh/config.yaml` automatycznie, nie trzeba wskazywać podfolderu ręcznie.
 5. Na liście dodatków pojawi się **LSH**. Otwórz go i kliknij **Zainstaluj**.
 6. Pierwsza instalacja **klonuje i buduje LSH z GitHuba** (kompilacja natywnych modułów Node.js) — to potrwa kilka minut, w zależności od wydajności hosta. Kolejne starty są już natychmiastowe.
 7. Po zbudowaniu kliknij **Uruchom**.

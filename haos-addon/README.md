@@ -7,13 +7,13 @@ Packages LSH as a Home Assistant Supervisor app/add-on, for running it directly 
 ## Install
 
 1. In Home Assistant: **Settings → Add-ons → Add-on Store → ⋮ (top right) → Repositories**.
-2. Add this repository's URL: `https://github.com/dagoomax/lsh` (Supervisor finds `lsh/` inside `haos-addon/` automatically — add-on repos are scanned recursively, no need to point at the subfolder directly).
+2. Add the plain repo URL: `https://github.com/dagoomax/lsh` — not a `/tree/...` link, Supervisor needs a git-clonable URL. It reads `repository.yaml` at the repo root, then finds `haos-addon/lsh/config.yaml` automatically (add-on config discovery is a recursive glob, unlike the repo-manifest lookup, which only checks the root).
 3. The **LSH** add-on appears in the store. Install it, then start it.
 4. First start clones and builds LSH from GitHub (a few minutes) — see `lsh/DOCS.md` for what happens after that, port list, and data-persistence details.
 
 ## Why it's structured this way
 
-- **`repository.yaml`** — the repo-level manifest Supervisor reads when you add this URL as a custom repository.
+- **`../repository.yaml`** (repo root, not this folder) — the repo-level manifest Supervisor reads when you add this URL as a custom repository. It has to sit at the true git root: Supervisor's repository-manifest lookup checks only `<repo root>/repository.yaml`, not subfolders — unlike add-on `config.yaml` discovery, which recurses and finds `lsh/config.yaml` wherever it lives.
 - **`lsh/config.yaml`** — the add-on manifest (name, ports/networking, watchdog, persistence).
 - **`lsh/Dockerfile`** — builds the image. It clones LSH's own source from `github.com/dagoomax/lsh` at build time rather than copying local files, because Supervisor scopes each add-on's Docker build context to its own folder — it can't see `../../src`, `../../package.json`, etc. even though this Dockerfile lives inside the same repo. It deliberately keeps the same Debian base and native-module toolchain as the repo-root `Dockerfile` (not Home Assistant's Alpine base image) — LSH compiles native deps via node-gyp, and re-deriving that under musl/apk wasn't worth the risk for this wrapper.
 - **`lsh/run.sh`** — bridges Supervisor's single persistent `/data` directory to the paths LSH's own code expects (`/app/config.json`, `/app/persist`, `/app/certs`), via symlinks, seeding `config.json` from the example on first run.
