@@ -58,18 +58,23 @@ function loadConfig() {
       outputs:        fileConfig.satel?.outputs        || null,
       outputNames:    fileConfig.satel?.outputNames    || {},
     },
+    // .trim() on host/apiKey/etc: a stray trailing newline copy-pasted into
+    // the Settings UI (or config.json directly) makes these unusable as HTTP
+    // header values — Node's https module throws a synchronous
+    // "Invalid character in header content" TypeError before any request is
+    // even sent, which otherwise looks identical to a bad/expired key.
     unifi: {
-      host:     process.env.UNIFI_HOST     || fileConfig.unifi?.host     || '',
-      username: process.env.UNIFI_USER     || fileConfig.unifi?.username || '',
-      password: process.env.UNIFI_PASS     || fileConfig.unifi?.password || '',
-      apiKey:   process.env.UNIFI_API_KEY  || fileConfig.unifi?.apiKey   || '',
+      host:     (process.env.UNIFI_HOST     || fileConfig.unifi?.host     || '').trim(),
+      username: (process.env.UNIFI_USER     || fileConfig.unifi?.username || '').trim(),
+      password: (process.env.UNIFI_PASS     || fileConfig.unifi?.password || '').trim(),
+      apiKey:   (process.env.UNIFI_API_KEY  || fileConfig.unifi?.apiKey   || '').trim(),
     },
     // Separate product from UniFi Protect above — its own local "Developer
     // API" on a fixed port (12445) with its own Bearer token, even when
     // hosted on the same console.
     unifiAccess: {
-      host:   process.env.UNIFI_ACCESS_HOST    || fileConfig.unifiAccess?.host   || '',
-      apiKey: process.env.UNIFI_ACCESS_API_KEY || fileConfig.unifiAccess?.apiKey || '',
+      host:   (process.env.UNIFI_ACCESS_HOST    || fileConfig.unifiAccess?.host   || '').trim(),
+      apiKey: (process.env.UNIFI_ACCESS_API_KEY || fileConfig.unifiAccess?.apiKey || '').trim(),
     },
     shelly: {
       devices: fileConfig.shelly?.devices || [],
