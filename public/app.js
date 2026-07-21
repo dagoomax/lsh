@@ -811,6 +811,19 @@ async function loadCameras() {
   } catch { /* ignore */ }
 }
 
+// Deep-link: ?camera=<name> auto-opens that camera's modal once the list
+// loads — used by notification actions (e.g. an HA automation on a doorbell
+// ring) to land straight on the Talk UI instead of the plain dashboard.
+(() => {
+  const want = new URLSearchParams(location.search).get('camera');
+  if (!want) return;
+  const t = setInterval(() => {
+    const cam = _loadedCameras.find(c => c.name === want);
+    if (cam) { clearInterval(t); openCameraModal(cam); }
+  }, 300);
+  setTimeout(() => clearInterval(t), 15000);
+})();
+
 async function _initSip() {
   try {
     const res = await fetch('/api/settings');

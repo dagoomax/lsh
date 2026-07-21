@@ -2137,6 +2137,10 @@ Motion and snapshot events are stored in an in-memory ring buffer (500 entries) 
 
 `twoWayAudio: true` adds a "Hold to talk" button to the camera modal — it requests microphone access and negotiates a `sendrecv` audio track with the WHEP server (instead of the default `recvonly`), muted until the button is held. This only works if the WHEP source itself supports two-way audio (e.g. go2rtc pointed at a real camera microphone via `rtspx://` for UniFi cameras specifically — `rtsps://` with `?enableSrtp` is for other RTSPS players, not go2rtc). Requires HTTPS (or `localhost`) for the browser to allow microphone access.
 
+### Deep-linking to a camera
+
+`?camera=<name>` on the dashboard URL auto-opens that camera's modal once the camera list loads (matches on `name`, case-sensitive) — e.g. `http://<lsh-host>:3000/?camera=Biuro`. Useful as a notification action target: an external doorbell-ring automation (Home Assistant, Loxone, …) can link straight to the Talk UI instead of the plain dashboard.
+
 ---
 
 ## Multi-language (i18n)
