@@ -693,6 +693,17 @@ select.sb-type:focus, select.sb-hk:focus {
   box-shadow: 0 0 0 3px rgba(63,185,80,.15);
 }
 
+.cam-two-way-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, var(--text));
+  opacity: 0.85;
+  cursor: pointer;
+}
+.cam-two-way-label input { width: auto; }
+
 .camera-settings-row .btn-remove {
   background: none;
   border: none;

@@ -932,6 +932,34 @@ main {
 .cam-ptz-left  { grid-area: left; }
 .cam-ptz-right { grid-area: right; }
 .cam-ptz-down  { grid-area: down; }
+
+/* ── Talk button (shown for cameras with twoWayAudio: true) ── */
+.cam-talk-btn {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 10px;
+  background: rgba(10,14,20,0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #e9eef5;
+  font-size: 13px;
+  padding: 8px 14px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  opacity: 0.7;
+  transition: opacity 0.2s, background 0.15s, border-color 0.15s;
+}
+.cam-modal-preview:hover .cam-talk-btn { opacity: 1; }
+.cam-talk-btn.talking {
+  background: rgba(220,60,60,0.55);
+  border-color: rgba(255,120,120,0.85);
+  opacity: 1;
+}
 .cam-ptz-zin   { grid-area: zin; }
 .cam-ptz-zout  { grid-area: zout; }
 .cam-modal-img,

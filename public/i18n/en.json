@@ -70,7 +70,8 @@
   "cam": {
     "event_log": "Event Log",
     "no_events": "No events yet",
-    "no_stream": "No stream URL configured"
+    "no_stream": "No stream URL configured",
+    "hold_to_talk": "Hold to talk"
   },
   "logs": {
     "auto_refresh": "Auto-refresh",

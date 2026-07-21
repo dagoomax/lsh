@@ -561,9 +561,10 @@ function renderCameras(cameras) {
 
 // ── Camera modal ────────────────────────────────────────────────────────────
 
-let _modalTimer = null;
-let _modalCam   = null;
-let _activePc   = null;   // active RTCPeerConnection
+let _modalTimer   = null;
+let _modalCam     = null;
+let _activePc     = null;   // active RTCPeerConnection
+let _activeMicTrack = null; // mic track for the current two-way-audio session, if any
 
 function openCameraModal(cam) {
   _modalCam = cam;
@@ -585,13 +586,24 @@ function openCameraModal(cam) {
   img.src              = '';
   img.alt              = cam.name;
 
+  const talkBtn = document.getElementById('cam-modal-talk');
+  talkBtn.style.display = 'none';
+
   if (cam.webrtcUrl && cam.webrtcUrl.trim()) {
     video.style.display = 'block';
     info.textContent    = 'WebRTC connecting…';
-    _startWebRTC(video, cam.webrtcUrl.trim())
-      .then(pc => {
-        _activePc = pc;
+    _startWebRTC(video, cam.webrtcUrl.trim(), !!cam.twoWayAudio)
+      .then(({ pc, micTrack }) => {
+        _activePc      = pc;
+        _activeMicTrack = micTrack;
         info.textContent = 'WebRTC live';
+        if (micTrack) {
+          talkBtn.style.display = 'block';
+          // `muted` on the <video> element is the default so one-way
+          // cameras autoplay without a browser permission prompt — a real
+          // two-way session needs it off so the visitor is actually audible.
+          video.muted = false;
+        }
       })
       .catch(err => {
         console.error('[WebRTC]', err.message);
@@ -648,10 +660,13 @@ function _closeModalStreams() {
   clearInterval(_modalTimer);
   _modalTimer = null;
   if (_activePc) { _activePc.close(); _activePc = null; }
+  if (_activeMicTrack) { _activeMicTrack.stop(); _activeMicTrack = null; }
   const img   = document.getElementById('cam-modal-img');
   const video = document.getElementById('cam-modal-video');
-  if (img)   img.src        = '';
-  if (video) video.srcObject = null;
+  const talk  = document.getElementById('cam-modal-talk');
+  if (img)  img.src         = '';
+  if (video) { video.srcObject = null; video.muted = true; }
+  if (talk) { talk.style.display = 'none'; talk.classList.remove('talking'); }
 }
 
 function closeCameraModal() {
@@ -697,6 +712,27 @@ for (const btn of document.querySelectorAll('#cam-modal-ptz [data-ptz]')) {
   btn.addEventListener('pointerleave', stop);
   btn.addEventListener('pointercancel', stop);
 }
+
+// ── Two-way audio: hold cam-modal-talk to unmute the mic track ──────────────
+(() => {
+  const btn = document.getElementById('cam-modal-talk');
+  if (!btn) return;
+  const start = (e) => {
+    e.preventDefault();
+    if (!_activeMicTrack) return;
+    _activeMicTrack.enabled = true;
+    btn.classList.add('talking');
+  };
+  const stop = () => {
+    if (!_activeMicTrack) return;
+    _activeMicTrack.enabled = false;
+    btn.classList.remove('talking');
+  };
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', stop);
+  btn.addEventListener('pointerleave', stop);
+  btn.addEventListener('pointercancel', stop);
+})();
 
 // ── Camera event log ─────────────────────────────────────────────────────────
 
@@ -961,7 +997,7 @@ socket.on('connect', () => {
 // Implements the WebRTC HTTP Egress Protocol (WHEP, RFC 9559).
 // Works with go2rtc, mediamtx, Frigate, and any WHEP-compliant server.
 
-async function _startWebRTC(videoEl, whepUrl) {
+async function _startWebRTC(videoEl, whepUrl, twoWay) {
   const pc = new RTCPeerConnection({
     iceServers:   [{ urls: 'stun:stun.l.google.com:19302' }],
     bundlePolicy: 'max-bundle',
@@ -971,9 +1007,27 @@ async function _startWebRTC(videoEl, whepUrl) {
     if (e.streams && e.streams[0]) videoEl.srcObject = e.streams[0];
   };
 
-  // Receive-only — no camera/mic access needed
   pc.addTransceiver('video', { direction: 'recvonly' });
-  pc.addTransceiver('audio', { direction: 'recvonly' });
+
+  // Two-way audio needs a sendrecv m-line negotiated in the initial offer —
+  // WHEP is one-shot offer/answer, so adding the mic track after the fact
+  // would need renegotiation most WHEP servers (go2rtc included) don't
+  // support. Muted by default; the Talk button just flips `track.enabled`,
+  // no renegotiation needed to start/stop talking.
+  let micTrack = null;
+  if (twoWay) {
+    try {
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micTrack = micStream.getAudioTracks()[0];
+      micTrack.enabled = false;
+      pc.addTransceiver(micTrack, { direction: 'sendrecv' });
+    } catch (err) {
+      console.warn('[WebRTC] Mic access failed, falling back to receive-only audio:', err.message);
+    }
+  }
+  if (!micTrack) {
+    pc.addTransceiver('audio', { direction: 'recvonly' });
+  }
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
@@ -1007,7 +1061,7 @@ async function _startWebRTC(videoEl, whepUrl) {
   if (error) throw new Error(error);
 
   await pc.setRemoteDescription({ type: 'answer', sdp });
-  return pc;
+  return { pc, micTrack };
 }
 
 // ── Color conversion utilities ────────────────────────────────────────────

@@ -2130,9 +2130,12 @@ Motion and snapshot events are stored in an in-memory ring buffer (500 entries) 
   "url": "rtsp://nvr.local:8554/gate",
   "snapshotUrl": "http://192.168.1.x/snap.jpg",
   "mjpegUrl": "",
-  "webrtcUrl": "http://go2rtc:1984/api/webrtc?src=gate"
+  "webrtcUrl": "http://go2rtc:1984/api/webrtc?src=gate",
+  "twoWayAudio": false
 }
 ```
+
+`twoWayAudio: true` adds a "Hold to talk" button to the camera modal — it requests microphone access and negotiates a `sendrecv` audio track with the WHEP server (instead of the default `recvonly`), muted until the button is held. This only works if the WHEP source itself supports two-way audio (e.g. go2rtc pointed at a real camera microphone via `rtspx://` for UniFi cameras specifically — `rtsps://` with `?enableSrtp` is for other RTSPS players, not go2rtc). Requires HTTPS (or `localhost`) for the browser to allow microphone access.
 
 ---
 

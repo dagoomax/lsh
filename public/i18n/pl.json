@@ -70,7 +70,8 @@
   "cam": {
     "event_log": "Dziennik zdarzeń",
     "no_events": "Brak zdarzeń",
-    "no_stream": "Brak URL strumienia"
+    "no_stream": "Brak URL strumienia",
+    "hold_to_talk": "Przytrzymaj, aby mówić"
   },
   "logs": {
     "auto_refresh": "Auto-odświeżanie",

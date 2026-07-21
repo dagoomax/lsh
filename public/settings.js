@@ -1558,6 +1558,10 @@ function renderCameraList(cameras) {
         </div>
         <input type="text" class="cam-mjpeg"    placeholder="http://…/mjpeg (MJPEG stream)"     value="${escapeVal(cam.mjpegUrl || '')}">
         <input type="text" class="cam-webrtc"   placeholder="http://…/whep (WebRTC / WHEP endpoint — e.g. go2rtc)" value="${escapeVal(cam.webrtcUrl || '')}" style="grid-column:1/-1">
+        <label class="cam-two-way-label" style="grid-column:1/-1">
+          <input type="checkbox" class="cam-two-way" ${cam.twoWayAudio ? 'checked' : ''}>
+          Two-way audio (mic-enabled "Talk" button — needs a WHEP source with a sendrecv audio track, e.g. go2rtc pointed at a real camera mic)
+        </label>
       </div>
       <button class="btn btn-remove cam-remove" title="Remove">✕</button>`;
     row.querySelector('.cam-remove').addEventListener('click', () => {
@@ -1619,6 +1623,7 @@ function collectCameras() {
     snapshotUrl: row.querySelector('.cam-snapshot').value.trim(),
     mjpegUrl:    row.querySelector('.cam-mjpeg').value.trim(),
     webrtcUrl:   row.querySelector('.cam-webrtc').value.trim(),
+    twoWayAudio: row.querySelector('.cam-two-way').checked,
   }));
 }
 
