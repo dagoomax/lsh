@@ -821,7 +821,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
     // `onvif` (PTZ) is config-file-only — keep it when the Settings form,
     // which doesn't know the field, re-saves the list
-    const cleaned = cameras.map(({ name, url, snapshotUrl, mjpegUrl, webrtcUrl, onvif }, i) => ({
+    const cleaned = cameras.map(({ name, url, snapshotUrl, mjpegUrl, webrtcUrl, twoWayAudio, onvif }, i) => ({
       ...((onvif && typeof onvif === 'object') ? { onvif }
         : (current.cameras?.[i]?.onvif ? { onvif: current.cameras[i].onvif } : {})),
       name:        String(name        || '').trim(),
@@ -829,6 +829,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       snapshotUrl: String(snapshotUrl || '').trim(),
       mjpegUrl:    String(mjpegUrl    || '').trim(),
       webrtcUrl:   String(webrtcUrl   || '').trim(),
+      twoWayAudio: !!twoWayAudio,
     })).filter((c) => c.name || c.url);
     try {
       writeConfigFile({ ...current, cameras: cleaned });

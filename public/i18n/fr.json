@@ -68,7 +68,8 @@
   "cam": {
     "event_log": "Journal d'événements",
     "no_events": "Aucun événement",
-    "no_stream": "Aucune URL de flux configurée"
+    "no_stream": "Aucune URL de flux configurée",
+    "hold_to_talk": "Maintenir pour parler"
   },
   "logs": {
     "auto_refresh": "Actualisation auto",

@@ -70,7 +70,8 @@
   "cam": {
     "event_log": "Ereignisprotokoll",
     "no_events": "Keine Ereignisse",
-    "no_stream": "Keine Stream-URL konfiguriert"
+    "no_stream": "Keine Stream-URL konfiguriert",
+    "hold_to_talk": "Halten zum Sprechen"
   },
   "logs": {
     "auto_refresh": "Automatisch aktualisieren",
