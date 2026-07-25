@@ -2,6 +2,13 @@ const { EventEmitter } = require('events');
 const fs   = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { connectMongo } = require('./mongo');
+
+// Optional MongoDB persistence. When config.mongo.uri is set the snapshot
+// (current values + history) is stored as a single document; the gzip file
+// below is still written every cycle as a synchronous, shutdown-safe fallback.
+const MONGO_COLLECTION = 'store';
+const MONGO_DOC_ID     = 'snapshot';
 
 // History ring buffer: per-key [timestamp, value] points for numeric/boolean
 // values. Points closer together than MIN_INTERVAL update the last point in
@@ -21,6 +28,7 @@ class DataStore extends EventEmitter {
     this.data = {};
     this.history = new Map(); // key → [[t, v], …]
     this._persistTimer = null;
+    this._db = null; // MongoDB handle when configured
     this.setMaxListeners(200);
   }
 
@@ -66,15 +74,74 @@ class DataStore extends EventEmitter {
     }
   }
 
-  startPersistence() {
-    this.loadPersisted();
-    this._persistTimer = setInterval(() => this.persistSync(), PERSIST_INTERVAL);
+  // ── MongoDB persistence (optional) ──────────────────────────────────────
+  // Snapshot lives in one document. `data`/`history` are stored as [key, …]
+  // arrays (not nested objects) so store keys containing dots never collide
+  // with MongoDB's field-name rules.
+
+  async loadFromMongo() {
+    try {
+      const doc = await this._db.collection(MONGO_COLLECTION).findOne({ _id: MONGO_DOC_ID });
+      if (!doc) { console.log('[Store] Mongo has no snapshot yet — starting fresh'); return true; }
+      const cutoff = Date.now() - PERSIST_MAX_AGE;
+      let points = 0;
+      for (const [key, buf] of doc.history || []) {
+        const pts = buf.filter((p) => p[0] >= cutoff);
+        if (pts.length) { this.history.set(key, pts); points += pts.length; }
+      }
+      for (const [key, entry] of doc.data || []) {
+        if (!(key in this.data)) this.data[key] = entry;
+      }
+      const age = doc.savedAt ? Math.round((Date.now() - doc.savedAt) / 60000) : '?';
+      console.log(`[Store] Restored from Mongo: ${this.history.size} series / ${points} points (saved ${age} min ago)`);
+      return true;
+    } catch (err) {
+      console.error(`[Store] Mongo restore failed: ${err.message}`);
+      return false;
+    }
+  }
+
+  async persistMongo() {
+    if (!this._db) return;
+    await this._db.collection(MONGO_COLLECTION).replaceOne(
+      { _id: MONGO_DOC_ID },
+      {
+        _id:     MONGO_DOC_ID,
+        savedAt: Date.now(),
+        data:    Object.entries(this.data),
+        history: [...this.history.entries()],
+      },
+      { upsert: true },
+    );
+  }
+
+  _persistAll() {
+    this.persistSync(); // gzip: always, synchronous, shutdown-safe
+    if (this._db) {
+      this.persistMongo().catch((err) => console.error(`[Store] Mongo persist failed: ${err.message}`));
+    }
+  }
+
+  async startPersistence(mongoCfg) {
+    // Prefer Mongo when configured and reachable; the gzip file is loaded only
+    // as a fallback so a Mongo outage still restores the last local snapshot.
+    let loaded = false;
+    if (mongoCfg && mongoCfg.uri) {
+      this._db = await connectMongo(mongoCfg);
+      if (this._db) loaded = await this.loadFromMongo();
+    }
+    if (!loaded) this.loadPersisted();
+
+    this._persistTimer = setInterval(() => this._persistAll(), PERSIST_INTERVAL);
     // pm2 stop/restart sends SIGINT — save before anyone calls process.exit.
     // Registered first (store is created before HomeKit), synchronous, no exit
-    // here: HAP or pm2's kill timeout finishes the shutdown.
+    // here: HAP or pm2's kill timeout finishes the shutdown. The gzip write is
+    // synchronous and guaranteed; the Mongo flush is best-effort (may be cut
+    // short by the kill timeout, but the 5-min interval already covered it).
     const save = () => {
       const size = this.persistSync();
       if (size) console.log(`[Store] Saved on shutdown (${(size / 1024).toFixed(0)} kB)`);
+      if (this._db) this.persistMongo().catch(() => {});
     };
     process.once('SIGINT', save);
     process.once('SIGTERM', save);

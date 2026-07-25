@@ -29,6 +29,13 @@ function loadConfig() {
       port: parseInt(process.env.VICTRON_MQTT_PORT || fileConfig.mqtt?.port || 1883),
       portalId: process.env.VICTRON_PORTAL_ID || fileConfig.mqtt?.portalId || '',
     },
+    // Optional MongoDB persistence for the DataStore snapshot + history.
+    // Only active when a uri is present (env var wins); otherwise the app uses
+    // gzipped-JSON persistence in persist/ exactly as before.
+    mongo: (process.env.MONGO_URI || fileConfig.mongo?.uri) ? {
+      uri: process.env.MONGO_URI || fileConfig.mongo?.uri,
+      db:  process.env.MONGO_DB  || fileConfig.mongo?.db || 'lsh',
+    } : undefined,
     vrm: {
       email:          process.env.VRM_EMAIL           || fileConfig.vrm?.email          || '',
       password:       process.env.VRM_PASSWORD        || fileConfig.vrm?.password       || '',

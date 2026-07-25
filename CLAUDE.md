@@ -34,7 +34,7 @@ There is no automated test suite; verify changes by running the server and watch
 ### Core spine (everything flows through these)
 
 - `config.js` — loads `config.json`, spreads it through, applies env-var overrides for curated keys (mqtt/vrm/solaredge/…)
-- `src/data-store.js` — `DataStore`: central EventEmitter key→value store with a per-key history ring buffer (~6 h) and gzipped persistence to `persist/store-data.json.gz`
+- `src/data-store.js` — `DataStore`: central EventEmitter key→value store with a per-key history ring buffer (~6 h) and gzipped persistence to `persist/store-data.json.gz`. If `config.mongo.uri` is set it persists the snapshot to MongoDB instead (via `src/mongo.js`), keeping the gzip file as a synchronous shutdown-safe fallback
 - `src/sensor-registry.js` — `SensorRegistry`: device catalog. Victron devices are auto-discovered from store keys via `device-definitions.js` (`KNOWN_SERVICES`); all other integrations call `registerDevice()` explicitly
 - `src/connection-manager.js` — Victron data source with automatic MQTT (local Venus OS) → VRM (cloud) fallback; emits `source-changed`, which re-points `relay-controller.js` at the active client
 - `src/api-routes.js` — all REST endpoints under `/api`

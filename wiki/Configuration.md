@@ -11,6 +11,7 @@
 | Section | Required | Purpose |
 |---|---|---|
 | `mqtt` | No | Local Victron Venus OS / Cerbo GX MQTT broker |
+| `mongo` | No | MongoDB persistence for the DataStore snapshot + history (falls back to gzipped-JSON file) |
 | `vrm` | No | Victron VRM cloud API (fallback when MQTT is unreachable) |
 | `solaredge` | No | SolarEdge cloud data |
 | `smartthings` | No | Samsung SmartThings devices |
@@ -59,6 +60,17 @@
 ```
 
 `portalId` is the Victron installation ID visible in VRM. Leave blank to auto-detect from the first MQTT message.
+
+### `mongo`
+
+```json
+"mongo": {
+  "uri": "mongodb://host:27017",
+  "db": "lsh"
+}
+```
+
+Optional. With a `uri` set, the DataStore (live values + history) is persisted to MongoDB as a single snapshot document in the `store` collection (upserted every 5 min and on shutdown) instead of the default gzipped-JSON file. The file (`persist/store-data.json.gz`) is still written each cycle as a synchronous shutdown-safe fallback — if Mongo is unreachable at startup the app warns and restores from the local file. Omit the section for pure file persistence. Env overrides: `MONGO_URI`, `MONGO_DB`.
 
 ### `vrm`
 

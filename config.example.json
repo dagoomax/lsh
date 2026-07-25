@@ -5,6 +5,10 @@
     "port": 1883,
     "portalId": ""
   },
+  "mongo": {
+    "uri": "mongodb://host:27017",
+    "db": "lsh"
+  },
   "vrm": {
     "email": "",
     "password": "",

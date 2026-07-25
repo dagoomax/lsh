@@ -22,7 +22,9 @@ function tryRequire(mod, hint) {
 async function main() {
   const config          = loadConfig();
   const store           = new DataStore();
-  store.startPersistence(); // restore saved sensor data + history, save every 5 min and on shutdown
+  // restore saved sensor data + history, save every 5 min and on shutdown;
+  // persists to MongoDB when config.mongo.uri is set, else gzipped JSON in persist/
+  await store.startPersistence(config.mongo);
   const connectionMgr   = new ConnectionManager(config, store);
   const relayController = new RelayController(config, store);
   const sensorRegistry  = new SensorRegistry(store, config.language); // server-side label translation
