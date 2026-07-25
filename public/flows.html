@@ -67,6 +67,25 @@
         radial-gradient(820px 580px at 96% 2%, rgba(45,212,191,0.14), transparent 55%),
         radial-gradient(1040px 720px at 48% 118%, rgba(140,110,240,0.18), transparent 60%);
     }
+    /* Film grain — the same barely-there texture as the React UI */
+    body::after {
+      content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:0.03;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    /* Buttons + controls matching the React design system */
+    .btn { border-radius:9px; padding:8px 14px; font-size:13px; font-weight:600; font-family:inherit;
+      border:1px solid var(--border); background:var(--white-05); color:var(--text); cursor:pointer;
+      transition:transform .12s, background .15s, border-color .15s, box-shadow .15s; }
+    .btn:hover { border-color:var(--border-lt); background:var(--white-08); }
+    .btn-sm { padding:5px 11px; font-size:12px; border-radius:8px; }
+    .btn-primary { border:none; color:#fff;
+      background:linear-gradient(180deg, var(--accent-lt) -30%, var(--accent) 70%);
+      box-shadow:0 2px 14px rgba(74,157,255,0.42), inset 0 1px 0 rgba(255,255,255,0.25); }
+    .btn-primary:hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(74,157,255,0.55), inset 0 1px 0 rgba(255,255,255,0.3); }
+    .flow-toolbar select, .flow-toolbar input[type="text"], .fn-body input, .fn-body select {
+      background:var(--white-05); border:1px solid var(--border); border-radius:8px; color:var(--text); }
+    .flow-toolbar select:focus, .flow-toolbar input:focus, .fn-body input:focus, .fn-body select:focus {
+      outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(74,157,255,0.22); }
   </style>
   <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('lsh-theme')||'dark')</script>
 </head>

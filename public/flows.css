@@ -92,6 +92,20 @@
   animation: node-in 0.2s ease both;
 }
 @keyframes node-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+/* Specular sheen sweeping the card on hover — the React tile signature.
+   border-radius:inherit clips it to the rounded card without needing overflow. */
+.flow-node::before {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(115deg, transparent 32%, rgba(255,255,255,0.05) 44%,
+    rgba(160,200,255,0.14) 50%, rgba(255,255,255,0.05) 56%, transparent 68%);
+  transform: translateX(-130%) skewX(-8deg); opacity: 0;
+}
+.flow-node:hover::before { animation: flow-sheen 0.9s cubic-bezier(0.25, 0.6, 0.35, 1); }
+@keyframes flow-sheen {
+  0%   { transform: translateX(-130%) skewX(-8deg); opacity: 1; }
+  100% { transform: translateX(130%)  skewX(-8deg); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .flow-node::before { display: none; } }
 .flow-node:hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--nc) 65%, transparent);
