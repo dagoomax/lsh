@@ -9,6 +9,109 @@
   <link rel="stylesheet" href="auth.css?v=3">
   <link rel="stylesheet" href="beauty-base.css?v=3">
   <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <!-- Vivid "electric glass" palette matching the Aurora / React dashboard. -->
+  <style>
+    :root, :root[data-theme="dark"] {
+      --bg:#070912; --card:#141a29; --card-bg:#141a29; --card-on:#1b2b48;
+      --card-grad:linear-gradient(180deg,#1a2234 0%,#121826 100%);
+      --surface:#141a29; --surface2:#1d2435;
+      --border:rgba(255,255,255,0.09); --card-border:rgba(255,255,255,0.09);
+      --border-lt:rgba(255,255,255,0.14); --border-light:rgba(255,255,255,0.14);
+      --sep:rgba(255,255,255,0.06); --hover:rgba(255,255,255,0.05); --input-bg:rgba(255,255,255,0.05);
+      --text:#eef2f8; --text-muted:#9aa7ba; --text2:#9aa7ba; --text3:#667487; --muted:#9aa7ba;
+      --accent:#4a9dff; --accent-lt:#7bbcff; --accent-blue:#4a9dff; --accent-dim:rgba(74,157,255,0.2);
+      --green:#2ee66b; --accent-green:#2ee66b; --red:#ff4d5e; --accent-red:#ff4d5e;
+      --orange:#ff9838; --accent-orange:#ff9838; --yellow:#ffc53d; --accent-yellow:#ffc53d;
+      --teal:#22d3ee; --violet:#a875ff; --gold:#ffc44d;
+      --white-03:rgba(255,255,255,0.03); --white-04:rgba(255,255,255,0.04); --white-05:rgba(255,255,255,0.05);
+      --white-06:rgba(255,255,255,0.06); --white-08:rgba(255,255,255,0.08); --white-10:rgba(255,255,255,0.1);
+      --white-12:rgba(255,255,255,0.12); --white-14:rgba(255,255,255,0.14); --white-20:rgba(255,255,255,0.2);
+      --shadow-1:0 1px 2px rgba(0,0,0,0.35),0 2px 10px rgba(8,14,40,0.4);
+      --shadow-2:0 4px 14px rgba(0,0,0,0.4),0 16px 40px rgba(8,14,40,0.42);
+      --inner-hl:inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    body { background:var(--bg); color:var(--text); margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif; }
+    /* Self-styled vivid header, matching Aurora */
+    header {
+      position:sticky; top:0; height:56px; display:flex; align-items:center; gap:16px;
+      padding:0 18px; z-index:100; box-sizing:border-box;
+      background:rgba(10,13,24,0.72); backdrop-filter:blur(22px) saturate(1.3);
+      -webkit-backdrop-filter:blur(22px) saturate(1.3); border-bottom:1px solid var(--border);
+    }
+    header .logo { display:flex; align-items:center; gap:10px; }
+    header .logo-text { font-size:15px; font-weight:800; letter-spacing:-0.01em; white-space:nowrap;
+      background:linear-gradient(135deg,var(--green) 0%,var(--accent-lt) 55%,var(--accent) 100%);
+      -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    header .header-nav { display:flex; gap:5px; background:var(--white-04);
+      border:1px solid var(--border); border-radius:11px; padding:4px; }
+    header .header-nav a { font-size:13px; font-weight:500; padding:7px 15px; border-radius:8px;
+      color:var(--text-muted); text-decoration:none; white-space:nowrap; transition:color .15s, background .15s; }
+    header .header-nav a:hover { color:var(--text); background:var(--white-06); }
+    header .header-nav a.active { color:#fff; background:linear-gradient(180deg,var(--accent-lt) -30%,var(--accent) 70%);
+      box-shadow:0 2px 14px rgba(74,157,255,0.42), inset 0 1px 0 rgba(255,255,255,0.25); }
+    header .theme-toggle { width:32px; height:32px; border-radius:8px;
+      border:1px solid var(--border); background:var(--white-04); color:var(--text-muted); cursor:pointer; }
+    /* Ambient aurora + film grain */
+    body::before { content:''; position:fixed; inset:-8%; z-index:-1; pointer-events:none;
+      background:
+        radial-gradient(900px 620px at 10% -10%, rgba(56,110,220,0.20), transparent 60%),
+        radial-gradient(820px 580px at 96% 2%, rgba(45,212,191,0.12), transparent 55%),
+        radial-gradient(1040px 720px at 48% 118%, rgba(140,110,240,0.16), transparent 60%); }
+    body::after { content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:0.03;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+    /* Cards */
+    .settings-card, .card {
+      background:linear-gradient(180deg, rgba(74,157,255,0.04), transparent 55%), var(--card-grad);
+      border:1px solid var(--border); box-shadow:var(--shadow-1), var(--inner-hl);
+      border-radius:16px;
+    }
+    /* Buttons matching the React design system */
+    .btn { border-radius:9px; padding:8px 15px; font-size:13px; font-weight:600; font-family:inherit;
+      border:1px solid var(--border); background:var(--white-05); color:var(--text); cursor:pointer;
+      transition:transform .12s, background .15s, border-color .15s, box-shadow .15s; }
+    .btn:hover { border-color:var(--border-lt); background:var(--white-08); }
+    .btn-sm { padding:5px 11px; font-size:12px; border-radius:8px; }
+    .btn-primary { border:none; color:#fff; background:linear-gradient(180deg, var(--accent-lt) -30%, var(--accent) 70%);
+      box-shadow:0 2px 14px rgba(74,157,255,0.42), inset 0 1px 0 rgba(255,255,255,0.25); }
+    .btn-primary:hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(74,157,255,0.55), inset 0 1px 0 rgba(255,255,255,0.3); }
+    .btn-danger { border:none; color:#fff; background:linear-gradient(180deg, #ff7a86 -30%, var(--red) 70%);
+      box-shadow:0 2px 14px rgba(255,77,94,0.4), inset 0 1px 0 rgba(255,255,255,0.2); }
+    /* Category filter tabs */
+    .cat-btn.active { color:#fff; border-color:transparent;
+      background:linear-gradient(180deg, var(--accent-lt) -30%, var(--accent) 70%);
+      box-shadow:0 2px 12px rgba(74,157,255,0.4); }
+    /* Inputs */
+    .settings-card input, .settings-card select, .settings-card textarea, .form-row input, .form-row select {
+      background:var(--white-05); border:1px solid var(--border); border-radius:8px; color:var(--text); }
+    .settings-card input:focus, .settings-card select:focus, .settings-card textarea:focus,
+    .form-row input:focus, .form-row select:focus {
+      outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(74,157,255,0.22); }
+    /* Critical layout — self-contained so the page renders even if settings.css is slow/stale */
+    .settings-main { max-width:800px; margin:0 auto; padding:24px; display:flex; flex-direction:column; gap:20px; }
+    .settings-cats { display:flex; gap:5px; overflow-x:auto; max-width:800px; margin:0 auto; width:100%;
+      padding:10px 24px 2px; scrollbar-width:none; }
+    .settings-cats::-webkit-scrollbar { display:none; }
+    .cat-btn { background:var(--white-04); border:1px solid var(--border); color:var(--text-muted);
+      padding:6px 13px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer;
+      white-space:nowrap; flex-shrink:0; font-family:inherit; transition:all .15s; }
+    .cat-btn:hover { color:var(--text); border-color:var(--border-lt); }
+    .settings-card { position:relative; padding:26px 30px; }
+    .settings-card h2 { font-size:16px; font-weight:700; color:var(--text); margin:0 0 6px;
+      display:flex; align-items:center; gap:10px; }
+    .section-desc { font-size:13px; color:var(--text-muted); margin:0 0 18px; line-height:1.5; }
+    .form-row { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+    .form-row label { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; }
+    .settings-card input, .settings-card select, .settings-card textarea, .form-row input, .form-row select {
+      padding:9px 12px; width:100%; font-size:13px; font-family:inherit; }
+    .form-actions { display:flex; align-items:center; gap:12px; margin-top:8px; flex-wrap:wrap; }
+    .settings-filter-wrap { max-width:800px; margin:12px auto 0; display:flex; align-items:center;
+      background:var(--white-04); border:1px solid var(--border); border-radius:10px; padding:2px 10px; }
+    .settings-filter-wrap input { flex:1; background:none; border:none; outline:none; color:var(--text);
+      padding:9px 6px; font-size:13px; font-family:inherit; }
+    .badge { display:inline-flex; align-items:center; padding:2px 9px; border-radius:20px; font-size:11px;
+      font-weight:600; background:var(--white-08); color:var(--text-muted); }
+  </style>
   <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('lsh-theme')||'dark')</script>
 </head>
 <body>
