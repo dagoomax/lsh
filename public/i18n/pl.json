@@ -327,7 +327,10 @@
     "waveshare_count": "Liczba przekaźników",
     "waveshare_count_hint": "(liczba przekaźników na karcie)",
     "mongo_uri": "URI połączenia",
-    "mongo_db": "Baza danych"
+    "mongo_db": "Baza danych",
+    "interface_title": "Interfejs",
+    "hide_mqtt": "Ukryj link MQTT w górnej nawigacji",
+    "hide_logs": "Ukryj link Dziennik w górnej nawigacji"
   },
   "graphs": {
     "tab": "Wykresy",
@@ -509,6 +512,7 @@
     "d36": "Zarządzaj użytkownikami, tokenami API i szyfrowaniem HTTPS/TLS.",
     "d37": "Zapisz całą konfigurację do pliku lub przywróć z wcześniejszej kopii.",
     "d15f": "Wysyła wartości LSH do zmiennych globalnych <strong>Fibaro Home Center</strong> w czasie rzeczywistym (przy zmianie, debounce 200 ms), dzięki czemu sceny HC mogą reagować na wszystko, co widzi LSH — strefy Satel, baterię Victron, dzwonek UniFi. Brakujące zmienne są tworzone automatycznie; <em>reguła prefiksu</em> mapuje całe poddrzewo kluczy naraz (<code>/</code> zamienia się w <code>_</code>).",
-    "mongo": "Zapisuje DataStore czujników (wartości bieżące + historia) do <strong>MongoDB</strong> zamiast lokalnego pliku gzip. Plik pozostaje bezpiecznym zapasem przy wyłączeniu, więc puste pole zachowuje domyślne działanie. Uruchom ponownie, aby zastosować."
+    "mongo": "Zapisuje DataStore czujników (wartości bieżące + historia) do <strong>MongoDB</strong> zamiast lokalnego pliku gzip. Plik pozostaje bezpiecznym zapasem przy wyłączeniu, więc puste pole zachowuje domyślne działanie. Uruchom ponownie, aby zastosować.",
+    "interface": "Ukryj nieużywane linki nawigacji. Zmiany działają po przeładowaniu strony — bez restartu."
   }
 }

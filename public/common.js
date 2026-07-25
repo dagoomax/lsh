@@ -33,4 +33,21 @@
   };
 
   addLogout();
+
+  // Hide nav links the user has opted out of (Settings → Interface)
+  function applyNavPrefs() {
+    const nav = document.querySelector('.header-nav');
+    if (!nav) return;
+    _origFetch('/api/ui-prefs')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const p = j && j.data;
+        if (!p) return;
+        if (p.hideMqtt) nav.querySelector('a[href="/mqtt.html"]')?.remove();
+        if (p.hideLogs) nav.querySelector('a[href="/logs.html"]')?.remove();
+      })
+      .catch(() => {});
+  }
+
+  applyNavPrefs();
 })();

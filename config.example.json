@@ -9,6 +9,10 @@
     "uri": "mongodb://host:27017",
     "db": "lsh"
   },
+  "ui": {
+    "hideMqtt": false,
+    "hideLogs": false
+  },
   "vrm": {
     "email": "",
     "password": "",

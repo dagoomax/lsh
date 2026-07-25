@@ -1276,6 +1276,27 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // ── UI preferences ───────────────────────────────────────
+  // Lightweight read for the shared header (common.js) to hide nav links.
+  router.get('/ui-prefs', (req, res) => {
+    const cfg = readConfigFile();
+    res.json({ success: true, data: {
+      hideMqtt: !!cfg.ui?.hideMqtt,
+      hideLogs: !!cfg.ui?.hideLogs,
+    } });
+  });
+
+  router.post('/settings/ui', (req, res) => {
+    const current = readConfigFile();
+    const { hideMqtt, hideLogs } = req.body;
+    try {
+      writeConfigFile({ ...current, ui: { ...current.ui, hideMqtt: !!hideMqtt, hideLogs: !!hideLogs } });
+      res.json({ success: true, message: 'Interface settings saved.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // ── Settings ─────────────────────────────────────────────
   router.get('/settings', (req, res) => {
     const cfg = readConfigFile();

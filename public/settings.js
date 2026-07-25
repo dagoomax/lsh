@@ -19,6 +19,10 @@ async function loadSettings() {
     setVal('mongo-uri', data.mongo?.uri || '');
     setVal('mongo-db',  data.mongo?.db  || '');
 
+    // Interface (hide nav links)
+    const hm = document.getElementById('ui-hide-mqtt'); if (hm) hm.checked = !!data.ui?.hideMqtt;
+    const hl = document.getElementById('ui-hide-logs'); if (hl) hl.checked = !!data.ui?.hideLogs;
+
     // VRM
     setVal('vrm-api-token', data.vrm?.apiToken || '');
     setVal('vrm-email', data.vrm?.email || '');
@@ -1443,6 +1447,32 @@ document.getElementById('btn-fibaro-out-add-key').addEventListener('click', () =
 document.getElementById('btn-fibaro-out-add-prefix').addEventListener('click', () => {
   loadFibaroOutKeys();
   addFibaroOutRow('prefix').querySelector('.from').focus();
+});
+
+// ── Interface (hide nav links) ──────────────────────────────────────────────
+
+document.getElementById('btn-save-ui').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-ui');
+  const resultEl = document.getElementById('ui-result');
+  btn.disabled   = true;
+  try {
+    const res  = await fetch('/api/settings/ui', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        hideMqtt: document.getElementById('ui-hide-mqtt').checked,
+        hideLogs: document.getElementById('ui-hide-logs').checked,
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + (json.message || 'Saved') : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 // ── MongoDB ────────────────────────────────────────────────────────────────
