@@ -24,7 +24,8 @@ Loxone Miniserver:
 Door station ──► │  UniFi Protect  (camera, snapshots, ring/motion events)      │
                  │  UniFi Talk     (SIP PBX, wss://192.168.1.1:5443)            │
                  └───────┬──────────────────────────────┬──────────────────────-┘
-                         │ HTTPS API (poll)             │ SIP over WebSocket
+                         │ Integration API (WebSocket   │ SIP over WebSocket
+                         │ events; legacy: HTTPS poll)  │
                          ▼                              ▼
                  LSH  unifi-protect-client      LSH dashboard softphone (ext 101)
                          │                              answer / talk / "#" unlock
@@ -39,7 +40,7 @@ Two independent paths:
 
 | Path | Purpose | Latency |
 |---|---|---|
-| Protect API poll | ring/motion → LSH → Loxone | ~`ringPollInterval` (default 3 s) |
+| Protect events | ring/motion → LSH → Loxone | instant with `apiKey` (event WebSocket); legacy user/pass mode polls every `ringPollInterval` (default 3 s) |
 | UniFi Talk SIP | live call + door unlock in the dashboard | instant (real call) |
 
 ## 2. Prerequisites
@@ -56,10 +57,13 @@ Two independent paths:
 
 Pick **one** of the two (API key is preferred — no session expiry):
 
-- **API key:** UniFi console → *Settings → Control Plane → Integrations* →
-  create an API key. Paste it into `unifi.apiKey` in `config.json`.
-- **Local admin:** create a *local access only* admin with Protect **view**
-  permission and fill `unifi.username` / `unifi.password` instead.
+- **API key (preferred):** UniFi console → *Settings → Control Plane →
+  Integrations* → create an API key (Protect 5.3+). Paste it into
+  `unifi.apiKey` in `config.json`. LSH then uses the official Integration API
+  and receives rings/motion in real time over its event WebSocket.
+- **Local admin (legacy):** create a *local access only* admin with Protect
+  **view** permission and fill `unifi.username` / `unifi.password` instead —
+  rings are then detected by polling.
 
 ### 3.2 Talk — call routing to the dashboard
 
@@ -113,7 +117,7 @@ All settings live in `config.json` (server restart required after edits).
 | `host` | UniFi console IP (Protect + API live here) |
 | `apiKey` | API key from §3.1 — leave `username`/`password` empty when set |
 | `username`/`password` | local admin credentials (alternative to `apiKey`) |
-| `ringPollInterval` | seconds between doorbell ring polls (default 3). Regular sensors poll every 30 s regardless. |
+| `ringPollInterval` | legacy mode only: seconds between doorbell ring polls (default 3). Ignored with `apiKey` (rings arrive via WebSocket). Regular sensors poll every 30 s regardless. |
 
 ### 4.2 `sip` — dashboard softphone (already configured)
 
@@ -144,10 +148,13 @@ dashboard.
 Restart LSH (`node server.js`). On startup you should see:
 
 ```
-[UniFi Protect] Authenticated
+[UniFi Protect] Integration API — Protect 6.0.53
 [UniFi Protect] Doorbell "Front Door" — store keys unifi/66a1b2c3d4e5f6a7b8c9d0e1/doorbell, unifi/66a1b2c3d4e5f6a7b8c9d0e1/motion
-[UniFi Protect] Started — 3 camera(s), 2 sensor(s)
+[UniFi Protect] Started (integration API) — 3 camera(s), 2 sensor(s)
+[UniFi Protect] Event stream connected
 ```
+
+(Legacy mode logs `[UniFi Protect] Authenticated` and `(legacy API)` instead.)
 
 The hex string is the **camera ID** — you need it for the `loxoneOut` mappings
 (§5.3) and the snapshot URL (§5.6). It is also visible in
@@ -176,8 +183,9 @@ Loxone and HomeKit works reliably. Motion follows Protect's
 LSH's `loxoneOut` module listens to store changes and pushes mapped keys to
 Miniserver **Virtual Inputs** via
 `http://MINISERVER/dev/sps/io/<virtualInput>/<value>` (HTTP GET, Basic auth,
-debounced 200 ms). This is push — no polling on the Loxone side, ring arrives
-within ~`ringPollInterval` + a few hundred ms.
+debounced 200 ms). This is push — no polling on the Loxone side. With `apiKey`
+set the ring arrives near-instantly (event WebSocket); in legacy mode within
+~`ringPollInterval` + a few hundred ms.
 
 ### 5.2 Miniserver user
 
@@ -260,7 +268,8 @@ be missed; use the push path (§5.1) for ring events.
 | Symptom | Check |
 |---|---|
 | `UniFi auth failed: HTTP 4xx` | API key valid? Local admin has Protect access? `host` right? |
-| Doorbell not discovered | Is the device a doorbell in Protect? Discovery log line missing → check `/proxy/protect/api/cameras` reachability |
+| Doorbell not discovered | Is the device a doorbell in Protect? Discovery log line missing → check `/proxy/protect/integration/v1/cameras` (or legacy `/proxy/protect/api/cameras`) reachability |
+| Rings missed, `Event stream closed` repeating | Console reachable on 443? API key still valid? The client reconnects with backoff (5 s → 60 s) — check `logs/unifi.log` |
 | Ring arrives late/never in Loxone | `loxoneOut.host` set? Mapping `storeKey` matches the logged key exactly? `[LoxoneOut] HTTP 401` → wrong Miniserver user; `HTTP 404` → VI name mismatch (§5.4) |
 | Dashboard doesn't ring | `sip.password` = Talk password of ext 101? Door station call destination includes 101? Browser must be on HTTPS for microphone access |
 | Unlock doesn't work | DTMF key in UniFi matches `sip.dtmfUnlock`? Relay configured on the door station? |

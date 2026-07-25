@@ -4,36 +4,70 @@ const https          = require('https');
 const EventEmitter   = require('events');
 const platformStatus = require('./platform-status');
 
+let WebSocketLib = null;
+try { WebSocketLib = require('ws'); } catch { /* handled in start() */ }
+
 const POLL_MS = 30_000;
 
+/**
+ * UniFi Protect client.
+ *
+ * Two API modes:
+ *  - apiKey set   → official Protect Integration API (`/proxy/protect/integration/v1`,
+ *                   `X-API-Key` header). Rings, motion, and sensor open/close arrive in
+ *                   real time over the `/subscribe/events` WebSocket; the 30 s sensor
+ *                   poll only reconciles slow values (temperature/humidity/battery).
+ *  - username/password → legacy private API (`/proxy/protect/api`, cookie login),
+ *                   kept for consoles without an Integration API key. Rings are polled
+ *                   every `ringPollInterval` seconds (the legacy camera object exposes
+ *                   `lastRing`; the Integration API does not).
+ */
 class UnifiProtectClient extends EventEmitter {
   constructor(config, store, sensorRegistry) {
     super();
     this.cfg            = config.unifi;
     this.store          = store;
     this.sensorRegistry = sensorRegistry;
+    this.useIntegration = Boolean(this.cfg.apiKey);
     this.token          = null;
     this.cookieJar      = '';
     this.devices        = [];
     this._cameras       = [];
     this.pollTimer      = null;
     this.ringTimer      = null;
-    this._lastRing      = {}; // doorbell cameraId → last ring timestamp
-    this._motionState   = {}; // doorbell cameraId → last motion value
+    this.ws             = null;
+    this._wsBackoff     = 5_000;
+    this._wsReconnect   = null;
+    this._stopped       = false;
+    this._lastRing      = {}; // doorbell cameraId → last ring timestamp (legacy mode)
+    this._motionState   = {}; // deviceId → last motion value
     this._ringResets    = {}; // doorbell cameraId → reset-to-0 timer
+    this._seenEvents    = new Set(); // event ids already handled (integration mode)
   }
 
   async start() {
-    await this._authenticate();
+    if (this.useIntegration) {
+      const info = await this._get('/meta/info').catch(err => {
+        if (err.status === 401) throw new Error('Integration API rejected the key — create one under Protect → Settings → Control Plane → Integrations');
+        return null; // tolerate consoles without /meta/info
+      });
+      if (info?.applicationVersion) console.log(`[UniFi Protect] Integration API — Protect ${info.applicationVersion}`);
+    } else {
+      await this._authenticate();
+    }
     await this._discoverAll();
     platformStatus.set('unifi', true);
     this.pollTimer = setInterval(() => this._pollSensors().catch(() => {}), POLL_MS);
-    console.log(`[UniFi Protect] Started — ${this._cameras.length} camera(s), ${this.devices.length} sensor(s)`);
+    if (this.useIntegration) this._connectEvents();
+    console.log(`[UniFi Protect] Started (${this.useIntegration ? 'integration' : 'legacy'} API) — ${this._cameras.length} camera(s), ${this.devices.length} sensor(s)`);
   }
 
   stop() {
+    this._stopped = true;
     clearInterval(this.pollTimer);
     clearInterval(this.ringTimer);
+    clearTimeout(this._wsReconnect);
+    if (this.ws) { try { this.ws.close(); } catch {} this.ws = null; }
     for (const t of Object.values(this._ringResets)) clearTimeout(t);
     this._ringResets = {};
   }
@@ -45,7 +79,7 @@ class UnifiProtectClient extends EventEmitter {
   proxySnapshot(cameraId, res) {
     const req = https.request({
       hostname: this.cfg.host,
-      path:     `${this._protectBase()}/cameras/${cameraId}/snapshot`,
+      path:     `${this._base()}/cameras/${cameraId}/snapshot`,
       method:   'GET',
       headers:  this._headers(),
       rejectUnauthorized: false,
@@ -58,11 +92,9 @@ class UnifiProtectClient extends EventEmitter {
     req.end();
   }
 
-  // ── Auth ──────────────────────────────────────────────────
+  // ── Auth (legacy mode only) ───────────────────────────────
 
   async _authenticate() {
-    if (this.cfg.apiKey) return; // Bearer API key — no login needed
-
     const { status, headers } = await this._request('POST', '/api/auth/login',
       JSON.stringify({ username: this.cfg.username, password: this.cfg.password })
     );
@@ -86,7 +118,7 @@ class UnifiProtectClient extends EventEmitter {
   }
 
   async _discoverCameras() {
-    const cams = await this._get(`${this._protectBase()}/cameras`);
+    const cams = await this._get('/cameras');
     this._cameras = cams.map(cam => ({
       name:          cam.name || cam.id,
       url:           null,
@@ -94,14 +126,11 @@ class UnifiProtectClient extends EventEmitter {
       fetchSnapshot: () => this.fetchSnapshotBuffer(cam.id),
     }));
 
-    // Ubiquiti's newer System-API-key-authenticated integration endpoint
-    // doesn't include featureFlags.isDoorbell/type/lastRing/isMotionDetected
-    // on camera list objects at all (confirmed empirically), so this filter
-    // — and the ring/motion polling below — only ever finds doorbells when
-    // authenticated via username/password against the legacy internal API.
+    // Integration API cameras carry no `featureFlags.isDoorbell`; `type` is the
+    // model name ("G4 Doorbell Pro"), which both APIs expose.
     const doorbells = cams.filter(c => c.featureFlags?.isDoorbell || /doorbell/i.test(c.type || ''));
     for (const cam of doorbells) this._registerDoorbell(cam);
-    if (doorbells.length > 0) {
+    if (doorbells.length > 0 && !this.useIntegration) {
       const seconds  = this.cfg.ringPollInterval || 3;
       this.ringTimer = setInterval(() => this._pollRings().catch(() => {}), seconds * 1000);
     }
@@ -131,14 +160,114 @@ class UnifiProtectClient extends EventEmitter {
     this.sensorRegistry.registerDevice(device);
 
     this.store.update(`unifi/${cam.id}/doorbell`, 0);
-    this._setMotion(cam);
+    this._setMotion(cam.id, cam.isMotionDetected ? 1 : 0);
     console.log(`[UniFi Protect] Doorbell "${cam.name}" — store keys unifi/${cam.id}/doorbell, unifi/${cam.id}/motion`);
   }
+
+  _ring(id, name) {
+    const key = `unifi/${id}/doorbell`;
+    this.store.update(key, 1);
+    this.emit('doorbell-ring', { id, name });
+    console.log(`[UniFi Protect] 🔔 Ring: ${name}`);
+    // Pulse: back to 0 after 3 s so Loxone virtual inputs see an edge
+    clearTimeout(this._ringResets[id]);
+    this._ringResets[id] = setTimeout(() => this.store.update(key, 0), 3000);
+  }
+
+  _setMotion(id, val) {
+    if (this._motionState[id] === val) return; // avoid re-emitting unchanged state
+    this._motionState[id] = val;
+    this.store.update(`unifi/${id}/motion`, val);
+  }
+
+  // ── Real-time events (integration mode) ───────────────────
+
+  _connectEvents() {
+    if (!WebSocketLib) {
+      console.error('[UniFi Protect] "ws" module not available — rings will not be detected (run npm install)');
+      return;
+    }
+    const ws = new WebSocketLib(`wss://${this.cfg.host}${this._base()}/subscribe/events`, {
+      headers: { 'X-API-Key': this.cfg.apiKey },
+      rejectUnauthorized: false,
+    });
+    this.ws = ws;
+
+    ws.on('open', () => {
+      this._wsBackoff = 5_000;
+      platformStatus.set('unifi', true);
+      console.log('[UniFi Protect] Event stream connected');
+    });
+    ws.on('message', raw => {
+      let msg;
+      try { msg = JSON.parse(raw); } catch { return; }
+      try { this._handleEvent(msg); } catch (err) {
+        console.error(`[UniFi Protect] Event handling: ${err.message}`);
+      }
+    });
+    ws.on('error', err => console.error(`[UniFi Protect] Event stream: ${err.message}`));
+    ws.on('close', () => {
+      if (this._stopped) return;
+      platformStatus.set('unifi', false);
+      console.warn(`[UniFi Protect] Event stream closed — reconnecting in ${this._wsBackoff / 1000} s`);
+      clearTimeout(this._wsReconnect);
+      this._wsReconnect = setTimeout(() => this._connectEvents(), this._wsBackoff);
+      this._wsBackoff = Math.min(this._wsBackoff * 2, 60_000);
+    });
+  }
+
+  /** Messages are `{ type: 'add'|'update', item: { id, type, device, start, end, … } }`. */
+  _handleEvent(msg) {
+    const ev = msg?.item;
+    if (!ev?.type || !ev.device) return;
+    const known = this.devices.some(d => d.instance === ev.device);
+    const k     = `unifi/${ev.device}`;
+
+    switch (ev.type) {
+      case 'ring':
+        if (this._seenEvents.has(ev.id)) return;
+        this._rememberEvent(ev.id);
+        if (known) this._ring(ev.device, this._deviceLabel(ev.device));
+        break;
+      case 'motion':        // camera motion: `add` = started, `update` with `end` = finished
+      case 'sensorMotion':
+        if (!known) return;
+        this._setMotion(ev.device, ev.end ? 0 : 1);
+        break;
+      case 'sensorOpened':
+        if (known) this.store.update(`${k}/contact`, 1);
+        break;
+      case 'sensorClosed':
+        if (known) this.store.update(`${k}/contact`, 0);
+        break;
+      case 'sensorAlarm':
+        if (known) this.store.update(`${k}/alarm`, ev.end ? 0 : 1);
+        break;
+      default:
+        break; // smart detections, alarm-hub, NFC… — not mapped to sensors yet
+    }
+  }
+
+  _rememberEvent(id) {
+    this._seenEvents.add(id);
+    if (this._seenEvents.size > 500) {
+      for (const old of this._seenEvents) {
+        this._seenEvents.delete(old);
+        if (this._seenEvents.size <= 250) break;
+      }
+    }
+  }
+
+  _deviceLabel(id) {
+    return this.devices.find(d => d.instance === id)?.label || id;
+  }
+
+  // ── Ring polling (legacy mode) ────────────────────────────
 
   async _pollRings() {
     let cams;
     try {
-      cams = await this._get(`${this._protectBase()}/cameras`);
+      cams = await this._get('/cameras');
     } catch (err) {
       if (err.status === 401) await this._authenticate().catch(() => {});
       return;
@@ -146,34 +275,20 @@ class UnifiProtectClient extends EventEmitter {
 
     for (const cam of cams) {
       if (!(cam.id in this._lastRing)) continue;
-      this._setMotion(cam);
+      if (cam.isMotionDetected !== undefined) this._setMotion(cam.id, cam.isMotionDetected ? 1 : 0);
 
       if (cam.lastRing && cam.lastRing > this._lastRing[cam.id]) {
         this._lastRing[cam.id] = cam.lastRing;
-        const key = `unifi/${cam.id}/doorbell`;
-        this.store.update(key, 1);
-        this.emit('doorbell-ring', { id: cam.id, name: cam.name });
-        console.log(`[UniFi Protect] 🔔 Ring: ${cam.name}`);
-        // Pulse: back to 0 after 3 s so Loxone virtual inputs see an edge
-        clearTimeout(this._ringResets[cam.id]);
-        this._ringResets[cam.id] = setTimeout(() => this.store.update(key, 0), 3000);
+        this._ring(cam.id, cam.name);
       }
     }
-  }
-
-  _setMotion(cam) {
-    if (cam.isMotionDetected === undefined) return;
-    const val = cam.isMotionDetected ? 1 : 0;
-    if (this._motionState[cam.id] === val) return; // avoid re-emitting unchanged state
-    this._motionState[cam.id] = val;
-    this.store.update(`unifi/${cam.id}/motion`, val);
   }
 
   fetchSnapshotBuffer(cameraId) {
     return new Promise((resolve, reject) => {
       const req = https.request({
         hostname: this.cfg.host,
-        path:     `${this._protectBase()}/cameras/${cameraId}/snapshot`,
+        path:     `${this._base()}/cameras/${cameraId}/snapshot`,
         method:   'GET',
         headers:  this._headers(),
         rejectUnauthorized: false,
@@ -188,12 +303,12 @@ class UnifiProtectClient extends EventEmitter {
   }
 
   async _discoverSensors() {
-    const sensors = await this._get(`${this._protectBase()}/sensors`);
+    const sensors = await this._get('/sensors');
     for (const s of sensors) {
       const sensorDefs = [];
       const hkTypes    = [];
 
-      if (s.mountType || s.isOpened !== undefined) {
+      if ((s.mountType && s.mountType !== 'none') || s.isOpened !== undefined) {
         sensorDefs.push({ path: 'contact',     name: 'Contact',     format: 'on-off',      homekit: 'contact' });
         hkTypes.push('contact');
       }
@@ -212,7 +327,7 @@ class UnifiProtectClient extends EventEmitter {
       if (s.stats?.light != null) {
         sensorDefs.push({ path: 'lux',         name: 'Light',       format: 'number' });
       }
-      if (s.batteryStatus != null) {
+      if (this._battery(s) != null) {
         sensorDefs.push({ path: 'battery',     name: 'Battery',     format: 'percent',     homekit: 'battery-level' });
         hkTypes.push('battery-level');
       }
@@ -245,35 +360,34 @@ class UnifiProtectClient extends EventEmitter {
   async _pollSensors() {
     let sensors;
     try {
-      sensors = await this._get(`${this._protectBase()}/sensors`);
+      sensors = await this._get('/sensors');
     } catch (err) {
       console.error(`[UniFi Protect] Poll failed: ${err.message}`);
-      if (err.status === 401) await this._authenticate().catch(() => {});
+      if (err.status === 401 && !this.useIntegration) await this._authenticate().catch(() => {});
       return;
     }
 
     for (const s of sensors) {
       const k = `unifi/${s.id}`;
       if (s.isOpened              !== undefined) this.store.update(`${k}/contact`,     s.isOpened ? 1 : 0);
-      if (s.isMotionDetected      !== undefined) this.store.update(`${k}/motion`,      s.isMotionDetected ? 1 : 0);
+      if (s.isMotionDetected      !== undefined) this._setMotion(s.id, s.isMotionDetected ? 1 : 0);
       if (s.stats?.temperature?.value != null)   this.store.update(`${k}/temperature`, s.stats.temperature.value);
       if (s.stats?.humidity?.value    != null)   this.store.update(`${k}/humidity`,    s.stats.humidity.value);
       if (s.stats?.light?.value       != null)   this.store.update(`${k}/lux`,         s.stats.light.value);
-      if (s.batteryStatus?.percentage != null)   this.store.update(`${k}/battery`,     s.batteryStatus.percentage);
+      if (this._battery(s)            != null)   this.store.update(`${k}/battery`,     this._battery(s));
       if (s.alarmSettings)                       this.store.update(`${k}/alarm`,       s.alarmTriggeredAt ? 1 : 0);
     }
   }
 
+  _battery(s) {
+    // Integration API deprecates batteryStatus in favor of wirelessConnectionState
+    return s.batteryStatus?.percentage ?? s.wirelessConnectionState?.batteryStatus?.percentage ?? null;
+  }
+
   // ── HTTP ─────────────────────────────────────────────────
 
-  // Ubiquiti's System API key (X-API-Key, generated from Network →
-  // Integrations) only authorizes against Protect's newer versioned
-  // "integration" endpoints — it 401s against the legacy internal proxy API
-  // even though that same key works fine for Network. Cookie-session auth
-  // (username/password login) is the reverse: it's what the legacy internal
-  // API expects and isn't known to work against the integration endpoints.
-  _protectBase() {
-    return this.cfg.apiKey ? '/proxy/protect/integration/v1' : '/proxy/protect/api';
+  _base() {
+    return this.useIntegration ? '/proxy/protect/integration/v1' : '/proxy/protect/api';
   }
 
   _headers() {
@@ -284,8 +398,9 @@ class UnifiProtectClient extends EventEmitter {
     return h;
   }
 
+  /** `path` is relative to the Protect API base (e.g. '/cameras'). */
   async _get(path) {
-    const { status, data } = await this._request('GET', path);
+    const { status, data } = await this._request('GET', this._base() + path);
     if (status === 401) { const e = new Error('Unauthorized'); e.status = 401; throw e; }
     if (status !== 200) throw new Error(`HTTP ${status} for ${path}`);
     if (!Array.isArray(data) && typeof data !== 'object') throw new Error(`Unexpected response for ${path}`);

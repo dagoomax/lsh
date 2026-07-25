@@ -410,13 +410,17 @@ Speaks the Satel INTEGRA binary TCP protocol. Zone, output, and partition **name
 ```json
 "unifi": {
   "host": "192.168.1.1",
-  "username": "admin",
-  "password": "secret",
-  "apiKey": ""
+  "apiKey": "",
+  "username": "",
+  "password": "",
+  "ringPollInterval": 3
 }
 ```
 
-`apiKey` takes precedence over `username`/`password` when set (UniFi Network 8+ API keys).
+Two API modes, selected by which credentials are set:
+
+- **`apiKey`** (preferred) — the official **Protect Integration API** (`/proxy/protect/integration/v1`). Create the key in the Protect web UI under **Settings → Control Plane → Integrations** (requires UniFi Protect 5.3+). Doorbell rings, camera motion, and sensor open/close arrive in real time over the `/subscribe/events` WebSocket (auto-reconnects with backoff); temperature/humidity/battery are reconciled by a 30 s poll. `ringPollInterval` is ignored in this mode.
+- **`username`/`password`** (legacy fallback) — the private cookie-login API (`/proxy/protect/api`). Doorbell rings are detected by polling `lastRing` every `ringPollInterval` seconds (default 3); sensors poll every 30 s. Use only if your console cannot issue an Integration API key.
 
 ### `unifiAccess`
 
@@ -1554,11 +1558,11 @@ Wire protocol uses CRC-16 with `0xFE` byte-stuffing. Reconnects automatically af
 
 ### `src/unifi-protect-client.js`
 
-Connects to **UniFi Protect** via its local HTTPS API. Authenticates with API key (UniFi Network 8+) or username/password. Discovers all cameras and registers them into the camera list so they appear in the dashboard. Subscribes to the real-time event WebSocket for motion and smart detection alerts, which are forwarded to `camera-log.js`.
+Connects to **UniFi Protect**. With `apiKey` set it uses the official Integration API (`/proxy/protect/integration/v1`, `X-API-Key`) and subscribes to the `/subscribe/events` WebSocket for real-time doorbell rings, camera motion, and sensor open/close; without a key it falls back to the legacy cookie-login API with ring polling. Discovers all cameras (registered into the dashboard camera list) and Protect sensors (contact/motion/temperature/humidity/lux/battery/alarm).
 
 **Config:**
 ```json
-"unifi": { "host": "192.168.1.1", "username": "admin", "password": "secret", "apiKey": "" }
+"unifi": { "host": "192.168.1.1", "apiKey": "", "username": "", "password": "", "ringPollInterval": 3 }
 ```
 
 ---

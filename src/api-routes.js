@@ -1041,7 +1041,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       const p = new Promise((resolve, reject) => {
         const body = JSON.stringify({ username, password });
         const r = https.request({
-          hostname: host, path: apiKey ? '/proxy/protect/api/cameras' : '/api/auth/login',
+          hostname: host, path: apiKey ? '/proxy/protect/integration/v1/meta/info' : '/api/auth/login',
           method: apiKey ? 'GET' : 'POST', headers, rejectUnauthorized: false,
         }, res2 => {
           let d = '';

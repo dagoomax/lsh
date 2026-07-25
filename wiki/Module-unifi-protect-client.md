@@ -2,13 +2,18 @@
 
 ‹ [Home](Home) · [Modules Index](Modules) · [Architecture](Architecture) ›
 
-**Category:** Integration client  ·  **~312 lines**
+**Category:** Integration client  ·  **~420 lines**
 
-Connects to **UniFi Protect** via its local HTTPS API. Authenticates with API key (UniFi Network 8+) or username/password. Discovers all cameras and registers them into the camera list so they appear in the dashboard. Subscribes to the real-time event WebSocket for motion and smart detection alerts, which are forwarded to `camera-log.js`.
+Connects to **UniFi Protect**. Two API modes, selected by which credentials are configured:
+
+- **`apiKey`** (preferred) — the official **Protect Integration API** (`/proxy/protect/integration/v1`, `X-API-Key` header; key created under Protect → Settings → Control Plane → Integrations, Protect 5.3+). Doorbell rings, camera motion, and sensor open/close arrive in real time over the `wss://…/subscribe/events` WebSocket (`ws` module, auto-reconnect with 5 s → 60 s backoff); a 30 s poll reconciles slow values (temperature/humidity/lux/battery).
+- **`username`/`password`** (legacy fallback) — the private cookie-login API (`/proxy/protect/api`). Rings are detected by polling each doorbell's `lastRing` every `ringPollInterval` seconds (default 3).
+
+Discovers all cameras (registered into the dashboard camera list with snapshot proxying) and Protect sensors. Doorbells get `doorbell` + `motion` store keys; a ring pulses `doorbell` to 1 for 3 s so Loxone virtual inputs see an edge.
 
 **Config:**
 ```json
-"unifi": { "host": "192.168.1.1", "username": "admin", "password": "secret", "apiKey": "" }
+"unifi": { "host": "192.168.1.1", "apiKey": "", "username": "", "password": "", "ringPollInterval": 3 }
 ```
 
 ---
@@ -23,9 +28,11 @@ Connects to **UniFi Protect** via its local HTTPS API. Authenticates with API ke
 | Device key prefix | `unifi/…` |
 | Store keys written | `unifi` |
 | Registers devices | yes (via sensor-registry) |
-| Poll interval(s) | 30 s |
+| Poll interval(s) | 30 s (+ `ringPollInterval` in legacy mode) |
+| Real-time | Integration API event WebSocket (`/v1/subscribe/events`) |
 | Internal deps | `platform-status` |
 | Node built-ins | `https`, `events` |
+| npm deps | `ws` |
 
 ## Related module pages
 

@@ -21,7 +21,8 @@ G4 Doorbell Pro lub UniFi Intercom) z serwerem LSH oraz Miniserverem Loxone:
 Stacja bramowa ─►│  UniFi Protect  (kamera, zrzuty, zdarzenia dzwonka/ruchu)    │
                  │  UniFi Talk     (centrala SIP, wss://192.168.1.1:5443)       │
                  └───────┬──────────────────────────────┬──────────────────────-┘
-                         │ API HTTPS (odpytywanie)      │ SIP przez WebSocket
+                         │ Integration API (zdarzenia   │ SIP przez WebSocket
+                         │ WebSocket; legacy: polling)  │
                          ▼                              ▼
                  LSH  unifi-protect-client      softfon dashboardu LSH (nr wewn. 101)
                          │                              odbiór / rozmowa / „#” otwiera
@@ -36,7 +37,7 @@ Dwie niezależne ścieżki:
 
 | Ścieżka | Cel | Opóźnienie |
 |---|---|---|
-| Odpytywanie API Protect | dzwonek/ruch → LSH → Loxone | ~`ringPollInterval` (domyślnie 3 s) |
+| Zdarzenia Protect | dzwonek/ruch → LSH → Loxone | natychmiast z `apiKey` (WebSocket zdarzeń); tryb legacy (login/hasło) odpytuje co `ringPollInterval` (domyślnie 3 s) |
 | UniFi Talk SIP | rozmowa na żywo + otwarcie drzwi z dashboardu | natychmiast (prawdziwe połączenie) |
 
 ## 2. Wymagania wstępne
@@ -114,7 +115,7 @@ restart serwera).
 | `host` | IP konsoli UniFi (tu działa Protect i API) |
 | `apiKey` | klucz API z §3.1 — gdy ustawiony, zostaw `username`/`password` puste |
 | `username`/`password` | dane administratora lokalnego (alternatywa dla `apiKey`) |
-| `ringPollInterval` | co ile sekund sprawdzany jest dzwonek (domyślnie 3). Zwykłe czujniki są odpytywane co 30 s niezależnie. |
+| `ringPollInterval` | tylko tryb legacy: co ile sekund sprawdzany jest dzwonek (domyślnie 3). Ignorowane z `apiKey` (dzwonek przychodzi przez WebSocket). Zwykłe czujniki są odpytywane co 30 s niezależnie. |
 
 ### 4.2 `sip` — softfon dashboardu (już skonfigurowany)
 
@@ -144,9 +145,10 @@ Te ustawienia można też edytować na żywo w *Ustawienia → SIP* na dashboard
 Zrestartuj LSH (`node server.js`). Przy starcie powinno pojawić się:
 
 ```
-[UniFi Protect] Authenticated
+[UniFi Protect] Integration API — Protect 6.0.53
 [UniFi Protect] Doorbell "Front Door" — store keys unifi/66a1b2c3d4e5f6a7b8c9d0e1/doorbell, unifi/66a1b2c3d4e5f6a7b8c9d0e1/motion
-[UniFi Protect] Started — 3 camera(s), 2 sensor(s)
+[UniFi Protect] Started (integration API) — 3 camera(s), 2 sensor(s)
+[UniFi Protect] Event stream connected
 ```
 
 Ciąg szesnastkowy to **ID kamery** — potrzebny do mapowań `loxoneOut`
@@ -178,7 +180,8 @@ Moduł `loxoneOut` w LSH nasłuchuje zmian w store i wypycha zmapowane klucze
 na **Wejścia Wirtualne** Miniservera przez
 `http://MINISERVER/dev/sps/io/<wejścieWirtualne>/<wartość>` (HTTP GET,
 Basic auth, debounce 200 ms). To model push — bez odpytywania po stronie
-Loxone; dzwonek dociera w ~`ringPollInterval` + kilkaset ms.
+Loxone. Z ustawionym `apiKey` dzwonek dociera niemal natychmiast (WebSocket
+zdarzeń); w trybie legacy w ~`ringPollInterval` + kilkaset ms.
 
 ### 5.2 Użytkownik na Miniserverze
 
@@ -264,7 +267,8 @@ zostać pominięty; dla zdarzeń dzwonka używaj ścieżki push (§5.1).
 | Objaw | Sprawdź |
 |---|---|
 | `UniFi auth failed: HTTP 4xx` | Klucz API prawidłowy? Administrator lokalny ma dostęp do Protect? Poprawny `host`? |
-| Dzwonek nie został wykryty | Czy urządzenie jest dzwonkiem w Protect? Brak wpisu o odkryciu → sprawdź osiągalność `/proxy/protect/api/cameras` |
+| Dzwonek nie został wykryty | Czy urządzenie jest dzwonkiem w Protect? Brak wpisu o odkryciu → sprawdź osiągalność `/proxy/protect/integration/v1/cameras` (lub legacy `/proxy/protect/api/cameras`) |
+| Dzwonki giną, w logu powtarza się `Event stream closed` | Konsola osiągalna na 443? Klucz API nadal ważny? Klient łączy się ponownie z backoffem (5 s → 60 s) — sprawdź `logs/unifi.log` |
 | Dzwonek dociera do Loxone późno / wcale | `loxoneOut.host` ustawiony? `storeKey` mapowania zgodny co do znaku z kluczem z logu? `[LoxoneOut] HTTP 401` → zły użytkownik Miniservera; `HTTP 404` → niezgodna nazwa VI (§5.4) |
 | Dashboard nie dzwoni | `sip.password` = hasło Talk numeru 101? Cel połączenia stacji zawiera 101? Przeglądarka musi działać po HTTPS, żeby mieć dostęp do mikrofonu |
 | Otwieranie nie działa | Klawisz DTMF w UniFi zgodny z `sip.dtmfUnlock`? Przekaźnik skonfigurowany na stacji? |
