@@ -134,6 +134,10 @@ async function main() {
   app.get('/react/*', (req, res) =>
     res.sendFile(path.join(reactDist, 'index.html'), { headers: { 'Cache-Control': 'no-cache' } }));
 
+  // Aurora (the React dashboard) is now the primary dashboard — the classic
+  // home page is replaced. Send the root (and the old index) to /react/.
+  app.get(['/', '/index.html'], (req, res) => res.redirect('/react/'));
+
   app.use(auth.middleware(isSecure));
   // Furniture-picture uploads for the home plan arrive as base64 JSON and
   // need a bigger body cap; every other endpoint keeps the ~100 kb default.

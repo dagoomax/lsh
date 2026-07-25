@@ -6,6 +6,7 @@ const NAV = [
   { label: 'Settings',  href: '/settings.html', active: false },
   { label: 'Logs',      href: '/logs.html',     active: false },
   { label: 'MQTT',      href: '/mqtt.html',     active: false },
+  { label: 'Flows',     href: '/flows.html',    active: false },
 ]
 
 export default function Header({ connection, connected, onLock }) {
