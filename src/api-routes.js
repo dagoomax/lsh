@@ -1306,6 +1306,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (Array.isArray(safe.reolink?.cameras)) safe.reolink.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (safe.somfy?.token)          safe.somfy.token          = '••••••••';
     if (safe.loxoneOut?.password)   safe.loxoneOut.password   = '••••••••';
+    if (safe.fibaroOut?.password)   safe.fibaroOut.password   = '••••••••';
     if (safe.auxair?.password)      safe.auxair.password      = '••••••••';
     if (safe.dreame?.devices) {
       safe.dreame.devices = safe.dreame.devices.map(d =>
@@ -2065,6 +2066,55 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       res.json({ success: true, message: 'Loxone outbound settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/fibaro-out', (req, res) => {
+    const current = readConfigFile();
+    const { host, port, username, password, mappings } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        fibaroOut: {
+          host:     host     || current.fibaroOut?.host     || '',
+          port:     parseInt(port || 80),
+          username: username || current.fibaroOut?.username || 'admin',
+          password: (password && !password.includes('•')) ? password : (current.fibaroOut?.password || ''),
+          mappings: Array.isArray(mappings) ? mappings : (current.fibaroOut?.mappings || []),
+        },
+      });
+      res.json({ success: true, message: 'Fibaro outbound settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/test-fibaro-out', async (req, res) => {
+    const http = require('http');
+    const { host, port, username, password } = req.body;
+    if (!host) return res.status(400).json({ success: false, error: 'Host is required' });
+    // masked password (dots) means "use the stored one"
+    const pass = (password && !password.includes('•')) ? password : (readConfigFile().fibaroOut?.password || '');
+    const auth = Buffer.from(`${username || 'admin'}:${pass}`).toString('base64');
+    try {
+      const count = await new Promise((resolve, reject) => {
+        const r = http.get({
+          hostname: host, port: parseInt(port || 80), path: '/api/globalVariables',
+          timeout: 6000, headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
+        }, res2 => {
+          let d = '';
+          res2.on('data', c => d += c);
+          res2.on('end', () => {
+            if (res2.statusCode !== 200) return reject(new Error(`HTTP ${res2.statusCode}`));
+            try { resolve(JSON.parse(d).length); } catch { reject(new Error('Non-JSON response')); }
+          });
+        });
+        r.on('error', reject);
+        r.on('timeout', () => { r.destroy(); reject(new Error('Timeout')); });
+      });
+      res.json({ success: true, message: `Connected — ${count} global variable(s) on the Home Center` });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
     }
   });
 

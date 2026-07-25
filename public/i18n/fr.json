@@ -459,7 +459,10 @@
     "cat_cameras": "Caméras",
     "cat_system": "Système",
     "search_placeholder": "Filtrer les réglages…",
-    "no_results": "Aucun réglage ne correspond au filtre."
+    "no_results": "Aucun réglage ne correspond au filtre.",
+    "fibaro_host": "Hôte / IP du Home Center",
+    "fibaro_add_key": "+ Mappage de clé",
+    "fibaro_add_prefix": "+ Règle de préfixe"
   },
   "sdesc": {
     "d0": "Connexion locale directe à votre Cerbo GX (recommandé).",
@@ -499,6 +502,7 @@
     "d34": "Nommez les relais du Cerbo GX. Laissez vide pour masquer entièrement la carte des relais.",
     "d35": "Appairez le pont de relais dans Apple Maison avec le PIN ci-dessous.",
     "d36": "Gérez les utilisateurs, jetons API et le chiffrement HTTPS/TLS.",
-    "d37": "Enregistrez toute la configuration dans un fichier ou restaurez une sauvegarde."
+    "d37": "Enregistrez toute la configuration dans un fichier ou restaurez une sauvegarde.",
+    "d15f": "Envoie les valeurs LSH vers les variables globales du <strong>Fibaro Home Center</strong> en temps réel (au changement, debounce 200 ms), pour que les scènes HC réagissent à tout ce que LSH connaît — zones Satel, batterie Victron, sonnette UniFi. Les variables manquantes sont créées automatiquement ; une <em>règle de préfixe</em> mappe tout un sous-arbre de clés d'un coup (<code>/</code> devient <code>_</code>)."
   }
 }

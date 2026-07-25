@@ -462,7 +462,10 @@
     "cat_cameras": "Cameras",
     "cat_system": "System",
     "search_placeholder": "Filter settings…",
-    "no_results": "No settings match your filter."
+    "no_results": "No settings match your filter.",
+    "fibaro_host": "Home Center Host / IP",
+    "fibaro_add_key": "+ Key mapping",
+    "fibaro_add_prefix": "+ Prefix rule"
   },
   "sdesc": {
     "d0": "Direct local connection to your Cerbo GX (recommended).",
@@ -502,6 +505,7 @@
     "d34": "Name the relays on your Cerbo GX. Leave empty to hide the relay card from the dashboard entirely.",
     "d35": "Pair the relay bridge in Apple Home using the PIN below.",
     "d36": "Manage users, API tokens, and HTTPS/TLS encryption.",
-    "d37": "Save your entire configuration to a file or restore from a previous backup."
+    "d37": "Save your entire configuration to a file or restore from a previous backup.",
+    "d15f": "Pushes LSH store values to <strong>Fibaro Home Center</strong> global variables in real time (on change, debounced 200 ms), so HC scenes can react to anything LSH knows — Satel zones, Victron battery, UniFi doorbell. Missing variables are created automatically; a <em>prefix rule</em> maps a whole key subtree at once (<code>/</code> becomes <code>_</code>)."
   }
 }

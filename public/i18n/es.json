@@ -461,7 +461,10 @@
     "cat_cameras": "Cámaras",
     "cat_system": "Sistema",
     "search_placeholder": "Filtrar ajustes…",
-    "no_results": "Ningún ajuste coincide con el filtro."
+    "no_results": "Ningún ajuste coincide con el filtro.",
+    "fibaro_host": "Host / IP del Home Center",
+    "fibaro_add_key": "+ Asignación de clave",
+    "fibaro_add_prefix": "+ Regla de prefijo"
   },
   "sdesc": {
     "d0": "Conexión local directa a su Cerbo GX (recomendado).",
@@ -501,6 +504,7 @@
     "d34": "Nombre los relés del Cerbo GX. Déjelo vacío para ocultar la tarjeta de relés por completo.",
     "d35": "Empareje el puente de relés en Apple Casa con el PIN de abajo.",
     "d36": "Gestione usuarios, tokens API y cifrado HTTPS/TLS.",
-    "d37": "Guarde toda la configuración en un archivo o restaure una copia previa."
+    "d37": "Guarde toda la configuración en un archivo o restaure una copia previa.",
+    "d15f": "Envía valores de LSH a variables globales del <strong>Fibaro Home Center</strong> en tiempo real (al cambiar, debounce de 200 ms), para que las escenas del HC reaccionen a todo lo que LSH conoce — zonas Satel, batería Victron, timbre UniFi. Las variables que falten se crean automáticamente; una <em>regla de prefijo</em> asigna todo un subárbol de claves a la vez (<code>/</code> se convierte en <code>_</code>)."
   }
 }

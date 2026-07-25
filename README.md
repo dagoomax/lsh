@@ -278,6 +278,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `esphome` | No | ESPHome ESP32/ESP8266 devices (HTTP REST API) |
 | `knx` | No | KNX bus via KNXnet/IP gateway (group address mapping) |
 | `fibaro` | No | Fibaro Home Center 2 / 3 (rooms, switches, dimmers, sensors) |
+| `fibaroOut` | No | Fibaro outbound push — forwards store values (e.g. Satel zones) to HC global variables in real time |
 | `somfy` | No | Somfy TaHoma, local API or Overkiz cloud (roller shutters, awnings, gates) |
 | `bayrol` | No | Bayrol Pool Manager Connect / Automatic Cl-pH / SALT (pH, ORP, temperature, dosing rates, salt via MQTT) |
 | `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
@@ -750,6 +751,28 @@ Connects to a KNXnet/IP gateway or IP router. Requires `npm install knx`.
 Connects to a **Fibaro Home Center 2 or 3** via its local REST API. Discovers all rooms and supported devices, groups them by room, and registers each room as a device tile on the dashboard.
 
 **Supported device types:** binary switches, dimmers, roller shutters, temperature sensors, humidity sensors, light sensors, power meters, door/window sensors, motion sensors, smoke and flood sensors.
+
+### `fibaroOut`
+
+```json
+"fibaroOut": {
+  "host": "192.168.1.196",
+  "port": 80,
+  "username": "admin",
+  "password": "secret",
+  "mappings": [
+    { "storeKey": "satel/partition/1/armed", "variable": "LSH_SatelArmed" },
+    { "storePrefix": "satel/zone/", "variablePrefix": "LSH_satel_zone_" }
+  ]
+}
+```
+
+The outbound counterpart of `fibaro` — pushes live LSH store values **to** the Home Center as **global variables** (the same pattern as `loxoneOut` for Loxone Virtual Inputs), so HC scenes can react to anything LSH knows: Satel zones/partitions, Victron battery state, UniFi doorbell, etc. Missing variables are created automatically; updates are debounced 200 ms; booleans are sent as `1`/`0`.
+
+Two mapping forms, mixable:
+
+- `storeKey` + `variable` — push one store key to one named variable
+- `storePrefix` + `variablePrefix` — bulk rule: every key under the prefix is pushed to `variablePrefix` + remainder, with `/` replaced by `_` (e.g. `satel/zone/3/state` → `LSH_satel_zone_3_state`). Ideal for exposing a whole Satel panel at once.
 
 **Control:** Switches and dimmers are controllable from the dashboard. Roller shutters support position (0–100%).
 
@@ -1733,6 +1756,16 @@ Integrates **Fibaro Home Center 2 / 3** via its local REST API.
 **Write path:** `POST /api/devices/<id>/action/<action>` — `turnOn`, `turnOff`, or `setValue`.
 
 **Config:** See [`fibaro`](#fibaro) config section above.
+
+---
+
+### `src/fibaro-out-client.js`
+
+Forwards DataStore values to a **Fibaro Home Center 2/3** as **global variables** — the outbound counterpart of `fibaro-client.js`, following the same pattern as `loxone-out-client.js` for Loxone. HC scenes can then trigger on anything LSH knows (Satel zones/partitions, Victron battery state, UniFi doorbell, …).
+
+**How it works:** On `start()`, lists existing global variables, pushes the current value of every mapped key so the HC starts in sync, then subscribes to the DataStore `change` event (debounced 200 ms). Missing variables are created automatically (`POST /api/globalVariables`), updates go via `PUT /api/globalVariables/<name>`. Booleans are sent as `1`/`0`; names are sanitized to `[A-Za-z0-9_]`. Supports exact `storeKey` → `variable` mappings and bulk `storePrefix` → `variablePrefix` rules.
+
+**Config:** See [`fibaroOut`](#fibaroout) config section above.
 
 ---
 

@@ -111,6 +111,16 @@
     "username": "admin",
     "password": ""
   },
+  "fibaroOut": {
+    "host": "192.168.1.x",
+    "port": 80,
+    "username": "admin",
+    "password": "",
+    "mappings": [
+      { "storeKey": "satel/partition/1/armed", "variable": "LSH_SatelArmed" },
+      { "storePrefix": "satel/zone/", "variablePrefix": "LSH_satel_zone_" }
+    ]
+  },
   "knx": {
     "host": "192.168.1.x",
     "port": 3671,

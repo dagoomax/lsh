@@ -39,6 +39,7 @@
 | `arduino` | No | Arduino / ESP32 / generic MQTT — subscribe to JSON topics and map fields to sensor readings or controllable outputs |
 | `suppla` | No | Suppla smart-home — cloud or self-hosted REST API; discovers switches, dimmers, thermometers, shutters, gates |
 | `loxoneOut` | No | Loxone outbound push — forwards store values to Loxone Virtual Inputs in real time |
+| `fibaroOut` | No | Fibaro outbound push — forwards store values (e.g. Satel zones) to HC global variables in real time |
 | `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
@@ -340,6 +341,28 @@ Connects to a **Fibaro Home Center 2 or 3** via its local REST API. Discovers al
 **Control:** Switches and dimmers are controllable from the dashboard. Roller shutters support position (0–100%).
 
 **Live updates:** Uses Fibaro's long-poll `/api/refreshStates` endpoint — changes appear within 1 s of the physical event.
+
+### `fibaroOut`
+
+```json
+"fibaroOut": {
+  "host": "192.168.1.196",
+  "port": 80,
+  "username": "admin",
+  "password": "secret",
+  "mappings": [
+    { "storeKey": "satel/partition/1/armed", "variable": "LSH_SatelArmed" },
+    { "storePrefix": "satel/zone/", "variablePrefix": "LSH_satel_zone_" }
+  ]
+}
+```
+
+The outbound counterpart of `fibaro` — pushes live LSH store values **to** the Home Center as **global variables** (the same pattern as [`loxoneOut`](#loxoneout) for Loxone Virtual Inputs), so HC scenes can react to anything LSH knows: Satel zones/partitions, Victron battery state, UniFi doorbell, etc. Missing variables are created automatically; updates are debounced 200 ms; booleans are sent as `1`/`0`; variable names are sanitized to `[A-Za-z0-9_]`.
+
+Two mapping forms, mixable:
+
+- `storeKey` + `variable` — push one store key to one named variable
+- `storePrefix` + `variablePrefix` — bulk rule: every key under the prefix is pushed to `variablePrefix` + remainder, with `/` replaced by `_` (e.g. `satel/zone/3/state` → `LSH_satel_zone_3_state`). Ideal for exposing a whole Satel panel at once.
 
 ---
 

@@ -81,6 +81,7 @@ Every JavaScript module in `src/` has a reference page below (65 modules). Pages
 | [`dreame-client.js`](Module-dreame-client) | 286 | `dreame` | — |
 | [`esphome-client.js`](Module-esphome-client) | 295 | `esphome` | — |
 | [`fibaro-client.js`](Module-fibaro-client) | 259 | `fibaro` | — |
+| [`fibaro-out-client.js`](Module-fibaro-out-client) | 153 | `fibaroOut` | — |
 | [`grenton-client.js`](Module-grenton-client) | 201 | `grenton` | `grenton` |
 | [`homeconnect-client.js`](Module-homeconnect-client) | 353 | `homeConnect` | `homeconnect` |
 | [`homey-client.js`](Module-homey-client) | 232 | `homey` | `homey` |

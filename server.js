@@ -591,6 +591,15 @@ async function main() {
     }
   }
 
+  // Push LSH values out to Fibaro global variables if configured
+  if (config.fibaroOut?.host && config.fibaroOut?.mappings?.length) {
+    const FibaroOutClient = tryRequire('./src/fibaro-out-client');
+    if (FibaroOutClient) {
+      const fibaroOut = new FibaroOutClient(config, store);
+      fibaroOut.start().catch((err) => console.error(`[FibaroOut] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Homey client if configured
   if (config.homey?.token && (config.homey?.host || config.homey?.homeyId)) {
     const HomeyClient = tryRequire('./src/homey-client');

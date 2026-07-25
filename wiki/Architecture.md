@@ -472,6 +472,16 @@ Integrates **Fibaro Home Center 2 / 3** via its local REST API.
 
 ---
 
+### `src/fibaro-out-client.js`
+
+Forwards DataStore values to a **Fibaro Home Center 2/3** as **global variables** — the outbound counterpart of `fibaro-client.js`, following the same pattern as `loxone-out-client.js` for Loxone. HC scenes can then trigger on anything LSH knows (Satel zones/partitions, Victron battery state, UniFi doorbell, …).
+
+**How it works:** On `start()`, lists existing global variables, pushes the current value of every mapped key so the HC starts in sync, then subscribes to the DataStore `change` event (debounced 200 ms). Missing variables are created automatically (`POST /api/globalVariables`), updates go via `PUT /api/globalVariables/<name>`. Booleans are sent as `1`/`0`; names are sanitized to `[A-Za-z0-9_]`. Supports exact `storeKey` → `variable` mappings and bulk `storePrefix` → `variablePrefix` rules.
+
+**Config:** See [`fibaroOut`](#fibaroout) config section above.
+
+---
+
 ### `src/somfy-client.js`
 
 Integrates **Somfy TaHoma** roller shutters and covers via the local HTTPS API (port 8443).

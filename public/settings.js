@@ -116,6 +116,13 @@ async function loadSettings() {
     setVal('loxone-out-pass', data.loxoneOut?.password ? '••••••••' : '');
     setVal('loxone-out-mappings', (data.loxoneOut?.mappings || []).map(m => `${m.storeKey} = ${m.virtualInput}`).join('\n'));
 
+    // Fibaro Outbound Push
+    setVal('fibaro-out-host', data.fibaroOut?.host || '');
+    setVal('fibaro-out-port', data.fibaroOut?.port || 80);
+    setVal('fibaro-out-user', data.fibaroOut?.username || 'admin');
+    setVal('fibaro-out-pass', data.fibaroOut?.password ? '••••••••' : '');
+    renderFibaroOutRows(data.fibaroOut?.mappings || []);
+
     // SIP
     setVal('sip-ws-url',       data.sip?.wsUrl       || '');
     setVal('sip-username',     data.sip?.username     || '');
@@ -1270,6 +1277,212 @@ document.getElementById('btn-save-loxone-out').addEventListener('click', async (
         username: getVal('loxone-out-user'),
         password: getVal('loxone-out-pass'),
         mappings,
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Fibaro Outbound Push ───────────────────────────────────────────────────
+
+let fibaroOutKeys = null; // live store keys for autocomplete / previews (lazy)
+
+async function loadFibaroOutKeys() {
+  if (fibaroOutKeys) return fibaroOutKeys;
+  fibaroOutKeys = [];
+  try {
+    const res = await fetch('/api/devices');
+    const { data } = await res.json();
+    for (const dev of data || []) {
+      for (const path of Object.keys(dev?.readings || {})) {
+        fibaroOutKeys.push(`${dev.key}/${path}`);
+      }
+    }
+    fibaroOutKeys.sort();
+    const dl = document.getElementById('fibaro-store-keys');
+    dl.innerHTML = '';
+    for (const k of fibaroOutKeys.slice(0, 800)) {
+      const opt = document.createElement('option');
+      opt.value = k;
+      dl.appendChild(opt);
+    }
+  } catch { /* previews degrade gracefully without keys */ }
+  return fibaroOutKeys;
+}
+
+// Mirrors the server-side variable-name sanitizer in fibaro-out-client.js
+function fibaroSanitize(name) {
+  return String(name).replace(/[^A-Za-z0-9_]/g, '_');
+}
+
+function fibaroOutRowPreview(row) {
+  const mode    = row.querySelector('select').value;
+  const from    = row.querySelector('.from').value.trim();
+  const to      = row.querySelector('.to').value.trim();
+  const preview = row.querySelector('.row-preview');
+  preview.className = 'row-preview';
+  if (!from || !to) { preview.textContent = ''; return; }
+
+  const keys = fibaroOutKeys || [];
+  if (mode === 'prefix') {
+    const matches = keys.filter(k => k.startsWith(from));
+    if (matches.length) {
+      preview.classList.add('ok');
+      preview.textContent = `${matches.length} live key(s) — e.g. ${matches[0]} → ${fibaroSanitize(to + matches[0].slice(from.length))}`;
+    } else {
+      preview.classList.add(keys.length ? 'err' : '');
+      preview.textContent = keys.length
+        ? 'No live keys match this prefix (it will still apply to keys that appear later)'
+        : `e.g. ${from}3/state → ${fibaroSanitize(to + '3/state')}`;
+    }
+  } else {
+    const live = keys.includes(from);
+    preview.classList.add(live ? 'ok' : (keys.length ? 'err' : ''));
+    preview.textContent = (live ? '✓ live key' : (keys.length ? 'Key not seen yet (will push once it appears)' : ''))
+      + ` → global variable ${fibaroSanitize(to)}`;
+  }
+}
+
+function addFibaroOutRow(mode = 'key', from = '', to = '') {
+  const rows = document.getElementById('fibaro-out-rows');
+  const empty = rows.querySelector('.fibaro-out-empty');
+  if (empty) empty.remove();
+
+  const row = document.createElement('div');
+  row.className = 'fibaro-out-row';
+
+  const sel = document.createElement('select');
+  sel.innerHTML = '<option value="key">Key</option><option value="prefix">Prefix</option>';
+  sel.value = mode;
+
+  const fromInput = document.createElement('input');
+  fromInput.className = 'from';
+  fromInput.value = from;
+  fromInput.setAttribute('list', 'fibaro-store-keys');
+
+  const arrow = document.createElement('span');
+  arrow.className = 'arrow';
+  arrow.textContent = '→';
+
+  const toInput = document.createElement('input');
+  toInput.className = 'to';
+  toInput.value = to;
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'row-remove';
+  remove.title = 'Remove';
+  remove.textContent = '✕';
+  remove.addEventListener('click', () => {
+    row.remove();
+    if (!rows.children.length) renderFibaroOutRows([]);
+  });
+
+  const preview = document.createElement('div');
+  preview.className = 'row-preview';
+
+  const applyMode = () => {
+    fromInput.placeholder = sel.value === 'prefix' ? 'satel/zone/' : 'satel/partition/1/armed';
+    toInput.placeholder   = sel.value === 'prefix' ? 'LSH_satel_zone_' : 'LSH_SatelArmed';
+    fibaroOutRowPreview(row);
+  };
+  sel.addEventListener('change', applyMode);
+  fromInput.addEventListener('input', () => fibaroOutRowPreview(row));
+  toInput.addEventListener('input', () => fibaroOutRowPreview(row));
+
+  row.append(sel, fromInput, arrow, toInput, remove, preview);
+  rows.appendChild(row);
+  applyMode();
+  return row;
+}
+
+function renderFibaroOutRows(mappings) {
+  const rows = document.getElementById('fibaro-out-rows');
+  rows.innerHTML = '';
+  for (const m of mappings) {
+    if (m.storeKey) addFibaroOutRow('key', m.storeKey, m.variable || '');
+    else if (m.storePrefix) addFibaroOutRow('prefix', m.storePrefix, m.variablePrefix || '');
+  }
+  if (!rows.children.length) {
+    rows.innerHTML = '<div class="fibaro-out-empty">No mappings yet — add a key mapping or a prefix rule below.</div>';
+  }
+  loadFibaroOutKeys().then(() => {
+    rows.querySelectorAll('.fibaro-out-row').forEach(fibaroOutRowPreview);
+  });
+}
+
+function collectFibaroOutMappings() {
+  const mappings = [];
+  document.querySelectorAll('#fibaro-out-rows .fibaro-out-row').forEach(row => {
+    const mode = row.querySelector('select').value;
+    const from = row.querySelector('.from').value.trim();
+    const to   = row.querySelector('.to').value.trim();
+    if (!from || !to) return;
+    mappings.push(mode === 'prefix'
+      ? { storePrefix: from, variablePrefix: to }
+      : { storeKey: from, variable: to });
+  });
+  return mappings;
+}
+
+document.getElementById('btn-fibaro-out-add-key').addEventListener('click', () => {
+  loadFibaroOutKeys();
+  addFibaroOutRow('key').querySelector('.from').focus();
+});
+document.getElementById('btn-fibaro-out-add-prefix').addEventListener('click', () => {
+  loadFibaroOutKeys();
+  addFibaroOutRow('prefix').querySelector('.from').focus();
+});
+
+document.getElementById('btn-save-fibaro-out').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-fibaro-out');
+  const resultEl = document.getElementById('fibaro-out-result');
+  btn.disabled   = true;
+  try {
+    const res  = await fetch('/api/settings/fibaro-out', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host:     getVal('fibaro-out-host'),
+        port:     parseInt(getVal('fibaro-out-port') || '80'),
+        username: getVal('fibaro-out-user'),
+        password: getVal('fibaro-out-pass'),
+        mappings: collectFibaroOutMappings(),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-test-fibaro-out').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-test-fibaro-out');
+  const resultEl = document.getElementById('fibaro-out-result');
+  btn.disabled   = true;
+  resultEl.textContent = '…';
+  resultEl.className   = 'test-result';
+  try {
+    const res  = await fetch('/api/settings/test-fibaro-out', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host:     getVal('fibaro-out-host'),
+        port:     parseInt(getVal('fibaro-out-port') || '80'),
+        username: getVal('fibaro-out-user'),
+        password: getVal('fibaro-out-pass'),
       }),
     });
     const json = await res.json();

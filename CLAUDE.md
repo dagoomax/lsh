@@ -59,7 +59,7 @@ Every `src/*-client.js` follows the same shape — copy an existing one (e.g. `s
 
 ### Loxone is bidirectional
 
-`loxone-client.js` pulls data in from a Miniserver; `loxone-out-client.js` pushes LSH values out to Loxone virtual inputs via configured `loxoneOut.mappings`; `/api/loxone/inputs.xml|outputs.xml` serve Loxone-compatible templates.
+`loxone-client.js` pulls data in from a Miniserver; `loxone-out-client.js` pushes LSH values out to Loxone virtual inputs via configured `loxoneOut.mappings`; `/api/loxone/inputs.xml|outputs.xml` serve Loxone-compatible templates. `fibaro-out-client.js` is the same pattern toward Fibaro Home Center: `fibaroOut.mappings` (exact `storeKey`→`variable` or bulk `storePrefix`→`variablePrefix`) push store values to HC global variables.
 
 ### HomeKit
 

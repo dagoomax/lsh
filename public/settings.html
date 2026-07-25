@@ -612,6 +612,45 @@
       </div>
     </section>
 
+    <!-- Fibaro Outbound Push -->
+    <section class="card settings-card" data-category="controllers" data-title="Fibaro Outbound Push global variables Satel Home Center scenes">
+      <h2>Fibaro Outbound Push <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc" data-i18n-html="sdesc.d15f">Pushes LSH store values to <strong>Fibaro Home Center</strong> global variables in real time (on change, debounced 200 ms), so HC scenes can react to anything LSH knows — Satel zones, Victron battery, UniFi doorbell. Missing variables are created automatically; a <em>prefix rule</em> maps a whole key subtree at once (<code>/</code> becomes <code>_</code>).</p>
+
+      <div class="form-row">
+        <label for="fibaro-out-host" data-i18n="s2.fibaro_host">Home Center Host / IP</label>
+        <input type="text" id="fibaro-out-host" placeholder="192.168.1.196">
+      </div>
+      <div class="form-row">
+        <label for="fibaro-out-port" data-i18n="s2.port">Port</label>
+        <input type="number" id="fibaro-out-port" placeholder="80" min="1" max="65535" style="max-width:120px">
+      </div>
+      <div class="form-row">
+        <label for="fibaro-out-user" data-i18n="s2.username">Username</label>
+        <input type="text" id="fibaro-out-user" placeholder="admin">
+      </div>
+      <div class="form-row">
+        <label for="fibaro-out-pass" data-i18n="s2.password">Password</label>
+        <input type="password" id="fibaro-out-pass" placeholder="••••••••">
+      </div>
+
+      <div class="form-row">
+        <label data-i18n="s2.mappings">Mappings</label>
+        <div id="fibaro-out-rows" class="fibaro-out-rows"></div>
+        <div class="fibaro-out-add">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-fibaro-out-add-key" data-i18n="s2.fibaro_add_key">+ Key mapping</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-fibaro-out-add-prefix" data-i18n="s2.fibaro_add_prefix">+ Prefix rule</button>
+        </div>
+        <datalist id="fibaro-store-keys"></datalist>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-fibaro-out" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-fibaro-out" data-i18n="s2.save">Save</button>
+        <span class="test-result" id="fibaro-out-result"></span>
+      </div>
+    </section>
+
     <!-- Loxone XML Templates -->
     <section class="card settings-card" data-category="controllers" data-title="Loxone XML templates virtual inputs outputs import generator Miniserver">
       <h2>Loxone XML Templates</h2>
