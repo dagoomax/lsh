@@ -614,14 +614,18 @@ input[type="range"]::-moz-range-thumb {
 }
 .plan-room {
   position: absolute;
-  border-radius: 8px;
+  border-radius: 11px;
   cursor: pointer;
   background:
     repeating-linear-gradient(0deg, transparent 0 12px, var(--white-03) 12px 13px),
     repeating-linear-gradient(90deg, transparent 0 12px, var(--white-03) 12px 13px),
     linear-gradient(160deg, var(--surface2) 0%, var(--card) 100%);
-  border: 1.5px solid var(--border-lt);
-  box-shadow: var(--shadow-1);
+  /* Bigger, bolder, accent-tinted outline with a soft glow */
+  border: 3px solid color-mix(in srgb, var(--accent) 24%, var(--border-lt));
+  box-shadow:
+    inset 0 0 0 1px var(--white-08),
+    0 12px 34px rgba(0,0,0,0.38),
+    0 0 26px color-mix(in srgb, var(--accent) 12%, transparent);
   transform-style: preserve-3d;
   transition: box-shadow 0.5s, border-color 0.5s, border-width 0.5s, transform 0.25s,
     opacity 0.55s, filter 0.55s;
@@ -646,8 +650,10 @@ input[type="range"]::-moz-range-thumb {
 }
 .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] {
   border-color: var(--accent);
-  border-width: 2px;
-  box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 28.0%, transparent), var(--shadow-2);
+  border-width: 4px;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent),
+    0 0 46px color-mix(in srgb, var(--accent) 38%, transparent), var(--shadow-2);
 }
 .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"]::after { opacity: 1; }
 .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] .plan-wall { opacity: 0.85; }
@@ -678,12 +684,18 @@ input[type="range"]::-moz-range-thumb {
 .plan-cam-handle:active { cursor: grabbing; }
 .plan-room:hover {
   border-color: var(--accent);
-  transform: translateZ(10px);
-  box-shadow: var(--shadow-2);
+  transform: translateZ(18px);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 20px 50px rgba(0,0,0,0.5),
+    0 0 44px color-mix(in srgb, var(--accent) 32%, transparent);
 }
 .plan-room[data-active="true"] {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 18%, transparent), var(--shadow-1);
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 12px 34px rgba(0,0,0,0.38),
+    0 0 34px color-mix(in srgb, var(--accent) 26%, transparent);
 }
 [data-theme="light"] .plan-room[data-active="true"] {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
@@ -818,16 +830,19 @@ input[type="range"]::-moz-range-thumb {
 .plan-wall {
   position: absolute;
   pointer-events: none;
-  background: linear-gradient(to bottom, var(--white-10), var(--white-04));
-  border: 1px solid var(--border);
-  opacity: 0.5;
+  /* Taller, more solid extrusion for a dramatic 3D read */
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--accent) 10%, var(--white-14)),
+    var(--white-05));
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border-lt));
+  opacity: 0.72;
   transition: opacity 0.4s;
   backface-visibility: visible;
 }
-.plan-wall-n { left: 0; right: 0; top: 0;    height: 20px; transform-origin: top;    transform: rotateX(-90deg); }
-.plan-wall-s { left: 0; right: 0; bottom: 0; height: 20px; transform-origin: bottom; transform: rotateX(90deg); }
-.plan-wall-w { top: 0; bottom: 0; left: 0;   width: 20px;  transform-origin: left;   transform: rotateY(90deg); }
-.plan-wall-e { top: 0; bottom: 0; right: 0;  width: 20px;  transform-origin: right;  transform: rotateY(-90deg); }
+.plan-wall-n { left: 0; right: 0; top: 0;    height: 30px; transform-origin: top;    transform: rotateX(-90deg); }
+.plan-wall-s { left: 0; right: 0; bottom: 0; height: 30px; transform-origin: bottom; transform: rotateX(90deg); }
+.plan-wall-w { top: 0; bottom: 0; left: 0;   width: 30px;  transform-origin: left;   transform: rotateY(90deg); }
+.plan-wall-e { top: 0; bottom: 0; right: 0;  width: 30px;  transform-origin: right;  transform: rotateY(-90deg); }
 .plan-board[data-3d="false"] .plan-wall { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
   .plan-board, .plan-bill, .plan-stage { transition: none; }
