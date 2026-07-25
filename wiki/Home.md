@@ -1,4 +1,4 @@
-# LSH — LoxoneSwaggerHelper Wiki
+# LSH — Lightweight Smart Home Wiki
 
 **LSH** is a lightweight Node.js smart-home hub: it unifies Victron Energy, 30+ device integrations (Fibaro, Satel, Somfy, Shelly, UniFi, IKEA, LG, and more), a REST/Socket.IO API, a React dashboard, HomeKit bridging, and a two-way Loxone bridge — all in a small footprint that runs happily on a Raspberry Pi.
 

@@ -1,4 +1,4 @@
-// PM2 process manager configuration for LSHServer.
+// PM2 process manager configuration for Lightweight Smart Home.
 //
 //   npm install -g pm2            # one-time, installs PM2 globally
 //   pm2 start ecosystem.config.js # start (or: npm run pm2:start)

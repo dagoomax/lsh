@@ -2,7 +2,7 @@
 
 This guide shows how to read Satel INTEGRA system inputs (e.g., battery status, AC mains, GSM, temperature) in Node-RED using the TCP protocol.
 
-## Option 1: Via LSH Dashboard API (Recommended)
+## Option 1: Via Lightweight Smart Home API (Recommended)
 
 Use the LSH dashboard as a gateway to Satel. This avoids duplicating protocol logic.
 

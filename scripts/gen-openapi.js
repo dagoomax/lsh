@@ -77,7 +77,7 @@ const tags = [...tagSet.entries()].map(([name, count]) => ({ name, description: 
 const spec = {
   openapi: '3.0.3',
   info: {
-    title: 'LSH — LoxoneSwaggerHelper API',
+    title: 'LSH — Lightweight Smart Home API',
     version: pkg.version || '1.0.0',
     description:
       'REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, ' +

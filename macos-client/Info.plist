@@ -5,7 +5,7 @@
     <key>CFBundleName</key>
     <string>LSH</string>
     <key>CFBundleDisplayName</key>
-    <string>LSH</string>
+    <string>Lightweight Smart Home</string>
     <key>CFBundleIdentifier</key>
     <string>com.lsh.dashboard</string>
     <key>CFBundleExecutable</key>

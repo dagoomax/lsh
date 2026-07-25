@@ -774,7 +774,7 @@ The **Settings → Cameras → FFmpeg RTSP Proxy** section shows the ready-to-pa
   "username":    "101",
   "domain":      "192.168.1.1",
   "password":    "secret",
-  "displayName": "LSH Dashboard",
+  "displayName": "Lightweight Smart Home",
   "dtmfUnlock":  "#",
   "relayIndex":  0
 }

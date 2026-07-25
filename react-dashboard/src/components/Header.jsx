@@ -46,7 +46,7 @@ export default function Header({ connection, connected, onLock }) {
           background: 'linear-gradient(135deg, var(--green) 0%, var(--accent-lt) 55%, var(--accent) 100%)',
           WebkitBackgroundClip: 'text', backgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
-        }}>LSHServer</span>
+        }}>Lightweight Smart Home</span>
       </div>
 
       {/* Nav (center) — styled in global.css to match vanilla */}

@@ -1,7 +1,7 @@
 {
   "name": "victron-dashboard",
   "version": "1.0.1",
-  "description": "Victron Energy dashboard with relay control and HomeKit integration",
+  "description": "Lightweight Smart Home \u2014 Node.js smart-home hub integrating ~40 platforms, with relay control and HomeKit integration",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

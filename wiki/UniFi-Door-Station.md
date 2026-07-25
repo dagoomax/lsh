@@ -127,7 +127,7 @@ All settings live in `config.json` (server restart required after edits).
   "username": "101",
   "domain": "192.168.1.1",
   "password": "…",
-  "displayName": "LSH Dashboard",
+  "displayName": "Lightweight Smart Home",
   "dtmfUnlock": "#",
   "relayIndex": null
 }

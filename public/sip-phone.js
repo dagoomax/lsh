@@ -52,7 +52,7 @@ class SipPhone extends EventTarget {
       sockets:      [socket],
       uri:          `sip:${user}@${domain}`,
       password:     cfg.password || '',
-      display_name: cfg.displayName || 'LSH Dashboard',
+      display_name: cfg.displayName || 'Lightweight Smart Home',
       register:     true,
     });
 

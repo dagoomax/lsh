@@ -167,7 +167,7 @@ struct ContentView: View {
                 }
             }
         }
-        .navigationTitle("LSH")
+        .navigationTitle("Lightweight Smart Home")
     }
 
     private func goHome() {
