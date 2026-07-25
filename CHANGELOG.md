@@ -11,6 +11,26 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-07-25
+
+### Added
+- **Node-RED-style visual flow automation** — a flow engine in [`src/automation-engine.js`](src/automation-engine.js) executes node graphs (stored in `automations.json` alongside rules/scenes): a `trigger` node fires on a matching store-key change (edge-triggered) and a message `{ payload, key }` propagates along wires, with node types `trigger`, `condition` (then/else routing), `device`, `relay`, `notify` (`{value}`/`{key}` substitution), `scene`, and `delay`; depth-capped against loops and reusing the existing action runners. New visual editor ([`public/flows.html`](public/flows.html) / `flows.css` / `flows.js`) with draggable node cards, drag-to-wire ports, click-to-delete wires, store-key/device autocomplete, and Deploy / Test run / Delete. A **toggleable snap grid** (dots + lines, persisted in localStorage) snaps nodes to 22px. CRUD + test-run at `/api/automation/flows`; a "Flows" link added to the classic header nav.
+- **Optional MongoDB persistence** for the DataStore — [`src/mongo.js`](src/mongo.js) plus a `mongo` config section (`MONGO_URI`/`MONGO_DB` env overrides). When set, the snapshot (values + history) is stored as one document in the `store` collection; the gzipped-JSON file stays as a synchronous, shutdown-safe fallback. Settings → MongoDB Storage card with masked URI + Test Connection.
+- **Fibaro outbound push** ([`src/fibaro-out-client.js`](src/fibaro-out-client.js)) — the counterpart of the Fibaro client and of `loxoneOut`: pushes live store values (e.g. Satel zones) to Home Center global variables, exact `storeKey`→`variable` or bulk `storePrefix`→`variablePrefix`. Settings card with a structured mapping editor.
+- **Settings → Interface** option to hide the MQTT / Logs links in the top navigation (`config.ui`, served via `/api/ui-prefs`).
+- **"Aurora"** link in the classic header nav opening the React dashboard (`/react/`).
+
+### Changed
+- **UniFi Protect** migrated to the official **Integration API** (`/proxy/protect/integration/v1`, `X-API-Key`) with a real-time `/subscribe/events` WebSocket for doorbell rings, camera motion and sensor open/close (auto-reconnect with backoff); the legacy cookie-login + polling mode is kept as a fallback for consoles without an API key.
+- **React dashboard vivid rebuild** — a saturated "electric glass" palette (deep blue-violet ground, brighter accents/status colours, colored glows), **per-category tile colours** (lighting amber, climate coral, security rose, media violet, sensors teal, Victron green…), and every hardcoded legacy accent literal moved to design tokens so a single change re-themes both light and dark.
+- **Home plan** — bigger, bolder accent-tinted room outlines (1.5px → 3px) with a glow, taller/more solid 3D walls (20px → 30px), stronger hover/focus states.
+- **Renamed the product to "Lightweight Smart Home"** (a backronym for LSH) across the web UIs, React dashboard + PWA, macOS client, OpenAPI title and docs; technical identifiers (package names, the PM2 app `lsh`, bundle id, `lsh-session` cookie, store keys, and the Loxone token client id) deliberately unchanged.
+
+### Fixed
+- Auth pages (`login.html`/`setup.html`) and the classic dashboard pages (`index`/`settings`/`logs`/`mqtt`) no longer render with a screen-filling logo when the browser serves stale/partial CSS: inline `width`/`height` on every SVG, cache-busted stylesheet links (`?v=2`), and a critical inline `<style>` that keeps the layout sane even if the external CSS fails to load.
+
+---
+
 ## 2026-06-25 (3)
 
 ### Added
