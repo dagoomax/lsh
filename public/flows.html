@@ -56,9 +56,22 @@
           <div class="flow-empty" id="empty-hint">Add a <b>Trigger</b> node, then an action, and wire them together.</div>
         </div>
       </div>
+      <section class="flow-debug" id="debug-panel">
+        <div class="flow-debug-head">
+          <span class="dbg-title">🐞 Debug</span>
+          <span class="dbg-count" id="debug-count">0</span>
+          <span class="spacer"></span>
+          <button class="btn btn-secondary btn-sm" id="debug-clear">Clear</button>
+          <button class="btn btn-secondary btn-sm" id="debug-toggle" title="Collapse">▾</button>
+        </div>
+        <div class="flow-debug-log" id="debug-log">
+          <div class="dbg-empty">Add a <b>Debug</b> node and wire a node's output into it — messages flowing through appear here live.</div>
+        </div>
+      </section>
     </main>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script src="i18n.js"></script>
   <script src="theme.js"></script>
   <script src="common.js"></script>

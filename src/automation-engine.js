@@ -173,6 +173,7 @@ class AutomationEngine {
   //   notify    { level, message }   toast + log, pass msg on
   //   scene     { sceneId }          run a scene, pass msg on
   //   delay     { seconds }          wait, then pass msg on
+  //   debug     { name }             tap: emit the message to the editor + log (sink)
 
   _evalFlow(flow, key, value) {
     for (const node of flow.nodes || []) {
@@ -244,6 +245,15 @@ class AutomationEngine {
       case 'delay':
         await new Promise((r) => setTimeout(r, (Number(c.seconds) || 0) * 1000));
         return [msg];
+      case 'debug': {
+        // Node-RED-style debug tap: surface the message to the editor + log. Sink.
+        const label = c.name || 'debug';
+        console.log(`[Flow debug] ${label}: ${msg.key ?? ''} = ${JSON.stringify(msg.payload)}`);
+        if (this._io) this._io.emit('flow-debug', {
+          time: Date.now(), label, key: msg.key ?? null, payload: msg.payload, source: msg.source || null,
+        });
+        return []; // no output — it's a terminal tap
+      }
       default:
         return [msg];
     }

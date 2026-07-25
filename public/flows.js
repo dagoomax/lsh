@@ -1,7 +1,7 @@
 // Node-RED-style flow editor for LSH automations.
 (function () {
   const OPS = ['>', '<', '>=', '<=', '==', '!=', 'changes'];
-  const ICONS = { trigger: '⚡', condition: '⌥', device: '🔌', relay: '⏻', notify: '🔔', scene: '✨', delay: '⏱' };
+  const ICONS = { trigger: '⚡', condition: '⌥', device: '🔌', relay: '⏻', notify: '🔔', scene: '✨', delay: '⏱', debug: '🐞' };
 
   // Node type catalogue: colour, output count, and the config fields to render.
   const TYPES = {
@@ -46,6 +46,11 @@
     delay: {
       label: 'Delay', color: '#57606a', outs: 1,
       fields: (n) => [ field('Seconds', 'number', n, 'seconds', { ph: '5' }) ],
+    },
+    debug: {
+      label: 'Debug', color: '#22d3ee', outs: 0,
+      fields: (n) => [ field('Name', 'text', n, 'name', { ph: 'debug 1' }),
+                       hint('Wire a node into this to watch its message below.') ],
     },
   };
 
@@ -332,10 +337,39 @@
     try { const r = await fetch('/api/automation/scenes'); const j = await r.json(); SCENES = j.data || []; } catch {}
   }
 
+  // ── Debug panel (live tap output via Socket.IO) ───────────────────────────
+  let dbgCount = 0;
+  function setupDebug() {
+    const log = $('debug-log'), countEl = $('debug-count'), panel = $('debug-panel');
+    $('debug-clear').addEventListener('click', () => { log.innerHTML = ''; dbgCount = 0; countEl.textContent = '0'; });
+    $('debug-toggle').addEventListener('click', () => {
+      const c = panel.classList.toggle('collapsed');
+      $('debug-toggle').textContent = c ? '▴' : '▾';
+    });
+    if (typeof io === 'undefined') return;
+    let socket;
+    try { socket = io(); } catch { return; }
+    socket.on('flow-debug', (d) => {
+      const empty = log.querySelector('.dbg-empty'); if (empty) empty.remove();
+      const row = document.createElement('div'); row.className = 'dbg-row';
+      const t = new Date(d.time || Date.now()).toLocaleTimeString();
+      const val = typeof d.payload === 'object' ? JSON.stringify(d.payload) : String(d.payload);
+      row.innerHTML = `<span class="dbg-time">${t}</span>`
+        + `<span class="dbg-name">${escapeHtml(d.label || 'debug')}</span>`
+        + `<span class="dbg-msg">${d.key ? `<span class="k">${escapeHtml(d.key)}</span> = ` : ''}<span class="v">${escapeHtml(val)}</span></span>`;
+      log.insertBefore(row, log.firstChild);
+      while (log.children.length > 200) log.removeChild(log.lastChild);
+      countEl.textContent = String(++dbgCount);
+      if (panel.classList.contains('collapsed')) { panel.classList.remove('collapsed'); $('debug-toggle').textContent = '▾'; }
+    });
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   (async function init() {
     buildPalette();
     applyGrid();
+    setupDebug();
     await loadData();
     await loadFlows();
     if (FLOWS.length) selectFlow(FLOWS[0].id); else newFlow();
