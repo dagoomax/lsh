@@ -36,9 +36,15 @@
 .flow-toolbar .spacer { flex: 1; }
 .flow-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
 
-.flow-canvas-wrap { flex: 1; position: relative; overflow: auto; background:
-  radial-gradient(circle, var(--white-06) 1px, transparent 1px);
-  background-size: 22px 22px; }
+.flow-canvas-wrap { flex: 1; position: relative; overflow: auto; }
+/* Toggleable grid: dots + faint lines, snaps nodes when on */
+.flow-canvas-wrap.grid {
+  background-image:
+    radial-gradient(circle, var(--white-08) 1.2px, transparent 1.2px),
+    linear-gradient(var(--white-04) 1px, transparent 1px),
+    linear-gradient(90deg, var(--white-04) 1px, transparent 1px);
+  background-size: 22px 22px, 22px 22px, 22px 22px;
+}
 .flow-canvas { position: relative; width: 3000px; height: 2000px; }
 .flow-wires { position: absolute; inset: 0; width: 3000px; height: 2000px; pointer-events: none; overflow: visible; }
 .flow-wire { fill: none; stroke: var(--accent); stroke-width: 3; opacity: 0.75; pointer-events: stroke; cursor: pointer; }

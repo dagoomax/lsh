@@ -52,8 +52,17 @@
   let SCENES = [];
   let current = null; // { id, name, enabled, nodes: [] }
 
+  const GRID = 22;
+  let gridOn = localStorage.getItem('flow-grid') !== '0'; // default on
+  const snap = (v) => (gridOn ? Math.round(v / GRID) * GRID : v);
+
   const $ = (id) => document.getElementById(id);
   const canvas = $('canvas'), wires = $('wires'), wrap = $('canvas-wrap');
+
+  function applyGrid() {
+    wrap.classList.toggle('grid', gridOn);
+    const cb = $('grid-toggle'); if (cb) cb.checked = gridOn;
+  }
 
   // ── Config field builders (return {label, el, sync}) ──────────────────────
   function field(label, type, node, key, opts = {}) {
@@ -174,8 +183,8 @@
     const cr = canvas.getBoundingClientRect();
     const ox = e.clientX - cr.left - node.x, oy = e.clientY - cr.top - node.y;
     function move(ev) {
-      node.x = Math.max(0, ev.clientX - cr.left - ox);
-      node.y = Math.max(0, ev.clientY - cr.top - oy);
+      node.x = Math.max(0, snap(ev.clientX - cr.left - ox));
+      node.y = Math.max(0, snap(ev.clientY - cr.top - oy));
       el.style.left = node.x + 'px'; el.style.top = node.y + 'px';
       renderWires();
     }
@@ -211,7 +220,7 @@
     const t = TYPES[type];
     const scrollX = wrap.scrollLeft, scrollY = wrap.scrollTop;
     const node = { id: 'n' + Math.random().toString(36).slice(2, 8), type, config: {},
-      x: scrollX + 80 + (current.nodes.length % 5) * 30, y: scrollY + 80 + (current.nodes.length % 5) * 30,
+      x: snap(scrollX + 80 + (current.nodes.length % 5) * 30), y: snap(scrollY + 80 + (current.nodes.length % 5) * 30),
       wires: Array.from({ length: t.outs }, () => []) };
     current.nodes.push(node);
     renderNode(node);
@@ -315,6 +324,7 @@
   // ── Boot ──────────────────────────────────────────────────────────────────
   (async function init() {
     buildPalette();
+    applyGrid();
     await loadData();
     await loadFlows();
     if (FLOWS.length) selectFlow(FLOWS[0].id); else newFlow();
@@ -325,6 +335,11 @@
     $('btn-save-flow').addEventListener('click', saveFlow);
     $('btn-test-flow').addEventListener('click', testFlow);
     $('btn-del-flow').addEventListener('click', deleteFlow);
+    $('grid-toggle').addEventListener('change', (e) => {
+      gridOn = e.target.checked;
+      localStorage.setItem('flow-grid', gridOn ? '1' : '0');
+      applyGrid();
+    });
     window.addEventListener('resize', () => renderWires());
     wrap.addEventListener('scroll', () => renderWires());
   })();
