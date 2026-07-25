@@ -11,6 +11,25 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-07-26
+
+### Added
+- **Visual flow automation (Node-RED style)** — a new flow engine ([`src/automation-engine.js`](src/automation-engine.js)) runs node graphs stored in `automations.json`: a message `{ payload, key }` propagates along wires and each node transforms or routes it, depth-capped against loops and reusing the existing action runners. Node types: **trigger** (store-key change, edge-triggered), **time** (repeating interval), **mqttIn** (fires on an MQTT topic), **condition** (then/else routing), **device**, **relay**, **notify** (`{value}`/`{key}` substitution), **scene**, **delay**, **mqttOut** (publish), **http** (outbound request → response becomes the next payload), and **debug** (a sink that streams the message to a live panel). The engine gained the app config, a lazy shared MQTT client with subscription reconciliation, an outbound HTTP helper, and interval management. CRUD + test-run at `/api/automation/flows`.
+- **Flow editor** ([`public/flows.html`](public/flows.html) / `flows.css` / `flows.js`) — a drag-and-wire canvas: draggable node cards with inline config, drag-from-port-to-port wiring, click-to-delete wires, store-key/device autocomplete, a **toggleable snap grid**, per-flow enable, and Deploy / Test run / Delete. A **live Debug panel** (over Socket.IO) shows each tapped message (`time · name · key = value`). Reachable from a "Flows" nav link.
+- **Debug node + panel**, **Time / MQTT In / MQTT Out / HTTP nodes**, and the **snap grid toggle** (persisted in localStorage).
+
+### Changed
+- **Aurora (the React dashboard) is now the primary dashboard** — `/` and `/index.html` redirect to `/react/`, the classic home page is replaced, the classic sub-pages' "Dashboard" nav points at Aurora (the redundant "Aurora" link removed), and Aurora's header gained a "Flows" link. The old `index.html` is kept, unreferenced, for easy rollback.
+- **Unified the classic pages with the Aurora look** — the Flows and Settings pages now render in the vivid "electric glass" palette (deep blue-violet ground, aurora + film grain, glassy pill header, accent-gradient buttons, glowing controls). The flow node cards, colour-coded glowing wires with a travelling-light animation, and specular tile sheen match the React design system. The palette + critical layout are inlined so these pages render correctly even when their external CSS is slow or cached-stale.
+- **Home plan** — bigger, bolder accent-tinted room outlines (1.5px → 3px) with a glow, taller/more solid 3D walls (20px → 30px), and stronger hover/focus states.
+- **Device modal toggle enlarged, Home-Assistant style** — the on/off switch grew from 52×58 to a large 116×58 pill with a power glyph on the thumb and a stronger on-state glow.
+
+### Fixed
+- **A failing flow node no longer crashes the server** — node execution is wrapped so a bad device key, unreachable MQTT broker, or failed HTTP request logs a warning and stops that branch instead of throwing an unhandled rejection.
+- **Stale-CSS rendering on the classic pages** — bumped the asset cache-bust version (`?v=2` → `?v=3`) so browsers fetch fresh stylesheets, resolving the intermittent under-styled header / ballooning-logo caused by Safari serving cached CSS.
+
+---
+
 ## 2026-07-25
 
 ### Added
