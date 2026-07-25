@@ -6,7 +6,7 @@ function Toggle({ on, onChange }) {
       background: on ? 'var(--accent)' : 'var(--white-12)',
       position:'relative', cursor:'pointer',
       transition:'background 0.2s', flexShrink:0,
-      boxShadow: on ? '0 0 10px rgba(88,166,255,0.5)' : 'none',
+      boxShadow: on ? '0 0 10px color-mix(in srgb, var(--accent) 50%, transparent)' : 'none',
     }}>
       <div style={{
         position:'absolute', width:18, height:18, borderRadius:'50%',

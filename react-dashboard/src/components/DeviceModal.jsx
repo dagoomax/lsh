@@ -163,9 +163,9 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap', rowGap: 4 }}>
         {RANGES.map(r => (
           <button key={r.label} onClick={e => { e.stopPropagation(); setRangeH(r.h) }} style={{
-            background: rangeH === r.h ? 'rgba(121,192,255,0.15)' : 'var(--white-04)',
+            background: rangeH === r.h ? 'color-mix(in srgb, var(--accent-lt) 15%, transparent)' : 'var(--white-04)',
             color: rangeH === r.h ? accent : 'var(--muted, #8b949e)',
-            border: `1px solid ${rangeH === r.h ? 'rgba(121,192,255,0.4)' : 'var(--white-08)'}`,
+            border: `1px solid ${rangeH === r.h ? 'color-mix(in srgb, var(--accent-lt) 40%, transparent)' : 'var(--white-08)'}`,
             borderRadius: 8, padding: '3px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}>{r.label}</button>
         ))}
@@ -176,7 +176,7 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
               style={{
                 width: 24, height: 20, borderRadius: 6, border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: chartType === t.id ? 'rgba(121,192,255,0.18)' : 'transparent',
+                background: chartType === t.id ? 'color-mix(in srgb, var(--accent-lt) 18%, transparent)' : 'transparent',
               }}>
               <svg width="12" height="12" viewBox="0 0 12 12"
                 fill={chartType === t.id ? accent : 'var(--text3,#647084)'}
@@ -288,8 +288,8 @@ function BigToggle({ on, onChange }) {
   return (
     <button onClick={() => onChange(!on)} style={{
       width: 52, height: 30, borderRadius: 999, border: 'none', cursor: 'pointer', position: 'relative',
-      background: on ? 'linear-gradient(135deg,#3fb950,#58a6ff)' : 'var(--white-10)',
-      boxShadow: on ? '0 0 16px rgba(88,166,255,0.45)' : 'inset 0 1px 3px rgba(0,0,0,0.4)',
+      background: on ? 'linear-gradient(135deg,var(--green),var(--accent))' : 'var(--white-10)',
+      boxShadow: on ? '0 0 16px color-mix(in srgb, var(--accent) 45%, transparent)' : 'inset 0 1px 3px rgba(0,0,0,0.4)',
       transition: 'all .25s ease', flexShrink: 0,
     }}>
       <span style={{
@@ -315,7 +315,7 @@ function RangeControl({ sensor, value, onCommit, accent }) {
         }}
         style={{
           flex: 1, height: 6, borderRadius: 3, appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer', outline: 'none',
-          background: `linear-gradient(90deg, #3fb950 0%, ${accent} ${pct}%, var(--white-09) ${pct}%)`,
+          background: `linear-gradient(90deg, var(--green) 0%, ${accent} ${pct}%, var(--white-09) ${pct}%)`,
         }} />
       <span style={{ fontSize: 14, fontWeight: 700, minWidth: 58, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: accent }}>
         {local}{sensor.unit || ''}
@@ -363,7 +363,7 @@ function RoborockConsumables({ device }) {
   const r = device.readings || {}
   const items = RR_CONSUMABLES.map(c => ({ ...c, v: r[c.path]?.value })).filter(c => typeof c.v === 'number')
   if (!items.length) return null
-  const color = v => (v > 50 ? '#3fb950' : v > 20 ? '#d29922' : '#f85149')
+  const color = v => (v > 50 ? 'var(--green)' : v > 20 ? '#d29922' : '#f85149')
   return (
     <div>
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)', marginBottom: 8 }}>
@@ -417,8 +417,8 @@ function RoborockRoomsPanel({ device }) {
           return (
             <button key={r.segmentId} onClick={() => toggle(r.segmentId)} style={{
               padding: '5px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: 600,
-              border: `1px solid ${on ? 'rgba(88,166,255,0.6)' : 'var(--white-12)'}`,
-              background: on ? 'rgba(88,166,255,0.18)' : 'var(--white-04)',
+              border: `1px solid ${on ? 'color-mix(in srgb, var(--accent) 60%, transparent)' : 'var(--white-12)'}`,
+              background: on ? 'color-mix(in srgb, var(--accent) 18%, transparent)' : 'var(--white-04)',
               color: on ? '#c9e3ff' : 'var(--text2,#aeb6c4)',
             }}>{r.name}</button>
           )
@@ -427,7 +427,7 @@ function RoborockRoomsPanel({ device }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={clean} disabled={busy || !sel.size} style={{
           padding: '7px 18px', borderRadius: 10, border: 'none', cursor: sel.size ? 'pointer' : 'not-allowed',
-          background: 'linear-gradient(135deg,#3fb950,#58a6ff)', color: '#fff', fontWeight: 700, fontSize: 12,
+          background: 'linear-gradient(135deg,var(--green),var(--accent))', color: '#fff', fontWeight: 700, fontSize: 12,
           opacity: sel.size ? 1 : 0.45,
         }}>{gt('clean_selected', 'Clean selected')}{sel.size ? ` (${sel.size})` : ''}</button>
         {msg && <span style={{ fontSize: 12, color: 'var(--text3,#8b949e)' }}>{msg}</span>}
@@ -595,7 +595,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
             {/* gradient border via CSS mask */}
             <div style={{
               position: 'absolute', inset: 0, borderRadius: 22, padding: 1, pointerEvents: 'none',
-              background: 'linear-gradient(140deg, rgba(88,166,255,0.7), rgba(57,197,207,0.45) 45%, rgba(94,80,190,0.4))',
+              background: 'linear-gradient(140deg, color-mix(in srgb, var(--accent) 70%, transparent), color-mix(in srgb, var(--teal) 45%, transparent) 45%, color-mix(in srgb, var(--violet) 40%, transparent))',
               WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
               WebkitMaskComposite: 'xor', maskComposite: 'exclude',
             }} />
@@ -603,7 +603,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
             {/* ambient glow blobs + dot grid */}
             <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', borderRadius: 22 }}>
               <div style={{ position: 'absolute', top: -90, left: -60, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(63,185,80,0.14), transparent 65%)' }} />
-              <div style={{ position: 'absolute', bottom: -110, right: -70, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(88,166,255,0.12), transparent 65%)' }} />
+              <div style={{ position: 'absolute', bottom: -110, right: -70, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, color-mix(in srgb, var(--accent) 12%, transparent), transparent 65%)' }} />
               <div style={{ position: 'absolute', inset: 0, opacity: 0.5, backgroundImage: 'radial-gradient(var(--white-05) 1px, transparent 1px)', backgroundSize: '22px 22px' }} />
             </div>
 
@@ -612,7 +612,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               <div style={{
                 width: 44, height: 44, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
                 background: 'var(--modal-chip-bg)',
-                border: '1px solid var(--modal-chip-border)', boxShadow: '0 0 20px rgba(88,166,255,0.12)',
+                border: '1px solid var(--modal-chip-border)', boxShadow: '0 0 20px color-mix(in srgb, var(--accent) 12%, transparent)',
               }}>{(() => { const I = resolveIcon(device); return <I size={24} color="var(--modal-chip-ink)"/> })()}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="modal-device-title" style={{
@@ -662,8 +662,8 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
                           {s.type === 'trigger' && (
                             <button onClick={() => cmd(s.path, 1)} style={{
                               marginLeft: 'auto', padding: '7px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                              background: 'linear-gradient(135deg,#3fb950,#58a6ff)', color: '#fff', fontWeight: 700, fontSize: 12,
-                              boxShadow: '0 4px 14px rgba(88,166,255,0.3)',
+                              background: 'linear-gradient(135deg,var(--green),var(--accent))', color: '#fff', fontWeight: 700, fontSize: 12,
+                              boxShadow: '0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent)',
                             }}>▶ Run</button>
                           )}
                           {s.path === 'my' && s.type !== 'range' && (
@@ -702,10 +702,10 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
                       return (
                         <button key={s.path} onClick={() => setSelected(s.path)} style={{
                           display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
-                          background: active ? 'rgba(121,192,255,0.14)' : 'var(--white-04)',
-                          border: `1px solid ${active ? 'rgba(121,192,255,0.45)' : 'var(--white-08)'}`,
+                          background: active ? 'color-mix(in srgb, var(--accent-lt) 14.0%, transparent)' : 'var(--white-04)',
+                          border: `1px solid ${active ? 'color-mix(in srgb, var(--accent-lt) 45%, transparent)' : 'var(--white-08)'}`,
                           color: active ? 'var(--tile-on-ink)' : 'var(--muted,#8b949e)', fontSize: 11.5, fontWeight: 600,
-                          boxShadow: active ? '0 0 14px rgba(121,192,255,0.15)' : 'none', transition: 'all .15s ease',
+                          boxShadow: active ? '0 0 14px color-mix(in srgb, var(--accent-lt) 15%, transparent)' : 'none', transition: 'all .15s ease',
                         }}>
                           {s.name || s.label || s.path}
                           <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: active ? '#79c0ff' : 'inherit' }}>

@@ -207,7 +207,7 @@ function Toggle({ on, onChange }) {
         background: on ? 'var(--accent)' : 'var(--white-12)',
         position:'relative', cursor:'pointer', flexShrink:0,
         transition:'background 0.2s',
-        boxShadow: on ? '0 0 12px rgba(88,166,255,0.5)' : 'none',
+        boxShadow: on ? '0 0 12px color-mix(in srgb, var(--accent) 50%, transparent)' : 'none',
         WebkitTapHighlightColor:'transparent',
         // Extend tap area without changing visual size
         padding:'8px',
@@ -527,7 +527,7 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
   const tileOn = (isOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying) || (isDenon && denonPower) || (isSpa && spaHeater)
 
   return (
-    <div onClick={() => onOpen?.(device.key)} className="device-tile" data-on={String(tileOn)} style={{
+    <div onClick={() => onOpen?.(device.key)} className="device-tile" data-on={String(tileOn)} data-cat={getGroup(device)} style={{
       padding: '12px',
       display: 'flex', flexDirection: 'column',
       minHeight: 118,
@@ -562,10 +562,10 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
             <button onClick={e => { e.stopPropagation(); cmd('playing', sonosPlaying ? 0 : 1) }}
               style={{
                 width:34, height:34, borderRadius:10, border:'none', cursor:'pointer',
-                background: sonosPlaying ? 'rgba(88,166,255,0.25)' : 'var(--white-08)',
+                background: sonosPlaying ? 'color-mix(in srgb, var(--accent) 25%, transparent)' : 'var(--white-08)',
                 color: sonosPlaying ? 'var(--tile-on-ink)' : 'var(--text2)',
                 fontSize:15, display:'flex', alignItems:'center', justifyContent:'center',
-                boxShadow: sonosPlaying ? '0 0 12px rgba(88,166,255,0.3)' : 'none',
+                boxShadow: sonosPlaying ? '0 0 12px color-mix(in srgb, var(--accent) 30%, transparent)' : 'none',
                 WebkitTapHighlightColor:'transparent',
               }}>
               {sonosPlaying ? '⏸' : '▶'}
@@ -1056,7 +1056,7 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
             {satelSystemInputs.map(s => {
               const ok = s.value === 1 || s.value === true
               const Icon = s.icon
-              const statusColor = ok ? '#3fb950' : 'var(--red,#f85149)'
+              const statusColor = ok ? 'var(--green)' : 'var(--red,#f85149)'
               const statusText = ok ? 'OK' : 'FAULT'
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
@@ -1263,13 +1263,13 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
           const active = cat === c
           const CatIcon = CAT_ICON_COMPONENT[c]
           return (
-            <button key={c} onClick={() => { setCat(c); setRoomFilter(null) }} className="side-btn" data-active={String(active)}>
-              <CatIcon size={16} color={active ? 'var(--accent-lt)' : 'var(--text3)'} />
+            <button key={c} onClick={() => { setCat(c); setRoomFilter(null) }} className="side-btn" data-active={String(active)} data-cat={c}>
+              <CatIcon size={16} color={active ? 'var(--cat-c, var(--accent-lt))' : 'var(--text3)'} />
               <span style={{ flex:1 }}>{c === 'Graphs' ? gt('tab', 'Graphs') : gt('cat_' + c.toLowerCase(), c)}</span>
               <span style={{
                 fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:8,
-                background: active ? 'rgba(88,166,255,0.3)' : 'var(--white-06)',
-                color: active ? 'var(--accent-lt)' : 'var(--text3)',
+                background: active ? 'color-mix(in srgb, var(--cat-c, var(--accent)) 28%, transparent)' : 'var(--white-06)',
+                color: active ? 'var(--cat-c, var(--accent-lt))' : 'var(--text3)',
               }}>{cnt}</span>
             </button>
           )
@@ -1295,7 +1295,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
                     style={{ fontSize:11, color:'var(--text3)', padding:'0 2px' }}>✎</span>
                   <span style={{
                     fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:8,
-                    background: active ? 'rgba(88,166,255,0.3)' : 'var(--white-06)',
+                    background: active ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'var(--white-06)',
                     color: active ? 'var(--accent-lt)' : 'var(--text3)',
                   }}>{cnt}</span>
                 </button>
@@ -1382,7 +1382,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
             const active = cat === c
             const CatIcon = CAT_ICON_COMPONENT[c]
             return (
-              <button key={c} onClick={() => setCat(c)} className="cat-pill" data-active={String(active)}>
+              <button key={c} onClick={() => setCat(c)} className="cat-pill" data-active={String(active)} data-cat={c}>
                 <CatIcon size={13} color={active ? '#fff' : 'var(--text3)'} />
                 {c}
                 {active && counts[c] && (

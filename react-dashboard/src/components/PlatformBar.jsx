@@ -41,7 +41,7 @@ export default function PlatformBar({ platforms }) {
             {p.label}
             <span style={{
               width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-              background: on ? '#3fb950' : '#f85149',
+              background: on ? 'var(--green)' : '#f85149',
               boxShadow: on ? '0 0 6px rgba(63,185,80,0.8)' : 'none',
             }}/>
           </div>

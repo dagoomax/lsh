@@ -132,8 +132,8 @@ function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, l
 
         {/* soft glow behind the hub */}
         <radialGradient id="eflow-hub-glow">
-          <stop offset="0%"  stopColor="rgba(88,166,255,0.14)"/>
-          <stop offset="100%" stopColor="rgba(88,166,255,0)"/>
+          <stop offset="0%"  stopColor="var(--accent)" stopOpacity="0.14"/>
+          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0"/>
         </radialGradient>
         <circle cx={hub.x} cy={hub.y} r="110" fill="url(#eflow-hub-glow)"/>
 

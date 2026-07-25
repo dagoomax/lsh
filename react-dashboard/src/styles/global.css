@@ -1,46 +1,46 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* ── Surfaces ── */
-  --bg:        #090c12;
-  --sidebar:   rgba(9,12,18,0.6);
-  --card:      #12161f;
-  --card-grad: linear-gradient(180deg, #151a25 0%, #10141d 100%);
-  --card-on:   #17233a;
-  --surface:   #12161f;
-  --surface2:  #1a2029;
-  --border:    var(--white-07);
-  --border-lt: var(--white-12);
-  --sep:       var(--white-05);
+  /* ── Surfaces — deep blue-violet ground, faintly tinted cards ── */
+  --bg:        #070912;
+  --sidebar:   rgba(10,13,24,0.6);
+  --card:      #141a29;
+  --card-grad: linear-gradient(180deg, #1a2234 0%, #121826 100%);
+  --card-on:   #1b2b48;
+  --surface:   #141a29;
+  --surface2:  #1d2435;
+  --border:    var(--white-09);
+  --border-lt: var(--white-14);
+  --sep:       var(--white-06);
 
   /* ── Ink ── */
-  --text:      #e9eef5;
-  --text2:     #98a4b5;
-  --text3:     #647084;
-  --muted:     #98a4b5;
+  --text:      #eef2f8;
+  --text2:     #9aa7ba;
+  --text3:     #667487;
+  --muted:     #9aa7ba;
 
-  /* ── Accent & status ── */
-  --accent:     #58a6ff;
-  --accent-lt:  #79c0ff;
-  --accent-dim: rgba(88,166,255,0.16);
-  --blue:       #58a6ff;
-  --green:      #3fb950;
-  --orange:     #f0883e;
-  --yellow:     #d29922;
-  --red:        #f85149;
-  --teal:       #39c5cf;
-  --violet:     #9085e9;
-  --gold:       #d9b45b;
+  /* ── Accent & status — saturated, electric ── */
+  --accent:     #4a9dff;
+  --accent-lt:  #7bbcff;
+  --accent-dim: rgba(74,157,255,0.2);
+  --blue:       #4a9dff;
+  --green:      #2ee66b;
+  --orange:     #ff9838;
+  --yellow:     #ffc53d;
+  --red:        #ff4d5e;
+  --teal:       #22d3ee;
+  --violet:     #a875ff;
+  --gold:       #ffc44d;
 
   /* ── Geometry ── */
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 18px;
 
-  /* ── Elevation ── */
-  --shadow-1: 0 1px 2px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.25);
-  --shadow-2: 0 4px 12px rgba(0,0,0,0.35), 0 12px 32px rgba(0,0,0,0.3);
-  --inner-hl: inset 0 1px 0 var(--white-04);
+  /* ── Elevation — deeper, with a faint cool ambient ── */
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.35), 0 2px 10px rgba(8,14,40,0.4);
+  --shadow-2: 0 4px 14px rgba(0,0,0,0.4), 0 16px 40px rgba(8,14,40,0.42);
+  --inner-hl: inset 0 1px 0 var(--white-06);
 
   /* ── Theme-aware washes (white on dark, slate on light) ── */
   --white-03: rgba(255,255,255,0.03);
@@ -57,14 +57,14 @@
   --white-20: rgba(255,255,255,0.2);
 
   /* ── Active-tile & modal accents ── */
-  --tile-on-ink:  #79c0ff;
-  --tile-on-chip: rgba(88,166,255,0.22);
-  --tile-on-glow: 0 0 16px rgba(88,166,255,0.3);
-  --modal-grad:        linear-gradient(160deg, #131a28 0%, #0c111c 100%);
-  --modal-chip-bg:     linear-gradient(135deg, rgba(88,166,255,0.20), rgba(57,197,207,0.12));
-  --modal-chip-border: rgba(121,192,255,0.35);
+  --tile-on-ink:  #7bbcff;
+  --tile-on-chip: rgba(74,157,255,0.26);
+  --tile-on-glow: 0 0 18px rgba(74,157,255,0.4);
+  --modal-grad:        linear-gradient(160deg, #182338 0%, #0e1420 100%);
+  --modal-chip-bg:     linear-gradient(135deg, rgba(74,157,255,0.26), rgba(34,211,238,0.16));
+  --modal-chip-border: rgba(123,188,255,0.42);
   --modal-chip-ink:    #a5d1ff;
-  --tooltip-bg:        rgba(13,17,26,0.92);
+  --tooltip-bg:        rgba(14,20,32,0.94);
 }
 
 /* ── Light theme ─────────────────────────────────────────────────────────
@@ -72,36 +72,36 @@
    so both UIs read as one product. Toggled via data-theme on <html>,
    shared localStorage key 'lsh-theme'. */
 [data-theme="light"] {
-  /* Surfaces */
-  --bg:        #f6f8fa;
-  --sidebar:   rgba(246,248,250,0.7);
+  /* Surfaces — cool off-white, faint blue cast */
+  --bg:        #eef2f8;
+  --sidebar:   rgba(238,242,248,0.72);
   --card:      #ffffff;
-  --card-grad: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
-  --card-on:   #dbeafe;
+  --card-grad: linear-gradient(180deg, #ffffff 0%, #f5f8fc 100%);
+  --card-on:   #d6e6ff;
   --surface:   #ffffff;
-  --surface2:  #eef1f4;
-  --border:    rgba(15,23,42,0.12);
-  --border-lt: rgba(15,23,42,0.18);
-  --sep:       rgba(15,23,42,0.07);
+  --surface2:  #e9eef6;
+  --border:    rgba(15,23,42,0.13);
+  --border-lt: rgba(15,23,42,0.2);
+  --sep:       rgba(15,23,42,0.08);
 
   /* Ink */
-  --text:      #1f2328;
-  --text2:     #57606a;
-  --text3:     #6e7781;
-  --muted:     #57606a;
+  --text:      #131a24;
+  --text2:     #4b5563;
+  --text3:     #6b7480;
+  --muted:     #4b5563;
 
-  /* Accent & status — darker steps for contrast on white */
-  --accent:     #0969da;
-  --accent-lt:  #0969da;
-  --accent-dim: rgba(9,105,218,0.12);
-  --blue:       #0969da;
-  --green:      #1a7f37;
-  --orange:     #bc4c00;
-  --yellow:     #9a6700;
-  --red:        #cf222e;
-  --teal:       #1b7c83;
-  --violet:     #6639ba;
-  --gold:       #9a6700;
+  /* Accent & status — saturated but AA-legible on white */
+  --accent:     #0a6bf0;
+  --accent-lt:  #0a6bf0;
+  --accent-dim: rgba(10,107,240,0.14);
+  --blue:       #0a6bf0;
+  --green:      #0f9d58;
+  --orange:     #e0620d;
+  --yellow:     #b8860b;
+  --red:        #e02436;
+  --teal:       #0aa2c0;
+  --violet:     #7c3aed;
+  --gold:       #b8860b;
 
   /* Elevation — much softer on light */
   --shadow-1: 0 1px 2px rgba(31,35,40,0.06), 0 2px 8px rgba(31,35,40,0.05);
@@ -123,14 +123,14 @@
   --white-20: rgba(15,23,42,0.2);
 
   /* Active-tile & modal accents */
-  --tile-on-ink:  #0857b0;
-  --tile-on-chip: rgba(9,105,218,0.14);
-  --tile-on-glow: 0 0 16px rgba(9,105,218,0.18);
-  --modal-grad:        linear-gradient(160deg, #ffffff 0%, #f2f5f8 100%);
-  --modal-chip-bg:     linear-gradient(135deg, rgba(9,105,218,0.12), rgba(27,124,131,0.08));
-  --modal-chip-border: rgba(9,105,218,0.3);
-  --modal-chip-ink:    #0969da;
-  --tooltip-bg:        rgba(255,255,255,0.96);
+  --tile-on-ink:  #0a5ad0;
+  --tile-on-chip: rgba(10,107,240,0.16);
+  --tile-on-glow: 0 0 16px rgba(10,107,240,0.22);
+  --modal-grad:        linear-gradient(160deg, #ffffff 0%, #eef3fb 100%);
+  --modal-chip-bg:     linear-gradient(135deg, rgba(10,107,240,0.14), rgba(10,162,192,0.1));
+  --modal-chip-border: rgba(10,107,240,0.32);
+  --modal-chip-ink:    #0a6bf0;
+  --tooltip-bg:        rgba(255,255,255,0.97);
 }
 
 
@@ -159,9 +159,9 @@ body::before {
   position: fixed; inset: -8%; z-index: -1; pointer-events: none;
   background:
     radial-gradient(900px 600px at 12% -8%,  rgba(56,110,200,0.16), transparent 60%),
-    radial-gradient(800px 560px at 95% 0%,   rgba(57,197,207,0.08), transparent 55%),
+    radial-gradient(800px 560px at 95% 0%,   color-mix(in srgb, var(--teal) 8%, transparent), transparent 55%),
     radial-gradient(700px 500px at 80% 60%,  rgba(217,180,91,0.045), transparent 60%),
-    radial-gradient(1000px 700px at 50% 115%, rgba(94,80,190,0.12), transparent 60%);
+    radial-gradient(1000px 700px at 50% 115%, color-mix(in srgb, var(--violet) 12%, transparent), transparent 60%);
   animation: lux-aurora 60s ease-in-out infinite alternate;
   will-change: transform;
 }
@@ -188,14 +188,14 @@ body::after {
   min-height: -webkit-fill-available;
 }
 
-::selection { background: rgba(88,166,255,0.35); }
+::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(148,166,190,0.22); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(148,166,190,0.4); }
 
-:focus-visible { outline: 2px solid rgba(88,166,255,0.6); outline-offset: 2px; }
+:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; }
 
 /* ── Range inputs: visible, polished thumbs everywhere ── */
 input[type="range"]::-webkit-slider-thumb {
@@ -208,7 +208,7 @@ input[type="range"]::-webkit-slider-thumb {
 input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
 input[type="range"]:active::-webkit-slider-thumb {
   transform: scale(1.2);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 0 6px rgba(88,166,255,0.25);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 input[type="range"]::-moz-range-thumb {
   width: 16px; height: 16px; border-radius: 50%;
@@ -228,13 +228,13 @@ input[type="range"]::-moz-range-thumb {
   padding: 2px 9px; border-radius: 20px;
   font-size: 11px; font-weight: 600; letter-spacing: 0.01em;
 }
-.badge-green  { background: rgba(63,185,80,0.15);   color: var(--green); }
-.badge-blue   { background: rgba(88,166,255,0.15);  color: var(--blue); }
-.badge-red    { background: rgba(248,81,73,0.15);   color: var(--red); }
-.badge-orange { background: rgba(240,136,62,0.15);  color: var(--orange); }
-.badge-gray   { background: var(--white-07); color: var(--text2); }
-.badge-yellow { background: rgba(210,153,34,0.15);   color: var(--yellow); }
-.badge-accent { background: rgba(88,166,255,0.2);   color: var(--accent-lt); }
+.badge-green  { background: color-mix(in srgb, var(--green) 22%, transparent);  color: var(--green); }
+.badge-blue   { background: color-mix(in srgb, var(--blue) 22%, transparent);   color: var(--blue); }
+.badge-red    { background: color-mix(in srgb, var(--red) 22%, transparent);    color: var(--red); }
+.badge-orange { background: color-mix(in srgb, var(--orange) 22%, transparent); color: var(--orange); }
+.badge-gray   { background: var(--white-08); color: var(--text2); }
+.badge-yellow { background: color-mix(in srgb, var(--yellow) 22%, transparent); color: var(--yellow); }
+.badge-accent { background: color-mix(in srgb, var(--accent) 26%, transparent); color: var(--accent-lt); }
 
 /* ── Device tile ────────────────────────────────────────────────────────── */
 .device-tile {
@@ -258,22 +258,22 @@ input[type="range"]::-moz-range-thumb {
 .device-tile:active { transform: translateY(0) scale(0.985); }
 .device-tile[data-on="true"] {
   background: linear-gradient(160deg, #14233c 0%, #101a2e 100%);
-  border-color: rgba(121,192,255,0.28);
+  border-color: color-mix(in srgb, var(--accent-lt) 28.0%, transparent);
   box-shadow: 0 4px 24px rgba(56,110,200,0.22), var(--inner-hl);
 }
 .device-tile[data-on="true"]:hover {
   transform: translateY(-2px);
-  border-color: rgba(121,192,255,0.45);
+  border-color: color-mix(in srgb, var(--accent-lt) 45%, transparent);
   box-shadow: 0 8px 32px rgba(56,110,200,0.32), var(--inner-hl);
 }
 [data-theme="light"] .device-tile[data-on="true"] {
   background: linear-gradient(160deg, #dbeafe 0%, #ecf4ff 100%);
-  border-color: rgba(9,105,218,0.35);
-  box-shadow: 0 4px 20px rgba(9,105,218,0.14), var(--inner-hl);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 14.0%, transparent), var(--inner-hl);
 }
 [data-theme="light"] .device-tile[data-on="true"]:hover {
-  border-color: rgba(9,105,218,0.55);
-  box-shadow: 0 8px 28px rgba(9,105,218,0.2), var(--inner-hl);
+  border-color: color-mix(in srgb, var(--accent) 55.0%, transparent);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 20%, transparent), var(--inner-hl);
 }
 
 /* Device modal title — gradient ink on dark, solid ink on light */
@@ -320,10 +320,10 @@ input[type="range"]::-moz-range-thumb {
 .cat-pill[data-active="true"] {
   background: var(--accent); border-color: transparent;
   color: #fff; font-weight: 600;
-  box-shadow: 0 2px 14px rgba(88,166,255,0.4);
+  box-shadow: 0 2px 14px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 .cat-pill[data-variant="soft"][data-active="true"] {
-  background: rgba(121,192,255,0.14); border-color: rgba(121,192,255,0.45);
+  background: color-mix(in srgb, var(--accent-lt) 14.0%, transparent); border-color: color-mix(in srgb, var(--accent-lt) 45%, transparent);
   color: #c9e3ff; box-shadow: none;
 }
 
@@ -410,10 +410,10 @@ input[type="range"]::-moz-range-thumb {
 }
 .relay-row:hover { border-color: var(--border-lt); background: var(--white-05); }
 .relay-row[data-on="true"] {
-  background: rgba(88,166,255,0.1);
-  border-color: rgba(88,166,255,0.25);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
 }
-.relay-row[data-on="true"]:hover { border-color: rgba(88,166,255,0.45); }
+.relay-row[data-on="true"]:hover { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 
 @keyframes flowDash {
   to { stroke-dashoffset: -20; }
@@ -453,7 +453,7 @@ input[type="range"]::-moz-range-thumb {
 .header-nav-react a.active {
   color: #fff;
   background: var(--accent);
-  box-shadow: 0 2px 8px rgba(88,166,255,0.35);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 /* Responsive layout switching */
@@ -509,7 +509,7 @@ input[type="range"]::-moz-range-thumb {
 
 /* Device modal breathing glow — cool blue, matches the dashboard system */
 .device-modal-glow {
-  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px rgba(88,166,255,0.28), 0 0 160px rgba(88,166,255,0.12);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px color-mix(in srgb, var(--accent) 28.0%, transparent), 0 0 160px color-mix(in srgb, var(--accent) 12%, transparent);
   animation: modalBreathe 4.5s ease-in-out infinite alternate;
 }
 [data-theme="light"] .device-modal-glow {
@@ -517,8 +517,8 @@ input[type="range"]::-moz-range-thumb {
   animation: none;
 }
 @keyframes modalBreathe {
-  from { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 55px rgba(88,166,255,0.22), 0 0 130px rgba(57,197,207,0.10); }
-  to   { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 95px rgba(121,192,255,0.34), 0 0 200px rgba(88,166,255,0.18); }
+  from { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 55px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 130px color-mix(in srgb, var(--teal) 10%, transparent); }
+  to   { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 95px color-mix(in srgb, var(--accent-lt) 34%, transparent), 0 0 200px color-mix(in srgb, var(--accent) 18%, transparent); }
 }
 
 /* ── Energy flow diagram ─────────────────────────────────────────────── */
@@ -647,12 +647,12 @@ input[type="range"]::-moz-range-thumb {
 .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] {
   border-color: var(--accent);
   border-width: 2px;
-  box-shadow: 0 0 30px rgba(88,166,255,0.28), var(--shadow-2);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 28.0%, transparent), var(--shadow-2);
 }
 .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"]::after { opacity: 1; }
 .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] .plan-wall { opacity: 0.85; }
 [data-theme="light"] .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] {
-  box-shadow: 0 0 30px rgba(9,105,218,0.2), var(--shadow-2);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 20%, transparent), var(--shadow-2);
 }
 .plan-zoom-back {
   position: absolute;
@@ -682,12 +682,12 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: var(--shadow-2);
 }
 .plan-room[data-active="true"] {
-  border-color: rgba(88,166,255,0.45);
-  box-shadow: 0 0 22px rgba(88,166,255,0.18), var(--shadow-1);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 18%, transparent), var(--shadow-1);
 }
 [data-theme="light"] .plan-room[data-active="true"] {
-  border-color: rgba(9,105,218,0.45);
-  box-shadow: 0 0 22px rgba(9,105,218,0.14), var(--shadow-1);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 14.0%, transparent), var(--shadow-1);
 }
 
 /* Billboard: counter-rotate children so text/icons face the viewer;
@@ -777,10 +777,10 @@ input[type="range"]::-moz-range-thumb {
 .plan-chip[data-on="true"] {
   border-color: var(--accent);
   background: var(--card-on);
-  box-shadow: 0 0 10px rgba(88,166,255,0.4);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 [data-theme="light"] .plan-chip[data-on="true"] {
-  box-shadow: 0 0 10px rgba(9,105,218,0.3);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 @media (prefers-reduced-motion: reduce) {
   .plan-room, .plan-chip { transition: none; }
@@ -862,8 +862,8 @@ input[type="range"]::-moz-range-thumb {
 
 /* Image-mode plan: rooms become translucent overlays over the render */
 .plan-board[data-img="true"] .plan-room {
-  background: rgba(88,166,255,0.04);
-  border-color: rgba(88,166,255,0.25);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
 }
 .plan-board[data-img="true"] .plan-wall { opacity: 0.25; }
 /* Image-mode plans: the render provides its own detail — no grid overlay,
@@ -1046,8 +1046,8 @@ input[type="range"]::-moz-range-thumb {
   position: absolute; inset: 0; pointer-events: none;
   border-radius: inherit; padding: 1px;
   background: linear-gradient(160deg,
-    rgba(165,209,255,0.55) 0%, rgba(121,192,255,0.12) 35%,
-    transparent 60%, rgba(88,166,255,0.30) 100%);
+    color-mix(in srgb, var(--accent-lt) 55.0%, transparent) 0%, color-mix(in srgb, var(--accent-lt) 12%, transparent) 35%,
+    transparent 60%, color-mix(in srgb, var(--accent) 30%, transparent) 100%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -1055,8 +1055,8 @@ input[type="range"]::-moz-range-thumb {
 }
 [data-theme="light"] .device-tile[data-on="true"]::after {
   background: linear-gradient(160deg,
-    rgba(9,105,218,0.45) 0%, rgba(9,105,218,0.10) 35%,
-    transparent 60%, rgba(9,105,218,0.25) 100%);
+    color-mix(in srgb, var(--accent) 45%, transparent) 0%, color-mix(in srgb, var(--accent) 10%, transparent) 35%,
+    transparent 60%, color-mix(in srgb, var(--accent) 25%, transparent) 100%);
 }
 
 /* Sidebar joins the glass system (header already blurs) */
@@ -1070,15 +1070,15 @@ input[type="range"]::-moz-range-thumb {
 .cat-pill[data-active="true"],
 .lock-btn {
   background: linear-gradient(180deg, var(--accent-lt) -40%, var(--accent) 60%);
-  box-shadow: 0 2px 14px rgba(88,166,255,0.4), inset 0 1px 0 rgba(255,255,255,0.25);
+  box-shadow: 0 2px 14px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 1px 0 rgba(255,255,255,0.25);
 }
 [data-theme="light"] .header-nav-react a.active,
 [data-theme="light"] .cat-pill[data-active="true"],
 [data-theme="light"] .lock-btn {
-  box-shadow: 0 2px 10px rgba(9,105,218,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 30%, transparent), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 .cat-pill[data-variant="soft"][data-active="true"] {
-  background: rgba(121,192,255,0.14);
+  background: color-mix(in srgb, var(--accent-lt) 14.0%, transparent);
   box-shadow: none;
 }
 
@@ -1100,4 +1100,147 @@ input[type="range"]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   body::before { animation: none; }
   .device-tile::before, .ecard::before, .stat-card::before { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Vivid category system — "bolder & more vivid" pass.
+   Every element tagged data-cat inherits a --cat-c hue; device tiles and the
+   category nav light up in their own colour instead of a uniform blue, so the
+   dashboard reads at a glance and feels energetic. Fully theme-aware; ON tiles
+   pop, OFF tiles stay calm. Falls back to --accent where no hue is mapped. */
+
+[data-cat="Lighting"] { --cat-c: #ffb020; }
+[data-cat="Switches"] { --cat-c: var(--accent); }
+[data-cat="Climate"]  { --cat-c: #ff7d54; }
+[data-cat="Media"]    { --cat-c: #b57bff; }
+[data-cat="Security"] { --cat-c: #ff5470; }
+[data-cat="Sensors"]  { --cat-c: #2dd4bf; }
+[data-cat="Victron"]  { --cat-c: #48d38a; }
+[data-cat="Other"]    { --cat-c: #8ea2ff; }
+
+[data-theme="light"] [data-cat="Lighting"] { --cat-c: #b26a00; }
+[data-theme="light"] [data-cat="Switches"] { --cat-c: var(--accent); }
+[data-theme="light"] [data-cat="Climate"]  { --cat-c: #c2410c; }
+[data-theme="light"] [data-cat="Media"]    { --cat-c: #7c3aed; }
+[data-theme="light"] [data-cat="Security"] { --cat-c: #d61f45; }
+[data-theme="light"] [data-cat="Sensors"]  { --cat-c: #0d9488; }
+[data-theme="light"] [data-cat="Victron"]  { --cat-c: #15803d; }
+[data-theme="light"] [data-cat="Other"]    { --cat-c: #4f46e5; }
+
+/* Tiles: re-point the existing on-state vars at the category hue so the inline
+   icon chip, icon colour and top glow bar (which all read these vars) recolour
+   automatically — no JS change needed. */
+.device-tile[data-cat] {
+  --tile-on-ink:  var(--cat-c, var(--accent-lt));
+  --tile-on-chip: color-mix(in srgb, var(--cat-c, var(--accent)) 22%, transparent);
+  --tile-on-glow: 0 0 18px color-mix(in srgb, var(--cat-c, var(--accent)) 45%, transparent);
+}
+.device-tile[data-cat][data-on="true"] {
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--cat-c) 17%, var(--card)) 0%,
+    color-mix(in srgb, var(--cat-c) 5%,  var(--card)) 100%);
+  border-color: color-mix(in srgb, var(--cat-c) 42%, transparent);
+  box-shadow: 0 4px 24px color-mix(in srgb, var(--cat-c) 24%, transparent), var(--inner-hl);
+}
+.device-tile[data-cat][data-on="true"]:hover {
+  border-color: color-mix(in srgb, var(--cat-c) 62%, transparent);
+  box-shadow: 0 10px 34px color-mix(in srgb, var(--cat-c) 34%, transparent), var(--inner-hl);
+}
+/* Gradient hairline picks up the category hue */
+.device-tile[data-cat][data-on="true"]::after {
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--cat-c) 70%, white) 0%,
+    color-mix(in srgb, var(--cat-c) 30%, transparent) 35%,
+    transparent 60%,
+    color-mix(in srgb, var(--cat-c) 45%, transparent) 100%);
+}
+
+/* Sidebar category nav: active item wears its category colour */
+.side-btn[data-active="true"][data-cat] {
+  background: color-mix(in srgb, var(--cat-c, var(--accent)) 14%, transparent);
+  color: var(--cat-c, var(--accent-lt));
+}
+
+/* Mobile pills: active pill filled with the category hue */
+.cat-pill[data-active="true"][data-cat] {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--cat-c, var(--accent)) 88%, white) -30%,
+    var(--cat-c, var(--accent)) 70%);
+  border-color: transparent;
+  box-shadow: 0 2px 14px color-mix(in srgb, var(--cat-c, var(--accent)) 45%, transparent),
+              inset 0 1px 0 rgba(255,255,255,0.25);
+}
+
+/* Bolder ambient: richer, more saturated aurora behind everything */
+body::before {
+  background:
+    radial-gradient(900px 620px at 10% -10%,  rgba(56,110,220,0.24), transparent 60%),
+    radial-gradient(820px 580px at 96% 2%,    rgba(45,212,191,0.15), transparent 55%),
+    radial-gradient(760px 520px at 78% 62%,   rgba(255,122,84,0.10), transparent 60%),
+    radial-gradient(1040px 720px at 48% 118%, rgba(140,110,240,0.20), transparent 60%);
+}
+[data-theme="light"] body::before {
+  background:
+    radial-gradient(900px 620px at 10% -10%,  color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
+    radial-gradient(820px 580px at 96% 2%,    rgba(13,148,136,0.07), transparent 55%),
+    radial-gradient(760px 520px at 78% 62%,   rgba(194,65,12,0.05), transparent 60%),
+    radial-gradient(1040px 720px at 48% 118%, rgba(124,58,237,0.08), transparent 60%);
+}
+
+/* Status colours a touch more saturated for punch (dark theme only) */
+:root {
+  --green:  #35d07f;
+  --red:    #ff5a6e;
+  --orange: #ff9142;
+  --teal:   #2dd4bf;
+  --violet: #a78bfa;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Vivid finish — global punch-up. Token shifts above already recolour most of
+   the app; these rules add the last bit of saturation and life to surfaces,
+   selection, scrollbars and focus. All additive, both themes covered. */
+
+/* Selection & focus take the electric accent */
+::selection { background: color-mix(in srgb, var(--accent) 42%, transparent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Scrollbar thumb picks up the accent gradient */
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 55%, transparent),
+    color-mix(in srgb, var(--accent) 28%, transparent));
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--accent) 75%, transparent),
+    color-mix(in srgb, var(--accent) 45%, transparent));
+}
+
+/* Cards gain a faint cool top-edge sheen for depth */
+.card, .detail-card, .chart-card, .stat-card {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 4%, transparent), transparent 60%),
+    var(--card-grad);
+}
+
+/* Energy cards: stronger coloured corner bloom + brighter left rail */
+.ecard { border-left-width: 3px; }
+.ecard::after {
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 24%, transparent), transparent 70%);
+  width: 130px; height: 130px;
+}
+
+/* Toggle-ish accents already read from tokens; make the header nav pill pop */
+.header-nav-react a.active {
+  background: linear-gradient(180deg, var(--accent-lt) -30%, var(--accent) 70%);
+  box-shadow: 0 2px 16px color-mix(in srgb, var(--accent) 50%, transparent),
+              inset 0 1px 0 rgba(255,255,255,0.28);
+}
+
+/* Relay rows glow in accent when live */
+.relay-row[data-on="true"] {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 18%, transparent);
 }

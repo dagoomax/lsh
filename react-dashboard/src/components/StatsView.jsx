@@ -205,7 +205,7 @@ export default function StatsView({ devices, energy, onOpen }) {
         <StatCard label={gt('active', 'Active now')} value={onCount} unit="on" color="#d29922" />
         <StatCard label={gt('series', 'Tracked series')} value={graphable.length} unit="" color="#bc8cff" />
         {avgTemp != null && <StatCard label={gt('avg_temp', 'Avg temperature')} value={avgTemp.toFixed(1)} unit="°C" color="#f0883e" />}
-        {soc != null && <StatCard label={gt('battery', 'Battery')} value={Math.round(soc)} unit="%" color="#3fb950" />}
+        {soc != null && <StatCard label={gt('battery', 'Battery')} value={Math.round(soc)} unit="%" color="var(--green)" />}
         {solar != null && <StatCard label={gt('solar', 'Solar')} value={Math.round(solar)} unit="W" color="#f0c000" />}
       </div>
 

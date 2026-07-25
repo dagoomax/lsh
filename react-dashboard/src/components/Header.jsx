@@ -39,11 +39,11 @@ export default function Header({ connection, connected, onLock }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <img src="/logo.svg" alt="LSH" width={32} height={32} style={{
           borderRadius: 9, flexShrink: 0, display: 'block',
-          boxShadow: '0 2px 12px rgba(88,166,255,0.35)',
+          boxShadow: '0 2px 12px color-mix(in srgb, var(--accent) 35%, transparent)',
         }}/>
         <span style={{
           fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', whiteSpace: 'nowrap',
-          background: 'linear-gradient(135deg, #3fb950 0%, #4fa8e0 55%, #58a6ff 100%)',
+          background: 'linear-gradient(135deg, var(--green) 0%, var(--accent-lt) 55%, var(--accent) 100%)',
           WebkitBackgroundClip: 'text', backgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
         }}>LSHServer</span>
@@ -101,12 +101,12 @@ export default function Header({ connection, connected, onLock }) {
           borderRadius: 20, padding: '3px 10px',
         }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%',
-            background: live ? '#3fb950' : '#f85149',
+            background: live ? 'var(--green)' : '#f85149',
             display: 'inline-block',
-            boxShadow: live ? '0 0 6px #3fb950' : 'none',
+            boxShadow: live ? '0 0 6px var(--green)' : 'none',
             animation: live ? 'none' : 'pulse 2s infinite',
           }}/>
-          <span style={{ fontSize: 11, fontWeight: 600, color: live ? '#3fb950' : '#f85149' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: live ? 'var(--green)' : '#f85149' }}>
             {live ? gt('connected', 'Connected') : gt('offline', 'Offline')}
           </span>
         </div>
