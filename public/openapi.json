@@ -3,7 +3,7 @@
   "info": {
     "title": "LSH — Lightweight Smart Home API",
     "version": "1.0.1",
-    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 185 endpoints.",
+    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 189 endpoints.",
     "license": {
       "name": "Repository",
       "url": "https://github.com/dagoomax/lsh"
@@ -54,7 +54,11 @@
     },
     {
       "name": "Automation (rules / scenes / notifications)",
-      "description": "10 endpoints"
+      "description": "7 endpoints"
+    },
+    {
+      "name": "Flows (Node-RED-style)",
+      "description": "7 endpoints"
     },
     {
       "name": "Satel INTEGRA",
@@ -2005,10 +2009,172 @@
         }
       }
     },
+    "/automation/flows": {
+      "get": {
+        "tags": [
+          "Flows (Node-RED-style)"
+        ],
+        "summary": "GET /automation/flows",
+        "operationId": "get_automation_flows",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Flows (Node-RED-style)"
+        ],
+        "summary": "POST /automation/flows",
+        "operationId": "post_automation_flows",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/automation/flows/{id}": {
+      "delete": {
+        "tags": [
+          "Flows (Node-RED-style)"
+        ],
+        "summary": "DELETE /automation/flows/:id",
+        "operationId": "delete_automation_flows_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/automation/flows/{id}/run": {
+      "post": {
+        "tags": [
+          "Flows (Node-RED-style)"
+        ],
+        "summary": "POST /automation/flows/:id/run",
+        "operationId": "post_automation_flows_id_run",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
     "/automation/notifications": {
       "get": {
         "tags": [
-          "Automation (rules / scenes / notifications)"
+          "Flows (Node-RED-style)"
         ],
         "summary": "GET /automation/notifications",
         "operationId": "get_automation_notifications",
@@ -2037,7 +2203,7 @@
       },
       "post": {
         "tags": [
-          "Automation (rules / scenes / notifications)"
+          "Flows (Node-RED-style)"
         ],
         "summary": "POST /automation/notifications",
         "operationId": "post_automation_notifications",
@@ -2076,7 +2242,7 @@
       },
       "delete": {
         "tags": [
-          "Automation (rules / scenes / notifications)"
+          "Flows (Node-RED-style)"
         ],
         "summary": "DELETE /automation/notifications",
         "operationId": "delete_automation_notifications",

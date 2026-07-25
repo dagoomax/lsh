@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flows – Lightweight Smart Home</title>
+  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="auth.css?v=2">
+  <link rel="stylesheet" href="flows.css?v=2">
+  <link rel="stylesheet" href="beauty-base.css?v=2">
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('lsh-theme')||'dark')</script>
+</head>
+<body>
+  <header>
+    <div class="logo"><svg class="logo-svg" width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="lsh-g" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#3fb950"/><stop offset="1" stop-color="#58a6ff"/></linearGradient></defs><rect width="40" height="40" rx="10" fill="url(#lsh-g)"/><path fill-rule="evenodd" fill="white" d="M6 21L20 8L34 21V35H6Z M21 10L11 22H20L19 30L29 18H20Z"/></svg><span class="logo-text">Lightweight Smart Home</span></div>
+    <nav class="header-nav">
+      <a href="/" class="nav-link" data-i18n="nav.dashboard">Dashboard</a>
+      <a href="/settings.html" class="nav-link" data-i18n="nav.settings">Settings</a>
+      <a href="/logs.html" class="nav-link" data-i18n="nav.logs">Logs</a>
+      <a href="/mqtt.html" class="nav-link">MQTT</a>
+      <a href="/flows.html" class="nav-link active">Flows</a>
+      <a href="/react/" class="nav-link">Aurora</a>
+    </nav>
+    <button class="theme-toggle" id="btn-theme"></button>
+  </header>
+
+  <div class="flows-wrap">
+    <aside class="flow-palette">
+      <h3>Nodes</h3>
+      <div id="palette"></div>
+      <h3 style="margin-top:18px">Tip</h3>
+      <p style="font-size:11px;color:var(--text-muted);line-height:1.5;margin:0">
+        Click a node to add it. Drag from a node's <b>right</b> dot to another's
+        <b>left</b> dot to wire them. A <b>Trigger</b> starts the flow when a value changes.
+        Click a wire to remove it.
+      </p>
+    </aside>
+
+    <main class="flow-main">
+      <div class="flow-toolbar">
+        <select id="flow-select" title="Choose a flow"></select>
+        <button class="btn btn-secondary" id="btn-new-flow">+ New</button>
+        <input type="text" class="flow-name" id="flow-name" placeholder="Flow name">
+        <label class="flow-toggle"><input type="checkbox" id="flow-enabled" checked> Enabled</label>
+        <span class="spacer"></span>
+        <span class="test-result" id="flow-result"></span>
+        <button class="btn btn-secondary" id="btn-test-flow">Test run</button>
+        <button class="btn btn-secondary" id="btn-del-flow">Delete</button>
+        <button class="btn btn-primary"   id="btn-save-flow">Deploy</button>
+      </div>
+      <div class="flow-canvas-wrap" id="canvas-wrap">
+        <div class="flow-canvas" id="canvas">
+          <svg class="flow-wires" id="wires"></svg>
+          <div class="flow-empty" id="empty-hint">Add a <b>Trigger</b> node, then an action, and wire them together.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="theme.js"></script>
+  <script src="common.js"></script>
+  <script src="flows.js"></script>
+</body>
+</html>

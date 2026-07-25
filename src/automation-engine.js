@@ -39,9 +39,11 @@ class AutomationEngine {
 
     this.rules  = [];
     this.scenes = [];
+    this.flows  = [];
     this.notifications = [];
 
     this._ruleState = new Map(); // ruleId → { matched: bool, lastFired: ts }
+    this._flowState = new Map(); // `${flowId}:${nodeId}` → { matched: bool }
   }
 
   setIo(io) { this._io = io; }
@@ -49,7 +51,7 @@ class AutomationEngine {
   start() {
     this._load();
     this._store.on('change', ({ key, value }) => this._onChange(key, value));
-    console.log(`[Automation] Started — ${this.rules.length} rule(s), ${this.scenes.length} scene(s)`);
+    console.log(`[Automation] Started — ${this.rules.length} rule(s), ${this.scenes.length} scene(s), ${this.flows.length} flow(s)`);
   }
 
   // ── Persistence ──────────────────────────────────────────────────────────
@@ -60,6 +62,7 @@ class AutomationEngine {
         const data = JSON.parse(fs.readFileSync(AUTOMATIONS_PATH, 'utf8'));
         this.rules  = data.rules  || [];
         this.scenes = data.scenes || [];
+        this.flows  = data.flows  || [];
       }
     } catch (err) {
       console.error(`[Automation] Failed to load automations.json: ${err.message}`);
@@ -68,7 +71,7 @@ class AutomationEngine {
 
   _save() {
     fs.writeFileSync(AUTOMATIONS_PATH,
-      JSON.stringify({ rules: this.rules, scenes: this.scenes }, null, 2), 'utf8');
+      JSON.stringify({ rules: this.rules, scenes: this.scenes, flows: this.flows }, null, 2), 'utf8');
   }
 
   // ── Rule evaluation ──────────────────────────────────────────────────────
@@ -80,6 +83,14 @@ class AutomationEngine {
         this._evaluate(rule, key, value);
       } catch (err) {
         console.error(`[Automation] Rule "${rule.name}" error: ${err.message}`);
+      }
+    }
+    for (const flow of this.flows) {
+      if (flow.enabled === false) continue;
+      try {
+        this._evalFlow(flow, key, value);
+      } catch (err) {
+        console.error(`[Automation] Flow "${flow.name}" error: ${err.message}`);
       }
     }
   }
@@ -144,6 +155,129 @@ class AutomationEngine {
       default:
         throw new Error(`Unknown action type: ${action.type}`);
     }
+  }
+
+  // ── Flows (Node-RED-style node graphs) ───────────────────────────────────
+  // Flow: { id, name, enabled, nodes: [Node] }
+  // Node: { id, type, x, y, config: {...}, wires: [[targetId, …], …] }
+  //   wires[outputPort] = array of downstream node ids. A message
+  //   { payload, key, source } is created by a `trigger` node on a matching
+  //   store change and propagated along the wires; each node transforms/routes
+  //   it and forwards to its outputs. Depth-capped to prevent runaway loops.
+  //
+  // Node types:
+  //   trigger   { key, op, value }   entry; edge-triggered like a rule
+  //   condition { op, value }        routes: output 0 = pass, output 1 = else
+  //   device    { deviceKey, sensor, value }   run command, pass msg on
+  //   relay     { index, on }        set relay, pass msg on
+  //   notify    { level, message }   toast + log, pass msg on
+  //   scene     { sceneId }          run a scene, pass msg on
+  //   delay     { seconds }          wait, then pass msg on
+
+  _evalFlow(flow, key, value) {
+    for (const node of flow.nodes || []) {
+      if (node.type !== 'trigger' || node.config?.key !== key) continue;
+      const op = node.config.op || 'changes';
+      const skey = `${flow.id}:${node.id}`;
+      const st = this._flowState.get(skey) || { matched: false };
+      let fire = false;
+      if (op === 'changes') {
+        fire = true;
+      } else {
+        const cmp = OPS[op];
+        if (!cmp) continue;
+        const matched = cmp(value, node.config.value);
+        fire = matched && !st.matched; // edge-triggered
+        st.matched = matched;
+        this._flowState.set(skey, st);
+      }
+      if (fire) {
+        const msg = { payload: value, key, source: `flow:${flow.name}` };
+        this._propagate(flow, node, msg, 0);
+      }
+    }
+  }
+
+  async _propagate(flow, node, msg, depth) {
+    if (depth > 50) { console.warn(`[Automation] Flow "${flow.name}" depth cap hit`); return; }
+    const outputs = await this._execNode(node, msg); // [msgOrNull per output port]
+    const wires = node.wires || [];
+    for (let port = 0; port < outputs.length; port++) {
+      const outMsg = outputs[port];
+      if (outMsg == null) continue;
+      for (const targetId of wires[port] || []) {
+        const target = (flow.nodes || []).find((n) => n.id === targetId);
+        if (target) this._propagate(flow, target, { ...outMsg }, depth + 1);
+      }
+    }
+  }
+
+  /** Run a node; return an array of messages, one per output port (null = no emit). */
+  async _execNode(node, msg) {
+    const c = node.config || {};
+    switch (node.type) {
+      case 'trigger':
+        return [msg]; // single output
+      case 'condition': {
+        const cmp = OPS[c.op];
+        const pass = cmp ? cmp(msg.payload, c.value) : false;
+        return [pass ? msg : null, pass ? null : msg]; // [then, else]
+      }
+      case 'device':
+        await this._registry.sendCommand(c.deviceKey, c.sensor, c.value);
+        return [msg];
+      case 'relay':
+        await this._relays.setState(Number(c.index), !!c.on);
+        return [msg];
+      case 'notify': {
+        const text = String(c.message || '')
+          .replace(/\{value\}/g, msg.payload ?? '')
+          .replace(/\{key\}/g, msg.key ?? '');
+        this.notify(c.level || 'info', text, msg.source);
+        return [msg];
+      }
+      case 'scene': {
+        const scene = this.scenes.find((s) => s.id === c.sceneId);
+        if (scene) await this.runActions(scene.actions || [], msg);
+        return [msg];
+      }
+      case 'delay':
+        await new Promise((r) => setTimeout(r, (Number(c.seconds) || 0) * 1000));
+        return [msg];
+      default:
+        return [msg];
+    }
+  }
+
+  saveFlow(flow) {
+    if (!flow.name) throw new Error('Flow needs a name');
+    if (!flow.id) flow.id = `f${Date.now().toString(36)}`;
+    if (flow.enabled === undefined) flow.enabled = true;
+    if (!Array.isArray(flow.nodes)) flow.nodes = [];
+    const idx = this.flows.findIndex((f) => f.id === flow.id);
+    if (idx >= 0) this.flows[idx] = flow; else this.flows.push(flow);
+    // reset edge-trigger memory for this flow's nodes
+    for (const k of [...this._flowState.keys()]) if (k.startsWith(`${flow.id}:`)) this._flowState.delete(k);
+    this._save();
+    return flow;
+  }
+
+  deleteFlow(id) {
+    this.flows = this.flows.filter((f) => f.id !== id);
+    for (const k of [...this._flowState.keys()]) if (k.startsWith(`${id}:`)) this._flowState.delete(k);
+    this._save();
+  }
+
+  /** Manually fire a flow from its trigger node(s) — used by the editor's "Test run". */
+  async runFlow(id) {
+    const flow = this.flows.find((f) => f.id === id);
+    if (!flow) throw new Error('Flow not found');
+    for (const node of flow.nodes || []) {
+      if (node.type !== 'trigger') continue;
+      const payload = node.config?.key ? this._store.get(node.config.key) : null;
+      await this._propagate(flow, node, { payload, key: node.config?.key, source: `flow-test:${flow.name}` }, 0);
+    }
+    return flow;
   }
 
   // ── Notifications ────────────────────────────────────────────────────────

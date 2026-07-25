@@ -1,0 +1,83 @@
+/* Node-RED-style flow editor */
+.flows-wrap { display: flex; height: calc(100vh - 56px); overflow: hidden; }
+
+/* Palette */
+.flow-palette {
+  width: 172px; flex-shrink: 0; padding: 14px 12px;
+  border-right: 1px solid var(--border); background: var(--card-grad, var(--card));
+  overflow-y: auto;
+}
+.flow-palette h3 {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-muted); margin: 0 0 10px;
+}
+.palette-node {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 9px 10px; margin-bottom: 7px; border-radius: 9px; cursor: grab;
+  border: 1px solid var(--border); background: var(--white-04);
+  color: var(--text); font-size: 12.5px; font-weight: 600; font-family: inherit;
+  transition: border-color 0.15s, transform 0.1s, background 0.15s;
+}
+.palette-node:hover { border-color: var(--border-lt); background: var(--white-06); transform: translateX(2px); }
+.palette-node:active { cursor: grabbing; }
+.palette-node .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+/* Canvas */
+.flow-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.flow-toolbar {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border); background: var(--card-grad, var(--card));
+}
+.flow-toolbar select, .flow-toolbar input[type="text"] {
+  background: var(--white-05); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 10px; font-size: 13px; font-family: inherit;
+}
+.flow-toolbar .flow-name { min-width: 200px; }
+.flow-toolbar .spacer { flex: 1; }
+.flow-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+
+.flow-canvas-wrap { flex: 1; position: relative; overflow: auto; background:
+  radial-gradient(circle, var(--white-06) 1px, transparent 1px);
+  background-size: 22px 22px; }
+.flow-canvas { position: relative; width: 3000px; height: 2000px; }
+.flow-wires { position: absolute; inset: 0; width: 3000px; height: 2000px; pointer-events: none; overflow: visible; }
+.flow-wire { fill: none; stroke: var(--accent); stroke-width: 3; opacity: 0.75; pointer-events: stroke; cursor: pointer; }
+.flow-wire:hover { opacity: 1; stroke-width: 4; }
+.flow-wire-temp { fill: none; stroke: var(--accent-lt, var(--accent)); stroke-width: 3; stroke-dasharray: 6 5; opacity: 0.9; }
+
+/* Node */
+.flow-node {
+  position: absolute; width: 210px; border-radius: 12px;
+  background: var(--card-grad, var(--card)); border: 1px solid var(--border-lt);
+  box-shadow: var(--shadow-2); user-select: none;
+}
+.flow-node[data-sel="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow-2); }
+.fn-head {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: move;
+  border-radius: 12px 12px 0 0; color: #fff; font-size: 12.5px; font-weight: 700;
+}
+.fn-head .fn-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fn-del { cursor: pointer; opacity: 0.8; font-size: 13px; padding: 0 2px; }
+.fn-del:hover { opacity: 1; }
+.fn-body { padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; }
+.fn-body label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.fn-body input, .fn-body select {
+  width: 100%; background: var(--white-05); color: var(--text);
+  border: 1px solid var(--border); border-radius: 7px; padding: 6px 8px;
+  font-size: 12px; font-family: inherit;
+}
+.fn-row { display: flex; gap: 6px; }
+.fn-row > * { flex: 1; min-width: 0; }
+
+/* Ports */
+.port {
+  position: absolute; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--card); border: 2px solid var(--accent); cursor: crosshair; z-index: 3;
+  transition: transform 0.1s, background 0.1s;
+}
+.port:hover { transform: scale(1.25); background: var(--accent); }
+.port.in  { left: -8px; top: 14px; }
+.port.out { right: -8px; }
+
+.flow-empty { position: absolute; top: 40%; left: 50%; transform: translateX(-50%);
+  color: var(--text-muted); font-size: 13px; text-align: center; pointer-events: none; }

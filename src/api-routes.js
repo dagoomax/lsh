@@ -505,6 +505,21 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       catch (err) { res.status(400).json({ success: false, error: err.message }); }
     });
 
+    // ── Flows (Node-RED-style) ──
+    router.get('/automation/flows', (req, res) => res.json({ success: true, data: automation.flows }));
+    router.post('/automation/flows', (req, res) => {
+      try { res.json({ success: true, data: automation.saveFlow(req.body) }); }
+      catch (err) { res.status(400).json({ success: false, error: err.message }); }
+    });
+    router.delete('/automation/flows/:id', (req, res) => {
+      automation.deleteFlow(req.params.id);
+      res.json({ success: true });
+    });
+    router.post('/automation/flows/:id/run', async (req, res) => {
+      try { res.json({ success: true, data: await automation.runFlow(req.params.id) }); }
+      catch (err) { res.status(400).json({ success: false, error: err.message }); }
+    });
+
     router.get('/automation/notifications', (req, res) => res.json({ success: true, data: automation.getNotifications() }));
     // External systems (Node-RED, scripts) can push a notification → toast + log
     router.post('/automation/notifications', (req, res) => {
