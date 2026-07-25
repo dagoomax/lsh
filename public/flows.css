@@ -12,15 +12,21 @@
   color: var(--text-muted); margin: 0 0 10px;
 }
 .palette-node {
+  --pc: var(--accent);
   display: flex; align-items: center; gap: 8px; width: 100%;
-  padding: 9px 10px; margin-bottom: 7px; border-radius: 9px; cursor: grab;
+  padding: 10px 11px; margin-bottom: 7px; border-radius: 10px; cursor: pointer;
   border: 1px solid var(--border); background: var(--white-04);
-  color: var(--text); font-size: 12.5px; font-weight: 600; font-family: inherit;
-  transition: border-color 0.15s, transform 0.1s, background 0.15s;
+  color: var(--text); font-size: 12.5px; font-weight: 600; font-family: inherit; text-align: left;
+  transition: border-color 0.15s, transform 0.12s, background 0.15s, box-shadow 0.15s;
 }
-.palette-node:hover { border-color: var(--border-lt); background: var(--white-06); transform: translateX(2px); }
-.palette-node:active { cursor: grabbing; }
-.palette-node .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.palette-node:hover {
+  border-color: color-mix(in srgb, var(--pc) 55%, transparent);
+  background: color-mix(in srgb, var(--pc) 10%, var(--white-04));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--pc) 22%, transparent);
+  transform: translateX(3px);
+}
+.palette-node:active { transform: translateX(1px) scale(0.99); }
+.palette-node .dot { width: 11px; height: 11px; border-radius: 4px; flex-shrink: 0; }
 
 /* Canvas */
 .flow-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -36,35 +42,80 @@
 .flow-toolbar .spacer { flex: 1; }
 .flow-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
 
-.flow-canvas-wrap { flex: 1; position: relative; overflow: auto; }
+.flow-canvas-wrap {
+  flex: 1; position: relative; overflow: auto;
+  /* Ambient aurora so the canvas has depth */
+  background:
+    radial-gradient(900px 600px at 20% 0%,  color-mix(in srgb, var(--accent) 9%, transparent), transparent 60%),
+    radial-gradient(800px 560px at 90% 100%, color-mix(in srgb, var(--violet, #a875ff) 9%, transparent), transparent 60%);
+}
 /* Toggleable grid: dots + faint lines, snaps nodes when on */
 .flow-canvas-wrap.grid {
   background-image:
-    radial-gradient(circle, var(--white-08) 1.2px, transparent 1.2px),
+    radial-gradient(900px 600px at 20% 0%,  color-mix(in srgb, var(--accent) 9%, transparent), transparent 60%),
+    radial-gradient(800px 560px at 90% 100%, color-mix(in srgb, var(--violet, #a875ff) 9%, transparent), transparent 60%),
+    radial-gradient(circle, var(--white-10) 1.4px, transparent 1.4px),
     linear-gradient(var(--white-04) 1px, transparent 1px),
     linear-gradient(90deg, var(--white-04) 1px, transparent 1px);
-  background-size: 22px 22px, 22px 22px, 22px 22px;
+  background-size: auto, auto, 22px 22px, 22px 22px, 22px 22px;
 }
 .flow-canvas { position: relative; width: 3000px; height: 2000px; }
 .flow-wires { position: absolute; inset: 0; width: 3000px; height: 2000px; pointer-events: none; overflow: visible; }
-.flow-wire { fill: none; stroke: var(--accent); stroke-width: 3; opacity: 0.75; pointer-events: stroke; cursor: pointer; }
-.flow-wire:hover { opacity: 1; stroke-width: 4; }
-.flow-wire-temp { fill: none; stroke: var(--accent-lt, var(--accent)); stroke-width: 3; stroke-dasharray: 6 5; opacity: 0.9; }
+.flow-wire { fill: none; stroke-width: 3.5; opacity: 0.9; pointer-events: stroke; cursor: pointer; transition: stroke-width 0.15s, opacity 0.15s; }
+.flow-wire:hover { opacity: 1; stroke-width: 5; }
+/* Light that travels along the wire — makes the flow feel alive */
+.flow-wire-anim {
+  fill: none; stroke: rgba(255,255,255,0.92); stroke-width: 2; stroke-linecap: round;
+  stroke-dasharray: 1 17; opacity: 0.85; pointer-events: none;
+  animation: wire-flow 1.1s linear infinite;
+}
+@keyframes wire-flow { to { stroke-dashoffset: -18; } }
+@media (prefers-reduced-motion: reduce) { .flow-wire-anim { animation: none; opacity: 0.4; } }
+.flow-wire-temp { fill: none; stroke: var(--accent-lt, var(--accent)); stroke-width: 3; stroke-dasharray: 6 5; opacity: 0.9; filter: drop-shadow(0 0 5px var(--accent)); }
 
-/* Node */
+/* Node — glassy card with a colour-matched glow */
 .flow-node {
-  position: absolute; width: 210px; border-radius: 12px;
-  background: var(--card-grad, var(--card)); border: 1px solid var(--border-lt);
-  box-shadow: var(--shadow-2); user-select: none;
+  --nc: var(--accent);
+  position: absolute; width: 216px; border-radius: 14px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--nc) 6%, transparent), transparent 55%),
+    var(--card-grad, var(--card));
+  backdrop-filter: blur(10px) saturate(1.3);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3);
+  border: 1px solid color-mix(in srgb, var(--nc) 40%, var(--border-lt));
+  box-shadow:
+    inset 0 1px 0 var(--white-08),
+    0 10px 30px rgba(0,0,0,0.45),
+    0 0 22px color-mix(in srgb, var(--nc) 16%, transparent);
+  user-select: none;
+  transition: box-shadow 0.18s, transform 0.12s, border-color 0.18s;
+  animation: node-in 0.2s ease both;
 }
-.flow-node[data-sel="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow-2); }
+@keyframes node-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+.flow-node:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--nc) 65%, transparent);
+  box-shadow:
+    inset 0 1px 0 var(--white-10),
+    0 16px 42px rgba(0,0,0,0.55),
+    0 0 40px color-mix(in srgb, var(--nc) 32%, transparent);
+}
+.flow-node[data-sel="true"] { border-color: var(--nc); }
 .fn-head {
-  display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: move;
-  border-radius: 12px 12px 0 0; color: #fff; font-size: 12.5px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px; padding: 9px 11px; cursor: move;
+  border-radius: 14px 14px 0 0; color: #fff; font-size: 12.5px; font-weight: 700;
+  letter-spacing: 0.01em;
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--nc) 92%, white) -10%,
+    var(--nc) 55%,
+    color-mix(in srgb, var(--nc) 78%, black) 120%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 1px 0 rgba(0,0,0,0.2);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
 }
+.fn-ico { font-size: 13px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4)); }
 .fn-head .fn-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fn-del { cursor: pointer; opacity: 0.8; font-size: 13px; padding: 0 2px; }
-.fn-del:hover { opacity: 1; }
+.fn-del { cursor: pointer; opacity: 0.85; font-size: 13px; padding: 0 2px; transition: opacity 0.15s, transform 0.15s; }
+.fn-del:hover { opacity: 1; transform: scale(1.2); }
 .fn-body { padding: 9px 10px; display: flex; flex-direction: column; gap: 7px; }
 .fn-body label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
 .fn-body input, .fn-body select {
@@ -75,15 +126,21 @@
 .fn-row { display: flex; gap: 6px; }
 .fn-row > * { flex: 1; min-width: 0; }
 
-/* Ports */
+/* Ports — glowing connection dots in the node's colour */
 .port {
-  position: absolute; width: 14px; height: 14px; border-radius: 50%;
-  background: var(--card); border: 2px solid var(--accent); cursor: crosshair; z-index: 3;
-  transition: transform 0.1s, background 0.1s;
+  position: absolute; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--card); border: 2.5px solid var(--nc, var(--accent));
+  cursor: crosshair; z-index: 3;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--nc, var(--accent)) 55%, transparent);
+  transition: transform 0.12s, background 0.12s, box-shadow 0.12s;
 }
-.port:hover { transform: scale(1.25); background: var(--accent); }
-.port.in  { left: -8px; top: 14px; }
-.port.out { right: -8px; }
+.port:hover {
+  transform: scale(1.4);
+  background: var(--nc, var(--accent));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--nc, var(--accent)) 90%, transparent);
+}
+.port.in  { left: -9px; top: 15px; }
+.port.out { right: -9px; }
 
 .flow-empty { position: absolute; top: 40%; left: 50%; transform: translateX(-50%);
   color: var(--text-muted); font-size: 13px; text-align: center; pointer-events: none; }

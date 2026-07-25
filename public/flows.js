@@ -1,6 +1,7 @@
 // Node-RED-style flow editor for LSH automations.
 (function () {
   const OPS = ['>', '<', '>=', '<=', '==', '!=', 'changes'];
+  const ICONS = { trigger: '⚡', condition: '⌥', device: '🔌', relay: '⏻', notify: '🔔', scene: '✨', delay: '⏱' };
 
   // Node type catalogue: colour, output count, and the config fields to render.
   const TYPES = {
@@ -101,10 +102,11 @@
     const el = document.createElement('div');
     el.className = 'flow-node'; el.dataset.id = node.id;
     el.style.left = node.x + 'px'; el.style.top = node.y + 'px';
+    el.style.setProperty('--nc', t.color); // node colour drives border glow, ports, wires
 
     const head = document.createElement('div');
-    head.className = 'fn-head'; head.style.background = t.color;
-    head.innerHTML = `<span class="fn-title">${t.label}</span><span class="fn-del" title="Delete">✕</span>`;
+    head.className = 'fn-head';
+    head.innerHTML = `<span class="fn-ico">${ICONS[node.type] || '●'}</span><span class="fn-title">${t.label}</span><span class="fn-del" title="Delete">✕</span>`;
     el.appendChild(head);
 
     const body = document.createElement('div');
@@ -153,14 +155,22 @@
     wires.innerHTML = '';
     if (current) {
       for (const node of current.nodes) {
+        const color = (TYPES[node.type] || {}).color || 'var(--accent)';
         (node.wires || []).forEach((targets, port) => {
           for (const tid of targets || []) {
             const a = portCenter(node.id, 'out', port), b = portCenter(tid, 'in');
             if (!a || !b) continue;
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('class', 'flow-wire'); path.setAttribute('d', wirePath(a, b));
-            path.addEventListener('click', () => { removeWire(node.id, port, tid); });
-            wires.appendChild(path);
+            const d = wirePath(a, b);
+            // glowing base wire in the source node's colour
+            const base = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            base.setAttribute('class', 'flow-wire'); base.setAttribute('d', d);
+            base.style.stroke = color; base.style.filter = `drop-shadow(0 0 5px ${color})`;
+            base.addEventListener('click', () => { removeWire(node.id, port, tid); });
+            wires.appendChild(base);
+            // animated light travelling along the wire
+            const flow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            flow.setAttribute('class', 'flow-wire-anim'); flow.setAttribute('d', d);
+            wires.appendChild(flow);
           }
         });
       }
@@ -298,7 +308,8 @@
     for (const [type, t] of Object.entries(TYPES)) {
       const b = document.createElement('button');
       b.className = 'palette-node';
-      b.innerHTML = `<span class="dot" style="background:${t.color}"></span>${t.label}`;
+      b.innerHTML = `<span class="dot" style="background:${t.color};box-shadow:0 0 9px ${t.color}"></span>${ICONS[type] || ''} ${t.label}`;
+      b.style.setProperty('--pc', t.color);
       b.addEventListener('click', () => addNode(type));
       p.appendChild(b);
     }
