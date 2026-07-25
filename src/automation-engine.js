@@ -194,21 +194,31 @@ class AutomationEngine {
       }
       if (fire) {
         const msg = { payload: value, key, source: `flow:${flow.name}` };
-        this._propagate(flow, node, msg, 0);
+        this._propagate(flow, node, msg, 0).catch(() => {});
       }
     }
   }
 
   async _propagate(flow, node, msg, depth) {
     if (depth > 50) { console.warn(`[Automation] Flow "${flow.name}" depth cap hit`); return; }
-    const outputs = await this._execNode(node, msg); // [msgOrNull per output port]
+    let outputs;
+    try {
+      outputs = await this._execNode(node, msg); // [msgOrNull per output port]
+    } catch (err) {
+      // A failing node (bad device key, relay error, …) must never crash the
+      // server or halt other flows — log, notify, and stop this branch.
+      console.error(`[Automation] Flow "${flow.name}" node ${node.id} (${node.type}) failed: ${err.message}`);
+      this.notify('warning', `Flow "${flow.name}": ${node.type} node failed — ${err.message}`, msg.source);
+      return;
+    }
     const wires = node.wires || [];
     for (let port = 0; port < outputs.length; port++) {
       const outMsg = outputs[port];
       if (outMsg == null) continue;
       for (const targetId of wires[port] || []) {
         const target = (flow.nodes || []).find((n) => n.id === targetId);
-        if (target) this._propagate(flow, target, { ...outMsg }, depth + 1);
+        // fire-and-forget branch; _propagate handles its own errors internally
+        if (target) this._propagate(flow, target, { ...outMsg }, depth + 1).catch(() => {});
       }
     }
   }
