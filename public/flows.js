@@ -6,7 +6,7 @@
   // Node type catalogue: colour, output count, and the config fields to render.
   const TYPES = {
     trigger: {
-      label: 'Trigger', color: '#e0620d', outs: 1,
+      label: 'Trigger', color: '#ff9838', outs: 1,
       fields: (n) => [
         field('Store key', 'text', n, 'key', { list: 'store-keys', ph: 'battery/soc' }),
         row([
@@ -16,13 +16,13 @@
       ],
     },
     condition: {
-      label: 'Condition', color: '#b8860b', outs: 2,
+      label: 'Condition', color: '#ffc53d', outs: 2,
       fields: (n) => [row([ select('Op', n, 'op', OPS.filter(o => o !== 'changes'), '>'),
                             field('Value', 'text', n, 'value', { ph: '30' }) ]),
                       hint('output 1 = matches · output 2 = else')],
     },
     device: {
-      label: 'Device', color: '#0a6bf0', outs: 1,
+      label: 'Device', color: '#4a9dff', outs: 1,
       fields: (n) => [
         field('Device key', 'text', n, 'deviceKey', { list: 'device-keys', ph: 'shelly/…' }),
         row([ field('Sensor', 'text', n, 'sensor', { ph: 'switch' }),
@@ -30,21 +30,21 @@
       ],
     },
     relay: {
-      label: 'Relay', color: '#1a7f37', outs: 1,
+      label: 'Relay', color: '#2ee66b', outs: 1,
       fields: (n) => [row([ field('Index', 'number', n, 'index', { ph: '0' }),
                             select('State', n, 'on', ['on', 'off'], 'on', v => v === 'on') ])],
     },
     notify: {
-      label: 'Notify', color: '#7c3aed', outs: 1,
+      label: 'Notify', color: '#a875ff', outs: 1,
       fields: (n) => [ select('Level', n, 'level', ['info', 'warning', 'critical'], 'info'),
                        field('Message', 'text', n, 'message', { ph: 'SOC is {value}%' }) ],
     },
     scene: {
-      label: 'Scene', color: '#0aa2c0', outs: 1,
+      label: 'Scene', color: '#ff5db1', outs: 1,
       fields: (n) => [ selectDynamic('Scene', n, 'sceneId', () => SCENES.map(s => [s.id, s.name])) ],
     },
     delay: {
-      label: 'Delay', color: '#57606a', outs: 1,
+      label: 'Delay', color: '#8ea2ff', outs: 1,
       fields: (n) => [ field('Seconds', 'number', n, 'seconds', { ph: '5' }) ],
     },
     debug: {
