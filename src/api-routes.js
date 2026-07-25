@@ -1282,6 +1282,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     // Strip secrets from response for security
     const safe = JSON.parse(JSON.stringify(cfg));
     if (safe.vrm?.password) safe.vrm.password = '••••••••';
+    if (safe.mongo?.uri) safe.mongo.uri = '••••••••'; // may embed credentials
     if (safe.vrm?.apiToken) safe.vrm.apiToken = '••••••••';
     if (safe.solaredge?.apiKey) safe.solaredge.apiKey = '••••••••';
     if (safe.smartthings?.token) safe.smartthings.token = '••••••••';
@@ -1423,6 +1424,45 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       client.end(true);
       res.json({ success: false, error: err.message });
     });
+  });
+
+  // ── MongoDB ────────────────────────────────────────────────────────────
+
+  router.post('/settings/mongo', (req, res) => {
+    const current = readConfigFile();
+    const { uri, db } = req.body;
+    // masked (dots) means "keep the stored URI"; empty means disable Mongo
+    const keepUri = (uri && !uri.includes('•')) ? uri.trim() : (current.mongo?.uri || '');
+    try {
+      const next = { ...current };
+      if (keepUri) next.mongo = { uri: keepUri, db: (db || current.mongo?.db || 'lsh').trim() };
+      else delete next.mongo;
+      writeConfigFile(next);
+      res.json({ success: true, message: 'MongoDB settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/test-mongo', async (req, res) => {
+    let { uri, db } = req.body;
+    if (!uri || uri.includes('•')) uri = readConfigFile().mongo?.uri || '';
+    if (!uri) return res.status(400).json({ success: false, error: 'Connection URI is required' });
+
+    let MongoClient;
+    try { ({ MongoClient } = require('mongodb')); }
+    catch { return res.json({ success: false, error: 'mongodb package not installed — run npm install' }); }
+
+    const client = new MongoClient(uri.trim(), { serverSelectionTimeoutMS: 5000 });
+    try {
+      await client.connect();
+      await client.db((db || 'lsh').trim()).command({ ping: 1 });
+      res.json({ success: true, message: `Connected to "${(db || 'lsh').trim()}"` });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    } finally {
+      try { await client.close(); } catch {}
+    }
   });
 
   // ── Dreame ─────────────────────────────────────────────────────────────

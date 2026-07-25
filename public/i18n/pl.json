@@ -325,7 +325,9 @@
     "waveshare_slave": "Slave ID",
     "waveshare_slave_hint": "(domyślnie 1)",
     "waveshare_count": "Liczba przekaźników",
-    "waveshare_count_hint": "(liczba przekaźników na karcie)"
+    "waveshare_count_hint": "(liczba przekaźników na karcie)",
+    "mongo_uri": "URI połączenia",
+    "mongo_db": "Baza danych"
   },
   "graphs": {
     "tab": "Wykresy",
@@ -506,6 +508,7 @@
     "d35": "Sparuj mostek przekaźników w Apple Home, używając poniższego PIN-u.",
     "d36": "Zarządzaj użytkownikami, tokenami API i szyfrowaniem HTTPS/TLS.",
     "d37": "Zapisz całą konfigurację do pliku lub przywróć z wcześniejszej kopii.",
-    "d15f": "Wysyła wartości LSH do zmiennych globalnych <strong>Fibaro Home Center</strong> w czasie rzeczywistym (przy zmianie, debounce 200 ms), dzięki czemu sceny HC mogą reagować na wszystko, co widzi LSH — strefy Satel, baterię Victron, dzwonek UniFi. Brakujące zmienne są tworzone automatycznie; <em>reguła prefiksu</em> mapuje całe poddrzewo kluczy naraz (<code>/</code> zamienia się w <code>_</code>)."
+    "d15f": "Wysyła wartości LSH do zmiennych globalnych <strong>Fibaro Home Center</strong> w czasie rzeczywistym (przy zmianie, debounce 200 ms), dzięki czemu sceny HC mogą reagować na wszystko, co widzi LSH — strefy Satel, baterię Victron, dzwonek UniFi. Brakujące zmienne są tworzone automatycznie; <em>reguła prefiksu</em> mapuje całe poddrzewo kluczy naraz (<code>/</code> zamienia się w <code>_</code>).",
+    "mongo": "Zapisuje DataStore czujników (wartości bieżące + historia) do <strong>MongoDB</strong> zamiast lokalnego pliku gzip. Plik pozostaje bezpiecznym zapasem przy wyłączeniu, więc puste pole zachowuje domyślne działanie. Uruchom ponownie, aby zastosować."
   }
 }

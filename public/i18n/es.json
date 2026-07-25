@@ -324,7 +324,9 @@
     "waveshare_slave": "ID esclavo",
     "waveshare_slave_hint": "(por defecto 1)",
     "waveshare_count": "Número de relés",
-    "waveshare_count_hint": "(número de relés en la placa)"
+    "waveshare_count_hint": "(número de relés en la placa)",
+    "mongo_uri": "URI de conexión",
+    "mongo_db": "Base de datos"
   },
   "graphs": {
     "tab": "Gráficos",
@@ -505,6 +507,7 @@
     "d35": "Empareje el puente de relés en Apple Casa con el PIN de abajo.",
     "d36": "Gestione usuarios, tokens API y cifrado HTTPS/TLS.",
     "d37": "Guarde toda la configuración en un archivo o restaure una copia previa.",
-    "d15f": "Envía valores de LSH a variables globales del <strong>Fibaro Home Center</strong> en tiempo real (al cambiar, debounce de 200 ms), para que las escenas del HC reaccionen a todo lo que LSH conoce — zonas Satel, batería Victron, timbre UniFi. Las variables que falten se crean automáticamente; una <em>regla de prefijo</em> asigna todo un subárbol de claves a la vez (<code>/</code> se convierte en <code>_</code>)."
+    "d15f": "Envía valores de LSH a variables globales del <strong>Fibaro Home Center</strong> en tiempo real (al cambiar, debounce de 200 ms), para que las escenas del HC reaccionen a todo lo que LSH conoce — zonas Satel, batería Victron, timbre UniFi. Las variables que falten se crean automáticamente; una <em>regla de prefijo</em> asigna todo un subárbol de claves a la vez (<code>/</code> se convierte en <code>_</code>).",
+    "mongo": "Guarda el DataStore de sensores (valores en vivo + historial) en <strong>MongoDB</strong> en lugar del archivo gzip local. El archivo queda como respaldo seguro al apagar; dejarlo vacío mantiene el comportamiento por defecto. Reinicia para aplicar."
   }
 }

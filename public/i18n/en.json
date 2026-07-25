@@ -325,7 +325,9 @@
     "waveshare_slave": "Slave ID",
     "waveshare_slave_hint": "(default 1)",
     "waveshare_count": "Relay Count",
-    "waveshare_count_hint": "(number of relays on the board)"
+    "waveshare_count_hint": "(number of relays on the board)",
+    "mongo_uri": "Connection URI",
+    "mongo_db": "Database"
   },
   "graphs": {
     "tab": "Graphs",
@@ -506,6 +508,7 @@
     "d35": "Pair the relay bridge in Apple Home using the PIN below.",
     "d36": "Manage users, API tokens, and HTTPS/TLS encryption.",
     "d37": "Save your entire configuration to a file or restore from a previous backup.",
-    "d15f": "Pushes LSH store values to <strong>Fibaro Home Center</strong> global variables in real time (on change, debounced 200 ms), so HC scenes can react to anything LSH knows — Satel zones, Victron battery, UniFi doorbell. Missing variables are created automatically; a <em>prefix rule</em> maps a whole key subtree at once (<code>/</code> becomes <code>_</code>)."
+    "d15f": "Pushes LSH store values to <strong>Fibaro Home Center</strong> global variables in real time (on change, debounced 200 ms), so HC scenes can react to anything LSH knows — Satel zones, Victron battery, UniFi doorbell. Missing variables are created automatically; a <em>prefix rule</em> maps a whole key subtree at once (<code>/</code> becomes <code>_</code>).",
+    "mongo": "Persist the sensor DataStore (live values + history) to <strong>MongoDB</strong> instead of the local gzipped file. The file stays as a shutdown-safe fallback, so leaving this blank keeps the default behavior. Restart to apply."
   }
 }

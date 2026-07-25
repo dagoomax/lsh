@@ -15,6 +15,10 @@ async function loadSettings() {
     setVal('mqtt-port', data.mqtt?.port || 1883);
     setVal('mqtt-portal', data.mqtt?.portalId || '');
 
+    // MongoDB (uri is masked by the server when set)
+    setVal('mongo-uri', data.mongo?.uri || '');
+    setVal('mongo-db',  data.mongo?.db  || '');
+
     // VRM
     setVal('vrm-api-token', data.vrm?.apiToken || '');
     setVal('vrm-email', data.vrm?.email || '');
@@ -1439,6 +1443,52 @@ document.getElementById('btn-fibaro-out-add-key').addEventListener('click', () =
 document.getElementById('btn-fibaro-out-add-prefix').addEventListener('click', () => {
   loadFibaroOutKeys();
   addFibaroOutRow('prefix').querySelector('.from').focus();
+});
+
+// ── MongoDB ────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-save-mongo').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-mongo');
+  const resultEl = document.getElementById('mongo-test-result');
+  btn.disabled   = true;
+  try {
+    const res  = await fetch('/api/settings/mongo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uri: getVal('mongo-uri'), db: getVal('mongo-db') }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-test-mongo').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-test-mongo');
+  const resultEl = document.getElementById('mongo-test-result');
+  btn.disabled   = true;
+  resultEl.textContent = '…';
+  resultEl.className   = 'test-result';
+  try {
+    const res  = await fetch('/api/settings/test-mongo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uri: getVal('mongo-uri'), db: getVal('mongo-db') }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 document.getElementById('btn-save-fibaro-out').addEventListener('click', async () => {

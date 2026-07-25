@@ -81,6 +81,27 @@
       </div>
     </section>
 
+    <!-- MongoDB -->
+    <section class="card settings-card" data-category="energy" data-title="MongoDB database persistence storage DataStore">
+      <h2>MongoDB Storage <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc" data-i18n-html="sdesc.mongo">Persist the sensor DataStore (live values + history) to <strong>MongoDB</strong> instead of the local gzipped file. The file stays as a shutdown-safe fallback, so leaving this blank keeps the default behavior. Restart to apply.</p>
+
+      <div class="form-row">
+        <label for="mongo-uri" data-i18n="s.mongo_uri">Connection URI</label>
+        <input type="password" id="mongo-uri" placeholder="mongodb://host:27017" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="mongo-db"><span data-i18n="s.mongo_db">Database</span> <span class="hint">(default lsh)</span></label>
+        <input type="text" id="mongo-db" placeholder="lsh" style="max-width:220px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-mongo" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-mongo" data-i18n="s2.save">Save</button>
+        <span class="test-result" id="mongo-test-result"></span>
+      </div>
+    </section>
+
     <!-- VRM -->
     <section class="card settings-card" data-category="energy" data-title="VRM Cloud API">
       <h2><span data-i18n="s.vrm_title">VRM Cloud API</span> <span class="badge" data-i18n="common.fallback">Fallback</span></h2>
