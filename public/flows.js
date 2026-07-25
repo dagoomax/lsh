@@ -1,7 +1,8 @@
 // Node-RED-style flow editor for LSH automations.
 (function () {
   const OPS = ['>', '<', '>=', '<=', '==', '!=', 'changes'];
-  const ICONS = { trigger: '⚡', condition: '⌥', device: '🔌', relay: '⏻', notify: '🔔', scene: '✨', delay: '⏱', debug: '🐞' };
+  const ICONS = { trigger: '⚡', time: '⏰', mqttIn: '📥', condition: '⌥', device: '🔌', relay: '⏻',
+                  mqttOut: '📤', http: '🌐', notify: '🔔', scene: '✨', delay: '⏱', debug: '🐞' };
 
   // Node type catalogue: colour, output count, and the config fields to render.
   const TYPES = {
@@ -14,6 +15,16 @@
           field('Value', 'text', n, 'value', { ph: '20' }),
         ]),
       ],
+    },
+    time: {
+      label: 'Time', color: '#e879f9', outs: 1,
+      fields: (n) => [ field('Every (seconds)', 'number', n, 'intervalSeconds', { ph: '60' }),
+                       hint('Fires the flow on a repeating interval.') ],
+    },
+    mqttIn: {
+      label: 'MQTT In', color: '#2dd4bf', outs: 1,
+      fields: (n) => [ field('Topic', 'text', n, 'topic', { ph: 'home/sensor/temp' }),
+                       hint('Fires when a message arrives on this topic (msg.payload = message).') ],
     },
     condition: {
       label: 'Condition', color: '#ffc53d', outs: 2,
@@ -42,6 +53,18 @@
     scene: {
       label: 'Scene', color: '#ff5db1', outs: 1,
       fields: (n) => [ selectDynamic('Scene', n, 'sceneId', () => SCENES.map(s => [s.id, s.name])) ],
+    },
+    mqttOut: {
+      label: 'MQTT Out', color: '#34d399', outs: 1,
+      fields: (n) => [ field('Topic', 'text', n, 'topic', { ph: 'home/cmd/light' }),
+                       field('Payload', 'text', n, 'payload', { ph: '{value} (blank = msg)' }) ],
+    },
+    http: {
+      label: 'HTTP', color: '#fb7185', outs: 1,
+      fields: (n) => [ row([ select('Method', n, 'method', ['GET', 'POST', 'PUT', 'DELETE'], 'GET'),
+                             field('URL', 'text', n, 'url', { ph: 'https://…' }) ]),
+                       field('Body', 'text', n, 'body', { ph: '{"soc":{value}}' }),
+                       hint('Response becomes msg.payload for the next node.') ],
     },
     delay: {
       label: 'Delay', color: '#8ea2ff', outs: 1,

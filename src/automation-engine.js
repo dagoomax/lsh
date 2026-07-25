@@ -1,7 +1,11 @@
 'use strict';
 
-const fs   = require('fs');
-const path = require('path');
+const fs    = require('fs');
+const path  = require('path');
+const http  = require('http');
+const https = require('https');
+
+const TRIGGER_TYPES = ['trigger', 'time', 'mqttIn']; // flow entry-point node types
 
 const AUTOMATIONS_PATH = path.join(__dirname, '..', 'automations.json');
 const MAX_NOTIFICATIONS = 200;
@@ -31,10 +35,11 @@ let nextNotifId = 1;
  * notify messages support {value} and {key} placeholders.
  */
 class AutomationEngine {
-  constructor(store, sensorRegistry, relayController) {
+  constructor(store, sensorRegistry, relayController, config) {
     this._store    = store;
     this._registry = sensorRegistry;
     this._relays   = relayController;
+    this._config   = config || {};
     this._io       = null;
 
     this.rules  = [];
@@ -44,6 +49,10 @@ class AutomationEngine {
 
     this._ruleState = new Map(); // ruleId → { matched: bool, lastFired: ts }
     this._flowState = new Map(); // `${flowId}:${nodeId}` → { matched: bool }
+    this._timers    = new Map(); // `${flowId}:${nodeId}` → interval handle (time triggers)
+    this._mqtt      = null;      // lazy MQTT client for mqttIn/mqttOut nodes
+    this._mqttSubs  = new Map(); // topic → [{ flow, node }]
+    this._mqttTopics = new Set();// currently subscribed topics
   }
 
   setIo(io) { this._io = io; }
@@ -51,7 +60,94 @@ class AutomationEngine {
   start() {
     this._load();
     this._store.on('change', ({ key, value }) => this._onChange(key, value));
+    this._setupTriggers();
     console.log(`[Automation] Started — ${this.rules.length} rule(s), ${this.scenes.length} scene(s), ${this.flows.length} flow(s)`);
+  }
+
+  stop() {
+    for (const t of this._timers.values()) clearInterval(t);
+    this._timers.clear();
+    if (this._mqtt) { try { this._mqtt.end(true); } catch {} this._mqtt = null; }
+  }
+
+  // ── Non-store triggers: time intervals + MQTT subscriptions ───────────────
+  _setupTriggers() {
+    // reset interval timers
+    for (const t of this._timers.values()) clearInterval(t);
+    this._timers.clear();
+
+    const wantTopics = new Set();
+    this._mqttSubs = new Map();
+    for (const flow of this.flows) {
+      if (flow.enabled === false) continue;
+      for (const node of flow.nodes || []) {
+        if (node.type === 'time') {
+          const secs = Math.max(1, Number(node.config?.intervalSeconds) || 60);
+          this._timers.set(`${flow.id}:${node.id}`, setInterval(() => {
+            this._propagate(flow, node, { payload: Date.now(), source: `flow:${flow.name}` }, 0).catch(() => {});
+          }, secs * 1000));
+        } else if (node.type === 'mqttIn' && node.config?.topic) {
+          const topic = node.config.topic;
+          wantTopics.add(topic);
+          if (!this._mqttSubs.has(topic)) this._mqttSubs.set(topic, []);
+          this._mqttSubs.get(topic).push({ flow, node });
+        }
+      }
+    }
+    this._syncMqtt(wantTopics);
+  }
+
+  _ensureMqttClient() {
+    if (this._mqtt) return this._mqtt;
+    if (!this._config?.mqtt?.host) return null;
+    let mqtt;
+    try { mqtt = require('mqtt'); } catch { console.error('[Automation] mqtt package unavailable'); return null; }
+    const url = `mqtt://${this._config.mqtt.host}:${this._config.mqtt.port || 1883}`;
+    this._mqtt = mqtt.connect(url, { reconnectPeriod: 5000, connectTimeout: 8000 });
+    this._mqtt.on('connect', () => { for (const t of this._mqttTopics) this._mqtt.subscribe(t); });
+    this._mqtt.on('error', (e) => console.error(`[Automation] MQTT: ${e.message}`));
+    this._mqtt.on('message', (topic, buf) => {
+      const subs = this._mqttSubs.get(topic) || [];
+      const payload = buf.toString();
+      for (const { flow, node } of subs) {
+        this._propagate(flow, node, { payload, topic, source: `flow:${flow.name}` }, 0).catch(() => {});
+      }
+    });
+    return this._mqtt;
+  }
+
+  _syncMqtt(wantTopics) {
+    if (wantTopics.size === 0) {
+      if (this._mqtt) for (const t of this._mqttTopics) this._mqtt.unsubscribe(t);
+      this._mqttTopics = new Set();
+      return;
+    }
+    const client = this._ensureMqttClient();
+    if (!client) { console.warn('[Automation] MQTT node(s) present but no reachable config.mqtt — skipping'); return; }
+    for (const t of this._mqttTopics) if (!wantTopics.has(t)) client.unsubscribe(t);
+    for (const t of wantTopics) if (!this._mqttTopics.has(t)) client.subscribe(t);
+    this._mqttTopics = wantTopics;
+  }
+
+  _httpRequest(method, url, body) {
+    return new Promise((resolve, reject) => {
+      let u;
+      try { u = new URL(url); } catch { return reject(new Error('Invalid URL')); }
+      const lib = u.protocol === 'https:' ? https : http;
+      const payload = body != null ? Buffer.from(String(body)) : null;
+      const req = lib.request(u, {
+        method, timeout: 10000,
+        headers: payload ? { 'Content-Type': 'application/json', 'Content-Length': payload.length } : {},
+      }, (res) => {
+        let raw = '';
+        res.on('data', (c) => { raw += c; if (raw.length > 100000) res.destroy(); });
+        res.on('end', () => resolve(raw.length ? raw : `HTTP ${res.statusCode}`));
+      });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+      if (payload) req.write(payload);
+      req.end();
+    });
   }
 
   // ── Persistence ──────────────────────────────────────────────────────────
@@ -173,6 +269,10 @@ class AutomationEngine {
   //   notify    { level, message }   toast + log, pass msg on
   //   scene     { sceneId }          run a scene, pass msg on
   //   delay     { seconds }          wait, then pass msg on
+  //   time      { intervalSeconds }  entry; fires on a repeating interval
+  //   mqttIn    { topic }            entry; fires on an MQTT message (payload = message)
+  //   mqttOut   { topic, payload }   publish an MQTT message, pass msg on
+  //   http      { method, url, body} outbound HTTP request; response → msg.payload
   //   debug     { name }             tap: emit the message to the editor + log (sink)
 
   _evalFlow(flow, key, value) {
@@ -255,6 +355,24 @@ class AutomationEngine {
       case 'delay':
         await new Promise((r) => setTimeout(r, (Number(c.seconds) || 0) * 1000));
         return [msg];
+      case 'time':
+        return [msg]; // entry node; fired by its interval
+      case 'mqttIn':
+        return [msg]; // entry node; fired on an incoming message
+      case 'http': {
+        const method = (c.method || 'GET').toUpperCase();
+        const body = c.body ? String(c.body).replace(/\{value\}/g, msg.payload ?? '') : undefined;
+        const resp = await this._httpRequest(method, c.url, method === 'GET' ? undefined : body);
+        return [{ ...msg, payload: resp }];
+      }
+      case 'mqttOut': {
+        const client = this._ensureMqttClient();
+        if (client && c.topic) {
+          const pl = String(c.payload ?? msg.payload ?? '').replace(/\{value\}/g, msg.payload ?? '');
+          client.publish(c.topic, pl);
+        }
+        return [msg];
+      }
       case 'debug': {
         // Node-RED-style debug tap: surface the message to the editor + log. Sink.
         const label = c.name || 'debug';
@@ -279,6 +397,7 @@ class AutomationEngine {
     // reset edge-trigger memory for this flow's nodes
     for (const k of [...this._flowState.keys()]) if (k.startsWith(`${flow.id}:`)) this._flowState.delete(k);
     this._save();
+    this._setupTriggers(); // (re)establish time/MQTT triggers
     return flow;
   }
 
@@ -286,6 +405,7 @@ class AutomationEngine {
     this.flows = this.flows.filter((f) => f.id !== id);
     for (const k of [...this._flowState.keys()]) if (k.startsWith(`${id}:`)) this._flowState.delete(k);
     this._save();
+    this._setupTriggers();
   }
 
   /** Manually fire a flow from its trigger node(s) — used by the editor's "Test run". */
@@ -293,8 +413,8 @@ class AutomationEngine {
     const flow = this.flows.find((f) => f.id === id);
     if (!flow) throw new Error('Flow not found');
     for (const node of flow.nodes || []) {
-      if (node.type !== 'trigger') continue;
-      const payload = node.config?.key ? this._store.get(node.config.key) : null;
+      if (!TRIGGER_TYPES.includes(node.type)) continue;
+      const payload = node.config?.key ? this._store.get(node.config.key) : Date.now();
       await this._propagate(flow, node, { payload, key: node.config?.key, source: `flow-test:${flow.name}` }, 0);
     }
     return flow;

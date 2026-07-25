@@ -170,7 +170,7 @@ async function main() {
   // Automation engine (rules / scenes / notifications) — io attached after WS setup
   let automation = null;
   const AutomationEngine = tryRequire('./src/automation-engine');
-  if (AutomationEngine) automation = new AutomationEngine(store, sensorRegistry, relayController);
+  if (AutomationEngine) automation = new AutomationEngine(store, sensorRegistry, relayController, config);
 
   const apiClients = { unifiProtect, reolink, kenik, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
