@@ -285,17 +285,24 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
 // ── Controls ────────────────────────────────────────────────────────────────
 
 function BigToggle({ on, onChange }) {
+  // Home-Assistant-style large toggle: a big pill with a power glyph on the thumb.
+  const W = 116, H = 58, T = 48, pad = (H - T) / 2
   return (
-    <button onClick={() => onChange(!on)} style={{
-      width: 52, height: 30, borderRadius: 999, border: 'none', cursor: 'pointer', position: 'relative',
+    <button role="switch" aria-checked={on} onClick={() => onChange(!on)} style={{
+      width: W, height: H, borderRadius: 999, border: 'none', cursor: 'pointer', position: 'relative', padding: 0,
       background: on ? 'linear-gradient(135deg,var(--green),var(--accent))' : 'var(--white-10)',
-      boxShadow: on ? '0 0 16px color-mix(in srgb, var(--accent) 45%, transparent)' : 'inset 0 1px 3px rgba(0,0,0,0.4)',
-      transition: 'all .25s ease', flexShrink: 0,
+      boxShadow: on
+        ? '0 0 30px color-mix(in srgb, var(--accent) 48%, transparent), inset 0 1px 0 rgba(255,255,255,0.2)'
+        : 'inset 0 1px 4px rgba(0,0,0,0.45)',
+      transition: 'background .25s ease, box-shadow .25s ease', flexShrink: 0,
     }}>
       <span style={{
-        position: 'absolute', top: 3, left: on ? 25 : 3, width: 24, height: 24, borderRadius: '50%',
-        background: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.35)', transition: 'left .25s cubic-bezier(.34,1.56,.64,1)',
-      }} />
+        position: 'absolute', top: pad, left: on ? (W - T - pad) : pad, width: T, height: T, borderRadius: '50%',
+        background: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.4)',
+        transition: 'left .28s cubic-bezier(.34,1.56,.64,1)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: on ? 'var(--accent)' : '#9aa7ba', fontSize: 22, fontWeight: 700,
+      }}>⏻</span>
     </button>
   )
 }
