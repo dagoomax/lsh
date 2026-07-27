@@ -49,11 +49,12 @@ export function useLSH() {
       wantDevices ? apiFetch('/api/devices') : Promise.resolve(null),
     ])
     if (status) setEnergy({
-      battery: status.battery,
-      solar:   status.solar,
-      grid:    status.grid,
-      loads:   status.acLoads,
-      relays:  status.relays,
+      battery:   status.battery,
+      solar:     status.solar,
+      grid:      status.grid,
+      loads:     status.acLoads,
+      solaredge: status.solaredge,
+      relays:    status.relays,
     })
     if (conn)  setConn(conn)
     if (devs)  setDevices(devs)

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, memo } from 'react'
+import { useState, useCallback, useEffect, useMemo, memo } from 'react'
 import {
   resolveIcon, CAT_ICON_COMPONENT, GridPowerIcon,
   SwitchOutletIcon, BulbIcon, ShutterIcon, ThermometerIcon,
@@ -10,6 +10,8 @@ import StatsView   from './StatsView'
 import { gt }      from '../i18n'
 import { EDIT_EMOJI } from '../emoji'
 import EnergyFlow from './EnergyFlow'
+import EnergySourcePicker from './EnergySourcePicker'
+import { resolveEnergy, hasSolarEdge, loadEnergySources, saveEnergySources } from '../energySources'
 import HomePlan from './HomePlan'
 import RelayPanel from './RelayPanel'
 
@@ -1198,6 +1200,13 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
     localStorage.setItem('hideEnergy', next ? '1' : '0')
     setEnergyHidden(next)
   }
+  const [energySources, setEnergySources] = useState(loadEnergySources)
+  const changeEnergySources = next => { saveEnergySources(next); setEnergySources(next) }
+  const canMixEnergy = hasSolarEdge(energy)
+  const resolvedEnergy = useMemo(
+    () => resolveEnergy(energy, energySources),
+    [energy, energySources],
+  )
 
   const onCommand = useCallback((key, sensor, value) => {
     sendCommand(key, sensor, value)
@@ -1431,8 +1440,11 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
                 <span style={{ fontSize:13, fontWeight:700 }}>{gt('energy', 'Energy')}</span>
                 <span style={{
                   marginLeft:'auto', color:'var(--text3)', fontSize:11,
-                  display:'inline-flex', alignItems:'center', gap:6,
+                  display:'inline-flex', alignItems:'center', gap:8,
                 }}>
+                  {!energyHidden && canMixEnergy && (
+                    <EnergySourcePicker sources={energySources} onChange={changeEnergySources} />
+                  )}
                   {energyHidden && <span>{gt('hidden', 'hidden')}</span>}
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -1443,7 +1455,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               </div>
               {!energyHidden && (
                 <div style={{ padding:'0 12px 12px' }}>
-                  <EnergyFlow energy={energy} />
+                  <EnergyFlow energy={resolvedEnergy} />
                   {energy.relays && (
                     <div style={{ marginTop:12, background:'rgba(0,0,0,0.25)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)' }}>
                       <RelayPanel relays={energy.relays} onToggle={onToggleRelay} />
