@@ -9,6 +9,17 @@
  * /api/devices with a JSON substring Check ending in `"value":\v`).
  */
 
+// Loxone Config caps how many command recognitions a single Virtual HTTP Input
+// (or Virtual Output) can hold — imports with too many are rejected. The proven
+// hand-built templates run to ~44; 40 per file stays safely under the limit.
+const MAX_CMDS = 40;
+
+function chunk(arr, n) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+}
+
 function xmlEsc(s) {
   return String(s)
     .replace(/&/g, '&amp;')
@@ -67,14 +78,18 @@ function buildInputsXml(devices, { host, token, pollingMs = 5000 } = {}) {
     }
   }
 
-  if (!cmds.length) return null;
+  if (!cmds.length) return [];
 
-  const title = devices.length === 1 ? `LSH ${devices[0].label}` : 'LSH Devices';
-  return `<?xml version="1.0" encoding="utf-8"?>\n` +
-    `<VirtualInHttp Title="${xmlEsc(title)} (feedback)" ` +
-    `Comment="Reads device states from LSH /api/devices" ` +
-    `Address="http://${xmlEsc(host)}/api/devices?token=${xmlEsc(token)}" ` +
-    `PollingTime="${pollingMs}">\n${cmds.join('\n')}\n</VirtualInHttp>\n`;
+  const title  = devices.length === 1 ? `LSH ${devices[0].label}` : 'LSH Devices';
+  const groups = chunk(cmds, MAX_CMDS);
+  return groups.map((g, i) => {
+    const suffix = groups.length > 1 ? ` ${i + 1}/${groups.length}` : '';
+    return `<?xml version="1.0" encoding="utf-8"?>\n` +
+      `<VirtualInHttp Title="${xmlEsc(title)} (feedback)${suffix}" ` +
+      `Comment="Reads device states from LSH /api/devices" ` +
+      `Address="http://${xmlEsc(host)}/api/devices?token=${xmlEsc(token)}" ` +
+      `PollingTime="${pollingMs}">\n${g.join('\n')}\n</VirtualInHttp>\n`;
+  });
 }
 
 /**
@@ -118,13 +133,17 @@ function buildOutputsXml(devices, { host, token } = {}) {
     }
   }
 
-  if (!cmds.length) return null;
+  if (!cmds.length) return [];
 
-  const title = devices.length === 1 ? `LSH ${devices[0].label}` : 'LSH Devices';
-  return `<?xml version="1.0" encoding="UTF-8"?>\n` +
-    `<VirtualOut CmdSep="" CloseAfterSend="true" CmdInit="" Address="http://${xmlEsc(host)}" ` +
-    `Comment="Device commands via LSH REST API" Title="${xmlEsc(title)}">\n` +
-    `${cmds.join('\n')}\n</VirtualOut>\n`;
+  const title  = devices.length === 1 ? `LSH ${devices[0].label}` : 'LSH Devices';
+  const groups = chunk(cmds, MAX_CMDS);
+  return groups.map((g, i) => {
+    const suffix = groups.length > 1 ? ` ${i + 1}/${groups.length}` : '';
+    return `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<VirtualOut CmdSep="" CloseAfterSend="true" CmdInit="" Address="http://${xmlEsc(host)}" ` +
+      `Comment="Device commands via LSH REST API" Title="${xmlEsc(title)}${suffix}">\n` +
+      `${g.join('\n')}\n</VirtualOut>\n`;
+  });
 }
 
 module.exports = { buildInputsXml, buildOutputsXml };

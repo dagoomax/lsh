@@ -459,8 +459,10 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       token:     embedToken || 'YOUR_API_TOKEN',
       pollingMs: Math.max(1000, Number(req.query.polling) || 5000),
     };
-    const xml  = kind === 'inputs' ? buildInputsXml(devices, opts) : buildOutputsXml(devices, opts);
-    if (!xml) {
+    // Both builders return an array of XML documents, auto-split so no single
+    // Virtual Input/Output exceeds Loxone Config's per-block command limit.
+    const parts = kind === 'inputs' ? buildInputsXml(devices, opts) : buildOutputsXml(devices, opts);
+    if (!parts.length) {
       return res.status(404).json({
         success: false,
         error: kind === 'outputs'
@@ -468,11 +470,20 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
           : 'Matching devices have no readable sensors',
       });
     }
-    const name = ['lsh-loxone', kind, req.query.type || (req.query.device || '').replace(/\//g, '-')]
-      .filter(Boolean).join('-') + '.xml';
-    res.set('Content-Type', 'application/xml; charset=utf-8');
-    res.set('Content-Disposition', `attachment; filename="${name}"`);
-    res.send(xml);
+    const base = ['lsh-loxone', kind, req.query.type || (req.query.device || '').replace(/\//g, '-')]
+      .filter(Boolean).join('-');
+    if (parts.length === 1) {
+      res.set('Content-Type', 'application/xml; charset=utf-8');
+      res.set('Content-Disposition', `attachment; filename="${base}.xml"`);
+      return res.send(parts[0]);
+    }
+    // Multiple blocks → bundle as a ZIP of individually-importable files.
+    const { zipStore } = require('./zip');
+    const files = parts.map((xml, i) => ({ name: `${base}-${i + 1}.xml`, data: xml }));
+    const zip = zipStore(files);
+    res.set('Content-Type', 'application/zip');
+    res.set('Content-Disposition', `attachment; filename="${base}.zip"`);
+    res.send(zip);
   };
   router.get('/loxone/inputs.xml',  loxoneXmlHandler('inputs'));
   router.get('/loxone/outputs.xml', loxoneXmlHandler('outputs'));

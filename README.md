@@ -2378,8 +2378,10 @@ http://<lsh-ip>:3000/api/loxone/outputs.xml?type=smarttub&token=<token>
 http://<lsh-ip>:3000/api/loxone/inputs.xml?type=smarttub&token=<token>
 ```
 
+Loxone Config limits how many command recognitions a single Virtual Input/Output can hold, so **when an export exceeds 40 commands the endpoint returns a `.zip` of numbered `…-1.xml`, `…-2.xml`, … files** (each a complete, importable block titled `… i/n`) instead of one oversized XML. Filter by brand for smaller, single-file exports.
+
 **Import into Loxone Config 17.1:**
-1. Download both XML files (the endpoints send them as attachments)
+1. Download the XML file(s) — the endpoints send them as attachments (a `.zip` when auto-split; unzip it first and import each file)
 2. In Loxone Config: **Virtual Outputs → Device templates → Import template from file** for `outputs.xml`; **Virtual HTTP Inputs → Import** for `inputs.xml` (or drop the files into `Documents\Loxone\Loxone Config\Templates\VirtualOut` / `…\VirtualIn` and restart Config)
 3. All commands/readings appear pre-named after the LSH device labels — drag them into your page and connect
 
