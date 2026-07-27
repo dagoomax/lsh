@@ -76,6 +76,10 @@
 /* Node — glassy card with a colour-matched glow */
 .flow-node {
   --nc: var(--accent);
+  /* display/padding are set explicitly to override the classic energy-flow
+     diagram's `.flow-node` rule in style.css, which would otherwise leak
+     display:flex + centering into the editor nodes. */
+  display: block; padding: 0;
   position: absolute; width: 216px; border-radius: 14px;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--nc) 6%, transparent), transparent 55%),

@@ -127,6 +127,7 @@
   // ── Node rendering ────────────────────────────────────────────────────────
   function renderNode(node) {
     const t = TYPES[node.type];
+    if (!t) { renderUnknownNode(node); return; } // never let one bad node abort the whole render
     const el = document.createElement('div');
     el.className = 'flow-node'; el.dataset.id = node.id;
     el.style.left = node.x + 'px'; el.style.top = node.y + 'px';
@@ -158,9 +159,34 @@
     canvas.appendChild(el);
   }
 
+  // Placeholder for a node whose type this build doesn't know (e.g. a flow
+  // saved by a newer version). Keeps it draggable/deletable and, crucially,
+  // still on the canvas so the rest of the flow renders.
+  function renderUnknownNode(node) {
+    const el = document.createElement('div');
+    el.className = 'flow-node'; el.dataset.id = node.id;
+    el.style.left = (node.x || 0) + 'px'; el.style.top = (node.y || 0) + 'px';
+    el.style.setProperty('--nc', '#ff4d5e');
+    const head = document.createElement('div');
+    head.className = 'fn-head';
+    head.innerHTML = `<span class="fn-ico">❔</span><span class="fn-title">${node.type || 'unknown'}</span><span class="fn-del" title="Delete">✕</span>`;
+    el.appendChild(head);
+    const body = document.createElement('div');
+    body.className = 'fn-body';
+    body.appendChild(hint('Unknown node type — reload the page to get the latest editor.'));
+    el.appendChild(body);
+    const pin = document.createElement('div'); pin.className = 'port in'; pin.dataset.node = node.id; pin.dataset.dir = 'in';
+    el.appendChild(pin);
+    head.querySelector('.fn-del').addEventListener('click', (e) => { e.stopPropagation(); deleteNode(node.id); });
+    head.addEventListener('mousedown', (e) => startNodeDrag(e, node, el));
+    canvas.appendChild(el);
+  }
+
   function renderAll() {
     canvas.querySelectorAll('.flow-node').forEach(n => n.remove());
-    if (current) current.nodes.forEach(renderNode);
+    if (current) current.nodes.forEach(n => {
+      try { renderNode(n); } catch (err) { console.error('[flows] node render failed', n, err); }
+    });
     $('empty-hint').style.display = (current && current.nodes.length) ? 'none' : 'block';
     renderWires();
   }
