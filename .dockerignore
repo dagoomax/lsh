@@ -4,6 +4,7 @@ react-dashboard/node_modules
 
 # Runtime data — provided via volumes, never baked into the image
 config.json
+automations.json
 persist
 certs
 *.log

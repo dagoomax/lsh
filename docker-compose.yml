@@ -12,12 +12,17 @@ services:
     network_mode: host
 
     volumes:
-      - ./config.json:/app/config.json   # your config (copy from config.example.json)
-      - ./persist:/app/persist           # HomeKit pairing + API tokens + users
-      - ./certs:/app/certs               # optional: Let's Encrypt / TLS certs
+      - ./config.json:/app/config.json           # your config (copy from config.example.json)
+      - ./automations.json:/app/automations.json # rules / scenes / flows (run `touch automations.json` first so it mounts as a file)
+      - ./persist:/app/persist                   # HomeKit pairing + API tokens + users + store snapshot
+      - ./certs:/app/certs                        # optional: Let's Encrypt / TLS certs
 
     environment:
       - NODE_ENV=production
+      # Optional MongoDB persistence — uncomment the mongo service below, then
+      # either set config.mongo.uri or pass it here:
+      # - MONGO_URI=mongodb://localhost:27017
+      # - MONGO_DB=lsh
 
     # If you are NOT using HomeKit and prefer bridge networking, comment out
     # network_mode above and use explicit port mappings instead:
@@ -25,3 +30,18 @@ services:
     #   - "3000:3000"    # HTTP
     #   - "3443:3443"    # HTTPS
     #   - "8554:8554"    # RTSP
+
+  # Optional: MongoDB for DataStore persistence (see the `mongo` config section).
+  # Uses bridge networking with 27017 mapped to the host, so the host-networked
+  # lsh service reaches it at mongodb://localhost:27017. Uncomment to enable.
+  # mongo:
+  #   image: mongo:7
+  #   container_name: lsh-mongo
+  #   restart: unless-stopped
+  #   ports:
+  #     - "127.0.0.1:27017:27017"   # host-only; lsh connects via localhost
+  #   volumes:
+  #     - lsh-mongo-data:/data/db
+
+# volumes:
+#   lsh-mongo-data:
