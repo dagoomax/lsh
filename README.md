@@ -714,6 +714,30 @@ For development without hardware, run `node scripts/aqara-simulator.js` (a fake 
 
 Each device must have `web_server:` enabled in its ESPHome YAML configuration. The `password` field is optional and matches the `web_server.auth.password` setting. Multiple devices are supported.
 
+### `can`
+
+```json
+"can": {
+  "transport": "socketcan",
+  "interface": "can0",
+  "serialPort": "/dev/tty.usbmodem1234",
+  "bitrate": 250000,
+  "name": "bus",
+  "signals": [
+    { "name": "Battery Voltage", "id": "0x100", "start": 0, "length": 2, "endian": "little", "scale": 0.01, "unit": "V" },
+    { "name": "Coolant Temp", "id": "0x180", "extended": false, "start": 3, "length": 1, "signed": true, "scale": 1, "offset": -40, "unit": "°C" },
+    { "name": "Relay 1", "id": "0x200", "start": 0, "length": 1, "writable": true, "min": 0, "max": 1 }
+  ]
+}
+```
+
+Reads and writes a **CAN (Controller Area Network) bus** and maps frames to dashboard sensors. Two transports:
+
+- **`socketcan`** — Linux kernel SocketCAN (e.g. `can0` from a USB-CAN adapter). Install the optional package on the host: `npm install socketcan`.
+- **`slcan`** — a serial USB-CAN adapter (USBtin / CANable) speaking SLCAN over `serialPort` at the given `bitrate`. Needs `npm install serialport`.
+
+Because NMEA 2000 / **Victron VE.Can** and **CANopen** are CAN underneath, they're supported by mapping a signal's byte layout per its PGN / object (set `extended: true` for 29-bit IDs). Each **signal** extracts `length` bytes at `start` (`endian`, `signed`), applies `scale`/`offset`, and appears as a sensor; add `writable: true` to send a frame from the dashboard. Both packages are lazy-loaded, so a machine without them (or without CAN hardware) just logs a warning.
+
 ### `knx`
 
 ```json

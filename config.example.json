@@ -129,6 +129,17 @@
       { "storePrefix": "satel/zone/", "variablePrefix": "LSH_satel_zone_" }
     ]
   },
+  "can": {
+    "transport": "socketcan",
+    "interface": "can0",
+    "serialPort": "/dev/tty.usbmodem1234",
+    "bitrate": 250000,
+    "name": "bus",
+    "signals": [
+      { "name": "Battery Voltage", "id": "0x100", "extended": false, "start": 0, "length": 2, "endian": "little", "scale": 0.01, "unit": "V" },
+      { "name": "Relay 1", "id": "0x200", "start": 0, "length": 1, "writable": true, "min": 0, "max": 1 }
+    ]
+  },
   "knx": {
     "host": "192.168.1.x",
     "port": 3671,

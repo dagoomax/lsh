@@ -41,6 +41,7 @@ reference of every one).
 | **Arduino / generic MQTT** | `arduino` | Map JSON topics to sensors/outputs |
 | **BroadLink** | `broadlink` | IR / RF blasters |
 | **Waveshare Modbus TCP** | `waveshare` | Relay/gate controllers |
+| **CAN bus** | `can` | SocketCAN (Linux) or SLCAN USB adapter; signal mapping also covers NMEA 2000 / Victron VE.Can / CANopen frames |
 
 ## Climate & appliances
 

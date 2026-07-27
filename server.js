@@ -606,6 +606,15 @@ async function main() {
     }
   }
 
+  // Start CAN bus client if configured
+  if (config.can?.transport || config.can?.interface || config.can?.serialPort) {
+    const CanClient = tryRequire('./src/can-client');
+    if (CanClient) {
+      const can = new CanClient(config, store, sensorRegistry);
+      can.start().catch((err) => console.error(`[CAN] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Homey client if configured
   if (config.homey?.token && (config.homey?.host || config.homey?.homeyId)) {
     const HomeyClient = tryRequire('./src/homey-client');
