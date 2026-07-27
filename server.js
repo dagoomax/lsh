@@ -537,6 +537,15 @@ async function main() {
     }
   }
 
+  // Start Thermomix / Cookidoo client if configured
+  if (config.thermomix?.email && config.thermomix?.password) {
+    const ThermomixClient = tryRequire('./src/thermomix-client');
+    if (ThermomixClient) {
+      const thermomix = new ThermomixClient(config, store, sensorRegistry);
+      thermomix.start().catch((err) => console.error(`[Thermomix] Start failed: ${err.message}`));
+    }
+  }
+
   // Start SmartBob MQTT client if configured
   if (config.smartbob?.entities?.length) {
     const SmartBobClient = tryRequire('./src/smartbob-client');

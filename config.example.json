@@ -257,6 +257,12 @@
     "password": "",
     "pollInterval": 60
   },
+  "thermomix": {
+    "email": "you@example.com",
+    "password": "",
+    "country": "pl",
+    "pollSeconds": 300
+  },
   "zway": {
     "host": "192.168.1.x",
     "port": 8083,

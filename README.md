@@ -286,6 +286,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `bayrol` | No | Bayrol Pool Manager Connect / Automatic Cl-pH / SALT (pH, ORP, temperature, dosing rates, salt via MQTT) |
 | `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
 | `smarttub` | No | SmartTub hot tubs (Jacuzzi / Sundance / Watkins) — water/set temperature, heat mode, pumps, lights via cloud API |
+| `thermomix` | No | Vorwerk Thermomix (TM6 / TM7) via Cookidoo — shopping-list size, weekly meal plan, next recipe (read-only cloud) |
 | `zway` | No | Z-Way / RaZberry — Z-Wave switches, dimmers, thermostats, locks, sensors via ZAutomation REST API |
 | `wirenboard` | No | Wiren Board controllers — relays, dimmers, inputs, climate sensors via MQTT Conventions |
 | `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
@@ -991,6 +992,43 @@ Connects to **SmartTub**-enabled hot tubs (Jacuzzi, Sundance, Watkins and other 
 - **Lights** — per-zone on/off (`PATCH spas/<id>/lights/<zone>`)
 
 Temperatures are handled in **Celsius**; the API rejects set-points with more than one decimal place, so values are rounded to 0.1 °C.
+
+---
+
+### `thermomix`
+
+```json
+"thermomix": {
+  "email": "you@example.com",
+  "password": "your-password",
+  "country": "pl",
+  "pollSeconds": 300
+}
+```
+
+Connects a **Vorwerk Thermomix** (TM6 / TM7) to LSH through the **Cookidoo** recipe platform. The Thermomix itself has no public local API, so this integration reads from your Cookidoo account using the community-reverse-engineered cookie login (`ciam.prod.cookidoo.vorwerk-digital.com`). It is a read-only integration — no live cooking telemetry is exposed by Vorwerk.
+
+| Field | Default | Description |
+|---|---|---|
+| `email` | — | Cookidoo account email |
+| `password` | — | Cookidoo account password |
+| `country` | — | Country code selecting the Cookidoo site/language, e.g. `pl`, `de`, `at`, `ch`, `gb`, `fr`, `it`, `es`, `pt`, `nl`, `us`, `au` |
+| `baseUrl` | — | Override the site base URL (e.g. `https://cookidoo.pl`) when your country isn't in the built-in table |
+| `language` | — | Override the API language segment (e.g. `pl`, `de-DE`) — required alongside `baseUrl` |
+| `pollSeconds` | `300` | Refresh interval in seconds |
+
+**Authentication flow (cookie-based OAuth2):**
+1. GET the CIAM login form and extract the one-time `requestId` from its HTML
+2. POST `requestId` + `username` + `password` to `.../login-srv/login`; the redirect chain sets the `_oauth2_proxy` / `v-authenticated` session cookies
+3. Those cookies authenticate subsequent JSON requests to your Cookidoo site; LSH re-authenticates automatically on a `401`
+
+**Sensors:**
+- **Online** — whether the Cookidoo session is authenticated and reachable
+- **Shopping items** — number of items on your Cookidoo shopping list
+- **Planned recipes** — count of recipes in this week's meal plan (`my-week`)
+- **Next recipe** — title of the next planned recipe
+
+Because it rides an undocumented API, every request is defensively parsed and any failure is logged as a warning (the platform badge turns red) rather than interrupting the hub.
 
 ---
 
