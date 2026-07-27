@@ -121,18 +121,21 @@ async function main() {
   app.use(cookieParser());
 
   // React dashboard — public static files (API calls are Bearer-token protected)
-  // index.html must never be cached (iOS Safari otherwise serves a stale app
-  // shell referencing old bundles for days); the hashed assets stay cacheable.
+  // index.html must never be cached: Safari treats `no-cache` loosely and can
+  // keep serving a stale app shell that references deleted (rebuilt) bundle
+  // hashes → the JS 404s and the page is blank. `no-store` forbids caching it
+  // outright, so the shell is always fresh; the hashed assets stay cacheable.
+  const NO_STORE = 'no-store, no-cache, must-revalidate';
   const reactDist = path.join(__dirname, 'react-dashboard', 'dist');
   app.use('/react', express.static(reactDist, {
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('index.html') || filePath.endsWith('manifest.json')) {
-        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Cache-Control', NO_STORE);
       }
     },
   }));
   app.get('/react/*', (req, res) =>
-    res.sendFile(path.join(reactDist, 'index.html'), { headers: { 'Cache-Control': 'no-cache' } }));
+    res.sendFile(path.join(reactDist, 'index.html'), { headers: { 'Cache-Control': NO_STORE } }));
 
   // Aurora (the React dashboard) is now the primary dashboard — the classic
   // home page is replaced. Send the root (and the old index) to /react/.
