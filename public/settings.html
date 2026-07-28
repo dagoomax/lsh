@@ -149,6 +149,9 @@
     <div class="settings-cats" role="tablist">
       <button class="cat-btn active" data-cat="all" data-i18n="s2.cat_all">All</button>
       <button class="cat-btn" data-cat="energy">⚡ <span data-i18n="s2.cat_energy">Energy</span></button>
+      <button class="cat-btn" data-cat="lighting">💡 Lighting</button>
+      <button class="cat-btn" data-cat="climate">🌡️ Climate</button>
+      <button class="cat-btn" data-cat="media">🔊 Media</button>
       <button class="cat-btn" data-cat="smarthome">🏠 <span data-i18n="s2.cat_smarthome">Smart Home</span></button>
       <button class="cat-btn" data-cat="security">🔒 <span data-i18n="s2.cat_security">Security</span></button>
       <button class="cat-btn" data-cat="controllers">🎛️ <span data-i18n="s2.cat_controllers">Controllers</span></button>
@@ -437,7 +440,7 @@
     </section>
 
     <!-- Denon AVR -->
-    <section class="card settings-card" data-category="smarthome" data-title="Denon AV receiver amplifier audio volume input">
+    <section class="card settings-card" data-category="media" data-title="Denon AV receiver amplifier audio volume input">
       <h2>Denon AVR <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc" data-i18n-html="sdesc.d6">Controls Denon (and Marantz) AV receivers over the local network via the Telnet control protocol (port 23). Supports power on/standby, master volume, mute, and input selection.</p>
       <div class="form-group">
@@ -464,7 +467,7 @@
     </section>
 
     <!-- Sonos -->
-    <section class="card settings-card" data-category="smarthome" data-title="Sonos speaker music play pause volume zone">
+    <section class="card settings-card" data-category="media" data-title="Sonos speaker music play pause volume zone">
       <h2>Sonos <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc" data-i18n-html="sdesc.d7">Controls Sonos speakers on your local network via UPnP (port 1400). Auto-discovers all Zone Players via SSDP, or specify IPs manually. Provides play/pause, prev/next track, volume, and mute. No account required.</p>
       <div class="form-group">
@@ -486,7 +489,7 @@
     </section>
 
     <!-- AuxAir (AC Freedom) -->
-    <section class="card settings-card" data-category="smarthome" data-title="AuxAir AC Freedom air conditioner climate control">
+    <section class="card settings-card" data-category="climate" data-title="AuxAir AC Freedom air conditioner climate control">
       <h2>AuxAir / AC Freedom <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc" data-i18n-html="sdesc.d8">Controls AUX air conditioners via the AC Freedom cloud API. Supports on/off, temperature, mode (cool/heat/dry/fan/auto), and fan speed. Requires an AC Freedom account.</p>
       <div class="form-group">
@@ -542,7 +545,7 @@
     </section>
 
     <!-- Bayrol Pool Manager -->
-    <section class="card settings-card" data-category="smarthome" data-title="Bayrol Pool Manager Connect pool chemistry pH ORP chlorine">
+    <section class="card settings-card" data-category="climate" data-title="Bayrol Pool Manager Connect pool chemistry pH ORP chlorine">
       <h2>Bayrol Pool Manager Connect <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc" data-i18n-html="sdesc.d10">Connects to the Bayrol Pool Access cloud to read pH, ORP (redox), temperature, and free chlorine from a Pool Manager Connect device. Polling interval is 60 s by default.</p>
 
@@ -648,7 +651,7 @@
     </section>
 
     <!-- UniFi Protect -->
-    <section class="card settings-card" data-category="security" data-title="UniFi Protect cameras sensors">
+    <section class="card settings-card" data-category="cameras" data-title="UniFi Protect cameras sensors">
       <h2><span data-i18n="s.unifi_title">UniFi Protect</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc" data-i18n-html="sdesc.d13">Auto-discovers cameras (shown in dashboard) and sensors (door, motion, temperature, humidity) from a UniFi Dream Machine or UNVR.</p>
 
@@ -874,7 +877,7 @@
     </section>
 
     <!-- LG ThinQ -->
-    <section class="card settings-card" data-category="smarthome" data-title="LG ThinQ smart appliances air conditioner washing machine">
+    <section class="card settings-card" data-category="climate" data-title="LG ThinQ smart appliances air conditioner washing machine">
       <h2><span data-i18n="s.lgthinq_title">LG ThinQ</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc" data-i18n-html="sdesc.d19">Connects to your LG ThinQ account via the v1 cloud API. Use your LG account email and password to fetch tokens and user number automatically, or paste them manually. Password is never stored.</p>
 
@@ -925,7 +928,7 @@
     </section>
 
     <!-- Home Connect (Bosch/Siemens/Gaggenau) -->
-    <section class="card settings-card" data-category="smarthome" data-title="Home Connect Bosch Siemens Gaggenau Neff appliances dishwasher oven washer">
+    <section class="card settings-card" data-category="climate" data-title="Home Connect Bosch Siemens Gaggenau Neff appliances dishwasher oven washer">
       <h2>Home Connect <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Bosch, Siemens, Gaggenau and Neff appliances via the official Home Connect cloud. Register a free app at <a href="https://developer.home-connect.com" target="_blank" rel="noopener">developer.home-connect.com</a> (OAuth flow: <b>Device Flow</b>), save the credentials here, then run <code>node scripts/homeconnect-auth.js</code> on the server once to authorize. Tokens refresh automatically afterwards.</p>
 
@@ -952,7 +955,7 @@
     </section>
 
     <!-- Miele -->
-    <section class="card settings-card" data-category="smarthome" data-title="Miele home appliances washer dryer dishwasher oven">
+    <section class="card settings-card" data-category="climate" data-title="Miele home appliances washer dryer dishwasher oven">
       <h2>Miele@home <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc">Miele appliances via the official 3rd Party API. Register a free app at <a href="https://developer.miele.com" target="_blank" rel="noopener">developer.miele.com</a>, then enter its credentials plus your Miele account login — the server signs in directly. If the direct login is rejected, run <code>node scripts/miele-auth.js</code> on the server once instead.</p>
 
@@ -984,7 +987,7 @@
     </section>
 
     <!-- IKEA Dirigera -->
-    <section class="card settings-card" data-category="smarthome" data-title="IKEA Dirigera hub lights bulbs">
+    <section class="card settings-card" data-category="lighting" data-title="IKEA Dirigera hub lights bulbs">
       <h2><span data-i18n="s.dirigera_title">IKEA Dirigera</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc" data-i18n-html="sdesc.d20">Connects to an IKEA Dirigera hub (2022+). Discovers lights, outlets, blinds, motion sensors, and VINDSTYRKA air quality sensors. Requires a bearer token obtained once via <code>node scripts/dirigera-auth.js &lt;hub-ip&gt;</code> — press the button on the hub when prompted.</p>
 
@@ -1005,7 +1008,7 @@
     </section>
 
     <!-- IKEA Tradfri -->
-    <section class="card settings-card" data-category="smarthome" data-title="IKEA Tradfri gateway lights">
+    <section class="card settings-card" data-category="lighting" data-title="IKEA Tradfri gateway lights">
       <h2><span data-i18n="s.tradfri_title">IKEA Tradfri</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc" data-i18n-html="sdesc.d21">Connects to an older IKEA Tradfri gateway via CoAP/DTLS. Requires <code>npm install node-tradfri-client</code>. First run: enter the security code from the sticker on the gateway — generated identity and PSK are printed to the server log. Subsequent runs: leave the code blank and fill in identity + PSK.</p>
 
@@ -1155,7 +1158,7 @@
     </section>
 
     <!-- Shelly -->
-    <section class="card settings-card" data-category="controllers" data-title="Shelly smart plug switch relay">
+    <section class="card settings-card" data-category="lighting" data-title="Shelly smart plug switch relay">
       <h2><span data-i18n="s.shelly_title">Shelly</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
       <p class="section-desc" data-i18n-html="sdesc.d26">Add Shelly Gen1 and Gen2 smart devices by IP address. Switches, dimmers, plugs, and sensors are auto-detected and polled every 30 s.</p>
 
