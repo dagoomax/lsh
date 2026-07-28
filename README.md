@@ -2551,6 +2551,7 @@ Loxone Config limits how many command recognitions a single Virtual Input/Output
 
 **How the generated templates work:**
 - *Outputs*: digital sensors get `CmdOn`/`CmdOff` GET calls to `/api/device/<key>/set?sensor=…&value=1|0&token=…`; range sensors are analog with `<v>` substitution and the sensor's real min/max; trigger sensors are momentary (CmdOn only)
+- *RGB colour* (Hue, WLED, TRADFRI…): the `color` sensor is exported as an **analog** output (0–100100100). Wire a **Loxone Lighting Controller's colour output** to it — Loxone sends the composite value `r + g×1000 + b×1000000` (each channel 0–100), which LSH decodes into hue/saturation **and brightness**, so one output drives the full colour + dimming of the light
 - *Inputs*: one `VirtualInHttpCmd` per sensor with a `Check` pattern that matches that sensor's unique JSON fragment in `/api/devices` and captures the value with `\v` (numeric values — all LSH integrations store booleans as 0/1)
 
 ---

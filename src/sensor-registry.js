@@ -284,8 +284,21 @@ class SensorRegistry extends EventEmitter {
       return device._writeCapability(sensor.capabilityId, sensor.writeCmd, [value]);
     }
     if (sensor.type === 'color') {
-      // value = { hue: 0-100, saturation: 0-100 }
-      return device._writeCapability(sensor.capabilityId, 'setColor', [value]);
+      // Dashboard sends { hue: 0-100, saturation: 0-100 }; Loxone (and other
+      // Virtual-Output senders) send a scalar — a composite RGB number
+      // (r + g*1000 + b*1000000, each 0-100) or an "h,s" / "r,g,b" string.
+      const c = normalizeColor(value);
+      if (!c) throw new Error('Invalid colour value');
+      // A composite also carries brightness — drive the light's level too, so
+      // one Loxone colour output controls both hue and dimming.
+      if (c.level != null) {
+        const lvl = device.sensors.find((s) => s.path === 'level' && s.controllable);
+        if (lvl) {
+          try { await device._writeCapability(lvl.capabilityId, lvl.writeCmd || 'setLevel', [c.level]); }
+          catch { /* colour still applies even if brightness write fails */ }
+        }
+      }
+      return device._writeCapability(sensor.capabilityId, 'setColor', [{ hue: c.hue, saturation: c.saturation }]);
     }
     // toggle: normalize string 'on'/'off'/'1'/'0' and boolean/number values
     const on = value === true || value === 1 || value === 'on' || value === '1' || value === 'true';
@@ -293,5 +306,51 @@ class SensorRegistry extends EventEmitter {
     return device._writeCapability(sensor.capabilityId, command);
   }
 }
+
+// ── Colour value normalisation (dashboard object, or Loxone/VO scalar) ───────
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+function rgbToHsv(r, g, b) { // 0-255 → { h:0-360, s:0-100, v:0-100 }
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0;
+  if (d) {
+    if (max === r)      h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else                h = (r - g) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  return { h, s: (max ? d / max : 0) * 100, v: max * 100 };
+}
+
+// Returns { hue:0-100, saturation:0-100, level?:0-100 } or null.
+function normalizeColor(value) {
+  if (value && typeof value === 'object') {
+    if (value.hue != null && value.saturation != null) {
+      return { hue: clamp(Number(value.hue), 0, 100), saturation: clamp(Number(value.saturation), 0, 100) };
+    }
+    return null;
+  }
+  const str = String(value).trim();
+  if (str.includes(',')) {
+    const p = str.split(',').map(Number);
+    if (p.length === 2 && p.every(Number.isFinite)) {
+      return { hue: clamp(p[0], 0, 100), saturation: clamp(p[1], 0, 100) };
+    }
+    if (p.length === 3 && p.every(Number.isFinite)) { // r,g,b 0-255
+      const { h, s, v } = rgbToHsv(p[0], p[1], p[2]);
+      return { hue: Math.round(h / 3.6), saturation: Math.round(s), level: Math.round(v) };
+    }
+    return null;
+  }
+  const n = Number(str);
+  if (!Number.isFinite(n) || n < 0 || n > 100100100) return null;
+  // Loxone RGB composite: value = r + g*1000 + b*1000000, each channel 0-100.
+  const r = n % 1000, g = Math.floor(n / 1000) % 1000, b = Math.floor(n / 1000000);
+  const { h, s, v } = rgbToHsv((r / 100) * 255, (g / 100) * 255, (b / 100) * 255);
+  return { hue: Math.round(h / 3.6), saturation: Math.round(s), level: Math.round(v) };
+}
+
+SensorRegistry._normalizeColor = normalizeColor; // exported for tests
 
 module.exports = SensorRegistry;

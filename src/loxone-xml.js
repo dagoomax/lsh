@@ -54,7 +54,7 @@ function isInputSensor(s) {
 }
 
 function isOutputSensor(s) {
-  return !s.hidden && s.controllable && s.type !== 'color';
+  return !s.hidden && s.controllable;
 }
 
 /**
@@ -103,7 +103,17 @@ function buildOutputsXml(devices, { host, token } = {}) {
       const comment = `${device.key}/${sensor.path} [${sensor.type || 'toggle'}]`;
       const common  = `Comment="${xmlEsc(comment)}" Title="${xmlEsc(title)}" RepeatRate="0" Repeat="0"`;
 
-      if (sensor.type === 'range' || sensor.type === 'color-temp') {
+      if (sensor.type === 'color') {
+        // RGB: wire a Loxone Lighting Controller's colour output here. Loxone
+        // emits a single composite value (r + g*1000 + b*1000000, each 0-100);
+        // LSH decodes it to hue/saturation (+ brightness) on /set.
+        cmds.push(
+          `\t<VirtualOutCmd ${common} Analog="true" MinVal="0.0" MaxVal="100100100.0" ` +
+          `CmdOffPost="" CmdOffHTTP="" CmdOff="" CmdOnPost="" CmdOnHTTP="" ` +
+          `CmdOn="${xmlEsc(setUrl(device.key, sensor.path, '<v>', token))}" ` +
+          `CmdOffMethod="GET" CmdOnMethod="GET"/>`
+        );
+      } else if (sensor.type === 'range' || sensor.type === 'color-temp') {
         // Analog: Loxone substitutes <v> with the analog value
         cmds.push(
           `\t<VirtualOutCmd ${common} Analog="true" MinVal="${(sensor.min ?? 0).toFixed(1)}" MaxVal="${(sensor.max ?? 100).toFixed(1)}" ` +
