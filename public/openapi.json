@@ -3,7 +3,7 @@
   "info": {
     "title": "LSH — Lightweight Smart Home API",
     "version": "1.0.1",
-    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 189 endpoints.",
+    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 201 endpoints.",
     "license": {
       "name": "Repository",
       "url": "https://github.com/dagoomax/lsh"
@@ -74,7 +74,7 @@
     },
     {
       "name": "Sonos: URL playback + TTS announcements",
-      "description": "11 endpoints"
+      "description": "13 endpoints"
     },
     {
       "name": "Hardware simulators (scripts/*-simulator.js)",
@@ -82,10 +82,18 @@
     },
     {
       "name": "Camera PTZ",
-      "description": "4 endpoints"
+      "description": "5 endpoints"
     },
     {
       "name": "Reolink PoE cameras",
+      "description": "2 endpoints"
+    },
+    {
+      "name": "MOBOTIX",
+      "description": "2 endpoints"
+    },
+    {
+      "name": "Axis (VAPIX)",
       "description": "2 endpoints"
     },
     {
@@ -146,7 +154,23 @@
     },
     {
       "name": "Homey",
-      "description": "4 endpoints"
+      "description": "3 endpoints"
+    },
+    {
+      "name": "Viessmann ViCare",
+      "description": "1 endpoint"
+    },
+    {
+      "name": "Thermomix / Cookidoo",
+      "description": "1 endpoint"
+    },
+    {
+      "name": "Grenton (GATE HTTP)",
+      "description": "1 endpoint"
+    },
+    {
+      "name": "WLED",
+      "description": "3 endpoints"
     },
     {
       "name": "Somfy",
@@ -3106,6 +3130,88 @@
         }
       }
     },
+    "/mobotix/snapshot/{idx}": {
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /mobotix/snapshot/:idx",
+        "operationId": "get_mobotix_snapshot_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/axis/snapshot/{idx}": {
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /axis/snapshot/:idx",
+        "operationId": "get_axis_snapshot_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/kenik/snapshot/{idx}": {
       "get": {
         "tags": [
@@ -3331,6 +3437,57 @@
         }
       }
     },
+    "/axis/ptz/{idx}": {
+      "post": {
+        "tags": [
+          "Camera PTZ"
+        ],
+        "summary": "POST /axis/ptz/:idx",
+        "operationId": "post_axis_ptz_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
     "/camera/ptz/{idx}": {
       "post": {
         "tags": [
@@ -3471,6 +3628,170 @@
         ],
         "summary": "POST /settings/test-reolink",
         "operationId": "post_settings_test_reolink",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/mobotix": {
+      "post": {
+        "tags": [
+          "MOBOTIX"
+        ],
+        "summary": "POST /settings/mobotix",
+        "operationId": "post_settings_mobotix",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-mobotix": {
+      "post": {
+        "tags": [
+          "MOBOTIX"
+        ],
+        "summary": "POST /settings/test-mobotix",
+        "operationId": "post_settings_test_mobotix",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/axis": {
+      "post": {
+        "tags": [
+          "Axis (VAPIX)"
+        ],
+        "summary": "POST /settings/axis",
+        "operationId": "post_settings_axis",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-axis": {
+      "post": {
+        "tags": [
+          "Axis (VAPIX)"
+        ],
+        "summary": "POST /settings/test-axis",
+        "operationId": "post_settings_test_axis",
         "responses": {
           "200": {
             "description": "Success",
@@ -5181,10 +5502,215 @@
         }
       }
     },
+    "/settings/vicare": {
+      "post": {
+        "tags": [
+          "Viessmann ViCare"
+        ],
+        "summary": "POST /settings/vicare",
+        "operationId": "post_settings_vicare",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/thermomix": {
+      "post": {
+        "tags": [
+          "Thermomix / Cookidoo"
+        ],
+        "summary": "POST /settings/thermomix",
+        "operationId": "post_settings_thermomix",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/grenton": {
+      "post": {
+        "tags": [
+          "Grenton (GATE HTTP)"
+        ],
+        "summary": "POST /settings/grenton",
+        "operationId": "post_settings_grenton",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/wled": {
+      "post": {
+        "tags": [
+          "WLED"
+        ],
+        "summary": "POST /settings/wled",
+        "operationId": "post_settings_wled",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-wled": {
+      "post": {
+        "tags": [
+          "WLED"
+        ],
+        "summary": "POST /settings/test-wled",
+        "operationId": "post_settings_test_wled",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings/homey": {
       "post": {
         "tags": [
-          "Homey"
+          "WLED"
         ],
         "summary": "POST /settings/homey",
         "operationId": "post_settings_homey",
