@@ -1452,6 +1452,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.bayrol?.password)      safe.bayrol.password      = '••••••••';
     if (safe.somfy?.password)       safe.somfy.password       = '••••••••';
     if (safe.vicare?.password)      safe.vicare.password      = '••••••••';
+    if (safe.thermomix?.password)   safe.thermomix.password   = '••••••••';
     if (Array.isArray(safe.reolink?.cameras)) safe.reolink.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.mobotix?.cameras)) safe.mobotix.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.axis?.cameras)) safe.axis.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
@@ -2029,6 +2030,27 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         },
       });
       res.json({ success: true, message: 'ViCare settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Thermomix / Cookidoo ────────────────────────────────────
+  router.post('/settings/thermomix', (req, res) => {
+    const current = readConfigFile();
+    const { email, password, country, pollSeconds } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        thermomix: {
+          ...current.thermomix,
+          email:       email || current.thermomix?.email || '',
+          password:    (password && !password.includes('•')) ? password : (current.thermomix?.password || ''),
+          country:     country || current.thermomix?.country || 'pl',
+          pollSeconds: parseInt(pollSeconds) || 300,
+        },
+      });
+      res.json({ success: true, message: 'Thermomix settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

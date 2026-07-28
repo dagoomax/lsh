@@ -188,6 +188,12 @@ async function loadSettings() {
     setVal('vicare-redirect',  data.vicare?.redirectUri || 'http://localhost:4200/');
     setVal('vicare-poll',      data.vicare?.pollInterval || 120);
 
+    // Thermomix / Cookidoo
+    setVal('thermomix-email',    data.thermomix?.email || '');
+    setVal('thermomix-password', data.thermomix?.password ? '••••••••' : '');
+    setVal('thermomix-country',  data.thermomix?.country || 'pl');
+    setVal('thermomix-poll',     data.thermomix?.pollSeconds || 300);
+
     // WLED
     currentWled = data.wled?.devices || [];
     renderWledList(currentWled);
@@ -925,6 +931,33 @@ document.getElementById('btn-save-vicare')?.addEventListener('click', async () =
         clientId:     getVal('vicare-client-id'),
         redirectUri:  getVal('vicare-redirect'),
         pollInterval: getVal('vicare-poll'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Thermomix / Cookidoo ────────────────────────────────────────────────────
+document.getElementById('btn-save-thermomix')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-thermomix');
+  const resultEl = document.getElementById('thermomix-test-result');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/settings/thermomix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email:       getVal('thermomix-email'),
+        password:    getVal('thermomix-password'),
+        country:     getVal('thermomix-country'),
+        pollSeconds: getVal('thermomix-poll'),
       }),
     });
     const json = await res.json();

@@ -1018,6 +1018,47 @@
       </div>
     </section>
 
+    <!-- Thermomix / Cookidoo -->
+    <section class="card settings-card" data-category="climate" data-title="Thermomix Vorwerk Cookidoo TM6 TM7 recipes shopping list meal plan">
+      <h2>Thermomix (Cookidoo) <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Vorwerk Thermomix (TM6 / TM7) via your <a href="https://cookidoo.international" target="_blank" rel="noopener">Cookidoo</a> account — shopping-list size, this week's meal plan and the next planned recipe (read-only; the appliance has no local API).</p>
+
+      <div class="form-row">
+        <label for="thermomix-email">Cookidoo Account Email</label>
+        <input type="email" id="thermomix-email" placeholder="you@example.com" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="thermomix-password">Cookidoo Account Password</label>
+        <input type="password" id="thermomix-password" placeholder="••••••••" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="thermomix-country">Country</label>
+        <select id="thermomix-country" style="max-width:220px">
+          <option value="pl">Poland (cookidoo.pl)</option>
+          <option value="de">Germany (cookidoo.de)</option>
+          <option value="at">Austria (cookidoo.at)</option>
+          <option value="ch">Switzerland (cookidoo.ch)</option>
+          <option value="gb">United Kingdom (cookidoo.co.uk)</option>
+          <option value="fr">France (cookidoo.fr)</option>
+          <option value="it">Italy (cookidoo.it)</option>
+          <option value="es">Spain (cookidoo.es)</option>
+          <option value="pt">Portugal (cookidoo.pt)</option>
+          <option value="nl">Netherlands (cookidoo.nl)</option>
+          <option value="us">USA (cookidoo.com)</option>
+          <option value="au">Australia (cookidoo.com.au)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="thermomix-poll">Poll interval <span class="hint">(seconds, min 60)</span></label>
+        <input type="number" id="thermomix-poll" min="60" placeholder="300" style="max-width:120px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-thermomix" data-i18n="common.save">Save</button>
+        <span class="test-result" id="thermomix-test-result"></span>
+      </div>
+    </section>
+
     <!-- IKEA Dirigera -->
     <section class="card settings-card" data-category="lighting" data-title="IKEA Dirigera hub lights bulbs">
       <h2><span data-i18n="s.dirigera_title">IKEA Dirigera</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
@@ -1742,7 +1783,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="i18n.js?v=4"></script>
-  <script src="settings.js?v=7"></script>
+  <script src="settings.js?v=8"></script>
   <script src="theme.js?v=4"></script>
   <script src="common.js?v=4"></script>
 </body>
