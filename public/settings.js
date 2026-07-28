@@ -1,6 +1,8 @@
 let currentRelays = [];
 let currentCameras = [];
 let currentReolink = [];
+let currentMobotix = [];
+let currentAxis = [];
 let currentWled = [];
 let qrInstance = null;
 
@@ -241,6 +243,16 @@ async function loadSettings() {
     // Reolink PoE cameras (password comes back masked)
     currentReolink = data.reolink?.cameras || [];
     renderReolinkList(currentReolink);
+
+    // MOBOTIX
+    currentMobotix = data.mobotix?.cameras || [];
+    renderMobotixList(currentMobotix);
+    setVal('mobotix-poll', data.mobotix?.pollInterval || 30);
+
+    // Axis
+    currentAxis = data.axis?.cameras || [];
+    renderAxisList(currentAxis);
+    setVal('axis-poll', data.axis?.pollInterval || 30);
 
     // Relays
     currentRelays = data.relays || [];
@@ -2159,6 +2171,154 @@ document.getElementById('btn-save-reolink')?.addEventListener('click', async () 
     out.textContent = '✗ ' + e.message; out.className = 'test-result err';
   } finally { btn.disabled = false; }
 });
+
+// ── MOBOTIX (device list) ───────────────────────────────────────────────────
+function renderMobotixList(cams) {
+  const c = document.getElementById('mobotix-settings-list');
+  if (!c) return;
+  c.innerHTML = '';
+  if (!cams.length) { c.innerHTML = '<p class="hint" style="margin-bottom:12px">No MOBOTIX cameras yet.</p>'; return; }
+  cams.forEach((cam, i) => {
+    const row = document.createElement('div');
+    row.className = 'camera-settings-row';
+    row.innerHTML = `
+      <div class="camera-settings-fields">
+        <input type="text" class="mx-name" placeholder="Name" value="${escapeVal(cam.name || '')}">
+        <input type="text" class="mx-host" placeholder="Host / IP (192.168.1.60)" value="${escapeVal(cam.host || '')}">
+        <input type="text" class="mx-user" placeholder="Username (admin)" value="${escapeVal(cam.username || '')}">
+        <input type="password" class="mx-pass" placeholder="Password" value="${escapeVal(cam.password || '')}">
+        <div style="display:flex; gap:8px; grid-column:1/-1; flex-wrap:wrap; align-items:center">
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem"><input type="checkbox" class="mx-https"${cam.https ? ' checked' : ''}> HTTPS</label>
+          <input type="number" class="mx-port" min="0" placeholder="Port" value="${cam.port || ''}" style="width:80px" title="HTTP port (blank = 80/443)">
+          <input type="number" class="mx-rtsp" min="0" placeholder="RTSP" value="${cam.rtspPort || ''}" style="width:80px" title="RTSP port (default 554)">
+          <input type="text" class="mx-stream" placeholder="mobotix.mobotix.h264" value="${escapeVal(cam.streamPath || '')}" style="width:180px" title="RTSP stream path">
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem"><input type="checkbox" class="mx-door"${cam.door ? ' checked' : ''}> Door</label>
+          <button class="btn btn-secondary btn-sm mx-test" title="Pull a test snapshot">Test</button>
+          <span class="mx-test-result test-result"></span>
+        </div>
+      </div>
+      <button class="btn btn-remove mx-remove" title="Remove">✕</button>`;
+    row.querySelector('.mx-remove').addEventListener('click', () => { currentMobotix = collectMobotix(); currentMobotix.splice(i, 1); renderMobotixList(currentMobotix); });
+    row.querySelector('.mx-test').addEventListener('click', () => testCameraSnapshot(row, '.mx-', '/api/settings/test-mobotix'));
+    c.appendChild(row);
+  });
+}
+function collectMobotix() {
+  return Array.from(document.querySelectorAll('#mobotix-settings-list .camera-settings-row')).map((row) => ({
+    name:       row.querySelector('.mx-name').value.trim(),
+    host:       row.querySelector('.mx-host').value.trim(),
+    username:   row.querySelector('.mx-user').value.trim(),
+    password:   row.querySelector('.mx-pass').value,
+    https:      row.querySelector('.mx-https').checked,
+    port:       parseInt(row.querySelector('.mx-port').value) || 0,
+    rtspPort:   parseInt(row.querySelector('.mx-rtsp').value) || 554,
+    streamPath: row.querySelector('.mx-stream').value.trim(),
+    door:       row.querySelector('.mx-door').checked,
+  })).filter((c) => c.host);
+}
+document.getElementById('btn-add-mobotix')?.addEventListener('click', () => {
+  currentMobotix = collectMobotix();
+  currentMobotix.push({ name: '', host: '', username: 'admin', password: '', https: false, port: 0, rtspPort: 554, streamPath: 'mobotix.mobotix.h264', door: false });
+  renderMobotixList(currentMobotix);
+});
+document.getElementById('btn-save-mobotix')?.addEventListener('click', () => saveCameraList('mobotix', collectMobotix, 'mobotix-poll', 30, (c) => { currentMobotix = c; }));
+
+// ── Axis (device list) ───────────────────────────────────────────────────────
+function renderAxisList(cams) {
+  const c = document.getElementById('axis-settings-list');
+  if (!c) return;
+  c.innerHTML = '';
+  if (!cams.length) { c.innerHTML = '<p class="hint" style="margin-bottom:12px">No Axis cameras yet.</p>'; return; }
+  cams.forEach((cam, i) => {
+    const row = document.createElement('div');
+    row.className = 'camera-settings-row';
+    row.innerHTML = `
+      <div class="camera-settings-fields">
+        <input type="text" class="ax-name" placeholder="Name" value="${escapeVal(cam.name || '')}">
+        <input type="text" class="ax-host" placeholder="Host / IP (192.168.1.70)" value="${escapeVal(cam.host || '')}">
+        <input type="text" class="ax-user" placeholder="Username (root)" value="${escapeVal(cam.username || '')}">
+        <input type="password" class="ax-pass" placeholder="Password" value="${escapeVal(cam.password || '')}">
+        <div style="display:flex; gap:8px; grid-column:1/-1; flex-wrap:wrap; align-items:center">
+          <select class="ax-auth" style="width:96px" title="HTTP auth">
+            <option value="digest"${cam.auth !== 'basic' ? ' selected' : ''}>digest</option>
+            <option value="basic"${cam.auth === 'basic' ? ' selected' : ''}>basic</option>
+          </select>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem"><input type="checkbox" class="ax-https"${cam.https ? ' checked' : ''}> HTTPS</label>
+          <input type="number" class="ax-port" min="0" placeholder="Port" value="${cam.port || ''}" style="width:80px" title="HTTP port (blank = 80/443)">
+          <input type="number" class="ax-rtsp" min="0" placeholder="RTSP" value="${cam.rtspPort || ''}" style="width:80px" title="RTSP port (default 554)">
+          <input type="text" class="ax-res" placeholder="Resolution" value="${escapeVal(cam.resolution || '')}" style="width:120px" title="Snapshot resolution WxH (optional)">
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem"><input type="checkbox" class="ax-ptz"${cam.ptz ? ' checked' : ''}> PTZ</label>
+          <button class="btn btn-secondary btn-sm ax-test" title="Pull a test snapshot">Test</button>
+          <span class="ax-test-result test-result"></span>
+        </div>
+      </div>
+      <button class="btn btn-remove ax-remove" title="Remove">✕</button>`;
+    row.querySelector('.ax-remove').addEventListener('click', () => { currentAxis = collectAxis(); currentAxis.splice(i, 1); renderAxisList(currentAxis); });
+    row.querySelector('.ax-test').addEventListener('click', () => testCameraSnapshot(row, '.ax-', '/api/settings/test-axis'));
+    c.appendChild(row);
+  });
+}
+function collectAxis() {
+  return Array.from(document.querySelectorAll('#axis-settings-list .camera-settings-row')).map((row) => ({
+    name:       row.querySelector('.ax-name').value.trim(),
+    host:       row.querySelector('.ax-host').value.trim(),
+    username:   row.querySelector('.ax-user').value.trim(),
+    password:   row.querySelector('.ax-pass').value,
+    auth:       row.querySelector('.ax-auth').value,
+    https:      row.querySelector('.ax-https').checked,
+    port:       parseInt(row.querySelector('.ax-port').value) || 0,
+    rtspPort:   parseInt(row.querySelector('.ax-rtsp').value) || 554,
+    resolution: row.querySelector('.ax-res').value.trim(),
+    ptz:        row.querySelector('.ax-ptz').checked,
+  })).filter((c) => c.host);
+}
+document.getElementById('btn-add-axis')?.addEventListener('click', () => {
+  currentAxis = collectAxis();
+  currentAxis.push({ name: '', host: '', username: 'root', password: '', auth: 'digest', https: false, port: 0, rtspPort: 554, resolution: '', ptz: false });
+  renderAxisList(currentAxis);
+});
+document.getElementById('btn-save-axis')?.addEventListener('click', () => saveCameraList('axis', collectAxis, 'axis-poll', 30, (c) => { currentAxis = c; }));
+
+// Shared helpers for the MOBOTIX / Axis camera lists.
+async function testCameraSnapshot(row, prefix, url) {
+  const btn = row.querySelector(prefix + 'test');
+  const out = row.querySelector(prefix + 'test-result');
+  const body = {
+    host:     row.querySelector(prefix + 'host').value.trim(),
+    username: row.querySelector(prefix + 'user').value.trim(),
+    password: row.querySelector(prefix + 'pass').value,
+    https:    row.querySelector(prefix + 'https').checked,
+    port:     parseInt(row.querySelector(prefix + 'port').value) || 0,
+  };
+  const authSel = row.querySelector(prefix + 'auth');
+  if (authSel) body.auth = authSel.value;
+  if (!body.host) { out.textContent = '✗ host required'; out.className = 'test-result err'; return; }
+  btn.disabled = true; out.textContent = '…'; out.className = 'test-result';
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json();
+    out.textContent = j.success ? '✓ ' + j.message : '✗ ' + j.error;
+    out.className = 'test-result ' + (j.success ? 'ok' : 'err');
+  } catch (e) { out.textContent = '✗ ' + e.message; out.className = 'test-result err'; }
+  finally { btn.disabled = false; }
+}
+async function saveCameraList(platform, collect, pollId, pollDefault, onOk) {
+  const btn = document.getElementById('btn-save-' + platform);
+  const out = document.getElementById(platform + '-save-result');
+  btn.disabled = true;
+  try {
+    const cameras = collect();
+    const res = await fetch('/api/settings/' + platform, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cameras, pollInterval: parseInt(getVal(pollId)) || pollDefault }),
+    });
+    const j = await res.json();
+    out.textContent = j.success ? '✓ ' + j.message : '✗ ' + j.error;
+    out.className = 'test-result ' + (j.success ? 'ok' : 'err');
+    if (j.success) onOk(cameras);
+  } catch (e) { out.textContent = '✗ ' + e.message; out.className = 'test-result err'; }
+  finally { btn.disabled = false; }
+}
 
 // ── SolarEdge test + save ──────────────────────────────────────────────────
 

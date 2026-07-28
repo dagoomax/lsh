@@ -1345,6 +1345,42 @@
       </div>
     </section>
 
+    <!-- MOBOTIX -->
+    <section class="card settings-card" data-category="cameras" data-title="MOBOTIX camera IP video door station RTSP snapshot rcontrol">
+      <h2>MOBOTIX <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">MOBOTIX IP cameras / IP video door stations. Snapshots (<code>/cgi-bin/image.jpg</code>, HTTP Basic) are proxied so the password stays server-side. Door/relay outputs are advanced — configure them in <code>config.json</code>; they're preserved when you save here.</p>
+
+      <div id="mobotix-settings-list"></div>
+      <button class="btn btn-secondary" id="btn-add-mobotix">+ Add MOBOTIX Camera</button>
+
+      <div class="form-row" style="margin-top:14px">
+        <label for="mobotix-poll">Poll interval <span class="hint">(seconds)</span></label>
+        <input type="number" id="mobotix-poll" min="5" placeholder="30" style="max-width:120px">
+      </div>
+      <div class="form-actions" style="margin-top:8px">
+        <button class="btn btn-primary" id="btn-save-mobotix" data-i18n="common.save">Save</button>
+        <span class="test-result" id="mobotix-save-result"></span>
+      </div>
+    </section>
+
+    <!-- Axis -->
+    <section class="card settings-card" data-category="cameras" data-title="Axis VAPIX IP camera RTSP snapshot PTZ digest">
+      <h2>Axis <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Axis IP cameras via VAPIX. Snapshots (<code>/axis-cgi/jpg/image.cgi</code>) are proxied; Axis defaults to HTTP Digest auth. I/O relay outputs are advanced — configure them in <code>config.json</code>; they're preserved when you save here.</p>
+
+      <div id="axis-settings-list"></div>
+      <button class="btn btn-secondary" id="btn-add-axis">+ Add Axis Camera</button>
+
+      <div class="form-row" style="margin-top:14px">
+        <label for="axis-poll">Poll interval <span class="hint">(seconds)</span></label>
+        <input type="number" id="axis-poll" min="5" placeholder="30" style="max-width:120px">
+      </div>
+      <div class="form-actions" style="margin-top:8px">
+        <button class="btn btn-primary" id="btn-save-axis" data-i18n="common.save">Save</button>
+        <span class="test-result" id="axis-save-result"></span>
+      </div>
+    </section>
+
     <!-- Cameras -->
     <section class="card settings-card" data-category="cameras" data-title="Cameras RTSP streams video">
       <h2 data-i18n="s.cameras_title">Cameras</h2>
@@ -1706,7 +1742,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="i18n.js?v=4"></script>
-  <script src="settings.js?v=5"></script>
+  <script src="settings.js?v=6"></script>
   <script src="theme.js?v=4"></script>
   <script src="common.js?v=4"></script>
 </body>
