@@ -302,6 +302,16 @@
       { "name": "Driveway", "host": "192.168.1.50", "username": "admin", "password": "", "channel": 0, "stream": "main", "https": false, "port": 0, "webrtcUrl": "", "aiDetect": true }
     ]
   },
+  "mobotix": {
+    "pollInterval": 30,
+    "cameras": [
+      { "name": "Front Door", "host": "192.168.1.60", "username": "admin", "password": "", "https": false, "port": 0, "rtspPort": 554, "streamPath": "mobotix.mobotix.h264", "door": true,
+        "outputs": [
+          { "name": "Open door", "action": "action=putrs232outputs&params=%2BO0", "momentary": true, "pulseMs": 1200 }
+        ]
+      }
+    ]
+  },
   "kenik": {
     "host": "192.168.1.90",
     "username": "admin",

@@ -298,6 +298,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `sip` | No | SIP softphone (WebSocket transport) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
 | `reolink` | No | Reolink PoE cameras / NVR (proxied snapshots + RTSP + AI object detection) |
+| `mobotix` | No | MOBOTIX cameras / IP video door stations (proxied snapshots + RTSP + rcontrol outputs / door relay) |
 | `relays` | No | Victron relay index + display name |
 | `homekit` | No | HomeKit bridge — requires `hap-nodejs` npm package |
 | `server` | Yes | HTTP port, HTTPS, and Let's Encrypt |
@@ -1306,6 +1307,37 @@ Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standa
 - `ptz: true` — shows a PTZ pad in the camera modal, driven by Reolink's `PtzCtrl` API (press-and-hold arrows / zoom, released = stop)
 
 **AI object detection** — cameras with onboard AI (most PoE models) get polled every `aiPollInterval` seconds (top-level, default 5) via `cmd=GetAiState`. Each category the camera actually supports — **person**, **vehicle**, **pet**, **face**, and any newer category a model reports — shows up as its own device (`Driveway — Person`, `Driveway — Vehicle`, …), each exposed to HomeKit as a motion sensor, so "person detected" and "vehicle detected" can drive separate automations instead of one generic motion trigger. Set `"aiDetect": false` on a camera to skip AI polling for it (e.g. to cut down on request volume for a large NVR); cameras without AI hardware simply never register any detection devices, no toggle needed.
+
+### `mobotix`
+
+```json
+"mobotix": {
+  "pollInterval": 30,
+  "cameras": [
+    { "name": "Front Door", "host": "192.168.1.60", "username": "admin", "password": "secret", "https": false, "port": 0, "rtspPort": 554, "streamPath": "mobotix.mobotix.h264", "door": true,
+      "outputs": [
+        { "name": "Open door", "action": "action=putrs232outputs&params=%2BO0", "momentary": true, "pulseMs": 1200 }
+      ]
+    }
+  ]
+}
+```
+
+Support for **MOBOTIX IP cameras and IP video door stations** (T2x/T3x). Each entry is one camera. LSH pulls JPEG snapshots from MOBOTIX's `/cgi-bin/image.jpg` CGI and proxies them at `/api/mobotix/snapshot/<index>` so **the browser never sees the camera password** (HTTP Basic auth — enable it on the camera under *Admin › Users*). The RTSP URL is built automatically as `rtsp://<user>:<pass>@<host>:<rtspPort>/<streamPath>` (default stream `mobotix.mobotix.h264`) for use with go2rtc / VLC / an NVR; set `webrtcUrl` to a go2rtc endpoint for in-dashboard live view.
+
+- `https` / `port` — override the snapshot transport (defaults: HTTP on port 80; set `https:true` and `port:443` for HTTPS)
+- `rtspPort` — RTSP port (default 554); `streamPath` — RTSP stream name (default `mobotix.mobotix.h264`; use `mobotix.mobotix.mxg` for MxPEG)
+- `snapshotSize` — optional `WxH` passed to the snapshot CGI (e.g. `1280x720`)
+- `door: true` — cosmetic; uses a door icon instead of a camera icon
+- `pollInterval` — reachability poll in seconds (top-level, default 30); drives the per-camera **Online** sensor and the platform badge
+
+**Outputs / door control** — each `outputs[]` entry becomes a controllable switch on the camera's device (and a HomeKit switch), driven through MOBOTIX's **rcontrol** HTTP API (`GET /control/rcontrol?<action>`). Because the exact command depends on your camera's signal-out profile, the `action` is the raw rcontrol query string rather than a hardcoded command:
+
+- `action` (or `on`) — rcontrol query fired when the switch turns **on**, e.g. `action=putrs232outputs&params=%2BO0` (`%2B` = URL-encoded `+`)
+- `off` — optional rcontrol query fired when turned **off** (for a latching relay)
+- `momentary: true` — treat it as a pulse (a door relay): fire `action`, then report the switch back off after `pulseMs` (default 1200 ms). Omitting `off` implies momentary.
+
+> The rcontrol API must be enabled on the camera (*Admin › Network › Web Server / API*) and the configured user needs control rights. Consult your camera's *Admin › Setup › Signal Out* profile for the exact `putrs232outputs`/action parameters — MOBOTIX does not expose a universal "open door" command.
 
 ### `kenik`
 

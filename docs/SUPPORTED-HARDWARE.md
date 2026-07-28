@@ -72,6 +72,7 @@ reference of every one).
 | **UniFi Protect** | `unifi` | Proxied snapshots + RTSPS |
 | **Reolink** (PoE / NVR) | `reolink` | Snapshots, RTSP, AI object detection |
 | **KENIK / Eltrox** (DVR/XVR) | `kenik` | IP cameras and recorders |
+| **MOBOTIX** (cameras / door stations) | `mobotix` | Snapshots, RTSP, rcontrol outputs & door relay |
 | **Manual cameras** | `cameras` | RTSP, snapshot, MJPEG, WebRTC (any brand) |
 
 ## Robots & lawn

@@ -77,6 +77,16 @@ async function main() {
     if (n) console.log(`[KENIK] ${n} camera(s) configured`);
   }
 
+  // MOBOTIX cameras / IP video door stations — same live-config pattern
+  let mobotix = null;
+  const MobotixClient = tryRequire('./src/mobotix-client');
+  if (MobotixClient) {
+    mobotix = new MobotixClient(store, sensorRegistry);
+    const n = mobotix.getCameras().length;
+    if (n) console.log(`[MOBOTIX] ${n} camera(s) configured`);
+    mobotix.start().catch((err) => console.error(`[MOBOTIX] Start failed: ${err.message}`));
+  }
+
   // Hardware simulator manager — spawns scripts/*-simulator.js per
   // config.simulators; toggled live via /api/simulators
   let simulators = null;
@@ -179,7 +189,7 @@ async function main() {
   const AutomationEngine = tryRequire('./src/automation-engine');
   if (AutomationEngine) automation = new AutomationEngine(store, sensorRegistry, relayController, config);
 
-  const apiClients = { unifiProtect, reolink, kenik, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────

@@ -19,7 +19,7 @@ function writeConfigFile(data) {
 }
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
-  const { unifiProtect, reolink, kenik, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, smartThings } = clients;
+  const { unifiProtect, reolink, kenik, mobotix, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, smartThings } = clients;
 
   // Secure cookie flag per request, not per server: with both HTTP and HTTPS
   // listeners up, a login over plain http (e.g. phone → http://<lan-ip>:3001)
@@ -630,10 +630,11 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
     const reolinkCams = reolink ? reolink.getCameras() : [];
     const kenikCams   = kenik ? kenik.getCameras() : [];
+    const mobotixCams = mobotix ? mobotix.getCameras() : [];
     // Manual cameras with an `onvif` section get PTZ through the generic proxy
     const manualCams = (cfg.cameras || []).map((c, idx) =>
       c.onvif ? { ...c, ptzUrl: `/api/camera/ptz/${idx}` } : c);
-    res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...stCams] });
+    res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...stCams] });
   });
 
   // ── SIP doorbell intercom ─────────────────────────────────
@@ -768,6 +769,12 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   router.get('/reolink/snapshot/:idx', (req, res) => {
     if (!reolink) return res.status(503).end();
     reolink.proxySnapshot(req.params.idx, res);
+  });
+
+  // MOBOTIX snapshot proxy — keeps camera credentials server-side
+  router.get('/mobotix/snapshot/:idx', (req, res) => {
+    if (!mobotix) return res.status(503).end();
+    mobotix.proxySnapshot(req.params.idx, res);
   });
 
   // KENIK snapshot proxy — one ffmpeg-grabbed RTSP frame, credentials stay server-side
@@ -1352,6 +1359,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.bayrol?.password)      safe.bayrol.password      = '••••••••';
     if (safe.somfy?.password)       safe.somfy.password       = '••••••••';
     if (Array.isArray(safe.reolink?.cameras)) safe.reolink.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
+    if (Array.isArray(safe.mobotix?.cameras)) safe.mobotix.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (safe.somfy?.token)          safe.somfy.token          = '••••••••';
     if (safe.loxoneOut?.password)   safe.loxoneOut.password   = '••••••••';
     if (safe.fibaroOut?.password)   safe.fibaroOut.password   = '••••••••';
