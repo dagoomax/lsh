@@ -986,6 +986,38 @@
       </div>
     </section>
 
+    <!-- Viessmann ViCare -->
+    <section class="card settings-card" data-category="climate" data-title="Viessmann ViCare heating boiler heat pump hot water burner">
+      <h2>Viessmann ViCare <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Viessmann heating (boilers / heat pumps) via the Viessmann IoT cloud. Create a free API client at <a href="https://developer.viessmann.com" target="_blank" rel="noopener">developer.viessmann.com</a> (redirect URI <code>http://localhost:4200/</code>, Google reCAPTCHA disabled), then enter its Client ID plus your ViCare account login.</p>
+
+      <div class="form-row">
+        <label for="vicare-user">ViCare Account Email</label>
+        <input type="email" id="vicare-user" placeholder="you@example.com" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="vicare-password">ViCare Account Password</label>
+        <input type="password" id="vicare-password" placeholder="••••••••" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="vicare-client-id">API Client ID</label>
+        <input type="text" id="vicare-client-id" placeholder="" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="vicare-redirect">Redirect URI <span class="hint">(must match the API client)</span></label>
+        <input type="text" id="vicare-redirect" placeholder="http://localhost:4200/" style="max-width:280px">
+      </div>
+      <div class="form-row">
+        <label for="vicare-poll">Poll interval <span class="hint">(seconds, min 60 — API is rate-limited)</span></label>
+        <input type="number" id="vicare-poll" min="60" placeholder="120" style="max-width:120px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-vicare" data-i18n="common.save">Save</button>
+        <span class="test-result" id="vicare-test-result"></span>
+      </div>
+    </section>
+
     <!-- IKEA Dirigera -->
     <section class="card settings-card" data-category="lighting" data-title="IKEA Dirigera hub lights bulbs">
       <h2><span data-i18n="s.dirigera_title">IKEA Dirigera</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
@@ -1032,6 +1064,26 @@
       <div class="form-actions">
         <button class="btn btn-primary" id="btn-save-tradfri" data-i18n="common.save">Save</button>
         <span class="test-result" id="tradfri-save-result"></span>
+      </div>
+    </section>
+
+    <!-- WLED -->
+    <section class="card settings-card" data-category="lighting" data-title="WLED addressable LED strip ESP32 ESP8266 RGB RGBW colour light">
+      <h2>WLED <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">WLED addressable-LED controllers (ESP8266 / ESP32) via the local JSON API — power, brightness and RGB(W) colour. Add each controller's IP; the name defaults to WLED's own if left blank.</p>
+
+      <div id="wled-settings-list"></div>
+      <div class="form-actions" style="margin-top:8px">
+        <button class="btn btn-secondary" id="btn-add-wled">+ Add controller</button>
+      </div>
+      <div class="form-row">
+        <label for="wled-poll">Poll interval <span class="hint">(seconds)</span></label>
+        <input type="number" id="wled-poll" min="1" placeholder="5" style="max-width:120px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-wled" data-i18n="common.save">Save</button>
+        <span class="test-result" id="wled-test-result"></span>
       </div>
     </section>
 
@@ -1654,7 +1706,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="i18n.js?v=4"></script>
-  <script src="settings.js?v=4"></script>
+  <script src="settings.js?v=5"></script>
   <script src="theme.js?v=4"></script>
   <script src="common.js?v=4"></script>
 </body>

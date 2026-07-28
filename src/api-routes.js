@@ -1930,6 +1930,55 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // ── Viessmann ViCare ───────────────────────────────────────────────────────
+
+  router.post('/settings/vicare', (req, res) => {
+    const current = readConfigFile();
+    const { user, password, clientId, redirectUri, pollInterval } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        vicare: {
+          ...current.vicare,
+          user:         user || current.vicare?.user || '',
+          password:     (password && !password.includes('•')) ? password : (current.vicare?.password || ''),
+          clientId:     clientId || current.vicare?.clientId || '',
+          redirectUri:  redirectUri || current.vicare?.redirectUri || 'http://localhost:4200/',
+          pollInterval: parseInt(pollInterval) || 120,
+        },
+      });
+      res.json({ success: true, message: 'ViCare settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── WLED ─────────────────────────────────────────────────────────────────────
+
+  router.post('/settings/wled', (req, res) => {
+    const current = readConfigFile();
+    const devs = req.body?.devices ?? req.body;
+    if (!Array.isArray(devs)) return res.status(400).json({ success: false, error: 'Body must include a devices array' });
+    const cleaned = devs.map((d) => ({
+      name: String(d.name || '').trim(),
+      host: String(d.host || '').trim(),
+      port: parseInt(d.port) || 80,
+    })).filter((d) => d.host);
+    try {
+      writeConfigFile({
+        ...current,
+        wled: {
+          ...current.wled,
+          pollInterval: parseInt(req.body?.pollInterval) || current.wled?.pollInterval || 5,
+          devices: cleaned,
+        },
+      });
+      res.json({ success: true, message: `${cleaned.length} WLED controller(s) saved. Restart to apply.` });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   router.post('/settings/homey', (req, res) => {
     const current = readConfigFile();
     const { mode, host, homeyId, token, pollInterval } = req.body;

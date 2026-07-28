@@ -1,6 +1,7 @@
 let currentRelays = [];
 let currentCameras = [];
 let currentReolink = [];
+let currentWled = [];
 let qrInstance = null;
 
 async function loadSettings() {
@@ -177,6 +178,18 @@ async function loadSettings() {
     setVal('miele-username',      data.miele?.username || '');
     setVal('miele-password',      data.miele?.password ? '••••••••' : '');
     setVal('miele-country',       data.miele?.country || 'de-DE');
+
+    // Viessmann ViCare
+    setVal('vicare-user',      data.vicare?.user || '');
+    setVal('vicare-password',  data.vicare?.password ? '••••••••' : '');
+    setVal('vicare-client-id', data.vicare?.clientId || '');
+    setVal('vicare-redirect',  data.vicare?.redirectUri || 'http://localhost:4200/');
+    setVal('vicare-poll',      data.vicare?.pollInterval || 120);
+
+    // WLED
+    currentWled = data.wled?.devices || [];
+    renderWledList(currentWled);
+    setVal('wled-poll', data.wled?.pollInterval || 5);
 
     // SmartBob
     setVal('smartbob-name', data.smartbob?.name || 'SmartBob');
@@ -873,6 +886,96 @@ document.getElementById('btn-save-miele').addEventListener('click', async () => 
         password:     getVal('miele-password'),
         country:      getVal('miele-country'),
       }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Viessmann ViCare ────────────────────────────────────────────────────────
+document.getElementById('btn-save-vicare')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-vicare');
+  const resultEl = document.getElementById('vicare-test-result');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/settings/vicare', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user:         getVal('vicare-user'),
+        password:     getVal('vicare-password'),
+        clientId:     getVal('vicare-client-id'),
+        redirectUri:  getVal('vicare-redirect'),
+        pollInterval: getVal('vicare-poll'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── WLED (device list) ──────────────────────────────────────────────────────
+function renderWledList(devs) {
+  const c = document.getElementById('wled-settings-list');
+  if (!c) return;
+  c.innerHTML = '';
+  if (!devs.length) {
+    c.innerHTML = '<p class="hint" style="margin-bottom:12px">No WLED controllers yet.</p>';
+    return;
+  }
+  devs.forEach((d, i) => {
+    const row = document.createElement('div');
+    row.className = 'camera-settings-row';
+    row.dataset.index = i;
+    row.innerHTML = `
+      <div class="camera-settings-fields">
+        <input type="text" class="wled-name" placeholder="Name (optional)" value="${escapeVal(d.name || '')}">
+        <input type="text" class="wled-host" placeholder="Host / IP (192.168.1.80)" value="${escapeVal(d.host || '')}">
+        <input type="number" class="wled-port" min="0" placeholder="Port (80)" value="${d.port || ''}" style="width:96px">
+      </div>
+      <button class="btn btn-remove wled-remove" title="Remove">✕</button>`;
+    row.querySelector('.wled-remove').addEventListener('click', () => {
+      currentWled = collectWled();
+      currentWled.splice(i, 1);
+      renderWledList(currentWled);
+    });
+    c.appendChild(row);
+  });
+}
+function collectWled() {
+  return Array.from(document.querySelectorAll('#wled-settings-list .camera-settings-row')).map((row) => ({
+    name: row.querySelector('.wled-name').value.trim(),
+    host: row.querySelector('.wled-host').value.trim(),
+    port: parseInt(row.querySelector('.wled-port').value) || 80,
+  }));
+}
+document.getElementById('btn-add-wled')?.addEventListener('click', () => {
+  currentWled = collectWled();
+  currentWled.push({ name: '', host: '', port: 80 });
+  renderWledList(currentWled);
+});
+document.getElementById('btn-save-wled')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-wled');
+  const resultEl = document.getElementById('wled-test-result');
+  btn.disabled = true;
+  try {
+    const devices = collectWled().filter((d) => d.host);
+    const res = await fetch('/api/settings/wled', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ devices, pollInterval: parseInt(getVal('wled-poll')) || 5 }),
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
