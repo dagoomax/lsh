@@ -955,13 +955,31 @@ function renderWledList(devs) {
       <div class="camera-settings-fields">
         <input type="text" class="wled-name" placeholder="Name (optional)" value="${escapeVal(d.name || '')}">
         <input type="text" class="wled-host" placeholder="Host / IP (192.168.1.80)" value="${escapeVal(d.host || '')}">
-        <input type="number" class="wled-port" min="0" placeholder="Port (80)" value="${d.port || ''}" style="width:96px">
+        <div style="display:flex; gap:8px; grid-column:1/-1; flex-wrap:wrap; align-items:center">
+          <input type="number" class="wled-port" min="0" placeholder="Port (80)" value="${d.port || ''}" style="width:96px">
+          <button class="btn btn-secondary btn-sm wled-test" title="Ping the controller">Test</button>
+          <span class="wled-test-result test-result"></span>
+        </div>
       </div>
       <button class="btn btn-remove wled-remove" title="Remove">✕</button>`;
     row.querySelector('.wled-remove').addEventListener('click', () => {
       currentWled = collectWled();
       currentWled.splice(i, 1);
       renderWledList(currentWled);
+    });
+    row.querySelector('.wled-test').addEventListener('click', async () => {
+      const btn = row.querySelector('.wled-test');
+      const out = row.querySelector('.wled-test-result');
+      const body = { host: row.querySelector('.wled-host').value.trim(), port: parseInt(row.querySelector('.wled-port').value) || 80 };
+      if (!body.host) { out.textContent = '✗ host required'; out.className = 'test-result err'; return; }
+      btn.disabled = true; out.textContent = '…'; out.className = 'test-result';
+      try {
+        const r = await fetch('/api/settings/test-wled', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const j = await r.json();
+        out.textContent = j.success ? '✓ ' + j.message : '✗ ' + j.error;
+        out.className = 'test-result ' + (j.success ? 'ok' : 'err');
+      } catch (e) { out.textContent = '✗ ' + e.message; out.className = 'test-result err'; }
+      finally { btn.disabled = false; }
     });
     c.appendChild(row);
   });

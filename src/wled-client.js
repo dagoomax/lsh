@@ -163,6 +163,23 @@ class WledClient {
     catch (err) { console.error(`[WLED] Write failed for ${d.host}: ${err.message}`); }
   }
 
+  // One-shot reachability check (used by the Settings "Test" button).
+  static fetchState(d) {
+    return new Promise((resolve, reject) => {
+      const req = http.request({
+        hostname: d.host, port: Number(d.port) || 80, path: '/json', method: 'GET', timeout: 6000,
+      }, (res) => {
+        if (res.statusCode !== 200) { res.resume(); return reject(new Error(`HTTP ${res.statusCode}`)); }
+        let out = '';
+        res.on('data', (c) => out += c);
+        res.on('end', () => { try { resolve(JSON.parse(out)); } catch { reject(new Error('Bad JSON from WLED')); } });
+      });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('Connection timeout')); });
+      req.end();
+    });
+  }
+
   _req(d, method, pathname, body) {
     const data = body ? JSON.stringify(body) : null;
     return new Promise((resolve, reject) => {

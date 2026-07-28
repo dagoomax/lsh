@@ -2060,6 +2060,19 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  router.post('/settings/test-wled', async (req, res) => {
+    const d = req.body || {};
+    if (!d.host) return res.status(400).json({ success: false, error: 'host is required' });
+    try {
+      const j = await require('./wled-client').fetchState(d);
+      const info = j.info || {};
+      const leds = info.leds?.count;
+      res.json({ success: true, message: `${info.name || 'WLED'} — ${leds != null ? leds + ' LEDs' : 'connected'}${info.ver ? ' · v' + info.ver : ''}` });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
   router.post('/settings/homey', (req, res) => {
     const current = readConfigFile();
     const { mode, host, homeyId, token, pollInterval } = req.body;
