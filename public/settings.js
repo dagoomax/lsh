@@ -3505,6 +3505,7 @@ document.getElementById('btn-save-ffrtsp').addEventListener('click', async () =>
   const searchEl   = document.getElementById('settings-search');
   const clearBtn   = document.getElementById('btn-clear-search');
   const catBtns    = Array.from(document.querySelectorAll('.cat-btn'));
+  if (!searchEl || !noResults) return; // filter UI absent — nothing to wire
 
   let activeCat  = 'all';
   let searchTerm = '';
