@@ -73,6 +73,7 @@ reference of every one).
 | **Reolink** (PoE / NVR) | `reolink` | Snapshots, RTSP, AI object detection |
 | **KENIK / Eltrox** (DVR/XVR) | `kenik` | IP cameras and recorders |
 | **MOBOTIX** (cameras / door stations) | `mobotix` | Snapshots, RTSP, rcontrol outputs & door relay |
+| **Axis** (VAPIX) | `axis` | Snapshots, RTSP, Digest auth, PTZ, I/O relay outputs |
 | **Manual cameras** | `cameras` | RTSP, snapshot, MJPEG, WebRTC (any brand) |
 
 ## Robots & lawn

@@ -299,6 +299,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
 | `reolink` | No | Reolink PoE cameras / NVR (proxied snapshots + RTSP + AI object detection) |
 | `mobotix` | No | MOBOTIX cameras / IP video door stations (proxied snapshots + RTSP + rcontrol outputs / door relay) |
+| `axis` | No | Axis IP cameras via VAPIX (proxied snapshots + RTSP + Digest auth, PTZ, I/O relay outputs) |
 | `relays` | No | Victron relay index + display name |
 | `homekit` | No | HomeKit bridge — requires `hap-nodejs` npm package |
 | `server` | Yes | HTTP port, HTTPS, and Let's Encrypt |
@@ -1338,6 +1339,42 @@ Support for **MOBOTIX IP cameras and IP video door stations** (T2x/T3x). Each en
 - `momentary: true` — treat it as a pulse (a door relay): fire `action`, then report the switch back off after `pulseMs` (default 1200 ms). Omitting `off` implies momentary.
 
 > The rcontrol API must be enabled on the camera (*Admin › Network › Web Server / API*) and the configured user needs control rights. Consult your camera's *Admin › Setup › Signal Out* profile for the exact `putrs232outputs`/action parameters — MOBOTIX does not expose a universal "open door" command.
+
+### `axis`
+
+```json
+"axis": {
+  "pollInterval": 30,
+  "cameras": [
+    { "name": "Yard", "host": "192.168.1.70", "username": "root", "password": "secret", "auth": "digest", "https": false, "port": 0, "rtspPort": 554, "streamPath": "axis-media/media.amp", "ptz": false, "resolution": "1280x720",
+      "outputs": [
+        { "name": "Gate relay", "port": 1, "momentary": true, "pulseMs": 500, "activeLow": false }
+      ]
+    }
+  ]
+}
+```
+
+Support for **Axis IP cameras** via the **VAPIX** HTTP API. Each entry is one camera. LSH pulls JPEG snapshots from `/axis-cgi/jpg/image.cgi` and proxies them at `/api/axis/snapshot/<index>` so **the browser never sees the camera password**. The RTSP URL is built automatically as `rtsp://<user>:<pass>@<host>:<rtspPort>/axis-media/media.amp` for use with go2rtc / VLC / an NVR; set `webrtcUrl` to a go2rtc endpoint for in-dashboard live view.
+
+Axis defaults to **HTTP Digest authentication**, which LSH implements (with a Basic fallback / override):
+
+- `auth` — `digest` (default; auto-negotiated from the camera's 401 challenge) or `basic` to force pre-emptive Basic
+- `https` / `port` — override the transport (defaults: HTTP on port 80)
+- `rtspPort` / `streamPath` — RTSP port (default 554) and stream name (default `axis-media/media.amp`)
+- `resolution` — optional `WxH` passed to the snapshot CGI
+- `channel` — optional camera number for multi-imager / multichannel encoders (adds `camera=<n>`)
+- `pollInterval` — reachability poll in seconds (top-level, default 30); drives the per-camera **Online** sensor and platform badge
+
+**PTZ** — set `"ptz": true` to show a PTZ pad in the camera modal, driven by VAPIX continuous move (`/axis-cgi/com/ptz.cgi?continuouspantiltmove=…` / `continuouszoommove=…`); press-and-hold arrows/zoom, released = stop.
+
+**Outputs / relays** — each `outputs[]` entry becomes a controllable switch on the camera's device (and a HomeKit switch), driven through the VAPIX I/O port CGI (`/axis-cgi/io/port.cgi?action=<port>:<state>`):
+
+- `port` — the camera's I/O output port number (1-based)
+- `momentary: true` — pulse the output (a gate/door relay): active for `pulseMs` (default 500) then back off; the switch reports off again afterwards
+- `activeLow: true` — invert the physical level (for outputs wired active-low)
+
+> The configured user needs operator/admin rights for I/O and PTZ, and the port must be configured as an **output** in *System › I/O ports*.
 
 ### `kenik`
 

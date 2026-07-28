@@ -87,6 +87,16 @@ async function main() {
     mobotix.start().catch((err) => console.error(`[MOBOTIX] Start failed: ${err.message}`));
   }
 
+  // Axis cameras (VAPIX) — same live-config pattern
+  let axis = null;
+  const AxisClient = tryRequire('./src/axis-client');
+  if (AxisClient) {
+    axis = new AxisClient(store, sensorRegistry);
+    const n = axis.getCameras().length;
+    if (n) console.log(`[Axis] ${n} camera(s) configured`);
+    axis.start().catch((err) => console.error(`[Axis] Start failed: ${err.message}`));
+  }
+
   // Hardware simulator manager — spawns scripts/*-simulator.js per
   // config.simulators; toggled live via /api/simulators
   let simulators = null;
@@ -189,7 +199,7 @@ async function main() {
   const AutomationEngine = tryRequire('./src/automation-engine');
   if (AutomationEngine) automation = new AutomationEngine(store, sensorRegistry, relayController, config);
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────

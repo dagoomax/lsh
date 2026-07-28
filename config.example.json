@@ -312,6 +312,16 @@
       }
     ]
   },
+  "axis": {
+    "pollInterval": 30,
+    "cameras": [
+      { "name": "Yard", "host": "192.168.1.70", "username": "root", "password": "", "auth": "digest", "https": false, "port": 0, "rtspPort": 554, "streamPath": "axis-media/media.amp", "ptz": false, "resolution": "1280x720",
+        "outputs": [
+          { "name": "Gate relay", "port": 1, "momentary": true, "pulseMs": 500, "activeLow": false }
+        ]
+      }
+    ]
+  },
   "kenik": {
     "host": "192.168.1.90",
     "username": "admin",
