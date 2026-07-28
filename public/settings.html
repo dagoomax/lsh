@@ -1149,6 +1149,44 @@
       </div>
     </section>
 
+    <!-- Grenton -->
+    <section class="card settings-card" data-category="controllers" data-title="Grenton CLU GATE smart home lights dimmers blinds sensors Poland">
+      <h2>Grenton <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Grenton CLU controllers via the GATE HTTP module running the companion Lua script (<code>docs/grenton-gate-lsh.lua</code>). Add each object by its Object Manager name (e.g. <code>DOU8272</code>). Advanced per-object options (scale, blind commands) live in <code>config.json</code> and are preserved on save.</p>
+
+      <div class="form-row">
+        <label for="grenton-host">GATE Host / IP</label>
+        <input type="text" id="grenton-host" placeholder="192.168.1.x" autocomplete="off">
+      </div>
+      <div class="form-row" style="display:flex; gap:10px; flex-wrap:wrap">
+        <span style="display:flex; flex-direction:column; gap:4px">
+          <label for="grenton-port">Port</label>
+          <input type="number" id="grenton-port" min="1" placeholder="80" style="width:100px">
+        </span>
+        <span style="display:flex; flex-direction:column; gap:4px">
+          <label for="grenton-path">Path</label>
+          <input type="text" id="grenton-path" placeholder="/lsh" style="width:120px">
+        </span>
+        <span style="display:flex; flex-direction:column; gap:4px">
+          <label for="grenton-poll">Poll (s)</label>
+          <input type="number" id="grenton-poll" min="1" placeholder="5" style="width:90px">
+        </span>
+      </div>
+      <div class="form-row">
+        <label for="grenton-token">Token <span class="hint">(optional — must match the Lua script)</span></label>
+        <input type="password" id="grenton-token" placeholder="••••••••" autocomplete="off">
+      </div>
+
+      <label style="font-size:0.85rem; color:var(--text-muted); display:block; margin:6px 0 4px">Objects</label>
+      <div id="grenton-settings-list"></div>
+      <button class="btn btn-secondary" id="btn-add-grenton">+ Add Object</button>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-primary" id="btn-save-grenton" data-i18n="common.save">Save</button>
+        <span class="test-result" id="grenton-save-result"></span>
+      </div>
+    </section>
+
     <!-- SmartBob -->
     <section class="card settings-card" data-category="controllers" data-title="SmartBob MQTT sensors switches automation">
       <h2>SmartBob <span class="badge" data-i18n="common.optional">Optional</span></h2>
@@ -1783,7 +1821,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="i18n.js?v=4"></script>
-  <script src="settings.js?v=8"></script>
+  <script src="settings.js?v=9"></script>
   <script src="theme.js?v=4"></script>
   <script src="common.js?v=4"></script>
 </body>

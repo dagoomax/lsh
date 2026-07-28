@@ -1453,6 +1453,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.somfy?.password)       safe.somfy.password       = '••••••••';
     if (safe.vicare?.password)      safe.vicare.password      = '••••••••';
     if (safe.thermomix?.password)   safe.thermomix.password   = '••••••••';
+    if (safe.grenton?.token)        safe.grenton.token        = '••••••••';
     if (Array.isArray(safe.reolink?.cameras)) safe.reolink.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.mobotix?.cameras)) safe.mobotix.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.axis?.cameras)) safe.axis.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
@@ -2051,6 +2052,44 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         },
       });
       res.json({ success: true, message: 'Thermomix settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Grenton (GATE HTTP) ─────────────────────────────────────
+  router.post('/settings/grenton', (req, res) => {
+    const current = readConfigFile();
+    const { host, port, path: gpath, token, pollInterval, devices } = req.body;
+    if (!Array.isArray(devices)) return res.status(400).json({ success: false, error: 'devices array is required' });
+    // Preserve advanced per-device fields (scale/getIndex/commands) by object
+    // name — they're config-only, not exposed in the Settings form.
+    const prevByObj = {};
+    for (const p of (current.grenton?.devices || [])) if (p.object) prevByObj[p.object] = p;
+    const cleaned = devices.map((d) => {
+      const out = {
+        name:   String(d.name || '').trim(),
+        object: String(d.object || '').trim(),
+        type:   d.type || 'switch',
+      };
+      const p = prevByObj[out.object];
+      if (p) for (const k of ['scale', 'getIndex', 'commands']) if (p[k] !== undefined) out[k] = p[k];
+      return out;
+    }).filter((d) => d.object);
+    try {
+      writeConfigFile({
+        ...current,
+        grenton: {
+          ...current.grenton,
+          host:         host || current.grenton?.host || '',
+          port:         parseInt(port) || current.grenton?.port || 80,
+          path:         gpath || current.grenton?.path || '/lsh',
+          token:        (token && !token.includes('•')) ? token : (current.grenton?.token || ''),
+          pollInterval: parseInt(pollInterval) || 5,
+          devices:      cleaned,
+        },
+      });
+      res.json({ success: true, message: `Grenton saved — ${cleaned.length} device(s). Restart to apply.` });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

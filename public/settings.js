@@ -4,6 +4,7 @@ let currentReolink = [];
 let currentMobotix = [];
 let currentAxis = [];
 let currentWled = [];
+let currentGrenton = [];
 let qrInstance = null;
 
 async function loadSettings() {
@@ -198,6 +199,15 @@ async function loadSettings() {
     currentWled = data.wled?.devices || [];
     renderWledList(currentWled);
     setVal('wled-poll', data.wled?.pollInterval || 5);
+
+    // Grenton
+    setVal('grenton-host',  data.grenton?.host || '');
+    setVal('grenton-port',  data.grenton?.port || 80);
+    setVal('grenton-path',  data.grenton?.path || '/lsh');
+    setVal('grenton-poll',  data.grenton?.pollInterval || 5);
+    setVal('grenton-token', data.grenton?.token ? '••••••••' : '');
+    currentGrenton = data.grenton?.devices || [];
+    renderGrentonList(currentGrenton);
 
     // SmartBob
     setVal('smartbob-name', data.smartbob?.name || 'SmartBob');
@@ -942,6 +952,61 @@ document.getElementById('btn-save-vicare')?.addEventListener('click', async () =
   } finally {
     btn.disabled = false;
   }
+});
+
+// ── Grenton (objects list) ───────────────────────────────────────────────────
+const GRENTON_TYPES = ['light', 'dimmer', 'switch', 'blind', 'temperature', 'sensor'];
+function renderGrentonList(devs) {
+  const c = document.getElementById('grenton-settings-list');
+  if (!c) return;
+  c.innerHTML = '';
+  if (!devs.length) { c.innerHTML = '<p class="hint" style="margin-bottom:12px">No Grenton objects yet.</p>'; return; }
+  devs.forEach((d, i) => {
+    const row = document.createElement('div');
+    row.className = 'camera-settings-row';
+    const opts = GRENTON_TYPES.map((t) => `<option value="${t}"${(d.type || 'switch') === t ? ' selected' : ''}>${t}</option>`).join('');
+    row.innerHTML = `
+      <div class="camera-settings-fields">
+        <input type="text" class="gr-name" placeholder="Name (Lampa salon)" value="${escapeVal(d.name || '')}">
+        <input type="text" class="gr-object" placeholder="Object (DOU8272)" value="${escapeVal(d.object || '')}">
+        <select class="gr-type" style="width:140px" title="Object type">${opts}</select>
+      </div>
+      <button class="btn btn-remove gr-remove" title="Remove">✕</button>`;
+    row.querySelector('.gr-remove').addEventListener('click', () => { currentGrenton = collectGrenton(); currentGrenton.splice(i, 1); renderGrentonList(currentGrenton); });
+    c.appendChild(row);
+  });
+}
+function collectGrenton() {
+  return Array.from(document.querySelectorAll('#grenton-settings-list .camera-settings-row')).map((row) => ({
+    name:   row.querySelector('.gr-name').value.trim(),
+    object: row.querySelector('.gr-object').value.trim(),
+    type:   row.querySelector('.gr-type').value,
+  })).filter((d) => d.object);
+}
+document.getElementById('btn-add-grenton')?.addEventListener('click', () => {
+  currentGrenton = collectGrenton();
+  currentGrenton.push({ name: '', object: '', type: 'light' });
+  renderGrentonList(currentGrenton);
+});
+document.getElementById('btn-save-grenton')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-grenton');
+  const out = document.getElementById('grenton-save-result');
+  btn.disabled = true;
+  try {
+    const devices = collectGrenton();
+    const res = await fetch('/api/settings/grenton', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host: getVal('grenton-host'), port: getVal('grenton-port'), path: getVal('grenton-path'),
+        token: getVal('grenton-token'), pollInterval: getVal('grenton-poll'), devices,
+      }),
+    });
+    const j = await res.json();
+    out.textContent = j.success ? '✓ ' + j.message : '✗ ' + j.error;
+    out.className = 'test-result ' + (j.success ? 'ok' : 'err');
+    if (j.success) currentGrenton = devices;
+  } catch (e) { out.textContent = '✗ ' + e.message; out.className = 'test-result err'; }
+  finally { btn.disabled = false; }
 });
 
 // ── Thermomix / Cookidoo ────────────────────────────────────────────────────
