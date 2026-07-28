@@ -263,6 +263,13 @@
     "country": "pl",
     "pollSeconds": 300
   },
+  "vicare": {
+    "user": "you@example.com",
+    "password": "",
+    "clientId": "",
+    "redirectUri": "http://localhost:4200/",
+    "pollInterval": 120
+  },
   "zway": {
     "host": "192.168.1.x",
     "port": 8083,

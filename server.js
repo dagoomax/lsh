@@ -566,6 +566,15 @@ async function main() {
     }
   }
 
+  // Start Viessmann ViCare heating client if configured
+  if (config.vicare?.clientId && config.vicare?.user && config.vicare?.password) {
+    const ViCareClient = tryRequire('./src/vicare-client');
+    if (ViCareClient) {
+      const vicare = new ViCareClient(config, store, sensorRegistry);
+      vicare.start().catch((err) => console.error(`[ViCare] Start failed: ${err.message}`));
+    }
+  }
+
   // Start SmartBob MQTT client if configured
   if (config.smartbob?.entities?.length) {
     const SmartBobClient = tryRequire('./src/smartbob-client');

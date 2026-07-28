@@ -287,6 +287,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
 | `smarttub` | No | SmartTub hot tubs (Jacuzzi / Sundance / Watkins) — water/set temperature, heat mode, pumps, lights via cloud API |
 | `thermomix` | No | Vorwerk Thermomix (TM6 / TM7) via Cookidoo — shopping-list size, weekly meal plan, next recipe (read-only cloud) |
+| `vicare` | No | Viessmann ViCare heating (boilers / heat pumps) — temperatures, burner, mode, hot-water setpoint via the Viessmann IoT cloud |
 | `zway` | No | Z-Way / RaZberry — Z-Wave switches, dimmers, thermostats, locks, sensors via ZAutomation REST API |
 | `wirenboard` | No | Wiren Board controllers — relays, dimmers, inputs, climate sensors via MQTT Conventions |
 | `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
@@ -1031,6 +1032,37 @@ Connects a **Vorwerk Thermomix** (TM6 / TM7) to LSH through the **Cookidoo** rec
 - **Next recipe** — title of the next planned recipe
 
 Because it rides an undocumented API, every request is defensively parsed and any failure is logged as a warning (the platform badge turns red) rather than interrupting the hub.
+
+---
+
+### `vicare`
+
+```json
+"vicare": {
+  "user": "you@example.com",
+  "password": "your-password",
+  "clientId": "your-api-client-id",
+  "redirectUri": "http://localhost:4200/",
+  "pollInterval": 120
+}
+```
+
+Support for **Viessmann ViCare** heating systems (boilers / heat pumps) via the official Viessmann IoT cloud API — the same one the ViCare app and the community PyViCare library use.
+
+**Setup:** create a free API client at [developer.viessmann.com](https://developer.viessmann.com) → *API Keys*, with **Google reCAPTCHA disabled** and redirect URI `http://localhost:4200/`, then paste its **Client ID** here along with your ViCare account e-mail and password.
+
+| Field | Default | Description |
+|---|---|---|
+| `user` / `password` | — | Your ViCare account credentials |
+| `clientId` | — | Client ID of your Viessmann developer API client |
+| `redirectUri` | `http://localhost:4200/` | Must match the redirect URI registered on the API client |
+| `pollInterval` | `120` | Refresh interval in seconds (min 60) |
+
+**Authentication:** OAuth2 Authorization-Code + PKCE against the Viessmann IAM. The authorize endpoint accepts HTTP Basic (your credentials) and 302-redirects with the auth code, so no interactive browser step is needed; the access/refresh tokens are persisted in `persist/vicare-tokens.json` and refreshed automatically.
+
+**Sensors:** Outside / Supply / Boiler / Hot-water temperatures, Burner (on/off), Heating mode, and **Hot Water Target** — adjustable when the device exposes the `setTargetTemperature` command (posted to `heating.dhw.temperature.main`). The outside temperature is bridged to HomeKit.
+
+> The Viessmann API is **rate-limited to ~1450 calls/day per client**, so keep `pollInterval` at 120 s or higher. Requests are parsed defensively and failures downgrade to a warning (red platform badge) rather than crashing the hub.
 
 ---
 
