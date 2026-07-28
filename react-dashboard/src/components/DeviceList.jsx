@@ -333,6 +333,7 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
   const hasMy    = (device.sensors || []).some(s => s.path === 'my') // Somfy "my" favourite
   const hasUpDn  = (device.sensors || []).some(s => s.path === 'up') // Somfy RTS ▲/▼
   const hasCT    = r.colorTemperature != null
+  const hasColor = r.hue != null && r.saturation != null
   const hasTemp  = r.temperature != null
   const hasHum   = r.humidity != null
   const hasBatt  = r.battery != null
@@ -358,6 +359,7 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
   const isLoxone       = device.type === 'loxone'
   const isSmartthings  = device.type === 'smartthings'
   const isTradfri      = device.type === 'tradfri'
+  const isHue          = device.type === 'hue'
   const isAC      = device.type === 'auxair'
   const isSonos  = device.type === 'sonos'
   const isDenon  = device.type === 'denon'
@@ -600,6 +602,17 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:10 }}>
           {hasLevel && <Slider value={level} onCommit={v => cmd('level', v)} />}
           {hasCT    && <CTSlider value={ct}  onCommit={v => cmd('colorTemperature', v)} />}
+        </div>
+      )}
+
+      {/* RGB colour wheel for Hue lights (hue stored 0-100 → degrees) */}
+      {tileOn && isHue && hasColor && (
+        <div style={{ marginTop:10 }} onClick={e => e.stopPropagation()}>
+          <ColorPicker
+            hueDeg={(merged.hue?.value ?? 0) * 3.6}
+            sat={merged.saturation?.value ?? 100}
+            onCommit={(h, s) => cmd('color', { hue: Math.round(h / 3.6), saturation: s })}
+          />
         </div>
       )}
 

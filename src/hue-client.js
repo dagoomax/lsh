@@ -80,11 +80,25 @@ class HueClient {
         controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off',
         capabilityId: 'switch', homekit: isPlug ? 'switch-rw' : 'light-rw',
       }];
-      if ('bri' in state) sensors.push({ path: 'level', name: 'Brightness', format: 'percent' });
-      if ('ct'  in state) sensors.push({ path: 'colorTemperature', name: 'Color Temp', format: 'number' });
+      // Dimming — a 0-100% brightness slider (tile + modal + HomeKit).
+      if ('bri' in state) sensors.push({
+        path: 'level', name: 'Brightness', format: 'percent',
+        controllable: true, type: 'range', capabilityId: 'switchLevel', writeCmd: 'setLevel',
+        min: 0, max: 100, step: 1,
+      });
+      // Tunable white — the "W" of RGBW, as a Kelvin slider.
+      if ('ct'  in state) sensors.push({
+        path: 'colorTemperature', name: 'Color Temp', format: 'number', unit: 'K',
+        controllable: true, type: 'color-temp', capabilityId: 'colorTemperature', writeCmd: 'setColorTemperature',
+        min: 2000, max: 6500, step: 100,
+      });
+      // RGB colour — hue/saturation feed the colour wheel; the `color`
+      // capability is what the picker writes to.
       if ('hue' in state) {
         sensors.push({ path: 'hue',        name: 'Hue',        format: 'number', hidden: true });
         sensors.push({ path: 'saturation', name: 'Saturation', format: 'number', hidden: true });
+        sensors.push({ path: 'color', name: 'Color', format: 'color',
+          controllable: true, type: 'color', capabilityId: 'colorControl' });
       }
       this._registry.registerDevice({
         key,
