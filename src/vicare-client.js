@@ -149,7 +149,7 @@ class ViCareClient {
   }
 
   // ── API helpers ─────────────────────────────────────────────────────────────
-  async _api(pathname, { method = 'GET', body } = {}) {
+  async _api(pathname, { method = 'GET', body, _retried = false } = {}) {
     const token = await this._token();
     const res = await fetch(`${API}${pathname}`, {
       method,
@@ -159,9 +159,10 @@ class ViCareClient {
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
-    if (res.status === 401) { // token rejected — refresh once and retry
+    if (res.status === 401) { // token rejected — refresh once and retry (no loops)
+      if (_retried) throw new Error('unauthorized after token refresh');
       await this._refresh();
-      return this._api(pathname, { method, body });
+      return this._api(pathname, { method, body, _retried: true });
     }
     if (res.status === 429) throw new Error('rate limited (HTTP 429)');
     const j = await res.json().catch(() => ({}));
