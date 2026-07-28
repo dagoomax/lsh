@@ -108,18 +108,37 @@ class MobotixClient {
     });
   }
 
-  // ── Polling: snapshot reachability → online + platform status ───────────────
+  // ── Polling: reachability → online + platform status ────────────────────────
   async _poll() {
     const cams = loadCameras();
     let anyOk = false;
     await Promise.all(cams.map(async (cam, idx) => {
-      let ok = false;
-      try { await MobotixClient.fetchSnapshot(cam); ok = true; }
-      catch { ok = false; }
+      const ok = await MobotixClient.probe(cam);
       anyOk = anyOk || ok;
       if (this.store) this.store.update(`mobotix/${idx}/online`, ok ? 1 : 0);
     }));
     platformStatus.set('mobotix', anyOk);
+  }
+
+  // Lightweight reachability check: request the snapshot but tear the socket
+  // down as soon as 2xx headers arrive, so the JPEG body is never downloaded
+  // (the poll only needs an authenticated/online yes/no, not the image).
+  static probe(cam) {
+    return new Promise((resolve) => {
+      const proto = cam.https ? https : http;
+      const port  = Number(cam.port) || (cam.https ? 443 : 80);
+      const req = proto.request({
+        hostname: cam.host, port, path: '/cgi-bin/image.jpg', method: 'GET',
+        rejectUnauthorized: false, timeout: 8000, headers: authHeader(cam),
+      }, (res) => {
+        const ok = res.statusCode >= 200 && res.statusCode < 300;
+        res.destroy();
+        resolve(ok);
+      });
+      req.on('error', () => resolve(false));
+      req.on('timeout', () => { req.destroy(); resolve(false); });
+      req.end();
+    });
   }
 
   // ── Output / door control via the rcontrol HTTP API ─────────────────────────

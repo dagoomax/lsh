@@ -128,6 +128,43 @@ async function vapix(cam, uri, method = 'GET') {
   throw new Error(`HTTP ${r.status} (auth)`);
 }
 
+// Like rawRequest but tears the socket down as soon as headers arrive — the
+// response body is never read. Used for the reachability probe.
+function rawHead(cam, uri, method, authorization) {
+  return new Promise((resolve, reject) => {
+    const proto = cam.https ? https : http;
+    const port  = Number(cam.port) || (cam.https ? 443 : 80);
+    const headers = {};
+    if (authorization) headers.Authorization = authorization;
+    const req = proto.request({
+      hostname: cam.host, port, path: uri, method,
+      rejectUnauthorized: false, timeout: 8000, headers,
+    }, (res) => {
+      const out = { status: res.statusCode, headers: res.headers };
+      res.destroy();
+      resolve(out);
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Connection timeout')); });
+    req.end();
+  });
+}
+
+// Header-only equivalent of vapix() — completes the Digest/Basic handshake but
+// downloads no body. Resolves true if the final response is 2xx.
+async function vapixHead(cam, uri, method = 'GET') {
+  if ((cam.auth || '').toLowerCase() === 'basic') {
+    const r = await rawHead(cam, uri, method, basicAuthHeader(cam));
+    return r.status >= 200 && r.status < 300;
+  }
+  let r = await rawHead(cam, uri, method, null);
+  if (r.status !== 401) return r.status >= 200 && r.status < 300;
+  const chal = parseAuthHeader(r.headers['www-authenticate']);
+  const authz = chal._scheme === 'basic' ? basicAuthHeader(cam) : digestAuthHeader(cam, method, uri, chal);
+  r = await rawHead(cam, uri, method, authz);
+  return r.status >= 200 && r.status < 300;
+}
+
 class AxisClient {
   constructor(store, sensorRegistry) {
     this.store          = store;
@@ -179,8 +216,9 @@ class AxisClient {
     const cams = loadCameras();
     let anyOk = false;
     await Promise.all(cams.map(async (cam, idx) => {
+      // Reachability only — completes auth but downloads no image body.
       let ok = false;
-      try { await AxisClient.fetchSnapshot(cam); ok = true; } catch { ok = false; }
+      try { ok = await vapixHead(cam, '/axis-cgi/jpg/image.cgi'); } catch { ok = false; }
       anyOk = anyOk || ok;
       if (this.store) this.store.update(`axis/${idx}/online`, ok ? 1 : 0);
     }));
@@ -274,6 +312,6 @@ class AxisClient {
   }
 }
 
-AxisClient._test = { buildRtspUrl, outputsOf, parseAuthHeader, digestAuthHeader };
+AxisClient._test = { buildRtspUrl, outputsOf, parseAuthHeader, digestAuthHeader, vapixHead };
 
 module.exports = AxisClient;
