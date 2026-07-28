@@ -575,6 +575,15 @@ async function main() {
     }
   }
 
+  // Start WLED client if configured
+  if (config.wled?.devices?.length) {
+    const WledClient = tryRequire('./src/wled-client');
+    if (WledClient) {
+      const wled = new WledClient(config, store, sensorRegistry);
+      wled.start().catch((err) => console.error(`[WLED] Start failed: ${err.message}`));
+    }
+  }
+
   // Start SmartBob MQTT client if configured
   if (config.smartbob?.entities?.length) {
     const SmartBobClient = tryRequire('./src/smartbob-client');

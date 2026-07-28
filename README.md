@@ -288,6 +288,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `smarttub` | No | SmartTub hot tubs (Jacuzzi / Sundance / Watkins) — water/set temperature, heat mode, pumps, lights via cloud API |
 | `thermomix` | No | Vorwerk Thermomix (TM6 / TM7) via Cookidoo — shopping-list size, weekly meal plan, next recipe (read-only cloud) |
 | `vicare` | No | Viessmann ViCare heating (boilers / heat pumps) — temperatures, burner, mode, hot-water setpoint via the Viessmann IoT cloud |
+| `wled` | No | WLED addressable-LED controllers (ESP8266/ESP32) — power, brightness, RGB(W) colour via the local JSON API |
 | `zway` | No | Z-Way / RaZberry — Z-Wave switches, dimmers, thermostats, locks, sensors via ZAutomation REST API |
 | `wirenboard` | No | Wiren Board controllers — relays, dimmers, inputs, climate sensors via MQTT Conventions |
 | `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
@@ -1063,6 +1064,30 @@ Support for **Viessmann ViCare** heating systems (boilers / heat pumps) via the 
 **Sensors:** Outside / Supply / Boiler / Hot-water temperatures, Burner (on/off), Heating mode, and **Hot Water Target** — adjustable when the device exposes the `setTargetTemperature` command (posted to `heating.dhw.temperature.main`). The outside temperature is bridged to HomeKit.
 
 > The Viessmann API is **rate-limited to ~1450 calls/day per client**, so keep `pollInterval` at 120 s or higher. Requests are parsed defensively and failures downgrade to a warning (red platform badge) rather than crashing the hub.
+
+---
+
+### `wled`
+
+```json
+"wled": {
+  "pollInterval": 5,
+  "devices": [
+    { "name": "Desk strip", "host": "192.168.1.80", "port": 80 }
+  ]
+}
+```
+
+Support for **WLED** addressable-LED controllers (ESP8266 / ESP32) via the local JSON HTTP API. Each entry is one controller; state is polled from `/json` and control is a POST to `/json/state`.
+
+| Field | Default | Description |
+|---|---|---|
+| `host` | — | Controller IP / hostname |
+| `port` | `80` | HTTP port |
+| `name` | WLED's own name | Dashboard label |
+| `pollInterval` | `5` | State refresh interval in seconds (top-level) |
+
+**Controls:** Power (on/off), Brightness (0–100 % → WLED `bri` 0–255), and an RGB **colour wheel** (LSH hue/saturation ↔ WLED segment colour). On **RGBW** strips (`info.leds.rgbw`) an extra **White** slider drives the dedicated white channel while preserving the current colour. Everything is bridged to HomeKit as a colour lightbulb. Devices are read from `config.json` on every poll, so Settings-page edits apply without a restart.
 
 ---
 

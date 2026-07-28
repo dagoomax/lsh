@@ -360,6 +360,7 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
   const isSmartthings  = device.type === 'smartthings'
   const isTradfri      = device.type === 'tradfri'
   const isHue          = device.type === 'hue'
+  const isWled         = device.type === 'wled'
   const isAC      = device.type === 'auxair'
   const isSonos  = device.type === 'sonos'
   const isDenon  = device.type === 'denon'
@@ -605,8 +606,8 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
         </div>
       )}
 
-      {/* RGB colour wheel for Hue lights (hue stored 0-100 → degrees) */}
-      {tileOn && isHue && hasColor && (
+      {/* RGB colour wheel for Hue / WLED lights (hue stored 0-100 → degrees) */}
+      {tileOn && (isHue || isWled) && hasColor && (
         <div style={{ marginTop:10 }} onClick={e => e.stopPropagation()}>
           <ColorPicker
             hueDeg={(merged.hue?.value ?? 0) * 3.6}

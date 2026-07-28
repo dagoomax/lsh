@@ -270,6 +270,12 @@
     "redirectUri": "http://localhost:4200/",
     "pollInterval": 120
   },
+  "wled": {
+    "pollInterval": 5,
+    "devices": [
+      { "name": "Desk strip", "host": "192.168.1.80", "port": 80 }
+    ]
+  },
   "zway": {
     "host": "192.168.1.x",
     "port": 8083,

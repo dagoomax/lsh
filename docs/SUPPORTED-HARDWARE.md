@@ -35,7 +35,8 @@ reference of every one).
 | Platform | Config | Notes |
 |---|---|---|
 | **Shelly** (Gen1 / Gen2) | `shelly` | Local REST, auto-detected generation |
-| **Philips Hue** | `hue` | Bridge API |
+| **Philips Hue** | `hue` | Bridge API — on/off, dimming, RGBW |
+| **WLED** (ESP8266 / ESP32) | `wled` | Addressable LEDs — power, brightness, RGB(W) via local JSON API |
 | **KNX** | `knx` | KNXnet/IP gateway, group-address mapping |
 | **ESPHome** (ESP32 / ESP8266) | `esphome` | HTTP REST API |
 | **Arduino / generic MQTT** | `arduino` | Map JSON topics to sensors/outputs |
