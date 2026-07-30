@@ -169,7 +169,7 @@ class AuxAirClient {
 
   _syncDevice(dev, state) {
     const storeKey = `auxair/${dev.endpointId}`;
-    if (!this._registry.getDevice(storeKey)) this._registerDevice(dev, storeKey);
+    this._registerDevice(dev, storeKey);
 
     if (state.pwr     != null) this._store.update(`${storeKey}/pwr`,     state.pwr);
     if (state.ac_mode != null) this._store.update(`${storeKey}/ac_mode`, state.ac_mode);
