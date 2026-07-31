@@ -172,7 +172,8 @@ class AuxAirClient {
     this._registerDevice(dev, storeKey);
 
     if (state.pwr     != null) this._store.update(`${storeKey}/pwr`,     state.pwr);
-    if (state.ac_mode != null) this._store.update(`${storeKey}/ac_mode`, state.ac_mode);
+    // AuxAir reports mode 0-4; expose as 1-5 to match Loxone's convention.
+    if (state.ac_mode != null) this._store.update(`${storeKey}/ac_mode`, state.ac_mode + 1);
     if (state.temp    != null) this._store.update(`${storeKey}/temp`,    state.temp / 10);
     if (state.envtemp != null) this._store.update(`${storeKey}/envtemp`, state.envtemp / 10);
     if (state.ac_mark != null) this._store.update(`${storeKey}/ac_mark`, state.ac_mark);
@@ -188,14 +189,15 @@ class AuxAirClient {
         { path: 'pwr',     name: 'Power',    type: 'boolean', controllable: true, capabilityId: 'pwr',     writeOn: 'on', writeOff: 'off' },
         { path: 'temp',    name: 'Set Temp', type: 'range',   controllable: true, capabilityId: 'temp',    writeCmd: 'setTemp', min: 16, max: 30, unit: '°C' },
         { path: 'envtemp', name: 'Room',     type: 'number',  unit: '°C' },
-        { path: 'ac_mode', name: 'Mode',     type: 'range',   controllable: true, capabilityId: 'ac_mode', writeCmd: 'setMode', min: 0, max: 4 },
+        { path: 'ac_mode', name: 'Mode',     type: 'range',   controllable: true, capabilityId: 'ac_mode', writeCmd: 'setMode', min: 1, max: 5 },
         { path: 'ac_mark', name: 'Fan',      type: 'range',   controllable: true, capabilityId: 'ac_mark', writeCmd: 'setFan',  min: 0, max: 5 },
       ],
       _writeCapability: async (capId, command, args = []) => {
         const val = Array.isArray(args) && args.length ? Number(args[0]) : (command === 'on' ? 1 : 0);
         if      (capId === 'pwr')     await this._setParam(dev, 'pwr',     command === 'on' ? 1 : command === 'off' ? 0 : val);
         else if (capId === 'temp')    await this._setParam(dev, 'temp',    Math.round(val * 10));
-        else if (capId === 'ac_mode') await this._setParam(dev, 'ac_mode', val);
+        // Incoming val is Loxone's 1-5; AuxAir's API expects 0-4.
+        else if (capId === 'ac_mode') await this._setParam(dev, 'ac_mode', val - 1);
         else if (capId === 'ac_mark') await this._setParam(dev, 'ac_mark', val);
         // Refresh state after command
         setTimeout(() => this._poll(), 1500);
