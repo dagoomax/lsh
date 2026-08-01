@@ -186,6 +186,7 @@ function getGroup(d) {
   if (d.type === 'smarttub') return 'Climate'
   if (d.type === 'sonos')  return 'Media'
   if (d.type === 'denon')  return 'Media'
+  if (d.type === 'beosound') return 'Media'
   const r = d.readings || {}
   const k = Object.keys(r)
   if (k.includes('temperature') || k.includes('humidity')) return 'Climate'

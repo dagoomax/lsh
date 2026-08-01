@@ -511,6 +511,15 @@ async function main() {
     }
   }
 
+  // Start Bang & Olufsen speaker client if configured
+  if (config.beosound?.host) {
+    const BeosoundClient = tryRequire('./src/beosound-client');
+    if (BeosoundClient) {
+      const beosound = new BeosoundClient(config, store, sensorRegistry);
+      beosound.start().catch((err) => console.error(`[Beosound] Start failed: ${err.message}`));
+    }
+  }
+
   // Start VENTS / Blauberg ventilation client if configured
   if (config.vents?.host) {
     const VentsClient = tryRequire('./src/vents-client');

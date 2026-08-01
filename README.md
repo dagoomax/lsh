@@ -116,7 +116,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -293,6 +293,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `wirenboard` | No | Wiren Board controllers — relays, dimmers, inputs, climate sensors via MQTT Conventions |
 | `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
 | `denon` | No | Denon / Marantz AV receivers — power, volume, mute, input via Telnet (port 23) |
+| `beosound` | No | Bang & Olufsen network speakers — power, volume, mute, source via the local BeoPlay App REST API (port 8080) |
 | `arduino` | No | Arduino / ESP32 / generic MQTT — subscribe to JSON topics and map fields to sensor readings or controllable outputs |
 | `suppla` | No | Suppla smart-home — cloud or self-hosted REST API; discovers switches, dimmers, thermometers, shutters, gates |
 | `loxoneOut` | No | Loxone outbound push — forwards store values to Loxone Virtual Inputs in real time |
@@ -1190,6 +1191,41 @@ Connects to a **Denon** or **Marantz** AV receiver over the Telnet control proto
 **Responses parsed:** `PWON`/`PWSTANDBY` → power; `MV##`/`MV##.5` → volume (half-dB steps handled); `MUON`/`MUOFF` → mute; `SI<INPUT>` → current input and selection-pill highlight; `MS<MODE>` → sound mode; `SLP###`/`SLPOFF` → sleep timer; `Z2*` replies → Zone 2 power/volume/mute/input (disambiguated by shape, since Denon packs them into one prefix).
 
 **Dashboard tile** (Media category): power toggle, input selection pills (active highlighted), mute button + volume slider. Status shows current input · Muted / Standby. Sound mode, sleep timer, volume up/down, and the Zone 2 device are available via the generic device API and HomeKit but aren't yet in this hand-built tile — say the word if you want those surfaced there too.
+
+---
+
+### `beosound`
+
+```json
+"beosound": {
+  "host": "192.168.1.101",
+  "port": 8080,
+  "name": "Beosound Balance",
+  "maxVolume": 90,
+  "pollInterval": 10,
+  "sources": {
+    "TV": "tv:1111.2222.33445566@products.bang-olufsen.com",
+    "Music": "radio:1111.2222.33445566@products.bang-olufsen.com"
+  }
+}
+```
+
+Connects to a **Bang & Olufsen** network speaker over its local "BeoPlay App" REST API (port 8080). This surface predates the current Mozart platform but was kept for backward compatibility, so one client covers both legacy BeoPlay products (A9, A6, M3/M5, BeoSound 1/2 Gen1, Beolit) and current Mozart-platform speakers (Beosound Balance/Level/Emerge/A5/A9, Beolab 8/28/50/90, Beoconnect Core). Polls on an interval rather than using the device's push-notification stream.
+
+| Field | Default | Description |
+|---|---|---|
+| `host` | — | Speaker IP address or hostname |
+| `port` | `8080` | Local REST API port (8080 on all models) |
+| `name` | `Beosound <host>` | Display name on the dashboard |
+| `maxVolume` | `90` | Maximum volume level (device-reported range; 90 is typical) |
+| `pollInterval` | `10` | Seconds between polls (minimum enforced: 3) |
+| `sources` | `{}` | Friendly name → source ID map, used for the source-selection control. Find your device's IDs at `GET http://<host>:8080/BeoZone/Zone/ActiveSources` |
+
+**Requests sent:** `GET/PUT /BeoDevice/powerManagement/standby` (`{"standby":{"powerState":"on"\|"standby"}}`), `GET /BeoZone/Zone/Sound/Volume`, `PUT /BeoZone/Zone/Sound/Volume/Speaker/Level` (`{"level": N}`), `PUT /BeoZone/Zone/Sound/Volume/Speaker/Muted` (`{"muted": true\|false}`), `GET /BeoZone/Zone/ActiveSources`, `POST /BeoZone/Zone/ActiveSources` (`{"primaryExperience":{"source":{"id": "..."}}}`) for source selection.
+
+**Dashboard tile:** none yet — controls (power, volume, volume up/down, mute, source select) are reachable via the generic device API and HomeKit. Say the word if you want a bespoke tile like Denon's.
+
+**Note:** this integration's endpoint shapes are reverse-engineered community knowledge, not an official spec, and haven't been verified against real hardware in this repo — test against your actual speaker and report back if a firmware revision differs.
 
 ---
 
