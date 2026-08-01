@@ -563,8 +563,8 @@ class CameraDelegate {
       '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
     ];
 
-    console.log(`[HomeKit Cam] Recording start: ${this.cam.name} (streamId ${streamId})`);
-    cameraLog.push(this.cam.name, 'recording', 'HKSV recording started');
+    console.log(`[HomeKit Cam] Recording start: ${this.cam.name} (streamId ${streamId}, audio ${audioActive ? 'on' : 'off'})`);
+    cameraLog.push(this.cam.name, 'recording', `HKSV recording started${audioActive ? ' (with audio)' : ''}`);
     const server = new MP4StreamingServer('ffmpeg', args);
     this._recordingServer = server;
     await server.start();
