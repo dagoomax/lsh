@@ -727,7 +727,7 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
               ))}
             </div>
           )}
-          {/* Volume slider + mute */}
+          {/* Volume slider + mute + step buttons */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
             <button onClick={e => { e.stopPropagation(); cmd('mute', denonMute ? 0 : 1) }}
               style={{
@@ -738,9 +738,17 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
               }}>
               {denonMute ? '🔇' : '🔊'}
             </button>
+            <button onClick={e => { e.stopPropagation(); cmd('volume_down', true) }}
+              style={{ width:20, height:20, borderRadius:6, border:'none', flexShrink:0, background:'var(--white-08)', color:'var(--text2)', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', WebkitTapHighlightColor:'transparent' }}>
+              −
+            </button>
             <span style={{ fontSize:9, color:'var(--text3)', flexShrink:0, minWidth:22, textAlign:'right' }}>
               {Math.round(denonVolume)}
             </span>
+            <button onClick={e => { e.stopPropagation(); cmd('volume_up', true) }}
+              style={{ width:20, height:20, borderRadius:6, border:'none', flexShrink:0, background:'var(--white-08)', color:'var(--text2)', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', WebkitTapHighlightColor:'transparent' }}>
+              +
+            </button>
             <Slider value={denonVolume} onCommit={v => cmd('volume', v)} color="var(--accent)" />
           </div>
         </div>
