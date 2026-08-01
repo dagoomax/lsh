@@ -323,7 +323,7 @@ function CameraModal({ cam, onClose }) {
             onClick={e => e.stopPropagation()}
             className="device-modal-glow"
             style={{
-              position: 'relative', width: 'min(760px, 100%)', maxHeight: '90vh',
+              position: 'relative', width: 'min(1520px, 96vw)', maxHeight: '90vh',
               display: 'flex', flexDirection: 'column',
               background: 'var(--modal-grad)',
               borderRadius: 22, overflow: 'hidden',
