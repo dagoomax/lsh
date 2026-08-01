@@ -87,6 +87,7 @@ class ObjectDetectionClient {
     this._streak         = new Map();   // "<camSlug>/<class>" → consecutive-poll count, for lingerClasses
     this._lingering       = new Set();   // "<camSlug>/<class>" currently flagged as lingering
     this._indexesEnsured  = false;
+    this._anyActive       = new Set();   // camSlugs with >=1 class currently detected — HKSV motion trigger
   }
 
   async start() {
@@ -147,11 +148,23 @@ class ObjectDetectionClient {
 
     // Auto-clear `detected` for categories not seen in the last couple of polls.
     const now = Date.now();
+    const touchedSlugs = new Set();
     for (const [regKey, ts] of this._lastSeen) {
       if (now - ts > clearAfterMs) {
         const deviceKey = `objectdetect/${regKey}`;
         this._store.update(`${deviceKey}/detected`, 0);
         this._lastSeen.delete(regKey);
+        touchedSlugs.add(regKey.slice(0, regKey.lastIndexOf('/')));
+      }
+    }
+    // A camSlug's "any" motion flag (HKSV trigger) only clears once none of
+    // its classes are still active — re-check against what's left in
+    // _lastSeen rather than assuming the whole camera went quiet.
+    for (const camSlug of touchedSlugs) {
+      const stillActive = [...this._lastSeen.keys()].some((k) => k.startsWith(`${camSlug}/`));
+      if (!stillActive && this._anyActive.has(camSlug)) {
+        this._anyActive.delete(camSlug);
+        this._store.update(`objectdetect/${camSlug}/any/detected`, 0);
       }
     }
 
@@ -177,6 +190,11 @@ class ObjectDetectionClient {
     this._store.update(`${deviceKey}/detected`, 1);
     this._lastSeen.set(regKey, Date.now());
     cameraLog.push(camName, 'object', `${cls} (${Math.round(score * 100)}%)`);
+
+    if (!this._anyActive.has(camSlug)) {
+      this._anyActive.add(camSlug);
+      this._store.update(`objectdetect/${camSlug}/any/detected`, 1);
+    }
   }
 
   // Persists one document per kept prediction to MongoDB, each carrying a
@@ -363,3 +381,4 @@ class ObjectDetectionClient {
 }
 
 module.exports = ObjectDetectionClient;
+module.exports.slugify = slugify;

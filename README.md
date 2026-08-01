@@ -1780,7 +1780,24 @@ Accessory state is driven by sensor registry updates. Commands from HomeKit (e.g
 
 ### `src/homekit-camera.js`
 
-Registers camera accessories in the HomeKit bridge using the `CameraController` API. Provides still image snapshots via `snapshotUrl`. Video streaming requires a native RTSP-capable accessory (e.g., a dedicated camera bridge); this module provides the HomeKit pairing stub.
+Registers camera accessories in the HomeKit bridge using the `CameraController` API, pulling from a camera's `url` (RTSP) via `ffmpeg`. Snapshots use `fetchSnapshot`/`snapshotUrl`; live view transcodes to H.264/SRTP for the Home app. `twoWayAudio: true` (per camera, in `config.cameras[]`) additionally spawns a minimal RTSP client (`src/rtsp-backchannel.js`) to relay HomeKit's outgoing Talk audio to any camera whose RTSP source exposes a backchannel (e.g. `tipc`'s Tuya bridge).
+
+**HomeKit Secure Video (HKSV)** — set `"hksv": true` on a camera entry to enable motion-triggered recording:
+
+```json
+{
+  "name": "Front Door",
+  "url": "rtsp://localhost:8554/FrontDoor",
+  "hksv": true,
+  "motionSource": "Front Door"
+}
+```
+
+- `hksv: true` adds the `CameraRecordingManagement`/`CameraOperatingMode` services and a built-in `MotionSensor` service on the camera accessory — required by HAP for the Home app to offer HKSV setup at all.
+- `motionSource` — name of an `objectDetection.cameras[]` entry watching the *same* physical stream, used to drive the built-in motion sensor (defaults to the camera's own `name` if the names happen to match). Without a matching detection source, the motion sensor never trips and nothing ever triggers a recording — [`objectDetection`](#objectdetection) must be configured for this camera's URL for HKSV to actually record anything.
+- Recording muxes H.264 (via `libx264`) + AAC-LC (via ffmpeg's native `aac` encoder — not AAC-ELD, which needs the non-free `libfdk_aac` most ffmpeg builds don't ship) into fragmented MP4, streamed to HAP over a loopback TCP socket per fragment (the standard HAP-NodeJS technique — see `hap-nodejs`'s own bundled camera example). A recording runs for as long as the motion sensor stays tripped.
+- **No true prebuffer**: `prebufferLength` is set to HAP's required minimum, but recording only starts once HomeKit actually requests the stream (on the motion trigger), not a few seconds before — same simplification `hap-nodejs`'s own reference implementation makes. A recording will miss whatever happened in the second or so before the trigger fired.
+- Requires, outside of this server's control: **iCloud+** with Home Video Recording enabled on the Apple ID managing the home, and an active **Home Hub** (HomePod/Apple TV) — without both, the Home app simply won't offer to set up recording for the camera, with no error surfaced anywhere.
 
 ---
 

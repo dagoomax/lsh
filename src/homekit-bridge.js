@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const hap = require('hap-nodejs');
 const { generateSetupUri } = require('./homekit-uri');
-const { CameraDelegate, buildStreamingOptions } = require('./homekit-camera');
+const { CameraDelegate, buildStreamingOptions, buildRecordingOptions } = require('./homekit-camera');
 
 const {
   Accessory,
@@ -19,6 +19,15 @@ const {
 
 function makeUUID(key) {
   return uuid.generate(`victron-${key}`);
+}
+
+// Duplicated (not imported) from object-detection.js's identical helper —
+// that module hard-requires @tensorflow/tfjs et al. at load time, and
+// homekit-bridge.js is loaded via tryRequire; pulling it in here would mean
+// a missing optional TF dependency silently disables all of HomeKit, not
+// just object detection.
+function slugifyCamName(name) {
+  return (name || 'camera').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'camera';
 }
 
 function clamp(val, min, max) {
@@ -1020,22 +1029,49 @@ function buildDimmerAccessory(device, sensor, store) {
 
 // ── Camera accessory builder ───────────────────────────────────────────────
 
-function addCameraToBridge(cam, bridge) {
+function addCameraToBridge(cam, bridge, store) {
   const acc = new Accessory(cam.name, makeUUID(`camera-${cam.name}`));
   acc.category = Categories.CAMERA;
   setInfo(acc, 'Camera', cam.name, `CAM-${cam.name}`);
 
-  const delegate   = new CameraDelegate(cam);
-  const controller = new CameraController({
+  const delegate = new CameraDelegate(cam);
+  const controllerOptions = {
     cameraStreamCount: 2,
     delegate,
     streamingOptions: buildStreamingOptions(!!cam.twoWayAudio),
-  });
+  };
+
+  // HomeKit Secure Video: opt-in per camera (cam.hksv: true). Also needs
+  // iCloud+ with "Home Video Recording" enabled and an active Home Hub —
+  // neither of which this server can verify; without them the Home app
+  // simply won't offer to set up recording for this camera.
+  if (cam.hksv) {
+    controllerOptions.recording = { options: buildRecordingOptions(), delegate };
+    controllerOptions.sensors = { motion: true };
+  }
+
+  const controller = new CameraController(controllerOptions);
+  delegate.controller = controller;
 
   acc.configureController(controller);
   bridge.addBridgedAccessory(acc);
   const streamType = cam.url ? 'snapshot+stream' : 'snapshot';
-  console.log(`[HomeKit] Camera: ${cam.name} (${streamType})`);
+  console.log(`[HomeKit] Camera: ${cam.name} (${streamType})${cam.hksv ? ' +HKSV' : ''}`);
+
+  // Recording only starts once HomeKit sees the built-in Motion sensor
+  // trip. Drive it from object-detection.js's per-camera aggregate
+  // "objectdetect/<slug>/any/detected" key (see its _anyActive tracking) —
+  // matched by cam.motionSource (defaults to cam.name) against the
+  // objectDetection.cameras[].name that watches the same physical feed.
+  if (cam.hksv && store) {
+    const motionSlug = slugifyCamName(cam.motionSource || cam.name);
+    const motionKey  = `objectdetect/${motionSlug}/any/detected`;
+    store.on('change', ({ key, value }) => {
+      if (key === motionKey) {
+        controller.motionService?.updateCharacteristic(Characteristic.MotionDetected, value === 1);
+      }
+    });
+  }
 }
 
 // ── Main bridge factory ────────────────────────────────────────────────────
@@ -1100,7 +1136,7 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
         cam.fetchSnapshot = () =>
           require('./rtsp-snapshot').grabFrame(cam.url, config.ffmpegRtsp?.ffmpegPath || 'ffmpeg');
       }
-      try { addCameraToBridge(cam, bridge); } catch (err) {
+      try { addCameraToBridge(cam, bridge, store); } catch (err) {
         console.error(`[HomeKit] Camera failed (${cam.name}): ${err.message}`);
       }
     }
@@ -1109,13 +1145,13 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
   // UniFi Protect cameras may not be discovered yet — add them when ready
   if (unifiProtect) {
     for (const cam of unifiProtect.getCameras()) {
-      try { addCameraToBridge(cam, bridge); } catch (err) {
+      try { addCameraToBridge(cam, bridge, store); } catch (err) {
         console.error(`[HomeKit] UniFi camera failed (${cam.name}): ${err.message}`);
       }
     }
     unifiProtect.on('cameras-discovered', (cameras) => {
       for (const cam of cameras) {
-        try { addCameraToBridge(cam, bridge); } catch (err) {
+        try { addCameraToBridge(cam, bridge, store); } catch (err) {
           console.error(`[HomeKit] UniFi camera failed (${cam.name}): ${err.message}`);
         }
       }
@@ -1126,7 +1162,7 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
   if (loxoneClient) {
     loxoneClient.on('cameras-discovered', (cameras) => {
       for (const cam of cameras) {
-        try { addCameraToBridge(cam, bridge); } catch (err) {
+        try { addCameraToBridge(cam, bridge, store); } catch (err) {
           console.error(`[HomeKit] Loxone camera failed (${cam.name}): ${err.message}`);
         }
       }

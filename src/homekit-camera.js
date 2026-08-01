@@ -3,16 +3,23 @@
 const { spawn } = require('child_process');
 const dgram    = require('dgram');
 const fs       = require('fs');
+const net      = require('net');
 const os       = require('os');
 const path     = require('path');
+const { once } = require('events');
 const {
   CameraController,
+  Characteristic,
   SRTPCryptoSuites,
   H264Profile,
   H264Level,
   StreamRequestTypes,
   AudioStreamingCodecType,
   AudioStreamingSamplerate,
+  VideoCodecType,
+  MediaContainerType,
+  AudioRecordingCodecType,
+  AudioRecordingSamplerate,
 } = require('hap-nodejs');
 const { RTSPBackchannel } = require('./rtsp-backchannel');
 
@@ -48,6 +55,144 @@ function buildStreamingOptions(twoWayAudio) {
       ],
     },
   };
+}
+
+// HomeKit Secure Video recording options. AAC_LC only (not AAC_ELD) —
+// ELD needs libfdk_aac, a non-free codec this ffmpeg build doesn't have
+// (see buildStreamingOptions's comment); AAC_LC works fine with ffmpeg's
+// built-in `aac` encoder, portable across every box LSH runs on.
+// No true prebuffer: prebufferLength is set to HAP's required minimum but
+// _startRecordingStream() only starts pulling video once HomeKit actually
+// requests the stream (on a motion trigger), same as hap-nodejs's own
+// reference camera example — a recording just starts a beat later than a
+// camera with a real continuous ring-buffer would, rather than including
+// the few seconds before motion was detected.
+function buildRecordingOptions() {
+  return {
+    prebufferLength: 4000,
+    mediaContainerConfiguration: {
+      type: MediaContainerType.FRAGMENTED_MP4,
+      fragmentLength: 4000,
+    },
+    video: {
+      type: VideoCodecType.H264,
+      parameters: {
+        profiles: [H264Profile.HIGH],
+        levels: [H264Level.LEVEL4_0],
+      },
+      resolutions: [
+        [1920, 1080, 30],
+        [1280,  720, 30],
+        [ 640,  360, 30],
+        [ 480,  270, 30],
+        [ 320,  240, 15],
+      ],
+    },
+    audio: {
+      codecs: {
+        type: AudioRecordingCodecType.AAC_LC,
+        audioChannels: 1,
+        samplerate: [AudioRecordingSamplerate.KHZ_24, AudioRecordingSamplerate.KHZ_48],
+      },
+    },
+  };
+}
+
+const AUDIO_SAMPLERATE_KHZ = {
+  [AudioRecordingSamplerate.KHZ_8]:    '8',
+  [AudioRecordingSamplerate.KHZ_16]:   '16',
+  [AudioRecordingSamplerate.KHZ_24]:   '24',
+  [AudioRecordingSamplerate.KHZ_32]:   '32',
+  [AudioRecordingSamplerate.KHZ_44_1]: '44.1',
+  [AudioRecordingSamplerate.KHZ_48]:   '48',
+};
+
+const H264_LEVEL_NAME = {
+  [H264Level.LEVEL3_1]: '3.1',
+  [H264Level.LEVEL3_2]: '3.2',
+  [H264Level.LEVEL4_0]: '4.0',
+};
+const H264_PROFILE_NAME = {
+  [H264Profile.BASELINE]: 'baseline',
+  [H264Profile.MAIN]:     'main',
+  [H264Profile.HIGH]:     'high',
+};
+
+// Speaks the minimal framing hap-nodejs's own camera example uses to pull
+// fragmented-mp4 boxes out of ffmpeg: ffmpeg writes plain MP4 muxer output
+// (not HTTP, not RTP) to a TCP socket we listen on, and this reads it back
+// out as discrete `{header, type, length, data}` boxes (moov/moof/mdat/...).
+// There's no ffmpeg flag to emit fMP4 boxes directly to stdout with framing
+// HAP can consume, so a loopback TCP socket is the standard technique every
+// HAP-NodeJS-based HKSV bridge (including hap-nodejs's own example) uses.
+class MP4StreamingServer {
+  constructor(ffmpegPath, args) {
+    this.destroyed = false;
+    this.connectPromise = new Promise((resolve) => { this._connectResolve = resolve; });
+    this.server = net.createServer((socket) => {
+      this.server.close();
+      this.socket = socket;
+      this._connectResolve();
+    });
+    this.ffmpegPath = ffmpegPath;
+    this.args = args;
+  }
+
+  async start() {
+    const listening = once(this.server, 'listening');
+    this.server.listen();
+    await listening;
+    if (this.destroyed) return;
+
+    const port = this.server.address().port;
+    this.args.push(`tcp://127.0.0.1:${port}`);
+    this.childProcess = spawn(this.ffmpegPath, this.args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    this.childProcess.stderr.on('data', (d) => {
+      const msg = d.toString().trim();
+      if (msg) console.error(`[HomeKit Cam] recording ffmpeg: ${msg}`);
+    });
+  }
+
+  destroy() {
+    this.socket?.destroy();
+    this.childProcess?.kill();
+    this.socket = undefined;
+    this.childProcess = undefined;
+    this.destroyed = true;
+  }
+
+  // Yields MP4Atoms until the socket closes (throws to signal EOF).
+  async *generator() {
+    await this.connectPromise;
+    if (!this.socket || !this.childProcess) throw new Error('MP4StreamingServer: not connected');
+    for (;;) {
+      const header = await this._read(8);
+      const length = header.readInt32BE(0) - 8;
+      const type   = header.slice(4).toString();
+      const data   = await this._read(length);
+      yield { header, length, type, data };
+    }
+  }
+
+  _read(length) {
+    if (!this.socket) throw new Error('MP4StreamingServer: reading from closed socket');
+    if (!length) return Buffer.alloc(0);
+    const buf = this.socket.read(length);
+    if (buf) return buf;
+    return new Promise((resolve, reject) => {
+      const onReadable = () => {
+        const v = this.socket.read(length);
+        if (v) { cleanup(); resolve(v); }
+      };
+      const onClose = () => { cleanup(); reject(new Error('MP4StreamingServer: socket closed mid-read')); };
+      const cleanup = () => {
+        this.socket?.removeListener('readable', onReadable);
+        this.socket?.removeListener('close', onClose);
+      };
+      this.socket.on('readable', onReadable);
+      this.socket.on('close', onClose);
+    });
+  }
 }
 
 // Binds to an OS-assigned free UDP port, then releases it — the standard
@@ -350,6 +495,102 @@ class CameraDelegate {
   forwardCloseConnection(sessionID) {
     this._stopStream(sessionID);
   }
+
+  // ── HomeKit Secure Video (recording) ───────────────────────
+
+  updateRecordingActive(active) {
+    this._recordingActive = active;
+  }
+
+  updateRecordingConfiguration(configuration) {
+    // HAP may clear this (undefined) e.g. after a factory reset while a
+    // recording is still in flight — handleRecordingStreamRequest holds
+    // onto whatever configuration was current when it started, so an
+    // in-progress recording keeps using its own settings rather than
+    // switching mid-stream.
+    this._recordingConfig = configuration;
+  }
+
+  // Pulls cam.url once, muxes it straight to fragmented MP4 (H.264 +
+  // AAC-LC) via a single ffmpeg process, and yields each moov/mdat
+  // fragment to HAP as it arrives. Stops the moment the camera's own
+  // motion sensor (driven by object-detection.js's per-camera "any object
+  // detected" signal — see homekit-bridge.js) clears, so a recording
+  // roughly matches how long something was actually in frame.
+  async *handleRecordingStreamRequest(streamId) {
+    const config = this._recordingConfig;
+    if (!config || !this.cam.url) return;
+
+    const [width, height, fps] = config.videoCodec.resolution;
+    const profile = H264_PROFILE_NAME[config.videoCodec.parameters.profile] || 'high';
+    const level   = H264_LEVEL_NAME[config.videoCodec.parameters.level] || '4.0';
+
+    const audioActive = !!this.controller?.recordingManagement
+      ?.recordingManagementService.getCharacteristic(Characteristic.RecordingAudioActive).value;
+    const audioArgs = audioActive
+      ? [
+          '-acodec', 'aac',
+          '-ar', `${AUDIO_SAMPLERATE_KHZ[config.audioCodec.samplerate] || '24'}k`,
+          '-b:a', `${config.audioCodec.bitrate}k`,
+          '-ac', String(config.audioCodec.audioChannels || 1),
+        ]
+      : ['-an'];
+
+    const args = [
+      '-loglevel', 'error',
+      '-rtsp_transport', 'tcp',
+      '-i', this.cam.url,
+      ...audioArgs,
+      '-sn', '-dn',
+      '-codec:v', 'libx264',
+      '-pix_fmt', 'yuv420p',
+      '-vf', `scale=${width}:${height}`,
+      '-r', String(fps),
+      '-profile:v', profile,
+      '-level:v', level,
+      '-b:v', `${config.videoCodec.parameters.bitRate}k`,
+      '-force_key_frames', `expr:eq(t,n_forced*${config.videoCodec.parameters.iFrameInterval / 1000})`,
+      '-f', 'mp4',
+      '-fflags', '+genpts', '-reset_timestamps', '1',
+      '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
+    ];
+
+    console.log(`[HomeKit Cam] Recording start: ${this.cam.name} (streamId ${streamId})`);
+    const server = new MP4StreamingServer('ffmpeg', args);
+    this._recordingServer = server;
+    await server.start();
+    if (server.destroyed) return;
+
+    const motion = this.controller?.motionService;
+    let pending = [];
+    try {
+      for await (const box of server.generator()) {
+        pending.push(box.header, box.data);
+        if (box.type !== 'moov' && box.type !== 'mdat') continue;
+
+        const fragment = Buffer.concat(pending);
+        pending = [];
+        const stillDetected = motion ? motion.getCharacteristic(Characteristic.MotionDetected).value : true;
+        const isLast = !stillDetected;
+        yield { data: fragment, isLast };
+        if (isLast) {
+          console.log(`[HomeKit Cam] Recording end (motion cleared): ${this.cam.name}`);
+          break;
+        }
+      }
+    } catch (err) {
+      if (!server.destroyed) console.error(`[HomeKit Cam] Recording stream failed (${this.cam.name}): ${err.message}`);
+    }
+  }
+
+  closeRecordingStream(streamId, _reason) {
+    this._recordingServer?.destroy();
+    this._recordingServer = null;
+  }
+
+  acknowledgeStream(streamId) {
+    this.closeRecordingStream(streamId);
+  }
 }
 
-module.exports = { CameraDelegate, buildStreamingOptions };
+module.exports = { CameraDelegate, buildStreamingOptions, buildRecordingOptions };
