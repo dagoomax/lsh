@@ -20,6 +20,7 @@ function writeConfigFile(data) {
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
   const { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, smartThings } = clients;
+  const manualSnapCache = new Map(); // manual camera idx → { at, buffer }, for /camera/snapshot/:idx
 
   // Secure cookie flag per request, not per server: with both HTTP and HTTPS
   // listeners up, a login over plain http (e.g. phone → http://<lan-ip>:3001)
@@ -632,9 +633,14 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     const kenikCams   = kenik ? kenik.getCameras() : [];
     const mobotixCams = mobotix ? mobotix.getCameras() : [];
     const axisCams    = axis ? axis.getCameras() : [];
-    // Manual cameras with an `onvif` section get PTZ through the generic proxy
-    const manualCams = (cfg.cameras || []).map((c, idx) =>
-      c.onvif ? { ...c, ptzUrl: `/api/camera/ptz/${idx}` } : c);
+    // Manual cameras with an `onvif` section get PTZ through the generic proxy;
+    // ones with an RTSP `url` but no snapshot/MJPEG source of their own (e.g.
+    // WHEP-only) get a thumbnail via the generic ffmpeg-grab-a-frame proxy.
+    const manualCams = (cfg.cameras || []).map((c, idx) => ({
+      ...c,
+      ...(c.onvif ? { ptzUrl: `/api/camera/ptz/${idx}` } : {}),
+      ...(c.url && !c.snapshotUrl && !c.mjpegUrl ? { snapshotUrl: `/api/camera/snapshot/${idx}` } : {}),
+    }));
     res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...stCams] });
   });
 
@@ -857,6 +863,34 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (!cam?.onvif?.host) throw new Error('Camera has no ONVIF config');
     return require('./onvif-ptz').ptz(cam.onvif, op, speed);
   }));
+
+  // Manual `cameras` entries with only an RTSP `url` (no vendor snapshot API,
+  // e.g. WHEP-only sources) — one JPEG frame via ffmpeg, cached 10 s.
+  router.get('/camera/snapshot/:idx', (req, res) => {
+    const idx = Number(req.params.idx);
+    const cam = (readConfigFile().cameras || [])[idx];
+    if (!cam?.url) return res.status(404).end();
+
+    const cached = manualSnapCache.get(idx);
+    if (cached && Date.now() - cached.at < 10000) {
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'no-cache');
+      return res.end(cached.buffer);
+    }
+
+    const ffmpegPath = readConfigFile().ffmpegRtsp?.ffmpegPath || 'ffmpeg';
+    require('./rtsp-snapshot').grabFrame(cam.url, ffmpegPath)
+      .then((buffer) => {
+        manualSnapCache.set(idx, { at: Date.now(), buffer });
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.end(buffer);
+      })
+      .catch((err) => {
+        console.error(`[Camera] Snapshot failed (${cam.name || cam.url}): ${err.message}`);
+        res.status(502).end();
+      });
+  });
 
   router.post('/settings/cameras', (req, res) => {
     const current = readConfigFile();
