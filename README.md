@@ -1442,6 +1442,8 @@ Mirrors Reolink's device pattern exactly: the first time a camera+category pair 
 
 **Memory note**: TensorFlow.js's model + CPU backend adds a real, sustained memory floor (several hundred MB) on top of LSH's baseline. If running under PM2, make sure `max_memory_restart` in `ecosystem.config.js` has enough headroom — the shipped default was raised from `300M` to `1G` for exactly this reason.
 
+**Detection history (MongoDB)** — if `config.mongo.uri` is set (see [`mongo`](#mongo) below), every kept detection is also saved to a `objectDetections` collection: `{ camera, class, score, bbox: {x,y,width,height}, ts, image }`, where `image` is a JPEG snapshot of that poll's frame with a red box drawn around every kept detection (all detections from one poll share the same annotated frame). A TTL index on `ts` expires records after 7 days, so this doesn't grow unbounded. Set `saveDetections: false` to skip this and keep only the live `detected` sensors/HomeKit motion state. No-ops silently (just the sensors, no history) if Mongo isn't configured — this is a bonus record, not the source of truth.
+
 ### `mobotix`
 
 ```json

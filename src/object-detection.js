@@ -23,19 +23,54 @@ const cocoSsd  = require('@tensorflow-models/coco-ssd');
 const cameraLog = require('./camera-log');
 const platformStatus = require('./platform-status');
 const { grabFrame } = require('./rtsp-snapshot');
+const { getDb }     = require('./mongo');
+
+const DETECTION_TTL_SECONDS = 7 * 24 * 3600; // auto-expire stored detection images after a week
 
 function slugify(name) {
   return (name || 'camera').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'camera';
 }
 
-function jpegToTensor(buffer) {
-  const { width, height, data } = jpeg.decode(buffer, { useTArray: true });
+function rawToTensor({ width, height, data }) {
   // jpeg-js always decodes to RGBA; tf wants RGB (3 channels).
   const rgb = new Uint8Array(width * height * 3);
   for (let i = 0, j = 0; i < data.length; i += 4, j += 3) {
     rgb[j] = data[i]; rgb[j + 1] = data[i + 1]; rgb[j + 2] = data[i + 2];
   }
   return tf.tensor3d(rgb, [height, width, 3]);
+}
+
+// Draws a plain rectangle outline (no library — jpeg-js only decodes/
+// encodes, there's no drawing API) around each prediction's bbox, straight
+// into the RGBA pixel buffer. bbox is [x, y, width, height] in pixels —
+// see @tensorflow-models/coco-ssd's buildDetectedObjects.
+function setPixel(data, imgWidth, x, y, rgba) {
+  if (x < 0 || y < 0 || x >= imgWidth) return;
+  const i = (y * imgWidth + x) * 4;
+  if (i < 0 || i + 3 >= data.length) return;
+  data[i] = rgba[0]; data[i + 1] = rgba[1]; data[i + 2] = rgba[2]; data[i + 3] = rgba[3];
+}
+
+function drawBoundingBoxes({ width, height, data }, predictions) {
+  const THICKNESS = 3;
+  const COLOR = [255, 40, 40, 255]; // opaque red
+  for (const p of predictions) {
+    const [bx, by, bw, bh] = p.bbox;
+    const x0 = Math.max(0, Math.round(bx));
+    const y0 = Math.max(0, Math.round(by));
+    const x1 = Math.min(width - 1, Math.round(bx + bw));
+    const y1 = Math.min(height - 1, Math.round(by + bh));
+    for (let t = 0; t < THICKNESS; t++) {
+      for (let x = x0; x <= x1; x++) {
+        setPixel(data, width, x, y0 + t, COLOR);
+        setPixel(data, width, x, y1 - t, COLOR);
+      }
+      for (let y = y0; y <= y1; y++) {
+        setPixel(data, width, x0 + t, y, COLOR);
+        setPixel(data, width, x1 - t, y, COLOR);
+      }
+    }
+  }
 }
 
 class ObjectDetectionClient {
@@ -51,6 +86,7 @@ class ObjectDetectionClient {
     this._flowsMade      = new Set();   // "<camSlug>/<class>" already got an auto-generated flow
     this._streak         = new Map();   // "<camSlug>/<class>" → consecutive-poll count, for lingerClasses
     this._lingering       = new Set();   // "<camSlug>/<class>" currently flagged as lingering
+    this._indexesEnsured  = false;
   }
 
   async start() {
@@ -85,19 +121,25 @@ class ObjectDetectionClient {
       const camSlug = slugify(camName);
       try {
         const buffer = await grabFrame(cam.url, ffmpegPath);
-        const tensor = jpegToTensor(buffer);
+        const raw    = jpeg.decode(buffer, { useTArray: true });
+        const tensor = rawToTensor(raw);
         let predictions;
         try { predictions = await this._model.detect(tensor); }
         finally { tensor.dispose(); }
         anyOk = true;
 
         const seenThisPoll = new Set();
-        for (const p of predictions) {
-          if (p.score < minConfidence) continue;
+        const kept = predictions.filter((p) => p.score >= minConfidence);
+        for (const p of kept) {
           seenThisPoll.add(p.class);
           this._onDetected(camName, camSlug, p.class, p.score);
         }
         this._updateLingerTracking(cfg, camName, camSlug, seenThisPoll);
+
+        if (kept.length && cfg.saveDetections !== false) {
+          this._saveDetectionRecords(camName, raw, kept).catch((err) =>
+            console.error(`[ObjectDetection] Mongo save failed for "${camName}": ${err.message}`));
+        }
       } catch (err) {
         console.error(`[ObjectDetection] "${camName}" failed: ${err.message}`);
       }
@@ -135,6 +177,54 @@ class ObjectDetectionClient {
     this._store.update(`${deviceKey}/detected`, 1);
     this._lastSeen.set(regKey, Date.now());
     cameraLog.push(camName, 'object', `${cls} (${Math.round(score * 100)}%)`);
+  }
+
+  // Persists one document per kept prediction to MongoDB, each carrying a
+  // copy of the frame with every kept box outlined in red (drawn once for
+  // the whole frame, so every doc from this poll shares the same annotated
+  // image). No-ops silently if Mongo isn't configured/connected — matches
+  // mongo.js's "gzip fallback, never crash" philosophy; this is a bonus
+  // record, not the source of truth (the store/HomeKit sensors are).
+  async _saveDetectionRecords(camName, raw, predictions) {
+    const db = getDb();
+    if (!db) return;
+
+    let Binary;
+    try {
+      ({ Binary } = require('mongodb'));
+    } catch {
+      return;
+    }
+
+    await this._ensureDetectionIndexes(db);
+
+    const annotated = { width: raw.width, height: raw.height, data: Uint8Array.from(raw.data) };
+    drawBoundingBoxes(annotated, predictions);
+    const jpegBuffer = jpeg.encode(annotated, 80).data;
+    const image = new Binary(jpegBuffer);
+    const ts = new Date();
+
+    const docs = predictions.map((p) => ({
+      camera: camName,
+      class: p.class,
+      score: p.score,
+      bbox: { x: p.bbox[0], y: p.bbox[1], width: p.bbox[2], height: p.bbox[3] },
+      ts,
+      image,
+    }));
+
+    await db.collection('objectDetections').insertMany(docs);
+  }
+
+  async _ensureDetectionIndexes(db) {
+    if (this._indexesEnsured) return;
+    this._indexesEnsured = true;
+    try {
+      await db.collection('objectDetections').createIndex(
+        { ts: 1 }, { expireAfterSeconds: DETECTION_TTL_SECONDS });
+    } catch (err) {
+      console.error(`[ObjectDetection] Failed to ensure Mongo TTL index: ${err.message}`);
+    }
   }
 
   // Streak-based heuristic for classes configured in objectDetection.
