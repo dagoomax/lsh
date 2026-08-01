@@ -27,6 +27,21 @@ const { getDb }     = require('./mongo');
 
 const DETECTION_TTL_SECONDS = 7 * 24 * 3600; // auto-expire stored detection images after a week
 
+// Camera event log entries are pushed under objectDetection.cameras[].name,
+// but the dashboard camera modal (Cameras.jsx) fetches/filters camera-log
+// by config.cameras[].name — the same physical stream can legitimately be
+// configured under two different display names (see homekit-bridge.js's
+// motionSource for the identical situation with HKSV's motion trigger), so
+// a detection needs pushing under both or it silently never shows up in
+// the popup it's meant to appear in.
+function cameraLogTargets(config, odCamName) {
+  const targets = new Set([odCamName]);
+  for (const cam of config.cameras || []) {
+    if ((cam.motionSource || cam.name) === odCamName) targets.add(cam.name);
+  }
+  return [...targets];
+}
+
 function slugify(name) {
   return (name || 'camera').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'camera';
 }
@@ -189,7 +204,9 @@ class ObjectDetectionClient {
 
     this._store.update(`${deviceKey}/detected`, 1);
     this._lastSeen.set(regKey, Date.now());
-    cameraLog.push(camName, 'object', `${cls} (${Math.round(score * 100)}%)`);
+    for (const name of cameraLogTargets(this._config, camName)) {
+      cameraLog.push(name, 'object', `${cls} (${Math.round(score * 100)}%)`);
+    }
 
     if (!this._anyActive.has(camSlug)) {
       this._anyActive.add(camSlug);
@@ -294,7 +311,9 @@ class ObjectDetectionClient {
     }
 
     this._store.update(`${deviceKey}/detected`, 1);
-    cameraLog.push(camName, 'object', `${cls} lingering — possible litter event`);
+    for (const name of cameraLogTargets(this._config, camName)) {
+      cameraLog.push(name, 'object', `${cls} lingering — possible litter event`);
+    }
     console.log(`[ObjectDetection] "${camName}" — ${cls} lingering (possible litter event)`);
   }
 

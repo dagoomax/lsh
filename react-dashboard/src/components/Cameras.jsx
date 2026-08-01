@@ -16,6 +16,18 @@ const LOG_LABELS = {
   sound:               '🔊 Sound detected',
   snapshot:            '📸 Snapshot updated',
   'capture-triggered': '▶ Capture triggered',
+  recording:           '🔴 HKSV recording',
+}
+// object-detection.js pushes 'object' events for every COCO-SSD class it
+// sees (detail: "<class> (<score>%)") — cats/dogs get their own paw icon
+// here rather than the generic target one everything else falls back to.
+const PET_CLASSES = new Set(['cat', 'dog', 'bird', 'horse'])
+function logLabel(entry) {
+  if (entry.type === 'object') {
+    const cls = (entry.detail || '').split(' ')[0]
+    return PET_CLASSES.has(cls) ? '🐾 Pet detected' : '🎯 Object detected'
+  }
+  return LOG_LABELS[entry.type] || entry.type
 }
 
 function fmtLogTime(ts) {
@@ -399,7 +411,7 @@ function CameraModal({ cam, onClose }) {
                 {log.map((entry, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, alignItems: 'baseline' }}>
                     <span style={{ color: 'var(--text3)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{fmtLogTime(entry.ts)}</span>
-                    <span style={{ color: 'var(--text)' }}>{LOG_LABELS[entry.type] || entry.type}</span>
+                    <span style={{ color: 'var(--text)' }}>{logLabel(entry)}</span>
                     {entry.detail && <span style={{ color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.detail}</span>}
                   </div>
                 ))}
