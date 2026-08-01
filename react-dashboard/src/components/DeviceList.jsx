@@ -403,7 +403,7 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
     .map(s => ({ ...s, value: (merged[s.path] ?? r[s.path])?.value })) : []
 
   const acPwr     = isAC ? (merged.pwr?.value ?? r.pwr?.value) : null
-  const acOn      = acPwr === 1 || acPwr === true
+  const acOn      = acPwr === 1 || acPwr === true || acPwr === '1' || acPwr === 'true'
   const acSetTemp = isAC ? (merged.temp?.value    ?? r.temp?.value)    : null
   const acEnvTemp = isAC ? (merged.envtemp?.value ?? r.envtemp?.value) : null
   const acMode    = isAC ? (merged.ac_mode?.value ?? r.ac_mode?.value ?? 0) : 0
