@@ -1281,3 +1281,56 @@ body::before {
   border-color: color-mix(in srgb, var(--accent) 32%, transparent);
   box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 18%, transparent);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Fine-detail pass — the small in-tile controls (mute, volume ±, transport
+   buttons, header icon buttons) were flat single-tone boxes while every
+   larger surface got gradient fills + inset sheens. This brings them up to
+   the same finish: subtle gradient, inset highlight, soft lift on hover,
+   a tactile press. Purely additive — components keep passing dynamic
+   background/boxShadow inline for their "active" tint; this only supplies
+   the neutral/idle look and the interaction. */
+.mini-btn {
+  border: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, var(--white-10) 0%, var(--white-04) 100%);
+  box-shadow: var(--inner-hl), 0 1px 3px rgba(0,0,0,0.28);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.mini-btn:hover  { transform: translateY(-1px); box-shadow: var(--inner-hl), 0 3px 8px rgba(0,0,0,0.32); }
+.mini-btn:active { transform: translateY(0) scale(0.93); }
+[data-theme="light"] .mini-btn {
+  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.65) 100%);
+  box-shadow: var(--inner-hl), 0 1px 3px rgba(15,23,42,0.1);
+}
+[data-theme="light"] .mini-btn:hover { box-shadow: var(--inner-hl), 0 3px 8px rgba(15,23,42,0.14); }
+@media (prefers-reduced-motion: reduce) {
+  .mini-btn { transition: background 0.15s ease; }
+  .mini-btn:hover, .mini-btn:active { transform: none; }
+}
+
+/* Header icon buttons (lock / theme / language) join the same system */
+.header-icon-btn {
+  background: linear-gradient(180deg, var(--white-08) 0%, var(--white-03) 100%);
+  box-shadow: var(--inner-hl);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.header-icon-btn:hover { transform: translateY(-1px); border-color: var(--border-lt); box-shadow: var(--inner-hl), 0 3px 10px rgba(0,0,0,0.3); }
+.header-icon-btn:active { transform: translateY(0) scale(0.95); }
+
+/* Connection dot breathes gently while live — a quiet "alive" cue instead of
+   a static pill (the pulse animation was reserved for the down/error state) */
+@keyframes live-breathe {
+  0%, 100% { box-shadow: 0 0 6px var(--green); }
+  50%       { box-shadow: 0 0 12px var(--green), 0 0 20px color-mix(in srgb, var(--green) 40%, transparent); }
+}
+.status-dot-live { animation: live-breathe 2.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .status-dot-live { animation: none; }
+}
+
+/* Toggle switch knob: press ripple (track/knob gradients are set inline in
+   the Toggle component, matching how it already reads on/off from JS state) */
+.lux-toggle:active .lux-toggle-knob { box-shadow: 0 1px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.9), 0 0 0 5px var(--white-10); }

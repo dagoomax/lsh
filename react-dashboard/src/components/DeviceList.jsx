@@ -203,25 +203,29 @@ const CATS = ['All','Victron','Lighting','Switches','Climate','Media','Security'
 function Toggle({ on, onChange }) {
   return (
     <div
-      role="switch" aria-checked={on}
+      role="switch" aria-checked={on} className="lux-toggle" data-on={on}
       onClick={e => { e.stopPropagation(); onChange(!on) }}
       style={{
         width:48, height:28, borderRadius:14,
-        background: on ? 'var(--accent)' : 'var(--white-12)',
+        background: on
+          ? 'linear-gradient(180deg, var(--accent-lt) -20%, var(--accent) 90%)'
+          : 'linear-gradient(180deg, var(--white-14) 0%, var(--white-08) 100%)',
         position:'relative', cursor:'pointer', flexShrink:0,
-        transition:'background 0.2s',
-        boxShadow: on ? '0 0 12px color-mix(in srgb, var(--accent) 50%, transparent)' : 'none',
+        transition:'background 0.25s ease, box-shadow 0.25s ease',
+        boxShadow: on
+          ? '0 0 14px color-mix(in srgb, var(--accent) 55%, transparent), inset 0 1px 1px rgba(255,255,255,0.3)'
+          : 'inset 0 1px 2px rgba(0,0,0,0.2)',
         WebkitTapHighlightColor:'transparent',
         // Extend tap area without changing visual size
         padding:'8px',
         margin:'-8px',
         boxSizing:'content-box',
       }}>
-      <div style={{
+      <div className="lux-toggle-knob" style={{
         position:'absolute', width:22, height:22, borderRadius:'50%',
-        background:'#fff', top:3, left:3,
-        boxShadow:'0 1px 4px rgba(0,0,0,0.5)',
-        transition:'transform 0.2s cubic-bezier(0.4,0,0.2,1)',
+        background:'linear-gradient(180deg, #ffffff 0%, #e7ecf3 100%)', top:3, left:3,
+        boxShadow:'0 1px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.9)',
+        transition:'transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.15s ease',
         transform: on ? 'translateX(20px)' : 'none',
       }}/>
     </div>
@@ -566,14 +570,13 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
             <Toggle on={denonPower} onChange={val => cmd('power', val ? 1 : 0)} />
           )}
           {isSonos && (
-            <button onClick={e => { e.stopPropagation(); cmd('playing', sonosPlaying ? 0 : 1) }}
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('playing', sonosPlaying ? 0 : 1) }}
               style={{
-                width:34, height:34, borderRadius:10, border:'none', cursor:'pointer',
-                background: sonosPlaying ? 'color-mix(in srgb, var(--accent) 25%, transparent)' : 'var(--white-08)',
+                width:34, height:34, borderRadius:10,
+                background: sonosPlaying ? 'color-mix(in srgb, var(--accent) 25%, transparent)' : undefined,
                 color: sonosPlaying ? 'var(--tile-on-ink)' : 'var(--text2)',
-                fontSize:15, display:'flex', alignItems:'center', justifyContent:'center',
-                boxShadow: sonosPlaying ? '0 0 12px color-mix(in srgb, var(--accent) 30%, transparent)' : 'none',
-                WebkitTapHighlightColor:'transparent',
+                fontSize:15,
+                boxShadow: sonosPlaying ? '0 0 12px color-mix(in srgb, var(--accent) 30%, transparent)' : undefined,
               }}>
               {sonosPlaying ? '⏸' : '▶'}
             </button>
@@ -623,27 +626,21 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
       {(hasMy || hasUpDn) && (
         <div style={{ marginTop:8, display:'flex', gap:6 }}>
           {hasUpDn && (
-            <button onClick={e => { e.stopPropagation(); cmd('up', 1) }} title="Up"
-              style={{ flex:1, padding:'7px 10px', borderRadius:9, fontSize:13, fontWeight:700,
-                border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text2)',
-                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('up', 1) }} title="Up"
+              style={{ flex:1, padding:'7px 10px', borderRadius:9, fontSize:13, fontWeight:700, color:'var(--text2)' }}>
               ▲
             </button>
           )}
           {hasMy && (
-            <button onClick={e => { e.stopPropagation(); cmd('my', 1) }}
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('my', 1) }}
               title="Move to favourite (My) position"
-              style={{ flex:1, padding:'7px 10px', borderRadius:9,
-                border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text2)',
-                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              style={{ flex:1, padding:'7px 10px', borderRadius:9, color:'var(--text2)' }}>
               <MyIcon size={18} />
             </button>
           )}
           {hasUpDn && (
-            <button onClick={e => { e.stopPropagation(); cmd('down', 1) }} title="Down"
-              style={{ flex:1, padding:'7px 10px', borderRadius:9, fontSize:13, fontWeight:700,
-                border:'1px solid var(--border)', background:'var(--surface2)', color:'var(--text2)',
-                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('down', 1) }} title="Down"
+              style={{ flex:1, padding:'7px 10px', borderRadius:9, fontSize:13, fontWeight:700, color:'var(--text2)' }}>
               ▼
             </button>
           )}
@@ -668,13 +665,13 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
           </div>
           {/* Temp +/- */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <button onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.max(16, acSetTemp - 1)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'var(--white-10)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.max(16, acSetTemp - 1)) }}
+              style={{ width:22, height:22, borderRadius:6, color:'var(--text)', fontSize:14 }}>−</button>
             <span style={{ fontSize:12, fontWeight:700, color:'var(--tile-on-ink)', minWidth:36, textAlign:'center' }}>
               {acSetTemp != null ? `${Number(acSetTemp).toFixed(0)}°C` : '—'}
             </span>
-            <button onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.min(30, acSetTemp + 1)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'var(--white-10)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.min(30, acSetTemp + 1)) }}
+              style={{ width:22, height:22, borderRadius:6, color:'var(--text)', fontSize:14 }}>+</button>
             <span style={{ fontSize:10, color:'var(--text3)', marginLeft:4 }}>{FAN_NAMES[acFan] || 'auto'} fan</span>
           </div>
         </div>
@@ -698,13 +695,13 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
           </div>
           {/* Set temp +/- (spa range 15–40°C, 0.5° steps — see smarttub-client.js) */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <button onClick={e => { e.stopPropagation(); if (spaSetTemp != null) cmd('set_temp', Math.max(15, spaSetTemp - 0.5)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'var(--white-10)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); if (spaSetTemp != null) cmd('set_temp', Math.max(15, spaSetTemp - 0.5)) }}
+              style={{ width:22, height:22, borderRadius:6, color:'var(--text)', fontSize:14 }}>−</button>
             <span style={{ fontSize:12, fontWeight:700, color:'var(--tile-on-ink)', minWidth:42, textAlign:'center' }}>
               {spaSetTemp != null ? `${Number(spaSetTemp).toFixed(1)}°C` : '—'}
             </span>
-            <button onClick={e => { e.stopPropagation(); if (spaSetTemp != null) cmd('set_temp', Math.min(40, spaSetTemp + 0.5)) }}
-              style={{ width:22, height:22, borderRadius:6, border:'none', background:'var(--white-10)', color:'var(--text)', fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); if (spaSetTemp != null) cmd('set_temp', Math.min(40, spaSetTemp + 0.5)) }}
+              style={{ width:22, height:22, borderRadius:6, color:'var(--text)', fontSize:14 }}>+</button>
             {spaHeater && <span style={{ fontSize:10, color:'var(--orange)', marginLeft:4 }}>heating</span>}
           </div>
         </div>
@@ -731,24 +728,23 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
           )}
           {/* Mute + step buttons */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <button onClick={e => { e.stopPropagation(); cmd('mute', denonMute ? 0 : 1) }}
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('mute', denonMute ? 0 : 1) }}
               style={{
-                width:24, height:24, borderRadius:7, border:'none', cursor:'pointer', flexShrink:0,
-                background: denonMute ? 'rgba(248,81,73,0.2)' : 'var(--white-07)',
+                width:24, height:24, borderRadius:7, flexShrink:0,
+                background: denonMute ? 'rgba(248,81,73,0.2)' : undefined,
                 color: denonMute ? '#f87171' : 'var(--text2)', fontSize:11,
-                WebkitTapHighlightColor:'transparent',
               }}>
               {denonMute ? '🔇' : '🔊'}
             </button>
-            <button onClick={e => { e.stopPropagation(); cmd('volume_down', true) }}
-              style={{ width:20, height:20, borderRadius:6, border:'none', flexShrink:0, background:'var(--white-08)', color:'var(--text2)', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', WebkitTapHighlightColor:'transparent' }}>
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('volume_down', true) }}
+              style={{ width:20, height:20, borderRadius:6, flexShrink:0, color:'var(--text2)', fontSize:12 }}>
               −
             </button>
             <span style={{ fontSize:9, color:'var(--text3)', flexShrink:0, minWidth:22, textAlign:'right' }}>
               {Math.round(denonVolume)}
             </span>
-            <button onClick={e => { e.stopPropagation(); cmd('volume_up', true) }}
-              style={{ width:20, height:20, borderRadius:6, border:'none', flexShrink:0, background:'var(--white-08)', color:'var(--text2)', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', WebkitTapHighlightColor:'transparent' }}>
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('volume_up', true) }}
+              style={{ width:20, height:20, borderRadius:6, flexShrink:0, color:'var(--text2)', fontSize:12 }}>
               +
             </button>
           </div>
@@ -767,19 +763,14 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
           )}
           {/* Prev / Next / Mute */}
           <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-            <button onClick={e => { e.stopPropagation(); cmd('prev', true) }}
-              style={{ flex:1, height:24, borderRadius:7, border:'none', cursor:'pointer',
-                background:'var(--white-07)', color:'var(--text2)', fontSize:12,
-                WebkitTapHighlightColor:'transparent' }}>⏮</button>
-            <button onClick={e => { e.stopPropagation(); cmd('next', true) }}
-              style={{ flex:1, height:24, borderRadius:7, border:'none', cursor:'pointer',
-                background:'var(--white-07)', color:'var(--text2)', fontSize:12,
-                WebkitTapHighlightColor:'transparent' }}>⏭</button>
-            <button onClick={e => { e.stopPropagation(); cmd('mute', sonosMute ? 0 : 1) }}
-              style={{ width:28, height:24, borderRadius:7, border:'none', cursor:'pointer',
-                background: sonosMute ? 'rgba(248,81,73,0.2)' : 'var(--white-07)',
-                color: sonosMute ? '#f87171' : 'var(--text2)', fontSize:12,
-                WebkitTapHighlightColor:'transparent' }}>
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('prev', true) }}
+              style={{ flex:1, height:24, borderRadius:7, color:'var(--text2)', fontSize:12 }}>⏮</button>
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('next', true) }}
+              style={{ flex:1, height:24, borderRadius:7, color:'var(--text2)', fontSize:12 }}>⏭</button>
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('mute', sonosMute ? 0 : 1) }}
+              style={{ width:28, height:24, borderRadius:7,
+                background: sonosMute ? 'rgba(248,81,73,0.2)' : undefined,
+                color: sonosMute ? '#f87171' : 'var(--text2)', fontSize:12 }}>
               {sonosMute ? '🔇' : '🔊'}
             </button>
           </div>

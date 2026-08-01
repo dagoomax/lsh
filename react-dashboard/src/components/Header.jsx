@@ -60,10 +60,11 @@ export default function Header({ connection, connected, onLock }) {
       {/* Connection status + source (right) — vanilla green/red + neutral chip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <button
+          className="header-icon-btn"
           onClick={onLock}
           title={gt('lock', 'Lock dashboard')}
           style={{
-            background: 'var(--white-06)', color: 'var(--text2)',
+            color: 'var(--text2)',
             border: '1px solid var(--border)', borderRadius: 8,
             padding: '4px 8px', fontSize: 13, lineHeight: 1, cursor: 'pointer',
           }}>
@@ -74,10 +75,11 @@ export default function Header({ connection, connected, onLock }) {
           </svg>
         </button>
         <button
+          className="header-icon-btn"
           onClick={toggleTheme}
           title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
           style={{
-            background: 'var(--white-06)', color: 'var(--text2)',
+            color: 'var(--text2)',
             border: '1px solid var(--border)', borderRadius: 8,
             padding: '4px 8px', fontSize: 13, lineHeight: 1, cursor: 'pointer',
           }}>
@@ -101,7 +103,7 @@ export default function Header({ connection, connected, onLock }) {
           border: `1px solid ${live ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)'}`,
           borderRadius: 20, padding: '3px 10px',
         }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%',
+          <span className={live ? 'status-dot-live' : undefined} style={{ width: 6, height: 6, borderRadius: '50%',
             background: live ? 'var(--green)' : '#f85149',
             display: 'inline-block',
             boxShadow: live ? '0 0 6px var(--green)' : 'none',
