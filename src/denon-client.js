@@ -12,6 +12,14 @@ const INPUT_NAMES = {
   AUX2:     'AUX 2',    AUX3: 'AUX 3',
 };
 
+// Common Denon/Marantz surround/sound mode codes (MS command). Not every
+// model or input offers every mode — override via config.denon.soundModes
+// if yours differs.
+const DEFAULT_SOUND_MODES = [
+  'MOVIE', 'MUSIC', 'GAME', 'DIRECT', 'PURE DIRECT', 'STEREO',
+  'AUTO', 'DOLBY DIGITAL', 'DTS SURROUND', 'MCH STEREO', 'VIRTUAL',
+];
+
 class DenonClient {
   constructor(config, store, sensorRegistry) {
     this._config   = config;
@@ -22,7 +30,9 @@ class DenonClient {
     this._pollTimer = null;
     this._reconnTimer = null;
     this._deviceKey   = null;
+    this._zone2Key    = null;
     this._inputs      = [];
+    this._soundModes  = DEFAULT_SOUND_MODES;
     this._stopping    = false;
   }
 
@@ -30,8 +40,9 @@ class DenonClient {
     const cfg = this._config.denon;
     if (!cfg?.host) return;
 
-    this._inputs    = cfg.inputs || [];
-    this._deviceKey = `denon/${cfg.host.replace(/\./g, '_')}`;
+    this._inputs     = cfg.inputs || [];
+    this._soundModes = (cfg.soundModes && cfg.soundModes.length) ? cfg.soundModes : DEFAULT_SOUND_MODES;
+    this._deviceKey  = `denon/${cfg.host.replace(/\./g, '_')}`;
 
     const sensors = [
       {
@@ -48,12 +59,29 @@ class DenonClient {
         writeCmd: 'setVolume', capabilityId: 'volume',
       },
       {
+        path: 'volume_up', label: 'Volume Up', type: 'trigger',
+        controllable: true, capabilityId: 'volume_up', writeOn: 'up',
+      },
+      {
+        path: 'volume_down', label: 'Volume Down', type: 'trigger',
+        controllable: true, capabilityId: 'volume_down', writeOn: 'down',
+      },
+      {
         path: 'mute', label: 'Mute', format: 'on-off',
         controllable: true, type: 'toggle',
         writeOn: 'on', writeOff: 'off',
         capabilityId: 'mute',
       },
       { path: 'input', label: 'Input', type: 'label' },
+      {
+        path: 'sound_mode', label: 'Sound Mode', type: 'label',
+      },
+      {
+        path: 'sleep', label: 'Sleep Timer', unit: 'min',
+        controllable: true, type: 'range',
+        min: 0, max: 120,
+        writeCmd: 'setSleep', capabilityId: 'sleep',
+      },
     ];
 
     if (this._inputs.length) {
@@ -67,6 +95,16 @@ class DenonClient {
       });
     }
 
+    if (this._soundModes.length) {
+      sensors.push({
+        path: 'sound_mode_idx', label: 'Sound Mode', unit: '',
+        controllable: true, type: 'range',
+        min: 0, max: this._soundModes.length - 1,
+        writeCmd: 'selectSoundMode', capabilityId: 'sound_mode_idx',
+        inputNames: this._soundModes,
+      });
+    }
+
     this._registry.registerDevice({
       key:    this._deviceKey,
       label:  cfg.name || `Denon ${cfg.host}`,
@@ -76,6 +114,60 @@ class DenonClient {
       _writeCapability: (capId, command, args) =>
         this._executeCommand(capId, command, args),
     });
+
+    if (cfg.zone2) {
+      this._zone2Key = `${this._deviceKey}/zone2`;
+      const zone2Sensors = [
+        {
+          path: 'power', label: 'Power', format: 'on-off',
+          controllable: true, type: 'toggle',
+          writeOn: 'on', writeOff: 'standby',
+          capabilityId: 'power',
+        },
+        {
+          path: 'volume', label: 'Volume', unit: '%',
+          controllable: true, type: 'range',
+          min: 0, max: cfg.zone2MaxVolume || cfg.maxVolume || 80,
+          rangeFormat: 'percent',
+          writeCmd: 'setVolume', capabilityId: 'volume',
+        },
+        {
+          path: 'volume_up', label: 'Volume Up', type: 'trigger',
+          controllable: true, capabilityId: 'volume_up', writeOn: 'up',
+        },
+        {
+          path: 'volume_down', label: 'Volume Down', type: 'trigger',
+          controllable: true, capabilityId: 'volume_down', writeOn: 'down',
+        },
+        {
+          path: 'mute', label: 'Mute', format: 'on-off',
+          controllable: true, type: 'toggle',
+          writeOn: 'on', writeOff: 'off',
+          capabilityId: 'mute',
+        },
+        { path: 'input', label: 'Input', type: 'label' },
+      ];
+
+      if (this._inputs.length) {
+        zone2Sensors.push({
+          path: 'input_idx', label: 'Source', unit: '',
+          controllable: true, type: 'range',
+          min: 0, max: this._inputs.length - 1,
+          writeCmd: 'selectInput', capabilityId: 'input_idx',
+          inputNames: this._inputs,
+        });
+      }
+
+      this._registry.registerDevice({
+        key:    this._zone2Key,
+        label:  `${cfg.name || `Denon ${cfg.host}`} Zone 2`,
+        type:   'denon',
+        homekit: [],
+        sensors: zone2Sensors,
+        _writeCapability: (capId, command, args) =>
+          this._executeZone2Command(capId, command, args),
+      });
+    }
 
     this._connect();
     platformStatus.set('denon', true);
@@ -136,12 +228,23 @@ class DenonClient {
     this._send('MV?');
     this._send('MU?');
     this._send('SI?');
+    this._send('MS?');
+    this._send('SLP?');
+    if (this._zone2Key) {
+      this._send('Z2?');
+      this._send('Z2MU?');
+    }
   }
 
   // ── Response Parser ─────────────────────────────────────────────────────────
 
   _parseLine(line) {
     const dk = this._deviceKey;
+
+    if (this._zone2Key && line.startsWith('Z2')) {
+      this._parseZone2Line(line);
+      return;
+    }
 
     if (line.startsWith('PW')) {
       this._store.update(`${dk}/power`, line === 'PWON' ? 1 : 0);
@@ -172,6 +275,47 @@ class DenonClient {
       if (idx !== -1) this._store.update(`${dk}/input_idx`, idx);
       return;
     }
+
+    if (line.startsWith('MS')) {
+      const raw = line.slice(2);
+      this._store.update(`${dk}/sound_mode`, raw);
+      const idx = this._soundModes.indexOf(raw);
+      if (idx !== -1) this._store.update(`${dk}/sound_mode_idx`, idx);
+      return;
+    }
+
+    if (line.startsWith('SLP')) {
+      const raw = line.slice(3);
+      const val = raw === 'OFF' ? 0 : parseInt(raw, 10);
+      if (!isNaN(val)) this._store.update(`${dk}/sleep`, val);
+      return;
+    }
+  }
+
+  // Zone 2 replies are all prefixed "Z2" but pack power/mute/volume/input
+  // into the same namespace, so they need to be disambiguated by shape.
+  _parseZone2Line(line) {
+    const zk  = this._zone2Key;
+    const raw = line.slice(2);
+
+    if (raw === 'ON' || raw === 'OFF') {
+      this._store.update(`${zk}/power`, raw === 'ON' ? 1 : 0);
+      return;
+    }
+    if (raw.startsWith('MU')) {
+      this._store.update(`${zk}/mute`, raw === 'MUON' ? 1 : 0);
+      return;
+    }
+    if (/^\d{2,3}$/.test(raw)) {
+      const n = parseInt(raw, 10);
+      this._store.update(`${zk}/volume`, raw.length === 3 ? n / 10 : n);
+      return;
+    }
+    // Anything else is an input code.
+    const label = INPUT_NAMES[raw] || raw;
+    this._store.update(`${zk}/input`, label);
+    const idx = this._inputs.indexOf(raw);
+    if (idx !== -1) this._store.update(`${zk}/input_idx`, idx);
   }
 
   // ── Command Dispatch ────────────────────────────────────────────────────────
@@ -195,6 +339,53 @@ class DenonClient {
         const idx   = Math.round(args?.[0] ?? 0);
         const input = this._inputs[idx];
         if (input) this._send(`SI${input}`);
+        break;
+      }
+      case 'volume_up':
+        this._send('MVUP');
+        break;
+      case 'volume_down':
+        this._send('MVDOWN');
+        break;
+      case 'sound_mode_idx': {
+        const idx  = Math.round(args?.[0] ?? 0);
+        const mode = this._soundModes[idx];
+        if (mode) this._send(`MS${mode}`);
+        break;
+      }
+      case 'sleep': {
+        const min = Math.round(Math.max(0, Math.min(120, args?.[0] ?? 0)));
+        this._send(min === 0 ? 'SLPOFF' : `SLP${min.toString().padStart(3, '0')}`);
+        break;
+      }
+    }
+  }
+
+  async _executeZone2Command(capId, command, args) {
+    switch (capId) {
+      case 'power':
+        this._send(command === 'on' ? 'Z2ON' : 'Z2OFF');
+        break;
+      case 'volume': {
+        const cfg = this._config.denon;
+        const max = cfg.zone2MaxVolume || cfg.maxVolume || 80;
+        const vol = Math.round(Math.max(0, Math.min(max, args?.[0] ?? 50)));
+        this._send(`Z2${vol.toString().padStart(2, '0')}`);
+        break;
+      }
+      case 'volume_up':
+        this._send('Z2UP');
+        break;
+      case 'volume_down':
+        this._send('Z2DOWN');
+        break;
+      case 'mute':
+        this._send(command === 'on' ? 'Z2MUON' : 'Z2MUOFF');
+        break;
+      case 'input_idx': {
+        const idx   = Math.round(args?.[0] ?? 0);
+        const input = this._inputs[idx];
+        if (input) this._send(`Z2${input}`);
         break;
       }
     }

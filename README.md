@@ -1163,7 +1163,10 @@ Auto-discovery sends a `M-SEARCH` UDP multicast to `239.255.255.250:1900` with `
   "port": 23,
   "name": "Denon AVR-X2800H",
   "maxVolume": 80,
-  "inputs": ["CD", "BD", "NET", "BT", "GAME", "SAT/CBL"]
+  "inputs": ["CD", "BD", "NET", "BT", "GAME", "SAT/CBL"],
+  "soundModes": ["MOVIE", "MUSIC", "GAME", "DIRECT", "PURE DIRECT", "STEREO", "AUTO", "DOLBY DIGITAL", "DTS SURROUND", "MCH STEREO", "VIRTUAL"],
+  "zone2": false,
+  "zone2MaxVolume": 80
 }
 ```
 
@@ -1176,12 +1179,17 @@ Connects to a **Denon** or **Marantz** AV receiver over the Telnet control proto
 | `name` | `Denon <host>` | Display name on the dashboard |
 | `maxVolume` | `80` | Maximum volume step. Use `80` for most models, `98` for newer flagship models |
 | `inputs` | `[]` | Denon input codes to show as selection pills. Common values: `CD`, `BD`, `DVD`, `TV`, `SAT/CBL`, `GAME`, `NET`, `BT`, `AUX1`, `AUX2`, `TUNER`, `MPLAY` |
+| `soundModes` | built-in list of 11 common modes | Surround/sound mode codes (`MS` command) to expose as a selector. Override if your model's available modes differ |
+| `zone2` | `false` | Registers a second device (`<key>/zone2`) mirroring power/volume/mute/input for the receiver's Zone 2 output |
+| `zone2MaxVolume` | `maxVolume` | Maximum volume step for Zone 2, if it differs from the main zone |
 
-**Commands sent:** `PWON` / `PWSTANDBY`, `MV##` (zero-padded, e.g. `MV50`), `MUON` / `MUOFF`, `SI<INPUT>` (e.g. `SICD`, `SIBT`).
+**Commands sent (main zone):** `PWON` / `PWSTANDBY`, `MV##` (zero-padded, e.g. `MV50`), `MVUP` / `MVDOWN`, `MUON` / `MUOFF`, `SI<INPUT>` (e.g. `SICD`, `SIBT`), `MS<MODE>` (e.g. `MSSTEREO`), `SLP###` / `SLPOFF` (sleep timer, minutes).
 
-**Responses parsed:** `PWON`/`PWSTANDBY` → power; `MV##`/`MV##.5` → volume (half-dB steps handled); `MUON`/`MUOFF` → mute; `SI<INPUT>` → current input and selection-pill highlight.
+**Commands sent (Zone 2, when `zone2: true`):** `Z2ON` / `Z2OFF`, `Z2##`, `Z2UP` / `Z2DOWN`, `Z2MUON` / `Z2MUOFF`, `Z2<INPUT>`.
 
-**Dashboard tile** (Media category): power toggle, input selection pills (active highlighted), mute button + volume slider. Status shows current input · Muted / Standby.
+**Responses parsed:** `PWON`/`PWSTANDBY` → power; `MV##`/`MV##.5` → volume (half-dB steps handled); `MUON`/`MUOFF` → mute; `SI<INPUT>` → current input and selection-pill highlight; `MS<MODE>` → sound mode; `SLP###`/`SLPOFF` → sleep timer; `Z2*` replies → Zone 2 power/volume/mute/input (disambiguated by shape, since Denon packs them into one prefix).
+
+**Dashboard tile** (Media category): power toggle, input selection pills (active highlighted), mute button + volume slider. Status shows current input · Muted / Standby. Sound mode, sleep timer, volume up/down, and the Zone 2 device are available via the generic device API and HomeKit but aren't yet in this hand-built tile — say the word if you want those surfaced there too.
 
 ---
 
