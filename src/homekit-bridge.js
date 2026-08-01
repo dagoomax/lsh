@@ -1091,6 +1091,15 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
   // ── Camera accessories ────────────────────────────────────
   for (const cam of config.cameras ?? []) {
     if (cam.name) {
+      // Manual cameras with only an RTSP url (no vendor snapshot API) get a
+      // direct in-process grabFrame, matching the fetchSnapshot pattern
+      // every other camera client uses (Reolink/Mobotix/Axis/Loxone/UniFi
+      // Protect) — going through the HTTP snapshotUrl instead would hit
+      // this server's own auth middleware with no session to satisfy it.
+      if (cam.url && !cam.snapshotUrl && !cam.mjpegUrl) {
+        cam.fetchSnapshot = () =>
+          require('./rtsp-snapshot').grabFrame(cam.url, config.ffmpegRtsp?.ffmpegPath || 'ffmpeg');
+      }
       try { addCameraToBridge(cam, bridge); } catch (err) {
         console.error(`[HomeKit] Camera failed (${cam.name}): ${err.message}`);
       }

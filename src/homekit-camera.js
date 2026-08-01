@@ -117,15 +117,25 @@ class CameraDelegate {
     const { targetAddress, videoPort, videoSSRC, videoSRTPKey } = session;
     const fps     = videoInfo?.fps          || 15;
     const bitrate = videoInfo?.max_bit_rate || 300;
+    const width   = videoInfo?.width        || 1280;
+    const height  = videoInfo?.height       || 720;
 
     const args = [
       '-loglevel', 'error',
       '-rtsp_transport', 'tcp',
       '-i', this.cam.url,
       '-an',
+      // Scale to whatever resolution HomeKit actually negotiated — the
+      // source camera's native resolution can exceed it (e.g. this stream
+      // is 1920x1080), and encoding un-scaled at a fixed low H.264 level
+      // silently fails: libx264 rejects the frame's macroblock count for
+      // that level instead of erroring loudly.
+      '-vf', `scale=${width}:${height}`,
       '-vcodec', 'libx264',
       '-profile:v', 'baseline',
-      '-level:v', '3.1',
+      // 4.0 comfortably covers every resolution in STREAMING_OPTIONS
+      // (up to 1920x1080), unlike the previous hardcoded 3.1.
+      '-level:v', '4.0',
       '-b:v', `${bitrate}k`,
       '-bufsize', `${bitrate * 4}k`,
       '-maxrate', `${bitrate}k`,
