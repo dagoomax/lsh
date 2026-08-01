@@ -4,6 +4,7 @@ const path = require('path');
 const http = require('http');
 const { generateSetupUri, generateSetupID } = require('./homekit-uri');
 const cameraLog = require('./camera-log');
+const detectionBoxes = require('./detection-boxes');
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
 
@@ -764,6 +765,13 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     const camera = req.query.camera || null;
     const limit  = Math.min(parseInt(req.query.limit) || 100, 500);
     res.json({ success: true, data: cameraLog.getRecent(limit, camera) });
+  });
+
+  // Latest object-detection bounding boxes for a camera (initial state for
+  // the modal's live overlay — live updates arrive over the 'detection-boxes'
+  // socket event).
+  router.get('/detection-boxes', (req, res) => {
+    res.json({ success: true, data: detectionBoxes.get(req.query.camera || '') });
   });
 
   // UniFi Protect snapshot proxy (avoids CORS + self-signed TLS in browser)

@@ -24,6 +24,7 @@ const cameraLog = require('./camera-log');
 const platformStatus = require('./platform-status');
 const { grabFrame } = require('./rtsp-snapshot');
 const { getDb }     = require('./mongo');
+const detectionBoxes = require('./detection-boxes');
 
 const DETECTION_TTL_SECONDS = 7 * 24 * 3600; // auto-expire stored detection images after a week
 
@@ -151,6 +152,14 @@ class ObjectDetectionClient {
           this._onDetected(camName, camSlug, p.class, p.score);
         }
         this._updateLingerTracking(cfg, camName, camSlug, seenThisPoll);
+
+        // Published every poll — including an empty array — so the
+        // dashboard overlay clears itself the moment nothing's left in
+        // frame instead of showing a stale box until the next detection.
+        const boxItems = kept.map((p) => ({ class: p.class, score: p.score, bbox: p.bbox }));
+        for (const name of cameraLogTargets(this._config, camName)) {
+          detectionBoxes.set(name, boxItems, raw.width, raw.height);
+        }
 
         if (kept.length && cfg.saveDetections !== false) {
           this._saveDetectionRecords(camName, raw, kept).catch((err) =>

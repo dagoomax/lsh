@@ -1,6 +1,7 @@
 const { Server }     = require('socket.io');
 const platformStatus = require('./platform-status');
 const cameraLog      = require('./camera-log');
+const detectionBoxes = require('./detection-boxes');
 
 function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, sipServer) {
   const io = new Server(httpServer, { cors: { origin: '*' } });
@@ -87,6 +88,11 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, 
   // Forward camera events
   cameraLog.on('entry', (entry) => {
     io.emit('camera-event', entry);
+  });
+
+  // Forward object-detection bounding boxes for the camera modal's live overlay
+  detectionBoxes.on('update', (entry) => {
+    io.emit('detection-boxes', entry);
   });
 
   // Forward SIP doorbell call state to all browsers

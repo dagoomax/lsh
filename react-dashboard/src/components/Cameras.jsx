@@ -36,6 +36,77 @@ function fmtLogTime(ts) {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
+// The video/img element renders at object-fit:contain inside its container,
+// so it's letterboxed whenever its aspect ratio doesn't match the
+// container's — bounding boxes (in source-frame pixel coords) need mapping
+// through that same letterbox rect, not just naively scaled to the full
+// container, or they'd drift off the actual picture.
+function computeContainRect(containerW, containerH, mediaW, mediaH) {
+  if (!mediaW || !mediaH || !containerW || !containerH) return null
+  const containerRatio = containerW / containerH
+  const mediaRatio = mediaW / mediaH
+  let width, height
+  if (mediaRatio > containerRatio) {
+    width = containerW
+    height = containerW / mediaRatio
+  } else {
+    height = containerH
+    width = containerH * mediaRatio
+  }
+  return { left: (containerW - width) / 2, top: (containerH - height) / 2, width, height }
+}
+
+// Object-detection boxes overlaid on the live view — position:absolute
+// layer scaled through computeContainRect. Purely presentational; boxes
+// come from object-detection.js's periodic poll (see detection-boxes.js),
+// so they update roughly every pollInterval seconds, not frame-by-frame.
+function DetectionBoxesOverlay({ containerRef, boxes }) {
+  const [mediaRect, setMediaRect] = useState(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const recompute = () => {
+      setMediaRect(computeContainRect(el.clientWidth, el.clientHeight, boxes?.imgWidth, boxes?.imgHeight))
+    }
+    recompute()
+    const ro = new ResizeObserver(recompute)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [containerRef, boxes?.imgWidth, boxes?.imgHeight])
+
+  if (!mediaRect || !boxes?.items?.length) return null
+  const scaleX = mediaRect.width / boxes.imgWidth
+  const scaleY = mediaRect.height / boxes.imgHeight
+
+  return (
+    <>
+      {boxes.items.map((b, i) => {
+        const [bx, by, bw, bh] = b.bbox
+        const isPet = PET_CLASSES.has(b.class)
+        const color = isPet ? '#ffb020' : '#ff3b3b'
+        return (
+          <div key={i} style={{
+            position: 'absolute', pointerEvents: 'none',
+            left: mediaRect.left + bx * scaleX, top: mediaRect.top + by * scaleY,
+            width: bw * scaleX, height: bh * scaleY,
+            border: `2px solid ${color}`, borderRadius: 4,
+            boxShadow: '0 0 0 1px rgba(0,0,0,0.45)',
+          }}>
+            <span style={{
+              position: 'absolute', left: -2, top: -18, whiteSpace: 'nowrap',
+              fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 4,
+              background: color, color: '#14161c',
+            }}>
+              {isPet ? '🐾 ' : ''}{b.class} {Math.round(b.score * 100)}%
+            </span>
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 // ── WebRTC (WHEP via server proxy) — identical contract to the classic
 // dashboard's _startWebRTC: offer/answer through POST /api/webrtc/offer,
 // optional sendrecv mic transceiver for two-way audio (muted by default,
@@ -210,6 +281,8 @@ function CameraModal({ cam, onClose }) {
   const [talking, setTalking] = useState(false)
   const [canTalk, setCanTalk] = useState(false)
   const [log, setLog]         = useState([])
+  const [boxes, setBoxes]     = useState(null)
+  const previewRef            = useRef(null)
 
   const refreshSnap = useCallback((url) => {
     const next = new Image()
@@ -282,19 +355,28 @@ function CameraModal({ cam, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cam])
 
-  // Event log: seed from API, then listen live for this camera
+  // Event log + detection boxes: seed from API, then listen live for this camera
   useEffect(() => {
     if (!cam) return
     let cancelled = false
+    setBoxes(null)
     fetch(`/api/camera-log?camera=${encodeURIComponent(cam.name)}&limit=100`)
       .then(r => r.json())
       .then(({ data }) => { if (!cancelled && data) setLog(data) })
+      .catch(() => {})
+    fetch(`/api/detection-boxes?camera=${encodeURIComponent(cam.name)}`)
+      .then(r => r.json())
+      .then(({ data }) => { if (!cancelled && data?.items?.length) setBoxes(data) })
       .catch(() => {})
 
     const socket = io('/', { transports: ['websocket'] })
     socket.on('camera-event', entry => {
       if (entry.camera !== cam.name) return
       setLog(prev => [entry, ...prev].slice(0, 100))
+    })
+    socket.on('detection-boxes', entry => {
+      if (entry.camera !== cam.name) return
+      setBoxes(entry)
     })
     return () => { cancelled = true; socket.disconnect() }
   }, [cam])
@@ -371,7 +453,7 @@ function CameraModal({ cam, onClose }) {
             </div>
 
             {/* video/preview area */}
-            <div style={{ position: 'relative', margin: '0 18px', borderRadius: 14, overflow: 'hidden', background: '#000', aspectRatio: '16/9' }}>
+            <div ref={previewRef} style={{ position: 'relative', margin: '0 18px', borderRadius: 14, overflow: 'hidden', background: '#000', aspectRatio: '16/9' }}>
               <video ref={videoRef} autoPlay playsInline muted
                 style={{ width: '100%', height: '100%', objectFit: 'contain', display: showVideo ? 'block' : 'none' }} />
               {!showVideo && imgSrc && (
@@ -383,6 +465,7 @@ function CameraModal({ cam, onClose }) {
                   <span style={{ fontSize: 12 }}>{gt('cam_no_stream', 'No stream URL configured')}</span>
                 </div>
               )}
+              <DetectionBoxesOverlay containerRef={previewRef} boxes={boxes} />
               <PtzPad ptzUrl={cam?.ptzUrl} />
               {canTalk && (
                 <button className="mini-btn"
