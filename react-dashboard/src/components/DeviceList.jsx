@@ -483,6 +483,7 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
       if (!denonPower) return 'Standby'
       const parts = []
       if (denonInput) parts.push(denonInput)
+      parts.push(`${Math.round(denonVolume)}%`)
       if (denonMute)  parts.push('Muted')
       return parts.join(' · ') || 'On'
     }
