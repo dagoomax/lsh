@@ -22,6 +22,7 @@ const {
   AudioRecordingSamplerate,
 } = require('hap-nodejs');
 const { RTSPBackchannel } = require('./rtsp-backchannel');
+const cameraLog = require('./camera-log');
 
 // Per-camera, not a shared constant: twoWayAudio only applies to cameras
 // that opt in (config.cameras[].twoWayAudio), and hap-nodejs reads it at
@@ -563,6 +564,7 @@ class CameraDelegate {
     ];
 
     console.log(`[HomeKit Cam] Recording start: ${this.cam.name} (streamId ${streamId})`);
+    cameraLog.push(this.cam.name, 'recording', 'HKSV recording started');
     const server = new MP4StreamingServer('ffmpeg', args);
     this._recordingServer = server;
     await server.start();
@@ -582,11 +584,15 @@ class CameraDelegate {
         yield { data: fragment, isLast };
         if (isLast) {
           console.log(`[HomeKit Cam] Recording end (motion cleared): ${this.cam.name}`);
+          cameraLog.push(this.cam.name, 'recording', 'HKSV recording ended (motion cleared)');
           break;
         }
       }
     } catch (err) {
-      if (!server.destroyed) console.error(`[HomeKit Cam] Recording stream failed (${this.cam.name}): ${err.message}`);
+      if (!server.destroyed) {
+        console.error(`[HomeKit Cam] Recording stream failed (${this.cam.name}): ${err.message}`);
+        cameraLog.push(this.cam.name, 'recording', `HKSV recording failed: ${err.message}`);
+      }
     }
   }
 
