@@ -78,7 +78,11 @@ class CameraDelegate {
       ffmpeg:        null,
     });
 
-    callback({
+    // hap-nodejs calls this as (error, response) — a single-argument call
+    // gets read as a truthy, message-less "error", so the whole prepare
+    // request silently fails and _startStream never runs. See
+    // RTPStreamManagement.js: `if (error || !response) { ... }`.
+    callback(undefined, {
       video: { port: request.video.port, ssrc: videoSSRC, srtp_key: request.video.srtp_key, srtp_salt: request.video.srtp_salt },
       audio: { port: request.audio.port, ssrc: audioSSRC, srtp_key: request.audio.srtp_key, srtp_salt: request.audio.srtp_salt },
     });
