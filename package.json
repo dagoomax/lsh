@@ -1,7 +1,7 @@
 {
   "name": "victron-dashboard",
   "version": "1.0.1",
-  "description": "Lightweight Smart Home \u2014 Node.js smart-home hub integrating ~40 platforms, with relay control and HomeKit integration",
+  "description": "Lightweight Smart Home — Node.js smart-home hub integrating ~40 platforms, with relay control and HomeKit integration",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -15,11 +15,14 @@
     "openapi": "node scripts/gen-openapi.js"
   },
   "dependencies": {
+    "@tensorflow-models/coco-ssd": "^2.2.3",
+    "@tensorflow/tfjs": "^4.22.0",
     "acme-client": "^5.4.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "express": "^4.21.0",
     "hap-nodejs": "^0.12.2",
+    "jpeg-js": "^0.4.4",
     "jsonwebtoken": "^9.0.3",
     "jssip": "^3.13.8",
     "knx": "^2.5.4",

@@ -18,7 +18,10 @@ module.exports = {
       exec_mode: 'fork',
       autorestart: true,
       watch: false,
-      max_memory_restart: '300M',
+      // Raised from 300M: the optional object-detection module (TensorFlow.js
+      // + COCO-SSD, CPU backend) adds a large fixed memory floor on top of
+      // LSH's baseline — 300M was tripping constant restarts once it loaded.
+      max_memory_restart: '1G',
       kill_timeout: 5000,
       env: {
         NODE_ENV: 'production',

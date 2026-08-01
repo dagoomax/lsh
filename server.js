@@ -4,6 +4,18 @@ const express      = require('express');
 const path         = require('path');
 const cookieParser = require('cookie-parser');
 require('./src/logger').install(); // must be first — patches console before any other module logs
+
+// A single integration's async error (e.g. a listen() failure racing a port
+// still in TIME_WAIT) must not take down the whole multi-integration hub —
+// mirrors tryRequire's "log and keep going" philosophy for load-time errors,
+// extended to runtime ones.
+process.on('uncaughtException', (err) => {
+  console.error(`[Server] Uncaught exception: ${err?.stack || err}`);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error(`[Server] Unhandled rejection: ${reason?.stack || reason}`);
+});
+
 const loadConfig      = require('./config');
 const auth            = require('./src/auth');
 const acme            = require('./src/acme');
@@ -198,6 +210,17 @@ async function main() {
   let automation = null;
   const AutomationEngine = tryRequire('./src/automation-engine');
   if (AutomationEngine) automation = new AutomationEngine(store, sensorRegistry, relayController, config);
+
+  // Local object detection (COCO-SSD) for RTSP-only cameras with no on-device
+  // AI of their own — tryRequire so a missing/uninstalled tfjs on this box
+  // just skips the feature instead of crashing.
+  if (config.objectDetection?.cameras?.length) {
+    const ObjectDetectionClient = tryRequire('./src/object-detection', 'npm install @tensorflow/tfjs @tensorflow-models/coco-ssd jpeg-js');
+    if (ObjectDetectionClient) {
+      const objectDetection = new ObjectDetectionClient(config, store, sensorRegistry, automation);
+      objectDetection.start().catch((err) => console.error(`[ObjectDetection] Start failed: ${err.message}`));
+    }
+  }
 
   const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));

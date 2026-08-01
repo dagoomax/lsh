@@ -303,6 +303,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `reolink` | No | Reolink PoE cameras / NVR (proxied snapshots + RTSP + AI object detection) |
 | `mobotix` | No | MOBOTIX cameras / IP video door stations (proxied snapshots + RTSP + rcontrol outputs / door relay) |
 | `axis` | No | Axis IP cameras via VAPIX (proxied snapshots + RTSP + Digest auth, PTZ, I/O relay outputs) |
+| `objectDetection` | No | Local object detection (TensorFlow.js COCO-SSD) for RTSP cameras with no on-device AI of their own |
 | `relays` | No | Victron relay index + display name |
 | `homekit` | No | HomeKit bridge — requires `hap-nodejs` npm package |
 | `server` | Yes | HTTP port, HTTPS, and Let's Encrypt |
@@ -1409,6 +1410,33 @@ Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standa
 - `ptz: true` — shows a PTZ pad in the camera modal, driven by Reolink's `PtzCtrl` API (press-and-hold arrows / zoom, released = stop)
 
 **AI object detection** — cameras with onboard AI (most PoE models) get polled every `aiPollInterval` seconds (top-level, default 5) via `cmd=GetAiState`. Each category the camera actually supports — **person**, **vehicle**, **pet**, **face**, and any newer category a model reports — shows up as its own device (`Driveway — Person`, `Driveway — Vehicle`, …), each exposed to HomeKit as a motion sensor, so "person detected" and "vehicle detected" can drive separate automations instead of one generic motion trigger. Set `"aiDetect": false` on a camera to skip AI polling for it (e.g. to cut down on request volume for a large NVR); cameras without AI hardware simply never register any detection devices, no toggle needed.
+
+---
+
+### `objectDetection`
+
+```json
+"objectDetection": {
+  "cameras": [
+    { "name": "Wejście", "url": "rtsp://localhost:8554/Wejście/hd" }
+  ],
+  "pollInterval": 15,
+  "minConfidence": 0.5,
+  "autoCreateFlows": true
+}
+```
+
+Local object detection for cameras with **no on-device AI of their own** — the counterpart to Reolink's `aiDetect` above, for anything that only exposes a plain RTSP stream (e.g. the `tipc`/Tuya bridge, a generic IP camera, an ONVIF source). Every `pollInterval` seconds, grabs one JPEG frame per camera via `ffmpeg` (same technique as `src/rtsp-snapshot.js`, used for manual camera thumbnails) and runs it through [TensorFlow.js](https://www.tensorflow.org/js) + the [COCO-SSD](https://github.com/tensorflow/tfjs-models/tree/master/coco-ssd) model — 80 everyday object classes (person, car, dog, bicycle, …).
+
+Deliberately uses the pure-JS `@tensorflow/tfjs` CPU backend rather than `@tensorflow/tfjs-node`: the native backend needs Node-ABI-matched prebuilt bindings per machine (and can hard-fail on newer Node versions — it calls a `util` function Node has since removed), a poor fit for a hub that runs across several different boxes. Slower per-inference (roughly 1s on a modern machine) but nothing to compile or match, which suits periodic snapshot polling fine.
+
+- `pollInterval` — seconds between polls (min enforced: 5, default 15)
+- `minConfidence` — 0–1 confidence threshold to count as a detection (default 0.5)
+- `autoCreateFlows` — set `false` to skip the auto-generated Flow described below
+
+Mirrors Reolink's device pattern exactly: the first time a camera+category pair is seen, it registers as its own device (`<Camera> — <Class>`) with a `detected` boolean sensor exposed to HomeKit as a motion sensor, and — unless `autoCreateFlows: false` — drops a starter Flow into the automation editor (a `trigger` node on that device wired to a `notify` node, so "Person detected — Wejście" shows up as a toast immediately). What to actually *do* about a detection is left for you to wire up in the Flows editor rather than guessed at. `detected` clears back to 0 after two poll intervals with no further sighting, like a motion sensor's auto-off. Runs via `tryRequire`, so a machine without the npm packages installed (`@tensorflow/tfjs`, `@tensorflow-models/coco-ssd`, `jpeg-js`) just skips this feature with a warning instead of crashing — this is optional and not part of LSH's core dependencies.
+
+**Memory note**: TensorFlow.js's model + CPU backend adds a real, sustained memory floor (several hundred MB) on top of LSH's baseline. If running under PM2, make sure `max_memory_restart` in `ecosystem.config.js` has enough headroom — the shipped default was raised from `300M` to `1G` for exactly this reason.
 
 ### `mobotix`
 
