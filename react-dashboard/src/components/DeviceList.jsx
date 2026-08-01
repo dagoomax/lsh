@@ -13,6 +13,7 @@ import EnergyFlow from './EnergyFlow'
 import EnergySourcePicker from './EnergySourcePicker'
 import { resolveEnergy, hasSolarEdge, loadEnergySources, saveEnergySources } from '../energySources'
 import HomePlan from './HomePlan'
+import Cameras from './Cameras'
 import RelayPanel from './RelayPanel'
 
 const FIBARO_SENSOR_ICON = {
@@ -1481,6 +1482,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               )}
             </div>
           )}
+          {cat === 'All' && <Cameras />}
           {cat !== 'Graphs' && cat !== 'Plan' && visible.length === 0 && (
             <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>
               {gt('no_devices', 'No devices in this category')}
