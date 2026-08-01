@@ -979,6 +979,11 @@
         <label for="miele-country">Country <span class="hint">(account region, e.g. de-DE, pl-PL, en-GB)</span></label>
         <input type="text" id="miele-country" placeholder="de-DE" style="max-width:140px">
       </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="miele-sim-enabled" style="width:16px;height:16px">
+        <label for="miele-sim-enabled" style="margin:0">Run local simulator <span class="hint">(scripts/miele-simulator.js — off by default; disable when using a real Miele account)</span></label>
+        <span class="hint" id="miele-sim-status"></span>
+      </div>
 
       <div class="form-actions">
         <button class="btn btn-primary" id="btn-save-miele" data-i18n="common.save">Save</button>
@@ -1175,6 +1180,11 @@
       <div class="form-row">
         <label for="grenton-token">Token <span class="hint">(optional — must match the Lua script)</span></label>
         <input type="password" id="grenton-token" placeholder="••••••••" autocomplete="off">
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="grenton-sim-enabled" style="width:16px;height:16px">
+        <label for="grenton-sim-enabled" style="margin:0">Run local simulator <span class="hint">(scripts/grenton-simulator.js — off by default; disable when using a real GATE module)</span></label>
+        <span class="hint" id="grenton-sim-status"></span>
       </div>
 
       <label style="font-size:0.85rem; color:var(--text-muted); display:block; margin:6px 0 4px">Objects</label>

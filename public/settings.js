@@ -304,10 +304,62 @@ async function loadSettings() {
 
     // Security: load users & tokens
     await loadSecurityLists();
+
+    // Local hardware simulators (Miele, Grenton — off by default)
+    await loadSimulators();
   } catch (err) {
     showSaveMsg('Failed to load settings: ' + err.message, 'err');
   }
 }
+
+// ── Local hardware simulators (scripts/*-simulator.js) ───────────────────────
+
+async function loadSimulators() {
+  const checkboxes = {
+    miele:   document.getElementById('miele-sim-enabled'),
+    grenton: document.getElementById('grenton-sim-enabled'),
+  };
+  if (!checkboxes.miele && !checkboxes.grenton) return;
+
+  try {
+    const res = await fetch('/api/simulators');
+    const { success, data } = await res.json();
+    if (!success || !data) return;
+
+    for (const name of Object.keys(checkboxes)) {
+      const cb = checkboxes[name];
+      if (!cb) continue;
+      const sim = data.find((s) => s.name === name);
+      if (!sim) continue;
+      cb.checked = !!sim.enabled;
+      const status = document.getElementById(`${name}-sim-status`);
+      if (status) status.textContent = sim.enabled ? (sim.running ? `● running on :${sim.port}` : '● starting…') : '';
+    }
+  } catch {
+    // Simulator manager may be unavailable — leave checkboxes at their default (unchecked)
+  }
+}
+
+async function toggleSimulator(name, enabled) {
+  const cb     = document.getElementById(`${name}-sim-enabled`);
+  const status = document.getElementById(`${name}-sim-status`);
+  try {
+    const res = await fetch(`/api/simulators/${name}`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ enabled }),
+    });
+    const { success, data, error } = await res.json();
+    if (!success) throw new Error(error || 'Failed to toggle simulator');
+    if (status) status.textContent = data.enabled ? (data.running ? `● running on :${data.port}` : '● starting…') : '';
+  } catch (err) {
+    if (cb) cb.checked = !enabled; // revert on failure
+    if (status) status.textContent = 'Error: ' + err.message;
+  }
+}
+
+document.getElementById('miele-sim-enabled')?.addEventListener('change', (e) => toggleSimulator('miele', e.target.checked));
+document.getElementById('grenton-sim-enabled')?.addEventListener('change', (e) => toggleSimulator('grenton', e.target.checked));
 
 // ── QR Code ────────────────────────────────────────────────────────────────
 
