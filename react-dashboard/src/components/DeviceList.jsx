@@ -729,7 +729,7 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
               ))}
             </div>
           )}
-          {/* Volume slider + mute + step buttons */}
+          {/* Mute + step buttons */}
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
             <button onClick={e => { e.stopPropagation(); cmd('mute', denonMute ? 0 : 1) }}
               style={{
@@ -751,8 +751,9 @@ const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
               style={{ width:20, height:20, borderRadius:6, border:'none', flexShrink:0, background:'var(--white-08)', color:'var(--text2)', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', WebkitTapHighlightColor:'transparent' }}>
               +
             </button>
-            <Slider value={denonVolume} onCommit={v => cmd('volume', v)} color="var(--accent)" />
           </div>
+          {/* Volume slider — own row so it spans the full tile width */}
+          <Slider value={denonVolume} onCommit={v => cmd('volume', v)} color="var(--accent)" />
         </div>
       )}
 
