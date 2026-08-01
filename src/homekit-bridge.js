@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const hap = require('hap-nodejs');
 const { generateSetupUri } = require('./homekit-uri');
-const { CameraDelegate, STREAMING_OPTIONS } = require('./homekit-camera');
+const { CameraDelegate, buildStreamingOptions } = require('./homekit-camera');
 
 const {
   Accessory,
@@ -1029,7 +1029,7 @@ function addCameraToBridge(cam, bridge) {
   const controller = new CameraController({
     cameraStreamCount: 2,
     delegate,
-    streamingOptions: STREAMING_OPTIONS,
+    streamingOptions: buildStreamingOptions(!!cam.twoWayAudio),
   });
 
   acc.configureController(controller);
