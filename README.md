@@ -1433,8 +1433,12 @@ Deliberately uses the pure-JS `@tensorflow/tfjs` CPU backend rather than `@tenso
 - `pollInterval` — seconds between polls (min enforced: 5, default 15)
 - `minConfidence` — 0–1 confidence threshold to count as a detection (default 0.5)
 - `autoCreateFlows` — set `false` to skip the auto-generated Flow described below
+- `lingerClasses` — classes to also track for "lingering" (default `["cat"]`) — see below
+- `lingerThreshold` — consecutive polls a class must be seen for to count as lingering (min enforced: 2, default 3 — roughly 30–45s at the default poll interval)
 
 Mirrors Reolink's device pattern exactly: the first time a camera+category pair is seen, it registers as its own device (`<Camera> — <Class>`) with a `detected` boolean sensor exposed to HomeKit as a motion sensor, and — unless `autoCreateFlows: false` — drops a starter Flow into the automation editor (a `trigger` node on that device wired to a `notify` node, so "Person detected — Wejście" shows up as a toast immediately). What to actually *do* about a detection is left for you to wire up in the Flows editor rather than guessed at. `detected` clears back to 0 after two poll intervals with no further sighting, like a motion sensor's auto-off. Runs via `tryRequire`, so a machine without the npm packages installed (`@tensorflow/tfjs`, `@tensorflow-models/coco-ssd`, `jpeg-js`) just skips this feature with a warning instead of crashing — this is optional and not part of LSH's core dependencies.
+
+**Lingering heuristic** — COCO-SSD has no "cat litter" or similar category (no pretrained model does — that would need a custom-trained detector, well beyond this feature's scope), so as an approximation: a class in `lingerClasses` seen for `lingerThreshold` consecutive polls in a row gets flagged as a *separate* device (`<Camera> — <Class> lingering (possible litter event)`) and its own Flow ("Possible litter event — Wejście"), distinct from the plain "cat detected" device. Clears the moment the class is no longer seen. It's a presence-duration proxy, not real detection of the thing itself — a cat sitting still to groom for a minute will trigger it same as one using a litter box.
 
 **Memory note**: TensorFlow.js's model + CPU backend adds a real, sustained memory floor (several hundred MB) on top of LSH's baseline. If running under PM2, make sure `max_memory_restart` in `ecosystem.config.js` has enough headroom — the shipped default was raised from `300M` to `1G` for exactly this reason.
 

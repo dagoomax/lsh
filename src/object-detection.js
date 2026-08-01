@@ -49,6 +49,8 @@ class ObjectDetectionClient {
     this._registered    = new Set();   // "<camSlug>/<class>" already registered as a device
     this._lastSeen      = new Map();   // "<camSlug>/<class>" → timestamp, for auto-clearing `detected`
     this._flowsMade      = new Set();   // "<camSlug>/<class>" already got an auto-generated flow
+    this._streak         = new Map();   // "<camSlug>/<class>" → consecutive-poll count, for lingerClasses
+    this._lingering       = new Set();   // "<camSlug>/<class>" currently flagged as lingering
   }
 
   async start() {
@@ -95,6 +97,7 @@ class ObjectDetectionClient {
           seenThisPoll.add(p.class);
           this._onDetected(camName, camSlug, p.class, p.score);
         }
+        this._updateLingerTracking(cfg, camName, camSlug, seenThisPoll);
       } catch (err) {
         console.error(`[ObjectDetection] "${camName}" failed: ${err.message}`);
       }
@@ -132,6 +135,96 @@ class ObjectDetectionClient {
     this._store.update(`${deviceKey}/detected`, 1);
     this._lastSeen.set(regKey, Date.now());
     cameraLog.push(camName, 'object', `${cls} (${Math.round(score * 100)}%)`);
+  }
+
+  // Streak-based heuristic for classes configured in objectDetection.
+  // lingerClasses (default just "cat"): real "cat poo" detection isn't
+  // feasible with a general-purpose 80-class model (no such category
+  // exists, and training a custom detector is a whole separate project),
+  // so this approximates it — a cat present for several consecutive polls
+  // (default 3, ~30-45s at the default 15s poll interval) gets flagged as
+  // a possible litter event, as its own device/flow separate from the
+  // plain "cat detected" one. Clears the moment the cat leaves frame.
+  _updateLingerTracking(cfg, camName, camSlug, seenThisPoll) {
+    const lingerClasses = cfg.lingerClasses || ['cat'];
+    const threshold     = Math.max(cfg.lingerThreshold || 3, 2);
+
+    for (const cls of lingerClasses) {
+      const regKey = `${camSlug}/${cls}`;
+      if (seenThisPoll.has(cls)) {
+        const streak = (this._streak.get(regKey) || 0) + 1;
+        this._streak.set(regKey, streak);
+        if (streak >= threshold && !this._lingering.has(regKey)) {
+          this._lingering.add(regKey);
+          this._onLingerStart(camName, camSlug, cls);
+        }
+      } else if (this._streak.has(regKey)) {
+        this._streak.delete(regKey);
+        if (this._lingering.has(regKey)) {
+          this._lingering.delete(regKey);
+          this._onLingerEnd(camSlug, cls);
+        }
+      }
+    }
+  }
+
+  _onLingerStart(camName, camSlug, cls) {
+    const regKey    = `${camSlug}/${cls}-linger`;
+    const deviceKey = `objectdetect/${regKey}`;
+    const label     = `${cls[0].toUpperCase()}${cls.slice(1)} lingering`;
+
+    if (!this._registered.has(regKey)) {
+      this._registered.add(regKey);
+      this._registry.registerDevice({
+        key: deviceKey, type: 'objectdetect', instance: regKey,
+        label: `${camName} — ${label} (possible litter event)`,
+        icon: '⚠️', color: 'orange',
+        sensors: [{ path: 'detected', name: 'Detected', format: 'on-off', homekit: 'motion' }],
+        homekit: ['motion'],
+      });
+      this._createLingerFlow(camName, deviceKey, regKey, cls);
+    }
+
+    this._store.update(`${deviceKey}/detected`, 1);
+    cameraLog.push(camName, 'object', `${cls} lingering — possible litter event`);
+    console.log(`[ObjectDetection] "${camName}" — ${cls} lingering (possible litter event)`);
+  }
+
+  _onLingerEnd(camSlug, cls) {
+    this._store.update(`objectdetect/${camSlug}/${cls}-linger/detected`, 0);
+  }
+
+  _createLingerFlow(camName, deviceKey, regKey, cls) {
+    if (this._flowsMade.has(regKey)) return;
+    this._flowsMade.add(regKey);
+    if (this._config.objectDetection?.autoCreateFlows === false) return;
+    if (!this._automation) return;
+    const triggerKey = `${deviceKey}/detected`;
+    const already = (this._automation.flows || []).some((f) =>
+      (f.nodes || []).some((n) => n.type === 'trigger' && n.config?.key === triggerKey));
+    if (already) return;
+
+    try {
+      this._automation.saveFlow({
+        name:    `Possible litter event — ${camName}`,
+        enabled: true,
+        nodes: [
+          {
+            id: 'trigger', type: 'trigger', x: 80, y: 80,
+            config: { key: triggerKey, op: 'is', value: 1 },
+            wires: [['notify']],
+          },
+          {
+            id: 'notify', type: 'notify', x: 320, y: 80,
+            config: { level: 'warning', message: `${cls[0].toUpperCase()}${cls.slice(1)} lingering at ${camName} — possible litter event` },
+            wires: [[]],
+          },
+        ],
+      });
+      console.log(`[ObjectDetection] Auto-created linger flow for ${camName} — ${cls}`);
+    } catch (err) {
+      console.error(`[ObjectDetection] Failed to auto-create linger flow: ${err.message}`);
+    }
   }
 
   // First time a camera+category pair is ever seen, drop a starter Flow into
