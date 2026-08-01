@@ -43,6 +43,21 @@ function cameraLogTargets(config, odCamName) {
   return [...targets];
 }
 
+// Per-class significance weight — not a physical weight estimate, just how
+// much a class should count toward "something significant is happening":
+// gates the aggregate any/detected signal that drives HKSV recording (see
+// homekit-bridge.js's motionSource) and whether a class gets an
+// auto-created Flow. Every class still gets its own device/sensor and
+// event-log entries regardless of weight — this only affects what counts
+// as noteworthy, not what gets detected. Default weight is 1 (counts);
+// set a class to 0 in objectDetection.classWeights to detect but ignore it
+// for those two purposes (e.g. "kite" or "frisbee" triggering a recording
+// every time the wind picks up).
+function weightOf(cfg, cls) {
+  const w = cfg.classWeights?.[cls];
+  return typeof w === 'number' ? w : 1;
+}
+
 function slugify(name) {
   return (name || 'camera').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'camera';
 }
@@ -182,11 +197,14 @@ class ObjectDetectionClient {
       }
     }
     // A camSlug's "any" motion flag (HKSV trigger) only clears once none of
-    // its classes are still active — re-check against what's left in
-    // _lastSeen rather than assuming the whole camera went quiet.
+    // its *significant* (weight > 0) classes are still active — re-check
+    // against what's left in _lastSeen rather than assuming the whole
+    // camera went quiet. A lingering weight-0 class (e.g. "kite" set to 0)
+    // must not keep this signal stuck on by itself.
     for (const camSlug of touchedSlugs) {
-      const stillActive = [...this._lastSeen.keys()].some((k) => k.startsWith(`${camSlug}/`));
-      if (!stillActive && this._anyActive.has(camSlug)) {
+      const stillSignificant = [...this._lastSeen.keys()].some((k) =>
+        k.startsWith(`${camSlug}/`) && weightOf(cfg, k.slice(k.lastIndexOf('/') + 1)) > 0);
+      if (!stillSignificant && this._anyActive.has(camSlug)) {
         this._anyActive.delete(camSlug);
         this._store.update(`objectdetect/${camSlug}/any/detected`, 0);
       }
@@ -198,6 +216,7 @@ class ObjectDetectionClient {
   _onDetected(camName, camSlug, cls, score) {
     const regKey    = `${camSlug}/${cls}`;
     const deviceKey = `objectdetect/${regKey}`;
+    const weight    = weightOf(this._config.objectDetection || {}, cls);
 
     if (!this._registered.has(regKey)) {
       this._registered.add(regKey);
@@ -208,7 +227,7 @@ class ObjectDetectionClient {
         sensors: [{ path: 'detected', name: 'Detected', format: 'on-off', homekit: 'motion' }],
         homekit: ['motion'],
       });
-      this._maybeCreateFlow(camName, deviceKey, regKey, cls);
+      if (weight > 0) this._maybeCreateFlow(camName, deviceKey, regKey, cls);
     }
 
     this._store.update(`${deviceKey}/detected`, 1);
@@ -217,7 +236,7 @@ class ObjectDetectionClient {
       cameraLog.push(name, 'object', `${cls} (${Math.round(score * 100)}%)`);
     }
 
-    if (!this._anyActive.has(camSlug)) {
+    if (weight > 0 && !this._anyActive.has(camSlug)) {
       this._anyActive.add(camSlug);
       this._store.update(`objectdetect/${camSlug}/any/detected`, 1);
     }
