@@ -500,6 +500,7 @@ class CameraDelegate {
 
   updateRecordingActive(active) {
     this._recordingActive = active;
+    console.log(`[HomeKit Cam] Recording active set to ${active} (${this.cam.name})`);
   }
 
   updateRecordingConfiguration(configuration) {
@@ -509,6 +510,12 @@ class CameraDelegate {
     // in-progress recording keeps using its own settings rather than
     // switching mid-stream.
     this._recordingConfig = configuration;
+    if (configuration) {
+      const [w, h, fps] = configuration.videoCodec.resolution;
+      console.log(`[HomeKit Cam] Recording configured (${this.cam.name}): ${w}x${h}@${fps}, prebuffer ${configuration.prebufferLength}ms, triggers [${configuration.eventTriggerTypes.join(',')}]`);
+    } else {
+      console.log(`[HomeKit Cam] Recording configuration cleared (${this.cam.name})`);
+    }
   }
 
   // Pulls cam.url once, muxes it straight to fragmented MP4 (H.264 +
