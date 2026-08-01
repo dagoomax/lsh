@@ -234,10 +234,11 @@ function CameraModal({ cam, onClose }) {
           pcRef.current = pc
           micTrackRef.current = micTrack
           setStatus('WebRTC live')
-          if (micTrack) {
-            setCanTalk(true)
-            if (videoRef.current) videoRef.current.muted = false
-          }
+          // Unmute regardless of two-way audio — opening the modal is
+          // itself a user gesture, so browsers allow audible autoplay here.
+          // Only the Talk button (sending audio back) needs a mic track.
+          if (videoRef.current) videoRef.current.muted = false
+          if (micTrack) setCanTalk(true)
         })
         .catch(err => {
           console.error('[WebRTC]', err.message)
