@@ -5,6 +5,7 @@ const http = require('http');
 const { generateSetupUri, generateSetupID } = require('./homekit-uri');
 const cameraLog = require('./camera-log');
 const detectionBoxes = require('./detection-boxes');
+const { getDb } = require('./mongo');
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
 
@@ -772,6 +773,47 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // socket event).
   router.get('/detection-boxes', (req, res) => {
     res.json({ success: true, data: detectionBoxes.get(req.query.camera || '') });
+  });
+
+  // Detection counts per class ("12 person, 3 cat today") from the Mongo
+  // history object-detection.js writes (see its _saveDetectionRecords) —
+  // requires config.mongo.uri; without it there's simply no history to
+  // count from. objectDetections.camera is written under
+  // objectDetection.cameras[].name, which can differ from the display
+  // camera name passed here (see motionSource elsewhere) — resolve the
+  // same way homekit-bridge.js does, just in reverse.
+  router.get('/objectdetect/stats', async (req, res) => {
+    const displayName = req.query.camera;
+    if (!displayName) return res.status(400).json({ success: false, error: 'camera is required' });
+
+    const db = getDb();
+    if (!db) return res.json({ success: true, data: { today: [], week: [] } });
+
+    const cfg = readConfigFile();
+    const camCfg = (cfg.cameras || []).find((c) => c.name === displayName);
+    const odCamera = camCfg?.motionSource || displayName;
+
+    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+    const startOfWeek  = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+
+    const countsSince = (since) => db.collection('objectDetections').aggregate([
+      { $match: { camera: odCamera, ts: { $gte: since } } },
+      { $group: { _id: '$class', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]).toArray();
+
+    try {
+      const [today, week] = await Promise.all([countsSince(startOfToday), countsSince(startOfWeek)]);
+      res.json({
+        success: true,
+        data: {
+          today: today.map((r) => ({ class: r._id, count: r.count })),
+          week:  week.map((r) => ({ class: r._id, count: r.count })),
+        },
+      });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
   });
 
   // UniFi Protect snapshot proxy (avoids CORS + self-signed TLS in browser)

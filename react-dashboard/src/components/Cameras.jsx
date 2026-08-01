@@ -282,6 +282,7 @@ function CameraModal({ cam, onClose }) {
   const [canTalk, setCanTalk] = useState(false)
   const [log, setLog]         = useState([])
   const [boxes, setBoxes]     = useState(null)
+  const [stats, setStats]     = useState(null)
   const previewRef            = useRef(null)
 
   const refreshSnap = useCallback((url) => {
@@ -360,6 +361,7 @@ function CameraModal({ cam, onClose }) {
     if (!cam) return
     let cancelled = false
     setBoxes(null)
+    setStats(null)
     fetch(`/api/camera-log?camera=${encodeURIComponent(cam.name)}&limit=100`)
       .then(r => r.json())
       .then(({ data }) => { if (!cancelled && data) setLog(data) })
@@ -367,6 +369,10 @@ function CameraModal({ cam, onClose }) {
     fetch(`/api/detection-boxes?camera=${encodeURIComponent(cam.name)}`)
       .then(r => r.json())
       .then(({ data }) => { if (!cancelled && data?.items?.length) setBoxes(data) })
+      .catch(() => {})
+    fetch(`/api/objectdetect/stats?camera=${encodeURIComponent(cam.name)}`)
+      .then(r => r.json())
+      .then(({ success, data }) => { if (!cancelled && success) setStats(data) })
       .catch(() => {})
 
     const socket = io('/', { transports: ['websocket'] })
@@ -481,6 +487,33 @@ function CameraModal({ cam, onClose }) {
               )}
             </div>
             <div style={{ padding: '8px 18px 0', fontSize: 11, color: 'var(--text3)' }}>{status}</div>
+
+            {/* detection stats — from Mongo history, see object-detection.js's
+                _saveDetectionRecords; empty (not shown) if mongo isn't configured */}
+            {stats && (stats.today.length > 0 || stats.week.length > 0) && (
+              <div style={{ margin: '10px 18px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {stats.today.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{gt('cam_stats_today', 'Today')}</span>
+                    {stats.today.map(s => (
+                      <span key={s.class} style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: 'var(--white-05)', border: '1px solid var(--border)' }}>
+                        {PET_CLASSES.has(s.class) ? '🐾' : '🎯'} {s.class} ×{s.count}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {stats.week.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{gt('cam_stats_week', '7 days')}</span>
+                    {stats.week.map(s => (
+                      <span key={s.class} style={{ fontSize: 11, color: 'var(--text3)' }}>
+                        {s.class} ×{s.count}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* event log */}
             <div style={{ margin: '12px 18px 18px', padding: '10px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
