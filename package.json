@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@tensorflow-models/coco-ssd": "^2.2.3",
+    "@tensorflow-models/mobilenet": "^2.1.1",
     "@tensorflow/tfjs": "^4.22.0",
     "acme-client": "^5.4.0",
     "bcryptjs": "^3.0.3",

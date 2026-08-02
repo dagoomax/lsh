@@ -20,6 +20,7 @@ const tf      = require('@tensorflow/tfjs');
 require('@tensorflow/tfjs-backend-cpu');
 const jpeg     = require('jpeg-js');
 const cocoSsd  = require('@tensorflow-models/coco-ssd');
+const mobilenet = require('@tensorflow-models/mobilenet');
 const cameraLog = require('./camera-log');
 const platformStatus = require('./platform-status');
 const { grabFrame } = require('./rtsp-snapshot');
@@ -27,6 +28,54 @@ const { getDb }     = require('./mongo');
 const detectionBoxes = require('./detection-boxes');
 
 const DETECTION_TTL_SECONDS = 7 * 24 * 3600; // auto-expire stored detection images after a week
+
+// Second-opinion breed verification for COCO-SSD's 4 pet-ish classes.
+// COCO-SSD only knows "this is a cat" (one of 80 coarse classes); MobileNet
+// (trained on ImageNet's 1000 classes, ~120 of them dog breeds plus several
+// cat/bird/misc.) gives a much more specific guess when run on just the
+// cropped detection region — if that guess doesn't land anywhere near the
+// expected animal type, the original COCO-SSD call was probably wrong.
+// Keyword substring matching against MobileNet's class names, not exact
+// index lookup — ImageNet's label text is inconsistent enough (commas,
+// multiple synonyms per class) that this is the pragmatic way to bucket it,
+// same approach used by most hobbyist detector+classifier pipelines.
+const PET_CLASSES = new Set(['cat', 'dog', 'bird', 'horse']);
+const BREED_KEYWORDS = {
+  cat: ['cat', 'tabby', 'siamese', 'persian', 'egyptian'],
+  dog: [
+    'dog', 'terrier', 'retriever', 'spaniel', 'hound', 'shepherd', 'collie', 'setter', 'pointer',
+    'mastiff', 'poodle', 'corgi', 'husky', 'malamute', 'chihuahua', 'pug', 'boxer', 'dachshund',
+    'schnauzer', 'rottweiler', 'doberman', 'bulldog', 'labrador', 'beagle', 'whippet', 'greyhound',
+    'basenji', 'akita', 'samoyed', 'newfoundland', 'papillon', 'pekinese', 'pomeranian', 'chow',
+    'keeshond', 'affenpinscher', 'griffon', 'vizsla', 'weimaraner', 'kelpie', 'komondor', 'briard',
+    'cardigan', 'basset', 'kuvasz', 'malinois', 'leonberg', 'eskimo dog', 'saint bernard',
+  ],
+  // ImageNet has dozens of species-specific bird classes rather than one
+  // generic "bird" — this list covers the common ones, not all of them.
+  bird: [
+    'bird', 'jay', 'magpie', 'chickadee', 'robin', 'finch', 'sparrow', 'bunting', 'parrot',
+    'cockatoo', 'macaw', 'lorikeet', 'toucan', 'hummingbird', 'owl', 'eagle', 'vulture', 'hawk',
+    'kite', 'crane', 'heron', 'egret', 'stork', 'flamingo', 'pelican', 'swan', 'goose', 'duck',
+    'drake', 'penguin', 'ostrich', 'peacock', 'quail', 'partridge', 'grouse', 'ptarmigan', 'coot',
+    'bustard', 'oystercatcher', 'albatross', 'spoonbill', 'limpkin', 'bulbul', 'jacamar', 'hornbill',
+    'coucal', 'lovebird', 'cockatiel',
+  ],
+  // ImageNet's coverage of actual horses is famously thin — "sorrel" is its
+  // one horse-coat-color class, there's no generic "horse". Verification
+  // for this class will rarely find a match; that's an ImageNet gap, not a
+  // bug here. Documented in README rather than hidden.
+  horse: ['horse', 'sorrel'],
+};
+
+function matchesBreed(cocoClass, mobilenetPredictions) {
+  const keywords = BREED_KEYWORDS[cocoClass];
+  if (!keywords) return null;
+  for (const p of mobilenetPredictions) {
+    const name = p.className.toLowerCase();
+    if (keywords.some((k) => name.includes(k))) return p;
+  }
+  return null;
+}
 
 // Camera event log entries are pushed under objectDetection.cameras[].name,
 // but the dashboard camera modal (Cameras.jsx) fetches/filters camera-log
@@ -71,6 +120,29 @@ function rawToTensor({ width, height, data }) {
   return tf.tensor3d(rgb, [height, width, 3]);
 }
 
+// Crops just a prediction's bbox out of the decoded frame for MobileNet
+// verification — building a fresh small tensor straight from the raw
+// pixel buffer rather than slicing the (already-disposed-by-then)
+// full-frame detection tensor.
+function cropToTensor(raw, bbox) {
+  const [bx, by, bw, bh] = bbox;
+  const x0 = Math.max(0, Math.floor(bx));
+  const y0 = Math.max(0, Math.floor(by));
+  const x1 = Math.min(raw.width, Math.ceil(bx + bw));
+  const y1 = Math.min(raw.height, Math.ceil(by + bh));
+  const w = Math.max(1, x1 - x0);
+  const h = Math.max(1, y1 - y0);
+  const rgb = new Uint8Array(w * h * 3);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const srcIdx = ((y0 + y) * raw.width + (x0 + x)) * 4;
+      const dstIdx = (y * w + x) * 3;
+      rgb[dstIdx] = raw.data[srcIdx]; rgb[dstIdx + 1] = raw.data[srcIdx + 1]; rgb[dstIdx + 2] = raw.data[srcIdx + 2];
+    }
+  }
+  return tf.tensor3d(rgb, [h, w, 3]);
+}
+
 // Draws a plain rectangle outline (no library — jpeg-js only decodes/
 // encodes, there's no drawing API) around each prediction's bbox, straight
 // into the RGBA pixel buffer. bbox is [x, y, width, height] in pixels —
@@ -111,6 +183,7 @@ class ObjectDetectionClient {
     this._registry     = sensorRegistry;
     this._automation   = automation;
     this._model        = null;
+    this._petModel      = null;   // MobileNet — breed verification for pet classes only
     this._timer        = null;
     this._registered    = new Set();   // "<camSlug>/<class>" already registered as a device
     this._lastSeen      = new Map();   // "<camSlug>/<class>" → timestamp, for auto-clearing `detected`
@@ -129,6 +202,16 @@ class ObjectDetectionClient {
     await tf.setBackend('cpu');
     console.log('[ObjectDetection] Loading COCO-SSD model…');
     this._model = await cocoSsd.load();
+
+    if (cfg.petVerification !== false) {
+      console.log('[ObjectDetection] Loading MobileNet (pet breed verification)…');
+      try {
+        this._petModel = await mobilenet.load({ version: 2, alpha: 1.0 });
+      } catch (err) {
+        console.error(`[ObjectDetection] MobileNet failed to load, pet verification disabled: ${err.message}`);
+      }
+    }
+
     console.log(`[ObjectDetection] Model ready — watching ${cams.length} camera(s)`);
 
     const ms = Math.max(cfg.pollInterval || 15, 5) * 1000;
@@ -160,18 +243,31 @@ class ObjectDetectionClient {
         finally { tensor.dispose(); }
         anyOk = true;
 
+        const rawKept = predictions.filter((p) => p.score >= minConfidence);
+        if (this._petModel) {
+          for (const p of rawKept) {
+            if (PET_CLASSES.has(p.class)) p.petVerification = await this._verifyPet(raw, p);
+          }
+        }
+        // requirePetVerification (off by default) drops pet-class
+        // detections MobileNet's crop classification didn't back up —
+        // opt-in, since it's a second model's opinion, not ground truth,
+        // and could suppress a real detection MobileNet just got wrong.
+        const kept = cfg.requirePetVerification === true
+          ? rawKept.filter((p) => !PET_CLASSES.has(p.class) || p.petVerification?.verified)
+          : rawKept;
+
         const seenThisPoll = new Set();
-        const kept = predictions.filter((p) => p.score >= minConfidence);
         for (const p of kept) {
           seenThisPoll.add(p.class);
-          this._onDetected(camName, camSlug, p.class, p.score);
+          this._onDetected(camName, camSlug, p.class, p.score, p.petVerification);
         }
         this._updateLingerTracking(cfg, camName, camSlug, seenThisPoll);
 
         // Published every poll — including an empty array — so the
         // dashboard overlay clears itself the moment nothing's left in
         // frame instead of showing a stale box until the next detection.
-        const boxItems = kept.map((p) => ({ class: p.class, score: p.score, bbox: p.bbox }));
+        const boxItems = kept.map((p) => ({ class: p.class, score: p.score, bbox: p.bbox, petVerification: p.petVerification }));
         for (const name of cameraLogTargets(this._config, camName)) {
           detectionBoxes.set(name, boxItems, raw.width, raw.height);
         }
@@ -213,7 +309,31 @@ class ObjectDetectionClient {
     platformStatus.set('objectDetection', anyOk);
   }
 
-  _onDetected(camName, camSlug, cls, score) {
+  // Crops the prediction's bbox and runs it through MobileNet for a breed
+  // guess; `verified` is true if any of MobileNet's top-3 guesses land in
+  // the expected animal's breed-keyword bucket (see BREED_KEYWORDS). This
+  // is a second model's opinion, not ground truth — MobileNet can miss on
+  // a bad crop/angle same as COCO-SSD can, so a false `verified: false`
+  // is expected sometimes, not necessarily proof the original call was wrong.
+  async _verifyPet(raw, prediction) {
+    const cropped = cropToTensor(raw, prediction.bbox);
+    try {
+      const results = await this._petModel.classify(cropped, 3);
+      const match = matchesBreed(prediction.class, results);
+      return {
+        verified: !!match,
+        breed: (match || results[0])?.className,
+        breedProb: (match || results[0])?.probability,
+      };
+    } catch (err) {
+      console.error(`[ObjectDetection] Pet verification failed: ${err.message}`);
+      return null;
+    } finally {
+      cropped.dispose();
+    }
+  }
+
+  _onDetected(camName, camSlug, cls, score, petVerification) {
     const regKey    = `${camSlug}/${cls}`;
     const deviceKey = `objectdetect/${regKey}`;
     const weight    = weightOf(this._config.objectDetection || {}, cls);
@@ -232,8 +352,13 @@ class ObjectDetectionClient {
 
     this._store.update(`${deviceKey}/detected`, 1);
     this._lastSeen.set(regKey, Date.now());
+    const breedNote = petVerification
+      ? petVerification.verified
+        ? ` — ${petVerification.breed} (${Math.round(petVerification.breedProb * 100)}%)`
+        : ' — unverified breed match'
+      : '';
     for (const name of cameraLogTargets(this._config, camName)) {
-      cameraLog.push(name, 'object', `${cls} (${Math.round(score * 100)}%)`);
+      cameraLog.push(name, 'object', `${cls} (${Math.round(score * 100)}%)${breedNote}`);
     }
 
     if (weight > 0 && !this._anyActive.has(camSlug)) {
@@ -274,6 +399,7 @@ class ObjectDetectionClient {
       bbox: { x: p.bbox[0], y: p.bbox[1], width: p.bbox[2], height: p.bbox[3] },
       ts,
       image,
+      ...(p.petVerification ? { petVerification: p.petVerification } : {}),
     }));
 
     await db.collection('objectDetections').insertMany(docs);
