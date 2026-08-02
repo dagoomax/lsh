@@ -284,6 +284,7 @@ function CameraModal({ cam, onClose }) {
   const [boxes, setBoxes]     = useState(null)
   const [stats, setStats]     = useState(null)
   const [timeline, setTimeline] = useState(null)
+  const [lightboxIndex, setLightboxIndex] = useState(null)
   const previewRef            = useRef(null)
 
   const refreshSnap = useCallback((url) => {
@@ -364,6 +365,7 @@ function CameraModal({ cam, onClose }) {
     setBoxes(null)
     setStats(null)
     setTimeline(null)
+    setLightboxIndex(null)
     fetch(`/api/camera-log?camera=${encodeURIComponent(cam.name)}&limit=100`)
       .then(r => r.json())
       .then(({ data }) => { if (!cancelled && data) setLog(data) })
@@ -394,10 +396,18 @@ function CameraModal({ cam, onClose }) {
   }, [cam])
 
   useEffect(() => {
-    const esc = e => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', esc)
-    return () => window.removeEventListener('keydown', esc)
-  }, [onClose])
+    const handler = e => {
+      if (lightboxIndex !== null) {
+        if (e.key === 'Escape') { e.stopPropagation(); setLightboxIndex(null) }
+        else if (e.key === 'ArrowLeft')  setLightboxIndex(i => Math.max(0, i - 1))
+        else if (e.key === 'ArrowRight') setLightboxIndex(i => Math.min((timeline?.length || 1) - 1, i + 1))
+        return
+      }
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose, lightboxIndex, timeline])
 
   const talkStart = e => {
     if (!micTrackRef.current) return
@@ -527,17 +537,17 @@ function CameraModal({ cam, onClose }) {
               <div style={{ margin: '10px 18px 0' }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{gt('cam_timeline', 'Detection timeline')}</span>
                 <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '6px 0 2px' }}>
-                  {timeline.map(entry => (
-                    <a key={entry.imageId} href={`/api/objectdetect/image/${entry.imageId}`} target="_blank" rel="noreferrer"
+                  {timeline.map((entry, i) => (
+                    <button key={entry.imageId} onClick={() => setLightboxIndex(i)}
                       title={`${fmtLogTime(entry.ts)} — ${entry.classes.map(c => c.class).join(', ')}`}
-                      style={{ flexShrink: 0, width: 96, textDecoration: 'none' }}>
+                      style={{ flexShrink: 0, width: 96, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
                       <img src={`/api/objectdetect/image/${entry.imageId}`} alt={entry.classes.map(c => c.class).join(', ')}
                         loading="lazy"
                         style={{ width: 96, height: 54, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
                       <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {fmtLogTime(entry.ts)} · {entry.classes.map(c => (PET_CLASSES.has(c.class) ? '🐾' : '🎯') + c.class).join(', ')}
                       </div>
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -562,6 +572,46 @@ function CameraModal({ cam, onClose }) {
               </div>
             </div>
           </motion.div>
+
+          {/* detection timeline lightbox — full-size viewer with prev/next,
+              stacked above the camera modal itself (higher z-index) */}
+          <AnimatePresence>
+            {lightboxIndex !== null && timeline?.[lightboxIndex] && (
+              <motion.div key="lightbox"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
+                onClick={() => setLightboxIndex(null)}
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 400,
+                  background: 'rgba(0,0,0,0.85)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24,
+                }}>
+                <img src={`/api/objectdetect/image/${timeline[lightboxIndex].imageId}`}
+                  alt={timeline[lightboxIndex].classes.map(c => c.class).join(', ')}
+                  onClick={e => e.stopPropagation()}
+                  style={{ maxWidth: '90vw', maxHeight: '78vh', objectFit: 'contain', borderRadius: 10, boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }} />
+                <div style={{ marginTop: 12, fontSize: 13, color: '#fff', display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <button onClick={e => { e.stopPropagation(); setLightboxIndex(i => Math.max(0, i - 1)) }}
+                    disabled={lightboxIndex === 0}
+                    style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, color: '#fff', padding: '6px 12px', cursor: lightboxIndex === 0 ? 'default' : 'pointer', opacity: lightboxIndex === 0 ? 0.35 : 1 }}>
+                    ◀
+                  </button>
+                  <span>
+                    {fmtLogTime(timeline[lightboxIndex].ts)} — {timeline[lightboxIndex].classes.map(c => `${PET_CLASSES.has(c.class) ? '🐾 ' : ''}${c.class} ${Math.round(c.score * 100)}%`).join(', ')}
+                    <span style={{ color: 'rgba(255,255,255,0.5)', marginLeft: 10 }}>{lightboxIndex + 1} / {timeline.length}</span>
+                  </span>
+                  <button onClick={e => { e.stopPropagation(); setLightboxIndex(i => Math.min(timeline.length - 1, i + 1)) }}
+                    disabled={lightboxIndex === timeline.length - 1}
+                    style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, color: '#fff', padding: '6px 12px', cursor: lightboxIndex === timeline.length - 1 ? 'default' : 'pointer', opacity: lightboxIndex === timeline.length - 1 ? 0.35 : 1 }}>
+                    ▶
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); setLightboxIndex(null) }}
+                    style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, color: '#fff', padding: '6px 12px', cursor: 'pointer' }}>
+                    ✕
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       )}
     </AnimatePresence>
