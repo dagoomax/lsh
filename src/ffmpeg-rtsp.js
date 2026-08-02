@@ -25,6 +25,23 @@ class FFmpegRTSP {
       const slug = (cam.name || `cam${i}`).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `cam${i}`;
       const info = { port, slug, proc: null, stopped: false };
       this._streams.set(cam.name, info);
+
+      // A camera sourced from a local RTSP server (e.g. tipc) on the exact
+      // port this relay would also try to listen on is a guaranteed bind
+      // conflict — ffmpeg fails to bind, gets retried every 2s forever, and
+      // in practice that retry loop itself disrupts the real server's own
+      // connections (this is exactly how it was first found: continuous
+      // "Camera not found"/EOF noise in tipc's log from a colliding
+      // basePort). Skip once and say why, instead of retrying forever.
+      let sourcePort = null;
+      try { sourcePort = new URL(cam.url).port; } catch { /* not a valid URL */ }
+      const sourceHost = (() => { try { return new URL(cam.url).hostname; } catch { return null; } })();
+      const isLoopback = sourceHost === 'localhost' || sourceHost === '127.0.0.1' || sourceHost === '::1';
+      if (isLoopback && Number(sourcePort) === port) {
+        console.error(`[FFmpegRTSP] "${cam.name}" skipped — listen port ${port} is the same port its own source (${cam.url}) uses. Set a different ffmpegRtsp.basePort in config.json.`);
+        return;
+      }
+
       this._spawn(cam, info);
     });
 
