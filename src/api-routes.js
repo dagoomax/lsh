@@ -816,6 +816,60 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // Detection timeline: a thumbnail gallery of the annotated snapshots
+  // object-detection.js already saves to Mongo (see _saveDetectionRecords).
+  // Grouped by poll (exact ts), not by individual class — every prediction
+  // kept from the same poll shares one annotated frame (all boxes drawn on
+  // it together), so showing one thumbnail per detected class would repeat
+  // the identical image several times in a row.
+  router.get('/objectdetect/timeline', async (req, res) => {
+    const displayName = req.query.camera;
+    if (!displayName) return res.status(400).json({ success: false, error: 'camera is required' });
+
+    const db = getDb();
+    if (!db) return res.json({ success: true, data: [] });
+
+    const cfg = readConfigFile();
+    const camCfg = (cfg.cameras || []).find((c) => c.name === displayName);
+    const odCamera = camCfg?.motionSource || displayName;
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
+
+    try {
+      const groups = await db.collection('objectDetections').aggregate([
+        { $match: { camera: odCamera } },
+        { $sort: { ts: -1 } },
+        { $group: { _id: '$ts', classes: { $push: { class: '$class', score: '$score' } }, imageId: { $first: '$_id' } } },
+        { $sort: { _id: -1 } },
+        { $limit: limit },
+      ]).toArray();
+      res.json({
+        success: true,
+        data: groups.map((g) => ({ ts: g._id, classes: g.classes, imageId: g.imageId.toString() })),
+      });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  // Serves one detection's annotated JPEG by Mongo _id (shared across every
+  // class detected in that same poll — see the timeline route above).
+  // Detection images are immutable once written, so this is cached hard.
+  router.get('/objectdetect/image/:id', async (req, res) => {
+    const db = getDb();
+    if (!db) return res.status(404).end();
+    let ObjectId;
+    try { ({ ObjectId } = require('mongodb')); } catch { return res.status(404).end(); }
+    try {
+      const doc = await db.collection('objectDetections').findOne({ _id: new ObjectId(req.params.id) });
+      if (!doc?.image) return res.status(404).end();
+      res.set('Content-Type', 'image/jpeg');
+      res.set('Cache-Control', 'public, max-age=604800, immutable');
+      res.send(doc.image.buffer);
+    } catch {
+      res.status(404).end();
+    }
+  });
+
   // UniFi Protect snapshot proxy (avoids CORS + self-signed TLS in browser)
   router.get('/unifi/snapshot/:cameraId', (req, res) => {
     if (!unifiProtect) return res.status(503).end();

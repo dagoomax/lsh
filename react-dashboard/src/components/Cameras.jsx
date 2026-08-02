@@ -283,6 +283,7 @@ function CameraModal({ cam, onClose }) {
   const [log, setLog]         = useState([])
   const [boxes, setBoxes]     = useState(null)
   const [stats, setStats]     = useState(null)
+  const [timeline, setTimeline] = useState(null)
   const previewRef            = useRef(null)
 
   const refreshSnap = useCallback((url) => {
@@ -362,6 +363,7 @@ function CameraModal({ cam, onClose }) {
     let cancelled = false
     setBoxes(null)
     setStats(null)
+    setTimeline(null)
     fetch(`/api/camera-log?camera=${encodeURIComponent(cam.name)}&limit=100`)
       .then(r => r.json())
       .then(({ data }) => { if (!cancelled && data) setLog(data) })
@@ -373,6 +375,10 @@ function CameraModal({ cam, onClose }) {
     fetch(`/api/objectdetect/stats?camera=${encodeURIComponent(cam.name)}`)
       .then(r => r.json())
       .then(({ success, data }) => { if (!cancelled && success) setStats(data) })
+      .catch(() => {})
+    fetch(`/api/objectdetect/timeline?camera=${encodeURIComponent(cam.name)}&limit=30`)
+      .then(r => r.json())
+      .then(({ success, data }) => { if (!cancelled && success) setTimeline(data) })
       .catch(() => {})
 
     const socket = io('/', { transports: ['websocket'] })
@@ -512,6 +518,28 @@ function CameraModal({ cam, onClose }) {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* detection timeline — thumbnail gallery of annotated Mongo
+                snapshots, one per poll (see the /objectdetect/timeline route) */}
+            {timeline && timeline.length > 0 && (
+              <div style={{ margin: '10px 18px 0' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{gt('cam_timeline', 'Detection timeline')}</span>
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '6px 0 2px' }}>
+                  {timeline.map(entry => (
+                    <a key={entry.imageId} href={`/api/objectdetect/image/${entry.imageId}`} target="_blank" rel="noreferrer"
+                      title={`${fmtLogTime(entry.ts)} — ${entry.classes.map(c => c.class).join(', ')}`}
+                      style={{ flexShrink: 0, width: 96, textDecoration: 'none' }}>
+                      <img src={`/api/objectdetect/image/${entry.imageId}`} alt={entry.classes.map(c => c.class).join(', ')}
+                        loading="lazy"
+                        style={{ width: 96, height: 54, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
+                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {fmtLogTime(entry.ts)} · {entry.classes.map(c => (PET_CLASSES.has(c.class) ? '🐾' : '🎯') + c.class).join(', ')}
+                      </div>
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
 
