@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { io } from 'socket.io-client'
 import { CameraIcon } from './Icons'
@@ -285,7 +285,21 @@ function CameraModal({ cam, onClose }) {
   const [stats, setStats]     = useState(null)
   const [timeline, setTimeline] = useState(null)
   const [lightboxIndex, setLightboxIndex] = useState(null)
+  const [classFilter, setClassFilter] = useState('all')
   const previewRef            = useRef(null)
+
+  const timelineClasses = useMemo(() => {
+    if (!timeline) return []
+    const set = new Set()
+    timeline.forEach(entry => entry.classes.forEach(c => set.add(c.class)))
+    return [...set].sort()
+  }, [timeline])
+
+  const filteredTimeline = useMemo(() => {
+    if (!timeline) return null
+    if (classFilter === 'all') return timeline
+    return timeline.filter(entry => entry.classes.some(c => c.class === classFilter))
+  }, [timeline, classFilter])
 
   const refreshSnap = useCallback((url) => {
     const next = new Image()
@@ -366,6 +380,7 @@ function CameraModal({ cam, onClose }) {
     setStats(null)
     setTimeline(null)
     setLightboxIndex(null)
+    setClassFilter('all')
     fetch(`/api/camera-log?camera=${encodeURIComponent(cam.name)}&limit=100`)
       .then(r => r.json())
       .then(({ data }) => { if (!cancelled && data) setLog(data) })
@@ -400,14 +415,14 @@ function CameraModal({ cam, onClose }) {
       if (lightboxIndex !== null) {
         if (e.key === 'Escape') { e.stopPropagation(); setLightboxIndex(null) }
         else if (e.key === 'ArrowLeft')  setLightboxIndex(i => Math.max(0, i - 1))
-        else if (e.key === 'ArrowRight') setLightboxIndex(i => Math.min((timeline?.length || 1) - 1, i + 1))
+        else if (e.key === 'ArrowRight') setLightboxIndex(i => Math.min((filteredTimeline?.length || 1) - 1, i + 1))
         return
       }
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose, lightboxIndex, timeline])
+  }, [onClose, lightboxIndex, filteredTimeline])
 
   const talkStart = e => {
     if (!micTrackRef.current) return
@@ -535,21 +550,45 @@ function CameraModal({ cam, onClose }) {
                 snapshots, one per poll (see the /objectdetect/timeline route) */}
             {timeline && timeline.length > 0 && (
               <div style={{ margin: '10px 18px 0' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{gt('cam_timeline', 'Detection timeline')}</span>
-                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '6px 0 2px' }}>
-                  {timeline.map((entry, i) => (
-                    <button key={entry.imageId} onClick={() => setLightboxIndex(i)}
-                      title={`${fmtLogTime(entry.ts)} — ${entry.classes.map(c => c.class).join(', ')}`}
-                      style={{ flexShrink: 0, width: 96, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-                      <img src={`/api/objectdetect/image/${entry.imageId}`} alt={entry.classes.map(c => c.class).join(', ')}
-                        loading="lazy"
-                        style={{ width: 96, height: 54, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
-                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {fmtLogTime(entry.ts)} · {entry.classes.map(c => (PET_CLASSES.has(c.class) ? '🐾' : '🎯') + c.class).join(', ')}
-                      </div>
-                    </button>
-                  ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{gt('cam_timeline', 'Detection timeline')}</span>
+                  {timelineClasses.length > 1 && (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      <button onClick={() => { setClassFilter('all'); setLightboxIndex(null) }} style={{
+                        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9, cursor: 'pointer',
+                        border: '1px solid var(--border)',
+                        background: classFilter === 'all' ? 'var(--accent)' : 'var(--white-05)',
+                        color: classFilter === 'all' ? '#fff' : 'var(--text2)',
+                      }}>{gt('cam_filter_all', 'All')}</button>
+                      {timelineClasses.map(cls => (
+                        <button key={cls} onClick={() => { setClassFilter(cls); setLightboxIndex(null) }} style={{
+                          fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9, cursor: 'pointer',
+                          border: '1px solid var(--border)',
+                          background: classFilter === cls ? 'var(--accent)' : 'var(--white-05)',
+                          color: classFilter === cls ? '#fff' : 'var(--text2)',
+                        }}>{PET_CLASSES.has(cls) ? '🐾' : '🎯'} {cls}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+                {filteredTimeline.length === 0 ? (
+                  <span style={{ fontSize: 11, color: 'var(--text3)', display: 'block', padding: '8px 0' }}>{gt('cam_timeline_none', 'No detections match this filter')}</span>
+                ) : (
+                  <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '6px 0 2px' }}>
+                    {filteredTimeline.map((entry, i) => (
+                      <button key={entry.imageId} onClick={() => setLightboxIndex(i)}
+                        title={`${fmtLogTime(entry.ts)} — ${entry.classes.map(c => c.class).join(', ')}`}
+                        style={{ flexShrink: 0, width: 96, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                        <img src={`/api/objectdetect/image/${entry.imageId}`} alt={entry.classes.map(c => c.class).join(', ')}
+                          loading="lazy"
+                          style={{ width: 96, height: 54, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
+                        <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {fmtLogTime(entry.ts)} · {entry.classes.map(c => (PET_CLASSES.has(c.class) ? '🐾' : '🎯') + c.class).join(', ')}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -576,7 +615,7 @@ function CameraModal({ cam, onClose }) {
           {/* detection timeline lightbox — full-size viewer with prev/next,
               stacked above the camera modal itself (higher z-index) */}
           <AnimatePresence>
-            {lightboxIndex !== null && timeline?.[lightboxIndex] && (
+            {lightboxIndex !== null && filteredTimeline?.[lightboxIndex] && (
               <motion.div key="lightbox"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
                 onClick={() => setLightboxIndex(null)}
@@ -585,8 +624,8 @@ function CameraModal({ cam, onClose }) {
                   background: 'rgba(0,0,0,0.85)',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24,
                 }}>
-                <img src={`/api/objectdetect/image/${timeline[lightboxIndex].imageId}`}
-                  alt={timeline[lightboxIndex].classes.map(c => c.class).join(', ')}
+                <img src={`/api/objectdetect/image/${filteredTimeline[lightboxIndex].imageId}`}
+                  alt={filteredTimeline[lightboxIndex].classes.map(c => c.class).join(', ')}
                   onClick={e => e.stopPropagation()}
                   style={{ maxWidth: '90vw', maxHeight: '78vh', objectFit: 'contain', borderRadius: 10, boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }} />
                 <div style={{ marginTop: 12, fontSize: 13, color: '#fff', display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -596,12 +635,12 @@ function CameraModal({ cam, onClose }) {
                     ◀
                   </button>
                   <span>
-                    {fmtLogTime(timeline[lightboxIndex].ts)} — {timeline[lightboxIndex].classes.map(c => `${PET_CLASSES.has(c.class) ? '🐾 ' : ''}${c.class} ${Math.round(c.score * 100)}%`).join(', ')}
-                    <span style={{ color: 'rgba(255,255,255,0.5)', marginLeft: 10 }}>{lightboxIndex + 1} / {timeline.length}</span>
+                    {fmtLogTime(filteredTimeline[lightboxIndex].ts)} — {filteredTimeline[lightboxIndex].classes.map(c => `${PET_CLASSES.has(c.class) ? '🐾 ' : ''}${c.class} ${Math.round(c.score * 100)}%`).join(', ')}
+                    <span style={{ color: 'rgba(255,255,255,0.5)', marginLeft: 10 }}>{lightboxIndex + 1} / {filteredTimeline.length}</span>
                   </span>
-                  <button onClick={e => { e.stopPropagation(); setLightboxIndex(i => Math.min(timeline.length - 1, i + 1)) }}
-                    disabled={lightboxIndex === timeline.length - 1}
-                    style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, color: '#fff', padding: '6px 12px', cursor: lightboxIndex === timeline.length - 1 ? 'default' : 'pointer', opacity: lightboxIndex === timeline.length - 1 ? 0.35 : 1 }}>
+                  <button onClick={e => { e.stopPropagation(); setLightboxIndex(i => Math.min(filteredTimeline.length - 1, i + 1)) }}
+                    disabled={lightboxIndex === filteredTimeline.length - 1}
+                    style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, color: '#fff', padding: '6px 12px', cursor: lightboxIndex === filteredTimeline.length - 1 ? 'default' : 'pointer', opacity: lightboxIndex === filteredTimeline.length - 1 ? 0.35 : 1 }}>
                     ▶
                   </button>
                   <button onClick={e => { e.stopPropagation(); setLightboxIndex(null) }}
