@@ -33,6 +33,7 @@ class DenonClient {
     this._zone2Key    = null;
     this._inputs      = [];
     this._soundModes  = DEFAULT_SOUND_MODES;
+    this._nseLines    = ['', '', '', '', ''];
     this._stopping    = false;
   }
 
@@ -76,6 +77,7 @@ class DenonClient {
       {
         path: 'sound_mode', label: 'Sound Mode', type: 'label',
       },
+      { path: 'nowPlaying', label: 'Now Playing', type: 'label' },
       {
         path: 'sleep', label: 'Sleep Timer', unit: 'min',
         controllable: true, type: 'range',
@@ -230,6 +232,7 @@ class DenonClient {
     this._send('SI?');
     this._send('MS?');
     this._send('SLP?');
+    this._send('NSE?'); // Net/USB now-playing display lines — ignored by receivers/sources that don't support it
     if (this._zone2Key) {
       this._send('Z2?');
       this._send('Z2MU?');
@@ -288,6 +291,20 @@ class DenonClient {
       const raw = line.slice(3);
       const val = raw === 'OFF' ? 0 : parseInt(raw, 10);
       if (!isNaN(val)) this._store.update(`${dk}/sleep`, val);
+      return;
+    }
+
+    // NSE0..NSE4: Net/USB front-panel display lines (service/artist/album/
+    // track — the exact line-to-field mapping isn't consistent across
+    // sources/firmware, so rather than mislabel them, all non-empty lines
+    // are just joined into one "Now Playing" string.
+    const nse = line.match(/^NSE(\d)(.*)$/);
+    if (nse) {
+      const idx = parseInt(nse[1], 10);
+      if (idx >= 0 && idx < this._nseLines.length) {
+        this._nseLines[idx] = nse[2].trim();
+        this._store.update(`${dk}/nowPlaying`, this._nseLines.filter(Boolean).join(' • '));
+      }
       return;
     }
   }

@@ -358,6 +358,30 @@ function RoborockMapView({ device }) {
   )
 }
 
+// "Now Playing" banner for media devices (Denon/Marantz, Sony Bravia, Bang &
+// Olufsen) — surfaces the nowPlaying sensor prominently instead of leaving it
+// buried in the generic sensor list further down.
+const NOW_PLAYING_TYPES = ['denon', 'sony', 'beosound']
+function NowPlayingBanner({ device }) {
+  if (!NOW_PLAYING_TYPES.includes(device.type)) return null
+  const title = device.readings?.nowPlaying?.value
+  if (!title) return null
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+      background: 'var(--modal-chip-bg)', border: '1px solid var(--modal-chip-border)', borderRadius: 14,
+    }}>
+      <span style={{ fontSize: 16 }}>♫</span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)' }}>
+          {gt('now_playing', 'Now Playing')}
+        </div>
+        <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+      </div>
+    </div>
+  )
+}
+
 // Consumable life bars for Roborock devices.
 const RR_CONSUMABLES = [
   { path: 'main_brush', name: 'Main brush' },
@@ -642,6 +666,9 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
             <div style={{ position: 'relative', overflowY: 'auto', padding: '4px 20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {editing && <EditPanel device={device} rooms={rooms} onClose={() => setEditing(false)}/>}
+
+              {/* Now Playing (Denon/Sony/Beosound) */}
+              <NowPlayingBanner device={device} />
 
               {/* Roborock live map */}
               <RoborockMapView device={device} />
