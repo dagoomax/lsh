@@ -5,18 +5,20 @@
 // cloud REST API; commands are sent over the mower's AWS-IoT MQTT channel.
 //
 // The auth/API endpoints and the AWS-IoT MQTT command flow are brand-specific
-// and evolve over time — the defaults below are for Worx Landroid (EU) and are
-// fully overridable via config.landroid (endpoints, clientId). Status polling
-// is the reliable core; MQTT commands are best-effort and should be verified
-// against a live account (see README / config.example).
+// and evolve over time (Worx moved auth from id.eu.worx.com to id.worx.com with
+// a new client_id at some point in 2025/2026 — see pyworxcloud's clouds.py for
+// the current canonical values) — the defaults below are fully overridable via
+// config.landroid (authHost/apiHost/clientId). Status polling is the reliable
+// core; MQTT commands are best-effort and should be verified against a live
+// account (see README / config.example).
 
 const https          = require('https');
 const platformStatus = require('./platform-status');
 
 const BRANDS = {
-  worx:      { authHost: 'id.eu.worx.com',              apiHost: 'api.worxlandroid.com',       clientId: '013132A8-DB34-4101-B993-3C8348EA0EBC' },
-  kress:     { authHost: 'id.eu.kress-robotik.com',     apiHost: 'api.kress-robotik.com',      clientId: '931D4BC4-3192-405A-BE78-98E43486DC59' },
-  landxcape: { authHost: 'id.landxcape-services.com',   apiHost: 'api.landxcape-services.com', clientId: '9852D5E9-4C89-4D3E-A6E6-9B4D5C6A2E1F' },
+  worx:      { authHost: 'id.worx.com',                 apiHost: 'api.worxlandroid.com',       clientId: '150da4d2-bb44-433b-9429-3773adc70a2a' },
+  kress:     { authHost: 'id.kress.com',                apiHost: 'api.kress-robotik.com',      clientId: '931d4bc4-3192-405a-be78-98e43486dc59' },
+  landxcape: { authHost: 'id.landxcape-services.com',   apiHost: 'api.landxcape-services.com', clientId: 'dec998a9-066f-433b-987a-f5fc54d3af7c' },
 };
 
 // Worx status codes → label (common subset).
@@ -74,15 +76,15 @@ class LandroidClient {
   // ── Auth ─────────────────────────────────────────────────────────────────
 
   async _login() {
-    const form = new URLSearchParams({
+    const body = JSON.stringify({
       grant_type: 'password',
       client_id:  this.ep.clientId,
       username:   this.cfg.email,
       password:   this.cfg.password,
       scope:      '*',
-    }).toString();
-    const res = await this._request('POST', this.ep.authHost, '/oauth/token', form, {
-      'Content-Type': 'application/x-www-form-urlencoded',
+    });
+    const res = await this._request('POST', this.ep.authHost, '/oauth/token', body, {
+      'Content-Type': 'application/json',
     });
     if (!res.access_token) throw new Error(`Login failed: ${JSON.stringify(res).slice(0, 120)}`);
     this.token    = res.access_token;
