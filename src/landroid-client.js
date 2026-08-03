@@ -225,4 +225,53 @@ function tryRequire(mod) {
   try { return require(mod); } catch { return null; }
 }
 
+// Standalone (no live client instance needed) request helper for the
+// Settings "Test Login" button — mirrors LandroidClient#_request but without
+// the instance-bound token-reset side effect.
+function httpRequest(method, host, path, payload, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const h = { Accept: 'application/json', ...headers };
+    if (payload) h['Content-Length'] = Buffer.byteLength(payload);
+    const req = https.request({ hostname: host, port: 443, path, method, headers: h, timeout: 15_000 }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        if (res.statusCode >= 400) return reject(new Error(`HTTP ${res.statusCode}: ${text.slice(0, 200)}`));
+        try { resolve(text ? JSON.parse(text) : {}); }
+        catch { reject(new Error(`Bad JSON from ${path}: ${text.slice(0, 120)}`)); }
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error(`Timeout ${path}`)); });
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+async function testLogin(brandKey, email, password) {
+  const brand = BRANDS[brandKey] || BRANDS.worx;
+  const body = JSON.stringify({
+    grant_type: 'password',
+    client_id:  brand.clientId,
+    username:   email,
+    password,
+    scope:      '*',
+  });
+  const authRes = await httpRequest('POST', brand.authHost, '/oauth/token', body, {
+    'Content-Type': 'application/json',
+  });
+  if (!authRes.access_token) throw new Error(`Login failed: ${JSON.stringify(authRes).slice(0, 120)}`);
+
+  const products = await httpRequest('GET', brand.apiHost, '/api/v2/product-items', null, {
+    Authorization: `Bearer ${authRes.access_token}`,
+  });
+  const mowers = Array.isArray(products)
+    ? products.map((p) => ({ name: p.name || 'Landroid', serial: p.serial_number || p.uuid }))
+    : [];
+  return { mowers };
+}
+
 module.exports = LandroidClient;
+module.exports.testLogin = testLogin;
+module.exports.BRANDS = Object.keys(BRANDS);

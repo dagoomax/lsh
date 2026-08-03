@@ -1610,6 +1610,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       );
     }
     if (safe.roborock?.cloud?.password) safe.roborock.cloud.password = '••••••••';
+    if (safe.landroid?.password) safe.landroid.password = '••••••••';
     if (safe.esphome?.devices) {
       safe.esphome.devices = safe.esphome.devices.map(d =>
         d.password ? { ...d, password: '••••••••' } : d
@@ -1922,6 +1923,51 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     try {
       writeConfigFile({ ...current, roborock: { ...current.roborock, cloud } });
       res.json({ success: true, message: 'Roborock cloud saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Landroid (Worx / Kress / Landxcape robot mower) — login test + save
+  router.post('/settings/test-landroid', async (req, res) => {
+    const current = readConfigFile();
+    const { brand, email } = req.body;
+    let { password } = req.body;
+    if (password && password.includes('•')) password = current.landroid?.password || '';
+    if (!email || !password) return res.status(400).json({ success: false, error: 'email and password are required' });
+
+    let testLogin;
+    try { ({ testLogin } = require('./landroid-client')); }
+    catch (err) { return res.status(500).json({ success: false, error: `Module load failed: ${err.message}` }); }
+
+    try {
+      const { mowers } = await testLogin(brand || 'worx', email.trim(), password);
+      res.json({
+        success: true,
+        message: `Login OK — ${mowers.length} mower(s) found`,
+        data: { mowers },
+      });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/landroid', (req, res) => {
+    const current = readConfigFile();
+    const { brand, email, pollInterval } = req.body;
+    let { password } = req.body;
+    const prev = current.landroid || {};
+    if (!password || password.includes('•')) password = prev.password || '';
+    const landroid = {
+      brand: (brand || 'worx').trim(),
+      email: (email || '').trim(),
+      password,
+      pollInterval: Number(pollInterval) || 60,
+    };
+    if (!landroid.email || !landroid.password) return res.status(400).json({ success: false, error: 'email and password are required' });
+    try {
+      writeConfigFile({ ...current, landroid });
+      res.json({ success: true, message: 'Landroid saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

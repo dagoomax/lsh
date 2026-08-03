@@ -57,6 +57,11 @@ async function loadSettings() {
     setVal('roborock-host',  rrDev.host  || '');
     setVal('roborock-token', rrDev.token || '');
 
+    setVal('landroid-brand',        data.landroid?.brand        || 'worx');
+    setVal('landroid-email',        data.landroid?.email        || '');
+    setVal('landroid-password',     data.landroid?.password     ? '••••••••' : '');
+    setVal('landroid-poll-interval', data.landroid?.pollInterval ?? 60);
+
     // Denon
     setVal('denon-host',   data.denon?.host      || '');
     setVal('denon-name',   data.denon?.name      || '');
@@ -1339,6 +1344,63 @@ document.getElementById('btn-save-roborock-local')?.addEventListener('click', as
     const res = await fetch('/api/settings/roborock', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(host ? [{ name: 'Roborock', host, token }] : []),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Landroid (Worx / Kress / Landxcape robot mower) ──
+document.getElementById('btn-test-landroid')?.addEventListener('click', async () => {
+  const resultEl = document.getElementById('landroid-test-result');
+  const brand = getVal('landroid-brand');
+  const email = getVal('landroid-email');
+  const password = getVal('landroid-password');
+  if (!email || !password) {
+    resultEl.textContent = 'Enter email and password first';
+    resultEl.className = 'test-result err';
+    return;
+  }
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result loading';
+  try {
+    const res = await fetch('/api/settings/test-landroid', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand, email, password }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      const list = (json.data?.mowers || []).map((m) => m.name).join(', ');
+      resultEl.textContent = '✓ ' + json.message + (list ? ' — ' + list : '');
+    } else {
+      resultEl.textContent = '✗ ' + json.error;
+    }
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-landroid')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-landroid');
+  const resultEl = document.getElementById('landroid-test-result');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/settings/landroid', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        brand: getVal('landroid-brand'),
+        email: getVal('landroid-email'),
+        password: getVal('landroid-password'),
+        pollInterval: Number(getVal('landroid-poll-interval')) || 60,
+      }),
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;

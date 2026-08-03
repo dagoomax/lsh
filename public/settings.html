@@ -439,6 +439,37 @@
       </div>
     </section>
 
+    <section class="card settings-card" data-category="smarthome" data-title="Worx Landroid Kress Landxcape robot mower cloud">
+      <h2>Landroid <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Worx Landroid robot mower (and the Kress / Landxcape sister brands) via the manufacturer cloud, using your app account email + password.</p>
+
+      <div class="form-row">
+        <label for="landroid-brand">Brand</label>
+        <select id="landroid-brand">
+          <option value="worx">Worx</option>
+          <option value="kress">Kress</option>
+          <option value="landxcape">Landxcape</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="landroid-email">Account Email</label>
+        <input type="email" id="landroid-email" placeholder="you@example.com">
+      </div>
+      <div class="form-row">
+        <label for="landroid-password">Password</label>
+        <input type="password" id="landroid-password" placeholder="••••••••">
+      </div>
+      <div class="form-row">
+        <label for="landroid-poll-interval">Poll Interval <span class="hint">(seconds)</span></label>
+        <input type="number" id="landroid-poll-interval" placeholder="60" min="10">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-landroid">Test Login</button>
+        <button class="btn btn-primary"   id="btn-save-landroid">Save</button>
+        <span class="test-result" id="landroid-test-result"></span>
+      </div>
+    </section>
+
     <!-- Denon AVR -->
     <section class="card settings-card" data-category="media" data-title="Denon AV receiver amplifier audio volume input">
       <h2>Denon AVR <span class="badge" data-i18n="common.optional">Optional</span></h2>
