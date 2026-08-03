@@ -28,6 +28,8 @@ const STATUS = {
   10: 'Debug', 11: 'Remote control', 12: 'Going home', 30: 'Going home',
   31: 'Zone training', 32: 'Edge cutting', 33: 'Searching zone', 34: 'Paused',
 };
+// Battery charging state (dat.bt.c): 0=not charging, 1=charging, 2=charging error.
+const CHARGE_STATE = { 0: 'Not charging', 1: 'Charging', 2: 'Charging error' };
 const ERRORS = {
   0: '', 1: 'Trapped', 2: 'Lifted', 3: 'Wire missing', 4: 'Outside wire', 5: 'Rain delay',
   6: 'Close door to mow', 7: 'Close door to go home', 8: 'Blade motor blocked',
@@ -124,7 +126,12 @@ class LandroidClient {
       const key = `landroid/${serial}`;
       const ls  = dat.ls, le = dat.le;
       const batt = dat.bt?.p;
+      const chg  = dat.bt?.c;
       if (batt   != null) this.store.update(`${key}/battery`,  batt);
+      if (chg    != null) {
+        this.store.update(`${key}/batteryState`,    CHARGE_STATE[chg] ?? `State ${chg}`);
+        this.store.update(`${key}/batteryCharging`, chg === 1 ? 1 : 0);
+      }
       if (ls     != null) this.store.update(`${key}/status`,   STATUS[ls] ?? `Status ${ls}`);
       if (le     != null) this.store.update(`${key}/error`,    ERRORS[le] ?? `Error ${le}`);
       if (cfg.rd != null) this.store.update(`${key}/rainDelay`, cfg.rd);
@@ -144,13 +151,15 @@ class LandroidClient {
       label:  m.name,
       icon:   '🤖',
       color:  'green',
-      homekit: ['battery-level'],
+      homekit: ['battery-level', 'mower-rw'],
       sensors: [
-        { path: 'battery',   name: 'Battery',    type: 'number', unit: '%', homekit: 'battery-level' },
+        { path: 'battery',         name: 'Battery',          type: 'number',  unit: '%', homekit: 'battery-level' },
+        { path: 'batteryState',    name: 'Battery state',    type: 'string' },
+        { path: 'batteryCharging', name: 'Battery charging', type: 'boolean' },
         { path: 'status',    name: 'Status',     type: 'string' },
         { path: 'error',     name: 'Error',      type: 'string' },
         { path: 'rainDelay', name: 'Rain delay', type: 'number', unit: 'min' },
-        { path: 'mow',  name: 'Mow',  type: 'boolean', controllable: true, capabilityId: 'mow',  writeOn: 'on', writeOff: 'off', homekit: 'switch-rw' },
+        { path: 'mow',  name: 'Mow',  type: 'boolean', controllable: true, capabilityId: 'mow',  writeOn: 'on', writeOff: 'off' },
         { path: 'home', name: 'Home', type: 'boolean', controllable: true, capabilityId: 'home', writeOn: 'on', writeOff: 'off' },
       ],
       _writeCapability: (capId, command) => {

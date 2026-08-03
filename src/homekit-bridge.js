@@ -954,6 +954,17 @@ function buildDeviceAccessory(device, store) {
       }
     }
 
+    if (hkType === 'mower-rw') {
+      // HomeKit has no native robot-mower accessory type, so impersonate one
+      // with Fanv2 (the same trick used for fan-rw / most vacuum-robot HomeKit
+      // bridges) — Active toggles mow start/stop, shown as an on/off tile.
+      const s = device.sensors.find(s => s.path === 'mow');
+      if (s && device._writeCapability) {
+        addFanService(acc, device.label, `${device.key}/${s.path}`, store,
+          (cmd) => device._writeCapability('mow', cmd));
+      }
+    }
+
     if (hkType === 'thermostat') {
       if (device._writeCapability) {
         addThermostatService(acc, device.label, device.key, store, device._writeCapability);
