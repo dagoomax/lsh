@@ -116,7 +116,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -294,6 +294,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
 | `denon` | No | Denon / Marantz AV receivers — power, volume, mute, input via Telnet (port 23) |
 | `beosound` | No | Bang & Olufsen network speakers — power, volume, mute, source via the local BeoPlay App REST API (port 8080) |
+| `sony` | No | Sony Bravia Android TV / Google TV — power, volume, mute, input via the local PSK-authenticated REST API |
 | `arduino` | No | Arduino / ESP32 / generic MQTT — subscribe to JSON topics and map fields to sensor readings or controllable outputs |
 | `suppla` | No | Suppla smart-home — cloud or self-hosted REST API; discovers switches, dimmers, thermometers, shutters, gates |
 | `loxoneOut` | No | Loxone outbound push — forwards store values to Loxone Virtual Inputs in real time |
@@ -1227,6 +1228,43 @@ Connects to a **Bang & Olufsen** network speaker over its local "BeoPlay App" RE
 **Dashboard tile:** none yet — controls (power, volume, volume up/down, mute, source select) are reachable via the generic device API and HomeKit. Say the word if you want a bespoke tile like Denon's.
 
 **Note:** this integration's endpoint shapes are reverse-engineered community knowledge, not an official spec, and haven't been verified against real hardware in this repo — test against your actual speaker and report back if a firmware revision differs.
+
+---
+
+### `sony`
+
+```json
+"sony": {
+  "host": "192.168.1.28",
+  "psk": "0000",
+  "name": "Living Room TV",
+  "maxVolume": 100,
+  "pollInterval": 10,
+  "inputs": {
+    "HDMI 1": "extInput:hdmi?port=1",
+    "HDMI 2": "extInput:hdmi?port=2"
+  }
+}
+```
+
+Connects to a **Sony Bravia** Android TV / Google TV over its local REST API (JSON-RPC over `POST http://<host>/sony/<service>`), authenticated with a Pre-Shared Key rather than a PIN-pairing flow.
+
+**One-time setup on the TV:** Settings → Network & Accessories → Home network → IP control → Authentication → enable "Pre-Shared Key" and set a key matching `psk` below. For power-on over the network to work while the TV is fully off (not just standby-with-network), also enable "Remote start" (sometimes called "Quick start").
+
+| Field | Default | Description |
+|---|---|---|
+| `host` | — | TV IP address or hostname |
+| `psk` | — | Pre-Shared Key configured on the TV (see above) |
+| `name` | `Sony TV <host>` | Display name on the dashboard |
+| `maxVolume` | `100` | Maximum volume level |
+| `pollInterval` | `10` | Seconds between polls (minimum enforced: 3) |
+| `inputs` | `{}` | Friendly name → Sony content URI map, used for the source-selection control (e.g. `extInput:hdmi?port=1`) |
+
+**Requests sent:** `system.getPowerStatus` / `setPowerStatus`, `audio.getVolumeInformation` / `setAudioVolume` (accepts absolute `"20"` or relative `"+1"`/`"-1"`) / `setAudioMute`, `avContent.getPlayingContentInfo` / `setPlayContent`.
+
+**Dashboard tile:** none yet — controls (power, volume, volume up/down, mute, source select) are reachable via the generic device API. Say the word if you want a bespoke tile.
+
+**Note:** `getPlayingContentInfo` returns a JSON-RPC error whenever the TV is sitting on the Android/Google TV home launcher rather than an actual input/app — that's expected and shown as input `"Home"`, not surfaced as a poll failure.
 
 ---
 

@@ -1611,6 +1611,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
     if (safe.roborock?.cloud?.password) safe.roborock.cloud.password = '••••••••';
     if (safe.landroid?.password) safe.landroid.password = '••••••••';
+    if (safe.sony?.psk) safe.sony.psk = '••••••••';
     if (safe.esphome?.devices) {
       safe.esphome.devices = safe.esphome.devices.map(d =>
         d.password ? { ...d, password: '••••••••' } : d
@@ -2684,6 +2685,55 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       clearTimeout(timer);
       res.json({ success: false, error: err.message });
     });
+  });
+
+  router.post('/settings/sony', (req, res) => {
+    const current = readConfigFile();
+    const { host, name, maxVolume, pollInterval, inputs } = req.body;
+    let { psk } = req.body;
+    if (!psk || psk.includes('•')) psk = current.sony?.psk || '';
+    try {
+      writeConfigFile({
+        ...current,
+        sony: {
+          host:         (host || current.sony?.host || '').trim(),
+          psk,
+          name:         (name || '').trim(),
+          maxVolume:    parseInt(maxVolume || 100),
+          pollInterval: parseInt(pollInterval || 10),
+          inputs:       (inputs && typeof inputs === 'object') ? inputs : (current.sony?.inputs || {}),
+        },
+      });
+      res.json({ success: true, message: 'Sony TV settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/test-sony', async (req, res) => {
+    const current = readConfigFile();
+    const host = req.body.host || current.sony?.host || '';
+    let psk    = req.body.psk;
+    if (!psk || psk.includes('•')) psk = current.sony?.psk || '';
+    if (!host) return res.json({ success: false, error: 'No host specified' });
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const response = await fetch(`http://${host}/sony/system`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Auth-PSK': psk || '' },
+        body: JSON.stringify({ method: 'getPowerStatus', id: 1, params: [], version: '1.0' }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!response.ok) return res.json({ success: false, error: `HTTP ${response.status}` });
+      const json = await response.json();
+      if (json.error) return res.json({ success: false, error: json.error[1] || `Error ${json.error[0]}` });
+      const status = json.result?.[0]?.status || 'unknown';
+      res.json({ success: true, message: `Connected — TV is ${status}` });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
   });
 
   router.post('/settings/sonos', (req, res) => {

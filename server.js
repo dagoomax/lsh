@@ -543,6 +543,15 @@ async function main() {
     }
   }
 
+  // Start Sony Bravia (Android TV / Google TV) client if configured
+  if (config.sony?.host) {
+    const SonyClient = tryRequire('./src/sony-client');
+    if (SonyClient) {
+      const sony = new SonyClient(config, store, sensorRegistry);
+      sony.start().catch((err) => console.error(`[Sony] Start failed: ${err.message}`));
+    }
+  }
+
   // Start VENTS / Blauberg ventilation client if configured
   if (config.vents?.host) {
     const VentsClient = tryRequire('./src/vents-client');

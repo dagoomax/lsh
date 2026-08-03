@@ -68,6 +68,13 @@ async function loadSettings() {
     setVal('denon-maxvol', data.denon?.maxVolume ?? 80);
     setVal('denon-inputs', (data.denon?.inputs   || []).join('\n'));
 
+    setVal('sony-host',   data.sony?.host      || '');
+    setVal('sony-psk',    data.sony?.psk       ? '••••••••' : '');
+    setVal('sony-name',   data.sony?.name      || '');
+    setVal('sony-maxvol', data.sony?.maxVolume ?? 100);
+    setVal('sony-poll',   data.sony?.pollInterval ?? 10);
+    setVal('sony-inputs', Object.entries(data.sony?.inputs || {}).map(([n, u]) => `${n}=${u}`).join('\n'));
+
     // Sonos
     setVal('sonos-hosts', (data.sonos?.hosts || []).join('\n'));
     document.getElementById('sonos-discover').checked = data.sonos?.discover !== false;
@@ -1541,6 +1548,64 @@ document.getElementById('btn-test-denon').addEventListener('click', async () => 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ host: getVal('denon-host'), port: 23 }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Sony Bravia TV ────────────────────────────────────────────────────────
+
+document.getElementById('btn-save-sony').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-sony');
+  const resultEl = document.getElementById('sony-result');
+  btn.disabled   = true;
+  try {
+    const inputs = {};
+    for (const line of getVal('sony-inputs').split('\n')) {
+      const idx = line.indexOf('=');
+      if (idx > 0) inputs[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+    }
+    const res = await fetch('/api/settings/sony', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host:         getVal('sony-host'),
+        psk:          getVal('sony-psk'),
+        name:         getVal('sony-name'),
+        maxVolume:    parseInt(getVal('sony-maxvol') || '100'),
+        pollInterval: parseInt(getVal('sony-poll') || '10'),
+        inputs,
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-test-sony').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-test-sony');
+  const resultEl = document.getElementById('sony-result');
+  btn.disabled   = true;
+  resultEl.textContent = 'Testing…';
+  resultEl.className   = 'test-result';
+  try {
+    const res  = await fetch('/api/settings/test-sony', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: getVal('sony-host'), psk: getVal('sony-psk') }),
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;

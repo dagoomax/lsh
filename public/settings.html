@@ -497,6 +497,41 @@
       </div>
     </section>
 
+    <!-- Sony Bravia TV -->
+    <section class="card settings-card" data-category="media" data-title="Sony Bravia Android TV Google TV power volume input">
+      <h2>Sony Bravia TV <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Controls a Sony Bravia Android TV / Google TV over its local REST API, authenticated with a Pre-Shared Key. On the TV: Settings &rarr; Network &amp; Accessories &rarr; Home network &rarr; IP control &rarr; Authentication &rarr; enable "Pre-Shared Key" and set a key here. Enable "Remote start" too if you want power-on to work while the TV is fully off.</p>
+      <div class="form-group">
+        <label for="sony-host">TV IP / Hostname</label>
+        <input type="text" id="sony-host" placeholder="192.168.1.28">
+      </div>
+      <div class="form-group">
+        <label for="sony-psk">Pre-Shared Key</label>
+        <input type="password" id="sony-psk" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label for="sony-name">Display Name <span class="hint">(optional)</span></label>
+        <input type="text" id="sony-name" placeholder="Living Room TV">
+      </div>
+      <div class="form-group">
+        <label for="sony-maxvol">Max Volume</label>
+        <input type="number" id="sony-maxvol" placeholder="100" min="1" max="100" style="max-width:120px">
+      </div>
+      <div class="form-group">
+        <label for="sony-poll">Poll Interval <span class="hint">(seconds)</span></label>
+        <input type="number" id="sony-poll" placeholder="10" min="3" style="max-width:120px">
+      </div>
+      <div class="form-group">
+        <label for="sony-inputs">Input sources <span class="hint">(optional, one per line — Name=URI, e.g. HDMI 1=extInput:hdmi?port=1)</span></label>
+        <textarea id="sony-inputs" rows="4" placeholder="HDMI 1=extInput:hdmi?port=1&#10;HDMI 2=extInput:hdmi?port=2" style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-sony">Save</button>
+        <button class="btn" id="btn-test-sony">Test connection</button>
+        <span class="test-result" id="sony-result"></span>
+      </div>
+    </section>
+
     <!-- Sonos -->
     <section class="card settings-card" data-category="media" data-title="Sonos speaker music play pause volume zone">
       <h2>Sonos <span class="badge" data-i18n="common.optional">Optional</span></h2>
