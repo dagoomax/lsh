@@ -1,5 +1,6 @@
 let currentRelays = [];
 let currentCameras = [];
+let currentVirtual = [];
 let currentReolink = [];
 let currentMobotix = [];
 let currentAxis = [];
@@ -268,6 +269,10 @@ async function loadSettings() {
 
     // Cameras — fetched separately so settings API doesn't need to include them
     await loadCameras();
+
+    // Virtual devices
+    currentVirtual = data.virtual?.devices || [];
+    renderVirtualList(currentVirtual);
 
     // Reolink PoE cameras (password comes back masked)
     currentReolink = data.reolink?.cameras || [];
@@ -2439,6 +2444,95 @@ document.getElementById('btn-save-cameras').addEventListener('click', async () =
     const json = await res.json();
     if (json.success) {
       currentCameras = cameras;
+      resultEl.textContent = '✓ ' + json.message;
+      resultEl.className = 'test-result ok';
+    } else {
+      resultEl.textContent = '✗ ' + json.error;
+      resultEl.className = 'test-result err';
+    }
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Virtual devices ──────────────────────────────────────────────────────
+const VIRTUAL_TYPES = [
+  { value: 'switch', label: 'Switch (on/off)' },
+  { value: 'dimmer', label: 'Dimmer (0–100%)' },
+  { value: 'sensor', label: 'Sensor (adjustable number)' },
+  { value: 'text',   label: 'Text (API-only, no dashboard slider)' },
+  { value: 'button', label: 'Button (momentary trigger)' },
+];
+
+function randomId() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function renderVirtualList(devices) {
+  const container = document.getElementById('virtual-settings-list');
+  container.innerHTML = '';
+
+  if (devices.length === 0) {
+    container.innerHTML = '<p class="hint" style="margin-bottom:12px">No virtual devices yet.</p>';
+    return;
+  }
+
+  devices.forEach((dev, i) => {
+    const row = document.createElement('div');
+    row.className = 'camera-settings-row';
+    row.dataset.index = i;
+    row.dataset.id = dev.id || randomId();
+    row.innerHTML = `
+      <div class="camera-settings-fields" style="grid-template-columns:2fr 1.4fr 1fr">
+        <input type="text" class="virt-name" placeholder="Name (e.g. Home/Away)" value="${escapeVal(dev.name || '')}">
+        <select class="virt-type">
+          ${VIRTUAL_TYPES.map(t => `<option value="${t.value}" ${dev.type === t.value ? 'selected' : ''}>${t.label}</option>`).join('')}
+        </select>
+        <input type="text" class="virt-unit" placeholder="Unit (sensor only, e.g. °C)" value="${escapeVal(dev.unit || '')}">
+      </div>
+      <button class="btn btn-remove virt-remove" title="Remove">✕</button>`;
+    row.querySelector('.virt-remove').addEventListener('click', () => {
+      currentVirtual.splice(i, 1);
+      renderVirtualList(currentVirtual);
+    });
+    container.appendChild(row);
+  });
+}
+
+function collectVirtual() {
+  return Array.from(document.querySelectorAll('#virtual-settings-list .camera-settings-row')).map((row) => ({
+    id:   row.dataset.id || randomId(),
+    name: row.querySelector('.virt-name').value.trim(),
+    type: row.querySelector('.virt-type').value,
+    unit: row.querySelector('.virt-unit').value.trim(),
+  })).filter((d) => d.name);
+}
+
+document.getElementById('btn-add-virtual').addEventListener('click', () => {
+  currentVirtual = collectVirtual();
+  currentVirtual.push({ id: randomId(), name: '', type: 'switch', unit: '' });
+  renderVirtualList(currentVirtual);
+  const rows = document.querySelectorAll('#virtual-settings-list .camera-settings-row');
+  rows[rows.length - 1]?.querySelector('.virt-name')?.focus();
+});
+
+document.getElementById('btn-save-virtual').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-virtual');
+  const resultEl = document.getElementById('virtual-save-result');
+  btn.disabled = true;
+  try {
+    const devices = collectVirtual();
+    const res = await fetch('/api/settings/virtual', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(devices),
+    });
+    const json = await res.json();
+    if (json.success) {
+      currentVirtual = devices;
       resultEl.textContent = '✓ ' + json.message;
       resultEl.className = 'test-result ok';
     } else {

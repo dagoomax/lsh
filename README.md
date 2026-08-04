@@ -1144,6 +1144,29 @@ Connects to a **MiCasaVerde / Vera** controller (Vera Lite/Plus/Edge/Secure, or 
 - `hideMqtt` / `hideLogs` — remove those links from the classic dashboard's top navigation.
 - `customCss` — free-form CSS applied to **both** the classic dashboard and Aurora (React), via `GET /custom.css` (public, outside `/api/` — see the route's comment in `server.js` for why) referenced as a real `<link rel="stylesheet">` in each `<head>` (not fetched-and-injected with JS, so it applies before first paint — no flash of unstyled content). Since it's just another stylesheet in the cascade, overriding the app's own styles may need `!important`. Edit it from Settings → Interface — no restart needed, it's read fresh on every request.
 
+### `virtual`
+
+```json
+"virtual": {
+  "devices": [
+    { "id": "a1b2c3d4", "name": "Home/Away", "type": "switch" },
+    { "id": "e5f6a7b8", "name": "Outdoor Temp", "type": "sensor", "unit": "°C" }
+  ]
+}
+```
+
+Switches, dimmers, sensors, text values, and buttons with **no real hardware behind them** — automation flags, manual overrides, or a landing spot for values pushed in from an external script/webhook. Every type is writable through the normal `GET/POST /api/device/<key>/set` endpoints, same as any real integration:
+
+| `type` | Behaviour |
+|---|---|
+| `switch` | Boolean on/off, dashboard toggle |
+| `dimmer` | 0–100, dashboard slider |
+| `sensor` | Freely adjustable number (`unit` is just a display label), dashboard slider |
+| `text` | Arbitrary string — API-only, no dashboard control (shows as a read-only value); intended for scripts/webhooks to push a value into (e.g. a weather API → a virtual temperature label) |
+| `button` | Momentary trigger — pulses to `1` then auto-resets to `0` after 800 ms, same pattern as the SIP doorbell ring |
+
+`id` is auto-generated and stable across renames — it's the only thing that matters for wiring a device into automations/Loxone once created. Manage from Settings → Virtual Devices; new/changed devices need a restart to register.
+
 ### `wirenboard`
 
 ```json

@@ -283,6 +283,11 @@ class SensorRegistry extends EventEmitter {
     if (sensor.type === 'range' || sensor.type === 'color-temp') {
       return device._writeCapability(sensor.capabilityId, sensor.writeCmd, [value]);
     }
+    if (sensor.type === 'text') {
+      // Arbitrary string value (e.g. a virtual text sensor fed by a script/
+      // webhook) — same shape as 'range', just no numeric coercion.
+      return device._writeCapability(sensor.capabilityId, sensor.writeCmd, [value]);
+    }
     if (sensor.type === 'color') {
       // Dashboard sends { hue: 0-100, saturation: 0-100 }; Loxone (and other
       // Virtual-Output senders) send a scalar — a composite RGB number

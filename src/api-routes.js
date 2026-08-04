@@ -1086,6 +1086,28 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  const VIRTUAL_TYPES = new Set(['switch', 'dimmer', 'sensor', 'text', 'button']);
+  router.post('/settings/virtual', (req, res) => {
+    const crypto = require('crypto');
+    const current = readConfigFile();
+    const devices = req.body;
+    if (!Array.isArray(devices)) {
+      return res.status(400).json({ success: false, error: 'Body must be an array of virtual devices' });
+    }
+    const cleaned = devices.map((d) => ({
+      id:   String(d.id || '').trim() || crypto.randomUUID().slice(0, 8),
+      name: String(d.name || '').trim(),
+      type: VIRTUAL_TYPES.has(d.type) ? d.type : 'switch',
+      unit: String(d.unit || '').trim(),
+    })).filter((d) => d.name);
+    try {
+      writeConfigFile({ ...current, virtual: { devices: cleaned } });
+      res.json({ success: true, message: `${cleaned.length} virtual device(s) saved. Restart to apply.` });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // ── Reolink PoE cameras ───────────────────────────────────
   router.post('/settings/reolink', (req, res) => {
     const current = readConfigFile();

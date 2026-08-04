@@ -656,6 +656,16 @@ async function main() {
     }
   }
 
+  // Start virtual devices (switches/dimmers/sensors/text/buttons with no
+  // real hardware behind them) if any are configured
+  if (config.virtual?.devices?.length) {
+    const VirtualClient = tryRequire('./src/virtual-client');
+    if (VirtualClient) {
+      const virtual = new VirtualClient(config, store, sensorRegistry);
+      virtual.start().catch((err) => console.error(`[Virtual] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Suppla client if configured
   if (config.suppla?.token) {
     const SuplaClient = tryRequire('./src/suppla-client');
