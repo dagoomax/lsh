@@ -1,4 +1,4 @@
-const { Router } = require('express');
+const { Router, raw } = require('express');
 const fs   = require('fs');
 const path = require('path');
 const http = require('http');
@@ -682,6 +682,31 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     } catch (err) {
       res.status(400).json({ success: false, error: err.message });
     }
+  });
+
+  // Live listen: proxies the audio bridge's local ffmpeg MP3 stream straight
+  // through to the browser <audio> element — no buffering here, whatever
+  // ffmpeg produces goes out as it arrives.
+  router.get('/sip/listen', (req, res) => {
+    const port = sipServer?.audioListenPort;
+    if (!port) return res.status(503).json({ success: false, error: 'No active call with audio' });
+    const upstream = http.get(`http://127.0.0.1:${port}/`, (up) => {
+      res.set('Content-Type', 'audio/mpeg');
+      up.pipe(res);
+    });
+    upstream.on('error', (err) => {
+      if (!res.headersSent) res.status(502).json({ success: false, error: err.message });
+    });
+    req.on('close', () => upstream.destroy());
+  });
+
+  // Live talk: the browser posts live MediaRecorder chunks here as they're
+  // captured; each chunk is fed straight into the audio bridge's ffmpeg
+  // stdin. No JSON — raw audio/webm body.
+  router.post('/sip/talk', raw({ type: '*/*', limit: '256kb' }), (req, res) => {
+    if (!sipServer) return res.status(503).json({ success: false, error: 'SIP server not enabled' });
+    sipServer.writeTalkChunk(req.body);
+    res.json({ success: true });
   });
 
   // ── Sonos: URL playback + TTS announcements ───────────────

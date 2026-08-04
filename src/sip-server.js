@@ -7,8 +7,10 @@
  * surfaced to the dashboard as a "ring" so the browser can pop a call panel
  * showing the door camera and an open-door button.
  *
- * This is signalling-only: it answers/declines the SIP dialog and (optionally)
- * pulses a door-strike relay. Two-way RTP audio is intentionally out of scope.
+ * Signalling plus real (if best-effort) two-way audio: on answer, negotiates
+ * a real PCMU/8000 SDP instead of a=inactive, and bridges RTP to/from the
+ * dashboard via SipAudioBridge (ffmpeg-based — see sip-audio-bridge.js for
+ * why, and its caveats). Also (optionally) pulses a door-strike relay.
  *
  * Emits:
  *   'call' → state object (see getState) whenever the call state changes.
@@ -18,6 +20,7 @@ const { EventEmitter } = require('events');
 const os   = require('os');
 const sip  = require('sip');
 const platformStatus = require('./platform-status');
+const SipAudioBridge  = require('./sip-audio-bridge');
 
 function localIPv4() {
   const ifaces = os.networkInterfaces();
@@ -29,19 +32,35 @@ function localIPv4() {
   return '127.0.0.1';
 }
 
-// Minimal SDP advertising no usable media — enough to satisfy the UAC that the
-// call was answered without us having to handle RTP.
-function inactiveSdp(ip) {
+// Real PCMU (G.711 mu-law, 8kHz) sendrecv SDP answer, advertising the local
+// RTP port SipServer has bound for this call.
+function audioSdp(ip, rtpPort) {
   return [
     'v=0',
     `o=lsh ${Date.now()} ${Date.now()} IN IP4 ${ip}`,
     's=LSH Intercom',
     `c=IN IP4 ${ip}`,
     't=0 0',
-    'm=audio 0 RTP/AVP 0',
-    'a=inactive',
+    `m=audio ${rtpPort} RTP/AVP 0`,
+    'a=rtpmap:0 PCMU/8000',
+    'a=sendrecv',
     '',
   ].join('\r\n');
+}
+
+// Pulls the caller's RTP host:port for the audio media line out of their
+// SDP offer — just enough parsing for what SipAudioBridge needs, not a
+// general SDP parser.
+function parseAudioOffer(sdpText) {
+  if (!sdpText) return null;
+  const lines = String(sdpText).split(/\r?\n/);
+  const cLine = lines.find((l) => l.startsWith('c=IN IP4 '));
+  const mLine = lines.find((l) => l.startsWith('m=audio '));
+  if (!cLine || !mLine) return null;
+  const host = cLine.slice('c=IN IP4 '.length).trim();
+  const port = parseInt(mLine.split(/\s+/)[1], 10);
+  if (!host || !port) return null;
+  return { host, port };
 }
 
 function callerOf(rq) {
@@ -65,6 +84,14 @@ class SipServer extends EventEmitter {
     this._ip         = localIPv4();
     this._call       = null;      // active dialog, see _onInvite
     this._lastState  = 'idle';    // idle | ringing | in-call | ended
+
+    // Two-way audio (see sip-audio-bridge.js). Only one call at a time (see
+    // "Busy Here" below), so fixed ports are fine — no need to hunt for a
+    // free one per call. ffmpeg itself binds the RTP UDP port (via the SDP
+    // file it's given), not Node — nothing to bind/manage here directly.
+    this._rtpPort       = parseInt(this._cfg.rtpPort || 40000);
+    this._audioHttpPort = parseInt(this._cfg.audioHttpPort || 40001);
+    this._audio         = new SipAudioBridge(this._cfg.ffmpegPath || config.ffmpegRtsp?.ffmpegPath || 'ffmpeg');
   }
 
   start() {
@@ -113,6 +140,7 @@ class SipServer extends EventEmitter {
     if (this._started) {
       try { sip.stop(); } catch { /* ignore */ }
     }
+    this._audio.stop();
     this._started = false;
     platformStatus.set('sip', false);
   }
@@ -187,6 +215,7 @@ class SipServer extends EventEmitter {
       remoteTarget: contact.uri,
       localSeq:     1,
       answered:     false,
+      remoteRtp:    parseAudioOffer(rq.content), // {host, port} for the caller's audio — null if unparseable, audio just won't come through
     };
 
     console.log(`[SIP] Incoming call from ${caller} (call-id ${this._call.callId})`);
@@ -222,6 +251,7 @@ class SipServer extends EventEmitter {
   }
 
   _end() {
+    this._audio.stop();
     this._emitState('ended');
     this._call = null;
     // Settle back to idle shortly after so the UI can show "ended" briefly
@@ -239,12 +269,29 @@ class SipServer extends EventEmitter {
     rs.headers.to.params.tag = this._call.localTag;
     rs.headers.contact = [{ uri: `sip:lsh@${this._ip}:${this._cfg.port || 5060}` }];
     rs.headers['content-type'] = 'application/sdp';
-    rs.content = inactiveSdp(this._ip);
+    rs.content = audioSdp(this._ip, this._rtpPort);
     sip.send(rs);
     this._call.answered = true;
     console.log(`[SIP] Answered call from ${this._call.caller}`);
+
+    if (this._call.remoteRtp) {
+      this._audio.start(this._rtpPort, this._audioHttpPort, this._call.remoteRtp.host, this._call.remoteRtp.port);
+    } else {
+      console.error('[SIP] No audio media in caller\'s SDP offer — call answered signalling-only, no audio');
+    }
+
     this._emitState('in-call');
     return true;
+  }
+
+  /** Feed a chunk of the browser's live mic capture into the active call's talk stream. */
+  writeTalkChunk(buffer) {
+    this._audio.writeTalkChunk(buffer);
+  }
+
+  /** Local port the browser should stream the live listen audio from, or null if no call/audio. */
+  get audioListenPort() {
+    return this._audio.httpPort;
   }
 
   reject() {

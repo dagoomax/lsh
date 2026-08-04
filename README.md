@@ -1409,7 +1409,29 @@ The **Settings → Cameras → FFmpeg RTSP Proxy** section shows the ready-to-pa
 }
 ```
 
-WebSocket SIP. `dtmfUnlock` is the DTMF tone sent when the **Unlock** button is pressed during a call. `relayIndex` is the Victron relay to pulse for 2.5 s on Unlock.
+WebSocket SIP client registration (dashboard registers as an extension on UniFi Talk, a Loxone Miniserver's Intercom, or any SIP PBX with WebSocket transport — `wss://` for Talk, `ws://` for Loxone's local intercom port). `dtmfUnlock` is the DTMF tone sent through the live call when the **Unlock** button is pressed; `relayIndex` is an LSH relay pulsed for 2.5 s at the same time (independent of whether the far end reacts to the DTMF tone).
+
+This is a separate feature from the embedded SIP *server* below, which receives calls rather than registering as a client:
+
+```json
+"sip": {
+  "enabled":        true,
+  "port":           5060,
+  "domain":         "",
+  "allowFrom":      "",
+  "cameraName":     "Front Door",
+  "doorRelay":      0,
+  "doorPulseMs":    3000,
+  "autoAnswer":     false,
+  "rtpPort":        40000,
+  "audioHttpPort":  40001,
+  "ffmpegPath":     "ffmpeg"
+}
+```
+
+A SIP-native door station (2N, DoorBird, Akuvox, Grandstream, Loxone's own Intercom acting as a client, …) dials LSH directly on `port`; the incoming INVITE surfaces as a ring on the dashboard (`src/components/IncomingCall.jsx`) with the matching camera feed, answer/decline, and — if `doorRelay` is set — an open-door button that pulses that relay for `doorPulseMs`. `allowFrom` optionally restricts by caller (case-insensitive substring match against the SIP `From` user). Ring/call/caller state also mirrors into the DataStore (`sip/doorbell/ring`, `/inCall`, `/caller`) for `loxoneOut` or anything else that wants it.
+
+**Two-way audio:** on answer, a real PCMU/8000 SDP is negotiated (not a signalling-only fake answer) and bridged via two ffmpeg subprocesses (`src/sip-audio-bridge.js`) — one turning the caller's incoming RTP into a live MP3 stream the dashboard plays, one turning the dashboard's "Hold to talk" mic capture into outgoing RTP back to the caller. Requires `ffmpeg` on the server (`ffmpegPath`, or reuses `ffmpegRtsp.ffmpegPath` if set). `rtpPort`/`audioHttpPort` are fixed local ports (only one call is handled at a time, so no dynamic allocation needed). Expect noticeably higher latency than a phone call — this trades call quality for not needing a server-side WebRTC/DTLS-SRTP stack, which this repo doesn't have.
 
 ### `cameras`
 

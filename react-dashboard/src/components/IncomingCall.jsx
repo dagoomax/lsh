@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gt } from '../i18n'
 import { useSipCall } from '../hooks/useSipCall'
+import { useSipTalk } from '../hooks/useSipTalk'
 
 // ── Doorbell intercom call overlay ─────────────────────────────────────────
 // CallOverlay is the presentational call UI (blurred backdrop, gradient border,
@@ -170,12 +171,20 @@ export function NoCameraFill() {
 
 // Presentational overlay. `camera` is a node rendered as the camera view fill;
 // `cameras`/`selectedCamera`/`onSelectCamera` drive the chooser; `actions` is an
-// optional array of control chips shown while in a call.
+// optional array of control chips shown while in a call. `audioListenUrl` +
+// `onTalkStart`/`onTalkStop` are optional — the live intercom passes real
+// ones, the demo page leaves them unset and just doesn't render audio.
 export function CallOverlay({ call, answer, reject, hangup, openDoor, camera,
-  cameras = [], selectedCamera, onSelectCamera, actions = [] }) {
+  cameras = [], selectedCamera, onSelectCamera, actions = [],
+  audioListenUrl = null, onTalkStart, onTalkStop }) {
   const ringing = call.state === 'ringing'
   const inCall  = call.state === 'in-call'
   const visible = ringing || inCall
+
+  const [talking, setTalking] = useState(false)
+  const canTalk = inCall && typeof onTalkStart === 'function'
+  const talkDown = () => { setTalking(true); onTalkStart(); }
+  const talkUp   = () => { setTalking(false); onTalkStop?.(); }
 
   const timer = useCallTimer(call.state, call.since)
   useRingtone(ringing)
@@ -296,6 +305,23 @@ export function CallOverlay({ call, answer, reject, hangup, openDoor, camera,
                 </>}
 
                 {inCall && <>
+                  {canTalk && (
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      onPointerDown={talkDown} onPointerUp={talkUp} onPointerLeave={talkUp} onPointerCancel={talkUp}
+                      style={{
+                        flex: 1, minWidth: 120, padding: '14px 18px', borderRadius: 14, cursor: 'pointer',
+                        fontSize: 15, fontWeight: 600, color: talking ? '#0b0d13' : 'var(--text)',
+                        background: talking ? 'var(--accent, #5ea0ff)' : 'var(--white-08, rgba(255,255,255,0.08))',
+                        border: `1px solid ${talking ? 'var(--accent, #5ea0ff)' : 'var(--border, rgba(255,255,255,0.14))'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        boxShadow: talking ? '0 8px 26px rgba(94,160,255,0.35)' : 'none',
+                        touchAction: 'none', userSelect: 'none',
+                      }}
+                    >
+                      🎤 {talking ? gt('sip.talking', 'Talking…') : gt('sip.hold_to_talk', 'Hold to talk')}
+                    </motion.button>
+                  )}
                   {call.canOpenDoor && (
                     <CallButton color="var(--gold, #d9b45b)" onClick={onOpenDoor} glow="rgba(217,180,91,0.4)">
                       {doorPulsed ? '✓ ' : '🔓 '}{doorPulsed ? gt('sip.opened', 'Opened') : gt('sip.open_door', 'Open door')}
@@ -308,6 +334,9 @@ export function CallOverlay({ call, answer, reject, hangup, openDoor, camera,
               </div>
             </div>
           </motion.div>
+          {inCall && audioListenUrl && (
+            <audio autoPlay src={audioListenUrl} style={{ display: 'none' }} />
+          )}
         </motion.div>
       )}
     </AnimatePresence>
@@ -338,11 +367,16 @@ export default function IncomingCall() {
     ? <img src={snapshot} alt={activeCam || 'Door camera'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     : <NoCameraFill />
 
+  const talk = useSipTalk()
+  const inCall = call.state === 'in-call'
+
   return (
     <CallOverlay
       call={call} answer={answer} reject={reject} hangup={hangup} openDoor={openDoor}
       camera={camera} cameras={cameras} selectedCamera={activeCam} onSelectCamera={setSelected}
       actions={actions}
+      audioListenUrl={inCall ? '/api/sip/listen' : null}
+      onTalkStart={talk.start} onTalkStop={talk.stop}
     />
   )
 }
