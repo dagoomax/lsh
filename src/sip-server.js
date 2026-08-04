@@ -55,10 +55,11 @@ function callerOf(rq) {
 }
 
 class SipServer extends EventEmitter {
-  constructor(config, { onOpenDoor } = {}) {
+  constructor(config, { onOpenDoor, store } = {}) {
     super();
     this._cfg        = config.sip || {};
     this._onOpenDoor = onOpenDoor;
+    this._store      = store; // optional — enables the sip/doorbell/* DataStore keys below (e.g. for loxoneOut)
     this._started    = false;
     this._ip         = localIPv4();
     this._call       = null;      // active dialog, see _onInvite
@@ -73,6 +74,11 @@ class SipServer extends EventEmitter {
         (rq) => this._onRequest(rq));
       this._started = true;
       platformStatus.set('sip', true);
+      if (this._store) {
+        this._store.update('sip/doorbell/ring',   0);
+        this._store.update('sip/doorbell/inCall', 0);
+        this._store.update('sip/doorbell/caller', '');
+      }
       console.log(`[SIP] Doorbell server listening on ${this._ip}:${port} (UDP/TCP)`);
     } catch (err) {
       platformStatus.set('sip', false);
@@ -106,6 +112,17 @@ class SipServer extends EventEmitter {
   _emitState(state) {
     this._lastState = state;
     this.emit('call', this.getState());
+
+    // DataStore mirror — lets loxoneOut (or anything else) push these out as
+    // Virtual Inputs without polling the SIP state machine directly.
+    if (this._store) {
+      // "ring" pulses for the moment a call is actually ringing, rather than
+      // tracking `active` (ringing OR in-call) — that's the edge a doorbell
+      // notification/alarm block in Loxone should trigger on.
+      this._store.update('sip/doorbell/ring',   state === 'ringing' ? 1 : 0);
+      this._store.update('sip/doorbell/inCall', state === 'in-call' ? 1 : 0);
+      this._store.update('sip/doorbell/caller', this._call ? this._call.caller : '');
+    }
   }
 
   // ── Request dispatch ─────────────────────────────────────────────────

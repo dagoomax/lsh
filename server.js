@@ -130,6 +130,7 @@ async function main() {
     const SipServer = tryRequire('./src/sip-server', 'run: npm install sip');
     if (SipServer) {
       sipServer = new SipServer(config, {
+        store,
         onOpenDoor: async () => {
           const idx = config.sip.doorRelay;
           if (idx == null) throw new Error('No door relay configured');
