@@ -1605,6 +1605,11 @@
         <label for="ui-hide-logs" style="margin:0" data-i18n="s.hide_logs">Hide the Logs link in the top navigation</label>
       </div>
 
+      <div class="form-group">
+        <label for="ui-custom-css">Custom CSS <span class="hint">(applies to both the classic dashboard and Aurora — loaded as a real stylesheet, so it may need <code>!important</code> to override existing styles)</span></label>
+        <textarea id="ui-custom-css" rows="10" placeholder="/* e.g. */&#10;.device-tile { border-radius: 4px !important; }" style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
+      </div>
+
       <div class="form-actions">
         <button class="btn btn-primary" id="btn-save-ui" data-i18n="s2.save">Save</button>
         <span class="test-result" id="ui-result"></span>

@@ -1616,14 +1616,29 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   router.post('/settings/ui', (req, res) => {
     const current = readConfigFile();
-    const { hideMqtt, hideLogs } = req.body;
+    const { hideMqtt, hideLogs, customCss } = req.body;
     try {
-      writeConfigFile({ ...current, ui: { ...current.ui, hideMqtt: !!hideMqtt, hideLogs: !!hideLogs } });
+      writeConfigFile({
+        ...current,
+        ui: {
+          ...current.ui,
+          hideMqtt: !!hideMqtt,
+          hideLogs: !!hideLogs,
+          ...(customCss !== undefined ? { customCss: String(customCss) } : {}),
+        },
+      });
       res.json({ success: true, message: 'Interface settings saved.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
   });
+
+  // Note: the public (unauthenticated) GET /custom.css this settings key
+  // feeds is registered in server.js, not here — auth.js's middleware never
+  // exempts anything under /api/* (by design: dynamic data must stay gated
+  // even when a path looks like a static asset), so it has to live outside
+  // the /api prefix to actually be reachable pre-login, same as /i18n/*.json
+  // vs the gated /api/i18n/*.json.
 
   // ── Settings ─────────────────────────────────────────────
   router.get('/settings', (req, res) => {

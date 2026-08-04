@@ -23,9 +23,10 @@ async function loadSettings() {
     setVal('mongo-uri', data.mongo?.uri || '');
     setVal('mongo-db',  data.mongo?.db  || '');
 
-    // Interface (hide nav links)
+    // Interface (hide nav links, custom CSS)
     const hm = document.getElementById('ui-hide-mqtt'); if (hm) hm.checked = !!data.ui?.hideMqtt;
     const hl = document.getElementById('ui-hide-logs'); if (hl) hl.checked = !!data.ui?.hideLogs;
+    setVal('ui-custom-css', data.ui?.customCss || '');
 
     // VRM
     setVal('vrm-api-token', data.vrm?.apiToken || '');
@@ -1870,8 +1871,9 @@ document.getElementById('btn-save-ui').addEventListener('click', async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        hideMqtt: document.getElementById('ui-hide-mqtt').checked,
-        hideLogs: document.getElementById('ui-hide-logs').checked,
+        hideMqtt:  document.getElementById('ui-hide-mqtt').checked,
+        hideLogs:  document.getElementById('ui-hide-logs').checked,
+        customCss: getVal('ui-custom-css'),
       }),
     });
     const json = await res.json();

@@ -1131,6 +1131,19 @@ Connects to a **MiCasaVerde / Vera** controller (Vera Lite/Plus/Edge/Secure, or 
 
 **Note:** switch/dimmer/lock coverage uses long-stable, well-documented Vera API fields (`status`, `level`, `SwitchPower1`, `Dimming1`, `DoorLock1`). The thermostat setpoint field name is less certain from documentation alone and hasn't been verified against real hardware — check your unit's `sdata` dump if that one sensor doesn't show a value.
 
+### `ui`
+
+```json
+"ui": {
+  "hideMqtt": false,
+  "hideLogs": false,
+  "customCss": ".device-tile { border-radius: 4px !important; }"
+}
+```
+
+- `hideMqtt` / `hideLogs` — remove those links from the classic dashboard's top navigation.
+- `customCss` — free-form CSS applied to **both** the classic dashboard and Aurora (React), via `GET /custom.css` (public, outside `/api/` — see the route's comment in `server.js` for why) referenced as a real `<link rel="stylesheet">` in each `<head>` (not fetched-and-injected with JS, so it applies before first paint — no flash of unstyled content). Since it's just another stylesheet in the cascade, overriding the app's own styles may need `!important`. Edit it from Settings → Interface — no restart needed, it's read fresh on every request.
+
 ### `wirenboard`
 
 ```json

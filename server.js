@@ -198,6 +198,26 @@ async function main() {
       res.status(500).send('API docs unavailable — run: npm run openapi');
     }
   });
+  // User-authored CSS (Settings → Interface → Custom CSS), referenced by a
+  // real <link> tag in both dashboards' <head> — public/unauthenticated so
+  // it applies on login/setup pages too, and loads before first paint
+  // instead of flashing unstyled then restyled. Deliberately outside /api/:
+  // auth.js's middleware never exempts /api/* paths (dynamic data there must
+  // stay gated even when a path looks like a static asset), so a path like
+  // /api/custom.css would 401 despite the .css extension — same reason
+  // /i18n/*.json is public but /api/i18n/*.json isn't. Reads config.json
+  // fresh on every request (not the startup-time `config` object) so edits
+  // apply immediately, no restart needed.
+  app.get('/custom.css', (req, res) => {
+    const fs = require('fs');
+    let customCss = '';
+    try {
+      customCss = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8')).ui?.customCss || '';
+    } catch { /* config unreadable — serve empty rather than error the page load */ }
+    res.set('Content-Type', 'text/css; charset=utf-8');
+    res.set('Cache-Control', 'no-cache');
+    res.send(customCss);
+  });
   app.use(express.static(path.join(__dirname, 'public')));
   let ffmpegRtsp = null;
   if (config.ffmpegRtsp?.enabled) {

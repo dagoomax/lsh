@@ -16,6 +16,10 @@
 
     <title>Aurora — Lightweight Smart Home</title>
     <script>document.documentElement.setAttribute('data-theme', new URLSearchParams(location.search).get('theme') || localStorage.getItem('lsh-theme') || 'dark')</script>
+    <!-- User-authored overrides (Settings → Custom CSS) — loaded as a real
+         stylesheet, not fetched+injected via JS, so it applies before first
+         paint instead of flashing unstyled then restyled. -->
+    <link rel="stylesheet" href="/custom.css" />
   </head>
   <body>
     <div id="root"></div>
