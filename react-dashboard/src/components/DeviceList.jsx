@@ -16,6 +16,7 @@ import HomePlan from './HomePlan'
 import Cameras from './Cameras'
 import RelayPanel from './RelayPanel'
 import DashboardGrid, { hasCustomLayout, seedLayoutFromDevices } from './DashboardGrid'
+import WeatherForecast from './WeatherForecast'
 
 const FIBARO_SENSOR_ICON = {
   switch:      SwitchOutletIcon,
@@ -1484,6 +1485,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               )}
             </div>
           )}
+          {cat === 'All' && <WeatherForecast />}
           {cat === 'All' && <Cameras />}
           {cat !== 'Graphs' && cat !== 'Plan' && visible.length === 0 && (
             <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>

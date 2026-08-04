@@ -228,6 +228,20 @@ async function main() {
     }
   }
 
+  // Start OpenWeatherMap client if configured — instantiated here (not down
+  // with the other simple polling clients) so it's ready before apiClients
+  // is built just below; otherwise apiClients.openweather would capture null
+  // forever (object literals copy the value at construction time, not a
+  // live binding).
+  let openweather = null;
+  if (config.openweather?.apiKey) {
+    const OpenWeatherClient = tryRequire('./src/openweather-client');
+    if (OpenWeatherClient) {
+      openweather = new OpenWeatherClient(config, store, sensorRegistry);
+      openweather.start().catch((err) => console.error(`[OpenWeather] Start failed: ${err.message}`));
+    }
+  }
+
   // Automation engine (rules / scenes / notifications) — io attached after WS setup
   let automation = null;
   const AutomationEngine = tryRequire('./src/automation-engine');
@@ -244,7 +258,7 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer };
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, openweather };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────

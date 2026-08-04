@@ -24,6 +24,14 @@ async function loadSettings() {
     setVal('mongo-uri', data.mongo?.uri || '');
     setVal('mongo-db',  data.mongo?.db  || '');
 
+    // OpenWeatherMap (key comes back masked when set)
+    setVal('openweather-api-key', data.openweather?.apiKey ? '••••••••' : '');
+    setVal('openweather-lat',     data.openweather?.lat ?? '');
+    setVal('openweather-lon',     data.openweather?.lon ?? '');
+    setVal('openweather-name',    data.openweather?.name || '');
+    setVal('openweather-units',   data.openweather?.units || 'metric');
+    setVal('openweather-poll',    data.openweather?.pollInterval || 600);
+
     // Interface (hide nav links, custom CSS)
     const hm = document.getElementById('ui-hide-mqtt'); if (hm) hm.checked = !!data.ui?.hideMqtt;
     const hl = document.getElementById('ui-hide-logs'); if (hl) hl.checked = !!data.ui?.hideLogs;
@@ -983,6 +991,63 @@ document.getElementById('btn-save-miele').addEventListener('click', async () => 
         username:     getVal('miele-username'),
         password:     getVal('miele-password'),
         country:      getVal('miele-country'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── OpenWeatherMap ───────────────────────────────────────────────────────────
+document.getElementById('btn-save-openweather').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-openweather');
+  const resultEl = document.getElementById('openweather-result');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/settings/openweather', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey:       getVal('openweather-api-key'),
+        lat:          getVal('openweather-lat'),
+        lon:          getVal('openweather-lon'),
+        name:         getVal('openweather-name'),
+        units:        getVal('openweather-units'),
+        pollInterval: parseInt(getVal('openweather-poll') || '600'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-test-openweather').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-test-openweather');
+  const resultEl = document.getElementById('openweather-result');
+  btn.disabled = true;
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result';
+  try {
+    const res = await fetch('/api/settings/test-openweather', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: getVal('openweather-api-key'),
+        lat:    getVal('openweather-lat'),
+        lon:    getVal('openweather-lon'),
+        units:  getVal('openweather-units'),
       }),
     });
     const json = await res.json();

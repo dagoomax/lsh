@@ -1057,6 +1057,46 @@
       </div>
     </section>
 
+    <!-- OpenWeatherMap -->
+    <section class="card settings-card" data-category="climate" data-title="OpenWeatherMap weather forecast temperature humidity">
+      <h2>OpenWeatherMap <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Current weather + a 5-day forecast for one location, via OpenWeatherMap's free Current Weather Data and 5 Day/3 Hour Forecast APIs. Get a free API key at <a href="https://openweathermap.org/api" target="_blank" rel="noopener">openweathermap.org/api</a>.</p>
+      <div class="form-group">
+        <label for="openweather-api-key">API Key</label>
+        <input type="password" id="openweather-api-key" placeholder="••••••••">
+      </div>
+      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label for="openweather-lat">Latitude</label>
+          <input type="text" id="openweather-lat" placeholder="52.2297">
+        </div>
+        <div>
+          <label for="openweather-lon">Longitude</label>
+          <input type="text" id="openweather-lon" placeholder="21.0122">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="openweather-name">Display Name <span class="hint">(optional)</span></label>
+        <input type="text" id="openweather-name" placeholder="Home">
+      </div>
+      <div class="form-group">
+        <label for="openweather-units">Units</label>
+        <select id="openweather-units">
+          <option value="metric">Metric (°C, m/s)</option>
+          <option value="imperial">Imperial (°F, mph)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="openweather-poll">Poll Interval <span class="hint">(seconds, minimum 60)</span></label>
+        <input type="number" id="openweather-poll" placeholder="600" min="60" style="max-width:120px">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-openweather" data-i18n="common.save">Save</button>
+        <button class="btn btn-secondary" id="btn-test-openweather">Test connection</button>
+        <span class="test-result" id="openweather-result"></span>
+      </div>
+    </section>
+
     <!-- Viessmann ViCare -->
     <section class="card settings-card" data-category="climate" data-title="Viessmann ViCare heating boiler heat pump hot water burner">
       <h2>Viessmann ViCare <span class="badge" data-i18n="common.optional">Optional</span></h2>

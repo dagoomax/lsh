@@ -1167,6 +1167,25 @@ Switches, dimmers, sensors, text values, and buttons with **no real hardware beh
 
 `id` is auto-generated and stable across renames — it's the only thing that matters for wiring a device into automations/Loxone once created. Manage from Settings → Virtual Devices; new/changed devices need a restart to register.
 
+### `openweather`
+
+```json
+"openweather": {
+  "apiKey": "your-api-key",
+  "lat": 52.2297,
+  "lon": 21.0122,
+  "name": "Home",
+  "units": "metric",
+  "pollInterval": 600
+}
+```
+
+Current weather + a 5-day forecast for one location via **OpenWeatherMap**'s free tier — the **Current Weather Data API** plus the **5 Day / 3 Hour Forecast API**, both usable with just a plain API key (no paid One Call subscription needed). A free account and API key from [openweathermap.org/api](https://openweathermap.org/api) is all that's needed. Polled every `pollInterval` seconds (minimum enforced: 60, to be polite to the free tier's rate limit).
+
+**Sensors:** condition (label), temperature (→ HomeKit), feels-like, humidity, pressure, wind speed/direction, cloudiness, visibility, sunrise/sunset (unix timestamps). `units: "imperial"` switches °F/mph; default is metric (°C/m/s).
+
+**Forecast:** `GET /api/openweather/forecast` returns up to 5 days (`{ date, tempMin, tempMax, pop, condition, icon }` each), aggregated from the 3-hour steps — capped at 5 rather than padded to 7, since a true 7-8 day forecast needs OpenWeatherMap's separate One Call 3.0 subscription. Shown as a "Forecast" strip on the React dashboard.
+
 ### `wirenboard`
 
 ```json
