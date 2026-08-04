@@ -8,13 +8,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-three/drei": "^9.115.0",
+    "@react-three/fiber": "^8.17.10",
+    "framer-motion": "^11.11.17",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@react-three/fiber": "^8.17.10",
-    "@react-three/drei": "^9.115.0",
-    "three": "^0.169.0",
+    "react-grid-layout": "^1.5.4",
     "socket.io-client": "^4.8.1",
-    "framer-motion": "^11.11.17"
+    "three": "^0.169.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.3",

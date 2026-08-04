@@ -15,6 +15,7 @@ import { resolveEnergy, hasSolarEdge, loadEnergySources, saveEnergySources } fro
 import HomePlan from './HomePlan'
 import Cameras from './Cameras'
 import RelayPanel from './RelayPanel'
+import DashboardGrid, { hasCustomLayout, seedLayoutFromDevices } from './DashboardGrid'
 
 const FIBARO_SENSOR_ICON = {
   switch:      SwitchOutletIcon,
@@ -313,7 +314,7 @@ function ColorPicker({ hueDeg, sat, onCommit }) {
 // ── Device Tile ───────────────────────────────────────────────────────────────
 // memo: the useLSH update merge keeps object identity for untouched devices,
 // so a socket tick only re-renders the tiles whose readings actually changed
-const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
+export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
   const [localState, setLocalState] = useState({})
   const r = device.readings || {}
 
@@ -1211,6 +1212,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
   })
   const [roomFilter, setRoomFilter] = useState(null)
   const [editingRoom, setEditingRoom] = useState(null)
+  const [customLayoutActive, setCustomLayoutActive] = useState(hasCustomLayout)
   const [energyHidden, setEnergyHidden] = useState(() => localStorage.getItem('hideEnergy') === '1')
   const toggleEnergy = () => {
     const next = !energyHidden
@@ -1488,7 +1490,21 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               {gt('no_devices', 'No devices in this category')}
             </div>
           )}
-          {cat !== 'Graphs' && cat !== 'Plan' && <div className="device-grid" style={{
+          {cat === 'All' && customLayoutActive && (
+            <DashboardGrid devices={devices} onCommand={onCommand} onOpen={setOpenKey} />
+          )}
+          {cat === 'All' && !customLayoutActive && visible.length > 0 && (
+            <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:8 }}>
+              <button
+                onClick={() => { seedLayoutFromDevices(visible.map(d => d.key)); setCustomLayoutActive(true) }}
+                style={{
+                  fontSize:12, fontWeight:600, padding:'6px 12px', borderRadius:999, cursor:'pointer',
+                  border:'1px solid var(--border)', background:'var(--white-04)', color:'var(--text2)',
+                }}
+              >🎛 {gt('dash_edit_customize', 'Customize Dashboard')}</button>
+            </div>
+          )}
+          {((cat !== 'All' && cat !== 'Graphs' && cat !== 'Plan') || (cat === 'All' && !customLayoutActive)) && <div className="device-grid" style={{
             display:'grid',
             gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
             gap:10,
