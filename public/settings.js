@@ -2265,6 +2265,13 @@ function renderCameraList(cameras) {
           <input type="checkbox" class="cam-two-way" ${cam.twoWayAudio ? 'checked' : ''}>
           Two-way audio (mic-enabled "Talk" button — needs a WHEP source with a sendrecv audio track, e.g. go2rtc pointed at a real camera mic)
         </label>
+        <div class="cam-onvif-row" style="grid-column:1/-1;display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:6px;align-items:center">
+          <input type="text"     class="cam-onvif-host" placeholder="ONVIF host/IP (optional — auto-fills URL/snapshot above)" value="${escapeVal(cam.onvif?.host || '')}">
+          <input type="number"   class="cam-onvif-port" placeholder="Port" value="${cam.onvif?.port || 80}" min="1" max="65535">
+          <input type="text"     class="cam-onvif-user" placeholder="Username" value="${escapeVal(cam.onvif?.username || '')}">
+          <input type="password" class="cam-onvif-pass" placeholder="Password" value="${escapeVal(cam.onvif?.password || '')}">
+          <button class="btn btn-secondary btn-sm cam-onvif-fetch" title="Fetch stream/snapshot URL via ONVIF">Fetch via ONVIF</button>
+        </div>
       </div>
       <button class="btn btn-remove cam-remove" title="Remove">✕</button>`;
     row.querySelector('.cam-remove').addEventListener('click', () => {
@@ -2315,19 +2322,64 @@ function renderCameraList(cameras) {
         alert('Scan failed: ' + err.message);
       }
     });
+    row.querySelector('.cam-onvif-fetch').addEventListener('click', async () => {
+      const btn  = row.querySelector('.cam-onvif-fetch');
+      const host = row.querySelector('.cam-onvif-host').value.trim();
+      if (!host) { alert('Enter the ONVIF host/IP first.'); return; }
+      btn.disabled = true;
+      btn.textContent = 'Fetching…';
+      try {
+        const r = await fetch('/api/onvif/probe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            host,
+            port:     row.querySelector('.cam-onvif-port').value.trim(),
+            username: row.querySelector('.cam-onvif-user').value.trim(),
+            password: row.querySelector('.cam-onvif-pass').value,
+          }),
+        });
+        const data = await r.json();
+        if (data.success) {
+          row.querySelector('.cam-url').value = data.data.streamUri;
+          if (data.data.snapshotUri) row.querySelector('.cam-snapshot').value = data.data.snapshotUri;
+          btn.textContent = '✓ Fetched';
+          setTimeout(() => { btn.textContent = 'Fetch via ONVIF'; btn.disabled = false; }, 1500);
+        } else {
+          btn.textContent = 'Fetch via ONVIF';
+          btn.disabled = false;
+          alert('ONVIF fetch failed: ' + (data.error || 'unknown'));
+        }
+      } catch (err) {
+        btn.textContent = 'Fetch via ONVIF';
+        btn.disabled = false;
+        alert('ONVIF fetch failed: ' + err.message);
+      }
+    });
     container.appendChild(row);
   });
 }
 
 function collectCameras() {
-  return Array.from(document.querySelectorAll('.camera-settings-row')).map((row) => ({
-    name:        row.querySelector('.cam-name').value.trim(),
-    url:         row.querySelector('.cam-url').value.trim(),
-    snapshotUrl: row.querySelector('.cam-snapshot').value.trim(),
-    mjpegUrl:    row.querySelector('.cam-mjpeg').value.trim(),
-    webrtcUrl:   row.querySelector('.cam-webrtc').value.trim(),
-    twoWayAudio: row.querySelector('.cam-two-way').checked,
-  }));
+  return Array.from(document.querySelectorAll('.camera-settings-row')).map((row) => {
+    const onvifHost = row.querySelector('.cam-onvif-host').value.trim();
+    return {
+      name:        row.querySelector('.cam-name').value.trim(),
+      url:         row.querySelector('.cam-url').value.trim(),
+      snapshotUrl: row.querySelector('.cam-snapshot').value.trim(),
+      mjpegUrl:    row.querySelector('.cam-mjpeg').value.trim(),
+      webrtcUrl:   row.querySelector('.cam-webrtc').value.trim(),
+      twoWayAudio: row.querySelector('.cam-two-way').checked,
+      ...(onvifHost ? {
+        onvif: {
+          host:     onvifHost,
+          port:     Number(row.querySelector('.cam-onvif-port').value) || 80,
+          username: row.querySelector('.cam-onvif-user').value.trim(),
+          password: row.querySelector('.cam-onvif-pass').value,
+        },
+      } : {}),
+    };
+  });
 }
 
 document.getElementById('btn-add-camera').addEventListener('click', () => {
@@ -2336,6 +2388,39 @@ document.getElementById('btn-add-camera').addEventListener('click', () => {
   renderCameraList(currentCameras);
   const rows = document.querySelectorAll('.camera-settings-row');
   rows[rows.length - 1]?.querySelector('.cam-name')?.focus();
+});
+
+document.getElementById('btn-discover-onvif').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-discover-onvif');
+  const resultEl = document.getElementById('onvif-discover-result');
+  btn.disabled = true;
+  btn.textContent = '🔍 Scanning… (a few seconds)';
+  resultEl.textContent = '';
+  try {
+    const r = await fetch('/api/onvif/discover');
+    const data = await r.json();
+    if (!data.success) throw new Error(data.error || 'unknown error');
+    currentCameras = collectCameras();
+    const known = new Set(currentCameras.map((c) => c.onvif?.host).filter(Boolean));
+    let added = 0;
+    for (const dev of data.data || []) {
+      if (known.has(dev.host)) continue;
+      currentCameras.push({
+        name: `Camera at ${dev.host}`, url: '', snapshotUrl: '', mjpegUrl: '', webrtcUrl: '',
+        onvif: { host: dev.host, port: dev.port || 80, username: '', password: '' },
+      });
+      added++;
+    }
+    renderCameraList(currentCameras);
+    resultEl.textContent = added
+      ? `✓ Found ${data.data.length} device(s), added ${added} new. Fill in credentials and click "Fetch via ONVIF" per camera.`
+      : `Found ${data.data.length} device(s), all already listed.`;
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Discover ONVIF cameras';
+  }
 });
 
 document.getElementById('btn-save-cameras').addEventListener('click', async () => {

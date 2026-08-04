@@ -646,7 +646,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     // WHEP-only) get a thumbnail via the generic ffmpeg-grab-a-frame proxy.
     const manualCams = (cfg.cameras || []).map((c, idx) => ({
       ...c,
-      ...(c.onvif ? { ptzUrl: `/api/camera/ptz/${idx}` } : {}),
+      ...(c.onvif ? { onvif: { ...c.onvif, password: c.onvif.password ? '••••••••' : '' }, ptzUrl: `/api/camera/ptz/${idx}` } : {}),
       ...(c.url && !c.snapshotUrl && !c.mjpegUrl ? { snapshotUrl: `/api/camera/snapshot/${idx}` } : {}),
     }));
     res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...stCams] });
@@ -999,6 +999,30 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     return require('./onvif-ptz').ptz(cam.onvif, op, speed);
   }));
 
+  // WS-Discovery scan for ONVIF cameras on the LAN — used by the Settings
+  // "Discover" button so the user doesn't need to already know camera IPs.
+  router.get('/onvif/discover', async (req, res) => {
+    try {
+      const devices = await require('./onvif-discovery').discover();
+      res.json({ success: true, data: devices });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Given ONVIF credentials (from discovery or typed in by hand), fetch the
+  // camera's real RTSP/snapshot URIs — the Settings "Fetch via ONVIF" button.
+  router.post('/onvif/probe', async (req, res) => {
+    const { host, port, username, password } = req.body || {};
+    if (!host) return res.status(400).json({ success: false, error: 'host is required' });
+    try {
+      const result = await require('./onvif-media').probe({ host, port: Number(port) || 80, username, password });
+      res.json({ success: true, data: result });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
   // Manual `cameras` entries with only an RTSP `url` (no vendor snapshot API,
   // e.g. WHEP-only sources) — one JPEG frame via ffmpeg, cached 10 s.
   router.get('/camera/snapshot/:idx', (req, res) => {
@@ -1033,18 +1057,27 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (!Array.isArray(cameras)) {
       return res.status(400).json({ success: false, error: 'Body must be an array of cameras' });
     }
-    // `onvif` (PTZ) is config-file-only — keep it when the Settings form,
-    // which doesn't know the field, re-saves the list
-    const cleaned = cameras.map(({ name, url, snapshotUrl, mjpegUrl, webrtcUrl, twoWayAudio, onvif }, i) => ({
-      ...((onvif && typeof onvif === 'object') ? { onvif }
-        : (current.cameras?.[i]?.onvif ? { onvif: current.cameras[i].onvif } : {})),
-      name:        String(name        || '').trim(),
-      url:         String(url         || '').trim(),
-      snapshotUrl: String(snapshotUrl || '').trim(),
-      mjpegUrl:    String(mjpegUrl    || '').trim(),
-      webrtcUrl:   String(webrtcUrl   || '').trim(),
-      twoWayAudio: !!twoWayAudio,
-    })).filter((c) => c.name || c.url);
+    // `onvif` (PTZ + stream/snapshot auto-fetch) comes from the Settings form
+    // now, but fall back to whatever's already saved for that index in case
+    // it's missing (e.g. a config-file-only entry the form re-saves as-is).
+    // Password comes back masked (••••••••) on an untouched resubmit — GET
+    // /api/cameras never sends the real one — so preserve the existing value
+    // rather than overwriting it with the placeholder.
+    const cleaned = cameras.map(({ name, url, snapshotUrl, mjpegUrl, webrtcUrl, twoWayAudio, onvif }, i) => {
+      const prevOnvif = current.cameras?.[i]?.onvif;
+      const resolvedOnvif = (onvif && typeof onvif === 'object')
+        ? { ...onvif, password: (onvif.password && !onvif.password.includes('•')) ? onvif.password : (prevOnvif?.password || '') }
+        : prevOnvif;
+      return {
+        ...(resolvedOnvif ? { onvif: resolvedOnvif } : {}),
+        name:        String(name        || '').trim(),
+        url:         String(url         || '').trim(),
+        snapshotUrl: String(snapshotUrl || '').trim(),
+        mjpegUrl:    String(mjpegUrl    || '').trim(),
+        webrtcUrl:   String(webrtcUrl   || '').trim(),
+        twoWayAudio: !!twoWayAudio,
+      };
+    }).filter((c) => c.name || c.url);
     try {
       writeConfigFile({ ...current, cameras: cleaned });
       res.json({ success: true, message: 'Cameras saved' });
