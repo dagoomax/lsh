@@ -663,6 +663,15 @@ async function main() {
     }
   }
 
+  // Start MiCasaVerde / Vera client if configured
+  if (config.vera?.host) {
+    const VeraClient = tryRequire('./src/vera-client');
+    if (VeraClient) {
+      const vera = new VeraClient(config, store, sensorRegistry);
+      vera.start().catch((err) => console.error(`[Vera] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Wiren Board client if configured
   if (config.wirenboard?.host) {
     const WirenBoardClient = tryRequire('./src/wirenboard-client');

@@ -116,7 +116,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -290,6 +290,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `vicare` | No | Viessmann ViCare heating (boilers / heat pumps) — temperatures, burner, mode, hot-water setpoint via the Viessmann IoT cloud |
 | `wled` | No | WLED addressable-LED controllers (ESP8266/ESP32) — power, brightness, RGB(W) colour via the local JSON API |
 | `zway` | No | Z-Way / RaZberry — Z-Wave switches, dimmers, thermostats, locks, sensors via ZAutomation REST API |
+| `vera` | No | MiCasaVerde / Vera controllers — switches, dimmers, locks, thermostats, sensors via the local LuaUPnP JSON API |
 | `wirenboard` | No | Wiren Board controllers — relays, dimmers, inputs, climate sensors via MQTT Conventions |
 | `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
 | `denon` | No | Denon / Marantz AV receivers — power, volume, mute, input via Telnet (port 23) |
@@ -1111,6 +1112,24 @@ Connects to **Z-Way** — the Z-Wave.Me controller software that runs on **RaZbe
 **Supported device types:** binary switches (on/off), multilevel switches / dimmers (0–99), thermostats (setpoint), door locks, buttons, binary sensors, multilevel sensors (temperature → HomeKit, humidity, lux, power…), battery levels.
 
 Session auth (`ZWAYSession`) with automatic re-login on expiry. Commands go through `/ZAutomation/api/v1/devices/<vDev>/command/…`.
+
+### `vera`
+
+```json
+"vera": {
+  "host": "192.168.1.x",
+  "port": 3480,
+  "username": "",
+  "password": "",
+  "pollInterval": 10
+}
+```
+
+Connects to a **MiCasaVerde / Vera** controller (Vera Lite/Plus/Edge/Secure, or forks like openLuup) via its local LuaUPnP JSON API — no cloud relay, and no login for the common LAN setup (`username`/`password` are only needed if you've put HTTP Basic Auth in front of it). Polls `/data_request?id=sdata` for a full device snapshot every `pollInterval` seconds; each Vera device becomes its own dashboard tile.
+
+**Supported device categories:** switches (on/off), dimmable lights (0–100%), thermostats (setpoint + current temperature), door locks, window coverings, security/binary sensors (tripped), humidity/temperature/light sensors, power meters (watts), battery levels.
+
+**Note:** switch/dimmer/lock coverage uses long-stable, well-documented Vera API fields (`status`, `level`, `SwitchPower1`, `Dimming1`, `DoorLock1`). The thermostat setpoint field name is less certain from documentation alone and hasn't been verified against real hardware — check your unit's `sdata` dump if that one sensor doesn't show a value.
 
 ### `wirenboard`
 
