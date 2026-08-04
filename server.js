@@ -131,6 +131,7 @@ async function main() {
     if (SipServer) {
       sipServer = new SipServer(config, {
         store,
+        sensorRegistry,
         onOpenDoor: async () => {
           const idx = config.sip.doorRelay;
           if (idx == null) throw new Error('No door relay configured');

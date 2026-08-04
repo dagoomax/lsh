@@ -490,6 +490,12 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   };
   router.get('/loxone/inputs.xml',  loxoneXmlHandler('inputs'));
   router.get('/loxone/outputs.xml', loxoneXmlHandler('outputs'));
+  // Friendly fixed alias for the SIP doorbell's one controllable action
+  // (open door) — equivalent to outputs.xml?type=sip, just a stable URL.
+  router.get('/loxone/sipout.xml', (req, res) => {
+    req.query.type = 'sip';
+    return loxoneXmlHandler('outputs')(req, res);
+  });
 
   // ── Automation (rules / scenes / notifications) ───────────
   if (clients.automation) {

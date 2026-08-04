@@ -55,11 +55,12 @@ function callerOf(rq) {
 }
 
 class SipServer extends EventEmitter {
-  constructor(config, { onOpenDoor, store } = {}) {
+  constructor(config, { onOpenDoor, store, sensorRegistry } = {}) {
     super();
     this._cfg        = config.sip || {};
     this._onOpenDoor = onOpenDoor;
-    this._store      = store; // optional — enables the sip/doorbell/* DataStore keys below (e.g. for loxoneOut)
+    this._store      = store;          // optional — enables the sip/doorbell/* DataStore keys below (e.g. for loxoneOut)
+    this._registry   = sensorRegistry; // optional — registers a dashboard tile + /api/loxone/sipout.xml (open-door command)
     this._started    = false;
     this._ip         = localIPv4();
     this._call       = null;      // active dialog, see _onInvite
@@ -78,6 +79,28 @@ class SipServer extends EventEmitter {
         this._store.update('sip/doorbell/ring',   0);
         this._store.update('sip/doorbell/inCall', 0);
         this._store.update('sip/doorbell/caller', '');
+      }
+      if (this._registry) {
+        this._registry.registerDevice({
+          key:    'sip/doorbell',
+          type:   'sip',
+          label:  this._cfg.cameraName || 'SIP Doorbell',
+          icon:   '🔔',
+          homekit: [],
+          sensors: [
+            { path: 'ring',   name: 'Ring',    type: 'boolean' },
+            { path: 'inCall', name: 'In Call', type: 'boolean' },
+            { path: 'caller', name: 'Caller',  type: 'string' },
+            {
+              path: 'openDoor', name: 'Open Door', type: 'trigger',
+              controllable: true, capabilityId: 'openDoor', writeOn: 'on',
+            },
+          ],
+          _writeCapability: (capId) => {
+            if (capId === 'openDoor') return this.openDoor();
+            throw new Error(`SIP doorbell: '${capId}' not writable`);
+          },
+        });
       }
       console.log(`[SIP] Doorbell server listening on ${this._ip}:${port} (UDP/TCP)`);
     } catch (err) {
