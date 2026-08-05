@@ -1182,6 +1182,15 @@ function buildSensorRow(sensor, readings, deviceKey) {
     </div>`;
   }
 
+  if (sensor.controllable && sensor.type === 'text') {
+    const cur = typeof reading?.value === 'string' ? reading.value : '';
+    return `<div class="sensor-row sensor-row-ctrl">
+      <span class="sensor-label">${esc(sensor.name)}</span>
+      <input type="text" class="sensor-text" value="${esc(cur)}"
+        data-sensor-key="${fullKey}" data-device-key="${deviceKey}" data-sensor-path="${sensor.path}">
+    </div>`;
+  }
+
   if (sensor.controllable) {
     const checked = reading && reading.value === 1 ? ' checked' : '';
     return `<div class="sensor-row sensor-row-ctrl">
@@ -1380,6 +1389,12 @@ container.addEventListener('change', async (e) => {
     if (!res.ok) input.checked = !value;
   } catch { input.checked = !value; }
   finally { input.disabled = false; }
+});
+
+container.addEventListener('change', (e) => {
+  const input = e.target;
+  if (!input.classList.contains('sensor-text')) return;
+  sendDeviceCommand(input.dataset.deviceKey, input.dataset.sensorPath, input.value);
 });
 
 container.addEventListener('input', (e) => {
@@ -1812,6 +1827,12 @@ customRoomsGrid?.addEventListener('change', async (e) => {
   finally   { input.disabled = false; }
 });
 
+customRoomsGrid?.addEventListener('change', (e) => {
+  const input = e.target;
+  if (!input.classList.contains('sensor-text')) return;
+  sendDeviceCommand(input.dataset.deviceKey, input.dataset.sensorPath, input.value);
+});
+
 customRoomsGrid?.addEventListener('input', (e) => {
   const input = e.target;
   if (input.classList.contains('sensor-range')) {
@@ -1860,6 +1881,12 @@ roomsGrid?.addEventListener('change', async (e) => {
     if (!res.ok) input.checked = !value;
   } catch { input.checked = !value; }
   finally   { input.disabled = false; }
+});
+
+roomsGrid?.addEventListener('change', (e) => {
+  const input = e.target;
+  if (!input.classList.contains('sensor-text')) return;
+  sendDeviceCommand(input.dataset.deviceKey, input.dataset.sensorPath, input.value);
 });
 
 roomsGrid?.addEventListener('input', (e) => {

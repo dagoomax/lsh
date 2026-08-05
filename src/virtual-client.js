@@ -53,11 +53,13 @@ class VirtualClient {
     });
 
     // Seed an initial value so the tile doesn't show blank before the first
-    // real write. Switch/button start off; dimmer/sensor start at 0; text
-    // starts empty — all sensible "nothing has happened yet" defaults.
-    if (d.type === 'switch' || d.type === 'button') this._store.update(`${key}/value`, 0);
-    else if (d.type === 'dimmer' || d.type === 'sensor') this._store.update(`${key}/value`, 0);
-    else if (d.type === 'text') this._store.update(`${key}/value`, '');
+    // real write — but only if nothing is there yet. The store persists
+    // across restarts (persist/store-data.json.gz), so unconditionally
+    // seeding here would reset every virtual device back to its default on
+    // every restart, discarding whatever was last written.
+    if (this._store.get(`${key}/value`) == null) {
+      this._store.update(`${key}/value`, d.type === 'text' ? '' : 0);
+    }
   }
 
   _sensorDescriptor(d) {

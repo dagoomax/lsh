@@ -60,13 +60,20 @@ class OpenWeatherClient {
       ],
     });
 
-    await this._poll(true);
+    // Interval is armed before the first poll runs — a failed initial poll
+    // (e.g. a transient network blip during boot) must not leave polling
+    // stopped forever with only a process restart able to recover it.
     const interval = Math.max(cfg.pollInterval || 600, 60) * 1000; // min 60s — be polite to the free tier
     this._timer = setInterval(() => this._poll().catch((err) => {
       console.error(`[OpenWeather] Poll error: ${err.message}`);
       platformStatus.set('openweather', false);
     }), interval);
     console.log(`[OpenWeather] Started — polling every ${interval / 1000}s`);
+
+    await this._poll(true).catch((err) => {
+      console.error(`[OpenWeather] Initial poll failed, will retry on schedule: ${err.message}`);
+      platformStatus.set('openweather', false);
+    });
   }
 
   stop() {

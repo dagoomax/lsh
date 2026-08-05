@@ -47,11 +47,21 @@
         if (!VIRTUAL_DEVICES.length) {
           return [hint('No virtual devices configured — add one in Settings → Virtual Devices.')];
         }
-        const dev = VIRTUAL_DEVICES.find((d) => d.key === n.config.deviceKey) || VIRTUAL_DEVICES[0];
-        n.config.deviceKey = dev.key;
-        const devField = selectDynamic('Device', n, 'deviceKey',
-          () => VIRTUAL_DEVICES.map((d) => [d.key, d.label]),
+        // A brand-new node has no deviceKey yet — default it to the first
+        // device. A node whose configured deviceKey no longer matches any
+        // VIRTUAL_DEVICES entry (the device was deleted/renamed elsewhere)
+        // must NOT be silently reassigned to an arbitrary other device —
+        // that would wire the flow to the wrong device the next time it's
+        // saved. Instead keep the stale key visible and flag it.
+        if (!n.config.deviceKey) n.config.deviceKey = VIRTUAL_DEVICES[0].key;
+        const missing = !VIRTUAL_DEVICES.some((d) => d.key === n.config.deviceKey);
+        const options = missing
+          ? [[n.config.deviceKey, `⚠ ${n.config.deviceKey} (not found)`], ...VIRTUAL_DEVICES.map((d) => [d.key, d.label])]
+          : VIRTUAL_DEVICES.map((d) => [d.key, d.label]);
+        const devField = selectDynamic('Device', n, 'deviceKey', () => options,
           () => { delete n.config.value; refreshNode(n); }); // old value rarely fits the new device's type
+        if (missing) return [devField, hint('⚠ This device no longer exists — pick a replacement.')];
+        const dev = VIRTUAL_DEVICES.find((d) => d.key === n.config.deviceKey);
         return [devField, ...virtualValueField(n, dev)];
       },
     },

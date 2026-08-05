@@ -49,12 +49,16 @@ function isMomentary(s) {
   return s.controllable && s.type === 'toggle' && s.writeOn && s.writeOn === s.writeOff;
 }
 
+// Loxone's virtual I/O here is fundamentally numeric/boolean (VirtualInHttpCmd
+// polls a number; VirtualOutCmd substitutes <v> into a numeric/digital
+// command) — a free-text sensor has no honest representation in either
+// direction, so it's excluded rather than mapped onto a broken numeric control.
 function isInputSensor(s) {
-  return !s.hidden && s.type !== 'color' && s.type !== 'trigger' && !isMomentary(s);
+  return !s.hidden && s.type !== 'color' && s.type !== 'trigger' && s.type !== 'text' && !isMomentary(s);
 }
 
 function isOutputSensor(s) {
-  return !s.hidden && s.controllable;
+  return !s.hidden && s.controllable && s.type !== 'text';
 }
 
 /**

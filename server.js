@@ -242,6 +242,18 @@ async function main() {
     }
   }
 
+  // Start virtual devices (switches/dimmers/sensors/text/buttons with no
+  // real hardware behind them) before the automation engine below — a flow's
+  // action can target a virtual device the moment automation.start() begins
+  // listening for store changes, so the device must already be registered.
+  if (config.virtual?.devices?.length) {
+    const VirtualClient = tryRequire('./src/virtual-client');
+    if (VirtualClient) {
+      const virtual = new VirtualClient(config, store, sensorRegistry);
+      virtual.start().catch((err) => console.error(`[Virtual] Start failed: ${err.message}`));
+    }
+  }
+
   // Automation engine (rules / scenes / notifications) — io attached after WS setup
   let automation = null;
   const AutomationEngine = tryRequire('./src/automation-engine');
@@ -667,16 +679,6 @@ async function main() {
     if (SmartBobClient) {
       const smartbob = new SmartBobClient(config, store, sensorRegistry);
       smartbob.start();
-    }
-  }
-
-  // Start virtual devices (switches/dimmers/sensors/text/buttons with no
-  // real hardware behind them) if any are configured
-  if (config.virtual?.devices?.length) {
-    const VirtualClient = tryRequire('./src/virtual-client');
-    if (VirtualClient) {
-      const virtual = new VirtualClient(config, store, sensorRegistry);
-      virtual.start().catch((err) => console.error(`[Virtual] Start failed: ${err.message}`));
     }
   }
 

@@ -1255,6 +1255,11 @@ main {
   min-width: 44px;
   text-align: right;
 }
+.sensor-text {
+  background: var(--input-bg); color: var(--text);
+  border: 1px solid var(--card-border); border-radius: 8px;
+  padding: 6px 8px; font-size: 0.83rem; min-width: 0; max-width: 160px;
+}
 
 /* ── Color picker ────────────────────────────────────────── */
 .sensor-row-color {

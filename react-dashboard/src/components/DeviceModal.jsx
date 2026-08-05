@@ -331,6 +331,23 @@ function RangeControl({ sensor, value, onCommit, accent }) {
   )
 }
 
+// Free-text control for virtual 'text' sensors — commits on blur/Enter
+// rather than per-keystroke, since these are often webhook-fed labels.
+function TextControl({ value, onCommit }) {
+  const [local, setLocal] = useState(value ?? '')
+  useEffect(() => { setLocal(value ?? '') }, [value])
+  return (
+    <input type="text" value={local} placeholder="—"
+      onChange={e => setLocal(e.target.value)}
+      onBlur={() => onCommit(local)}
+      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+      style={{
+        flex: 1, minWidth: 0, marginLeft: 'auto', maxWidth: 200, padding: '6px 10px', borderRadius: 8,
+        border: '1px solid var(--white-12)', background: 'var(--white-04)', color: 'inherit', fontSize: 13,
+      }} />
+  )
+}
+
 // ── Modal ───────────────────────────────────────────────────────────────────
 
 // Live map view for Roborock devices.
@@ -707,7 +724,10 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
                               color: 'var(--text2,#aeb6c4)', display: 'flex', alignItems: 'center',
                             }}><MyIcon size={18} /></button>
                           )}
-                          {s.type !== 'range' && s.type !== 'color-temp' && s.type !== 'trigger' && s.path !== 'my' && (
+                          {s.type === 'text' && (
+                            <TextControl value={typeof v === 'string' ? v : ''} onCommit={nv => cmd(s.path, nv)} />
+                          )}
+                          {s.type !== 'range' && s.type !== 'color-temp' && s.type !== 'trigger' && s.type !== 'text' && s.path !== 'my' && (
                             <span style={{ marginLeft: 'auto' }}>
                               <BigToggle on={isOn} onChange={on => cmd(s.path, on ? 1 : 0)} />
                             </span>
