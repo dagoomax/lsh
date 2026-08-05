@@ -146,6 +146,15 @@ class OpenWeatherClient {
         pop:       pops.length ? Math.round(Math.max(...pops) * 100) : 0,
         condition: noonStep?.weather?.[0]?.description || '',
         icon:      emojiFor(noonStep?.weather?.[0]?.icon),
+        // Extra detail for the dashboard's day popup — same representative
+        // (closest-to-noon) step used for condition/icon above, since a
+        // per-day humidity/wind/pressure average would blur more than it helps.
+        feelsLike: noonStep?.main?.feels_like ?? null,
+        humidity:  noonStep?.main?.humidity ?? null,
+        pressure:  noonStep?.main?.pressure ?? null,
+        windSpeed: noonStep?.wind?.speed ?? null,
+        windDeg:   noonStep?.wind?.deg ?? null,
+        clouds:    noonStep?.clouds?.all ?? null,
       };
     });
   }

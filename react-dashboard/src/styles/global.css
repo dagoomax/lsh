@@ -1334,3 +1334,64 @@ body::before {
 /* Toggle switch knob: press ripple (track/knob gradients are set inline in
    the Toggle component, matching how it already reads on/off from JS state) */
 .lux-toggle:active .lux-toggle-knob { box-shadow: 0 1px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.9), 0 0 0 5px var(--white-10); }
+
+/* Weather forecast day-tile icons — one quiet, condition-appropriate motion
+   per icon (sunbeam glow, drifting cloud, falling rain, lightning flicker,
+   tumbling snowflake, breathing fog) instead of a single generic pulse. */
+.wx-icon-sun {
+  display: inline-block; animation: wx-spin-glow 9s linear infinite;
+}
+@keyframes wx-spin-glow {
+  0%   { transform: rotate(0deg);   filter: drop-shadow(0 0 2px rgba(255,196,64,0.35)); }
+  50%  { filter: drop-shadow(0 0 7px rgba(255,196,64,0.65)); }
+  100% { transform: rotate(360deg); filter: drop-shadow(0 0 2px rgba(255,196,64,0.35)); }
+}
+.wx-icon-partly {
+  display: inline-block; animation: wx-float 4s ease-in-out infinite;
+}
+@keyframes wx-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-3px); }
+}
+.wx-icon-cloud {
+  display: inline-block; animation: wx-drift 5s ease-in-out infinite;
+}
+@keyframes wx-drift {
+  0%, 100% { transform: translateX(0); }
+  50%       { transform: translateX(3px); }
+}
+.wx-icon-rain {
+  display: inline-block; animation: wx-rain 1.4s ease-in-out infinite;
+}
+@keyframes wx-rain {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(3px); }
+}
+.wx-icon-storm {
+  display: inline-block; animation: wx-flicker 3.2s ease-in-out infinite;
+}
+@keyframes wx-flicker {
+  0%, 88%, 100% { opacity: 1; filter: drop-shadow(0 0 0 transparent); }
+  91%            { opacity: 0.5; filter: drop-shadow(0 0 10px rgba(255,244,168,0.9)); }
+  94%            { opacity: 1; }
+}
+.wx-icon-snow {
+  display: inline-block; animation: wx-snow-spin 6s linear infinite;
+}
+@keyframes wx-snow-spin {
+  0%   { transform: rotate(0deg) translateY(0); }
+  50%  { transform: rotate(180deg) translateY(2px); }
+  100% { transform: rotate(360deg) translateY(0); }
+}
+.wx-icon-fog {
+  display: inline-block; animation: wx-fog-pulse 3.6s ease-in-out infinite;
+}
+@keyframes wx-fog-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wx-icon-sun, .wx-icon-partly, .wx-icon-cloud, .wx-icon-rain, .wx-icon-storm, .wx-icon-snow, .wx-icon-fog {
+    animation: none;
+  }
+}
