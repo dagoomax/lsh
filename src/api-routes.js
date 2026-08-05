@@ -20,6 +20,30 @@ function writeConfigFile(data) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2), 'utf8');
 }
 
+const VIRTUAL_TYPES = new Set(['switch', 'dimmer', 'sensor', 'text', 'button']);
+
+// Ids are the store key (virtual/<id>/value) — two devices sharing one
+// silently collide onto the same value, and one device's type could then
+// look like a stale mismatch under the other's id. The stock UI never sends
+// a duplicate, but the route accepts a raw id from any caller, so re-roll a
+// fresh one rather than let a collision through. Pure (no I/O) so it's
+// testable without mocking Express or the filesystem.
+function dedupeVirtualDevices(devices) {
+  const crypto = require('crypto');
+  const seenIds = new Set();
+  return devices.map((d) => {
+    let id = String(d.id || '').trim() || crypto.randomUUID().slice(0, 8);
+    if (seenIds.has(id)) id = crypto.randomUUID().slice(0, 8);
+    seenIds.add(id);
+    return {
+      id,
+      name: String(d.name || '').trim(),
+      type: VIRTUAL_TYPES.has(d.type) ? d.type : 'switch',
+      unit: String(d.unit || '').trim(),
+    };
+  }).filter((d) => d.name);
+}
+
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
   const { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, smartThings, openweather } = clients;
   const manualSnapCache = new Map(); // manual camera idx → { at, buffer }, for /camera/snapshot/:idx
@@ -1096,31 +1120,13 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  const VIRTUAL_TYPES = new Set(['switch', 'dimmer', 'sensor', 'text', 'button']);
   router.post('/settings/virtual', (req, res) => {
-    const crypto = require('crypto');
     const current = readConfigFile();
     const devices = req.body;
     if (!Array.isArray(devices)) {
       return res.status(400).json({ success: false, error: 'Body must be an array of virtual devices' });
     }
-    // Ids are the store key (virtual/<id>/value) — two devices sharing one
-    // silently collide onto the same value, and one device's type could
-    // then look like a stale mismatch under the other's id. The stock UI
-    // never sends a duplicate, but this route accepts a raw id from any
-    // caller, so re-roll a fresh one rather than let a collision through.
-    const seenIds = new Set();
-    const cleaned = devices.map((d) => {
-      let id = String(d.id || '').trim() || crypto.randomUUID().slice(0, 8);
-      if (seenIds.has(id)) id = crypto.randomUUID().slice(0, 8);
-      seenIds.add(id);
-      return {
-        id,
-        name: String(d.name || '').trim(),
-        type: VIRTUAL_TYPES.has(d.type) ? d.type : 'switch',
-        unit: String(d.unit || '').trim(),
-      };
-    }).filter((d) => d.name);
+    const cleaned = dedupeVirtualDevices(devices);
     try {
       writeConfigFile({ ...current, virtual: { devices: cleaned } });
       res.json({ success: true, message: `${cleaned.length} virtual device(s) saved. Restart to apply.` });
@@ -3991,3 +3997,4 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 }
 
 module.exports = createApiRoutes;
+module.exports.dedupeVirtualDevices = dedupeVirtualDevices;
