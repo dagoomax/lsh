@@ -36,7 +36,11 @@ class OpenWeatherClient {
 
   async start() {
     const cfg = this._config.openweather;
-    if (!cfg?.apiKey || cfg.lat == null || cfg.lon == null) return;
+    if (!cfg?.apiKey) return;
+    if (cfg.lat == null || cfg.lon == null) {
+      console.warn('[OpenWeather] apiKey set but lat/lon missing — set both in Settings → OpenWeatherMap');
+      return;
+    }
 
     this._key = 'openweather/weather';
     this._registry.registerDevice({
