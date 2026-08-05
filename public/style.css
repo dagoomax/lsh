@@ -1,5 +1,6 @@
 :root,
 [data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0d1117;
   --card-bg: #161b22;
   --card-border: #21262d;
@@ -24,6 +25,7 @@
 }
 
 [data-theme="light"] {
+  color-scheme: light;
   --bg: #f6f8fa;
   --card-bg: #ffffff;
   --card-border: #d0d7de;

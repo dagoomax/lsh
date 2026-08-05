@@ -1,6 +1,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
+  color-scheme: dark;
   /* ── Surfaces — deep blue-violet ground, faintly tinted cards ── */
   --bg:        #070912;
   --sidebar:   rgba(10,13,24,0.6);
@@ -72,6 +73,7 @@
    so both UIs read as one product. Toggled via data-theme on <html>,
    shared localStorage key 'lsh-theme'. */
 [data-theme="light"] {
+  color-scheme: light;
   /* Surfaces — cool off-white, faint blue cast */
   --bg:        #eef2f8;
   --sidebar:   rgba(238,242,248,0.72);
