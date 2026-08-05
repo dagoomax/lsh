@@ -1143,6 +1143,16 @@ async function sendDeviceCommand(deviceKey, sensorPath, value) {
   }
 }
 
+// Wires a grid's .sensor-text inputs to commit on change — shared so the
+// three grids (main, custom-rooms, rooms) don't each carry their own copy.
+function wireSensorTextChange(container) {
+  container?.addEventListener('change', (e) => {
+    const input = e.target;
+    if (!input.classList.contains('sensor-text')) return;
+    sendDeviceCommand(input.dataset.deviceKey, input.dataset.sensorPath, input.value);
+  });
+}
+
 // ── Device cards ───────────────────────────────────────────────────────────
 function buildSensorRow(sensor, readings, deviceKey) {
   if (sensor.hidden) return '';
@@ -1391,11 +1401,7 @@ container.addEventListener('change', async (e) => {
   finally { input.disabled = false; }
 });
 
-container.addEventListener('change', (e) => {
-  const input = e.target;
-  if (!input.classList.contains('sensor-text')) return;
-  sendDeviceCommand(input.dataset.deviceKey, input.dataset.sensorPath, input.value);
-});
+wireSensorTextChange(container);
 
 container.addEventListener('input', (e) => {
   const input = e.target;
@@ -1428,6 +1434,10 @@ function updateDeviceSensor(fullKey, value) {
       return;
     }
     if (cell.tagName === 'INPUT' && cell.type === 'range') {
+      if (!cell.disabled) cell.value = value;
+      return;
+    }
+    if (cell.tagName === 'INPUT' && cell.classList.contains('sensor-text')) {
       if (!cell.disabled) cell.value = value;
       return;
     }
@@ -1493,7 +1503,12 @@ function updateTimestamp() {
 function esc(str) {
   const d = document.createElement('div');
   d.textContent = str;
-  return d.innerHTML;
+  // textContent→innerHTML escapes &, <, > but NOT quotes — safe for text
+  // nodes but not for the double-quoted attribute values several call sites
+  // use it in (e.g. value="${esc(x)}"). &quot;/&#39; render as literal quote
+  // characters in text content too, so escaping them here is harmless for
+  // every existing caller and closes that hole for all of them at once.
+  return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // ── Platform status logos ──────────────────────────────────────────────────
@@ -1827,11 +1842,7 @@ customRoomsGrid?.addEventListener('change', async (e) => {
   finally   { input.disabled = false; }
 });
 
-customRoomsGrid?.addEventListener('change', (e) => {
-  const input = e.target;
-  if (!input.classList.contains('sensor-text')) return;
-  sendDeviceCommand(input.dataset.deviceKey, input.dataset.sensorPath, input.value);
-});
+wireSensorTextChange(customRoomsGrid);
 
 customRoomsGrid?.addEventListener('input', (e) => {
   const input = e.target;
@@ -1883,11 +1894,7 @@ roomsGrid?.addEventListener('change', async (e) => {
   finally   { input.disabled = false; }
 });
 
-roomsGrid?.addEventListener('change', (e) => {
-  const input = e.target;
-  if (!input.classList.contains('sensor-text')) return;
-  sendDeviceCommand(input.dataset.deviceKey, input.dataset.sensorPath, input.value);
-});
+wireSensorTextChange(roomsGrid);
 
 roomsGrid?.addEventListener('input', (e) => {
   const input = e.target;

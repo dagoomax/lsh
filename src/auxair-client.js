@@ -45,16 +45,13 @@ class AuxAirClient {
     this._session  = null;
     this._devices  = [];
     this._timer    = null;
+    this._lastReloginAt = 0;
   }
 
   async start() {
     console.log(`[AuxAir] Starting — host ${this._host}`);
     await this._login();
-    const families = await this._getFamilies();
-    for (const f of families) {
-      const devs = await this._getDevices(f.familyid);
-      this._devices.push(...devs);
-    }
+    await this._refreshDevices();
     console.log(`[AuxAir] Found ${this._devices.length} device(s)`);
     if (!this._devices.length) return;
     await this._poll();
@@ -98,6 +95,16 @@ class AuxAirClient {
     return res.data?.endpoints || [];
   }
 
+  // Re-fetch the family/device list — each entry carries its own devSession
+  // and cookie, so this is also how a stale per-device session gets renewed,
+  // not just the account-level login.
+  async _refreshDevices() {
+    const families = await this._getFamilies();
+    const devices = [];
+    for (const f of families) devices.push(...await this._getDevices(f.familyid));
+    this._devices = devices;
+  }
+
   // ── Polling ───────────────────────────────────────────────────────────────
 
   async _poll() {
@@ -111,13 +118,22 @@ class AuxAirClient {
         console.error(`[AuxAir] Poll error (${dev.endpointId}): ${err.message}`);
       }
     }
-    // Every device failed this cycle — most likely the cloud session expired
-    // (nothing here refreshes it proactively). Re-login once so the next
-    // cycle has a fresh session instead of failing silently forever.
-    if (!anyOk) {
-      console.warn('[AuxAir] All devices failed to report state this cycle — re-authenticating');
-      try { await this._login(); }
-      catch (err) { console.error(`[AuxAir] Re-login failed: ${err.message}`); }
+    // Every device failed this cycle. That's as likely to be one offline
+    // unit (especially on single-device installs) as a genuine session
+    // expiry, and we can't tell the two apart from the API's error shape —
+    // so re-authenticate at most once per cooldown window rather than every
+    // poll cycle, which would otherwise hammer the login endpoint forever
+    // over a condition that was never actually a session problem.
+    const RELOGIN_COOLDOWN_MS = 5 * 60 * 1000;
+    if (!anyOk && Date.now() - this._lastReloginAt > RELOGIN_COOLDOWN_MS) {
+      this._lastReloginAt = Date.now();
+      console.warn('[AuxAir] All devices failed to report state — re-authenticating');
+      try {
+        await this._login();
+        await this._refreshDevices(); // renews per-device sessions/cookies too
+      } catch (err) {
+        console.error(`[AuxAir] Re-login failed: ${err.message}`);
+      }
     }
   }
 

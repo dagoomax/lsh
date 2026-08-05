@@ -1,6 +1,24 @@
 // Shared history-series helpers — used by DeviceModal's full Chart and by
 // EnergyFlow's compact trend sparklines, so the downsample/smoothing math
 // (and its edge cases) lives in exactly one place.
+import { useEffect, useState } from 'react'
+
+// Poll a history series on an interval, with unmount-safe cleanup. Both
+// DeviceModal's Chart and EnergyFlow's sparklines need "fetch now, then
+// refresh every N ms, discard results if unmounted" — this is that shape,
+// so a cleanup-race fix only ever needs to be made once.
+export function useHistoryPoints(path, intervalMs = 30000) {
+  const [points, setPoints] = useState(null)
+  useEffect(() => {
+    let alive = true
+    setPoints(null)
+    const load = () => fetchHistory(path).then(p => { if (alive) setPoints(p) })
+    load()
+    const iv = setInterval(load, intervalMs)
+    return () => { alive = false; clearInterval(iv) }
+  }, [path, intervalMs])
+  return points
+}
 
 export async function fetchHistory(path) {
   try {

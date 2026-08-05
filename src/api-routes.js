@@ -1104,12 +1104,23 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (!Array.isArray(devices)) {
       return res.status(400).json({ success: false, error: 'Body must be an array of virtual devices' });
     }
-    const cleaned = devices.map((d) => ({
-      id:   String(d.id || '').trim() || crypto.randomUUID().slice(0, 8),
-      name: String(d.name || '').trim(),
-      type: VIRTUAL_TYPES.has(d.type) ? d.type : 'switch',
-      unit: String(d.unit || '').trim(),
-    })).filter((d) => d.name);
+    // Ids are the store key (virtual/<id>/value) — two devices sharing one
+    // silently collide onto the same value, and one device's type could
+    // then look like a stale mismatch under the other's id. The stock UI
+    // never sends a duplicate, but this route accepts a raw id from any
+    // caller, so re-roll a fresh one rather than let a collision through.
+    const seenIds = new Set();
+    const cleaned = devices.map((d) => {
+      let id = String(d.id || '').trim() || crypto.randomUUID().slice(0, 8);
+      if (seenIds.has(id)) id = crypto.randomUUID().slice(0, 8);
+      seenIds.add(id);
+      return {
+        id,
+        name: String(d.name || '').trim(),
+        type: VIRTUAL_TYPES.has(d.type) ? d.type : 'switch',
+        unit: String(d.unit || '').trim(),
+      };
+    }).filter((d) => d.name);
     try {
       writeConfigFile({ ...current, virtual: { devices: cleaned } });
       res.json({ success: true, message: `${cleaned.length} virtual device(s) saved. Restart to apply.` });

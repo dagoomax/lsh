@@ -53,12 +53,17 @@ class VirtualClient {
     });
 
     // Seed an initial value so the tile doesn't show blank before the first
-    // real write — but only if nothing is there yet. The store persists
-    // across restarts (persist/store-data.json.gz), so unconditionally
-    // seeding here would reset every virtual device back to its default on
-    // every restart, discarding whatever was last written.
-    if (this._store.get(`${key}/value`) == null) {
-      this._store.update(`${key}/value`, d.type === 'text' ? '' : 0);
+    // real write — but only if nothing is there yet, or what's there doesn't
+    // match this device's type (e.g. a numeric leftover under an id that's
+    // been reconfigured/reused as a text device). The store persists across
+    // restarts (persist/store-data.json.gz), so unconditionally seeding here
+    // would reset every virtual device back to its default on every
+    // restart, discarding whatever was last written.
+    const cur = this._store.get(`${key}/value`);
+    const wantsText = d.type === 'text';
+    const typeMismatch = cur != null && (wantsText ? typeof cur !== 'string' : typeof cur !== 'number');
+    if (cur == null || typeMismatch) {
+      this._store.update(`${key}/value`, wantsText ? '' : 0);
     }
   }
 

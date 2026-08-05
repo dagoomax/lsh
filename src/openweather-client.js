@@ -87,6 +87,24 @@ class OpenWeatherClient {
   }
 
   async _poll(initial = false) {
+    // Re-entrancy guard: the recurring interval is armed before the initial
+    // poll resolves (see start()), so a slow first request could otherwise
+    // overlap a scheduled tick — two in-flight requests racing to write
+    // this._forecast/the store. Skip rather than queue; the next tick or
+    // the initial call (whichever is still running) will cover it.
+    if (this._polling) {
+      console.warn('[OpenWeather] Skipping poll — previous one still in flight');
+      return;
+    }
+    this._polling = true;
+    try {
+      await this._pollImpl(initial);
+    } finally {
+      this._polling = false;
+    }
+  }
+
+  async _pollImpl(initial) {
     const cfg = this._config.openweather;
     const units = cfg.units === 'imperial' ? 'imperial' : 'metric';
     const qs = `lat=${encodeURIComponent(cfg.lat)}&lon=${encodeURIComponent(cfg.lon)}&units=${units}&appid=${encodeURIComponent(cfg.apiKey)}`;

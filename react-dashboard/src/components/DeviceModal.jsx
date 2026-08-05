@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { resolveIcon, MyIcon, NAMED_ICONS } from './Icons'
 import { gt } from '../i18n'
 import { EDIT_EMOJI } from '../emoji'
-import { fetchHistory as fetchHistoryPath, smoothPath } from '../historyChart'
+import { useHistoryPoints, smoothPath } from '../historyChart'
 
 // ── Advanced device popup: full controls + history graphs ──────────────────
 // Design language: glow blobs, gradient border (CSS mask), gradient title,
@@ -14,10 +14,6 @@ const RANGES = [
   { label: '6h', h: 6 },
   { label: 'All', h: 0 },
 ]
-
-function fetchHistory(deviceKey, path) {
-  return fetchHistoryPath(`${deviceKey}/${path}`)
-}
 
 // Step path (H/V segments) — the honest form for state/boolean series
 function stepPath(pts) {
@@ -34,7 +30,7 @@ const CHART_TYPES = [
 ]
 
 export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
-  const [points, setPoints] = useState(null)
+  const points = useHistoryPoints(`${deviceKey}/${sensor.path}`, 30000)
   const [rangeH, setRangeH] = useState(6)
   const [hover, setHover] = useState(null) // index into view.pts
   const typeKey = `lsh-chart-type:${deviceKey}/${sensor.path}`
@@ -53,14 +49,6 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
   const [w, setW] = useState(560)
   const H = height, padL = 42, padR = 14, padT = 14, padB = 24
   const uid = useMemo(() => `${deviceKey}/${sensor.path}`.replace(/[^a-zA-Z0-9]/g, '_'), [deviceKey, sensor.path])
-
-  useEffect(() => {
-    let alive = true
-    setPoints(null)
-    fetchHistory(deviceKey, sensor.path).then(p => { if (alive) setPoints(p) })
-    const iv = setInterval(() => fetchHistory(deviceKey, sensor.path).then(p => { if (alive) setPoints(p) }), 30000)
-    return () => { alive = false; clearInterval(iv) }
-  }, [deviceKey, sensor.path])
 
   useEffect(() => {
     const ro = new ResizeObserver(e => setW(Math.max(320, e[0].contentRect.width)))

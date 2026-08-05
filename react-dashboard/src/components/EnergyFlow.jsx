@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
 import { SunIcon, PylonIcon, BatteryCellIcon, BoltIcon, HomeIcon } from './Icons'
 import { gt } from '../i18n'
-import { fetchHistory, smoothPath } from '../historyChart'
+import { useHistoryPoints, smoothPath } from '../historyChart'
 
 const fmtW  = v => v==null||isNaN(v) ? '—' : Math.abs(v)>=1000 ? `${(Math.abs(v)/1000).toFixed(2)} kW` : `${Math.round(Math.abs(v))} W`
 const fmtV  = v => v==null ? '—' : `${Number(v).toFixed(1)} V`
@@ -170,14 +169,7 @@ function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, l
 
 // ── Trend sparklines (real history, last 6h) ─────────────────────────────────
 function useHistory(key, hours = 6) {
-  const [points, setPoints] = useState(null)
-  useEffect(() => {
-    let alive = true
-    const load = () => fetchHistory(key).then(p => { if (alive) setPoints(p) })
-    load()
-    const iv = setInterval(load, 60000)
-    return () => { alive = false; clearInterval(iv) }
-  }, [key])
+  const points = useHistoryPoints(key, 60000)
   if (!points) return null
   const cutoff = Date.now() - hours * 3600_000
   return points.filter(p => p[0] >= cutoff)
