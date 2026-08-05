@@ -525,7 +525,13 @@ input[type="range"]::-moz-range-thumb {
 .eflow-wrap {
   display: flex;
   justify-content: center;
-  padding: 4px 0;
+  padding: 10px 0;
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle, var(--white-05) 1px, transparent 1px),
+    radial-gradient(ellipse 60% 70% at 50% 50%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 70%);
+  background-size: 22px 22px, 100% 100%;
+  background-position: center;
 }
 .eflow-svg {
   width: 100%;

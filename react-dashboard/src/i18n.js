@@ -3,6 +3,7 @@
 // English lives in the gt() fallbacks at the call sites.
 const DICT = {
   pl: {
+        trend_6h: 'Ostatnie 6h', r_self_consumption: 'Autokonsumpcja', r_grid_dependency: 'Zależność od sieci',
         weather_feels_like: 'Odczuwalna', weather_precip: 'Opady', weather_humidity: 'Wilgotność', weather_wind: 'Wiatr', weather_pressure: 'Ciśnienie', weather_clouds: 'Zachmurzenie',
         origin: 'Źródło', e_sources_title: 'Źródło energii dla każdej metryki',
         lock: 'Zablokuj panel', locked: 'Panel zablokowany', enter_pin: 'Podaj PIN', unlock: 'Odblokuj',
@@ -58,6 +59,7 @@ const DICT = {
         sign_in: 'Zaloguj się do LSH', sign_in_btn: 'Zaloguj się', signing_in: 'Logowanie…',
         login_failed: 'Logowanie nie powiodło się', username: 'Nazwa użytkownika', password: 'Hasło' },
   de: {
+        trend_6h: 'Letzte 6h', r_self_consumption: 'Eigenverbrauch', r_grid_dependency: 'Netzabhängigkeit',
         weather_feels_like: 'Gefühlt', weather_precip: 'Niederschlag', weather_humidity: 'Luftfeuchtigkeit', weather_wind: 'Wind', weather_pressure: 'Luftdruck', weather_clouds: 'Bewölkung',
         origin: 'Quelle', e_sources_title: 'Energiequelle pro Messwert',
         lock: 'Dashboard sperren', locked: 'Dashboard gesperrt', enter_pin: 'PIN eingeben', unlock: 'Entsperren',
@@ -113,6 +115,7 @@ const DICT = {
         sign_in: 'Bei LSH anmelden', sign_in_btn: 'Anmelden', signing_in: 'Anmeldung läuft…',
         login_failed: 'Anmeldung fehlgeschlagen', username: 'Benutzername', password: 'Passwort' },
   fr: {
+        trend_6h: 'Dernières 6h', r_self_consumption: 'Autoconsommation', r_grid_dependency: 'Dépendance au réseau',
         weather_feels_like: 'Ressenti', weather_precip: 'Précipitations', weather_humidity: 'Humidité', weather_wind: 'Vent', weather_pressure: 'Pression', weather_clouds: 'Nébulosité',
         origin: 'Source', e_sources_title: 'Source d’énergie par mesure',
         lock: 'Verrouiller', locked: 'Tableau de bord verrouillé', enter_pin: 'Saisir le PIN', unlock: 'Déverrouiller',
@@ -168,6 +171,7 @@ const DICT = {
         sign_in: 'Se connecter à LSH', sign_in_btn: 'Se connecter', signing_in: 'Connexion en cours…',
         login_failed: 'Échec de connexion', username: 'Nom d’utilisateur', password: 'Mot de passe' },
   es: {
+        trend_6h: 'Últimas 6h', r_self_consumption: 'Autoconsumo', r_grid_dependency: 'Dependencia de la red',
         weather_feels_like: 'Sensación térmica', weather_precip: 'Precipitación', weather_humidity: 'Humedad', weather_wind: 'Viento', weather_pressure: 'Presión', weather_clouds: 'Nubosidad',
         origin: 'Origen', e_sources_title: 'Fuente de energía por métrica',
         lock: 'Bloquear panel', locked: 'Panel bloqueado', enter_pin: 'Introduce el PIN', unlock: 'Desbloquear',
@@ -223,6 +227,7 @@ const DICT = {
         sign_in: 'Iniciar sesión en LSH', sign_in_btn: 'Iniciar sesión', signing_in: 'Iniciando sesión…',
         login_failed: 'Error al iniciar sesión', username: 'Usuario', password: 'Contraseña' },
   it: {
+        trend_6h: 'Ultime 6h', r_self_consumption: 'Autoconsumo', r_grid_dependency: 'Dipendenza dalla rete',
         weather_feels_like: 'Percepita', weather_precip: 'Precipitazioni', weather_humidity: 'Umidità', weather_wind: 'Vento', weather_pressure: 'Pressione', weather_clouds: 'Nuvolosità',
         origin: 'Origine', e_sources_title: 'Fonte di energia per metrica',
         lock: 'Blocca pannello', locked: 'Pannello bloccato', enter_pin: 'Inserisci il PIN', unlock: 'Sblocca',
@@ -278,6 +283,7 @@ const DICT = {
         sign_in: 'Accedi a LSH', sign_in_btn: 'Accedi', signing_in: 'Accesso in corso…',
         login_failed: 'Accesso non riuscito', username: 'Nome utente', password: 'Password' },
   uk: {
+        trend_6h: 'Останні 6 год', r_self_consumption: 'Самоспоживання', r_grid_dependency: 'Залежність від мережі',
         weather_feels_like: 'Відчувається як', weather_precip: 'Опади', weather_humidity: 'Вологість', weather_wind: 'Вітер', weather_pressure: 'Тиск', weather_clouds: 'Хмарність',
         origin: 'Джерело', e_sources_title: 'Джерело енергії для кожного показника',
         lock: 'Заблокувати панель', locked: 'Панель заблоковано', enter_pin: 'Введіть PIN', unlock: 'Розблокувати',

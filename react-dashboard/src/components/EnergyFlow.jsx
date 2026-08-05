@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { SunIcon, PylonIcon, BatteryCellIcon, BoltIcon, HomeIcon } from './Icons'
 import { gt } from '../i18n'
+import { fetchHistory, smoothPath } from '../historyChart'
 
 const fmtW  = v => v==null||isNaN(v) ? '—' : Math.abs(v)>=1000 ? `${(Math.abs(v)/1000).toFixed(2)} kW` : `${Math.round(Math.abs(v))} W`
 const fmtV  = v => v==null ? '—' : `${Number(v).toFixed(1)} V`
@@ -166,6 +168,89 @@ function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, l
   )
 }
 
+// ── Trend sparklines (real history, last 6h) ─────────────────────────────────
+function useHistory(key, hours = 6) {
+  const [points, setPoints] = useState(null)
+  useEffect(() => {
+    let alive = true
+    const load = () => fetchHistory(key).then(p => { if (alive) setPoints(p) })
+    load()
+    const iv = setInterval(load, 60000)
+    return () => { alive = false; clearInterval(iv) }
+  }, [key])
+  if (!points) return null
+  const cutoff = Date.now() - hours * 3600_000
+  return points.filter(p => p[0] >= cutoff)
+}
+
+// A true axis-free sparkline: area fill + line + an emphasized "now" dot.
+// Deliberately no grid — at this size (120×40) gridlines are noise, not signal.
+function Sparkline({ points, color, id, width = 120, height = 40 }) {
+  if (points == null) {
+    return <div style={{ width, height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--white-10)', borderTopColor: color, animation: 'eflow-spin 0.9s linear infinite' }} />
+    </div>
+  }
+  if (points.length < 2) {
+    return <div style={{ width, height, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--text3)' }}>—</div>
+  }
+  const vals = points.map(p => p[1])
+  const min = Math.min(0, ...vals)
+  const max = Math.max(min + 1, ...vals)
+  const t0 = points[0][0], t1 = points[points.length - 1][0]
+  const span = Math.max(1, t1 - t0)
+  const pad = 4
+  const xy = points.map(([t, v]) => [
+    pad + ((t - t0) / span) * (width - pad * 2),
+    pad + (1 - (v - min) / (max - min)) * (height - pad * 2),
+  ])
+  const line = smoothPath(xy)
+  const last = xy[xy.length - 1]
+  const area = `${line} L ${last[0].toFixed(1)} ${height} L ${xy[0][0].toFixed(1)} ${height} Z`
+  return (
+    <svg width={width} height={height} style={{ overflow: 'visible', flexShrink: 0 }}>
+      <defs>
+        <linearGradient id={`spark-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#spark-${id})`} stroke="none" />
+      <path d={line} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx={last[0]} cy={last[1]} r="3" fill={color} style={{ filter: `drop-shadow(0 0 4px ${color})` }} />
+    </svg>
+  )
+}
+
+function TrendCard({ icon, label, color, value, points }) {
+  return (
+    <div className="detail-card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px' }}>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)', marginBottom: 4 }}>
+          {icon}{label}
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{gt('trend_6h', 'Last 6h')}</div>
+      </div>
+      <Sparkline points={points} color={color} id={label} />
+    </div>
+  )
+}
+
+function TrendRow({ solarColor, battColor }) {
+  const solarPts = useHistory('system/0/Dc/Pv/Power')
+  const battPts  = useHistory('system/0/Dc/Battery/Soc')
+  const lastVal = (pts, fmt) => pts && pts.length ? fmt(pts[pts.length - 1][1]) : '—'
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+      <TrendCard icon={<SunIcon color={solarColor} size={13} />} label={gt('e_solar', 'Solar')} color={solarColor}
+        value={lastVal(solarPts, fmtW)} points={solarPts} />
+      <TrendCard icon={<BatteryCellIcon color={battColor} size={13} />} label={gt('e_battery', 'Battery')} color={battColor}
+        value={lastVal(battPts, v => `${Math.round(v)}%`)} points={battPts} />
+    </div>
+  )
+}
+
 // ── Full energy detail panel (expandable) ────────────────────────────────────
 function DetailRow({ label, value, color }) {
   return (
@@ -207,6 +292,15 @@ export default function EnergyFlow({ energy }) {
   const solarPct   = s?.power > 0 ? Math.min(100, (s.power / 5000) * 100) : 0
   const timeToGo   = fmtDur(b?.timeToGo)
 
+  // Self-consumption: how much of current solar production the house is using
+  // directly rather than exporting. Grid dependency: how much of the current
+  // load is being covered by grid import rather than solar/battery.
+  const selfConsumptionPct = s?.power > 0 && loadTotal != null
+    ? Math.round(Math.min(1, loadTotal / s.power) * 100) : null
+  const gridImportW = gridTotal != null ? Math.max(0, gridTotal) : null
+  const gridDependencyPct = gridImportW != null && loadTotal > 0
+    ? Math.round(Math.min(1, gridImportW / loadTotal) * 100) : null
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
 
@@ -230,6 +324,9 @@ export default function EnergyFlow({ energy }) {
         gridColor={gridColor} exporting={exporting}
       />
 
+      {/* ── Trend sparklines (real 6h history) ── */}
+      <TrendRow solarColor="var(--orange)" battColor={battColor} />
+
       {/* ── Detail row ── */}
       <div className="energy-detail-grid" style={{
         display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',
@@ -252,6 +349,8 @@ export default function EnergyFlow({ energy }) {
           <DetailRow label={gt('r_share','Share of loads')} value={
             loadTotal > 0 ? `${Math.min(100, Math.round(num(s?.power) / loadTotal * 100))}%` : '—'
           } color="var(--text2)" />
+          <DetailRow label={gt('r_self_consumption','Self-consumption')}
+            value={selfConsumptionPct != null ? `${selfConsumptionPct}%` : '—'} color="var(--text2)" />
         </DetailCard>
 
         <DetailCard icon={<PylonIcon color="var(--text3)" size={13}/>} title={gt('t_grid','Grid')}>
@@ -261,6 +360,8 @@ export default function EnergyFlow({ energy }) {
           <DetailRow label={gt('r_l3','L3 Power')}  value={fmtW(g?.powerL3)} color={gridColor} />
           <DetailRow label={gt('r_voltage','Voltage')}   value={fmtV(g?.voltage)} />
           <DetailRow label={gt('r_freq','Frequency')} value={fmtHz(g?.frequency)} color="var(--text2)" />
+          <DetailRow label={gt('r_grid_dependency','Grid dependency')}
+            value={gridDependencyPct != null ? `${gridDependencyPct}%` : '—'} color="var(--text2)" />
         </DetailCard>
 
         <DetailCard icon={<HomeIcon color="var(--text3)" size={13}/>} title={gt('t_loads','AC Loads')}>
