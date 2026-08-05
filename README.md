@@ -116,7 +116,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, Reolink, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, Arduino / generic MQTT devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, OpenWeatherMap, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -1339,6 +1339,136 @@ Connects to a **Sony Bravia** Android TV / Google TV over its local REST API (JS
 **Dashboard tile:** none yet — controls (power, volume, volume up/down, mute, source select) are reachable via the generic device API. Say the word if you want a bespoke tile.
 
 **Note:** `getPlayingContentInfo` returns a JSON-RPC error whenever the TV is sitting on the Android/Google TV home launcher rather than an actual input/app — that's expected and shown as input `"Home"`, not surfaced as a poll failure.
+
+---
+
+### `roborock`
+
+```json
+"roborock": {
+  "devices": [
+    { "host": "192.168.1.60", "token": "abcdef0123456789abcdef0123456789", "name": "Living Room" }
+  ],
+  "cloud": {
+    "email": "you@example.com",
+    "password": "",
+    "duid": ""
+  }
+}
+```
+
+Two transports under one config key, since Roborock split its fleet across two different protocols:
+
+- **`devices[]`** — local **Xiaomi miio** protocol (UDP port 54321) for Roborock's earlier/Xiaomi-branded models. `token` is the per-device miio encryption token (extract it with `python-miio` or the Mi Home token-dump tools — not the same as the Roborock app password). Polled every 15s; commands (start/pause/stop/dock/spot clean, fan speed) sent as encrypted miio RPCs.
+- **`cloud`** — Roborock's own **cloud + MQTT** protocol for app-only devices (e.g. the Q Revo) that don't speak miio. Email/password login (Hawk-signed), device list resolved from the account's home data; `duid` optionally pins one specific device on a multi-device account. Protocol details ported from the community `python-roborock` reference (v1 message codec, MQTT credential derivation, Hawk auth). Settings → Roborock Cloud has a Test Login button.
+
+**Cloud-only extras:** consumable life (filter/brush/mop wear, refreshed at most every 5 min), per-room mapping (`get_room_mapping`) with multi-room clean-segment commands, and a rendered live map (PNG, decrypted/decompressed from the device's raw map payload) shown in the device modal.
+
+Exposed to HomeKit as a vacuum via the same `Fanv2` impersonation trick used for Landroid below (HomeKit has no native robot-vacuum accessory type either).
+
+---
+
+### `landroid`
+
+```json
+"landroid": {
+  "brand": "worx",
+  "email": "you@example.com",
+  "password": "",
+  "pollInterval": 60
+}
+```
+
+Connects a **Worx Landroid** robot mower — or a **Kress** or **Landxcape** sister-brand unit, same cloud backend under a different skin — via the Worx cloud. Login is an OAuth2 password grant against the brand's auth host; device state is read by polling the cloud REST API; commands (start/pause/stop/dock) are sent over the mower's AWS-IoT MQTT channel.
+
+| Field | Default | Description |
+|---|---|---|
+| `brand` | `worx` | `worx`, `kress`, or `landxcape` — selects the auth host, API host, and OAuth client ID |
+| `email` / `password` | — | Your Worx/Kress/Landxcape app account credentials |
+| `pollInterval` | `60` | Seconds between status polls |
+| `authHost` / `apiHost` / `clientId` | brand default | Override if a brand moves its endpoints (this has happened before — Worx moved auth from `id.eu.worx.com` to `id.worx.com` in 2025/2026) |
+
+**Sensors:** battery percentage, battery charging state, mower status. Exposed to HomeKit via the `Fanv2` service (impersonating a vacuum/fan — HomeKit has no native robot-mower accessory type, so this is the standard trick for a start/stop tile in the Home app).
+
+**Note:** status polling is the reliable core of this integration; the AWS-IoT MQTT command path is best-effort and should be verified against a live account — the auth/API endpoints are brand-specific and do drift over time (see `pyworxcloud`'s `clouds.py` for current canonical values if commands stop working).
+
+---
+
+### `mc6`
+
+```json
+"mc6": {
+  "broker": "192.168.1.20",
+  "port": 1883,
+  "username": "",
+  "password": "",
+  "devices": [
+    { "mac": "AABBCCDDEEFF", "name": "Living Room AC" }
+  ]
+}
+```
+
+Controls **MC6-based mini-split / AC controllers** (the WiFi-to-IR bridge boards used by several budget AC-control brands) over MQTT. Subscribes to `updData/<mac>` for each configured device and publishes commands back the same way.
+
+**Sensors:** temperature, humidity, setpoint (5-35°C, controllable), mode (`cool`/`heat`/`fan_only`/`dry`, read-only), fan speed (`high`/`medium`/`low`/`auto`, read-only), on/off (controllable). Bridged to HomeKit as a temperature sensor.
+
+---
+
+### `vents`
+
+```json
+"vents": {
+  "host": "192.168.1.x",
+  "port": 4000,
+  "deviceId": "0123456789ABCDEF",
+  "password": "1111",
+  "name": "Ventilation",
+  "pollInterval": 30,
+  "params": {}
+}
+```
+
+Controls a **VENTS / Blauberg decentralised HRV** unit (e.g. VENTS A21, TwinFresh Expert, Vento Expert) over its local UDP protocol on port 4000 — a reverse-engineered binary framing (`FD FD | 02 | id | pwd | func | data | checksum`) implemented with no external dependency.
+
+**Sensors:** state (on/off, controllable), speed 1-3 (controllable), boost mode (controllable), manual speed 0-255% (controllable), humidity, temperature, filter countdown days, filter alarm.
+
+**Note:** the UDP *framing* is model-independent, but the *parameter register IDs* differ per model — `DEFAULT_PARAMS` covers the common Vento/TwinFresh map; override any id in `vents.params` if your unit reports different registers.
+
+---
+
+### `waveshare`
+
+```json
+"waveshare": {
+  "devices": [
+    { "name": "Gate Controller", "host": "192.168.1.x", "port": 502, "slaveId": 1, "relayCount": 8 }
+  ]
+}
+```
+
+Controls **Waveshare Modbus TCP relay boards** (any Waveshare Modbus relay module reachable over TCP/IP, including ones behind a serial-to-Ethernet converter) — speaks raw Modbus TCP with no external library, frames built and parsed by hand.
+
+Each relay (`relayCount` of them, per device) is registered as an independent controllable toggle sensor, commandable via the normal `POST /api/device/:key/command` endpoint.
+
+---
+
+### `smartbob`
+
+```json
+"smartbob": {
+  "host": "192.168.1.20",
+  "port": 1883,
+  "username": "",
+  "password": "",
+  "name": "SmartBob",
+  "entities": [
+    { "stateTopic": "smartbob/relay1/state", "commandTopic": "smartbob/relay1/set", "type": "switch", "name": "Relay 1" },
+    { "stateTopic": "smartbob/temp1/state", "type": "temperature", "name": "Temp 1", "unit": "°C" }
+  ]
+}
+```
+
+A generic MQTT-topic device builder, in the same spirit as the Arduino integration below but grouping every configured entity into a **single** dashboard device (`smartbob/<name or host>`) rather than one device per board. Each entity is one sensor: `switch`/`light`/`boolean` types are controllable (publish `payloadOn`/`payloadOff`, default `ON`/`OFF`, to `commandTopic` when set) and `temperature`/`humidity`/`number` types are read-only, parsed from `stateTopic`.
 
 ---
 

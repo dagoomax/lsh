@@ -1,6 +1,6 @@
 # Supported Hardware & Platforms
 
-Lightweight Smart Home (LSH) integrates ~45 platforms, all built into the single
+Lightweight Smart Home (LSH) integrates ~55 platforms, all built into the single
 Node.js process — no add-ons or separate containers. Each row lists its
 `config.json` section (see the [README](../README.md) for the full config
 reference of every one).
@@ -25,10 +25,12 @@ reference of every one).
 | **Grenton** | `grenton` | GATE HTTP API |
 | **Ampio** | `ampio` | M-SERV over MQTT |
 | **Z-Way / RaZberry** (Z-Wave) | `zway` | Switches, dimmers, thermostats, locks, sensors |
+| **MiCasaVerde / Vera** | `vera` | Local LuaUPnP JSON API — switches, dimmers, thermostats, locks, covers, sensors |
 | **Wiren Board** | `wirenboard` | Relays, dimmers, inputs, climate via MQTT |
 | **BoneIO** | `boneio` | Relay boards, MQTT auto-discovery |
 | **Suppla** | `suppla` | Cloud or self-hosted (cloud.supla.org) |
 | **SmartBob** | `smartbob` | MQTT sensors / switches / automation |
+| **Virtual devices** | `virtual` | No hardware — automation flags, manual overrides, webhook-fed values |
 
 ## Lighting, switches & I/O
 
@@ -57,6 +59,7 @@ reference of every one).
 | **SmartTub** (Jacuzzi/Sundance/Watkins) | `smarttub` | Hot tubs — temp, heat, pumps, lights |
 | **Bayrol Pool Manager** | `bayrol` | pH, ORP, temperature, dosing, salt |
 | **Blauberg / Vents** | `vents` | Ventilation / recuperation |
+| **Thermomix** (Cookidoo) | `thermomix` | Shopping list, meal plan, next recipe (read-only, cloud) |
 
 ## Security & sensors
 
@@ -91,7 +94,9 @@ reference of every one).
 | Platform | Config | Notes |
 |---|---|---|
 | **Sonos** | `sonos` | UPnP/SOAP local control + TTS |
-| **Denon / Marantz** AVR | `denon` | Telnet control (power, volume, input) |
+| **Denon / Marantz** AVR | `denon` | Telnet control (power, volume, input, Zone 2) |
+| **Bang & Olufsen** speakers | `beosound` | Local REST API — power, volume, mute, source |
+| **Sony Bravia** (Android/Google TV) | `sony` | Local PSK REST API — power, volume, mute, input |
 
 ## Covers, blinds & gates
 
@@ -104,6 +109,7 @@ reference of every one).
 | Platform | Config | Notes |
 |---|---|---|
 | **Samsung SmartThings** | `smartthings` | Switches, power meters, sensors |
+| **OpenWeatherMap** | `openweather` | Current conditions + 5-day forecast (cloud) |
 | **SIP doorbell / softphone** | `sip` | Intercom over WebSocket (e.g. UniFi Talk) |
 | **Apple HomeKit** (out) | `homekit` | Exposes registry devices, relays, cameras |
 | **Victron relays** | `relays` | Cerbo GX relay control |

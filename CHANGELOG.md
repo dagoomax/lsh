@@ -11,6 +11,133 @@ All notable changes to this project are documented here.
 
 ---
 
+## 2026-08-05
+
+### Added
+- **Flow editor: Virtual device node** — a friendly device picker (drawn from `/api/devices`, filtered to `type === 'virtual'`) with a value control that adapts to the target device's type: an on/off dropdown for switches, a number field for dimmers/sensors, free text for text devices, and no field at all for buttons (a button fires regardless of value). Dispatches through the same `automation-engine.js` `sendCommand` path as the generic Device node, just scoped to a nicer UI — picking a device that's since been deleted shows a "⚠ not found — pick a replacement" state instead of silently rewiring the flow to an arbitrary other device.
+- **Weather forecast: animated icons + day-tile detail popup** — each forecast icon now has a condition-appropriate CSS animation (sunbeam glow/rotate, drifting clouds, falling rain, lightning flicker, tumbling snow, breathing fog), with a `prefers-reduced-motion` override that disables all of them. Clicking a day tile opens a detail popup — feels-like temperature, precipitation probability, humidity, wind speed + 16-point compass direction, pressure, and cloudiness, all newly aggregated per-day from the same representative noon step already used for the day's condition/icon — styled with the same glass/gradient-border/glow-blob modal chrome as the main device modal (backdrop blur, spring entrance, Escape/backdrop-click to close).
+
+### Fixed
+- **OpenWeatherMap silently doing nothing when misconfigured** — `start()` now logs a clear `[OpenWeather] apiKey set but lat/lon missing` warning if an API key is set but latitude/longitude are missing, instead of returning early with no log output at all. The Settings card's Latitude/Longitude fields are marked "(required)" with `e.g.` placeholders so they no longer read as pre-filled defaults (they previously showed Warsaw's coordinates as the placeholder, easy to mistake for an already-filled value).
+
+---
+
+## 2026-08-04
+
+### Added
+- **OpenWeatherMap integration + 5-day forecast widget** ([`src/openweather-client.js`](src/openweather-client.js)) — current conditions (condition, temperature, feels-like, humidity, pressure, wind speed/direction, cloudiness, visibility, sunrise/sunset) via the free Current Weather Data API, polled on a configurable interval (minimum 60s). A new `GET /api/openweather/forecast` endpoint feeds a forecast strip on the dashboard from the free 5 Day/3 Hour Forecast API, aggregating the 40 three-hour steps into one representative entry per day (the step closest to local noon, to avoid overnight-clear-sky bias) — capped honestly at 5 days rather than padded to 7, since true 7-8 day coverage needs OpenWeatherMap's separate paid One Call subscription.
+- **Virtual device module** ([`src/virtual-client.js`](src/virtual-client.js)) — switches, dimmers, sensors, text values, and buttons with no real hardware behind them: automation flags, manual overrides, or a landing spot for values pushed in from an external script/webhook via the normal `/api/device/<key>/set` endpoint. Buttons pulse to `1` then auto-reset to `0` after 800ms, the same pattern used elsewhere for momentary triggers. Managed from Settings → Virtual Devices; new/changed devices need a restart to register.
+- **Custom CSS editor** (Settings → Interface) — a textarea saving to `config.ui.customCss`, served at a public `GET /custom.css` and referenced via a real `<link>` tag in both dashboards' `<head>` so it applies before first paint (no flash of unstyled content), read fresh from `config.json` on every request. The route deliberately lives outside `/api/` — the `.css`-extension public exemption in `auth.js`'s middleware explicitly excludes all `/api/*` paths, so `/api/custom.css` 401'd until the route was moved.
+- **Dashboard editor** ([`react-dashboard/src/components/DashboardGrid.jsx`](react-dashboard/src/components/DashboardGrid.jsx), built on the new `react-grid-layout` dependency) — a Lovelace-style editor for the main "All" dashboard view: drag tiles to reposition, resize them, remove them (unpins from the dashboard, doesn't touch the device), and add any device via a picker. Layout persists to `localStorage` (same scoping as theme/language). Fully opt-in — `DeviceList.jsx` only switches into the custom grid once a layout has actually been saved; a "Customize Dashboard" button seeds one from whatever's currently visible so the transition isn't a blank canvas.
+- **MiCasaVerde / Vera integration** ([`src/vera-client.js`](src/vera-client.js)) — polls a Vera controller's local LuaUPnP JSON API (`/data_request?id=sdata`) for switches, dimmers, thermostats, door locks, window coverings, security/binary sensors, humidity/temperature/light sensors, power meters, and battery levels, modeled on `zway-client.js` since Z-Way's API inherited its UPnP service-ID conventions from Vera. Commands go through `data_request?id=lu_action&serviceId=...&action=...`.
+- **ONVIF network discovery + auto-fetch stream/snapshot URLs** — previously ONVIF support was PTZ-only and required a manually-typed RTSP/snapshot URL even with full credentials. New [`onvif-discovery.js`](src/onvif-discovery.js) runs a WS-Discovery multicast scan to find cameras on the LAN without knowing IPs up front (validated live, found 8 real devices), and new [`onvif-media.js`](src/onvif-media.js) calls `GetStreamUri`/`GetSnapshotUri` so `onvif:{host,user,pass}` alone is enough — no manual `url`/`snapshotUrl` needed. The shared SOAP/WS-Security plumbing was extracted into [`onvif-soap.js`](src/onvif-soap.js) (the existing PTZ-only code now just consumes it). Settings UI gained a "Discover ONVIF cameras" button and a per-camera "Fetch URLs" action.
+
+### Changed
+- **SIP doorbell: real two-way audio** (was signalling-only) — `sip-server.js` previously negotiated a fake `a=inactive` SDP and never touched RTP. It now negotiates a real PCMU/8000 sendrecv answer and bridges audio via two `ffmpeg` subprocesses ([`src/sip-audio-bridge.js`](src/sip-audio-bridge.js)): RTP-in → a live MP3 stream for the dashboard to play, and the dashboard's mic capture → RTP-out back to the caller (subprocess bridging rather than a WebRTC/DTLS-SRTP gateway, since the server has no such stack — the tradeoff is latency, not call quality). New routes `GET /api/sip/listen` (proxies the live MP3) and `POST /api/sip/talk` (mic chunks in); `IncomingCall.jsx` gained a hidden autoplay `<audio>` and a "Hold to talk" button.
+- **SIP doorbell registered as a proper device** — `sip/doorbell` is now in the sensor registry (ring/inCall/caller read-only, `openDoor` as a controllable trigger), giving it a dashboard tile and making it reachable from the generic Loxone XML export. Added a fixed-name alias route, `/api/loxone/sipout.xml`, for the one real "output" this integration has (opening the door).
+- **SIP doorbell state mirrored into the DataStore** — previously only reachable via the REST/WebSocket API; `_emitState()` now also updates `sip/doorbell/ring` (pulses 1 only while actually ringing, not for the whole call), `sip/doorbell/inCall`, and `sip/doorbell/caller`, so `loxoneOut` and other store-driven integrations can pick it up.
+
+---
+
+## 2026-08-03
+
+### Added
+- **Sony Bravia (Android TV / Google TV) integration** ([`src/sony-client.js`](src/sony-client.js)) — polls power/volume/mute/input over the TV's local PSK-authenticated REST API, with optional HDMI/app input switching.
+- **Denon Now Playing** — surfaced in the device modal.
+- **Landroid (Worx/Kress/Landxcape) Settings card** — mirrors the Roborock cloud pattern: brand/email/password/poll-interval fields with Test Login + Save.
+
+### Changed
+- **Landroid** — reads `dat.bt.c` from the Worx API to publish `batteryState`/`batteryCharging` sensors alongside the existing battery percentage, and exposes the mower to HomeKit via the `Fanv2` service (impersonating a vacuum/fan, the same trick already used for `fan-rw`) since HomeKit has no native robot-mower accessory type — this gives it a start/stop tile in the Home app.
+
+### Fixed
+- **Landroid** — the Worx OAuth endpoint (`id.eu.worx.com`) was dead; switched to the live one.
+
+---
+
+## 2026-08-02
+
+### Added
+- **Object detection: red bounding boxes drawn + persisted to MongoDB** — every kept detection gets a document in the `objectDetections` collection (camera, class, score, bbox, timestamp, annotated JPEG with red boxes drawn around each kept detection) with a 7-day TTL index so it doesn't grow unbounded; no-ops without `config.mongo.uri`.
+- **Object detection: per-class significance weighting** — lets some classes (e.g. a person) count for more than others (e.g. a bird) when deciding whether a frame is worth keeping — plus a **lingering heuristic** that flags an object staying in frame for an unusual duration (e.g. a possible litter event).
+- **Pet breed verification** — COCO-SSD only knows 4 coarse animal classes (cat/dog/bird/horse); a second model, MobileNet (ImageNet-1000, ~120 dog breeds plus cat/bird/misc.), now runs only on the cropped region COCO-SSD already flagged, keyword-matching its top-3 class names against a per-bucket breed list (since ImageNet's label text is inconsistent enough that substring matching is the pragmatic approach). Enriches the event log, box overlay, and Mongo record with the verified breed guess (or "unverified breed match"); `objectDetection.requirePetVerification` (opt-in, default off) can require this before a detection counts.
+- **HomeKit Secure Video (HKSV) recording support** — opt-in per camera (`config.cameras[].hksv`). Adds the `CameraRecordingManagement`/`CameraOperatingMode` HAP services plus a built-in Motion sensor (required for the Home app to offer HKSV setup at all), and muxes H.264 + AAC-LC (ffmpeg's native `aac` encoder, avoiding the non-free `libfdk_aac` that AAC-ELD would need) into fragmented MP4 over a loopback TCP socket, following HAP-NodeJS's own reference technique. The motion trigger is driven by object-detection's new per-camera aggregate "anything in frame" signal (`objectdetect/<slug>/any/detected`), opted into via `config.cameras[].motionSource`.
+- **HomeKit two-way audio (Talk)** — a minimal hand-rolled RTSP client (`rtsp-backchannel.js`) drives the camera's existing backchannel SDP endpoint, receiving HomeKit's outgoing SRTP/Opus audio, transcoding it to PCMU, and forwarding it as plain RTP to the camera. Enabled per-camera via `config.cameras[].twoWayAudio`. Manual RTSP cameras also gained a direct in-process snapshot path, avoiding an auth-middleware round trip.
+- **Cameras (dashboard): live bounding-box overlay** for detected people/pets in the modal, **detection events shown in the popup** (including pets), **detection count stats** (today / 7 days), and a **detection timeline** — a thumbnail gallery, turned into an in-modal thumbnail browser with a class filter.
+
+### Fixed
+- **ffmpeg-rtsp relay/source port collision** — found via a real outage: `config.ffmpegRtsp.basePort` was set to the same port tipc's own RTSP server used (8554). `ffmpeg-rtsp.js` tried to bind a second listen-server on that port for the same camera, failed, and retried every 2s forever — and that retry churn itself disrupted tipc's real connections (continuous "Camera not found" / "Error peeking connection" errors), degrading every consumer of that camera's stream (snapshot proxy, object detection, HomeKit) for the whole session. Now detects a loopback source whose port matches the computed listen port and skips that camera once with a clear error instead of retrying forever.
+
+---
+
+## 2026-08-01
+
+### Added
+- **Bang & Olufsen network speaker integration** ([`src/beosound-client.js`](src/beosound-client.js), `beosound`) — polls the local "BeoPlay App" REST API (port 8080) for power, volume, mute, and source. This legacy REST surface is kept for backward compatibility on the current Mozart platform too (Beosound Balance/Level/Emerge, Beolab 8/28/50/90, Beoconnect Core), so one client covers both older BeoPlay products and current models. Source selection needs real per-device source IDs, supplied via `config.beosound.sources` as a friendly-name → id map.
+- **Local object detection (TensorFlow.js COCO-SSD) for RTSP cameras** ([`src/object-detection.js`](src/object-detection.js), `config.objectDetection.cameras`) — the counterpart to Reolink's built-in AI detection, for cameras with no on-device AI of their own (e.g. the tipc/Tuya bridge). Grabs a JPEG frame per camera every `pollInterval` seconds via `rtsp-snapshot.js`'s ffmpeg grab, runs it through COCO-SSD, and mirrors Reolink's exact device pattern: one sub-device per camera+category, a `detected` boolean sensor exposed to HomeKit as motion, auto-clearing after two poll intervals with no sighting. Auto-creates a starter Flow (trigger → notify) the first time a camera+category pair is seen — left as a notify-only stub since what to actually do about a detection belongs in the Flows editor.
+- **Dashboard: camera grid + modal** added to the React (Aurora) dashboard.
+- **Denon/Marantz: sound mode, sleep timer, volume step, and Zone 2 controls** — sound/surround mode select (`MS` command, curated default list, overridable via `config.denon.soundModes`); sleep timer (`SLP`, 0-120 min, 0 = off); volume up/down step triggers (`MVUP`/`MVDOWN`); an optional Zone 2 device (`config.denon.zone2`) mirroring power/volume/mute/input via `Z2*` commands. Plus volume up/down buttons, an always-visible volume % in the tile's status line, and a full-width volume slider.
+
+### Changed
+- **Camera modal made 2x bigger** (760px → 1520px, capped at 96vw instead of 100% to keep a margin on small screens); the video area scales with it.
+- **One-way cameras' audio unmuted in the modal** — video stayed muted unless a two-way mic track existed, so one-way cameras (like the Tuya bridge) had audio in the stream but no sound in the browser. Opening the modal is itself a user gesture, so unmuted autoplay is allowed regardless of two-way audio; only the Talk button (sending audio back) needs a mic track.
+- **RTSP-only manual cameras now get auto-generated thumbnails** — a manual `cameras[]` entry with only an RTSP url (e.g. a WHEP-only source) had no `snapshotUrl`/`mjpegUrl`, so the grid card had nothing to render even though the live WebRTC view worked in the modal. New [`src/rtsp-snapshot.js`](src/rtsp-snapshot.js) (`grabFrame` — one JPEG frame via ffmpeg) and `GET /api/camera/snapshot/:idx`, cached 10s; `GET /api/cameras` now auto-assigns this as `snapshotUrl` for any manual camera lacking one.
+- **Fine-detail polish pass on small controls** — small in-tile buttons (mute, volume ±, transport controls, temp ±, RTS up/my/down) and header icon buttons brought up to the same gradient/inset-highlight/hover-lift finish as the larger surfaces, via shared `.mini-btn`/`.header-icon-btn` classes. The toggle switch gained a gradient track + jewel-cut knob, and the header's connection dot now breathes gently while live instead of sitting static.
+- Settings gained an on/off toggle for the Miele and Grenton local simulators (the backend `SimulatorManager`/`/api/simulators` already existed and defaulted to disabled; there was just no UI for it).
+
+### Fixed
+- **AuxAir tile showing "off" when the device was actually on** — `acOn` only matched `pwr === 1 || pwr === true`, unlike every other on/off check in the file, which also accepts the string forms. If AuxAir's API reports `pwr` as a string, the tile (and the mode/fan panel gated behind it) stayed hidden even though the unit was running.
+- **HomeKit camera: broken video stream and snapshot for RTSP-only cameras** — two separate bugs, both surfacing as "no video" for a manual camera whose source exceeded the hardcoded encode settings (1920x1080 from the tipc/Tuya bridge, in this case). `_startStream` never used the width/height HomeKit actually negotiated, so ffmpeg always encoded the source's native resolution unscaled — combined with a hardcoded H.264 level of 3.1 (max ~720p worth of macroblocks), libx264 silently rejected every frame. Fixed by scaling to the negotiated resolution and raising the level to 4.0. Separately, `prepareStream` was calling its callback with one argument (`callback(response)`) when hap-nodejs expects `callback(error, response)` — with one argument, the response object was read as a truthy, message-less error, so `_startStream` never even ran.
+
+---
+
+## 2026-07-30/31
+
+### Fixed
+- **AuxAir crash from calling a nonexistent `registry.getDevice()`** — `SensorRegistry` only exposes `getDevices()` (plural); `registerDevice()` already no-ops if the key is present, so the guard being removed was both wrong and redundant.
+- **AuxAir `ac_mode` numbering realigned to Loxone's 1-5 convention** — AuxAir's API reports/expects mode 0-4 while Loxone counts modes 1-5; now converted at the AuxAir HTTP boundary so LSH's stored value, dashboard range, and HomeKit all use 1-5 throughout.
+
+---
+
+## 2026-07-28
+
+### Added
+- **MOBOTIX camera / door-station module** — JPEG snapshots, RTSP feed, and controllable outputs/door relay via the `rcontrol` HTTP API.
+- **Axis camera module (VAPIX)** — JPEG snapshots, RTSP feed, PTZ via continuous move, and relay/I/O outputs, with HTTP Digest auth implemented from the 401 challenge.
+- **Viessmann ViCare heating module** — OAuth2 + PKCE against the Viessmann IAM; outside/supply/boiler/hot-water temps, burner state, heating mode, and a controllable hot-water target.
+- **WLED module** — addressable-LED controllers over the local JSON HTTP API, sharing Hue's light-capability model (power, brightness, RGB colour wheel, plus a white-channel slider on RGBW strips).
+- Settings cards for MOBOTIX, Axis, ViCare, WLED (with a live Test button), Grenton, and Thermomix.
+
+### Changed
+- **Hue: dimming + RGBW controls** — Hue lights already reported brightness/colour-temp/hue-saturation and the write path handled `switchLevel`/`colorControl`/`colorTemperature`, but the sensors were never marked controllable, so the tile/modal sliders and colour picker couldn't dispatch. `level` is now a controllable range, `colorTemperature` drives the Kelvin slider, and a new `color` capability adds an RGB colour wheel to the Hue tile, gated to Hue devices so SmartThings/TRADFRI keep their own pickers.
+- **Loxone can now bridge RGB colour from a Loxone Lighting Controller** — the XML generator previously skipped color-type sensors (the `/set` endpoint only takes a scalar, but colour needs hue+saturation), so RGB lights (Hue, WLED, TRADFRI) could export on/off, brightness, and colour-temp to Loxone but not RGB. `sendCommand` now normalises a colour value: a dashboard `{hue,saturation}` object passes through, and a scalar is decoded as Loxone's composite RGB (`r + g*1000 + b*1000000`, each 0-100) or an `'h,s'`/`'r,g,b'` string — the composite also carries brightness, so a single Loxone colour output drives hue/saturation *and* the light's level. The generator emits the `color` sensor as an analog `VirtualOutCmd` (0..100100100).
+- **MOBOTIX/Axis reachability polling switched to header-only requests** — the online-status poll was calling `fetchSnapshot()` every `pollInterval`, pulling a full-resolution JPEG (100 KB-2 MB) just to set a boolean — roughly 2,880 image downloads per camera per day. Both clients now probe by requesting the snapshot but destroying the socket the instant 2xx headers arrive, so the body is never downloaded (Axis additionally completes the Digest/Basic auth handshake head-only). `fetchSnapshot()` is kept for the actual snapshot proxy and the Settings Test button.
+- Settings categories rebalanced for browsing.
+
+### Fixed
+- Settings page filter was silently broken due to a stale `settings.js` cache.
+- **ViCare** — guarded against unbounded 401 recursion in the API client.
+- `openapi.json` regenerated for the batch of new endpoints.
+
+---
+
+## 2026-07-27
+
+### Added
+- **CAN bus integration** ([`src/can-client.js`](src/can-client.js)) — reads/writes a CAN bus over SocketCAN (Linux) or SLCAN (serial USB-CAN adapter), with config-driven byte-layout signal decoding. Since NMEA 2000 / Victron VE.Can and CANopen are CAN underneath, the same mapping mechanism covers them too.
+- **Thermomix (Cookidoo) module** ([`src/thermomix-client.js`](src/thermomix-client.js)) — integrates a Vorwerk Thermomix TM6/TM7 through the Cookidoo platform (the device has no public local API), reproducing the community-reverse-engineered CIAM cookie login.
+
+### Changed
+- **Loxone XML export auto-splits over 40 commands and serves a ZIP** — Loxone Config rejects a Virtual Input/Output import with too many command recognitions. `buildInputsXml`/`buildOutputsXml` now return an array chunked at 40 commands per block; the `/loxone/inputs.xml`/`outputs.xml` routes serve a single `.xml` when it fits, or a `.zip` of numbered importable files when it doesn't, via a new dependency-free [`src/zip.js`](src/zip.js) (STORE method + CRC32). Verified: 95 sensors → 3 files of ≤40 commands each.
+- **Docker: `automations.json` now persists** (previously written to `/app` inside the container and lost on recreate — now mounted as a volume and excluded from the image via `.dockerignore`), plus a commented, ready-to-enable **MongoDB service** (bridge net, host-only 27017, named volume) matching the `mongo` config section.
+- **Aurora energy: mixes data sources per metric across brands** — the Energy section can now pull each quantity (solar/battery/grid/loads) from a different integration, e.g. PV from a Victron MPPT but the battery bank from a SolarEdge inverter. A "Sources" gear in the Energy header opens a per-metric Victron/SolarEdge toggle, persisted in `localStorage`, and only surfaces when SolarEdge is actually reporting data.
+
+### Fixed
+- Flows editor showing an empty canvas due to a stale `flows.js` cache.
+- `logo.svg` missing intrinsic width/height caused it to balloon in some contexts.
+- **React shell now served with `no-store` to stop stale-shell blank pages** — Safari treated `no-cache` loosely and kept serving an old `/react/index.html` that referenced a deleted (rebuilt) bundle hash, so the JS 404'd and the dashboard rendered blank. `index.html`/`manifest.json` are now served with `no-store, no-cache, must-revalidate`; the hashed assets stay immutable-cacheable.
+
+---
+
 ## 2026-07-26
 
 ### Added

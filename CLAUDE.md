@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-LSH ("Lightweight Smart Home") — a Node.js smart-home hub. It began as a Victron Energy dashboard and now integrates ~40 platforms (Victron, Loxone, KNX, Shelly, Sonos, IKEA, Roborock, UniFi Protect, SIP doorbells, …), exposing them through a web dashboard, REST API, Socket.IO, HomeKit, and Loxone virtual inputs/outputs.
+LSH ("Lightweight Smart Home") — a Node.js smart-home hub. It began as a Victron Energy dashboard and now integrates ~55 platforms (Victron, Loxone, KNX, Shelly, Sonos, IKEA, Roborock, UniFi Protect, SIP doorbells, …), exposing them through a web dashboard, REST API, Socket.IO, HomeKit, and Loxone virtual inputs/outputs.
 
 Plain CommonJS Node — no build step, no transpiler, **no tests, no linter**. The only compiled part is the React dashboard.
 
