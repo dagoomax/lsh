@@ -565,11 +565,15 @@ async function main() {
   }
 
   // Start AuxAir (AC Freedom) client if configured
-  if (config.auxair?.email && config.auxair?.password) {
-    const AuxAirClient = tryRequire('./src/auxair-client');
-    if (AuxAirClient) {
-      const auxair = new AuxAirClient(config, store, sensorRegistry);
-      auxair.start().catch((err) => console.error(`[AuxAir] Start failed: ${err.message}`));
+  if (config.auxair) {
+    if (!config.auxair.email || !config.auxair.password) {
+      console.warn('[AuxAir] Config present but email/password missing — client not started');
+    } else {
+      const AuxAirClient = tryRequire('./src/auxair-client');
+      if (AuxAirClient) {
+        const auxair = new AuxAirClient(config, store, sensorRegistry);
+        auxair.start().catch((err) => console.error(`[AuxAir] Start failed: ${err.message}`));
+      }
     }
   }
 

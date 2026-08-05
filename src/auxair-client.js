@@ -48,6 +48,7 @@ class AuxAirClient {
   }
 
   async start() {
+    console.log(`[AuxAir] Starting — host ${this._host}`);
     await this._login();
     const families = await this._getFamilies();
     for (const f of families) {
@@ -100,13 +101,23 @@ class AuxAirClient {
   // ── Polling ───────────────────────────────────────────────────────────────
 
   async _poll() {
+    let anyOk = !this._devices.length;
     for (const dev of this._devices) {
       try {
         const state = await this._getParams(dev);
         this._syncDevice(dev, state);
+        anyOk = true;
       } catch (err) {
         console.error(`[AuxAir] Poll error (${dev.endpointId}): ${err.message}`);
       }
+    }
+    // Every device failed this cycle — most likely the cloud session expired
+    // (nothing here refreshes it proactively). Re-login once so the next
+    // cycle has a fresh session instead of failing silently forever.
+    if (!anyOk) {
+      console.warn('[AuxAir] All devices failed to report state this cycle — re-authenticating');
+      try { await this._login(); }
+      catch (err) { console.error(`[AuxAir] Re-login failed: ${err.message}`); }
     }
   }
 
@@ -130,7 +141,22 @@ class AuxAirClient {
       },
     });
     const res = await this._req('POST', `/device/control/v2/sdkcontrol?license=${LICENSE}`, body);
-    return JSON.parse(res.event?.payload?.data || '{}');
+    const raw = res.event?.payload?.data;
+    if (!raw) {
+      // A "get" always reports at least pwr/ac_mode/temp for a real device —
+      // an empty envelope means the request failed server-side (expired
+      // session, device offline, revoked cookie), not "no state to report".
+      // Surface the actual envelope instead of silently returning {}, which
+      // previously made every read look like a no-op success.
+      throw new Error(`No state in response: ${JSON.stringify(res).slice(0, 300)}`);
+    }
+    let state;
+    try { state = JSON.parse(raw); }
+    catch { throw new Error(`Unparseable state payload: ${String(raw).slice(0, 200)}`); }
+    if (!Object.keys(state).length) {
+      throw new Error('Empty state object — device may be offline or session expired');
+    }
+    return state;
   }
 
   async _setParam(dev, param, value) {
