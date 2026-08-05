@@ -2,7 +2,7 @@
 (function () {
   const OPS = ['>', '<', '>=', '<=', '==', '!=', 'changes'];
   const ICONS = { trigger: '⚡', time: '⏰', mqttIn: '📥', condition: '⌥', device: '🔌', relay: '⏻',
-                  mqttOut: '📤', http: '🌐', notify: '🔔', scene: '✨', delay: '⏱', debug: '🐞' };
+                  mqttOut: '📤', http: '🌐', notify: '🔔', scene: '✨', delay: '⏱', debug: '🐞', virtual: '🧩' };
 
   // Node type catalogue: colour, output count, and the config fields to render.
   const TYPES = {
@@ -39,6 +39,21 @@
         row([ field('Sensor', 'text', n, 'sensor', { ph: 'switch' }),
               field('Value', 'text', n, 'value', { ph: 'on' }) ]),
       ],
+    },
+    virtual: {
+      label: 'Virtual', color: '#d946ef', outs: 1,
+      fields: (n) => {
+        n.config.sensor = 'value'; // fixed — every virtual device exposes one 'value' sensor
+        if (!VIRTUAL_DEVICES.length) {
+          return [hint('No virtual devices configured — add one in Settings → Virtual Devices.')];
+        }
+        const dev = VIRTUAL_DEVICES.find((d) => d.key === n.config.deviceKey) || VIRTUAL_DEVICES[0];
+        n.config.deviceKey = dev.key;
+        const devField = selectDynamic('Device', n, 'deviceKey',
+          () => VIRTUAL_DEVICES.map((d) => [d.key, d.label]),
+          () => { delete n.config.value; refreshNode(n); }); // old value rarely fits the new device's type
+        return [devField, ...virtualValueField(n, dev)];
+      },
     },
     relay: {
       label: 'Relay', color: '#2ee66b', outs: 1,
@@ -79,6 +94,7 @@
 
   let FLOWS = [];
   let SCENES = [];
+  let VIRTUAL_DEVICES = []; // [{ key, label, valueType }] — populated from /api/devices
   let current = null; // { id, name, enabled, nodes: [] }
 
   const GRID = 22;
@@ -110,12 +126,29 @@
     sel.addEventListener('change', () => { node.config[key] = map ? map(sel.value) : sel.value; });
     return wrapField(label, sel);
   }
-  function selectDynamic(label, node, key, getPairs) {
+  function selectDynamic(label, node, key, getPairs, onChange) {
     const sel = document.createElement('select');
     for (const [val, txt] of getPairs()) { const o = document.createElement('option'); o.value = val; o.textContent = txt; sel.appendChild(o); }
     if (node.config[key]) sel.value = node.config[key]; else node.config[key] = sel.value;
-    sel.addEventListener('change', () => { node.config[key] = sel.value; });
+    sel.addEventListener('change', () => { node.config[key] = sel.value; if (onChange) onChange(); });
     return wrapField(label, sel);
+  }
+  // Value control for a 'virtual' node — shape follows the target device's
+  // sensor type, same as the dashboard's own controls for each virtual type.
+  function virtualValueField(n, dev) {
+    switch (dev.valueType) {
+      case 'boolean':
+        return [select('Value', n, 'value', ['on', 'off'], 'on')];
+      case 'range':
+        return [field('Value', 'number', n, 'value', { ph: '0' })];
+      case 'text':
+        return [field('Value', 'text', n, 'value', { ph: 'text…' })];
+      case 'trigger':
+        n.config.value = 'on';
+        return [hint('Fires the button — no value needed.')];
+      default:
+        return [field('Value', 'text', n, 'value', { ph: 'value' })];
+    }
   }
   function wrapField(label, el) {
     const l = document.createElement('label'); l.textContent = label;
@@ -180,6 +213,15 @@
     head.querySelector('.fn-del').addEventListener('click', (e) => { e.stopPropagation(); deleteNode(node.id); });
     head.addEventListener('mousedown', (e) => startNodeDrag(e, node, el));
     canvas.appendChild(el);
+  }
+
+  // Rebuild a single node's DOM in place — used when a field choice (e.g. the
+  // 'virtual' node's device picker) changes which other fields should show.
+  function refreshNode(node) {
+    const old = canvas.querySelector(`.flow-node[data-id="${node.id}"]`);
+    if (old) old.remove();
+    renderNode(node);
+    renderWires();
   }
 
   function renderAll() {
@@ -375,9 +417,14 @@
       const dl2 = document.createElement('datalist'); dl2.id = 'device-keys';
       const r = await fetch('/api/devices'); const j = await r.json();
       const keys = new Set(), devs = new Set();
+      VIRTUAL_DEVICES = [];
       for (const d of j.data || []) {
         devs.add(d.key);
         for (const path of Object.keys(d.readings || {})) keys.add(`${d.key}/${path}`);
+        if (d.type === 'virtual') {
+          const valueSensor = (d.sensors || []).find((s) => s.path === 'value');
+          VIRTUAL_DEVICES.push({ key: d.key, label: d.label || d.key, valueType: valueSensor?.type || 'text' });
+        }
       }
       [...keys].sort().forEach(k => { const o = document.createElement('option'); o.value = k; dl1.appendChild(o); });
       [...devs].sort().forEach(k => { const o = document.createElement('option'); o.value = k; dl2.appendChild(o); });

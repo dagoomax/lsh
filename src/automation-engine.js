@@ -265,6 +265,7 @@ class AutomationEngine {
   //   trigger   { key, op, value }   entry; edge-triggered like a rule
   //   condition { op, value }        routes: output 0 = pass, output 1 = else
   //   device    { deviceKey, sensor, value }   run command, pass msg on
+  //   virtual   { deviceKey, sensor: 'value', value }   write a virtual device, pass msg on
   //   relay     { index, on }        set relay, pass msg on
   //   notify    { level, message }   toast + log, pass msg on
   //   scene     { sceneId }          run a scene, pass msg on
@@ -336,6 +337,12 @@ class AutomationEngine {
       }
       case 'device':
         await this._registry.sendCommand(c.deviceKey, c.sensor, c.value);
+        return [msg];
+      case 'virtual':
+        // Same mechanism as 'device' — a virtual device is just a device
+        // registered by VirtualClient — but scoped to a friendly picker in
+        // the editor instead of a free-text key/sensor pair.
+        await this._registry.sendCommand(c.deviceKey, c.sensor || 'value', c.value);
         return [msg];
       case 'relay':
         await this._relays.setState(Number(c.index), !!c.on);
