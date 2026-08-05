@@ -218,7 +218,16 @@ async function main() {
     res.set('Cache-Control', 'no-cache');
     res.send(customCss);
   });
-  app.use(express.static(path.join(__dirname, 'public')));
+  // Classic pages (Flows, Settings, Logs, MQTT, index, login, setup): same
+  // Safari staleness risk as the React shell above — the HTML references
+  // versioned CSS/JS via ?v=N, so if Safari caches the HTML itself, a bumped
+  // version number never takes effect for that browser. The referenced
+  // assets keep their own (versioned, safely cacheable) headers.
+  app.use(express.static(path.join(__dirname, 'public'), {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) res.setHeader('Cache-Control', NO_STORE);
+    },
+  }));
   let ffmpegRtsp = null;
   if (config.ffmpegRtsp?.enabled) {
     const FFmpegRTSP = tryRequire('./src/ffmpeg-rtsp');
