@@ -939,6 +939,31 @@ export function PlanIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+// PTZ joystick chevron — rotate via the `style` prop for the other 3 directions.
+export function ChevronIcon({ color = 'currentColor', size = 24, style }) {
+  return (
+    <svg {...s(color, size)} style={style}>
+      <path d="M6 15l6-6 6 6"/>
+    </svg>
+  )
+}
+
+export function PlusIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+  )
+}
+
+export function MinusIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M5 12h14"/>
+    </svg>
+  )
+}
+
 export const CAT_ICON_COMPONENT = {
   All:      HomeIcon,
   Victron:  GridPowerIcon,

@@ -1403,3 +1403,14 @@ body::before {
     animation: none;
   }
 }
+
+/* ── Camera modal: recent-snapshots thumbnail strip ─────────────────────── */
+.cam-snap-thumb {
+  transition: transform 0.15s, border-color 0.15s;
+}
+.cam-snap-thumb:hover {
+  transform: translateY(-2px);
+}
+.cam-snap-thumb:hover img {
+  border-color: var(--border-lt);
+}
