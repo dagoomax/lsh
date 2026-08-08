@@ -18,25 +18,19 @@
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
-const path   = require('path');
-const fs     = require('fs');
 const platformStatus = require('./platform-status');
+const { readConfigCached } = require('./config-file-cache');
 
-const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
 const POLL_DEFAULT_S = 30;
 const DEFAULT_STREAM = 'axis-media/media.amp';
 
 function loadCameras() {
-  try {
-    const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    return (cfg.axis?.cameras || []).filter((c) => c && c.host);
-  } catch { return []; }
+  const cfg = readConfigCached();
+  return (cfg.axis?.cameras || []).filter((c) => c && c.host);
 }
 function loadPollInterval() {
-  try {
-    const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    return Number(cfg.axis?.pollInterval) || POLL_DEFAULT_S;
-  } catch { return POLL_DEFAULT_S; }
+  const cfg = readConfigCached();
+  return Number(cfg.axis?.pollInterval) || POLL_DEFAULT_S;
 }
 
 // rtsp://user:pass@host:554/axis-media/media.amp (stream path configurable)

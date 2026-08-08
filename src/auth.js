@@ -22,24 +22,38 @@ function ensurePersist() {
   if (!fs.existsSync(PERSIST_DIR)) fs.mkdirSync(PERSIST_DIR, { recursive: true });
 }
 
+// In-memory cache — loadUsers()/loadTokens() are on the auth middleware's
+// hot path (every request), so they'd otherwise do a synchronous disk read
+// + JSON.parse on every single request just to check "is this array
+// non-empty" or "does this token exist". Single fork process (no cluster),
+// and saveUsers()/saveTokens() are the only mutators, so an in-process
+// cache invalidated there stays consistent with no cross-process gap.
+let _usersCache = null;
 function loadUsers() {
-  if (!fs.existsSync(USERS_FILE)) return [];
-  try { return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } catch { return []; }
+  if (_usersCache) return _usersCache;
+  if (!fs.existsSync(USERS_FILE)) return (_usersCache = []);
+  try { _usersCache = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } catch { _usersCache = []; }
+  return _usersCache;
 }
 
 function saveUsers(users) {
   ensurePersist();
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  _usersCache = users;
 }
 
+let _tokensCache = null;
 function loadTokens() {
-  if (!fs.existsSync(TOKENS_FILE)) return [];
-  try { return JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf8')); } catch { return []; }
+  if (_tokensCache) return _tokensCache;
+  if (!fs.existsSync(TOKENS_FILE)) return (_tokensCache = []);
+  try { _tokensCache = JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf8')); } catch { _tokensCache = []; }
+  return _tokensCache;
 }
 
 function saveTokens(tokens) {
   ensurePersist();
   fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
+  _tokensCache = tokens;
 }
 
 let _jwtSecret = null;

@@ -23,27 +23,21 @@
 
 const http  = require('http');
 const https = require('https');
-const path  = require('path');
-const fs    = require('fs');
 const platformStatus = require('./platform-status');
+const { readConfigCached } = require('./config-file-cache');
 
-const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
 const POLL_DEFAULT_S = 30;
 const DEFAULT_STREAM = 'mobotix.mobotix.h264';
 
 // Read cameras straight from config.json so Settings-page edits apply live
 // (same pattern as reolink-client.js).
 function loadCameras() {
-  try {
-    const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    return (cfg.mobotix?.cameras || []).filter((c) => c && c.host);
-  } catch { return []; }
+  const cfg = readConfigCached();
+  return (cfg.mobotix?.cameras || []).filter((c) => c && c.host);
 }
 function loadPollInterval() {
-  try {
-    const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    return Number(cfg.mobotix?.pollInterval) || POLL_DEFAULT_S;
-  } catch { return POLL_DEFAULT_S; }
+  const cfg = readConfigCached();
+  return Number(cfg.mobotix?.pollInterval) || POLL_DEFAULT_S;
 }
 
 // rtsp://user:pass@host:554/mobotix.mobotix.h264 (stream path configurable)

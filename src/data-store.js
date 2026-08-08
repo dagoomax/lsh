@@ -2,7 +2,10 @@ const { EventEmitter } = require('events');
 const fs   = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { promisify } = require('util');
 const { connectMongo } = require('./mongo');
+
+const gzipAsync = promisify(zlib.gzip);
 
 // Optional MongoDB persistence. When config.mongo.uri is set the snapshot
 // (current values + history) is stored as a single document; the gzip file
@@ -74,6 +77,31 @@ class DataStore extends EventEmitter {
     }
   }
 
+  // Same as persistSync(), but off the main thread for gzip + disk I/O — used
+  // by the periodic 5-min timer, where nothing needs the synchronous
+  // shutdown-safety persistSync() exists for (SIGINT/SIGTERM keep using
+  // persistSync() directly, unchanged). History/data can grow into the
+  // multi-MB range over the app's lifetime, and gzipSync + writeFileSync of
+  // that blocks every other request/socket tick in this single-process app
+  // for however long that takes, every 5 minutes, forever.
+  async persistAsync() {
+    try {
+      await fs.promises.mkdir(path.dirname(PERSIST_FILE), { recursive: true });
+      const payload = JSON.stringify({
+        savedAt: Date.now(),
+        data:    this.data,
+        history: [...this.history.entries()],
+      });
+      const gz = await gzipAsync(payload);
+      await fs.promises.writeFile(PERSIST_FILE + '.tmp', gz);
+      await fs.promises.rename(PERSIST_FILE + '.tmp', PERSIST_FILE); // atomic
+      return gz.length;
+    } catch (err) {
+      console.error(`[Store] Persist failed: ${err.message}`);
+      return 0;
+    }
+  }
+
   // ── MongoDB persistence (optional) ──────────────────────────────────────
   // Snapshot lives in one document. `data`/`history` are stored as [key, …]
   // arrays (not nested objects) so store keys containing dots never collide
@@ -116,7 +144,7 @@ class DataStore extends EventEmitter {
   }
 
   _persistAll() {
-    this.persistSync(); // gzip: always, synchronous, shutdown-safe
+    this.persistAsync().catch(() => {}); // errors already logged inside persistAsync()
     if (this._db) {
       this.persistMongo().catch((err) => console.error(`[Store] Mongo persist failed: ${err.message}`));
     }

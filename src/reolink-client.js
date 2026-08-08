@@ -18,11 +18,9 @@
 
 const http  = require('http');
 const https = require('https');
-const fs    = require('fs');
-const path  = require('path');
 const platformStatus = require('./platform-status');
+const { readConfigCached } = require('./config-file-cache');
 
-const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
 const AI_POLL_DEFAULT_S = 5;
 
 // Reolink's internal AI category names → LSH-friendly ones. Anything not
@@ -34,21 +32,13 @@ const AI_CATEGORY_ICON = { person: '🚶', vehicle: '🚗', pet: '🐾', face: '
 // Read the current Reolink cameras straight from config.json so changes saved
 // via the Settings page apply immediately — no server restart needed.
 function loadCameras() {
-  try {
-    const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    return (cfg.reolink?.cameras || []).filter((c) => c && c.host);
-  } catch {
-    return [];
-  }
+  const cfg = readConfigCached();
+  return (cfg.reolink?.cameras || []).filter((c) => c && c.host);
 }
 
 function loadAiPollInterval() {
-  try {
-    const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    return Number(cfg.reolink?.aiPollInterval) || AI_POLL_DEFAULT_S;
-  } catch {
-    return AI_POLL_DEFAULT_S;
-  }
+  const cfg = readConfigCached();
+  return Number(cfg.reolink?.aiPollInterval) || AI_POLL_DEFAULT_S;
 }
 
 // rtsp://user:pass@host:554/h264Preview_<NN>_<main|sub>  (NN = channel + 1, padded)

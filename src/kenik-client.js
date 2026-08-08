@@ -17,16 +17,14 @@
 // through LSH so the browser never sees the credentials.
 
 const { spawn } = require('child_process');
-const fs        = require('fs');
-const path      = require('path');
+const { readConfigCached } = require('./config-file-cache');
 
-const CONFIG_PATH  = path.join(__dirname, '..', 'config.json');
 const SNAP_TTL_MS  = 10000;
 const SNAP_TIMEOUT = 12000;
 
 // Read fresh from config.json so channels added via Settings apply live.
 function loadConfig() {
-  try { return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')); } catch { return {}; }
+  return readConfigCached();
 }
 
 function loadChannels() {
