@@ -45,7 +45,7 @@ function dedupeVirtualDevices(devices) {
 }
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
-  const { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, smartThings, openweather } = clients;
+  const { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, openweather } = clients;
   const manualSnapCache = new Map(); // manual camera idx → { at, buffer }, for /camera/snapshot/:idx
 
   // Secure cookie flag per request, not per server: with both HTTP and HTTPS
@@ -786,15 +786,30 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   router.post('/sonos/play-url', playUrlHandler);
   router.get('/sonos/play-url', playUrlHandler);
 
-  // SmartThings camera snapshot proxy — fetches the stored image URL and proxies the bytes
+  // SmartThings camera snapshot proxy — fetches the stored image URL and proxies the bytes.
+  // The image attribute is marked "sensitive" in SmartThings' capability schema,
+  // and its media host (…ec2.st-av.net) enforces that at the media layer, not
+  // just the device-status layer: an OAuth SmartApp access token gets a 400
+  // ("Request missing Bearer token") — turns out it *was* sending one, the
+  // media host just rejects OAuth-scoped tokens for sensitive media outright
+  // (confirmed: same request, same code, 500 "Error response from AV Platform"
+  // even with a valid OAuth token and a freshly-captured image). A Personal
+  // Access Token works. PATs created after Dec 2024 expire in 24h, so this
+  // needs a fresh one periodically from https://account.smartthings.com/tokens
+  // — falls back to the OAuth/legacy token if unset, which will 500 upstream
+  // but at least degrades to the existing "no snapshot" behavior instead of
+  // silently sending no auth at all.
   router.get('/smartthings-camera/:deviceId/snapshot', async (req, res) => {
     const { deviceId } = req.params;
     const imageUrl = store.get(`smartthings/${deviceId}/image`);
     if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
       return res.status(404).send('No snapshot available — trigger a capture first');
     }
+    const cfg = readConfigFile().smartthings || {};
+    const token = cfg.cameraToken || cfg.token
+      || (clients.smartThings ? await clients.smartThings.getToken().catch(() => null) : null);
     try {
-      const imgRes = await fetch(imageUrl);
+      const imgRes = await fetch(imageUrl, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
       if (!imgRes.ok) return res.status(502).send(`Upstream error: HTTP ${imgRes.status}`);
       res.set('Content-Type', imgRes.headers.get('content-type') || 'image/jpeg');
       res.set('Cache-Control', 'no-cache');
@@ -807,6 +822,10 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // Trigger SmartThings imageCapture.take command
   router.post('/smartthings-camera/:deviceId/take', async (req, res) => {
     const { deviceId } = req.params;
+    // clients.smartThings (not a destructured local) — the client is registered
+    // onto apiClients after createApiRoutes() already ran, so a destructured
+    // copy taken at the top of this function would stay undefined forever.
+    const smartThings = clients.smartThings;
     const token = smartThings ? await smartThings.getToken().catch(() => null)
                               : readConfigFile().smartthings?.token;
     if (!token) return res.status(401).json({ success: false, error: 'No SmartThings token configured' });
@@ -1350,6 +1369,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // SmartThings webhook endpoint for real-time state updates
   router.post('/webhooks/smartthings', (req, res) => {
+    const smartThings = clients.smartThings; // see note on the /take route above
     if (!smartThings) return res.status(503).json({ success: false, error: 'SmartThings not configured' });
 
     try {
