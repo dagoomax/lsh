@@ -601,13 +601,33 @@ function CameraModal({ cam, onClose }) {
                 {log.length === 0 && (
                   <span style={{ fontSize: 11, color: 'var(--text3)' }}>{gt('cam_no_events', 'No events yet')}</span>
                 )}
-                {log.map((entry, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, alignItems: 'baseline' }}>
-                    <span style={{ color: 'var(--text3)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{fmtLogTime(entry.ts)}</span>
-                    <span style={{ color: 'var(--text)' }}>{logLabel(entry)}</span>
-                    {entry.detail && <span style={{ color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.detail}</span>}
-                  </div>
-                ))}
+                {log.map((entry, i) => {
+                  // 'snapshot' entries' detail is the raw SmartThings media URL captured
+                  // at that moment — it 400s/500s fetched directly (needs the PAT this
+                  // app holds server-side, see api-routes.js), and the device's *current*
+                  // image may have since moved on to a newer capture, so a plain link to
+                  // it or to the always-current /snapshot route wouldn't show what this
+                  // specific event actually captured. Route through the host-allowlisted
+                  // proxy instead, which fetches this exact historical URL with auth.
+                  const isSnapshotLink = entry.type === 'snapshot' && /^https?:\/\//.test(entry.detail || '')
+                  return (
+                    <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, alignItems: 'baseline' }}>
+                      <span style={{ color: 'var(--text3)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{fmtLogTime(entry.ts)}</span>
+                      <span style={{ color: 'var(--text)' }}>{logLabel(entry)}</span>
+                      {isSnapshotLink ? (
+                        <a
+                          href={`/api/smartthings-camera/image-proxy?url=${encodeURIComponent(entry.detail)}`}
+                          target="_blank" rel="noopener noreferrer"
+                          style={{ color: 'var(--accent, #6ea8fe)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        >
+                          {gt('cam_view_image', 'View image')}
+                        </a>
+                      ) : entry.detail && (
+                        <span style={{ color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.detail}</span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </motion.div>

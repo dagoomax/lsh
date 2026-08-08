@@ -786,7 +786,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   router.post('/sonos/play-url', playUrlHandler);
   router.get('/sonos/play-url', playUrlHandler);
 
-  // SmartThings camera snapshot proxy — fetches the stored image URL and proxies the bytes.
+  // Fetches a SmartThings AV Platform media URL and proxies the bytes onto res.
   // The image attribute is marked "sensitive" in SmartThings' capability schema,
   // and its media host (…ec2.st-av.net) enforces that at the media layer, not
   // just the device-status layer: an OAuth SmartApp access token gets a 400
@@ -799,24 +799,42 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // — falls back to the OAuth/legacy token if unset, which will 500 upstream
   // but at least degrades to the existing "no snapshot" behavior instead of
   // silently sending no auth at all.
+  async function proxySmartThingsMedia(url, res) {
+    const cfg = readConfigFile().smartthings || {};
+    const token = cfg.cameraToken || cfg.token
+      || (clients.smartThings ? await clients.smartThings.getToken().catch(() => null) : null);
+    try {
+      const imgRes = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+      if (!imgRes.ok) return res.status(502).send(`Upstream error: HTTP ${imgRes.status}`);
+      res.set('Content-Type', imgRes.headers.get('content-type') || 'image/jpeg');
+      res.set('Cache-Control', 'no-cache');
+      res.send(Buffer.from(await imgRes.arrayBuffer()));
+    } catch (err) {
+      res.status(502).send('Image fetch failed: ' + err.message);
+    }
+  }
+
+  // SmartThings camera snapshot proxy — always the device's *current* image.
   router.get('/smartthings-camera/:deviceId/snapshot', async (req, res) => {
     const { deviceId } = req.params;
     const imageUrl = store.get(`smartthings/${deviceId}/image`);
     if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
       return res.status(404).send('No snapshot available — trigger a capture first');
     }
-    const cfg = readConfigFile().smartthings || {};
-    const token = cfg.cameraToken || cfg.token
-      || (clients.smartThings ? await clients.smartThings.getToken().catch(() => null) : null);
-    try {
-      const imgRes = await fetch(imageUrl, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
-      if (!imgRes.ok) return res.status(502).send(`Upstream error: HTTP ${imgRes.status}`);
-      res.set('Content-Type', imgRes.headers.get('content-type') || 'image/jpeg');
-      res.set('Cache-Control', 'no-cache');
-      res.send(Buffer.from(await imgRes.arrayBuffer()));
-    } catch (err) {
-      res.status(502).send('Snapshot fetch failed: ' + err.message);
+    await proxySmartThingsMedia(imageUrl, res);
+  });
+
+  // Same proxy, but for an arbitrary past capture's URL — lets the camera
+  // event log's "Snapshot updated" entries stay clickable after a newer
+  // capture has replaced the device's *current* image (which is all the
+  // route above can ever serve). Host allowlisted to SmartThings' own media
+  // domain so this can't be turned into an open image-fetching proxy.
+  router.get('/smartthings-camera/image-proxy', async (req, res) => {
+    const { url } = req.query;
+    if (!url || !/^https:\/\/[a-z0-9.-]+\.ec2\.st-av\.net\//i.test(url)) {
+      return res.status(400).send('Invalid or disallowed image URL');
     }
+    await proxySmartThingsMedia(url, res);
   });
 
   // Trigger SmartThings imageCapture.take command
