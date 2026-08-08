@@ -555,3 +555,4 @@ class ObjectDetectionClient {
 
 module.exports = ObjectDetectionClient;
 module.exports.slugify = slugify;
+module.exports.rawToTensor = rawToTensor;

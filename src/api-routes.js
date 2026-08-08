@@ -6,6 +6,7 @@ const { generateSetupUri, generateSetupID } = require('./homekit-uri');
 const cameraLog = require('./camera-log');
 const detectionBoxes = require('./detection-boxes');
 const { getDb } = require('./mongo');
+const { fetchMedia: fetchSmartThingsMedia } = require('./smartthings-media');
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
 
@@ -800,15 +801,11 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // but at least degrades to the existing "no snapshot" behavior instead of
   // silently sending no auth at all.
   async function proxySmartThingsMedia(url, res) {
-    const cfg = readConfigFile().smartthings || {};
-    const token = cfg.cameraToken || cfg.token
-      || (clients.smartThings ? await clients.smartThings.getToken().catch(() => null) : null);
     try {
-      const imgRes = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
-      if (!imgRes.ok) return res.status(502).send(`Upstream error: HTTP ${imgRes.status}`);
-      res.set('Content-Type', imgRes.headers.get('content-type') || 'image/jpeg');
+      const { buffer, contentType } = await fetchSmartThingsMedia(url, clients.smartThings);
+      res.set('Content-Type', contentType);
       res.set('Cache-Control', 'no-cache');
-      res.send(Buffer.from(await imgRes.arrayBuffer()));
+      res.send(buffer);
     } catch (err) {
       res.status(502).send('Image fetch failed: ' + err.message);
     }
@@ -838,26 +835,91 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // Trigger SmartThings imageCapture.take command
+  // Sends a device command through SmartThings' regular (OAuth-fine, unlike
+  // the sensitive-media routes above) command endpoint.
+  // clients.smartThings (not a destructured local) — the client is registered
+  // onto apiClients after createApiRoutes() already ran, so a destructured
+  // copy taken at the top of this function would stay undefined forever.
+  async function sendSmartThingsCommand(deviceId, capability, command, args = []) {
+    const smartThings = clients.smartThings;
+    const token = smartThings ? await smartThings.getToken().catch(() => null)
+                              : readConfigFile().smartthings?.token;
+    if (!token) throw new Error('No SmartThings token configured');
+    const r = await fetch(`https://api.smartthings.com/v1/devices/${deviceId}/commands`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commands: [{ component: 'main', capability, command, arguments: args }] }),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return token;
+  }
+
   router.post('/smartthings-camera/:deviceId/take', async (req, res) => {
     const { deviceId } = req.params;
-    // clients.smartThings (not a destructured local) — the client is registered
-    // onto apiClients after createApiRoutes() already ran, so a destructured
-    // copy taken at the top of this function would stay undefined forever.
+    try {
+      await sendSmartThingsCommand(deviceId, 'imageCapture', 'take');
+      // Resolve camera name from registry for log
+      const dev = sensorRegistry?.getDevices?.()?.find?.(d => d.instance === deviceId);
+      cameraLog.push(dev?.label || deviceId, 'capture-triggered');
+      res.json({ success: true, message: 'Capture triggered — snapshot will update within a few seconds' });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  // Camera position presets (cameraPreset capability) — SmartThings exposes
+  // save/recall of named positions for this camera, not live directional
+  // pan/tilt/zoom movement (no "move" command exists in its capability set,
+  // confirmed against the live capability schema). "create" with no data
+  // argument has the device capture its own current position; there's no
+  // API-level way to move the camera first, so this only usefully saves
+  // wherever it's already pointed (e.g. after repositioning it by hand or
+  // via the SmartThings app itself).
+  router.get('/smartthings-camera/:deviceId/presets', async (req, res) => {
+    const { deviceId } = req.params;
     const smartThings = clients.smartThings;
     const token = smartThings ? await smartThings.getToken().catch(() => null)
                               : readConfigFile().smartthings?.token;
     if (!token) return res.status(401).json({ success: false, error: 'No SmartThings token configured' });
     try {
-      const r = await fetch(`https://api.smartthings.com/v1/devices/${deviceId}/commands`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commands: [{ component: 'main', capability: 'imageCapture', command: 'take' }] }),
+      const r = await fetch(`https://api.smartthings.com/v1/devices/${deviceId}/status`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      // Resolve camera name from registry for log
-      const dev = sensorRegistry?.getDevices?.()?.find?.(d => d.instance === deviceId);
-      cameraLog.push(dev?.label || deviceId, 'capture-triggered');
-      res.json({ success: true, message: 'Capture triggered — snapshot will update within a few seconds' });
+      const status = await r.json();
+      res.json({ success: true, data: status.components?.main?.cameraPreset?.presets?.value || [] });
+    } catch (err) {
+      res.status(502).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/smartthings-camera/:deviceId/presets', async (req, res) => {
+    const { deviceId } = req.params;
+    const name = String(req.body?.name || '').trim();
+    if (!name) return res.status(400).json({ success: false, error: 'name required' });
+    try {
+      await sendSmartThingsCommand(deviceId, 'cameraPreset', 'create', [name]);
+      res.json({ success: true, message: 'Preset saved' });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/smartthings-camera/:deviceId/presets/:presetId/execute', async (req, res) => {
+    const { deviceId, presetId } = req.params;
+    try {
+      await sendSmartThingsCommand(deviceId, 'cameraPreset', 'execute', [presetId]);
+      res.json({ success: true });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.delete('/smartthings-camera/:deviceId/presets/:presetId', async (req, res) => {
+    const { deviceId, presetId } = req.params;
+    try {
+      await sendSmartThingsCommand(deviceId, 'cameraPreset', 'delete', [presetId]);
+      res.json({ success: true });
     } catch (err) {
       res.json({ success: false, error: err.message });
     }

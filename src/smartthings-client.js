@@ -27,6 +27,21 @@ const POLL_INTERVAL_MS = 5000;
 // Refresh the access token this long before it actually expires
 const TOKEN_REFRESH_MARGIN_MS = 10 * 60 * 1000;
 
+// A motion event triggers imageCapture.take so the thumbnail reflects what
+// actually tripped the sensor, not whatever was last manually captured.
+// Cooldown avoids re-triggering (and re-running detection) on every single
+// poll while motion flaps active/inactive, and re-hitting SmartThings' API
+// that hard. SmartThings needs a few seconds to actually process+upload a
+// capture before the image attribute updates — confirmed empirically, not
+// documented — so detection runs off a delayed check, not immediately.
+const MOTION_CAPTURE_COOLDOWN_MS = 60_000;
+const CAPTURE_TO_IMAGE_DELAY_MS  = 8_000;
+// How long a person detection stays "on" with no corroborating re-detection
+// before auto-clearing — this client is motion-*event*-driven (unlike
+// object-detection.js's continuous poll), so there's no natural next poll
+// to hang an auto-clear off; a plain timer does the same job.
+const PERSON_CLEAR_MS = 2 * 60_000;
+
 // Capability → sensor metadata.
 // type: 'toggle' | 'range' | 'color' | 'color-temp' (controls UI rendering)
 const CAPABILITIES = {
@@ -136,6 +151,10 @@ class SmartThingsClient {
     this._prevCamState    = new Map(); // tracks prev value for change-detection on camera devices
     this._oauth           = null; // { access_token, refresh_token, expires_at }
     this._refreshing      = null; // in-flight refresh promise (dedupes concurrent refreshes)
+    this._lastMotionCaptureAt = new Map(); // deviceId → ms, cooldown for motion-triggered capture
+    this._personClearTimers  = new Map(); // deviceId → Timeout, auto-clears personDetected
+    this._cocoModel        = null;
+    this._cocoLoading      = null; // in-flight model-load promise (dedupes concurrent loads)
   }
 
   async start() {
@@ -167,6 +186,8 @@ class SmartThingsClient {
 
   stop() {
     if (this.pollTimer) clearInterval(this.pollTimer);
+    for (const t of this._personClearTimers.values()) clearTimeout(t);
+    this._personClearTimers.clear();
     this.connected = false;
     console.log('[SmartThings] Stopped');
   }
@@ -300,6 +321,18 @@ class SmartThingsClient {
       // Determine HomeKit types — order matters: specific types take precedence over generic switch
       const homekitTypes = _deriveHomekitTypes(caps);
 
+      // Synthetic — not a real SmartThings capability. imageCapture-bearing
+      // devices get local person detection (TensorFlow COCO-SSD run on a
+      // motion-triggered capture, see _onMotionCapture); this is what that
+      // feeds. 'occupancy' rather than 'motion' for the HomeKit type since
+      // motionSensor already claims 'motion' and HomeKit bridging only picks
+      // the first sensor of a given type per device (see homekit-bridge.js).
+      const isCamera = caps.has('imageCapture');
+      if (isCamera) {
+        sensors.push({ path: 'personDetected', name: 'Person Detected', sensorType: 'motion', format: 'on-off', homekit: 'occupancy' });
+        homekitTypes.push('occupancy');
+      }
+
       const deviceId = item.deviceId;
       const device = {
         key:       `smartthings/${deviceId}`,
@@ -311,7 +344,7 @@ class SmartThingsClient {
         sensors,
         homekit:   homekitTypes,
         _caps:     caps,
-        _isCamera: caps.has('imageCapture'),
+        _isCamera: isCamera,
         _writeCapability: (capId, command, args = []) => this._writeDevice(deviceId, capId, command, args),
       };
 
@@ -381,7 +414,11 @@ class SmartThingsClient {
         const prev     = this._prevCamState.get(stateKey);
         if (value !== prev) {
           this._prevCamState.set(stateKey, value);
-          if (value === 1 && def.storeAttr === 'motion') cameraLog.push(device.label, 'motion');
+          if (value === 1 && def.storeAttr === 'motion') {
+            cameraLog.push(device.label, 'motion');
+            this._onMotionCapture(device).catch((err) =>
+              console.error(`[SmartThings] Motion-triggered capture failed for ${device.label}: ${err.message}`));
+          }
           if (value === 1 && def.storeAttr === 'sound')  cameraLog.push(device.label, 'sound');
           if (def.storeAttr === 'image' && typeof value === 'string' && value.startsWith('http')) {
             cameraLog.push(device.label, 'snapshot', value);
@@ -389,6 +426,78 @@ class SmartThingsClient {
         }
       }
     }
+  }
+
+  // ── Motion-triggered capture + person detection ───────────
+
+  async _onMotionCapture(device) {
+    const deviceId = device.instance;
+    const now  = Date.now();
+    const last = this._lastMotionCaptureAt.get(deviceId) || 0;
+    if (now - last < MOTION_CAPTURE_COOLDOWN_MS) return;
+    this._lastMotionCaptureAt.set(deviceId, now);
+
+    await this._writeDevice(deviceId, 'imageCapture', 'take');
+
+    // Not awaited — _pollDevice must not block on this. SmartThings takes a
+    // few seconds to actually process+upload the capture before the image
+    // attribute updates, so there's nothing to detect on yet regardless.
+    setTimeout(() => {
+      this._detectPerson(device).catch((err) =>
+        console.error(`[SmartThings] Person detection failed for ${device.label}: ${err.message}`));
+    }, CAPTURE_TO_IMAGE_DELAY_MS);
+  }
+
+  async _detectPerson(device) {
+    const imageUrl = this.store.get(`${device.key}/image`);
+    if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) return;
+
+    const { fetchMedia } = require('./smartthings-media');
+    const { buffer } = await fetchMedia(imageUrl, this);
+
+    // Lazy requires: tfjs + coco-ssd are a real load cost (model weights,
+    // CPU backend init) that no installation without a SmartThings camera
+    // should pay for. rawToTensor is object-detection.js's already-correct
+    // RGBA→RGB conversion — reused via a deferred require for the same
+    // reason (object-detection.js's own top-level requires pull in tfjs
+    // unconditionally the moment that module is loaded).
+    const jpeg = require('jpeg-js');
+    const model = await this._getDetectionModel();
+    const { rawToTensor } = require('./object-detection');
+
+    const raw = jpeg.decode(buffer, { useTArray: true });
+    const tensor = rawToTensor(raw);
+    let predictions;
+    try {
+      predictions = await model.detect(tensor);
+    } finally {
+      tensor.dispose();
+    }
+
+    const minConfidence = this.config.smartthings?.minConfidence ?? 0.5;
+    const person = predictions.find((p) => p.class === 'person' && p.score >= minConfidence);
+
+    this.store.update(`${device.key}/personDetected`, person ? 1 : 0);
+    clearTimeout(this._personClearTimers.get(device.instance));
+    if (person) {
+      cameraLog.push(device.label, 'object', `person (${Math.round(person.score * 100)}%)`);
+      this._personClearTimers.set(device.instance, setTimeout(() => {
+        this.store.update(`${device.key}/personDetected`, 0);
+      }, PERSON_CLEAR_MS));
+    }
+  }
+
+  async _getDetectionModel() {
+    if (this._cocoModel) return this._cocoModel;
+    if (!this._cocoLoading) {
+      this._cocoLoading = (async () => {
+        require('@tensorflow/tfjs-backend-cpu');
+        const cocoSsd = require('@tensorflow-models/coco-ssd');
+        this._cocoModel = await cocoSsd.load();
+        return this._cocoModel;
+      })();
+    }
+    return this._cocoLoading;
   }
 
   // ── Auth ─────────────────────────────────────────────────

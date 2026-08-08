@@ -267,6 +267,94 @@ function PtzPad({ ptzUrl }) {
   )
 }
 
+// ── SmartThings camera position presets ────────────────────────────────────
+// Not live PTZ movement — SmartThings' cameraPreset capability only supports
+// save/recall of named positions (no pan/tilt/zoom "move" command exists in
+// this camera's capability set). "Save" captures wherever it's currently
+// pointed; there's no API-level way to move it first.
+function CameraPresets({ deviceId }) {
+  const [open, setOpen] = useState(false)
+  const [presets, setPresets] = useState([])
+  const [newName, setNewName] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const load = useCallback(() => {
+    if (!deviceId) return
+    fetch(`/api/smartthings-camera/${deviceId}/presets`)
+      .then(r => r.json())
+      .then(({ data }) => setPresets(data || []))
+      .catch(() => {})
+  }, [deviceId])
+
+  useEffect(() => { if (open) load() }, [open, load])
+
+  if (!deviceId) return null
+
+  const create = async () => {
+    const name = newName.trim()
+    if (!name) return
+    setBusy(true)
+    try {
+      await fetch(`/api/smartthings-camera/${deviceId}/presets`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      setNewName('')
+      setTimeout(load, 2000) // SmartThings needs a moment to register the new preset
+    } finally { setBusy(false) }
+  }
+
+  const execute = (id) => {
+    fetch(`/api/smartthings-camera/${deviceId}/presets/${id}/execute`, { method: 'POST' }).catch(() => {})
+  }
+
+  const remove = async (id) => {
+    setPresets(p => p.filter(x => x.id !== id))
+    try { await fetch(`/api/smartthings-camera/${deviceId}/presets/${id}`, { method: 'DELETE' }) } catch { /* already optimistically removed */ }
+  }
+
+  return (
+    <div style={{ position: 'absolute', left: 10, top: 10 }} onClick={e => e.stopPropagation()}>
+      <button className="mini-btn" onClick={() => setOpen(o => !o)}
+        style={{
+          borderRadius: 9, padding: '6px 10px', fontSize: 12, fontWeight: 700, color: '#e9eef5',
+          background: 'rgba(10,14,20,0.65)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        }}>
+        📍 {gt('cam_presets', 'Presets')}
+      </button>
+      {open && (
+        <div style={{
+          marginTop: 6, width: 200, background: 'rgba(10,14,20,0.9)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+          border: '1px solid var(--border)', borderRadius: 10, padding: 8, display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          {presets.length === 0 && (
+            <span style={{ fontSize: 11, color: 'var(--text3)' }}>{gt('cam_no_presets', 'No presets yet')}</span>
+          )}
+          {presets.map(p => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={() => execute(p.id)}
+                style={{ flex: 1, textAlign: 'left', fontSize: 12, color: '#e9eef5', background: 'transparent', border: 'none', padding: '2px 0', cursor: 'pointer' }}>
+                {p.name}
+              </button>
+              <button onClick={() => remove(p.id)}
+                style={{ fontSize: 11, color: 'var(--text3)', background: 'transparent', border: 'none', cursor: 'pointer' }}>✕</button>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+            <input value={newName} onChange={e => setNewName(e.target.value)}
+              placeholder={gt('cam_preset_name', 'Name')}
+              style={{ flex: 1, minWidth: 0, fontSize: 11, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.06)', color: '#e9eef5' }} />
+            <button className="mini-btn" disabled={busy || !newName.trim()} onClick={create}
+              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, flexShrink: 0 }}>
+              {gt('save', 'Save')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Modal ────────────────────────────────────────────────────────────────
 function CameraModal({ cam, onClose }) {
   const videoRef      = useRef(null)
@@ -504,6 +592,7 @@ function CameraModal({ cam, onClose }) {
               )}
               <DetectionBoxesOverlay containerRef={previewRef} boxes={boxes} />
               <PtzPad ptzUrl={cam?.ptzUrl} />
+              <CameraPresets deviceId={cam?._smartthings ? cam._deviceId : null} />
               {canTalk && (
                 <button className="mini-btn"
                   onPointerDown={talkStart} onPointerUp={talkStop} onPointerLeave={talkStop} onPointerCancel={talkStop}
