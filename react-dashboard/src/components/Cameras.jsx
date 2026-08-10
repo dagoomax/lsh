@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { io } from 'socket.io-client'
-import { CameraIcon } from './Icons'
+import { CameraIcon, ChevronIcon, PlusIcon, MinusIcon } from './Icons'
 import { gt } from '../i18n'
 
 // Full-parity port of the classic dashboard's camera grid + modal
@@ -19,13 +19,34 @@ const LOG_LABELS = {
   recording:           '🔴 HKSV recording',
 }
 // object-detection.js pushes 'object' events for every COCO-SSD class it
-// sees (detail: "<class> (<score>%)") — cats/dogs get their own paw icon
-// here rather than the generic target one everything else falls back to.
+// sees (detail: "<class> (<score>%)"). "Pet detected" vs "Object detected"
+// wording is still binary (cat/dog/bird/horse vs everything else), but the
+// icon itself is now per-class via CLASS_ICONS rather than a single 🎯
+// catch-all, so a person, a car and a package read differently at a glance.
 const PET_CLASSES = new Set(['cat', 'dog', 'bird', 'horse'])
+// Full 80-class COCO-SSD vocabulary (the model @tensorflow-models/coco-ssd
+// ships with) — keyed by the exact class string object-detection.js emits.
+const CLASS_ICONS = {
+  person: '🧍', bicycle: '🚲', car: '🚗', motorcycle: '🏍️', airplane: '✈️', bus: '🚌', train: '🚆', truck: '🚚', boat: '⛵',
+  'traffic light': '🚦', 'fire hydrant': '🚒', 'stop sign': '🛑', 'parking meter': '🅿️', bench: '🪑',
+  bird: '🐦', cat: '🐱', dog: '🐶', horse: '🐴', sheep: '🐑', cow: '🐄', elephant: '🐘', bear: '🐻', zebra: '🦓', giraffe: '🦒',
+  backpack: '🎒', umbrella: '☂️', handbag: '👜', tie: '👔', suitcase: '🧳',
+  frisbee: '🥏', skis: '🎿', snowboard: '🏂', 'sports ball': '⚽', kite: '🪁', 'baseball bat': '🏏', 'baseball glove': '🧤',
+  skateboard: '🛹', surfboard: '🏄', 'tennis racket': '🎾',
+  bottle: '🍾', 'wine glass': '🍷', cup: '☕', fork: '🍴', knife: '🔪', spoon: '🥄', bowl: '🥣',
+  banana: '🍌', apple: '🍎', sandwich: '🥪', orange: '🍊', broccoli: '🥦', carrot: '🥕', 'hot dog': '🌭', pizza: '🍕', donut: '🍩', cake: '🍰',
+  chair: '🪑', couch: '🛋️', 'potted plant': '🪴', bed: '🛏️', 'dining table': '🍽️', toilet: '🚽',
+  tv: '📺', laptop: '💻', mouse: '🖱️', remote: '🎛️', keyboard: '⌨️', 'cell phone': '📱',
+  microwave: '🍲', oven: '🔥', toaster: '🍞', sink: '🚰', refrigerator: '🧊',
+  book: '📖', clock: '🕐', vase: '🏺', scissors: '✂️', 'teddy bear': '🧸', 'hair drier': '💨', toothbrush: '🪥',
+}
+function classIcon(cls) {
+  return CLASS_ICONS[cls] || (PET_CLASSES.has(cls) ? '🐾' : '🎯')
+}
 function logLabel(entry) {
   if (entry.type === 'object') {
     const cls = (entry.detail || '').split(' ')[0]
-    return PET_CLASSES.has(cls) ? '🐾 Pet detected' : '🎯 Object detected'
+    return `${classIcon(cls)} ${PET_CLASSES.has(cls) ? 'Pet detected' : 'Object detected'}`
   }
   return LOG_LABELS[entry.type] || entry.type
 }
@@ -98,7 +119,7 @@ function DetectionBoxesOverlay({ containerRef, boxes }) {
               fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 4,
               background: color, color: '#14161c',
             }}>
-              {isPet ? '🐾 ' : ''}{b.class} {Math.round(b.score * 100)}%
+              {classIcon(b.class)} {b.class} {Math.round(b.score * 100)}%
             </span>
           </div>
         )
@@ -215,25 +236,22 @@ function CameraCard({ cam, onOpen }) {
 }
 
 // ── PTZ pad — continuous move: op fires on press, 'stop' fires on release ──
-const PTZ_GRID = {
-  display: 'grid',
-  gridTemplateAreas: '".  up   zin" "left . right" ". down zout"',
-  gridTemplateColumns: '36px 36px 36px',
-  gridTemplateRows:    '36px 36px 36px',
-  gap: 4,
-  position: 'absolute', right: 10, bottom: 10,
-}
-const PTZ_BTNS = [
-  { op: 'up',      area: 'up',   label: '▲' },
-  { op: 'left',    area: 'left', label: '◀' },
-  { op: 'right',   area: 'right',label: '▶' },
-  { op: 'down',    area: 'down', label: '▼' },
-  { op: 'zoomin',  area: 'zin',  label: '＋' },
-  { op: 'zoomout', area: 'zout', label: '−' },
+// Glass joystick disc (4 chevrons around a center hub) plus a separate
+// zoom pill, mirroring the Ring/Nest-style camera control convention.
+const PTZ_DIRS = [
+  { op: 'up',    angle: 0,   pos: { top: 3, left: '50%' },    origin: 'translateX(-50%)' },
+  { op: 'right', angle: 90,  pos: { top: '50%', right: 3 },   origin: 'translateY(-50%)' },
+  { op: 'down',  angle: 180, pos: { bottom: 3, left: '50%' }, origin: 'translateX(-50%)' },
+  { op: 'left',  angle: 270, pos: { top: '50%', left: 3 },    origin: 'translateY(-50%)' },
+]
+const PTZ_ZOOM = [
+  { op: 'zoomin',  Icon: PlusIcon },
+  { op: 'zoomout', Icon: MinusIcon },
 ]
 
 function PtzPad({ ptzUrl }) {
   const activeRef = useRef(false)
+  const [pressed, setPressed] = useState(null)
   const send = useCallback(async (op) => {
     if (!ptzUrl) return
     try {
@@ -247,22 +265,57 @@ function PtzPad({ ptzUrl }) {
 
   if (!ptzUrl) return null
 
+  const press = op => e => { e.preventDefault(); activeRef.current = true; setPressed(op); send(op) }
+  const release = () => { if (activeRef.current) { activeRef.current = false; setPressed(null); send('stop') } }
+
   return (
-    <div style={PTZ_GRID}>
-      {PTZ_BTNS.map(({ op, area, label }) => (
-        <button key={op} className="mini-btn"
-          onPointerDown={e => { e.preventDefault(); activeRef.current = true; send(op) }}
-          onPointerUp={() => { if (activeRef.current) { activeRef.current = false; send('stop') } }}
-          onPointerLeave={() => { if (activeRef.current) { activeRef.current = false; send('stop') } }}
-          onPointerCancel={() => { if (activeRef.current) { activeRef.current = false; send('stop') } }}
-          style={{
-            gridArea: area, borderRadius: 9, color: '#e9eef5', fontSize: 14,
-            background: 'rgba(10,14,20,0.65)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-            touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none',
-          }}>
-          {label}
-        </button>
-      ))}
+    <div style={{ position: 'absolute', right: 12, bottom: 12, display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+      <div style={{
+        display: 'flex', flexDirection: 'column', borderRadius: 12, overflow: 'hidden',
+        background: 'rgba(10,14,20,0.55)', border: '1px solid rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+      }}>
+        {PTZ_ZOOM.map(({ op, Icon }) => (
+          <button key={op}
+            onPointerDown={press(op)} onPointerUp={release} onPointerLeave={release} onPointerCancel={release}
+            style={{
+              width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: 'none', cursor: 'pointer', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none',
+              color: '#e9eef5', background: pressed === op ? 'color-mix(in srgb, var(--accent) 55%, transparent)' : 'transparent',
+              transition: 'background 0.12s',
+            }}>
+            <Icon size={15} />
+          </button>
+        ))}
+      </div>
+
+      <div style={{
+        position: 'relative', width: 92, height: 92, borderRadius: '50%',
+        background: 'radial-gradient(circle at 50% 42%, rgba(255,255,255,0.07), rgba(10,14,20,0.6) 72%)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+      }}>
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%', width: 10, height: 10, borderRadius: '50%',
+          transform: 'translate(-50%,-50%)', background: 'rgba(255,255,255,0.16)',
+        }} />
+        {PTZ_DIRS.map(({ op, angle, pos, origin }) => (
+          <button key={op}
+            onPointerDown={press(op)} onPointerUp={release} onPointerLeave={release} onPointerCancel={release}
+            style={{
+              position: 'absolute', ...pos, width: 30, height: 30, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none',
+              cursor: 'pointer', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none',
+              color: '#e9eef5',
+              background: pressed === op ? 'color-mix(in srgb, var(--accent) 60%, transparent)' : 'rgba(255,255,255,0.05)',
+              boxShadow: pressed === op ? '0 0 14px color-mix(in srgb, var(--accent) 65%, transparent)' : 'none',
+              transform: `${origin} scale(${pressed === op ? 0.9 : 1})`,
+              transition: 'background 0.12s, box-shadow 0.12s, transform 0.1s',
+            }}>
+            <ChevronIcon size={14} style={{ transform: `rotate(${angle}deg)` }} />
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -617,7 +670,7 @@ function CameraModal({ cam, onClose }) {
                     <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{gt('cam_stats_today', 'Today')}</span>
                     {stats.today.map(s => (
                       <span key={s.class} style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: 'var(--white-05)', border: '1px solid var(--border)' }}>
-                        {PET_CLASSES.has(s.class) ? '🐾' : '🎯'} {s.class} ×{s.count}
+                        {classIcon(s.class)} {s.class} ×{s.count}
                       </span>
                     ))}
                   </div>
@@ -635,12 +688,12 @@ function CameraModal({ cam, onClose }) {
               </div>
             )}
 
-            {/* detection timeline — thumbnail gallery of annotated Mongo
+            {/* recent snapshots — thumbnail gallery of annotated Mongo
                 snapshots, one per poll (see the /objectdetect/timeline route) */}
             {timeline && timeline.length > 0 && (
               <div style={{ margin: '10px 18px 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{gt('cam_timeline', 'Detection timeline')}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{gt('cam_timeline', 'Recent snapshots')}</span>
                   {timelineClasses.length > 1 && (
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       <button onClick={() => { setClassFilter('all'); setLightboxIndex(null) }} style={{
@@ -655,7 +708,7 @@ function CameraModal({ cam, onClose }) {
                           border: '1px solid var(--border)',
                           background: classFilter === cls ? 'var(--accent)' : 'var(--white-05)',
                           color: classFilter === cls ? '#fff' : 'var(--text2)',
-                        }}>{PET_CLASSES.has(cls) ? '🐾' : '🎯'} {cls}</button>
+                        }}>{classIcon(cls)} {cls}</button>
                       ))}
                     </div>
                   )}
@@ -665,14 +718,14 @@ function CameraModal({ cam, onClose }) {
                 ) : (
                   <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '6px 0 2px' }}>
                     {filteredTimeline.map((entry, i) => (
-                      <button key={entry.imageId} onClick={() => setLightboxIndex(i)}
+                      <button key={entry.imageId} className="cam-snap-thumb" onClick={() => setLightboxIndex(i)}
                         title={`${fmtLogTime(entry.ts)} — ${entry.classes.map(c => c.class).join(', ')}`}
                         style={{ flexShrink: 0, width: 96, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
                         <img src={`/api/objectdetect/image/${entry.imageId}`} alt={entry.classes.map(c => c.class).join(', ')}
                           loading="lazy"
                           style={{ width: 96, height: 54, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
                         <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {fmtLogTime(entry.ts)} · {entry.classes.map(c => (PET_CLASSES.has(c.class) ? '🐾' : '🎯') + c.class).join(', ')}
+                          {fmtLogTime(entry.ts)} · {entry.classes.map(c => classIcon(c.class) + ' ' + c.class).join(', ')}
                         </div>
                       </button>
                     ))}
@@ -744,7 +797,7 @@ function CameraModal({ cam, onClose }) {
                     ◀
                   </button>
                   <span>
-                    {fmtLogTime(filteredTimeline[lightboxIndex].ts)} — {filteredTimeline[lightboxIndex].classes.map(c => `${PET_CLASSES.has(c.class) ? '🐾 ' : ''}${c.class} ${Math.round(c.score * 100)}%`).join(', ')}
+                    {fmtLogTime(filteredTimeline[lightboxIndex].ts)} — {filteredTimeline[lightboxIndex].classes.map(c => `${classIcon(c.class)} ${c.class} ${Math.round(c.score * 100)}%`).join(', ')}
                     <span style={{ color: 'rgba(255,255,255,0.5)', marginLeft: 10 }}>{lightboxIndex + 1} / {filteredTimeline.length}</span>
                   </span>
                   <button onClick={e => { e.stopPropagation(); setLightboxIndex(i => Math.min(filteredTimeline.length - 1, i + 1)) }}
