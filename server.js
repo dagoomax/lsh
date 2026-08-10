@@ -2,6 +2,7 @@ const http         = require('http');
 const https        = require('https');
 const express      = require('express');
 const path         = require('path');
+const fs           = require('fs');
 const cookieParser = require('cookie-parser');
 require('./src/logger').install(); // must be first — patches console before any other module logs
 
@@ -382,7 +383,26 @@ async function main() {
     if (SmartThingsClient) {
       smartThings = new SmartThingsClient(config, store, sensorRegistry);
       apiClients.smartThings = smartThings;
-      smartThings.start().catch((err) => console.error(`[SmartThings] Start failed: ${err.message}`));
+      const smartThingsStarted = smartThings.start();
+      smartThingsStarted.catch((err) => console.error(`[SmartThings] Start failed: ${err.message}`));
+
+      // Deliver the current SmartThings bearer token to a file every 24h, so
+      // it's available for pasting into tools outside LSH without having to
+      // dig through persist/smartthings-oauth.json.
+      if (config.smartthings.clientId && config.smartthings.clientSecret) {
+        const deliverToken = async () => {
+          try {
+            const token = await smartThings.getToken();
+            const out = path.join(__dirname, 'persist', 'smartthings-token-latest.txt');
+            fs.writeFileSync(out, `${token}\ndelivered_at: ${new Date().toISOString()}\n`);
+            console.log(`[SmartThings] Token delivered to ${out}`);
+          } catch (err) {
+            console.error(`[SmartThings] Token delivery failed: ${err.message}`);
+          }
+        };
+        smartThingsStarted.then(deliverToken, () => {});
+        setInterval(deliverToken, 24 * 60 * 60 * 1000);
+      }
     }
   }
 
