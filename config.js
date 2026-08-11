@@ -33,6 +33,7 @@ function loadConfig() {
     // Only active when a uri is present (env var wins); otherwise the app uses
     // gzipped-JSON persistence in persist/ exactly as before.
     mongo: (process.env.MONGO_URI || fileConfig.mongo?.uri) ? {
+      ...fileConfig.mongo,
       uri: process.env.MONGO_URI || fileConfig.mongo?.uri,
       db:  process.env.MONGO_DB  || fileConfig.mongo?.db || 'lsh',
     } : undefined,

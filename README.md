@@ -327,11 +327,14 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 ```json
 "mongo": {
   "uri": "mongodb://host:27017",
-  "db": "lsh"
+  "db": "lsh",
+  "historyRetentionDays": 90
 }
 ```
 
 Optional. When a `uri` is set, the **DataStore** (live sensor values + history) is persisted to MongoDB instead of the default gzipped-JSON file — stored as a single snapshot document in the `store` collection, upserted every 5 minutes and on shutdown. The gzipped file (`persist/store-data.json.gz`) is still written every cycle as a synchronous, shutdown-safe **fallback**: if Mongo is unreachable at startup the app logs a warning and restores from the local file instead, so a database outage never loses data or blocks shutdown. Leave the section out (or `uri` empty) to keep pure file persistence — nothing else changes. Overridable via `MONGO_URI` / `MONGO_DB` env vars.
+
+**Long-range history graphs.** The in-memory history ring buffer that backs the dashboard's charts only holds ~6h per sensor (720 points, 30s resolution) — that snapshot document above doesn't extend it, since it's just a periodic overwrite of the same bounded buffer. With Mongo configured, every point that lands in the ring buffer is *also* appended to its own `sensorHistory` collection (`{key, t, v}` documents, batched and flushed every 60s) — genuine append-only time-series data, independent of the 6h RAM window. A TTL index prunes it automatically after `historyRetentionDays` (default 90; changing it later updates the existing index in place, no manual DB work needed). The dashboard's chart range buttons (1h/6h/**24h/7d/30d**/All) fetch the wider ranges via `GET /api/history/:key?hours=N` — the 24h/7d/30d buttons only appear once `GET /api/history-status` confirms Mongo history is actually available, so they don't sit there as dead controls on a file-persistence-only install. Large ranges are bucket-averaged server-side to ≤2000 points before being sent to the browser.
 
 ### `vrm`
 
@@ -376,6 +379,8 @@ Leave `deviceIds` empty to discover all devices. Or supply a list of device UUID
 3. Restart LSH. The client refreshes the access token automatically before expiry and persists the rotated refresh token, so no further manual steps. (The refresh token only dies after 30 days *unused* — i.e. if LSH is off that long — in which case re-run step 2.)
 
 **Auth — PAT (legacy).** A `token` from [account.smartthings.com/tokens](https://account.smartthings.com/tokens) still works, but only pre-2025 tokens are long-lived.
+
+**Bearer token export.** With OAuth configured, LSH writes the current access token to `persist/smartthings-token-latest.txt` on startup and every 24h after — handy for pasting into `curl`/tools outside LSH without digging through `persist/smartthings-oauth.json`. Read it back via `GET /api/settings/smartthings-token` (also shown on the Settings page, under the Aeotec 360 Camera section).
 
 ### `loxone`
 
@@ -1412,6 +1417,18 @@ Controls **MC6-based mini-split / AC controllers** (the WiFi-to-IR bridge boards
 
 **Sensors:** temperature, humidity, setpoint (5-35°C, controllable), mode (`cool`/`heat`/`fan_only`/`dry`, read-only), fan speed (`high`/`medium`/`low`/`auto`, read-only), on/off (controllable). Bridged to HomeKit as a temperature sensor.
 
+**Timers & schedules:** each device supports a one-shot countdown timer and any number of recurring daily on/off schedule entries, driven via REST (no Settings UI yet — see `docs/lsh-api-endpoints.md`):
+
+```
+POST   /api/mc6/:mac/timer          { "minutes": 30, "action": "off" }   # one-shot, fires once then clears
+DELETE /api/mc6/:mac/timer                                               # cancel the countdown
+POST   /api/mc6/:mac/schedule       { "time": "22:00", "action": "off", "days": [1,2,3,4,5] }  # days omitted = every day
+DELETE /api/mc6/:mac/schedule/:id
+GET    /api/mc6/:mac/schedule                                           # { countdown, daily: [...] }
+```
+
+Both are persisted to `persist/mc6-schedules.json` and survive an LSH restart — the countdown re-arms against its original target time, and daily entries keep firing at `HH:MM` (checked every 30s, guarded so each entry fires at most once per day).
+
 ---
 
 ### `vents`
@@ -1671,7 +1688,10 @@ Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standa
 - `channel` — 0 for a standalone camera, or the NVR channel index
 - `stream` — `main` (full-res) or `sub` (low-res); default `main`
 - `https` / `port` — override the snapshot transport (defaults: HTTP on port 80)
-- `ptz: true` — shows a PTZ pad in the camera modal, driven by Reolink's `PtzCtrl` API (press-and-hold arrows / zoom, released = stop)
+- `ptz: true` — shows a PTZ pad in the camera modal, driven by Reolink's `PtzCtrl` API (press-and-hold arrows / zoom, released = stop). Also enables a **presets** row (list + goto only — Reolink's CGI API has no documented "save preset" call, so presets must be created on-camera via the Reolink app/NVR UI first) and a **patrol** toggle (`PtzCtrl` start/stop-patrol — best-effort, reported unreliable on some models/firmware)
+- `ir: true` — adds a night-vision toggle (`GetIrLights`/`SetIrLights`; some models only support Auto/Off, no explicit On)
+- `floodlight: true` — adds a white-LED on/off toggle (`GetWhiteLed`/`SetWhiteLed`), preserving whatever brightness is already configured on the camera
+- `siren: true` — adds a manual siren trigger (`AudioAlarmPlay`) — momentary, no persistent on/off state
 
 **AI object detection** — cameras with onboard AI (most PoE models) get polled every `aiPollInterval` seconds (top-level, default 5) via `cmd=GetAiState`. Each category the camera actually supports — **person**, **vehicle**, **pet**, **face**, and any newer category a model reports — shows up as its own device (`Driveway — Person`, `Driveway — Vehicle`, …), each exposed to HomeKit as a motion sensor, so "person detected" and "vehicle detected" can drive separate automations instead of one generic motion trigger. Set `"aiDetect": false` on a camera to skip AI polling for it (e.g. to cut down on request volume for a large NVR); cameras without AI hardware simply never register any detection devices, no toggle needed.
 
@@ -1696,6 +1716,7 @@ Deliberately uses the pure-JS `@tensorflow/tfjs` CPU backend rather than `@tenso
 
 - `pollInterval` — seconds between polls (min enforced: 5, default 15)
 - `minConfidence` — 0–1 confidence threshold to count as a detection (default 0.5)
+- `model` — which COCO-SSD base model to run: `lite_mobilenet_v2` (default, fastest), `mobilenet_v2` (more accurate, slower), or `mobilenet_v1` (smallest download). Changeable live from **Settings → 📷 Cameras → AI Camera Detection** — picking a model downloads it fresh from its CDN and validates it loads before saving, so a bad/offline pick doesn't silently break detection on next restart. Weights aren't vendored, so every option is fetched over the network the first time it's selected (`GET`/`POST /api/settings/object-detection/model`)
 - `autoCreateFlows` — set `false` to skip the auto-generated Flow described below
 - `lingerClasses` — classes to also track for "lingering" (default `["cat"]`) — see below
 - `lingerThreshold` — consecutive polls a class must be seen for to count as lingering (min enforced: 2, default 3 — roughly 30–45s at the default poll interval)
@@ -1770,7 +1791,9 @@ Axis defaults to **HTTP Digest authentication**, which LSH implements (with a Ba
 - `channel` — optional camera number for multi-imager / multichannel encoders (adds `camera=<n>`)
 - `pollInterval` — reachability poll in seconds (top-level, default 30); drives the per-camera **Online** sensor and platform badge
 
-**PTZ** — set `"ptz": true` to show a PTZ pad in the camera modal, driven by VAPIX continuous move (`/axis-cgi/com/ptz.cgi?continuouspantiltmove=…` / `continuouszoommove=…`); press-and-hold arrows/zoom, released = stop.
+**PTZ** — set `"ptz": true` to show a PTZ pad in the camera modal, driven by VAPIX continuous move (`/axis-cgi/com/ptz.cgi?continuouspantiltmove=…` / `continuouszoommove=…`); press-and-hold arrows/zoom, released = stop. Also enables a **presets** row backed by VAPIX's `gotoserverpresetno`/`setserverpresetno`/`removeserverpresetno` (list via `query=presetposcam`) — full save/goto/delete, unlike Reolink's list-only presets.
+
+**IR / night mode** — set `"ir": true` to add a night-vision toggle, driven by VAPIX `param.cgi` (`PTZ.Various.V1.IrCutFilter`, falling back to `ImageSource.I0.DayNight.IrCutFilter` on fixed-camera firmware).
 
 **Outputs / relays** — each `outputs[]` entry becomes a controllable switch on the camera's device (and a HomeKit switch), driven through the VAPIX I/O port CGI (`/axis-cgi/io/port.cgi?action=<port>:<state>`):
 
@@ -1807,7 +1830,7 @@ KENIK shipped several RTSP URL generations — pick the `urlStyle` that matches 
 
 KENIK has no uniform HTTP snapshot API, so LSH grabs one frame from the RTSP stream with **ffmpeg** (requires ffmpeg installed; honors `ffmpegRtsp.ffmpegPath`), caches it for 10 s, and proxies it at `/api/kenik/snapshot/<index>` — **the browser never sees the camera password**. `stream: "sub"` is recommended for DVR channels used as dashboard tiles. Set `webrtcUrl` to a go2rtc endpoint for in-dashboard live view, and add the built RTSP URL to `ffmpegRtsp` / `cameras` if you want HomeKit exposure.
 
-For PTZ cameras, add `"onvif": { "port": 80, "username": "", "password": "" }` to the channel (host/credentials default to the KENIK ones; `profileToken`/`ptzPath`/`mediaPath` override ONVIF specifics) — the camera modal then shows a press-and-hold PTZ pad driven over ONVIF `ContinuousMove`.
+For PTZ cameras, add `"onvif": { "port": 80, "username": "", "password": "" }` to the channel (host/credentials default to the KENIK ones; `profileToken`/`ptzPath`/`mediaPath`/`imagingPath` override ONVIF specifics) — the camera modal then shows a press-and-hold PTZ pad driven over ONVIF `ContinuousMove`, a **presets** row (full save/goto/delete via the standard `GetPresets`/`SetPreset`/`GotoPreset`/`RemovePreset` PTZ operations), and a **night-vision toggle** (ONVIF Imaging service `SetImagingSettings` / `IrCutFilter` — note ONVIF's sense is inverted from the "on = night vision" UI: `IrCutFilter: ON` means the filter is inserted, i.e. day mode). The same three ONVIF operations back PTZ/presets/IR for manual `cameras` entries with an `onvif` block (`/api/camera/ptz|preset|ir/:idx`).
 
 Configure cameras in **Settings → 📷 Cameras → Reolink** — add a row per camera, hit **Test** to pull a live snapshot, then **Save**. Changes apply **live, without a restart** (the client reads the camera list from config on demand). Passwords are stored server-side and returned **masked** to the browser.
 

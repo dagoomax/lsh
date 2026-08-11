@@ -234,6 +234,10 @@
     "aeotec_user": "Nom d'utilisateur",
     "aeotec_user_hint": "(défaut : admin)",
     "aeotec_pass": "Mot de passe",
+    "aidetect_title": "Détection IA caméra",
+    "aidetect_model": "Modèle de détection",
+    "aidetect_status_unknown": "—",
+    "aidetect_download": "Télécharger et utiliser ce modèle",
     "add_to_cameras": "Ajouter aux caméras",
     "rtsp_main": "RTSP (flux principal)",
     "rtsp_sub": "RTSP (flux secondaire)",
@@ -508,6 +512,7 @@
     "d35": "Appairez le pont de relais dans Apple Maison avec le PIN ci-dessous.",
     "d36": "Gérez les utilisateurs, jetons API et le chiffrement HTTPS/TLS.",
     "d37": "Enregistrez toute la configuration dans un fichier ou restaurez une sauvegarde.",
+    "d40": "Détection locale de personnes/voitures/animaux pour les caméras sans IA embarquée (clé de configuration <code>objectDetection</code>, la liste des caméras reste définie dans <code>config.json</code>). Choisissez ci-dessous le modèle de détection — le changement le télécharge à nouveau et vérifie son chargement avant de l'enregistrer.",
     "d15f": "Envoie les valeurs LSH vers les variables globales du <strong>Fibaro Home Center</strong> en temps réel (au changement, debounce 200 ms), pour que les scènes HC réagissent à tout ce que LSH connaît — zones Satel, batterie Victron, sonnette UniFi. Les variables manquantes sont créées automatiquement ; une <em>règle de préfixe</em> mappe tout un sous-arbre de clés d'un coup (<code>/</code> devient <code>_</code>).",
     "mongo": "Conserve le DataStore des capteurs (valeurs en direct + historique) dans <strong>MongoDB</strong> au lieu du fichier gzip local. Le fichier reste un repli sûr à l'arrêt ; laisser vide conserve le comportement par défaut. Redémarrez pour appliquer.",
     "interface": "Masquer les liens de navigation inutilisés. Appliqué au prochain chargement — sans redémarrage."

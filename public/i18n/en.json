@@ -237,6 +237,10 @@
     "aeotec_user": "Username",
     "aeotec_user_hint": "(default: admin)",
     "aeotec_pass": "Password",
+    "aidetect_title": "AI Camera Detection",
+    "aidetect_model": "Detection Model",
+    "aidetect_status_unknown": "—",
+    "aidetect_download": "Download & Use This Model",
     "add_to_cameras": "Add to Cameras",
     "rtsp_main": "RTSP (main stream)",
     "rtsp_sub": "RTSP (sub stream)",
@@ -511,6 +515,7 @@
     "d35": "Pair the relay bridge in Apple Home using the PIN below.",
     "d36": "Manage users, API tokens, and HTTPS/TLS encryption.",
     "d37": "Save your entire configuration to a file or restore from a previous backup.",
+    "d40": "Local person/car/pet detection for cameras with no on-device AI of their own (config key <code>objectDetection</code>, cameras list still set in <code>config.json</code>). Pick which detection model to use below — switching downloads it fresh and validates it loads before saving.",
     "d15f": "Pushes LSH store values to <strong>Fibaro Home Center</strong> global variables in real time (on change, debounced 200 ms), so HC scenes can react to anything LSH knows — Satel zones, Victron battery, UniFi doorbell. Missing variables are created automatically; a <em>prefix rule</em> maps a whole key subtree at once (<code>/</code> becomes <code>_</code>).",
     "mongo": "Persist the sensor DataStore (live values + history) to <strong>MongoDB</strong> instead of the local gzipped file. The file stays as a shutdown-safe fallback, so leaving this blank keeps the default behavior. Restart to apply.",
     "interface": "Hide navigation links you don't use. Changes apply on the next page load — no restart needed."

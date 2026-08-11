@@ -272,15 +272,16 @@ async function main() {
   // Local object detection (COCO-SSD) for RTSP-only cameras with no on-device
   // AI of their own — tryRequire so a missing/uninstalled tfjs on this box
   // just skips the feature instead of crashing.
+  let objectDetection = null;
   if (config.objectDetection?.cameras?.length) {
     const ObjectDetectionClient = tryRequire('./src/object-detection', 'npm install @tensorflow/tfjs @tensorflow-models/coco-ssd jpeg-js');
     if (ObjectDetectionClient) {
-      const objectDetection = new ObjectDetectionClient(config, store, sensorRegistry, automation);
+      objectDetection = new ObjectDetectionClient(config, store, sensorRegistry, automation);
       objectDetection.start().catch((err) => console.error(`[ObjectDetection] Start failed: ${err.message}`));
     }
   }
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, openweather };
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, openweather, objectDetection };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────
@@ -466,6 +467,7 @@ async function main() {
     if (MC6Client) {
       const mc6 = new MC6Client(config, store, sensorRegistry);
       mc6.start().catch((err) => console.error(`[MC6] Start failed: ${err.message}`));
+      apiClients.mc6 = mc6; // expose for /api/mc6/* timer & schedule routes
     }
   }
 

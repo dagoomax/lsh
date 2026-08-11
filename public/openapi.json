@@ -3,7 +3,7 @@
   "info": {
     "title": "LSH — Lightweight Smart Home API",
     "version": "1.0.1",
-    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 201 endpoints.",
+    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 245 endpoints.",
     "license": {
       "name": "Repository",
       "url": "https://github.com/dagoomax/lsh"
@@ -30,7 +30,7 @@
     },
     {
       "name": "History",
-      "description": "1 endpoint"
+      "description": "2 endpoints"
     },
     {
       "name": "Device customization (room / icon / label)",
@@ -50,7 +50,7 @@
     },
     {
       "name": "Loxone Config XML templates",
-      "description": "2 endpoints"
+      "description": "3 endpoints"
     },
     {
       "name": "Automation (rules / scenes / notifications)",
@@ -69,12 +69,16 @@
       "description": "1 endpoint"
     },
     {
+      "name": "Local object detection (COCO-SSD) model selection",
+      "description": "2 endpoints"
+    },
+    {
       "name": "SIP doorbell intercom",
-      "description": "5 endpoints"
+      "description": "8 endpoints"
     },
     {
       "name": "Sonos: URL playback + TTS announcements",
-      "description": "13 endpoints"
+      "description": "22 endpoints"
     },
     {
       "name": "Hardware simulators (scripts/*-simulator.js)",
@@ -82,7 +86,15 @@
     },
     {
       "name": "Camera PTZ",
-      "description": "5 endpoints"
+      "description": "4 endpoints"
+    },
+    {
+      "name": "PTZ presets",
+      "description": "1 endpoint"
+    },
+    {
+      "name": "Siren + floodlight (Reolink only)",
+      "description": "16 endpoints"
     },
     {
       "name": "Reolink PoE cameras",
@@ -142,11 +154,11 @@
     },
     {
       "name": "MC6 Thermostats",
-      "description": "1 endpoint"
+      "description": "6 endpoints"
     },
     {
       "name": "Roborock",
-      "description": "10 endpoints"
+      "description": "12 endpoints"
     },
     {
       "name": "Somfy covers (casablanca TaHoma) — token/Loxone-friendly per-cover API",
@@ -155,6 +167,10 @@
     {
       "name": "Homey",
       "description": "3 endpoints"
+    },
+    {
+      "name": "OpenWeatherMap",
+      "description": "2 endpoints"
     },
     {
       "name": "Viessmann ViCare",
@@ -182,7 +198,7 @@
     },
     {
       "name": "Loxone",
-      "description": "20 endpoints"
+      "description": "23 endpoints"
     },
     {
       "name": "Waveshare Modbus TCP",
@@ -1146,6 +1162,37 @@
         }
       }
     },
+    "/history-status": {
+      "get": {
+        "tags": [
+          "History"
+        ],
+        "summary": "GET /history-status",
+        "operationId": "get_history_status",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/edit-pin/status": {
       "get": {
         "tags": [
@@ -1736,6 +1783,37 @@
         ],
         "summary": "GET /loxone/outputs.xml",
         "operationId": "get_loxone_outputs_xml",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/loxone/sipout.xml": {
+      "get": {
+        "tags": [
+          "Loxone Config XML templates"
+        ],
+        "summary": "GET /loxone/sipout.xml",
+        "operationId": "get_loxone_sipout_xml",
         "responses": {
           "200": {
             "description": "Success",
@@ -2559,6 +2637,76 @@
         }
       }
     },
+    "/settings/object-detection/model": {
+      "get": {
+        "tags": [
+          "Local object detection (COCO-SSD) model selection"
+        ],
+        "summary": "GET /settings/object-detection/model",
+        "operationId": "get_settings_object_detection_model",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Local object detection (COCO-SSD) model selection"
+        ],
+        "summary": "POST /settings/object-detection/model",
+        "operationId": "post_settings_object_detection_model",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
     "/sip/status": {
       "get": {
         "tags": [
@@ -2713,6 +2861,37 @@
         }
       }
     },
+    "/openweather/forecast": {
+      "get": {
+        "tags": [
+          "SIP doorbell intercom"
+        ],
+        "summary": "GET /openweather/forecast",
+        "operationId": "get_openweather_forecast",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sip/open-door": {
       "post": {
         "tags": [
@@ -2720,6 +2899,78 @@
         ],
         "summary": "POST /sip/open-door",
         "operationId": "post_sip_open_door",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sip/listen": {
+      "get": {
+        "tags": [
+          "SIP doorbell intercom"
+        ],
+        "summary": "GET /sip/listen",
+        "operationId": "get_sip_listen",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sip/talk": {
+      "post": {
+        "tags": [
+          "SIP doorbell intercom"
+        ],
+        "summary": "POST /sip/talk",
+        "operationId": "post_sip_talk",
         "responses": {
           "200": {
             "description": "Success",
@@ -2966,6 +3217,37 @@
         }
       }
     },
+    "/smartthings-camera/image-proxy": {
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /smartthings-camera/image-proxy",
+        "operationId": "get_smartthings_camera_image_proxy",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/smartthings-camera/{deviceId}/take": {
       "post": {
         "tags": [
@@ -3017,6 +3299,204 @@
         }
       }
     },
+    "/smartthings-camera/{deviceId}/presets": {
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /smartthings-camera/:deviceId/presets",
+        "operationId": "get_smartthings_camera_deviceId_presets",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "POST /smartthings-camera/:deviceId/presets",
+        "operationId": "post_smartthings_camera_deviceId_presets",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/smartthings-camera/{deviceId}/presets/{presetId}/execute": {
+      "post": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "POST /smartthings-camera/:deviceId/presets/:presetId/execute",
+        "operationId": "post_smartthings_camera_deviceId_presets_presetId_execute",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "presetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/smartthings-camera/{deviceId}/presets/{presetId}": {
+      "delete": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "DELETE /smartthings-camera/:deviceId/presets/:presetId",
+        "operationId": "delete_smartthings_camera_deviceId_presets_presetId",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "presetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/camera-log": {
       "get": {
         "tags": [
@@ -3024,6 +3504,140 @@
         ],
         "summary": "GET /camera-log",
         "operationId": "get_camera_log",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/detection-boxes": {
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /detection-boxes",
+        "operationId": "get_detection_boxes",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/objectdetect/stats": {
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /objectdetect/stats",
+        "operationId": "get_objectdetect_stats",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/objectdetect/timeline": {
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /objectdetect/timeline",
+        "operationId": "get_objectdetect_timeline",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/objectdetect/image/{id}": {
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /objectdetect/image/:id",
+        "operationId": "get_objectdetect_image_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -3539,13 +4153,719 @@
         }
       }
     },
+    "/reolink/patrol/{idx}": {
+      "post": {
+        "tags": [
+          "PTZ presets"
+        ],
+        "summary": "POST /reolink/patrol/:idx",
+        "operationId": "post_reolink_patrol_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reolink/siren/{idx}": {
+      "post": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "POST /reolink/siren/:idx",
+        "operationId": "post_reolink_siren_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reolink/floodlight/{idx}": {
+      "get": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "GET /reolink/floodlight/:idx",
+        "operationId": "get_reolink_floodlight_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "POST /reolink/floodlight/:idx",
+        "operationId": "post_reolink_floodlight_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reolink/ir/{idx}": {
+      "get": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "GET /reolink/ir/:idx",
+        "operationId": "get_reolink_ir_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "POST /reolink/ir/:idx",
+        "operationId": "post_reolink_ir_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kenik/ir/{idx}": {
+      "get": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "GET /kenik/ir/:idx",
+        "operationId": "get_kenik_ir_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "POST /kenik/ir/:idx",
+        "operationId": "post_kenik_ir_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/axis/ir/{idx}": {
+      "get": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "GET /axis/ir/:idx",
+        "operationId": "get_axis_ir_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "POST /axis/ir/:idx",
+        "operationId": "post_axis_ir_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/camera/ir/{idx}": {
+      "get": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "GET /camera/ir/:idx",
+        "operationId": "get_camera_ir_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "POST /camera/ir/:idx",
+        "operationId": "post_camera_ir_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onvif/discover": {
+      "get": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "GET /onvif/discover",
+        "operationId": "get_onvif_discover",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onvif/probe": {
+      "post": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "POST /onvif/probe",
+        "operationId": "post_onvif_probe",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/camera/snapshot/{idx}": {
+      "get": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "GET /camera/snapshot/:idx",
+        "operationId": "get_camera_snapshot_idx",
+        "parameters": [
+          {
+            "name": "idx",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings/cameras": {
       "post": {
         "tags": [
-          "Camera PTZ"
+          "Siren + floodlight (Reolink only)"
         ],
         "summary": "POST /settings/cameras",
         "operationId": "post_settings_cameras",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/virtual": {
+      "post": {
+        "tags": [
+          "Siren + floodlight (Reolink only)"
+        ],
+        "summary": "POST /settings/virtual",
+        "operationId": "post_settings_virtual",
         "responses": {
           "200": {
             "description": "Success",
@@ -4840,6 +6160,235 @@
         }
       }
     },
+    "/mc6/{mac}/schedule": {
+      "get": {
+        "tags": [
+          "MC6 Thermostats"
+        ],
+        "summary": "GET /mc6/:mac/schedule",
+        "operationId": "get_mc6_mac_schedule",
+        "parameters": [
+          {
+            "name": "mac",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "MC6 Thermostats"
+        ],
+        "summary": "POST /mc6/:mac/schedule",
+        "operationId": "post_mc6_mac_schedule",
+        "parameters": [
+          {
+            "name": "mac",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mc6/{mac}/timer": {
+      "post": {
+        "tags": [
+          "MC6 Thermostats"
+        ],
+        "summary": "POST /mc6/:mac/timer",
+        "operationId": "post_mc6_mac_timer",
+        "parameters": [
+          {
+            "name": "mac",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MC6 Thermostats"
+        ],
+        "summary": "DELETE /mc6/:mac/timer",
+        "operationId": "delete_mc6_mac_timer",
+        "parameters": [
+          {
+            "name": "mac",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mc6/{mac}/schedule/{id}": {
+      "delete": {
+        "tags": [
+          "MC6 Thermostats"
+        ],
+        "summary": "DELETE /mc6/:mac/schedule/:id",
+        "operationId": "delete_mc6_mac_schedule_id",
+        "parameters": [
+          {
+            "name": "mac",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings/test-roborock": {
       "post": {
         "tags": [
@@ -4970,6 +6519,88 @@
         ],
         "summary": "POST /settings/roborock-cloud",
         "operationId": "post_settings_roborock_cloud",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-landroid": {
+      "post": {
+        "tags": [
+          "Roborock"
+        ],
+        "summary": "POST /settings/test-landroid",
+        "operationId": "post_settings_test_landroid",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/landroid": {
+      "post": {
+        "tags": [
+          "Roborock"
+        ],
+        "summary": "POST /settings/landroid",
+        "operationId": "post_settings_landroid",
         "responses": {
           "200": {
             "description": "Success",
@@ -5468,6 +7099,88 @@
         ],
         "summary": "POST /settings/miele",
         "operationId": "post_settings_miele",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/openweather": {
+      "post": {
+        "tags": [
+          "OpenWeatherMap"
+        ],
+        "summary": "POST /settings/openweather",
+        "operationId": "post_settings_openweather",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-openweather": {
+      "post": {
+        "tags": [
+          "OpenWeatherMap"
+        ],
+        "summary": "POST /settings/test-openweather",
+        "operationId": "post_settings_test_openweather",
         "responses": {
           "200": {
             "description": "Success",
@@ -6240,6 +7953,88 @@
         }
       }
     },
+    "/settings/sony": {
+      "post": {
+        "tags": [
+          "Loxone"
+        ],
+        "summary": "POST /settings/sony",
+        "operationId": "post_settings_sony",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-sony": {
+      "post": {
+        "tags": [
+          "Loxone"
+        ],
+        "summary": "POST /settings/test-sony",
+        "operationId": "post_settings_test_sony",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings/sonos": {
       "post": {
         "tags": [
@@ -6398,6 +8193,37 @@
             "application/json": {
               "schema": {
                 "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/smartthings-token": {
+      "get": {
+        "tags": [
+          "Loxone"
+        ],
+        "summary": "GET /settings/smartthings-token",
+        "operationId": "get_settings_smartthings_token",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
               }
             }
           }

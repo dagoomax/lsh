@@ -83,9 +83,25 @@ class KenikClient {
       snapshotUrl: `/api/kenik/snapshot/${idx}`,
       mjpegUrl:    '',
       webrtcUrl:   cam.webrtcUrl || '',
-      ...(cam.onvif ? { ptzUrl: `/api/kenik/ptz/${idx}` } : {}),
+      ...(cam.onvif ? {
+        ptzUrl:    `/api/kenik/ptz/${idx}`,
+        presetUrl: `/api/kenik/preset/${idx}`,
+        irUrl:     `/api/kenik/ir/${idx}`,
+      } : {}),
       _kenik:      true,
     }));
+  }
+
+  // Merge the channel's `onvif` overrides with its KENIK credentials/host —
+  // shared by ptz(), gotoPreset()/savePreset(), and getIr()/setIr() below.
+  _onvifCfg(cam) {
+    return {
+      host:     cam.onvif.host || cam.host,
+      port:     cam.onvif.port || 80,
+      username: cam.onvif.username ?? cam.username,
+      password: cam.onvif.password ?? cam.password,
+      ...cam.onvif,
+    };
   }
 
   // PTZ over ONVIF (channel needs an `onvif: { port, username, password }`
@@ -93,13 +109,43 @@ class KenikClient {
   async ptz(idx, op, speed) {
     const cam = loadChannels()[Number(idx)];
     if (!cam?.onvif) throw new Error('Camera has no ONVIF config');
-    return require('./onvif-ptz').ptz({
-      host:     cam.onvif.host || cam.host,
-      port:     cam.onvif.port || 80,
-      username: cam.onvif.username ?? cam.username,
-      password: cam.onvif.password ?? cam.password,
-      ...cam.onvif,
-    }, op, speed);
+    return require('./onvif-ptz').ptz(this._onvifCfg(cam), op, speed);
+  }
+
+  async listPresets(idx) {
+    const cam = loadChannels()[Number(idx)];
+    if (!cam?.onvif) throw new Error('Camera has no ONVIF config');
+    return require('./onvif-ptz').listPresets(this._onvifCfg(cam));
+  }
+
+  async gotoPreset(idx, id) {
+    const cam = loadChannels()[Number(idx)];
+    if (!cam?.onvif) throw new Error('Camera has no ONVIF config');
+    return require('./onvif-ptz').gotoPreset(this._onvifCfg(cam), id);
+  }
+
+  async savePreset(idx, name) {
+    const cam = loadChannels()[Number(idx)];
+    if (!cam?.onvif) throw new Error('Camera has no ONVIF config');
+    return require('./onvif-ptz').setPreset(this._onvifCfg(cam), name);
+  }
+
+  async removePreset(idx, id) {
+    const cam = loadChannels()[Number(idx)];
+    if (!cam?.onvif) throw new Error('Camera has no ONVIF config');
+    return require('./onvif-ptz').removePreset(this._onvifCfg(cam), id);
+  }
+
+  async getIr(idx) {
+    const cam = loadChannels()[Number(idx)];
+    if (!cam?.onvif) throw new Error('Camera has no ONVIF config');
+    return require('./onvif-imaging').getIr(this._onvifCfg(cam));
+  }
+
+  async setIr(idx, mode) {
+    const cam = loadChannels()[Number(idx)];
+    if (!cam?.onvif) throw new Error('Camera has no ONVIF config');
+    return require('./onvif-imaging').setIr(this._onvifCfg(cam), mode);
   }
 
   // Pipe a fresh JPEG frame for camera <idx> to the Express response.

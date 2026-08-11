@@ -270,6 +270,86 @@ class AxisClient {
     await vapix(cam, `/axis-cgi/com/ptz.cgi?${cameraSel}${Q[op]}`);
   }
 
+  // ── PTZ presets via VAPIX ptz.cgi ───────────────────────────────────────
+  // `query=presetposcam` returns lines like `presetposno1=Home`; parsed
+  // defensively since Axis's own docs show this as plain text, not JSON,
+  // despite `format=json` being accepted by some firmware.
+  async listPresets(idx) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const cameraSel = cam.channel != null ? `camera=${Number(cam.channel)}&` : '';
+    const r = await vapix(cam, `/axis-cgi/com/ptz.cgi?${cameraSel}query=presetposcam`);
+    const text = r.buffer.toString('utf8');
+    const out = [];
+    for (const m of text.matchAll(/presetposno(\d+)=(.+)/g)) out.push({ id: m[1], name: m[2].trim() });
+    return out;
+  }
+
+  async gotoPreset(idx, id) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const cameraSel = cam.channel != null ? `camera=${Number(cam.channel)}&` : '';
+    await vapix(cam, `/axis-cgi/com/ptz.cgi?${cameraSel}gotoserverpresetno=${Number(id)}`);
+  }
+
+  // Preset numbers are caller-chosen on Axis (unlike ONVIF's device-assigned
+  // tokens) — use the next number after the highest existing one so saves
+  // never silently overwrite an existing preset.
+  async savePreset(idx, name) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const existing = await this.listPresets(idx);
+    const nextId   = 1 + existing.reduce((max, p) => Math.max(max, Number(p.id) || 0), 0);
+    const cameraSel = cam.channel != null ? `camera=${Number(cam.channel)}&` : '';
+    const q = new URLSearchParams({ setserverpresetno: nextId, name: name || `Preset ${nextId}` });
+    await vapix(cam, `/axis-cgi/com/ptz.cgi?${cameraSel}${q}`);
+    return { id: String(nextId), name: name || `Preset ${nextId}` };
+  }
+
+  async removePreset(idx, id) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const cameraSel = cam.channel != null ? `camera=${Number(cam.channel)}&` : '';
+    await vapix(cam, `/axis-cgi/com/ptz.cgi?${cameraSel}removeserverpresetno=${Number(id)}`);
+  }
+
+  // ── IR-cut filter (night mode) via param.cgi ────────────────────────────
+  // Caller-facing mode is 'on' (night vision / IR visible) | 'off' (day
+  // color) | 'auto'. VAPIX's IrCutFilter is the physical filter, so its
+  // sense is inverted (yes = filter inserted = day, no = filter open =
+  // night) — same inversion as the ONVIF Imaging service (see
+  // onvif-imaging.js). Tries the PTZ param group first (this client is
+  // PTZ-focused) and falls back to the fixed-camera group some firmware
+  // uses instead.
+  static _IR_GROUPS = ['PTZ.Various.V1.IrCutFilter', 'ImageSource.I0.DayNight.IrCutFilter'];
+
+  async setIr(idx, mode) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const VAL = { on: 'no', off: 'yes', auto: 'auto' }[mode];
+    if (!VAL) throw new Error("mode must be 'on', 'off', or 'auto'");
+    let lastErr;
+    for (const group of AxisClient._IR_GROUPS) {
+      try { await vapix(cam, `/axis-cgi/param.cgi?action=update&${group}=${VAL}`); return; }
+      catch (err) { lastErr = err; }
+    }
+    throw lastErr;
+  }
+
+  async getIr(idx) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    let lastErr;
+    for (const group of AxisClient._IR_GROUPS) {
+      try {
+        const r = await vapix(cam, `/axis-cgi/param.cgi?action=list&group=${group}`);
+        const val = r.buffer.toString('utf8').split('=')[1]?.trim().toLowerCase();
+        return { mode: { yes: 'off', no: 'on', auto: 'auto' }[val] || 'auto' };
+      } catch (err) { lastErr = err; }
+    }
+    throw lastErr;
+  }
+
   // ── Camera list + snapshot proxy (consumed by /api/cameras) ─────────────────
   getCameras() {
     return loadCameras().map((cam, idx) => ({
@@ -278,7 +358,8 @@ class AxisClient {
       snapshotUrl: `/api/axis/snapshot/${idx}`,
       mjpegUrl:    '',
       webrtcUrl:   cam.webrtcUrl || '',
-      ...(cam.ptz ? { ptzUrl: `/api/axis/ptz/${idx}` } : {}),
+      ...(cam.ptz ? { ptzUrl: `/api/axis/ptz/${idx}`, presetUrl: `/api/axis/preset/${idx}` } : {}),
+      ...(cam.ir ? { irUrl: `/api/axis/ir/${idx}` } : {}),
       _axis:       true,
     }));
   }

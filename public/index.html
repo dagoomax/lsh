@@ -534,6 +534,9 @@
         <div class="hist-range-bar graphs-range-bar">
           <button class="hist-range-btn graphs-range-btn" data-range="1">1h</button>
           <button class="hist-range-btn graphs-range-btn active" data-range="6">6h</button>
+          <button class="hist-range-btn graphs-range-btn long-range-btn" data-range="24" style="display:none">24h</button>
+          <button class="hist-range-btn graphs-range-btn long-range-btn" data-range="168" style="display:none">7d</button>
+          <button class="hist-range-btn graphs-range-btn long-range-btn" data-range="720" style="display:none">30d</button>
           <button class="hist-range-btn graphs-range-btn" data-range="0">All</button>
         </div>
       </div>
@@ -606,6 +609,13 @@
           <button class="cam-ptz-btn cam-ptz-down"  data-ptz="down"    aria-label="Tilt down">▼</button>
           <button class="cam-ptz-btn cam-ptz-zin"   data-ptz="zoomin"  aria-label="Zoom in">＋</button>
           <button class="cam-ptz-btn cam-ptz-zout"  data-ptz="zoomout" aria-label="Zoom out">−</button>
+        </div>
+        <div class="cam-presets" id="cam-modal-presets" style="display:none"></div>
+        <div class="cam-extra" id="cam-modal-extra" style="display:none">
+          <button class="cam-extra-btn" id="cam-btn-ir"         style="display:none" title="Night vision">🌙</button>
+          <button class="cam-extra-btn" id="cam-btn-patrol"     style="display:none" title="Patrol">🔁</button>
+          <button class="cam-extra-btn" id="cam-btn-floodlight" style="display:none" title="Floodlight">💡</button>
+          <button class="cam-extra-btn" id="cam-btn-siren"      style="display:none" title="Siren">🔔</button>
         </div>
         <button class="cam-talk-btn" id="cam-modal-talk" style="display:none" aria-label="Hold to talk">🎤 <span data-i18n="cam.hold_to_talk">Hold to talk</span></button>
       </div>
@@ -705,6 +715,9 @@
       <div class="hist-range-bar">
         <button class="hist-range-btn" data-range="1">1h</button>
         <button class="hist-range-btn active" data-range="6">6h</button>
+        <button class="hist-range-btn long-range-btn" data-range="24" style="display:none">24h</button>
+        <button class="hist-range-btn long-range-btn" data-range="168" style="display:none">7d</button>
+        <button class="hist-range-btn long-range-btn" data-range="720" style="display:none">30d</button>
         <button class="hist-range-btn" data-range="0">All</button>
         <span class="hist-stats" id="hist-stats"></span>
       </div>
@@ -781,6 +794,9 @@
           <div class="hist-range-bar dev-range-bar">
             <button class="hist-range-btn dev-range-btn" data-range="1">1h</button>
             <button class="hist-range-btn dev-range-btn active" data-range="6">6h</button>
+            <button class="hist-range-btn dev-range-btn long-range-btn" data-range="24" style="display:none">24h</button>
+            <button class="hist-range-btn dev-range-btn long-range-btn" data-range="168" style="display:none">7d</button>
+            <button class="hist-range-btn dev-range-btn long-range-btn" data-range="720" style="display:none">30d</button>
             <button class="hist-range-btn dev-range-btn" data-range="0">All</button>
             <span class="hist-stats" id="dev-stats"></span>
           </div>

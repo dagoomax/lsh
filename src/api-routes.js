@@ -46,7 +46,7 @@ function dedupeVirtualDevices(devices) {
 }
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
-  const { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, openweather } = clients;
+  const { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, openweather, objectDetection } = clients;
   const manualSnapCache = new Map(); // manual camera idx → { at, buffer }, for /camera/snapshot/:idx
 
   // Secure cookie flag per request, not per server: with both HTTP and HTTPS
@@ -286,8 +286,21 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // ── History ───────────────────────────────────────────────
-  router.get('/history/:key(*)', (req, res) => {
-    res.json({ success: true, key: req.params.key, points: store.getHistory(req.params.key) });
+  // ?hours=N — anything within the in-memory ring buffer's ~6h window (no
+  // param, or a small one) is served straight from RAM exactly as before;
+  // wider ranges only touch Mongo when explicitly asked for, so the default
+  // 1h/6h chart views keep costing nothing extra.
+  router.get('/history/:key(*)', async (req, res) => {
+    const hours = req.query.hours ? Number(req.query.hours) : null;
+    if (!hours || hours <= 6) {
+      return res.json({ success: true, key: req.params.key, points: store.getHistory(req.params.key) });
+    }
+    const points = await store.getHistoryRange(req.params.key, hours);
+    res.json({ success: true, key: req.params.key, points });
+  });
+
+  router.get('/history-status', (req, res) => {
+    res.json({ success: true, data: store.historyStatus() });
   });
 
   // ── Device customization (room / icon / label) ────────────
@@ -671,10 +684,41 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     // WHEP-only) get a thumbnail via the generic ffmpeg-grab-a-frame proxy.
     const manualCams = (cfg.cameras || []).map((c, idx) => ({
       ...c,
-      ...(c.onvif ? { onvif: { ...c.onvif, password: c.onvif.password ? '••••••••' : '' }, ptzUrl: `/api/camera/ptz/${idx}` } : {}),
+      ...(c.onvif ? {
+        onvif: { ...c.onvif, password: c.onvif.password ? '••••••••' : '' },
+        ptzUrl:    `/api/camera/ptz/${idx}`,
+        presetUrl: `/api/camera/preset/${idx}`,
+        irUrl:     `/api/camera/ir/${idx}`,
+      } : {}),
       ...(c.url && !c.snapshotUrl && !c.mjpegUrl ? { snapshotUrl: `/api/camera/snapshot/${idx}` } : {}),
     }));
     res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...stCams] });
+  });
+
+  // ── Local object detection (COCO-SSD) model selection ──────
+  // Weights aren't vendored — switching downloads the chosen base model
+  // fresh from its CDN and validates it loads before persisting the choice,
+  // so a bad/offline pick doesn't silently break detection on next restart.
+  router.get('/settings/object-detection/model', (req, res) => {
+    if (!objectDetection) {
+      const { MODEL_BASES } = require('./object-detection');
+      return res.json({ success: true, data: { base: null, loading: false, loaded: false, error: null, options: MODEL_BASES } });
+    }
+    res.json({ success: true, data: objectDetection.getModelStatus() });
+  });
+
+  router.post('/settings/object-detection/model', async (req, res) => {
+    if (!objectDetection) {
+      return res.status(503).json({ success: false, error: 'Object detection not running — add at least one camera under objectDetection.cameras first' });
+    }
+    try {
+      const data = await objectDetection.setModel((req.body || {}).model);
+      const current = readConfigFile();
+      writeConfigFile({ ...current, objectDetection: { ...(current.objectDetection || {}), model: data.base } });
+      res.json({ success: true, data });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
   });
 
   // ── SIP doorbell intercom ─────────────────────────────────
@@ -1131,6 +1175,157 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (!cam?.onvif?.host) throw new Error('Camera has no ONVIF config');
     return require('./onvif-ptz').ptz(cam.onvif, op, speed);
   }));
+
+  // Manual `cameras` entries with an `onvif` section — shared by the preset
+  // and IR routes below.
+  const onvifCfgFor = (idx) => {
+    const cam = (readConfigFile().cameras || [])[Number(idx)];
+    if (!cam?.onvif?.host) throw new Error('Camera has no ONVIF config');
+    return cam.onvif;
+  };
+
+  // ── PTZ presets ───────────────────────────────────────────
+  // Shape varies genuinely by vendor (Reolink's CGI API has no documented
+  // "save preset" call — presets are created on-camera via the Reolink app
+  // and only listed/goto'd here; Axis and ONVIF support the full
+  // list/save/goto/remove set), so each backend registers only the routes
+  // it can actually back:
+  //   GET    /api/<backend>/preset/:idx            → [{id, name}], `writable`
+  //   POST   /api/<backend>/preset/:idx             {name?} → save current position
+  //   POST   /api/<backend>/preset/:idx/:id/goto    → move to preset
+  //   DELETE /api/<backend>/preset/:idx/:id         → remove preset
+  function registerPresetRoutes(prefix, backend) {
+    router.get(`/${prefix}/preset/:idx`, async (req, res) => {
+      try { res.json({ success: true, data: await backend.list(req.params.idx), writable: !!backend.save }); }
+      catch (err) { res.status(502).json({ success: false, error: err.message }); }
+    });
+    router.post(`/${prefix}/preset/:idx/:id/goto`, async (req, res) => {
+      try { await backend.goto(req.params.idx, req.params.id); res.json({ success: true }); }
+      catch (err) { res.status(502).json({ success: false, error: err.message }); }
+    });
+    if (backend.save) {
+      router.post(`/${prefix}/preset/:idx`, async (req, res) => {
+        try { res.json({ success: true, data: await backend.save(req.params.idx, (req.body || {}).name) }); }
+        catch (err) { res.status(502).json({ success: false, error: err.message }); }
+      });
+    }
+    if (backend.remove) {
+      router.delete(`/${prefix}/preset/:idx/:id`, async (req, res) => {
+        try { await backend.remove(req.params.idx, req.params.id); res.json({ success: true }); }
+        catch (err) { res.status(502).json({ success: false, error: err.message }); }
+      });
+    }
+  }
+
+  registerPresetRoutes('reolink', {
+    list: (idx) => { if (!reolink) throw new Error('Reolink unavailable'); return reolink.listPresets(idx); },
+    goto: (idx, id) => { if (!reolink) throw new Error('Reolink unavailable'); return reolink.gotoPreset(idx, id); },
+  });
+  registerPresetRoutes('kenik', {
+    list:   (idx) => { if (!kenik) throw new Error('KENIK unavailable'); return kenik.listPresets(idx); },
+    goto:   (idx, id) => { if (!kenik) throw new Error('KENIK unavailable'); return kenik.gotoPreset(idx, id); },
+    save:   (idx, name) => { if (!kenik) throw new Error('KENIK unavailable'); return kenik.savePreset(idx, name); },
+    remove: (idx, id) => { if (!kenik) throw new Error('KENIK unavailable'); return kenik.removePreset(idx, id); },
+  });
+  registerPresetRoutes('axis', {
+    list:   (idx) => { if (!axis) throw new Error('Axis unavailable'); return axis.listPresets(idx); },
+    goto:   (idx, id) => { if (!axis) throw new Error('Axis unavailable'); return axis.gotoPreset(idx, id); },
+    save:   (idx, name) => { if (!axis) throw new Error('Axis unavailable'); return axis.savePreset(idx, name); },
+    remove: (idx, id) => { if (!axis) throw new Error('Axis unavailable'); return axis.removePreset(idx, id); },
+  });
+  registerPresetRoutes('camera', {
+    list:   (idx) => require('./onvif-ptz').listPresets(onvifCfgFor(idx)),
+    goto:   (idx, id) => require('./onvif-ptz').gotoPreset(onvifCfgFor(idx), id),
+    save:   (idx, name) => require('./onvif-ptz').setPreset(onvifCfgFor(idx), name),
+    remove: (idx, id) => require('./onvif-ptz').removePreset(onvifCfgFor(idx), id),
+  });
+
+  // ── Patrol (Reolink only — the only backend with a documented start/stop
+  // call; best-effort, reported unreliable on some models/firmware) ───────
+  router.post('/reolink/patrol/:idx', async (req, res) => {
+    if (!reolink) return res.status(503).json({ success: false, error: 'Reolink unavailable' });
+    const { action, id } = req.body || {};
+    if (!['start', 'stop'].includes(action)) {
+      return res.status(400).json({ success: false, error: "action must be 'start' or 'stop'" });
+    }
+    try {
+      await (action === 'start' ? reolink.startPatrol(req.params.idx, id) : reolink.stopPatrol(req.params.idx));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(502).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Siren + floodlight (Reolink only) ────────────────────
+  router.post('/reolink/siren/:idx', async (req, res) => {
+    if (!reolink) return res.status(503).json({ success: false, error: 'Reolink unavailable' });
+    try { await reolink.triggerSiren(req.params.idx, (req.body || {}).times); res.json({ success: true }); }
+    catch (err) { res.status(502).json({ success: false, error: err.message }); }
+  });
+
+  router.get('/reolink/floodlight/:idx', async (req, res) => {
+    if (!reolink) return res.status(503).json({ success: false, error: 'Reolink unavailable' });
+    try { res.json({ success: true, data: await reolink.getFloodlight(req.params.idx) }); }
+    catch (err) { res.status(502).json({ success: false, error: err.message }); }
+  });
+
+  router.post('/reolink/floodlight/:idx', async (req, res) => {
+    if (!reolink) return res.status(503).json({ success: false, error: 'Reolink unavailable' });
+    const { on } = req.body || {};
+    if (typeof on !== 'boolean') return res.status(400).json({ success: false, error: 'Body must include on: true|false' });
+    try { await reolink.setFloodlight(req.params.idx, on); res.json({ success: true }); }
+    catch (err) { res.status(502).json({ success: false, error: err.message }); }
+  });
+
+  // ── IR / night-mode toggle — GET current mode, POST {mode: 'on'|'off'|'auto'}
+  const irHandler = (getFn, setFn) => ({
+    get: async (req, res) => {
+      try { res.json({ success: true, data: await getFn(req.params.idx) }); }
+      catch (err) { res.status(502).json({ success: false, error: err.message }); }
+    },
+    post: async (req, res) => {
+      const { mode } = req.body || {};
+      if (!['on', 'off', 'auto'].includes(mode)) {
+        return res.status(400).json({ success: false, error: "mode must be 'on', 'off', or 'auto'" });
+      }
+      try { await setFn(req.params.idx, mode); res.json({ success: true }); }
+      catch (err) { res.status(502).json({ success: false, error: err.message }); }
+    },
+  });
+
+  {
+    const h = irHandler(
+      (idx) => { if (!reolink) throw new Error('Reolink unavailable'); return reolink.getIr(idx); },
+      (idx, mode) => { if (!reolink) throw new Error('Reolink unavailable'); return reolink.setIr(idx, mode); },
+    );
+    router.get('/reolink/ir/:idx', h.get);
+    router.post('/reolink/ir/:idx', h.post);
+  }
+  {
+    const h = irHandler(
+      (idx) => { if (!kenik) throw new Error('KENIK unavailable'); return kenik.getIr(idx); },
+      (idx, mode) => { if (!kenik) throw new Error('KENIK unavailable'); return kenik.setIr(idx, mode); },
+    );
+    router.get('/kenik/ir/:idx', h.get);
+    router.post('/kenik/ir/:idx', h.post);
+  }
+  {
+    const h = irHandler(
+      (idx) => { if (!axis) throw new Error('Axis unavailable'); return axis.getIr(idx); },
+      (idx, mode) => { if (!axis) throw new Error('Axis unavailable'); return axis.setIr(idx, mode); },
+    );
+    router.get('/axis/ir/:idx', h.get);
+    router.post('/axis/ir/:idx', h.post);
+  }
+  {
+    const onvifImaging = () => require('./onvif-imaging');
+    const h = irHandler(
+      (idx) => onvifImaging().getIr(onvifCfgFor(idx)),
+      (idx, mode) => onvifImaging().setIr(onvifCfgFor(idx), mode),
+    );
+    router.get('/camera/ir/:idx', h.get);
+    router.post('/camera/ir/:idx', h.post);
+  }
 
   // WS-Discovery scan for ONVIF cameras on the LAN — used by the Settings
   // "Discover" button so the user doesn't need to already know camera IPs.
@@ -2065,6 +2260,64 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       res.json({ success: true, message: `${sanitized.length} MC6 device(s) saved. Restart to apply.` });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // clients.mc6 (not a destructured local) — see the note on the SmartThings
+  // sendSmartThingsCommand() helper above for why: the client is registered
+  // onto apiClients after createApiRoutes() already ran.
+  function mc6Client() {
+    const mc6 = clients.mc6;
+    if (!mc6) throw new Error('MC6 not configured');
+    return mc6;
+  }
+
+  const normalizeMac = mac => (mac || '').replace(/[^A-Fa-f0-9]/g, '').toUpperCase();
+
+  router.get('/mc6/:mac/schedule', (req, res) => {
+    try {
+      res.json({ success: true, data: mc6Client().listSchedules(normalizeMac(req.params.mac)) });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/mc6/:mac/timer', (req, res) => {
+    const { minutes, action } = req.body;
+    try {
+      const data = mc6Client().setCountdownTimer(normalizeMac(req.params.mac), parseFloat(minutes), action || 'off');
+      res.json({ success: true, data });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  router.delete('/mc6/:mac/timer', (req, res) => {
+    try {
+      mc6Client().clearCountdownTimer(normalizeMac(req.params.mac));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/mc6/:mac/schedule', (req, res) => {
+    const { time, action, days, enabled } = req.body;
+    try {
+      const entry = mc6Client().addDailySchedule(normalizeMac(req.params.mac), { time, action, days, enabled });
+      res.json({ success: true, data: entry });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  router.delete('/mc6/:mac/schedule/:id', (req, res) => {
+    try {
+      const removed = mc6Client().removeDailySchedule(normalizeMac(req.params.mac), req.params.id);
+      if (!removed) return res.status(404).json({ success: false, error: 'Schedule entry not found' });
+      res.json({ success: true });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
     }
   });
 
@@ -3087,6 +3340,20 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       res.json({ success: true, message: 'SIP settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // The SmartThings client (server.js) writes its current OAuth bearer token
+  // here every 24h — the Aeotec 360 is a SmartThings cloud device (no local
+  // RTSP), so this is the token needed for direct SmartThings API calls.
+  router.get('/settings/smartthings-token', (req, res) => {
+    const tokFile = path.join(__dirname, '..', 'persist', 'smartthings-token-latest.txt');
+    try {
+      const [token, deliveredLine] = fs.readFileSync(tokFile, 'utf8').trim().split('\n');
+      const deliveredAt = deliveredLine?.replace('delivered_at:', '').trim() || null;
+      res.json({ success: true, token, deliveredAt });
+    } catch {
+      res.json({ success: false, error: 'No token delivered yet — restart LSH with SmartThings OAuth configured' });
     }
   });
 

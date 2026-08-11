@@ -236,6 +236,10 @@
     "aeotec_user": "Nome utente",
     "aeotec_user_hint": "(predefinito: admin)",
     "aeotec_pass": "Password",
+    "aidetect_title": "Rilevamento IA telecamera",
+    "aidetect_model": "Modello di rilevamento",
+    "aidetect_status_unknown": "—",
+    "aidetect_download": "Scarica e usa questo modello",
     "add_to_cameras": "Aggiungi alle telecamere",
     "rtsp_main": "RTSP (stream principale)",
     "rtsp_sub": "RTSP (stream secondario)",
@@ -510,6 +514,7 @@
     "d35": "Abbina il bridge relè in Apple Casa con il PIN qui sotto.",
     "d36": "Gestisci utenti, token API e crittografia HTTPS/TLS.",
     "d37": "Salva l'intera configurazione in un file o ripristina un backup precedente.",
+    "d40": "Rilevamento locale di persone/auto/animali per telecamere senza IA integrata (chiave di configurazione <code>objectDetection</code>, l'elenco delle telecamere resta impostato in <code>config.json</code>). Scegli qui sotto il modello di rilevamento — il cambio lo scarica di nuovo e verifica che si carichi prima di salvarlo.",
     "d15f": "Invia i valori di LSH alle variabili globali del <strong>Fibaro Home Center</strong> in tempo reale (alla variazione, debounce 200 ms), così le scene HC possono reagire a tutto ciò che LSH conosce — zone Satel, batteria Victron, campanello UniFi. Le variabili mancanti vengono create automaticamente; una <em>regola di prefisso</em> mappa un intero sottoalbero di chiavi in una volta (<code>/</code> diventa <code>_</code>).",
     "mongo": "Salva il DataStore dei sensori (valori live + cronologia) su <strong>MongoDB</strong> invece del file gzip locale. Il file resta come fallback sicuro allo spegnimento; lasciarlo vuoto mantiene il comportamento predefinito. Riavvia per applicare.",
     "interface": "Nascondi i link di navigazione che non usi. Si applica al prossimo caricamento — senza riavvio."

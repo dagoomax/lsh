@@ -964,6 +964,67 @@ main {
 }
 .cam-ptz-zin   { grid-area: zin; }
 .cam-ptz-zout  { grid-area: zout; }
+
+/* ── Preset pad (dynamic list — tap to goto, long-press to delete when writable) ── */
+.cam-presets {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.cam-modal-preview:hover .cam-presets { opacity: 1; }
+.cam-preset-btn, .cam-preset-add {
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 8px;
+  background: rgba(10,14,20,0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #e9eef5;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.cam-preset-btn:hover, .cam-preset-add:hover { border-color: rgba(255,255,255,0.45); }
+.cam-preset-btn.deleting { background: rgba(220,60,60,0.55); border-color: rgba(255,120,120,0.85); }
+.cam-preset-add { font-weight: 600; padding: 4px 9px; }
+
+/* ── Extra controls (IR / patrol / floodlight / siren) ── */
+.cam-extra {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  display: flex;
+  gap: 4px;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.cam-modal-preview:hover .cam-extra { opacity: 1; }
+.cam-extra-btn {
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 8px;
+  background: rgba(10,14,20,0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #e9eef5;
+  font-size: 14px;
+  padding: 5px 9px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.cam-extra-btn:hover { border-color: rgba(255,255,255,0.45); }
+.cam-extra-btn.active { background: rgba(88,166,255,0.45); border-color: rgba(121,192,255,0.8); }
+.cam-extra-btn.pulsing { background: rgba(220,60,60,0.55); border-color: rgba(255,120,120,0.85); }
 .cam-modal-img,
 .cam-modal-video {
   width: 100%;

@@ -598,6 +598,7 @@ const TYPE_MAP = {
   wirenboard:   DinRailIcon,
   dreame:       RobotVacuumIcon,
   roborock:     RobotVacuumIcon,
+  landroid:     LawnmowerIcon,
   esphome:      ChipIcon,
   shelly:       PlugIcon,
   knx:          KnxBusIcon,
@@ -662,6 +663,17 @@ export function RobotVacuumIcon({ color = 'currentColor', size = 24 }) {
       <circle cx="12" cy="12" r="9"/>
       <circle cx="12" cy="12" r="3.5"/>
       <path d="M12 3v3M5.6 18.4l2.1-2.1M18.4 18.4l-2.1-2.1"/>
+    </svg>
+  )
+}
+
+export function LawnmowerIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="11" width="12" height="6" rx="2"/>
+      <circle cx="6.5" cy="19.5" r="1.8"/>
+      <circle cx="13.5" cy="19.5" r="1.8"/>
+      <path d="M12 11V6l5-2.5"/>
     </svg>
   )
 }
@@ -833,6 +845,7 @@ const APPLIANCE_MATCHERS = [
   [/hood|okap|dunst/i,                               HoodIcon],
   [/hob|płyt|plyt|induction|kochfeld/i,              HobIcon],
   [/robot|vacuum|odkurzacz|saug/i,                   RobotVacuumIcon],
+  [/mow|lawn|kosiark|landroid|kress|landxcape/i,     LawnmowerIcon],
 ]
 
 function applianceIcon(label = '') {
@@ -874,6 +887,8 @@ export const NAMED_ICONS = {
   'floor-lamp': FloorLampIcon,
   'desk-lamp': DeskLampIcon,
   dimmer: DimmerIcon,
+  lawnmower: LawnmowerIcon,
+  'robot-vacuum': RobotVacuumIcon,
 }
 
 export function resolveIcon(device) {

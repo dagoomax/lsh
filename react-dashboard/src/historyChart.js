@@ -7,22 +7,26 @@ import { useEffect, useState } from 'react'
 // DeviceModal's Chart and EnergyFlow's sparklines need "fetch now, then
 // refresh every N ms, discard results if unmounted" — this is that shape,
 // so a cleanup-race fix only ever needs to be made once.
-export function useHistoryPoints(path, intervalMs = 30000) {
+export function useHistoryPoints(path, intervalMs = 30000, hours = null) {
   const [points, setPoints] = useState(null)
   useEffect(() => {
     let alive = true
     setPoints(null)
-    const load = () => fetchHistory(path).then(p => { if (alive) setPoints(p) })
+    const load = () => fetchHistory(path, hours).then(p => { if (alive) setPoints(p) })
     load()
     const iv = setInterval(load, intervalMs)
     return () => { alive = false; clearInterval(iv) }
-  }, [path, intervalMs])
+  }, [path, intervalMs, hours])
   return points
 }
 
-export async function fetchHistory(path) {
+// hours: optional — beyond the in-memory ~6h window, the server only serves
+// this from Mongo (see src/data-store.js:getHistoryRange) if it's configured;
+// omit it (or leave <= 6) to keep the cheap in-memory-only fast path.
+export async function fetchHistory(path, hours = null) {
   try {
-    const r = await fetch(`/api/history/${path}`, { credentials: 'same-origin' })
+    const q = hours ? `?hours=${hours}` : ''
+    const r = await fetch(`/api/history/${path}${q}`, { credentials: 'same-origin' })
     const j = await r.json()
     return downsample(j.points || [], 400)
   } catch { return [] }

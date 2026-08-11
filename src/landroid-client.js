@@ -149,7 +149,7 @@ class LandroidClient {
       key:    `landroid/${serial}`,
       type:   'landroid',
       label:  m.name,
-      icon:   '🤖',
+      icon:   '🚜',
       color:  'green',
       homekit: ['battery-level', 'mower-rw'],
       sensors: [

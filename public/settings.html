@@ -1488,6 +1488,15 @@
       <p class="section-desc" data-i18n-html="sdesc.d30">Add an Aeotec Indoor Camera 360° by local IP. Sensor data (motion, sound) flows via SmartThings; the local RTSP stream is added to your Cameras list for live video. Credentials are the ones you set in the Aeotec app.</p>
 
       <div class="form-row">
+        <label data-i18n="s.aeotec_pat">SmartThings API Token</label>
+        <div class="token-value-box">
+          <code id="aeotec-pat-value">—</code>
+          <button class="btn btn-sm btn-secondary" id="btn-copy-aeotec-pat" type="button" data-i18n="common.copy">Copy</button>
+        </div>
+        <span class="hint" id="aeotec-pat-meta" data-i18n="s.aeotec_pat_hint">Bearer token for direct SmartThings API calls — LSH refreshes and writes this automatically every 24h.</span>
+      </div>
+
+      <div class="form-row">
         <label for="aeotec-name" data-i18n="s.aeotec_name">Camera Name</label>
         <input type="text" id="aeotec-name" placeholder="Living Room">
       </div>
@@ -1523,6 +1532,23 @@
         <button class="btn btn-secondary" id="btn-test-aeotec" data-i18n="common.test">Test Connection</button>
         <button class="btn btn-primary"   id="btn-add-aeotec" data-i18n="s.add_to_cameras">Add to Cameras</button>
         <span class="test-result" id="aeotec-result"></span>
+      </div>
+    </section>
+
+    <!-- AI Camera Detection (local object detection model) -->
+    <section class="card settings-card" data-category="cameras" data-title="AI camera object detection model COCO-SSD download">
+      <h2><span data-i18n="s.aidetect_title">AI Camera Detection</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc" data-i18n-html="sdesc.d40">Local person/car/pet detection for cameras with no on-device AI of their own (config key <code>objectDetection</code>, cameras list still set in <code>config.json</code>). Pick which detection model to use below — switching downloads it fresh and validates it loads before saving.</p>
+
+      <div class="form-row">
+        <label for="aidetect-model" data-i18n="s.aidetect_model">Detection Model</label>
+        <select id="aidetect-model"></select>
+        <span class="hint" id="aidetect-status" data-i18n="s.aidetect_status_unknown">—</span>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-aidetect-download" data-i18n="s.aidetect_download">Download &amp; Use This Model</button>
+        <span class="test-result" id="aidetect-result"></span>
       </div>
     </section>
 

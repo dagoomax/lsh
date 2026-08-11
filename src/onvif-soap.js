@@ -78,4 +78,27 @@ async function getProfileToken(cfg) {
   throw lastErr || new Error('ONVIF GetProfiles failed');
 }
 
-module.exports = { soapRequest, securityHeader, getProfileToken };
+const videoSourceCache = new Map(); // host:port → video source token
+
+// Imaging (IR-cut/night-mode) settings apply to a VideoSource, not the media
+// profile — needs its own token via Media's GetVideoSources.
+async function getVideoSourceToken(cfg) {
+  if (cfg.videoSourceToken) return cfg.videoSourceToken;
+  const cacheKey = `${cfg.host}:${cfg.port || 80}`;
+  if (videoSourceCache.has(cacheKey)) return videoSourceCache.get(cacheKey);
+
+  const body  = `<GetVideoSources xmlns="http://www.onvif.org/ver10/media/wsdl"/>`;
+  const paths = [cfg.mediaPath || '/onvif/media_service', '/onvif/device_service', '/onvif/Media'];
+  let lastErr;
+  for (const path of paths) {
+    try {
+      const res   = await soapRequest(cfg, path, body);
+      const token = res.match(/VideoSources[^>]*\stoken="([^"]+)"/)?.[1];
+      if (token) { videoSourceCache.set(cacheKey, token); return token; }
+      lastErr = new Error('No video sources in ONVIF response');
+    } catch (err) { lastErr = err; }
+  }
+  throw lastErr || new Error('ONVIF GetVideoSources failed');
+}
+
+module.exports = { soapRequest, securityHeader, getProfileToken, getVideoSourceToken };

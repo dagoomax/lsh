@@ -2215,6 +2215,33 @@ document.getElementById('btn-save-unifi').addEventListener('click', async () => 
 
 // ── Aeotec 360 Camera ──────────────────────────────────────────────────────
 
+(async () => {
+  const valueEl = document.getElementById('aeotec-pat-value');
+  const metaEl  = document.getElementById('aeotec-pat-meta');
+  try {
+    const res  = await fetch('/api/settings/smartthings-token');
+    const json = await res.json();
+    if (json.success) {
+      valueEl.textContent = json.token;
+      if (json.deliveredAt) metaEl.textContent = `Delivered ${new Date(json.deliveredAt).toLocaleString()} — LSH refreshes and writes this automatically every 24h.`;
+    } else {
+      valueEl.textContent = 'Not available';
+    }
+  } catch {
+    valueEl.textContent = 'Not available';
+  }
+})();
+
+document.getElementById('btn-copy-aeotec-pat').addEventListener('click', () => {
+  const text = document.getElementById('aeotec-pat-value').textContent;
+  if (!text || text === '—' || text === 'Not available') return;
+  navigator.clipboard?.writeText(text).then(() => {
+    const btn = document.getElementById('btn-copy-aeotec-pat');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+  });
+});
+
 function aeotecUrls() {
   const ip   = getVal('aeotec-ip');
   const user = getVal('aeotec-user') || 'admin';
@@ -2298,6 +2325,66 @@ document.getElementById('btn-add-aeotec').addEventListener('click', async () => 
     resultEl.className = 'test-result err';
   }
 });
+
+// ── AI Camera Detection (local object detection model) ─────────────────────
+
+function _aidetectStatusText(data) {
+  if (data.loading) return `Downloading ${data.base}…`;
+  if (data.error)   return `✗ ${data.base}: ${data.error}`;
+  if (data.loaded)  return `✓ ${data.base} loaded`;
+  return 'Not running — add a camera under objectDetection.cameras first';
+}
+
+async function loadAiDetectModel() {
+  const select   = document.getElementById('aidetect-model');
+  const statusEl = document.getElementById('aidetect-status');
+  try {
+    const res = await fetch('/api/settings/object-detection/model');
+    const { success, data } = await res.json();
+    if (!success) return;
+
+    select.innerHTML = (data.options || []).map((m) =>
+      `<option value="${m.id}">${m.label}</option>`).join('');
+    if (data.base) select.value = data.base;
+    statusEl.textContent = _aidetectStatusText(data);
+  } catch { /* ignore — section just shows its default state */ }
+}
+
+document.getElementById('btn-aidetect-download')?.addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-aidetect-download');
+  const select   = document.getElementById('aidetect-model');
+  const statusEl = document.getElementById('aidetect-status');
+  const resultEl = document.getElementById('aidetect-result');
+  const model    = select.value;
+  if (!model) return;
+
+  btn.disabled = true;
+  statusEl.textContent = `Downloading ${model}…`;
+  resultEl.textContent = '';
+  resultEl.className   = 'test-result';
+  try {
+    const res  = await fetch('/api/settings/object-detection/model', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model }),
+    });
+    const { success, data, error } = await res.json();
+    if (success) {
+      statusEl.textContent = _aidetectStatusText(data);
+      resultEl.textContent = `✓ Now using ${data.base}`;
+      resultEl.className   = 'test-result ok';
+    } else {
+      statusEl.textContent = `✗ ${error}`;
+      resultEl.textContent = '✗ ' + error;
+      resultEl.className   = 'test-result err';
+    }
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+loadAiDetectModel();
 
 // ── Cameras ────────────────────────────────────────────────────────────────
 
@@ -2433,7 +2520,7 @@ function renderCameraList(cameras) {
 }
 
 function collectCameras() {
-  return Array.from(document.querySelectorAll('.camera-settings-row')).map((row) => {
+  return Array.from(document.querySelectorAll('#cameras-settings-list .camera-settings-row')).map((row) => {
     const onvifHost = row.querySelector('.cam-onvif-host').value.trim();
     return {
       name:        row.querySelector('.cam-name').value.trim(),
@@ -2458,7 +2545,7 @@ document.getElementById('btn-add-camera').addEventListener('click', () => {
   currentCameras = collectCameras();
   currentCameras.push({ name: '', url: '', snapshotUrl: '', mjpegUrl: '', webrtcUrl: '' });
   renderCameraList(currentCameras);
-  const rows = document.querySelectorAll('.camera-settings-row');
+  const rows = document.querySelectorAll('#cameras-settings-list .camera-settings-row');
   rows[rows.length - 1]?.querySelector('.cam-name')?.focus();
 });
 

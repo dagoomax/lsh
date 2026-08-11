@@ -11,7 +11,7 @@ API tokens are created under Settings → API Tokens (`POST /api/auth/tokens`). 
 
 Regenerate the machine-readable spec with `node scripts/gen-openapi.js` → `public/openapi.json` (served at `/openapi.json`).
 
-**Total routes: 145**
+**Total routes: 166**
 
 ## Auth
 
@@ -49,7 +49,8 @@ GET    http://192.168.1.229:3001/api/device/:deviceKey(*)/set
 ## History
 
 ```
-GET    http://192.168.1.229:3001/api/history/:key(*)
+GET    http://192.168.1.229:3001/api/history/:key(*)          # ?hours=N — beyond 6h, only Mongo-backed if configured (see `mongo` config)
+GET    http://192.168.1.229:3001/api/history-status           # { mongoEnabled, retentionDays, bufferHours }
 ```
 
 ## Loxone Config XML templates
@@ -90,6 +91,39 @@ POST   http://192.168.1.229:3001/api/satel/partition/:num/:action(arm|disarm)
 ```
 GET    http://192.168.1.229:3001/api/cameras
 ```
+
+## Local object detection (COCO-SSD) model selection
+
+```
+GET    http://192.168.1.229:3001/api/settings/object-detection/model   # { base, loading, loaded, error, options: [{id, label}] }
+POST   http://192.168.1.229:3001/api/settings/object-detection/model   # { model: lite_mobilenet_v2|mobilenet_v2|mobilenet_v1 } — downloads + validates before persisting
+```
+
+GET always succeeds (shows `base: null` if not running); POST 503s unless `objectDetection.cameras` has at least one entry — the client (and its model) only load when there's a camera to run it against.
+
+## Camera PTZ
+
+`:backend` is one of `reolink` | `axis` | `kenik` | `camera` (the last is manual `cameras` entries with an `onvif` section). Continuous move needs `cam.ptz: true` (Reolink/Axis) or an `onvif` block (KENIK/manual); presets ride on the same gate. IR, patrol, siren, and floodlight are per-camera opt-in flags (`ir`/`floodlight`/`siren` — patrol needs no separate flag, it rides on `ptz`) since they don't apply to every camera on a backend.
+
+```
+POST   http://192.168.1.229:3001/api/:backend/ptz/:idx                 # { op: left|right|up|down|zoomin|zoomout|stop, speed? }
+
+GET    http://192.168.1.229:3001/api/:backend/preset/:idx              # [{ id, name }], writable: bool
+POST   http://192.168.1.229:3001/api/:backend/preset/:idx              # { name? } — save current position (writable backends only: axis, kenik, camera)
+POST   http://192.168.1.229:3001/api/:backend/preset/:idx/:id/goto
+DELETE http://192.168.1.229:3001/api/:backend/preset/:idx/:id          # writable backends only
+
+POST   http://192.168.1.229:3001/api/reolink/patrol/:idx               # { action: start|stop, id? } — best-effort, model/firmware-dependent
+
+GET    http://192.168.1.229:3001/api/:backend/ir/:idx                  # { mode: on|off|auto } — backend ∈ reolink|axis|kenik|camera
+POST   http://192.168.1.229:3001/api/:backend/ir/:idx                  # { mode: on|off|auto }
+
+POST   http://192.168.1.229:3001/api/reolink/siren/:idx                # { times? } — manual trigger, no persistent state
+GET    http://192.168.1.229:3001/api/reolink/floodlight/:idx           # { on, brightness }
+POST   http://192.168.1.229:3001/api/reolink/floodlight/:idx           # { on: bool }
+```
+
+Reolink presets are list + goto only — the CGI API has no documented "save" call, so presets must be created via the Reolink app/NVR UI first.
 
 ## SIP doorbell intercom
 
@@ -137,6 +171,7 @@ POST   http://192.168.1.229:3001/api/settings/solaredge
 ```
 POST   http://192.168.1.229:3001/api/settings/test-smartthings
 POST   http://192.168.1.229:3001/api/settings/smartthings
+GET    http://192.168.1.229:3001/api/settings/smartthings-token    # current bearer token, refreshed + written to disk every 24h
 ```
 
 ## Satel
@@ -193,6 +228,12 @@ POST   http://192.168.1.229:3001/api/settings/dreame
 
 ```
 POST   http://192.168.1.229:3001/api/settings/mc6
+
+GET    http://192.168.1.229:3001/api/mc6/:mac/schedule       # { countdown, daily[] }
+POST   http://192.168.1.229:3001/api/mc6/:mac/timer          # { minutes, action: 'on'|'off' } — one-shot countdown
+DELETE http://192.168.1.229:3001/api/mc6/:mac/timer          # cancel the countdown
+POST   http://192.168.1.229:3001/api/mc6/:mac/schedule       # { time: 'HH:MM', action: 'on'|'off', days?: [0-6], enabled? } — recurring daily entry
+DELETE http://192.168.1.229:3001/api/mc6/:mac/schedule/:id   # remove a daily entry
 ```
 
 ## Roborock

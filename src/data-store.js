@@ -18,6 +18,37 @@ const MONGO_DOC_ID     = 'snapshot';
 // place, so RAM stays bounded even for fast-changing keys (~6h at 30 s).
 const HISTORY_MAX_POINTS   = 720;
 const HISTORY_MIN_INTERVAL = 30_000; // ms
+const HISTORY_BUFFER_HOURS = (HISTORY_MAX_POINTS * HISTORY_MIN_INTERVAL) / 3600_000; // 6
+
+// Long-range history (optional, requires Mongo): every point that lands in
+// the ring buffer above is also queued here and flushed to its own
+// collection in batches, so it survives past the 6h RAM window instead of
+// being silently dropped when the ring buffer wraps. This is genuinely
+// append-only time-series data — separate from MONGO_COLLECTION's periodic
+// full-snapshot overwrite above, which never grows history depth on its own.
+const MONGO_HISTORY_COLLECTION   = 'sensorHistory';
+const HISTORY_FLUSH_INTERVAL     = 60_000; // ms — batch writes, don't hit Mongo per point
+const HISTORY_QUERY_MAX_POINTS   = 2000;   // bucket-average down to this many points per chart
+const HISTORY_RETENTION_DAYS_DEFAULT = 90;
+
+// Bucket-average `points` ([t,v] pairs, must be t-sorted) down to at most
+// `maxPoints` — same idea as the client-side downsampling historyChart.js
+// already does, just applied before the payload leaves the server for wide
+// ranges where the raw point count could otherwise be huge.
+function downsample(points, maxPoints) {
+  if (points.length <= maxPoints) return points;
+  const bucketSize = points.length / maxPoints;
+  const out = [];
+  for (let i = 0; i < maxPoints; i++) {
+    const start = Math.floor(i * bucketSize);
+    const end   = Math.max(start + 1, Math.floor((i + 1) * bucketSize));
+    const slice = points.slice(start, end);
+    const t = slice[Math.floor(slice.length / 2)][0]; // midpoint timestamp reads better than mean-of-epoch
+    const v = slice.reduce((sum, p) => sum + p[1], 0) / slice.length;
+    out.push([t, v]);
+  }
+  return out;
+}
 
 // Persistence: sensor values + history survive restarts. Gzipped JSON in
 // persist/ (≈1–2 MB), written every 5 min and synchronously on shutdown.
@@ -32,6 +63,9 @@ class DataStore extends EventEmitter {
     this.history = new Map(); // key → [[t, v], …]
     this._persistTimer = null;
     this._db = null; // MongoDB handle when configured
+    this._historyQueue = [];    // pending {key, t, v} docs awaiting the next flush
+    this._historyFlushTimer = null;
+    this._historyRetentionDays = HISTORY_RETENTION_DAYS_DEFAULT;
     this.setMaxListeners(200);
   }
 
@@ -156,7 +190,13 @@ class DataStore extends EventEmitter {
     let loaded = false;
     if (mongoCfg && mongoCfg.uri) {
       this._db = await connectMongo(mongoCfg);
-      if (this._db) loaded = await this.loadFromMongo();
+      if (this._db) {
+        loaded = await this.loadFromMongo();
+        this._historyRetentionDays = Number(mongoCfg.historyRetentionDays) || HISTORY_RETENTION_DAYS_DEFAULT;
+        this._ensureHistoryIndexes(this._historyRetentionDays)
+          .catch((err) => console.error(`[Store] History index setup failed: ${err.message}`));
+        this._historyFlushTimer = setInterval(() => this._flushHistoryQueue(), HISTORY_FLUSH_INTERVAL);
+      }
     }
     if (!loaded) this.loadPersisted();
 
@@ -169,7 +209,10 @@ class DataStore extends EventEmitter {
     const save = () => {
       const size = this.persistSync();
       if (size) console.log(`[Store] Saved on shutdown (${(size / 1024).toFixed(0)} kB)`);
-      if (this._db) this.persistMongo().catch(() => {});
+      if (this._db) {
+        this.persistMongo().catch(() => {});
+        this._flushHistoryQueue().catch(() => {});
+      }
     };
     process.once('SIGINT', save);
     process.once('SIGTERM', save);
@@ -201,10 +244,80 @@ class DataStore extends EventEmitter {
     }
     buf.push([now, v]);
     if (buf.length > HISTORY_MAX_POINTS) buf.shift();
+    if (this._db) this._historyQueue.push({ key, t: new Date(now), v });
   }
 
   getHistory(key) {
     return this.history.get(key) || [];
+  }
+
+  // ── Long-range history (optional, Mongo-backed) ─────────────────────────
+
+  async _flushHistoryQueue() {
+    if (!this._db || !this._historyQueue.length) return;
+    const batch = this._historyQueue;
+    this._historyQueue = [];
+    try {
+      await this._db.collection(MONGO_HISTORY_COLLECTION).insertMany(batch, { ordered: false });
+    } catch (err) {
+      console.error(`[Store] History flush failed (${batch.length} point(s) dropped): ${err.message}`);
+    }
+  }
+
+  // Compound index for the {key, t range} query below, plus a TTL index that
+  // prunes points older than the configured retention automatically. If the
+  // TTL index already exists with a different retention (the config value
+  // changed since it was first created), `collMod` updates it in place —
+  // createIndex() alone would just throw IndexOptionsConflict.
+  async _ensureHistoryIndexes(retentionDays) {
+    const col = this._db.collection(MONGO_HISTORY_COLLECTION);
+    const expireAfterSeconds = Math.round(retentionDays * 86400);
+    try {
+      await col.createIndex({ key: 1, t: 1 });
+      await col.createIndex({ t: 1 }, { expireAfterSeconds });
+    } catch (err) {
+      if (err.codeName !== 'IndexOptionsConflict' && err.code !== 85) {
+        console.error(`[Store] History index setup failed: ${err.message}`);
+        return;
+      }
+      try {
+        await this._db.command({
+          collMod: MONGO_HISTORY_COLLECTION,
+          index: { keyPattern: { t: 1 }, expireAfterSeconds },
+        });
+      } catch (modErr) {
+        console.error(`[Store] History TTL update failed: ${modErr.message}`);
+      }
+    }
+  }
+
+  // Points beyond the in-memory ring buffer's ~6h window, read from Mongo.
+  // Falls back to whatever's in RAM if Mongo isn't configured/reachable, so
+  // callers never need to branch on availability themselves.
+  async getHistoryRange(key, hours) {
+    if (!this._db) return this.getHistory(key);
+    try {
+      const since = new Date(Date.now() - hours * 3600_000);
+      const raw = await this._db.collection(MONGO_HISTORY_COLLECTION)
+        .find({ key, t: { $gte: since } })
+        .sort({ t: 1 })
+        .project({ _id: 0, t: 1, v: 1 })
+        .toArray();
+      const points = raw.map((d) => [d.t.getTime(), d.v]);
+      // The most recent ~60s may not be flushed to Mongo yet — top up with
+      // whatever the in-memory buffer has past the last Mongo point so the
+      // chart doesn't look stale right after switching to a longer range.
+      const lastT  = points.length ? points[points.length - 1][0] : 0;
+      const recent = (this.history.get(key) || []).filter((p) => p[0] > lastT);
+      return downsample([...points, ...recent], HISTORY_QUERY_MAX_POINTS);
+    } catch (err) {
+      console.error(`[Store] History range query failed for "${key}": ${err.message}`);
+      return this.getHistory(key);
+    }
+  }
+
+  historyStatus() {
+    return { mongoEnabled: !!this._db, retentionDays: this._historyRetentionDays, bufferHours: HISTORY_BUFFER_HOURS };
   }
 
   get(key) {

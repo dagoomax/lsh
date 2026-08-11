@@ -29,6 +29,16 @@ const detectionBoxes = require('./detection-boxes');
 
 const DETECTION_TTL_SECONDS = 7 * 24 * 3600; // auto-expire stored detection images after a week
 
+// coco-ssd's three published base models — same 80 COCO classes, trading
+// accuracy for speed/size. Weights aren't vendored (see file header) — each
+// one is fetched fresh from Google's model CDN the first time it's loaded.
+const MODEL_BASES = [
+  { id: 'lite_mobilenet_v2', label: 'Lite MobileNet v2 (fastest, default)' },
+  { id: 'mobilenet_v2',      label: 'MobileNet v2 (more accurate, slower)' },
+  { id: 'mobilenet_v1',      label: 'MobileNet v1 (smallest download)' },
+];
+const MODEL_BASE_IDS = MODEL_BASES.map((m) => m.id);
+
 // Second-opinion breed verification for COCO-SSD's 4 pet-ish classes.
 // COCO-SSD only knows "this is a cat" (one of 80 coarse classes); MobileNet
 // (trained on ImageNet's 1000 classes, ~120 of them dog breeds plus several
@@ -192,6 +202,7 @@ class ObjectDetectionClient {
     this._lingering       = new Set();   // "<camSlug>/<class>" currently flagged as lingering
     this._indexesEnsured  = false;
     this._anyActive       = new Set();   // camSlugs with >=1 class currently detected — HKSV motion trigger
+    this._modelStatus     = { base: null, loading: false, loaded: false, error: null };
   }
 
   async start() {
@@ -199,9 +210,7 @@ class ObjectDetectionClient {
     const cams = (cfg?.cameras || []).filter((c) => c?.url);
     if (!cams.length) return;
 
-    await tf.setBackend('cpu');
-    console.log('[ObjectDetection] Loading COCO-SSD model…');
-    this._model = await cocoSsd.load();
+    await this._loadModel(cfg.model);
 
     if (cfg.petVerification !== false) {
       console.log('[ObjectDetection] Loading MobileNet (pet breed verification)…');
@@ -222,6 +231,42 @@ class ObjectDetectionClient {
   stop() {
     if (this._timer) clearInterval(this._timer);
     this._timer = null;
+  }
+
+  // Fetches (and swaps in) a coco-ssd base model. Used both at start() and
+  // by setModel() below for a live switch — detections in flight keep using
+  // the old this._model reference until this resolves, so a poll never sees
+  // a half-loaded model.
+  async _loadModel(base) {
+    const b = MODEL_BASE_IDS.includes(base) ? base : MODEL_BASE_IDS[0];
+    this._modelStatus = { base: b, loading: true, loaded: false, error: null };
+    console.log(`[ObjectDetection] Loading COCO-SSD model (${b})…`);
+    try {
+      await tf.setBackend('cpu');
+      const model = await cocoSsd.load({ base: b });
+      this._model = model;
+      this._modelStatus = { base: b, loading: false, loaded: true, error: null };
+      console.log(`[ObjectDetection] Model ready (${b})`);
+    } catch (err) {
+      this._modelStatus = { base: b, loading: false, loaded: !!this._model, error: err.message };
+      console.error(`[ObjectDetection] Model load failed (${b}): ${err.message}`);
+      throw err;
+    }
+  }
+
+  // Settings-page "download / switch model" action — callable independently
+  // of start()/polling so a model can be fetched and validated before it's
+  // saved as the configured default.
+  async setModel(base) {
+    if (!MODEL_BASE_IDS.includes(base)) {
+      throw new Error(`Unknown model '${base}'. Options: ${MODEL_BASE_IDS.join(', ')}`);
+    }
+    await this._loadModel(base);
+    return this.getModelStatus();
+  }
+
+  getModelStatus() {
+    return { ...this._modelStatus, options: MODEL_BASES };
   }
 
   async _pollAll(cams) {
@@ -556,3 +601,4 @@ class ObjectDetectionClient {
 module.exports = ObjectDetectionClient;
 module.exports.slugify = slugify;
 module.exports.rawToTensor = rawToTensor;
+module.exports.MODEL_BASES = MODEL_BASES;

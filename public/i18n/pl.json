@@ -237,6 +237,10 @@
     "aeotec_user": "Nazwa użytkownika",
     "aeotec_user_hint": "(domyślnie: admin)",
     "aeotec_pass": "Hasło",
+    "aidetect_title": "Wykrywanie AI kamery",
+    "aidetect_model": "Model wykrywania",
+    "aidetect_status_unknown": "—",
+    "aidetect_download": "Pobierz i użyj tego modelu",
     "add_to_cameras": "Dodaj do kamer",
     "rtsp_main": "RTSP (główny strumień)",
     "rtsp_sub": "RTSP (pomocniczy strumień)",
@@ -511,6 +515,7 @@
     "d35": "Sparuj mostek przekaźników w Apple Home, używając poniższego PIN-u.",
     "d36": "Zarządzaj użytkownikami, tokenami API i szyfrowaniem HTTPS/TLS.",
     "d37": "Zapisz całą konfigurację do pliku lub przywróć z wcześniejszej kopii.",
+    "d40": "Lokalne wykrywanie osób/samochodów/zwierząt dla kamer bez własnej AI (klucz konfiguracji <code>objectDetection</code>, lista kamer wciąż ustawiana w <code>config.json</code>). Wybierz poniżej model wykrywania — zmiana pobiera go na nowo i sprawdza, czy się wczytuje, przed zapisaniem.",
     "d15f": "Wysyła wartości LSH do zmiennych globalnych <strong>Fibaro Home Center</strong> w czasie rzeczywistym (przy zmianie, debounce 200 ms), dzięki czemu sceny HC mogą reagować na wszystko, co widzi LSH — strefy Satel, baterię Victron, dzwonek UniFi. Brakujące zmienne są tworzone automatycznie; <em>reguła prefiksu</em> mapuje całe poddrzewo kluczy naraz (<code>/</code> zamienia się w <code>_</code>).",
     "mongo": "Zapisuje DataStore czujników (wartości bieżące + historia) do <strong>MongoDB</strong> zamiast lokalnego pliku gzip. Plik pozostaje bezpiecznym zapasem przy wyłączeniu, więc puste pole zachowuje domyślne działanie. Uruchom ponownie, aby zastosować.",
     "interface": "Ukryj nieużywane linki nawigacji. Zmiany działają po przeładowaniu strony — bez restartu."

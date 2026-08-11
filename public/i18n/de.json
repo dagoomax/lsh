@@ -237,6 +237,10 @@
     "aeotec_user": "Benutzername",
     "aeotec_user_hint": "(Standard: admin)",
     "aeotec_pass": "Passwort",
+    "aidetect_title": "KI-Kameraerkennung",
+    "aidetect_model": "Erkennungsmodell",
+    "aidetect_status_unknown": "—",
+    "aidetect_download": "Herunterladen & dieses Modell verwenden",
     "add_to_cameras": "Zu Kameras hinzufügen",
     "rtsp_main": "RTSP (Hauptstream)",
     "rtsp_sub": "RTSP (Substream)",
@@ -511,6 +515,7 @@
     "d35": "Koppeln Sie die Relais-Bridge in Apple Home mit der PIN unten.",
     "d36": "Benutzer, API-Tokens und HTTPS/TLS-Verschlüsselung verwalten.",
     "d37": "Gesamte Konfiguration in eine Datei sichern oder aus einem Backup wiederherstellen.",
+    "d40": "Lokale Erkennung von Personen/Autos/Haustieren für Kameras ohne eigene KI (Konfigurationsschlüssel <code>objectDetection</code>, Kameraliste weiterhin in <code>config.json</code>). Wählen Sie unten das Erkennungsmodell — beim Wechsel wird es frisch heruntergeladen und vor dem Speichern geprüft, ob es lädt.",
     "d15f": "Überträgt LSH-Werte in Echtzeit als globale Variablen an das <strong>Fibaro Home Center</strong> (bei Änderung, 200 ms entprellt), sodass HC-Szenen auf alles reagieren können, was LSH kennt — Satel-Zonen, Victron-Batterie, UniFi-Türklingel. Fehlende Variablen werden automatisch angelegt; eine <em>Präfix-Regel</em> mappt einen ganzen Schlüssel-Teilbaum auf einmal (<code>/</code> wird zu <code>_</code>).",
     "mongo": "Speichert den Sensor-DataStore (Live-Werte + Verlauf) in <strong>MongoDB</strong> statt in der lokalen gzip-Datei. Die Datei bleibt als ausfallsicherer Fallback; leer lassen behält das Standardverhalten. Zum Anwenden neu starten.",
     "interface": "Nicht genutzte Navigationslinks ausblenden. Gilt beim nächsten Laden — kein Neustart nötig."

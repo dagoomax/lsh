@@ -168,33 +168,28 @@ class ReolinkClient {
       snapshotUrl: `/api/reolink/snapshot/${idx}`,
       mjpegUrl:    '',
       webrtcUrl:   cam.webrtcUrl || '',
-      ...(cam.ptz ? { ptzUrl: `/api/reolink/ptz/${idx}` } : {}),
+      ...(cam.ptz ? {
+        ptzUrl:    `/api/reolink/ptz/${idx}`,
+        presetUrl: `/api/reolink/preset/${idx}`,
+        patrolUrl: `/api/reolink/patrol/${idx}`,
+      } : {}),
+      ...(cam.ir ? { irUrl: `/api/reolink/ir/${idx}` } : {}),
+      ...(cam.floodlight ? { floodlightUrl: `/api/reolink/floodlight/${idx}` } : {}),
+      ...(cam.siren ? { sirenUrl: `/api/reolink/siren/${idx}` } : {}),
       _reolink:    true,
     }));
   }
 
-  // PTZ via Reolink's HTTP API (cmd=PtzCtrl). Continuous — the frontend sends
-  // an op on press and 'stop' on release. op: left|right|up|down|zoomin|zoomout|stop
-  async ptz(idx, op, speed) {
-    const cam = loadCameras()[Number(idx)];
-    if (!cam) throw new Error('Unknown camera');
-    const OPS = { left: 'Left', right: 'Right', up: 'Up', down: 'Down',
-                  zoomin: 'ZoomInc', zoomout: 'ZoomDec', stop: 'Stop' };
-    if (!OPS[op]) throw new Error(`Unknown PTZ op: ${op}`);
-
-    const body = JSON.stringify([{
-      cmd: 'PtzCtrl', action: 0,
-      param: {
-        channel: Number(cam.channel) || 0,
-        op:      OPS[op],
-        ...(op !== 'stop' ? { speed: Math.min(64, Math.max(1, Math.round((speed || 0.5) * 64))) } : {}),
-      },
-    }]);
-
+  // One cmd=<Cmd> POST to /cgi-bin/api.cgi — shared by ptz() and every
+  // preset/patrol/IR/siren/floodlight method below. Resolves the response
+  // `value` object on Reolink's own success code (0), else rejects with its
+  // error detail.
+  _call(cam, cmd, param) {
+    const body = JSON.stringify([{ cmd, action: 0, param }]);
     return new Promise((resolve, reject) => {
       const proto = cam.https ? https : http;
       const port  = Number(cam.port) || (cam.https ? 443 : 80);
-      const query = new URLSearchParams({ cmd: 'PtzCtrl', user: cam.username || '', password: cam.password || '' });
+      const query = new URLSearchParams({ cmd, user: cam.username || '', password: cam.password || '' });
       const req = proto.request({
         hostname: cam.host, port,
         path: `/cgi-bin/api.cgi?${query}`,
@@ -208,7 +203,7 @@ class ReolinkClient {
         up.on('end', () => {
           try {
             const j = JSON.parse(data);
-            if (j?.[0]?.code === 0) return resolve();
+            if (j?.[0]?.code === 0) return resolve(j[0].value);
             reject(new Error(j?.[0]?.error?.detail || `HTTP ${up.statusCode}`));
           } catch { reject(new Error(`HTTP ${up.statusCode}`)); }
         });
@@ -216,6 +211,108 @@ class ReolinkClient {
       req.on('error', reject);
       req.on('timeout', () => { req.destroy(); reject(new Error('Connection timeout')); });
       req.end(body);
+    });
+  }
+
+  // PTZ via Reolink's HTTP API (cmd=PtzCtrl). Continuous — the frontend sends
+  // an op on press and 'stop' on release. op: left|right|up|down|zoomin|zoomout|stop
+  async ptz(idx, op, speed) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const OPS = { left: 'Left', right: 'Right', up: 'Up', down: 'Down',
+                  zoomin: 'ZoomInc', zoomout: 'ZoomDec', stop: 'Stop' };
+    if (!OPS[op]) throw new Error(`Unknown PTZ op: ${op}`);
+    await this._call(cam, 'PtzCtrl', {
+      channel: Number(cam.channel) || 0,
+      op:      OPS[op],
+      ...(op !== 'stop' ? { speed: Math.min(64, Math.max(1, Math.round((speed || 0.5) * 64))) } : {}),
+    });
+  }
+
+  // ── PTZ presets ───────────────────────────────────────────
+  // Reolink's CGI API has no documented "save preset" call (presets are
+  // created on-camera via the Reolink app/NVR UI) — list + goto only.
+  async listPresets(idx) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const value = await this._call(cam, 'GetPtzPreset', { channel: Number(cam.channel) || 0 });
+    const list  = Array.isArray(value?.PtzPreset) ? value.PtzPreset
+                : Array.isArray(value) ? value
+                : value?.PtzPreset ? [value.PtzPreset] : [];
+    return list.filter((p) => p.enable === 1 || p.enable === true)
+      .map((p) => ({ id: String(p.id), name: p.name || `Preset ${p.id}` }));
+  }
+
+  async gotoPreset(idx, id, speed) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    await this._call(cam, 'PtzCtrl', {
+      channel: Number(cam.channel) || 0, op: 'ToPos', id: Number(id),
+      speed: Math.min(64, Math.max(1, Math.round((speed || 0.5) * 64))),
+    });
+  }
+
+  // ── Patrol — best-effort; StartPatrol/StopPatrol aren't reliable across
+  // every Reolink model/firmware (reports of failure on some PTZ domes), but
+  // fail the same way any other unsupported command here does: the error
+  // surfaces to the camera modal instead of silently no-opping.
+  async startPatrol(idx, id) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    await this._call(cam, 'PtzCtrl', { channel: Number(cam.channel) || 0, op: 'StartPatrol', id: Number(id) || 1, speed: 32 });
+  }
+
+  async stopPatrol(idx) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    await this._call(cam, 'PtzCtrl', { channel: Number(cam.channel) || 0, op: 'StopPatrol' });
+  }
+
+  // ── IR / night-mode — some models only support Auto/Off (no explicit On);
+  // tolerate whichever 2- or 3-value enum the camera actually reports.
+  async getIr(idx) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const value = await this._call(cam, 'GetIrLights', { channel: Number(cam.channel) || 0 });
+    const state = (value?.IrLights?.state || 'Auto').toLowerCase();
+    const mode  = ['open', 'on'].includes(state) ? 'on' : ['close', 'off'].includes(state) ? 'off' : 'auto';
+    return { mode };
+  }
+
+  async setIr(idx, mode) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const STATE = { on: 'On', off: 'Off', auto: 'Auto' }[mode];
+    if (!STATE) throw new Error("mode must be 'on', 'off', or 'auto'");
+    await this._call(cam, 'SetIrLights', { IrLights: { channel: Number(cam.channel) || 0, state: STATE } });
+  }
+
+  // ── Siren — manual trigger only (AudioAlarmPlay), no persistent on/off state.
+  async triggerSiren(idx, times) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    await this._call(cam, 'AudioAlarmPlay', {
+      channel: Number(cam.channel) || 0, alarm_mode: 'manul', manual_switch: 1, times: Number(times) || 2,
+    });
+  }
+
+  // ── Floodlight (white LED) ───────────────────────────────
+  async getFloodlight(idx) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const value = await this._call(cam, 'GetWhiteLed', { channel: Number(cam.channel) || 0 });
+    const w = value?.WhiteLed || {};
+    return { on: w.state === 1, brightness: w.bright ?? 100 };
+  }
+
+  // Reads the current brightness/mode first so toggling on/off doesn't reset
+  // whatever the camera is already configured with.
+  async setFloodlight(idx, on) {
+    const cam = loadCameras()[Number(idx)];
+    if (!cam) throw new Error('Unknown camera');
+    const current = await this.getFloodlight(idx).catch(() => ({ brightness: 100 }));
+    await this._call(cam, 'SetWhiteLed', {
+      WhiteLed: { channel: Number(cam.channel) || 0, state: on ? 1 : 0, mode: 0, bright: current.brightness ?? 100 },
     });
   }
 

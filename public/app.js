@@ -640,6 +640,8 @@ function openCameraModal(cam) {
 
   // PTZ pad — only for cameras exposing a ptzUrl (Reolink `ptz: true`, ONVIF)
   document.getElementById('cam-modal-ptz').style.display = cam.ptzUrl ? 'grid' : 'none';
+  _initCameraPresets(cam);
+  _initCameraExtras(cam);
 
   document.getElementById('cam-modal').style.display = 'flex';
   document.getElementById('cam-modal-close').focus();
@@ -672,6 +674,15 @@ function _closeModalStreams() {
 function closeCameraModal() {
   document.getElementById('cam-modal').style.display = 'none';
   _closeModalStreams();
+  // Patrol has no separate off-camera timeout, so leaving the modal with it
+  // running would strand the camera patrolling with no way back short of
+  // reopening the modal — stop it on close instead.
+  if (_patrolActive && _modalCam?.patrolUrl) {
+    _patrolActive = false;
+    fetch(_modalCam.patrolUrl, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stop' }),
+    }).catch(() => {});
+  }
   _modalCam = null;
 }
 
@@ -711,6 +722,169 @@ for (const btn of document.querySelectorAll('#cam-modal-ptz [data-ptz]')) {
   btn.addEventListener('pointerup', stop);
   btn.addEventListener('pointerleave', stop);
   btn.addEventListener('pointercancel', stop);
+}
+
+// Shared by presets/IR/patrol/floodlight/siren below — several of those calls
+// are explicitly best-effort against vendor APIs that don't behave
+// consistently across models/firmware, so failures need to be visible
+// instead of silently reverting.
+function _camNote(msg) {
+  const el = document.getElementById('cam-modal-refresh');
+  if (el) el.textContent = msg;
+}
+
+async function _camPost(url, body) {
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const j = await res.json().catch(() => ({}));
+  if (!j.success) throw new Error(j.error || `HTTP ${res.status}`);
+  return j.data;
+}
+
+async function _camDelete(url) {
+  const res = await fetch(url, { method: 'DELETE' });
+  const j = await res.json().catch(() => ({}));
+  if (!j.success) throw new Error(j.error || `HTTP ${res.status}`);
+}
+
+// ── PTZ presets: tap a pill to goto, hold ~600ms to delete (when writable) ──
+const PRESET_HOLD_MS = 600;
+
+async function _initCameraPresets(cam) {
+  const row = document.getElementById('cam-modal-presets');
+  row.style.display = 'none';
+  row.innerHTML = '';
+  if (!cam.presetUrl) return;
+
+  try {
+    const res = await fetch(cam.presetUrl);
+    const { success, data, writable } = await res.json();
+    if (!success) return;
+    _renderCameraPresets(cam.presetUrl, data || [], !!writable);
+    row.style.display = 'flex';
+  } catch { /* leave hidden — camera unreachable */ }
+}
+
+function _renderCameraPresets(presetUrl, presets, writable) {
+  const row = document.getElementById('cam-modal-presets');
+  row.innerHTML = '';
+
+  for (const preset of presets) {
+    const btn = document.createElement('button');
+    btn.className = 'cam-preset-btn';
+    btn.textContent = preset.name;
+    btn.title = writable ? 'Tap: go to preset. Hold: delete.' : 'Go to preset';
+
+    let holdTimer = null, held = false;
+    const startHold = (e) => {
+      e.preventDefault();
+      held = false;
+      if (!writable) return;
+      holdTimer = setTimeout(async () => {
+        held = true;
+        btn.classList.add('deleting');
+        try {
+          await _camDelete(`${presetUrl}/${preset.id}`);
+          btn.remove();
+        } catch (err) { btn.classList.remove('deleting'); _camNote(`Preset delete failed: ${err.message}`); }
+      }, PRESET_HOLD_MS);
+    };
+    const endHold = async () => {
+      clearTimeout(holdTimer);
+      if (held) return;
+      try { await _camPost(`${presetUrl}/${preset.id}/goto`); } catch (err) { _camNote(`Preset: ${err.message}`); }
+    };
+    btn.addEventListener('pointerdown', startHold);
+    btn.addEventListener('pointerup', endHold);
+    btn.addEventListener('pointerleave', () => clearTimeout(holdTimer));
+    btn.addEventListener('pointercancel', () => clearTimeout(holdTimer));
+    row.appendChild(btn);
+  }
+
+  if (writable) {
+    const add = document.createElement('button');
+    add.className = 'cam-preset-add';
+    add.textContent = '+';
+    add.title = 'Save current position as a new preset';
+    add.addEventListener('click', async () => {
+      try {
+        const data = await _camPost(presetUrl);
+        if (data) _renderCameraPresets(presetUrl, [...presets, data], writable);
+      } catch (err) { _camNote(`Save preset failed: ${err.message}`); }
+    });
+    row.appendChild(add);
+  }
+}
+
+// ── Extra controls: IR / patrol / floodlight / siren ────────────────────────
+let _patrolActive = false;
+
+async function _initCameraExtras(cam) {
+  const wrap     = document.getElementById('cam-modal-extra');
+  const irBtn    = document.getElementById('cam-btn-ir');
+  const patrolBtn = document.getElementById('cam-btn-patrol');
+  const floodBtn  = document.getElementById('cam-btn-floodlight');
+  const sirenBtn  = document.getElementById('cam-btn-siren');
+
+  _patrolActive = false;
+  for (const el of [irBtn, patrolBtn, floodBtn, sirenBtn]) {
+    el.style.display = 'none';
+    el.classList.remove('active', 'pulsing');
+    el.onclick = null;
+  }
+
+  let any = false;
+
+  if (cam.irUrl) {
+    any = true;
+    irBtn.style.display = 'inline-block';
+    fetch(cam.irUrl).then((r) => r.json()).then(({ success, data }) => {
+      if (success && data?.mode !== 'off') irBtn.classList.add('active');
+    }).catch(() => {});
+    irBtn.onclick = async () => {
+      const on = !irBtn.classList.contains('active');
+      irBtn.classList.toggle('active', on);
+      try { await _camPost(cam.irUrl, { mode: on ? 'on' : 'off' }); }
+      catch (err) { irBtn.classList.toggle('active', !on); _camNote(`Night vision: ${err.message}`); }
+    };
+  }
+
+  if (cam.patrolUrl) {
+    any = true;
+    patrolBtn.style.display = 'inline-block';
+    patrolBtn.onclick = async () => {
+      const start = !_patrolActive;
+      _patrolActive = start;
+      patrolBtn.classList.toggle('active', start);
+      try { await _camPost(cam.patrolUrl, { action: start ? 'start' : 'stop' }); }
+      catch (err) { _patrolActive = !start; patrolBtn.classList.toggle('active', !start); _camNote(`Patrol: ${err.message}`); }
+    };
+  }
+
+  if (cam.floodlightUrl) {
+    any = true;
+    floodBtn.style.display = 'inline-block';
+    fetch(cam.floodlightUrl).then((r) => r.json()).then(({ success, data }) => {
+      if (success && data?.on) floodBtn.classList.add('active');
+    }).catch(() => {});
+    floodBtn.onclick = async () => {
+      const on = !floodBtn.classList.contains('active');
+      floodBtn.classList.toggle('active', on);
+      try { await _camPost(cam.floodlightUrl, { on }); }
+      catch (err) { floodBtn.classList.toggle('active', !on); _camNote(`Floodlight: ${err.message}`); }
+    };
+  }
+
+  if (cam.sirenUrl) {
+    any = true;
+    sirenBtn.style.display = 'inline-block';
+    sirenBtn.onclick = async () => {
+      sirenBtn.classList.add('pulsing');
+      setTimeout(() => sirenBtn.classList.remove('pulsing'), 2000);
+      try { await _camPost(cam.sirenUrl); } catch (err) { _camNote(`Siren: ${err.message}`); }
+    };
+  }
+
+  wrap.style.display = any ? 'flex' : 'none';
 }
 
 // ── Two-way audio: hold cam-modal-talk to unmute the mic track ──────────────
@@ -1933,23 +2107,45 @@ function renderPlatformBar(status) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Sensor history charts
 // ═══════════════════════════════════════════════════════════════════════════
+
+// 24h/7d/30d range buttons only work with Mongo-backed long-range history
+// (see src/data-store.js) — hidden until confirmed available so they don't
+// sit there as dead controls on a file-persistence-only install.
+(async () => {
+  try {
+    const res = await fetch('/api/history-status');
+    const { success, data } = await res.json();
+    if (success && data?.mongoEnabled) {
+      document.querySelectorAll('.long-range-btn').forEach((b) => { b.style.display = ''; });
+    }
+  } catch { /* leave hidden */ }
+})();
+
 const histModal  = document.getElementById('hist-modal');
 const histCanvas = document.getElementById('hist-canvas');
 const histTitle  = document.getElementById('hist-modal-title');
 const histStats  = document.getElementById('hist-stats');
 const histNoData = document.getElementById('hist-no-data');
 let histPoints = [];
-let histRangeH = 6; // hours, 0 = all
+let histRangeH = 6; // hours, 0 = all (in-memory buffer only)
 let histUnit   = '';
+let histKey    = null;
 
 async function openHistModal(sensorKey, label, unit) {
+  histKey = sensorKey;
   histTitle.textContent = label || sensorKey;
   histUnit = unit || '';
   histModal.style.display = '';
   histPoints = [];
   drawHistChart();
+  await fetchHistPoints();
+}
+
+async function fetchHistPoints() {
+  if (!histKey) return;
   try {
-    const res = await fetch(`/api/history/${sensorKey}`);
+    const q = histRangeH ? `?hours=${histRangeH}` : '';
+    const res = await fetch(`/api/history/${histKey}${q}`);
     const { points } = await res.json();
     histPoints = points || [];
   } catch { /* ignore */ }
@@ -1963,7 +2159,7 @@ document.querySelectorAll('.hist-range-btn').forEach((b) => b.addEventListener('
   document.querySelectorAll('.hist-range-btn').forEach((x) => x.classList.remove('active'));
   b.classList.add('active');
   histRangeH = Number(b.dataset.range);
-  drawHistChart();
+  fetchHistPoints();
 }));
 
 function drawHistChart() {
@@ -2018,7 +2214,11 @@ function renderChartCanvas(canvas, allPoints, rangeH, unit, statsEl, noDataEl, h
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     ctx.fillText(v.toFixed(Math.abs(vMax - vMin) < 10 ? 1 : 0), padL - 6, y);
   }
-  const fmtT = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // Span > 36h: hour:minute alone is ambiguous across days, so include the date too.
+  const spanMs = t1 - t0;
+  const fmtT = spanMs > 36 * 3600_000
+    ? (t) => new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' })
+    : (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   ctx.fillText(fmtT(t0), padL, cssH - padB + 6);
   ctx.fillText(fmtT((t0 + t1) / 2), padL + W / 2, cssH - padB + 6);
@@ -2486,7 +2686,8 @@ function openDevModal(deviceKey) {
 async function loadDevHistory() {
   if (!devKey || !devSel) return;
   try {
-    const res = await fetch(`/api/history/${devKey}/${devSel}`);
+    const q = devRangeH ? `?hours=${devRangeH}` : '';
+    const res = await fetch(`/api/history/${devKey}/${devSel}${q}`);
     const { points } = await res.json();
     devPoints = points || [];
   } catch { /* ignore */ }
@@ -2522,7 +2723,7 @@ document.querySelectorAll('.dev-range-btn').forEach((b) => b.addEventListener('c
   document.querySelectorAll('.dev-range-btn').forEach((x) => x.classList.remove('active'));
   b.classList.add('active');
   devRangeH = Number(b.dataset.range);
-  drawDevChart();
+  loadDevHistory();
 }));
 
 document.getElementById('dev-modal-close')?.addEventListener('click', closeDevModal);
@@ -2705,7 +2906,8 @@ function renderGraphsTab() {
 
 async function loadGraphCard(deviceKey, sensor, i) {
   try {
-    const res = await fetch(`/api/history/${deviceKey}/${sensor.path}`);
+    const q = graphsRangeH ? `?hours=${graphsRangeH}` : '';
+    const res = await fetch(`/api/history/${deviceKey}/${sensor.path}${q}`);
     const { points } = await res.json();
     const canvas = document.getElementById(`gcanvas-${i}`);
     if (!canvas) return;
