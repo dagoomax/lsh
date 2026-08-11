@@ -12,7 +12,14 @@
   <!-- Vivid "electric glass" palette matching the Aurora / React dashboard.
        Inline + last so it overrides the classic tokens (and never FOUCs). -->
   <style>
-    :root, :root[data-theme="dark"] {
+    /* Was `:root, :root[data-theme="dark"]` — the bare :root always matches
+       regardless of data-theme, so it silently beat style.css's
+       [data-theme="light"] block by source order and made this page unable
+       to go light at all. Scoped to [data-theme="dark"] only now, with a
+       real light counterpart below (same "vivid" palette, light values
+       mirrored from react-dashboard/src/styles/global.css so this still
+       matches Aurora/React in both themes). */
+    :root[data-theme="dark"] {
       color-scheme: dark;
       --bg:#070912; --card:#141a29; --card-bg:#141a29; --card-on:#1b2b48;
       --card-grad:linear-gradient(180deg,#1a2234 0%,#121826 100%);
@@ -32,6 +39,27 @@
       --shadow-2:0 4px 14px rgba(0,0,0,0.4),0 16px 40px rgba(8,14,40,0.42);
       --inner-hl:inset 0 1px 0 rgba(255,255,255,0.06);
     }
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg:#eef2f8; --card:#ffffff; --card-bg:#ffffff; --card-on:#d6e6ff;
+      --card-grad:linear-gradient(180deg,#ffffff 0%,#f5f8fc 100%);
+      --surface:#ffffff; --surface2:#e9eef6;
+      --border:rgba(15,23,42,0.13); --card-border:rgba(15,23,42,0.13);
+      --border-lt:rgba(15,23,42,0.2); --border-light:rgba(15,23,42,0.2);
+      --sep:rgba(15,23,42,0.08); --hover:rgba(15,23,42,0.06); --input-bg:rgba(15,23,42,0.05);
+      --text:#131a24; --text-muted:#4b5563; --text2:#4b5563; --text3:#6b7480; --muted:#4b5563;
+      --accent:#0a6bf0; --accent-lt:#0a6bf0; --accent-blue:#0a6bf0; --accent-dim:rgba(10,107,240,0.14);
+      --green:#0f9d58; --accent-green:#0f9d58; --red:#e02436; --accent-red:#e02436;
+      --orange:#e0620d; --accent-orange:#e0620d; --yellow:#b8860b; --accent-yellow:#b8860b;
+      --teal:#0aa2c0; --violet:#7c3aed; --gold:#b8860b;
+      --white-03:rgba(15,23,42,0.03); --white-04:rgba(15,23,42,0.04); --white-05:rgba(15,23,42,0.05);
+      --white-06:rgba(15,23,42,0.06); --white-08:rgba(15,23,42,0.08); --white-10:rgba(15,23,42,0.1);
+      --white-12:rgba(15,23,42,0.12); --white-14:rgba(15,23,42,0.14); --white-20:rgba(15,23,42,0.2);
+      --shadow-1:0 1px 2px rgba(31,35,40,0.06),0 2px 8px rgba(31,35,40,0.05);
+      --shadow-2:0 4px 12px rgba(31,35,40,0.08),0 12px 32px rgba(31,35,40,0.07);
+      --inner-hl:inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+    :root[data-theme="light"] body::after { opacity: 0.015; }
     body { background:var(--bg); color:var(--text); margin:0;
       font-family:-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif; }
     /* Self-styled vivid header so it matches Aurora even if style.css is slow */

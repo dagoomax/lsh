@@ -91,6 +91,18 @@ export default function SettingsPage({ onClose }) {
   const [query, setQuery] = useState('')
   const [config, setConfig] = useState(null)
   const [loadError, setLoadError] = useState(null)
+  // Header (the dashboard's only theme toggle) isn't rendered while this
+  // page is showing, so there'd otherwise be no way to check/flip theme
+  // without leaving Settings first.
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
+  })
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    document.documentElement.setAttribute('data-theme', next)
+    try { localStorage.setItem('lsh-theme', next) } catch { /* ignore */ }
+    setTheme(next)
+  }
 
   const load = async () => {
     try {
@@ -124,6 +136,9 @@ export default function SettingsPage({ onClose }) {
         </button>
         <h1 className="stg-page-title">{gt('stg_title', 'Settings')}</h1>
         <span className="stg-page-title-spacer"/>
+        <button className="stg-back" onClick={toggleTheme} title={theme === 'dark' ? 'Light theme' : 'Dark theme'}>
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
       </div>
 
       <div className="stg-shell">
