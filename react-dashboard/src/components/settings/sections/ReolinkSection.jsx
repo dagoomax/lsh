@@ -14,6 +14,10 @@ const FIELDS = [
   { key: 'https', label: 'HTTPS', type: 'checkbox' },
   { key: 'port', label: 'Port', type: 'number', placeholder: '(auto)' },
   { key: 'webrtcUrl', label: 'WebRTC URL', placeholder: 'http://go2rtc/…/whep' },
+  { key: 'ptz', label: 'PTZ pad', type: 'checkbox' },
+  { key: 'ir', label: 'Night vision', type: 'checkbox' },
+  { key: 'floodlight', label: 'Floodlight', type: 'checkbox' },
+  { key: 'siren', label: 'Siren', type: 'checkbox' },
 ]
 
 export default function ReolinkSection({ config, reload }) {
@@ -29,7 +33,7 @@ export default function ReolinkSection({ config, reload }) {
 
   return (
     <SettingsCard icon={CameraIcon} title="Reolink" badge={{ label: gt('common.optional', 'Optional') }}
-      desc="Reolink PoE cameras and NVRs. One row per camera — use channel 0 for a standalone camera, or add a row per NVR channel.">
+      desc="Reolink PoE cameras and NVRs. One row per camera — use channel 0 for a standalone camera, or add a row per NVR channel. PTZ/night-vision/floodlight/siren only apply if your camera model actually has that hardware.">
       <ListEditor rows={cams} onChange={setCams} fields={FIELDS} addLabel="+ Add Reolink Camera"
         renderExtra={(row, i) => (
           <Button variant="secondary" busy={test.busy && testingIdx === i} onClick={() => testRow(row, i)}>

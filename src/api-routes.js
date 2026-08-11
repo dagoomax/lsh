@@ -1443,7 +1443,11 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       stream:   c.stream === 'sub' ? 'sub' : 'main',
       https:    !!c.https,
       port:     parseInt(c.port) || 0,
-      webrtcUrl: String(c.webrtcUrl || '').trim(),
+      webrtcUrl:  String(c.webrtcUrl || '').trim(),
+      ptz:        !!c.ptz,
+      ir:         !!c.ir,
+      floodlight: !!c.floodlight,
+      siren:      !!c.siren,
     })).filter((c) => c.host);
     // Preserve saved passwords when the UI sends a masked placeholder
     const prev = current.reolink?.cameras || [];
@@ -1526,6 +1530,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         port:       parseInt(c.port) || 0,
         rtspPort:   parseInt(c.rtspPort) || 554,
         ptz:        !!c.ptz,
+        ir:         !!c.ir,
         resolution: String(c.resolution || '').trim(),
       };
       if (prev[i]?.outputs) out.outputs = prev[i].outputs; // preserve relay outputs (config-only)
@@ -2015,6 +2020,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.vicare?.password)      safe.vicare.password      = '••••••••';
     if (safe.thermomix?.password)   safe.thermomix.password   = '••••••••';
     if (safe.grenton?.token)        safe.grenton.token        = '••••••••';
+    if (safe.suppla?.token)         safe.suppla.token         = '••••••••';
     if (Array.isArray(safe.reolink?.cameras)) safe.reolink.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.mobotix?.cameras)) safe.mobotix.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.axis?.cameras)) safe.axis.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
@@ -2152,7 +2158,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     const keepUri = (uri && !uri.includes('•')) ? uri.trim() : (current.mongo?.uri || '');
     try {
       const next = { ...current };
-      if (keepUri) next.mongo = { uri: keepUri, db: (db || current.mongo?.db || 'lsh').trim() };
+      if (keepUri) next.mongo = { ...current.mongo, uri: keepUri, db: (db || current.mongo?.db || 'lsh').trim() };
       else delete next.mongo;
       writeConfigFile(next);
       res.json({ success: true, message: 'MongoDB settings saved. Restart to apply.' });
@@ -4151,7 +4157,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       writeConfigFile({
         ...current,
         suppla: {
-          token:        (token  || current.suppla?.token  || '').trim(),
+          token:        (token && !token.includes('•')) ? token.trim() : (current.suppla?.token || ''),
           server:       (server || current.suppla?.server || 'https://cloud.supla.org').trim(),
           pollInterval: parseInt(pollInterval) || 30,
         },

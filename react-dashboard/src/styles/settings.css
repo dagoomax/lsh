@@ -118,6 +118,11 @@
 .stg-badge-fallback { background: rgba(255,152,56,0.16); color: var(--orange); }
 .stg-card-desc { font-size: 12.5px; color: var(--text2); line-height: 1.5; margin: 8px 0 16px; }
 .stg-card-body { display: flex; flex-direction: column; gap: 14px; }
+.stg-subheading {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text2); margin: 6px 0 -4px; padding-top: 10px; border-top: 1px solid var(--sep);
+}
+.stg-subheading:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 
 /* ── Fields ── */
 .stg-field { display: flex; flex-direction: column; gap: 5px; }
@@ -138,6 +143,11 @@
 .stg-textarea { resize: vertical; font-family: ui-monospace, monospace; font-size: 12.5px; }
 select.stg-input { cursor: pointer; }
 .stg-checkbox { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+.stg-disclosure {
+  background: none; border: none; color: var(--text3); font-size: 12.5px; cursor: pointer;
+  padding: 2px 0; text-align: left; align-self: flex-start; transition: color 0.15s;
+}
+.stg-disclosure:hover { color: var(--text2); }
 .stg-subfields {
   display: flex; flex-direction: column; gap: 14px;
   padding: 14px 16px; margin-top: -4px;

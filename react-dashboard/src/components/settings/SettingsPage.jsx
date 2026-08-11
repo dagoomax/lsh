@@ -4,6 +4,38 @@ import { gt } from '../../i18n'
 import '../../styles/settings.css'
 
 import ConnectionSection from './sections/ConnectionSection'
+import EnergySection from './sections/EnergySection'
+import SmartHomeSection from './sections/SmartHomeSection'
+import RoborockSection from './sections/RoborockSection'
+import DreameSection from './sections/DreameSection'
+import MobotixSection from './sections/MobotixSection'
+import AxisSection from './sections/AxisSection'
+import AeotecSection from './sections/AeotecSection'
+import AiDetectionSection from './sections/AiDetectionSection'
+import CamerasExtraSection from './sections/CamerasExtraSection'
+import ClimateSection from './sections/ClimateSection'
+import LgThinqSection from './sections/LgThinqSection'
+import ApplianceCloudSection from './sections/ApplianceCloudSection'
+import LightingSection from './sections/LightingSection'
+import WledSection from './sections/WledSection'
+import ShellySection from './sections/ShellySection'
+import MediaSection from './sections/MediaSection'
+import LoxoneSection from './sections/LoxoneSection'
+import FibaroOutSection from './sections/FibaroOutSection'
+import LoxoneXmlSection from './sections/LoxoneXmlSection'
+import KnxSection from './sections/KnxSection'
+import BoneioGrentonSection from './sections/BoneioGrentonSection'
+import SmartBobSection from './sections/SmartBobSection'
+import ArduinoSection from './sections/ArduinoSection'
+import EsphomeSection from './sections/EsphomeSection'
+import BroadlinkSection from './sections/BroadlinkSection'
+import WaveshareSection from './sections/WaveshareSection'
+import SatelSection from './sections/SatelSection'
+import SipSection from './sections/SipSection'
+import SystemMiscSection from './sections/SystemMiscSection'
+import HomeKitSection from './sections/HomeKitSection'
+import HomePlanSection from './sections/HomePlanSection'
+import VirtualDevicesSection from './sections/VirtualDevicesSection'
 import SmartThingsSection from './sections/SmartThingsSection'
 import SecuritySection from './sections/SecuritySection'
 import ReolinkSection from './sections/ReolinkSection'
@@ -15,6 +47,38 @@ import BackupRestoreSection from './sections/BackupRestoreSection'
 // linking back to the classic page instead of pretending to exist.
 const SECTION_COMPONENTS = {
   connection: ConnectionSection,
+  'energy-extra': EnergySection,
+  'smarthome-extra': SmartHomeSection,
+  roborock: RoborockSection,
+  dreame: DreameSection,
+  mobotix: MobotixSection,
+  axis: AxisSection,
+  aeotec: AeotecSection,
+  aidetect: AiDetectionSection,
+  'cameras-extra': CamerasExtraSection,
+  'climate-extra': ClimateSection,
+  lgthinq: LgThinqSection,
+  'appliance-cloud': ApplianceCloudSection,
+  'lighting-extra': LightingSection,
+  wled: WledSection,
+  shelly: ShellySection,
+  'media-all': MediaSection,
+  loxone: LoxoneSection,
+  fibaroout: FibaroOutSection,
+  loxonexml: LoxoneXmlSection,
+  knx: KnxSection,
+  'boneio-grenton': BoneioGrentonSection,
+  smartbob: SmartBobSection,
+  arduino: ArduinoSection,
+  esphome: EsphomeSection,
+  broadlink: BroadlinkSection,
+  waveshare: WaveshareSection,
+  satel: SatelSection,
+  sip: SipSection,
+  'system-misc': SystemMiscSection,
+  homekit: HomeKitSection,
+  homeplan: HomePlanSection,
+  virtual: VirtualDevicesSection,
   smartthings: SmartThingsSection,
   'security-auth': SecuritySection,
   reolink: ReolinkSection,
