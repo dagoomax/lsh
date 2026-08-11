@@ -7,6 +7,7 @@ import DeviceList, { Toast } from './components/DeviceList'
 import IncomingCall          from './components/IncomingCall'
 import LockScreen            from './components/LockScreen'
 import LoginScreen           from './components/LoginScreen'
+import SettingsPage          from './components/settings/SettingsPage'
 
 // Single unified view: the "Rooms & Categories" device browser with the
 // Energy flow + relays rendered as the top section (see DeviceList). No more
@@ -16,6 +17,7 @@ export default function App() {
   const [locked, setLocked] = useState(() => localStorage.getItem('lsh-locked') === '1')
   const lock   = () => { localStorage.setItem('lsh-locked', '1'); setLocked(true) }
   const unlock = () => { localStorage.setItem('lsh-locked', '0'); setLocked(false) }
+  const [view, setView] = useState('dashboard') // 'dashboard' | 'settings'
 
   // Re-render the whole tree when the language changes (gt() reads it live)
   const [, setLangTick] = useState(0)
@@ -33,11 +35,19 @@ export default function App() {
     return <LockScreen onUnlock={unlock}/>
   }
 
+  if (view === 'settings') {
+    return (
+      <div style={{ height:'100%', background:'var(--bg)', overflow:'hidden' }}>
+        <SettingsPage onClose={() => setView('dashboard')}/>
+      </div>
+    )
+  }
+
   return (
     <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--bg)', overflow:'hidden' }}>
       <Toast />
       <IncomingCall />
-      <Header connection={connection} connected={connected} onLock={lock} />
+      <Header connection={connection} connected={connected} onLock={lock} onOpenSettings={() => setView('settings')} />
 
       <div style={{ flex:1, paddingTop:56, overflow:'hidden', display:'flex', flexDirection:'column' }}>
         <PlatformBar platforms={platforms} />

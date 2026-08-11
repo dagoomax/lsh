@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { LANGUAGES, getLang, setLang, gt } from '../i18n'
 
 const NAV = [
-  { label: 'Dashboard', href: '/react/',        active: true  },
-  { label: 'Settings',  href: '/settings.html', active: false },
+  { label: 'Dashboard', href: '/react/',        active: true },
+  { label: 'Settings',  href: '/settings.html', special: 'settings' },
   { label: 'Logs',      href: '/logs.html',     active: false },
   { label: 'MQTT',      href: '/mqtt.html',     active: false },
   { label: 'Flows',     href: '/flows.html',    active: false },
 ]
 
-export default function Header({ connection, connected, onLock }) {
+export default function Header({ connection, connected, onLock, onOpenSettings }) {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
   })
@@ -52,8 +52,16 @@ export default function Header({ connection, connected, onLock }) {
 
       {/* Nav (center) — styled in global.css to match vanilla */}
       <nav className="header-nav-react">
-        {NAV.map(({ label, href, active }) => (
-          <a key={label} href={href} className={active ? 'active' : undefined}>{gt('nav_' + label.toLowerCase(), label)}</a>
+        {NAV.map(({ label, href, active, special }) => (
+          <a key={label} href={href} className={active ? 'active' : undefined}
+            onClick={special === 'settings' ? (e) => {
+              // Plain left-click opens the in-app Settings view; ctrl/cmd/shift-click
+              // or middle-click still opens /settings.html in a new tab as normal.
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+              e.preventDefault(); onOpenSettings?.()
+            } : undefined}>
+            {gt('nav_' + label.toLowerCase(), label)}
+          </a>
         ))}
       </nav>
 

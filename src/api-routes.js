@@ -1887,7 +1887,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       ...current,
       vrm: {
         ...current.vrm,
-        apiToken: (apiToken !== undefined) ? apiToken : (current.vrm?.apiToken ?? ''),
+        apiToken: (apiToken && !apiToken.includes('•')) ? apiToken : (current.vrm?.apiToken ?? ''),
         email: email ?? current.vrm?.email ?? '',
         installationId: installationId ?? current.vrm?.installationId ?? '',
         password: (password && !password.includes('•'))
@@ -2018,6 +2018,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (Array.isArray(safe.reolink?.cameras)) safe.reolink.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.mobotix?.cameras)) safe.mobotix.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.axis?.cameras)) safe.axis.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
+    if (Array.isArray(safe.cameras)) safe.cameras.forEach((c) => { if (c.onvif?.password) c.onvif.password = '••••••••'; });
     if (safe.somfy?.token)          safe.somfy.token          = '••••••••';
     if (safe.loxoneOut?.password)   safe.loxoneOut.password   = '••••••••';
     if (safe.fibaroOut?.password)   safe.fibaroOut.password   = '••••••••';
