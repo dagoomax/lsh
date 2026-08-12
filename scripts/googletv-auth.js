@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * One-time TCL (or any Android TV / Google TV) pairing.
+ * One-time Android TV / Google TV pairing (any brand — TCL, Sharp, etc.).
  *
- * Usage: node scripts/tcltv-auth.js <tv-ip>
+ * Usage: node scripts/googletv-auth.js <tv-ip>
  *
  * 1. Run this script — it opens the TV's pairing service and asks the TV to
  *    show a 6-digit code (same flow as pairing the Google TV / Android TV
  *    Remote phone app).
  * 2. Read the code off the TV screen and type it in when prompted here.
- * 3. Copy the printed cert block into config.json under tcltv.cert.
+ * 3. Copy the printed cert block into config.json under googletv.cert.
  */
 
 'use strict';
@@ -16,7 +16,7 @@
 const readline = require('readline');
 
 const host = process.argv[2];
-if (!host) { console.error('Usage: node scripts/tcltv-auth.js <tv-ip>'); process.exit(1); }
+if (!host) { console.error('Usage: node scripts/googletv-auth.js <tv-ip>'); process.exit(1); }
 
 function ask(q) {
   return new Promise((res) => {
@@ -44,7 +44,7 @@ function ask(q) {
   remote.on('ready', () => {
     const cert = remote.getCertificate();
     console.log('\n✓ Paired! Add to config.json:\n');
-    console.log(JSON.stringify({ tcltv: { host, name: 'Living Room TV', cert } }, null, 2));
+    console.log(JSON.stringify({ googletv: { host, name: 'Living Room TV', cert } }, null, 2));
     remote.stop();
     process.exit(0);
   });

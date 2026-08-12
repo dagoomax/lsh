@@ -650,12 +650,12 @@ async function main() {
     }
   }
 
-  // Start TCL (or any Android TV / Google TV) client if configured
-  if (config.tcltv?.host) {
-    const TclTvClient = tryRequire('./src/tcltv-client');
-    if (TclTvClient) {
-      const tcltv = new TclTvClient(config, store, sensorRegistry);
-      tcltv.start().catch((err) => console.error(`[TclTv] Start failed: ${err.message}`));
+  // Start Android TV / Google TV client if configured (any brand — TCL, Sharp, ...)
+  if (config.googletv?.host) {
+    const GoogleTvClient = tryRequire('./src/googletv-client');
+    if (GoogleTvClient) {
+      const googletv = new GoogleTvClient(config, store, sensorRegistry);
+      googletv.start().catch((err) => console.error(`[GoogleTv] Start failed: ${err.message}`));
     }
   }
 

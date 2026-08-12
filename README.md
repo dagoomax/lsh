@@ -116,7 +116,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, TCL / other Android TV / Google TV devices, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -296,7 +296,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `denon` | No | Denon / Marantz AV receivers — power, volume, mute, input via Telnet (port 23) |
 | `beosound` | No | Bang & Olufsen network speakers — power, volume, mute, source via the local BeoPlay App REST API (port 8080) |
 | `sony` | No | Sony Bravia Android TV / Google TV — power, volume, mute, input via the local PSK-authenticated REST API |
-| `tcltv` | No | TCL (or any) Android TV / Google TV — power, mute, volume, home/back, app launch via the Android TV Remote v2 protocol (requires one-time pairing) |
+| `googletv` | No | Any Android TV / Google TV (TCL, Sharp, ...) — power, mute, volume, home/back, app launch via the Android TV Remote v2 protocol (requires one-time pairing) |
 | `arduino` | No | Arduino / ESP32 / generic MQTT — subscribe to JSON topics and map fields to sensor readings or controllable outputs |
 | `suppla` | No | Suppla smart-home — cloud or self-hosted REST API; discovers switches, dimmers, thermometers, shutters, gates |
 | `loxoneOut` | No | Loxone outbound push — forwards store values to Loxone Virtual Inputs in real time |
@@ -1364,10 +1364,10 @@ Connects to a **Sony Bravia** Android TV / Google TV over its local REST API (JS
 
 ---
 
-### `tcltv`
+### `googletv`
 
 ```json
-"tcltv": {
+"googletv": {
   "host": "192.168.1.29",
   "name": "Bedroom TV",
   "cert": { "key": "-----BEGIN PRIVATE KEY-----...", "cert": "-----BEGIN CERTIFICATE-----..." },
@@ -1378,15 +1378,15 @@ Connects to a **Sony Bravia** Android TV / Google TV over its local REST API (JS
 }
 ```
 
-Connects to a **TCL** (or any other brand's) **Android TV / Google TV** over the **Android TV Remote v2** protocol — protobuf over mutually-authenticated TLS (ports 6467 for pairing, 6466 for control), the same protocol the official Android TV Remote / Google TV phone app uses. There's no TCL-specific API; any Google TV device works identically.
+Connects to **any brand's Android TV / Google TV** (TCL, Sharp, ...) over the **Android TV Remote v2** protocol — protobuf over mutually-authenticated TLS (ports 6467 for pairing, 6466 for control), the same protocol the official Android TV Remote / Google TV phone app uses. There's no brand-specific API; Google TV is Google TV regardless of who made the set. (Sony Bravia has its own, better local REST API — see `sony` instead.)
 
-**One-time pairing:** run `node scripts/tcltv-auth.js <tv-ip>` — the TV shows a 6-digit code, type it in when prompted, then paste the printed `cert` block (a private key + certificate pair) into config.json. Unlike Sony's Pre-Shared Key, there's no way to skip the interactive pairing step — it's baked into the protocol.
+**One-time pairing:** run `node scripts/googletv-auth.js <tv-ip>` — the TV shows a 6-digit code, type it in when prompted, then paste the printed `cert` block (a private key + certificate pair) into config.json. Unlike Sony's Pre-Shared Key, there's no way to skip the interactive pairing step — it's baked into the protocol.
 
 | Field | Default | Description |
 |---|---|---|
 | `host` | — | TV IP address or hostname |
-| `cert` | — | `{ key, cert }` PEM pair from `scripts/tcltv-auth.js` — required, the client won't start without it |
-| `name` | `TCL TV <host>` | Display name on the dashboard, and the name shown on the TV's "connected devices" list |
+| `cert` | — | `{ key, cert }` PEM pair from `scripts/googletv-auth.js` — required, the client won't start without it |
+| `name` | `Google TV <host>` | Display name on the dashboard, and the name shown on the TV's "connected devices" list |
 | `apps` | `{}` | Friendly name → app deep-link URI map (e.g. `https://www.netflix.com/title.*`), used for the app-launch control. Find them by decompiling the app's APK (`android:host` in `AndroidManifest.xml`) or searching for known deep-link schemes. |
 
 **Controls:** power and mute are toggles (the protocol only supports flipping state, not setting it directly — LSH compares against the last known state before toggling, so it doesn't flip the wrong way if the dashboard's state is briefly stale), volume up/down, home, back, and app launch (if `apps` is configured).

@@ -263,7 +263,7 @@
     "name": "Air Quality",
     "pollInterval": 900
   },
-  "tcltv": {
+  "googletv": {
     "host": "192.168.1.29",
     "name": "Bedroom TV",
     "cert": { "key": "", "cert": "" },

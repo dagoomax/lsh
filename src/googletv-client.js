@@ -2,20 +2,22 @@
 
 const platformStatus = require('./platform-status');
 
-// TCL (and any other) Android TV / Google TV — the Android TV Remote v2
-// protocol (protobuf over mutually-authenticated TLS, ports 6467/6466), the
-// same protocol the Google TV / Android TV Remote phone app uses. There's no
-// TCL-specific API — Google TV is Google TV regardless of the TV brand.
+// Any Android TV / Google TV (TCL, Sharp, Sony's non-Bravia sets, Chromecast
+// with Google TV, Nvidia Shield, ...) — the Android TV Remote v2 protocol
+// (protobuf over mutually-authenticated TLS, ports 6467/6466), the same
+// protocol the Google TV / Android TV Remote phone app uses. There's no
+// brand-specific API — Google TV is Google TV regardless of who made the set.
+// (Sony Bravia has its own, better local REST API — see `sony` instead.)
 //
 // Requires a one-time pairing (TV shows a 6-digit code): run
-//   node scripts/tcltv-auth.js <tv-ip>
-// and paste the printed cert block into config.json under tcltv.cert.
+//   node scripts/googletv-auth.js <tv-ip>
+// and paste the printed cert block into config.json under googletv.cert.
 //
 // The protocol only exposes power and mute as *toggles* (no "set to on" vs
 // "set to off" — the TV just flips state), so both are driven off the last
 // known state reported by the TV rather than blindly toggling, to avoid
 // flipping the wrong way when the dashboard's idea of the state is stale.
-class TclTvClient {
+class GoogleTvClient {
   constructor(config, store, sensorRegistry) {
     this._config    = config;
     this._store     = store;
@@ -26,10 +28,10 @@ class TclTvClient {
   }
 
   async start() {
-    const cfg = this._config.tcltv;
+    const cfg = this._config.googletv;
     if (!cfg?.host) return;
     if (!cfg.cert?.key || !cfg.cert?.cert) {
-      console.warn(`[TclTv] tcltv.host is set but not paired yet — run: node scripts/tcltv-auth.js ${cfg.host}`);
+      console.warn(`[GoogleTv] googletv.host is set but not paired yet — run: node scripts/googletv-auth.js ${cfg.host}`);
       return;
     }
 
@@ -37,7 +39,7 @@ class TclTvClient {
     this._KeyCode   = RemoteKeyCode;
     this._Direction = RemoteDirection;
 
-    this._deviceKey = `tcltv/${cfg.host.replace(/\./g, '_')}`;
+    this._deviceKey = `googletv/${cfg.host.replace(/\./g, '_')}`;
     this._apps      = cfg.apps || {};
     const appNames  = Object.keys(this._apps);
 
@@ -62,8 +64,8 @@ class TclTvClient {
 
     this._registry.registerDevice({
       key:    this._deviceKey,
-      label:  cfg.name || `TCL TV ${cfg.host}`,
-      type:   'tcltv',
+      label:  cfg.name || `Google TV ${cfg.host}`,
+      type:   'googletv',
       icon:   '📺',
       homekit: [],
       sensors,
@@ -77,8 +79,8 @@ class TclTvClient {
 
     const dk = this._deviceKey;
     this._remote.on('ready', () => {
-      platformStatus.set('tcltv', true);
-      console.log(`[TclTv] Connected — ${cfg.host}`);
+      platformStatus.set('googletv', true);
+      console.log(`[GoogleTv] Connected — ${cfg.host}`);
     });
     this._remote.on('powered', (powered) => this._store.update(`${dk}/power`, powered ? 1 : 0));
     this._remote.on('volume', ({ muted }) => this._store.update(`${dk}/mute`, muted ? 1 : 0));
@@ -87,17 +89,17 @@ class TclTvClient {
       this._store.update(`${dk}/nowPlaying`, friendly || pkg);
     });
     this._remote.on('unpaired', () => {
-      platformStatus.set('tcltv', false);
-      console.error(`[TclTv] TV rejected the certificate (unpaired) — re-run: node scripts/tcltv-auth.js ${cfg.host}`);
+      platformStatus.set('googletv', false);
+      console.error(`[GoogleTv] TV rejected the certificate (unpaired) — re-run: node scripts/googletv-auth.js ${cfg.host}`);
     });
     this._remote.on('error', (err) => {
-      platformStatus.set('tcltv', false);
-      console.error(`[TclTv] Error: ${err.message}`);
+      platformStatus.set('googletv', false);
+      console.error(`[GoogleTv] Error: ${err.message}`);
     });
 
     await this._remote.start().catch((err) => {
-      platformStatus.set('tcltv', false);
-      console.error(`[TclTv] Connect failed: ${err.message}`);
+      platformStatus.set('googletv', false);
+      console.error(`[GoogleTv] Connect failed: ${err.message}`);
     });
   }
 
@@ -133,9 +135,9 @@ class TclTvClient {
         }
       }
     } catch (err) {
-      console.error(`[TclTv] Command failed (${capId}): ${err.message}`);
+      console.error(`[GoogleTv] Command failed (${capId}): ${err.message}`);
     }
   }
 }
 
-module.exports = TclTvClient;
+module.exports = GoogleTvClient;
