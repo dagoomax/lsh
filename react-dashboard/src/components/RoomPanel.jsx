@@ -65,8 +65,8 @@ export default function RoomPanel({ room, sensors, onClose }) {
       style={{
         position: 'fixed',
         right: 0,
-        top: 64,
-        height: 'calc(100vh - 64px - 76px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 64px)',
+        height: 'calc(100vh - env(safe-area-inset-top, 0px) - 64px - 76px)',
         width: 340,
         borderLeft: '3px solid var(--gold)',
         borderRadius: '16px 0 0 16px',

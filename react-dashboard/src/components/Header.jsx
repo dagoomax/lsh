@@ -25,7 +25,7 @@ export default function Header({ connection, connected, onLock, onOpenSettings }
 
   return (
     <header style={{
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+      position: 'fixed', top: 'env(safe-area-inset-top, 0px)', left: 0, right: 0, zIndex: 100,
       height: 56,
       background: 'var(--sidebar)',
       backdropFilter: 'blur(18px) saturate(1.4)',
