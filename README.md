@@ -116,7 +116,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Google Home / Nest speakers and displays, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -297,6 +297,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `beosound` | No | Bang & Olufsen network speakers — power, volume, mute, source via the local BeoPlay App REST API (port 8080) |
 | `sony` | No | Sony Bravia Android TV / Google TV — power, volume, mute, input via the local PSK-authenticated REST API |
 | `googletv` | No | Any Android TV / Google TV (TCL, Sharp, ...) — power, mute, volume, home/back, app launch via the Android TV Remote v2 protocol (requires one-time pairing) |
+| `googlehome` | No | Google Home / Nest speakers & displays — volume, mute, play/pause/stop, now playing via the local Cast v2 protocol |
 | `arduino` | No | Arduino / ESP32 / generic MQTT — subscribe to JSON topics and map fields to sensor readings or controllable outputs |
 | `suppla` | No | Suppla smart-home — cloud or self-hosted REST API; discovers switches, dimmers, thermometers, shutters, gates |
 | `loxoneOut` | No | Loxone outbound push — forwards store values to Loxone Virtual Inputs in real time |
@@ -1392,6 +1393,31 @@ Connects to **any brand's Android TV / Google TV** (TCL, Sharp, ...) over the **
 **Controls:** power and mute are toggles (the protocol only supports flipping state, not setting it directly — LSH compares against the last known state before toggling, so it doesn't flip the wrong way if the dashboard's state is briefly stale), volume up/down, home, back, and app launch (if `apps` is configured).
 
 **If pairing breaks** (TV factory reset, or removed from its "connected devices" list): the client logs `TV rejected the certificate (unpaired)` — re-run the pairing script and update `cert`.
+
+---
+
+### `googlehome`
+
+```json
+"googlehome": {
+  "devices": [
+    { "host": "192.168.1.41", "name": "Kitchen Speaker" },
+    { "host": "192.168.1.42", "name": "Living Room Display" }
+  ],
+  "pollInterval": 10
+}
+```
+
+Controls **Google Home / Nest speakers and displays** (or any other Chromecast-built-in device) over the local **Cast v2** protocol — no Google account, cloud project, or pairing involved. Find each device's IP via the Google Home app (device settings → Wi-Fi info) or your router's DHCP client list; there's no auto-discovery, matching how LSH's other static device lists (Reolink, Shelly, ...) work.
+
+| Field | Default | Description |
+|---|---|---|
+| `devices` | `[]` | `{ host, name }` entries — `name` defaults to `Google Home <host>` |
+| `pollInterval` | `10` | Seconds between polls (minimum enforced: 5) |
+
+**Controls:** volume (real absolute 0–100 set — unlike `googletv`'s toggle-only volume, Cast genuinely supports setting a level), mute, and play/pause/stop. Play/pause/stop only do anything while something is actively cast to the device — LSH never launches the default media receiver app itself (that would interrupt whatever's already showing, e.g. Assistant routines or ambient photos on a Nest Hub), so those controls attach to an existing session or silently no-op if the device is idle.
+
+**Sensors:** `playbackState` (`idle`/`playing`/`paused`/`buffering`) and `nowPlaying` (media title, shown in the same "Now Playing" banner as Sonos/Denon/Sony).
 
 ---
 

@@ -272,6 +272,13 @@
       "YouTube": "https://www.youtube.com/tv"
     }
   },
+  "googlehome": {
+    "devices": [
+      { "host": "192.168.1.41", "name": "Kitchen Speaker" },
+      { "host": "192.168.1.42", "name": "Living Room Display" }
+    ],
+    "pollInterval": 10
+  },
   "smarttub": {
     "email": "you@example.com",
     "password": "",

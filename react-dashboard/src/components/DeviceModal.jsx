@@ -338,7 +338,7 @@ function RoborockMapView({ device }) {
 // "Now Playing" banner for media devices (Denon/Marantz, Sony Bravia, Bang &
 // Olufsen, Android TV/Google TV) — surfaces the nowPlaying sensor prominently
 // instead of leaving it buried in the generic sensor list further down.
-const NOW_PLAYING_TYPES = ['denon', 'sony', 'beosound', 'googletv']
+const NOW_PLAYING_TYPES = ['denon', 'sony', 'beosound', 'googletv', 'googlehome']
 function NowPlayingBanner({ device }) {
   if (!NOW_PLAYING_TYPES.includes(device.type)) return null
   const title = device.readings?.nowPlaying?.value

@@ -687,6 +687,15 @@ async function main() {
     }
   }
 
+  // Start Google Home / Nest (Cast v2) client if configured
+  if (config.googlehome?.devices?.length) {
+    const GoogleHomeClient = tryRequire('./src/googlehome-client');
+    if (GoogleHomeClient) {
+      const googlehome = new GoogleHomeClient(config, store, sensorRegistry);
+      googlehome.start().catch((err) => console.error(`[GoogleHome] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Bayrol Pool Manager client if configured
   if (config.bayrol?.username && config.bayrol?.password) {
     const BayrolClient = tryRequire('./src/bayrol-client');

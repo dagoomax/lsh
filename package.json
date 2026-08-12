@@ -15,7 +15,11 @@
     "pm2:status": "pm2 status",
     "openapi": "node scripts/gen-openapi.js"
   },
+  "overrides": {
+    "protobufjs": "^7.6.4"
+  },
   "dependencies": {
+    "@foxxmd/chromecast-client": "^1.0.4",
     "@kud/androidtv-remote": "^0.1.2",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@tensorflow-models/coco-ssd": "^2.2.3",

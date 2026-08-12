@@ -98,6 +98,7 @@ reference of every one).
 | **Bang & Olufsen** speakers | `beosound` | Local REST API — power, volume, mute, source |
 | **Sony Bravia** (Android/Google TV) | `sony` | Local PSK REST API — power, volume, mute, input |
 | Android TV / Google TV (TCL, Sharp, ...) | `googletv` | Android TV Remote v2 protocol — power, mute, volume, home/back, app launch (one-time PIN pairing) |
+| Google Home / Nest speakers & displays | `googlehome` | Local Cast v2 protocol — volume, mute, play/pause/stop, now playing |
 
 ## Covers, blinds & gates
 
