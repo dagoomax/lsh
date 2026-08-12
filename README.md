@@ -116,7 +116,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Google Home / Nest speakers and displays, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), generic Modbus TCP/RTU, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Google Home / Nest speakers and displays, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -753,6 +753,47 @@ Reads and writes a **CAN (Controller Area Network) bus** and maps frames to dash
 - **`slcan`** — a serial USB-CAN adapter (USBtin / CANable) speaking SLCAN over `serialPort` at the given `bitrate`. Needs `npm install serialport`.
 
 Because NMEA 2000 / **Victron VE.Can** and **CANopen** are CAN underneath, they're supported by mapping a signal's byte layout per its PGN / object (set `extended: true` for 29-bit IDs). Each **signal** extracts `length` bytes at `start` (`endian`, `signed`), applies `scale`/`offset`, and appears as a sensor; add `writable: true` to send a frame from the dashboard. Both packages are lazy-loaded, so a machine without them (or without CAN hardware) just logs a warning.
+
+### `modbus`
+
+```json
+"modbus": {
+  "devices": [
+    {
+      "name": "Energy Meter",
+      "transport": "tcp",
+      "host": "192.168.1.55",
+      "port": 502,
+      "unitId": 1,
+      "pollInterval": 5,
+      "registers": [
+        { "name": "Voltage", "type": "holding", "address": 0, "dataType": "float32", "unit": "V" },
+        { "name": "Power", "type": "input", "address": 10, "dataType": "int16", "scale": 0.1, "unit": "W" }
+      ]
+    },
+    {
+      "name": "RS485 Relay Board",
+      "transport": "rtu",
+      "serialPort": "/dev/tty.usbserial-1410",
+      "baudRate": 9600,
+      "unitId": 3,
+      "pollInterval": 5,
+      "registers": [
+        { "name": "Relay 1", "type": "coil", "address": 0, "writable": true }
+      ]
+    }
+  ]
+}
+```
+
+A generic **Modbus** client — the same "arbitrary signal → sensor" idea as the `can` module, rather than a fixed-device client (that's what `waveshare` is, for Waveshare's Modbus TCP relay boards specifically). Reads and writes coils, discrete inputs, holding registers, and input registers on any Modbus device. Two transports per device entry:
+
+- **`tcp`** (default) — raw Modbus TCP (MBAP + PDU), no dependency, hand-rolled framing. One connection per device.
+- **`rtu`** — Modbus RTU (address + PDU + CRC16) over a serial port. Needs `npm install serialport`, lazy-loaded like the CAN module's `slcan` transport. Devices that share the same `serialPort` share one underlying connection and request queue — the normal case for an RS-485 multi-drop bus, since only one request can be in flight on the wire at a time regardless of how many `unitId`s live on it.
+
+Each **register** entry needs a `type`: `coil` (FC01 read / FC05 write, boolean), `discrete` (FC02, read-only boolean), `holding` (FC03 read / FC06 or FC16 write), or `input` (FC04, read-only). `holding`/`input` registers also take a `dataType` — `uint16`/`int16` (1 register) or `uint32`/`int32`/`float32` (2 registers, combined per `wordOrder`: `"big"` (default, high word first) or `"little"`) — plus `scale`/`offset` applied on read (`value = raw * scale + offset`) and inverted on write. Add `writable: true` on a `coil` or `holding` register to make it controllable from the dashboard; `discrete`/`input` are always read-only, matching the protocol.
+
+Requests are issued one register at a time — simpler and more robust than coalescing contiguous ranges into a single multi-register read, at the cost of being chattier than an industrial batching implementation. Fine at home-automation polling rates (a few seconds); not intended for high-frequency industrial polling.
 
 ### `knx`
 

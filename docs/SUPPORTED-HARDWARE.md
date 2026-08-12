@@ -45,6 +45,7 @@ reference of every one).
 | **BroadLink** | `broadlink` | IR / RF blasters |
 | **Waveshare Modbus TCP** | `waveshare` | Relay/gate controllers |
 | **CAN bus** | `can` | SocketCAN (Linux) or SLCAN USB adapter; signal mapping also covers NMEA 2000 / Victron VE.Can / CANopen frames |
+| **Modbus** (generic, any device) | `modbus` | TCP or RTU (serial); arbitrary coil/discrete/holding/input register mapping |
 
 ## Climate & appliances
 

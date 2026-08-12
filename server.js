@@ -840,6 +840,15 @@ async function main() {
     }
   }
 
+  // Start generic Modbus TCP/RTU client if configured
+  if (config.modbus?.devices?.length) {
+    const ModbusClient = tryRequire('./src/modbus-client');
+    if (ModbusClient) {
+      const modbus = new ModbusClient(config, store, sensorRegistry);
+      modbus.start().catch((err) => console.error(`[Modbus] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Homey client if configured
   if (config.homey?.token && (config.homey?.host || config.homey?.homeyId)) {
     const HomeyClient = tryRequire('./src/homey-client');
