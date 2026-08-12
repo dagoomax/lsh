@@ -650,6 +650,15 @@ async function main() {
     }
   }
 
+  // Start TCL (or any Android TV / Google TV) client if configured
+  if (config.tcltv?.host) {
+    const TclTvClient = tryRequire('./src/tcltv-client');
+    if (TclTvClient) {
+      const tcltv = new TclTvClient(config, store, sensorRegistry);
+      tcltv.start().catch((err) => console.error(`[TclTv] Start failed: ${err.message}`));
+    }
+  }
+
   // Start VENTS / Blauberg ventilation client if configured
   if (config.vents?.host) {
     const VentsClient = tryRequire('./src/vents-client');

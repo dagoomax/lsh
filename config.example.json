@@ -263,6 +263,15 @@
     "name": "Air Quality",
     "pollInterval": 900
   },
+  "tcltv": {
+    "host": "192.168.1.29",
+    "name": "Bedroom TV",
+    "cert": { "key": "", "cert": "" },
+    "apps": {
+      "Netflix": "https://www.netflix.com/title.*",
+      "YouTube": "https://www.youtube.com/tv"
+    }
+  },
   "smarttub": {
     "email": "you@example.com",
     "password": "",

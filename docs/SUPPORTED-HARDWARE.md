@@ -97,6 +97,7 @@ reference of every one).
 | **Denon / Marantz** AVR | `denon` | Telnet control (power, volume, input, Zone 2) |
 | **Bang & Olufsen** speakers | `beosound` | Local REST API — power, volume, mute, source |
 | **Sony Bravia** (Android/Google TV) | `sony` | Local PSK REST API — power, volume, mute, input |
+| **TCL** (or any) Android TV / Google TV | `tcltv` | Android TV Remote v2 protocol — power, mute, volume, home/back, app launch (one-time PIN pairing) |
 
 ## Covers, blinds & gates
 
