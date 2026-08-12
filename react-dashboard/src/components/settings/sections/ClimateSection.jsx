@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { AirCondIcon, PoolIcon, SunIcon, ThermostatIcon } from '../../Icons'
+import { AirCondIcon, PoolIcon, SunIcon, ThermostatIcon, WindIcon } from '../../Icons'
 import { gt } from '../../../i18n'
 
 const THERMOMIX_COUNTRIES = [
@@ -17,6 +17,7 @@ export default function ClimateSection({ config, reload }) {
       <AuxAirCard auxair={config.auxair} reload={reload}/>
       <BayrolCard bayrol={config.bayrol} reload={reload}/>
       <OpenWeatherCard openweather={config.openweather} reload={reload}/>
+      <AirlyCard airly={config.airly} reload={reload}/>
       <ViCareCard vicare={config.vicare} reload={reload}/>
       <ThermomixCard thermomix={config.thermomix} reload={reload}/>
     </>
@@ -91,6 +92,33 @@ function OpenWeatherCard({ openweather, reload }) {
       <Field label="Units" type="select" value={units} onChange={setUnits}
         options={[{ value: 'metric', label: 'Metric (°C, m/s)' }, { value: 'imperial', label: 'Imperial (°F, mph)' }]}/>
       <Field label="Poll Interval" hint="(seconds, minimum 60)" type="number" value={pollInterval} onChange={setPollInterval}/>
+      <div className="stg-actions">
+        <Button variant="primary" busy={save.busy} onClick={() => save.save(payload()).then(reload)}>{gt('common.save', 'Save')}</Button>
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>Test connection</Button>
+        <ResultBanner result={save.result || test.result}/>
+      </div>
+    </SettingsCard>
+  )
+}
+
+function AirlyCard({ airly, reload }) {
+  const [apiKey, setApiKey] = useState(airly?.apiKey || '')
+  const [lat, setLat] = useState(airly?.lat ?? '')
+  const [lon, setLon] = useState(airly?.lon ?? '')
+  const [name, setName] = useState(airly?.name || '')
+  const [pollInterval, setPollInterval] = useState(airly?.pollInterval ?? 900)
+  const test = useSettingsSave('/api/settings/test-airly')
+  const save = useSettingsSave('/api/settings/airly')
+  const payload = () => ({ apiKey, lat, lon, name, pollInterval: Number(pollInterval) })
+
+  return (
+    <SettingsCard icon={WindIcon} title="Airly" badge={{ label: gt('common.optional', 'Optional') }}
+      desc="Air quality (CAQI index, PM1/PM2.5/PM10, NO₂/O₃/SO₂/CO) plus temperature, humidity and pressure for one location.">
+      <Field label="API Key" type="password" value={apiKey} onChange={setApiKey}/>
+      <Field label="Latitude" hint="(required)" value={lat} onChange={setLat} placeholder="e.g. 52.2297"/>
+      <Field label="Longitude" hint="(required)" value={lon} onChange={setLon} placeholder="e.g. 21.0122"/>
+      <Field label="Display Name" hint="(optional)" value={name} onChange={setName} placeholder="Air Quality"/>
+      <Field label="Poll Interval" hint="(seconds, minimum 300)" type="number" value={pollInterval} onChange={setPollInterval}/>
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy} onClick={() => save.save(payload()).then(reload)}>{gt('common.save', 'Save')}</Button>
         <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>Test connection</Button>

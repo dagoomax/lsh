@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SettingsCard, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { ShieldIcon } from '../../Icons'
+import { ShieldIcon, RouterIcon } from '../../Icons'
 import { gt } from '../../../i18n'
 
 // The single worst-case section in the classic page — 6 unrelated
@@ -21,8 +21,26 @@ export default function SecuritySection({ config }) {
         endpoint="/api/settings/dashboard-pin" placeholder="0000"/>
       <UsersCard/>
       <TokensCard/>
+      <McpCard mcp={config.mcp}/>
       <HttpsCard server={config.server}/>
     </>
+  )
+}
+
+function McpCard({ mcp }) {
+  const [enabled, setEnabled] = useState(!!mcp?.enabled)
+  const save = useSettingsSave('/api/settings/mcp')
+
+  return (
+    <SettingsCard icon={RouterIcon} title="MCP Server" badge={{ label: gt('common.optional', 'Optional') }}
+      desc={<>Exposes devices/sensors as MCP tools so an external Claude (Desktop, Claude Code, claude.ai) can query and control the house. Mounted at <code>POST /api/mcp</code>, protected by an API Token above:<br/>
+        <code>claude mcp add --transport http lsh https://your-lsh-host/api/mcp --header "Authorization: Bearer &lt;token&gt;"</code></>}>
+      <Toggle label="Enable MCP server" checked={enabled} onChange={setEnabled}/>
+      <div className="stg-actions">
+        <Button variant="primary" busy={save.busy} onClick={() => save.save({ enabled })}>{gt('common.save', 'Save')}</Button>
+        <ResultBanner result={save.result}/>
+      </div>
+    </SettingsCard>
   )
 }
 

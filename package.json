@@ -16,6 +16,7 @@
     "openapi": "node scripts/gen-openapi.js"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@tensorflow-models/coco-ssd": "^2.2.3",
     "@tensorflow-models/mobilenet": "^2.1.1",
     "@tensorflow/tfjs": "^4.22.0",
@@ -33,7 +34,8 @@
     "node-tradfri-client": "^3.2.0",
     "sip": "^0.0.6",
     "socket.io": "^4.5.4",
-    "ws": "^7.5.11"
+    "ws": "^7.5.11",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "swagger-ui-dist": "^5.17.14"

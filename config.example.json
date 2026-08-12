@@ -14,6 +14,9 @@
     "hideMqtt": false,
     "hideLogs": false
   },
+  "mcp": {
+    "enabled": false
+  },
   "vrm": {
     "email": "",
     "password": "",
@@ -252,6 +255,13 @@
     "pools": [
       { "cid": "12345", "name": "Garden Pool" }
     ]
+  },
+  "airly": {
+    "apiKey": "your-api-key",
+    "lat": 52.2297,
+    "lon": 21.0122,
+    "name": "Air Quality",
+    "pollInterval": 900
   },
   "smarttub": {
     "email": "you@example.com",

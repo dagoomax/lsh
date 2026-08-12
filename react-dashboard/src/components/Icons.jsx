@@ -400,6 +400,16 @@ export function SunIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function WindIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M3 8h10.5a2.5 2.5 0 1 0-2.5-2.5"/>
+      <path d="M3 12h14.5a2.5 2.5 0 1 1-2.5 2.5"/>
+      <path d="M3 16h8.5a2 2 0 1 1-2 2"/>
+    </svg>
+  )
+}
+
 export function PylonIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>

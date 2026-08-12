@@ -284,6 +284,21 @@ async function main() {
   const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, openweather, objectDetection };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
+  // MCP server — exposes devices/sensors as tools for an external Claude
+  // (Desktop, Claude Code, claude.ai) to query/control. Opt-in: it's a
+  // control-plane endpoint, so it only mounts when explicitly enabled.
+  // Auth reuses the same /api/* middleware (Bearer API token) as everything
+  // else — no separate credential to manage.
+  if (config.mcp?.enabled) {
+    const mcpServer = tryRequire('./src/mcp-server', 'npm install @modelcontextprotocol/sdk zod');
+    if (mcpServer) {
+      app.post('/api/mcp', (req, res) => mcpServer.handleRequest(req, res, store, sensorRegistry));
+      app.get('/api/mcp', (req, res) => res.status(405).json({ success: false, error: 'Method not allowed — MCP requests use POST (Streamable HTTP transport)' }));
+      app.delete('/api/mcp', (req, res) => res.status(405).json({ success: false, error: 'Method not allowed' }));
+      console.log('[MCP] Server mounted at /api/mcp');
+    }
+  }
+
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────
   let mainServer;
   let mainPort;
@@ -669,6 +684,15 @@ async function main() {
     if (BayrolClient) {
       const bayrol = new BayrolClient(config, store, sensorRegistry);
       bayrol.start().catch((err) => console.error(`[Bayrol] Start failed: ${err.message}`));
+    }
+  }
+
+  // Start Airly air quality client if configured
+  if (config.airly?.apiKey) {
+    const AirlyClient = tryRequire('./src/airly-client');
+    if (AirlyClient) {
+      const airly = new AirlyClient(config, store, sensorRegistry);
+      airly.start().catch((err) => console.error(`[Airly] Start failed: ${err.message}`));
     }
   }
 

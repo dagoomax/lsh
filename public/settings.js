@@ -31,6 +31,11 @@ async function loadSettings() {
     setVal('openweather-name',    data.openweather?.name || '');
     setVal('openweather-units',   data.openweather?.units || 'metric');
     setVal('openweather-poll',    data.openweather?.pollInterval || 600);
+    setVal('airly-api-key', data.airly?.apiKey ? '••••••••' : '');
+    setVal('airly-lat',     data.airly?.lat ?? '');
+    setVal('airly-lon',     data.airly?.lon ?? '');
+    setVal('airly-name',    data.airly?.name || '');
+    setVal('airly-poll',    data.airly?.pollInterval || 900);
 
     // Interface (hide nav links, custom CSS)
     const hm = document.getElementById('ui-hide-mqtt'); if (hm) hm.checked = !!data.ui?.hideMqtt;
@@ -305,6 +310,9 @@ async function loadSettings() {
     setVal('hk-port', data.homekit?.port || 47128);
     setVal('hk-username', data.homekit?.username || 'CC:22:3D:E3:CE:F6');
     updatePinDisplay(data.homekit?.pin);
+
+    // MCP server
+    document.getElementById('mcp-enabled').checked = !!data.mcp?.enabled;
 
     // Server
     setVal('server-port', data.server?.port || 3000);
@@ -1048,6 +1056,83 @@ document.getElementById('btn-test-openweather').addEventListener('click', async 
         lat:    getVal('openweather-lat'),
         lon:    getVal('openweather-lon'),
         units:  getVal('openweather-units'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── MCP Server ───────────────────────────────────────────────────────────────
+document.getElementById('btn-save-mcp').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-mcp');
+  const resultEl = document.getElementById('mcp-result');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/settings/mcp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: document.getElementById('mcp-enabled').checked }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Airly ──────────────────────────────────────────────────────────────────
+document.getElementById('btn-save-airly').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-airly');
+  const resultEl = document.getElementById('airly-result');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/settings/airly', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey:       getVal('airly-api-key'),
+        lat:          getVal('airly-lat'),
+        lon:          getVal('airly-lon'),
+        name:         getVal('airly-name'),
+        pollInterval: parseInt(getVal('airly-poll') || '900'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-test-airly').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-test-airly');
+  const resultEl = document.getElementById('airly-result');
+  btn.disabled = true;
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result';
+  try {
+    const res = await fetch('/api/settings/test-airly', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: getVal('airly-api-key'),
+        lat:    getVal('airly-lat'),
+        lon:    getVal('airly-lon'),
       }),
     });
     const json = await res.json();

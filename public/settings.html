@@ -1125,6 +1125,39 @@
       </div>
     </section>
 
+    <!-- Airly -->
+    <section class="card settings-card" data-category="climate" data-title="Airly air quality CAQI PM2.5 PM10 pollution">
+      <h2>Airly <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Air quality (CAQI index, PM1/PM2.5/PM10, NO₂/O₃/SO₂/CO) plus temperature, humidity and pressure for one location, interpolated from nearby Airly sensors. Get a free API key at <a href="https://developer.airly.org" target="_blank" rel="noopener">developer.airly.org</a>.</p>
+      <div class="form-group">
+        <label for="airly-api-key">API Key</label>
+        <input type="password" id="airly-api-key" placeholder="••••••••">
+      </div>
+      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label for="airly-lat">Latitude <span class="hint">(required)</span></label>
+          <input type="text" id="airly-lat" placeholder="e.g. 52.2297">
+        </div>
+        <div>
+          <label for="airly-lon">Longitude <span class="hint">(required)</span></label>
+          <input type="text" id="airly-lon" placeholder="e.g. 21.0122">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="airly-name">Display Name <span class="hint">(optional)</span></label>
+        <input type="text" id="airly-name" placeholder="Air Quality">
+      </div>
+      <div class="form-group">
+        <label for="airly-poll">Poll Interval <span class="hint">(seconds, minimum 300)</span></label>
+        <input type="number" id="airly-poll" placeholder="900" min="300" style="max-width:120px">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-airly" data-i18n="common.save">Save</button>
+        <button class="btn btn-secondary" id="btn-test-airly">Test connection</button>
+        <span class="test-result" id="airly-result"></span>
+      </div>
+    </section>
+
     <!-- Viessmann ViCare -->
     <section class="card settings-card" data-category="climate" data-title="Viessmann ViCare heating boiler heat pump hot water burner">
       <h2>Viessmann ViCare <span class="badge" data-i18n="common.optional">Optional</span></h2>
@@ -1878,6 +1911,20 @@
           <code id="new-token-text"></code>
           <button class="btn btn-sm btn-secondary" id="btn-copy-token" data-i18n="common.copy">Copy</button>
         </div>
+      </div>
+
+      <!-- MCP Server -->
+      <h3 class="settings-sub">MCP Server</h3>
+      <p class="hint">Exposes devices/sensors as MCP tools so an external Claude (Desktop, Claude Code, claude.ai) can query and control the house. Mounted at <code>POST /api/mcp</code>, protected by an API Token above (create one, then <code>claude mcp add --transport http lsh https://your-lsh-host/api/mcp --header "Authorization: Bearer &lt;token&gt;"</code>).</p>
+      <div class="form-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="mcp-enabled">
+          <span>Enable MCP server</span>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-mcp">Save</button>
+        <span class="test-result" id="mcp-result"></span>
       </div>
 
       <!-- HTTPS / TLS -->

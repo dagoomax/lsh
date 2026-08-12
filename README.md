@@ -116,7 +116,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, OpenWeatherMap, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -1190,6 +1190,22 @@ Current weather + a 5-day forecast for one location via **OpenWeatherMap**'s fre
 **Sensors:** condition (label), temperature (→ HomeKit), feels-like, humidity, pressure, wind speed/direction, cloudiness, visibility, sunrise/sunset (unix timestamps). `units: "imperial"` switches °F/mph; default is metric (°C/m/s).
 
 **Forecast:** `GET /api/openweather/forecast` returns up to 5 days (`{ date, tempMin, tempMax, pop, condition, icon }` each), aggregated from the 3-hour steps — capped at 5 rather than padded to 7, since a true 7-8 day forecast needs OpenWeatherMap's separate One Call 3.0 subscription. Shown as a "Forecast" strip on the React dashboard.
+
+### `airly`
+
+```json
+"airly": {
+  "apiKey": "your-api-key",
+  "lat": 52.2297,
+  "lon": 21.0122,
+  "name": "Air Quality",
+  "pollInterval": 900
+}
+```
+
+Air quality for one location via **Airly**'s `measurements/point` endpoint, which interpolates from nearby sensors — no physical Airly sensor needs to sit at the configured coordinates. A free API key from [developer.airly.org](https://developer.airly.org) is all that's needed. Polled every `pollInterval` seconds (minimum enforced: 300, since Airly's free tier is quota-limited per day rather than rate-limited per minute).
+
+**Sensors:** CAQI index + level label (→ HomeKit air quality), PM1, PM2.5, PM10 (both → HomeKit density characteristics), NO₂, O₃, SO₂, CO, temperature (→ HomeKit), humidity (→ HomeKit), pressure.
 
 ### `wirenboard`
 
@@ -2662,6 +2678,24 @@ Authorization: Bearer <token>
 ```
 
 Create tokens in **Settings → Security → API Tokens**. Tokens are stored as plain hex in `persist/api-tokens.json` — treat them like passwords.
+
+### MCP Server
+
+```json
+"mcp": {
+  "enabled": false
+}
+```
+
+Exposes devices/sensors as [MCP](https://modelcontextprotocol.io) tools — `list_devices`, `get_device`, `send_command`, `get_history`, `list_rooms` — so an external Claude (Desktop, Claude Code, claude.ai) can query and control the house directly, reading the same data the dashboard shows and driving the same `sendCommand()` path the REST API and HomeKit bridge use. Off by default (it's a control-plane endpoint); enable with `mcp.enabled: true`.
+
+Mounted at `POST /api/mcp` (Streamable HTTP transport, stateless — no session to keep alive across a pm2 restart). Protected by the same `/api/*` auth middleware as everything else — no separate credential, use an **API Token** (above):
+
+```bash
+claude mcp add --transport http lsh https://your-lsh-host/api/mcp --header "Authorization: Bearer <token>"
+```
+
+Requires `npm install @modelcontextprotocol/sdk zod` (bundled in `package.json`'s normal dependencies, so a stock `npm install` already covers it).
 
 ### Role Permissions
 
