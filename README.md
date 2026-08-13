@@ -11,6 +11,18 @@
 
 ---
 
+## Screenshots
+
+| Dashboard | Floor Plan |
+|---|---|
+| ![Dashboard](screenshots/dashboard.png) | ![Floor Plan](screenshots/plan.png) |
+
+| Graphs | Automation Flows |
+|---|---|
+| ![Graphs](screenshots/graphs.png) | ![Flows](screenshots/flows.png) |
+
+---
+
 ## Business Guide — Support-Driven Monetization
 
 💰 **[Open Business Guide](leaflet/lsh-monetize-leaflet.html)** — how to build a support-driven business on LSH (free software, paid expertise model)
@@ -754,6 +766,7 @@ Reads and writes a **CAN (Controller Area Network) bus** and maps frames to dash
 
 Because NMEA 2000 / **Victron VE.Can** and **CANopen** are CAN underneath, they're supported by mapping a signal's byte layout per its PGN / object (set `extended: true` for 29-bit IDs). Each **signal** extracts `length` bytes at `start` (`endian`, `signed`), applies `scale`/`offset`, and appears as a sensor; add `writable: true` to send a frame from the dashboard. Both packages are lazy-loaded, so a machine without them (or without CAN hardware) just logs a warning.
 
+
 ### `modbus`
 
 ```json
@@ -794,6 +807,36 @@ A generic **Modbus** client — the same "arbitrary signal → sensor" idea as t
 Each **register** entry needs a `type`: `coil` (FC01 read / FC05 write, boolean), `discrete` (FC02, read-only boolean), `holding` (FC03 read / FC06 or FC16 write), or `input` (FC04, read-only). `holding`/`input` registers also take a `dataType` — `uint16`/`int16` (1 register) or `uint32`/`int32`/`float32` (2 registers, combined per `wordOrder`: `"big"` (default, high word first) or `"little"`) — plus `scale`/`offset` applied on read (`value = raw * scale + offset`) and inverted on write. Add `writable: true` on a `coil` or `holding` register to make it controllable from the dashboard; `discrete`/`input` are always read-only, matching the protocol.
 
 Requests are issued one register at a time — simpler and more robust than coalescing contiguous ranges into a single multi-register read, at the cost of being chattier than an industrial batching implementation. Fine at home-automation polling rates (a few seconds); not intended for high-frequency industrial polling.
+
+### `domatiq`
+
+```json
+"domatiq": {
+  "host": "192.168.1.60",
+  "port": 10001,
+  "modules": [
+    { "addr": 20, "label": "Utility Relays" }
+  ]
+}
+```
+
+Bridges a **Domatiq** CAN bus via a domatiq-loxone-bridge ESP32 gateway's CAN↔TCP broker (port `10001`, `domatiqLanCan`-compatible framing). No manual device list is required — every module address seen on the bus is identified with a `0x7C` serial-type probe and/or its `0xFF` presence broadcast, and registered automatically once its channel layout (relays, buttons, covers, dimmers, temperature/illuminance sensors, climate setpoint/preset) is known. `modules[].label` only overrides the auto-generated device name for a given `addr`; it isn't required for discovery. Covers expose momentary Up/Down/Stop controls (position isn't estimated — same as the gateway's own Loxone bridge, which leaves that to the controller). Protocol implementation lives in `src/domatiq-packet.js` (pure decode/encode/TCP-framing, no I/O); `src/domatiq-client.js` owns the socket and LSH device registration.
+
+### `domatiqOut`
+
+```json
+"domatiqOut": {
+  "host": "192.168.1.60",
+  "port": 10001,
+  "mappings": [
+    { "storeKey": "virtual/domatiq-demo/value", "addr": 20, "action": "switch", "channel": 4 },
+    { "storeKey": "virtual/blind1/value",        "addr": 30, "action": "cover", "channel": 1 },
+    { "storeKey": "openweather/weather/temperature", "addr": 40, "action": "climateSetpoint" }
+  ]
+}
+```
+
+Outbound counterpart of `domatiq`, the same idea as `loxoneOut`/`fibaroOut`: pushes any LSH store value onto the Domatiq CAN bus whenever it changes. The source of the value doesn't need to be Domatiq-aware — a Victron relay, a [Virtual Device](#virtual-devices), a weather reading, anything already in the store. `action` is one of `switch` (bool-ish → relay), `cover` (bool or `open`/`close`/`stop` → up/down/stop), `dimmer` (0-100 → dimmer level), `climateSetpoint` (°C), or `climatePreset` (`comfort`/`day`/`night`/`min`); `channel` defaults to 1. Runs its own TCP connection to the broker (independent of whether inbound `domatiq` discovery is also configured) — `src/domatiq-out-client.js`.
 
 ### `knx`
 
