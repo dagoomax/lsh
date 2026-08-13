@@ -2786,7 +2786,7 @@ Create tokens in **Settings → Security → API Tokens**. Tokens are stored as 
 }
 ```
 
-Exposes devices/sensors as [MCP](https://modelcontextprotocol.io) tools — `list_devices`, `get_device`, `send_command`, `get_history`, `list_rooms` — so an external Claude (Desktop, Claude Code, claude.ai) can query and control the house directly, reading the same data the dashboard shows and driving the same `sendCommand()` path the REST API and HomeKit bridge use. Off by default (it's a control-plane endpoint); enable with `mcp.enabled: true`.
+Exposes devices/sensors as [MCP](https://modelcontextprotocol.io) tools — `list_devices`, `get_device`, `send_command`, `get_history`, `list_rooms`, `list_platform_status`, `list_scenes`, `run_scene` — so an external Claude (Desktop, Claude Code, claude.ai) can query and control the house directly, reading the same data the dashboard shows and driving the same `sendCommand()` path the REST API and HomeKit bridge use. Off by default (it's a control-plane endpoint); enable with `mcp.enabled: true`.
 
 Mounted at `POST /api/mcp` (Streamable HTTP transport, stateless — no session to keep alive across a pm2 restart). Protected by the same `/api/*` auth middleware as everything else — no separate credential, use an **API Token** (above):
 

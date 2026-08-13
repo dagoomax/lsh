@@ -292,7 +292,7 @@ async function main() {
   if (config.mcp?.enabled) {
     const mcpServer = tryRequire('./src/mcp-server', 'npm install @modelcontextprotocol/sdk zod');
     if (mcpServer) {
-      app.post('/api/mcp', (req, res) => mcpServer.handleRequest(req, res, store, sensorRegistry));
+      app.post('/api/mcp', (req, res) => mcpServer.handleRequest(req, res, store, sensorRegistry, automation));
       app.get('/api/mcp', (req, res) => res.status(405).json({ success: false, error: 'Method not allowed — MCP requests use POST (Streamable HTTP transport)' }));
       app.delete('/api/mcp', (req, res) => res.status(405).json({ success: false, error: 'Method not allowed' }));
       console.log('[MCP] Server mounted at /api/mcp');
