@@ -1429,3 +1429,36 @@ body::before {
 .cam-snap-thumb:hover img {
   border-color: var(--border-lt);
 }
+
+
+/* Thermostat panel — left column, below the energy widget */
+.wall-thermo { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 240px; }
+.wall-thermo-title { align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+
+.wall-thermo-dial-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.wall-thermo-dial { width: 100%; max-width: 230px; height: auto; touch-action: none; cursor: grab; }
+.wall-thermo-dial:active { cursor: grabbing; }
+.wall-thermo-dial-track { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 14; stroke-linecap: round; }
+.wall-thermo-dial-progress { fill: none; stroke: #4A9EFF; stroke-width: 14; stroke-linecap: round; filter: drop-shadow(0 0 8px rgba(74,158,255,0.55)); }
+.wall-thermo-dial-handle { fill: #fff; stroke: #4A9EFF; stroke-width: 4; }
+.wall-thermo-dial-center { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; pointer-events: none; }
+.wall-thermo-dial-value { font-size: 34px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.wall-thermo-dial-current { font-size: 11.5px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+.wall-thermo-dial-label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8); }
+
+.wall-thermo-graph { width: 100%; max-width: 230px; display: flex; flex-direction: column; gap: 4px; }
+.wall-thermo-graph-head { display: flex; align-items: baseline; justify-content: space-between; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.5); }
+.wall-thermo-graph-range { font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.3); }
+.wall-thermo-graph-empty { height: 56px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: rgba(255,255,255,0.3); text-align: center; }
+
+.wall-hvac-stats { width: 100%; max-width: 230px; display: flex; flex-direction: column; gap: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.08); }
+.wall-hvac-stats-head { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.5); }
+.wall-hvac-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.wall-hvac-stat { display: flex; flex-direction: column; gap: 1px; }
+.wall-hvac-stat-value { font-size: 15px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+.wall-hvac-stat-label { font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.4); }
+.wall-hvac-stats-empty { font-size: 10.5px; color: rgba(255,255,255,0.3); line-height: 1.4; }
+
+/* Shared Sparkline.jsx (thermostat + weather graphs) */
+.sparkline-svg { width: 100%; height: auto; overflow: visible; }
+.sparkline-empty { height: 44px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: rgba(255,255,255,0.3); }

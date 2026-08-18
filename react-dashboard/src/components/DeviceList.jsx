@@ -183,7 +183,7 @@ async function sendCommand(key, sensor, value) {
 
 
 // ── Categories ────────────────────────────────────────────────────────────────
-function getGroup(d) {
+export function getGroup(d) {
   if (['vebus','battery','solarcharger'].includes(d.type)) return 'Victron'
   if (d.type === 'auxair') return 'Climate'
   if (d.type === 'smarttub') return 'Climate'
