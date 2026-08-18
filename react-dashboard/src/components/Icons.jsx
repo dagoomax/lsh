@@ -605,6 +605,7 @@ const TYPE_MAP = {
   suppla:       SuplaIcon,
   smarttub:     SpaIcon,
   zway:         ZWaveIcon,
+  zwaveJs:      ZWaveIcon,
   wirenboard:   DinRailIcon,
   dreame:       RobotVacuumIcon,
   roborock:     RobotVacuumIcon,

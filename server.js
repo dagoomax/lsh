@@ -786,6 +786,16 @@ async function main() {
     }
   }
 
+  // Start Z-Wave JS client if configured (Z-Wave JS Server / Z-Wave JS UI —
+  // distinct from the Z-Way/RaZberry REST integration above)
+  if (config.zwaveJs?.host) {
+    const ZwaveJsClient = tryRequire('./src/zwave-js-client');
+    if (ZwaveJsClient) {
+      const zwaveJs = new ZwaveJsClient(config, store, sensorRegistry);
+      zwaveJs.start().catch((err) => console.error(`[Z-Wave JS] Start failed: ${err.message}`));
+    }
+  }
+
   // Start MiCasaVerde / Vera client if configured
   if (config.vera?.host) {
     const VeraClient = tryRequire('./src/vera-client');

@@ -1204,6 +1204,21 @@ Connects to **Z-Way** — the Z-Wave.Me controller software that runs on **RaZbe
 
 Session auth (`ZWAYSession`) with automatic re-login on expiry. Commands go through `/ZAutomation/api/v1/devices/<vDev>/command/…`.
 
+### `zwaveJs`
+
+```json
+"zwaveJs": {
+  "host": "192.168.1.x",
+  "port": 3000
+}
+```
+
+Connects to a **Z-Wave JS Server** (the WebSocket JSON-RPC server bundled with [Z-Wave JS UI](https://github.com/zwave-js/zwave-js-ui) / `zwave-js-server`) — a different backend than `zway` above (that's Z-Way/RaZberry's REST API; this is the open-source Z-Wave JS driver's own protocol). One dashboard tile per Z-Wave node, auto-discovered from the server's initial state snapshot — no polling.
+
+**Supported Command Classes:** binary switches (on/off), multilevel switches / dimmers, binary & multilevel sensors (temperature → HomeKit, humidity, illuminance, power…), meters, thermostat setpoints, door locks, battery levels, notifications. Anything else falls back to a generic read-only sensor.
+
+Live updates arrive as `value updated` events over the same socket; writes go through `node.set_value`.
+
 ### `vera`
 
 ```json
