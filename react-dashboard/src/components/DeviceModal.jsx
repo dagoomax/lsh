@@ -23,11 +23,129 @@ function stepPath(pts) {
   return d
 }
 
+// Straight segments, no smoothing — exact per-point reading rather than the
+// interpolated curve `smoothPath` draws between them.
+function linearPath(pts) {
+  if (pts.length < 2) return ''
+  let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`
+  for (let i = 1; i < pts.length; i++) d += ` L ${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)}`
+  return d
+}
+
 const CHART_TYPES = [
-  { id: 'line', title: 'Line', icon: <path d="M1 9 L4 4.5 L7 6.5 L11 2.5" fill="none" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> },
-  { id: 'bar',  title: 'Bars', icon: <><rect x="1.5" y="6" width="2.2" height="4.5" rx="0.8"/><rect x="4.9" y="3" width="2.2" height="7.5" rx="0.8"/><rect x="8.3" y="4.5" width="2.2" height="6" rx="0.8"/></> },
-  { id: 'step', title: 'Step', icon: <path d="M1 9.5 H4.5 V5.5 H8 V2.5 H11" fill="none" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> },
+  { id: 'line',    title: 'Line',    icon: <path d="M1 9 L4 4.5 L7 6.5 L11 2.5" fill="none" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> },
+  { id: 'linear',  title: 'Linear',  icon: <path d="M1 9 L4 3.5 L7 7 L11 1.5" fill="none" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="miter" /> },
+  { id: 'bar',     title: 'Bars',    icon: <><rect x="1.5" y="6" width="2.2" height="4.5" rx="0.8"/><rect x="4.9" y="3" width="2.2" height="7.5" rx="0.8"/><rect x="8.3" y="4.5" width="2.2" height="6" rx="0.8"/></> },
+  { id: 'step',    title: 'Step',    icon: <path d="M1 9.5 H4.5 V5.5 H8 V2.5 H11" fill="none" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> },
+  { id: 'scatter', title: 'Dots',    icon: <><circle cx="1.5" cy="8.5" r="1.2"/><circle cx="5" cy="4" r="1.2"/><circle cx="8" cy="6.5" r="1.2"/><circle cx="11" cy="2" r="1.2"/></> },
+  { id: 'pie',     title: 'Pie',     icon: <path d="M6 1 A5 5 0 1 1 1.4 8.5 L6 6 Z" strokeWidth="0" /> },
+  { id: 'histogram', title: 'Histogram', icon: <><rect x="1" y="5" width="1.8" height="5.5" rx="0.6"/><rect x="3.6" y="1.5" width="1.8" height="9" rx="0.6"/><rect x="6.2" y="4" width="1.8" height="6.5" rx="0.6"/><rect x="8.8" y="2.5" width="1.8" height="8" rx="0.6"/></> },
 ]
+const FILLED_TYPES = new Set(['line', 'linear', 'step']) // gets the gradient area-fill + connecting stroke
+const CATEGORICAL_TYPES = new Set(['pie', 'histogram']) // no time axis — bucketed value distribution instead
+
+// Qualitative palette for pie/histogram slices — distinct from the single
+// `accent` colour the time-axis charts use, since these need several colors.
+const BUCKET_PALETTE = ['#79c0ff', '#bc8cff', '#f0883e', '#3fb950', '#f85149', '#d29922', '#39c5cf', '#db61a2']
+
+// Distinct-value counts (boolean/small-cardinality sensors) or equal-width
+// range counts (continuous numeric) — the shared aggregation both Pie and
+// Histogram render, so "how the series is bucketed" only has one definition.
+function bucketValues(pts, sensor) {
+  const vals = pts.map(p => p[1])
+  const total = vals.length
+  const isDiscrete = sensor.type === 'boolean' || sensor.type === 'toggle'
+  let raw
+  if (isDiscrete) {
+    const counts = new Map()
+    for (const v of vals) counts.set(v, (counts.get(v) || 0) + 1)
+    raw = [...counts.entries()].sort((a, b) => a[0] - b[0]).map(([v, c]) => ({ label: v ? 'On' : 'Off', count: c }))
+  } else {
+    const distinct = [...new Set(vals)]
+    if (distinct.length <= 6) {
+      const counts = new Map()
+      for (const v of vals) counts.set(v, (counts.get(v) || 0) + 1)
+      raw = [...counts.entries()].sort((a, b) => a[0] - b[0]).map(([v, c]) => ({ label: String(v), count: c }))
+    } else {
+      const min = Math.min(...vals), max = Math.max(...vals)
+      const n = 5
+      const bw = (max - min) / n || 1
+      const counts = new Array(n).fill(0)
+      for (const v of vals) counts[Math.min(n - 1, Math.max(0, Math.floor((v - min) / bw)))]++
+      raw = counts.map((c, i) => ({ label: `${(min + i * bw).toFixed(1)}–${(min + (i + 1) * bw).toFixed(1)}`, count: c }))
+    }
+  }
+  return raw.filter(b => b.count > 0).map(b => ({ ...b, pct: b.count / total }))
+}
+
+function PieChart({ buckets, height, unit }) {
+  const size = Math.max(90, Math.min(height, 200)), r = size / 2 - 10, cx = size / 2, cy = size / 2
+  let angle = -Math.PI / 2
+  const slices = buckets.map((b, i) => {
+    const start = angle
+    const sweep = b.pct * Math.PI * 2
+    angle += sweep
+    const full = sweep >= Math.PI * 2 - 0.0005
+    const end = angle
+    const large = sweep > Math.PI ? 1 : 0
+    const x1 = cx + r * Math.cos(start), y1 = cy + r * Math.sin(start)
+    const x2 = cx + r * Math.cos(end), y2 = cy + r * Math.sin(end)
+    const d = full
+      ? `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`
+      : `M ${cx} ${cy} L ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z`
+    return { ...b, d, color: BUCKET_PALETTE[i % BUCKET_PALETTE.length] }
+  })
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '14px 16px', flexWrap: 'wrap', height }}>
+      <svg width={size} height={size} style={{ flexShrink: 0 }}>
+        {slices.map((s, i) => (
+          <path key={i} d={s.d} fill={s.color} stroke="rgba(0,0,0,0.35)" strokeWidth="1.5" opacity="0.92" />
+        ))}
+      </svg>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11.5, minWidth: 0 }}>
+        {slices.map((s, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: s.color, flexShrink: 0 }} />
+            <span style={{ color: 'var(--text2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}{unit}</span>
+            <span style={{ color: 'var(--text3)', marginLeft: 10, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{(s.pct * 100).toFixed(0)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function HistogramChart({ buckets, width, height, accent }) {
+  const padL = 34, padR = 14, padT = 20, padB = 34
+  const plotW = Math.max(10, width - padL - padR), plotH = Math.max(10, height - padT - padB)
+  const maxCount = Math.max(1, ...buckets.map(b => b.count))
+  const bw = plotW / buckets.length
+  return (
+    <svg width={width} height={height}>
+      {[0, 1, 2, 3].map(i => {
+        const y = padT + plotH * (1 - i / 3)
+        return <line key={i} x1={padL} x2={width - padR} y1={y} y2={y} stroke="var(--white-05)" />
+      })}
+      {buckets.map((b, i) => {
+        const h = Math.max(1.5, (b.count / maxCount) * plotH)
+        const x = padL + i * bw + bw * 0.12
+        const bw2 = bw * 0.76
+        return (
+          <g key={i}>
+            <rect x={x} y={padT + plotH - h} width={bw2} height={h} rx="3" fill={accent} opacity="0.85" />
+            <text x={x + bw2 / 2} y={height - padB + 14} textAnchor="middle" fontSize="9" fill="var(--text3)" fontFamily="system-ui">
+              {b.label.length > 10 ? b.label.slice(0, 9) + '…' : b.label}
+            </text>
+            <text x={x + bw2 / 2} y={padT + plotH - h - 6} textAnchor="middle" fontSize="9.5" fill="var(--text2)" fontFamily="system-ui" fontWeight="700">
+              {b.count}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
 
 export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
   const points = useHistoryPoints(`${deviceKey}/${sensor.path}`, 30000)
@@ -37,7 +155,7 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
   const [chartType, setChartType] = useState(() => {
     try {
       const t = localStorage.getItem(typeKey)
-      if (['line', 'bar', 'step'].includes(t)) return t
+      if (CHART_TYPES.some(ct => ct.id === t)) return t
     } catch { /* ignore */ }
     return (sensor.type === 'boolean' || sensor.type === 'toggle') ? 'step' : 'line'
   })
@@ -65,6 +183,13 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
     let realMin = Infinity, realMax = -Infinity, sum = 0
     for (const [, v] of pts) { if (v < realMin) realMin = v; if (v > realMax) realMax = v; sum += v }
     const avg = sum / pts.length
+
+    // Pie/Histogram don't plot a time axis at all — just how often the value
+    // fell into each distinct value (discrete sensors) or range (numeric) —
+    // so skip straight past all the X/Y/bars machinery below.
+    if (CATEGORICAL_TYPES.has(chartType)) {
+      return { pts, realMin, realMax, avg, buckets: bucketValues(pts, sensor) }
+    }
 
     // Bars: bucket the series so bars stay readable at any width
     let bars = null
@@ -114,7 +239,7 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
 
     const barW = bars ? Math.max(2, (w - padL - padR) / bars.length - 2) : 0
     return { pts, xy, grid, times, realMin, realMax, avg, last: xy[xy.length - 1], zeroY: Y(Math.max(0, vMin)), barW }
-  }, [points, rangeH, w, chartType])
+  }, [points, rangeH, w, chartType, sensor])
 
   const u = sensor.unit || ''
 
@@ -160,7 +285,13 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
             {gt('collecting', 'Collecting data — check back in a few minutes')}
           </div>
         )}
-        {view !== null && view.pts.length > 1 && (
+        {view !== null && view.pts.length > 1 && chartType === 'pie' && (
+          <PieChart buckets={view.buckets} height={H} unit={u} />
+        )}
+        {view !== null && view.pts.length > 1 && chartType === 'histogram' && (
+          <HistogramChart buckets={view.buckets} width={w} height={H} accent={accent} />
+        )}
+        {view !== null && view.pts.length > 1 && !CATEGORICAL_TYPES.has(chartType) && (
           <svg width={w} height={H} style={{ display: 'block', touchAction: 'pan-y' }}
             onPointerMove={e => {
               const x = e.clientX - e.currentTarget.getBoundingClientRect().left
@@ -187,8 +318,8 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
             {view.times.map((t, i) => (
               <text key={i} x={t.x} y={H - 8} textAnchor={i === 0 ? 'start' : i === 2 ? 'end' : 'middle'} fontSize="9.5" fill="var(--text3)" fontFamily="system-ui">{t.l}</text>
             ))}
-            {chartType !== 'bar' && (() => {
-              const line = chartType === 'step' ? stepPath(view.xy) : smoothPath(view.xy)
+            {FILLED_TYPES.has(chartType) && (() => {
+              const line = chartType === 'step' ? stepPath(view.xy) : chartType === 'linear' ? linearPath(view.xy) : smoothPath(view.xy)
               return (
                 <>
                   <path d={`${line} L ${view.xy[view.xy.length - 1][0]} ${H - padB} L ${view.xy[0][0]} ${H - padB} Z`} fill={`url(#fill_${uid})`} />
@@ -204,7 +335,11 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
                   fill={accent} opacity={hover == null || hover === i ? 0.9 : 0.45} />
               )
             })}
-            {chartType !== 'bar' && hover == null && (
+            {chartType === 'scatter' && view.xy.map(([x, y], i) => (
+              <circle key={i} cx={x} cy={y} r={hover === i ? 3.5 : 2.2} fill={accent}
+                opacity={hover == null || hover === i ? 0.9 : 0.5} />
+            ))}
+            {FILLED_TYPES.has(chartType) && hover == null && (
               <circle cx={view.last[0]} cy={view.last[1]} r="4" fill={accent}>
                 <animate attributeName="opacity" values="1;0.35;1" dur="2s" repeatCount="indefinite" />
               </circle>
@@ -213,7 +348,7 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
               <g pointerEvents="none">
                 <line x1={view.xy[hover][0]} x2={view.xy[hover][0]} y1={padT} y2={H - padB}
                   stroke="var(--white-18)" strokeDasharray="3 3" />
-                {chartType !== 'bar' && (
+                {FILLED_TYPES.has(chartType) && (
                   <circle cx={view.xy[hover][0]} cy={view.xy[hover][1]} r="4.5"
                     fill={accent} stroke="rgba(0,0,0,0.55)" strokeWidth="2" />
                 )}

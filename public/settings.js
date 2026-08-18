@@ -2723,12 +2723,14 @@ function renderVirtualList(devices) {
     row.dataset.index = i;
     row.dataset.id = dev.id || randomId();
     row.innerHTML = `
-      <div class="camera-settings-fields" style="grid-template-columns:2fr 1.4fr 1fr">
+      <div class="camera-settings-fields" style="grid-template-columns:2fr 1.4fr 1fr 0.8fr 0.8fr">
         <input type="text" class="virt-name" placeholder="Name (e.g. Home/Away)" value="${escapeVal(dev.name || '')}">
         <select class="virt-type">
           ${VIRTUAL_TYPES.map(t => `<option value="${t.value}" ${dev.type === t.value ? 'selected' : ''}>${t.label}</option>`).join('')}
         </select>
         <input type="text" class="virt-unit" placeholder="Unit (sensor only, e.g. °C)" value="${escapeVal(dev.unit || '')}">
+        <input type="number" class="virt-min" placeholder="Min (-1000)" value="${dev.min ?? ''}">
+        <input type="number" class="virt-max" placeholder="Max (1000)" value="${dev.max ?? ''}">
       </div>
       <button class="btn btn-remove virt-remove" title="Remove">✕</button>`;
     row.querySelector('.virt-remove').addEventListener('click', () => {
@@ -2740,12 +2742,18 @@ function renderVirtualList(devices) {
 }
 
 function collectVirtual() {
-  return Array.from(document.querySelectorAll('#virtual-settings-list .camera-settings-row')).map((row) => ({
-    id:   row.dataset.id || randomId(),
-    name: row.querySelector('.virt-name').value.trim(),
-    type: row.querySelector('.virt-type').value,
-    unit: row.querySelector('.virt-unit').value.trim(),
-  })).filter((d) => d.name);
+  return Array.from(document.querySelectorAll('#virtual-settings-list .camera-settings-row')).map((row) => {
+    const minVal = row.querySelector('.virt-min')?.value;
+    const maxVal = row.querySelector('.virt-max')?.value;
+    return {
+      id:   row.dataset.id || randomId(),
+      name: row.querySelector('.virt-name').value.trim(),
+      type: row.querySelector('.virt-type').value,
+      unit: row.querySelector('.virt-unit').value.trim(),
+      ...(minVal !== '' && minVal != null ? { min: Number(minVal) } : {}),
+      ...(maxVal !== '' && maxVal != null ? { max: Number(maxVal) } : {}),
+    };
+  }).filter((d) => d.name);
 }
 
 document.getElementById('btn-add-virtual').addEventListener('click', () => {

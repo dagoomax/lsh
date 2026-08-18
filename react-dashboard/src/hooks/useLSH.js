@@ -26,6 +26,7 @@ export function useLSH() {
   const [platforms, setPlatforms] = useState({})
   const [roomsMeta, setRoomsMeta] = useState({})
   const [authRequired, setAuthRequired] = useState(false)
+  const [scenes, setScenes] = useState([])
 
   useEffect(() => {
     notifyAuthRequired = () => setAuthRequired(true)
@@ -43,10 +44,11 @@ export function useLSH() {
     // list current — skip the expensive full refetch that would rebuild
     // every device object (and re-render every memoized tile) each poll.
     const wantDevices = withDevices || !liveRef.current
-    const [status, conn, devs] = await Promise.all([
+    const [status, conn, devs, scn] = await Promise.all([
       apiFetch('/api/status'),
       apiFetch('/api/connection'),
       wantDevices ? apiFetch('/api/devices') : Promise.resolve(null),
+      apiFetch('/api/automation/scenes'),
     ])
     if (status) setEnergy({
       battery:   status.battery,
@@ -58,6 +60,7 @@ export function useLSH() {
     })
     if (conn)  setConn(conn)
     if (devs)  setDevices(devs)
+    if (scn)   setScenes(scn)
     setLastUpdate(new Date())
   }, [])
 
@@ -113,5 +116,9 @@ export function useLSH() {
     })
   }, [])
 
-  return { energy, devices, connection, connected, lastUpdate, platforms, roomsMeta, toggleRelay, authRequired, onLogin }
+  const runScene = useCallback(async (id) => {
+    await fetch(`/api/automation/scenes/${id}/run`, { method: 'POST', credentials: 'same-origin' })
+  }, [])
+
+  return { energy, devices, connection, connected, lastUpdate, platforms, roomsMeta, toggleRelay, authRequired, onLogin, scenes, runScene }
 }

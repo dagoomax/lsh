@@ -1241,7 +1241,8 @@ Connects to a **MiCasaVerde / Vera** controller (Vera Lite/Plus/Edge/Secure, or 
 "virtual": {
   "devices": [
     { "id": "a1b2c3d4", "name": "Home/Away", "type": "switch" },
-    { "id": "e5f6a7b8", "name": "Outdoor Temp", "type": "sensor", "unit": "°C" }
+    { "id": "e5f6a7b8", "name": "Outdoor Temp", "type": "sensor", "unit": "°C" },
+    { "id": "f9a0b1c2", "name": "Gold Price", "type": "sensor", "unit": "zł", "min": 0, "max": 100000 }
   ]
 }
 ```
@@ -1252,7 +1253,7 @@ Switches, dimmers, sensors, text values, and buttons with **no real hardware beh
 |---|---|
 | `switch` | Boolean on/off, dashboard toggle |
 | `dimmer` | 0–100, dashboard slider |
-| `sensor` | Freely adjustable number (`unit` is just a display label), dashboard slider |
+| `sensor` | Freely adjustable number (`unit` is just a display label), dashboard slider. `min`/`max` (default `-1000`/`1000`) bound the slider and the range embedded in the Loxone `inputs.xml` export — widen them for values outside the default range (prices, large counters, …) so nothing clamps |
 | `text` | Arbitrary string — API-only, no dashboard control (shows as a read-only value); intended for scripts/webhooks to push a value into (e.g. a weather API → a virtual temperature label) |
 | `button` | Momentary trigger — pulses to `1` then auto-resets to `0` after 800 ms, same pattern as the SIP doorbell ring |
 

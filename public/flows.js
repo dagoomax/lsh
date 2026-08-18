@@ -2,7 +2,8 @@
 (function () {
   const OPS = ['>', '<', '>=', '<=', '==', '!=', 'changes'];
   const ICONS = { trigger: '⚡', time: '⏰', mqttIn: '📥', condition: '⌥', device: '🔌', relay: '⏻',
-                  mqttOut: '📤', http: '🌐', notify: '🔔', scene: '✨', delay: '⏱', debug: '🐞', virtual: '🧩' };
+                  mqttOut: '📤', http: '🌐', notify: '🔔', scene: '✨', delay: '⏱', debug: '🐞', virtual: '🧩',
+                  extract: '🔎', loxoneXml: '🧾', store: '🧵', sceneGen: '🎬', global: '🌍', sync: '🔁' };
 
   // Node type catalogue: colour, output count, and the config fields to render.
   const TYPES = {
@@ -65,6 +66,15 @@
         return [devField, ...virtualValueField(n, dev)];
       },
     },
+    sync: {
+      label: 'Sync', color: '#22c55e', outs: 1,
+      fields: (n) => [
+        field('Sensor (same on every target)', 'text', n, 'sensor', { ph: 'switch or brightness' }),
+        textarea('Target device keys (one per line)', n, 'targets', { ph: 'shelly/bulb1\nshelly/bulb2\nsmartthings/…', rows: 4 }),
+        field('Value (blank = msg.payload)', 'text', n, 'value', { ph: '{value} or a literal' }),
+        hint('Fans one value out to a whole group of devices — e.g. a no-load physical dimmer (power+neutral only) driving several real bulbs in sync. One bad target is skipped, not fatal.'),
+      ],
+    },
     relay: {
       label: 'Relay', color: '#2ee66b', outs: 1,
       fields: (n) => [row([ field('Index', 'number', n, 'index', { ph: '0' }),
@@ -79,6 +89,37 @@
       label: 'Scene', color: '#ff5db1', outs: 1,
       fields: (n) => [ selectDynamic('Scene', n, 'sceneId', () => SCENES.map(s => [s.id, s.name])) ],
     },
+    sceneGen: {
+      label: 'Scene Generator', color: '#fb64b6', outs: 1,
+      fields: (n) => {
+        if (!n.config.actionType) n.config.actionType = 'device';
+        const rows = [
+          row([ field('Name', 'text', n, 'name', { ph: 'Evening Mode' }),
+                field('Icon', 'text', n, 'icon', { ph: '🎬' }) ]),
+          selectDynamic('Action type', n, 'actionType',
+            () => [['device', 'Device'], ['relay', 'Relay'], ['notify', 'Notify']],
+            () => refreshNode(n)),
+        ];
+        if (n.config.actionType === 'device') {
+          rows.push(
+            field('Device key', 'text', n, 'deviceKey', { list: 'device-keys', ph: 'shelly/… or virtual/…' }),
+            row([ field('Sensor', 'text', n, 'sensor', { ph: 'switch' }),
+                  field('Value', 'text', n, 'value', { ph: 'on (or {value})' }) ]),
+          );
+        } else if (n.config.actionType === 'relay') {
+          rows.push(row([ field('Index', 'number', n, 'index', { ph: '0' }),
+                          select('State', n, 'on', ['on', 'off'], 'on', v => v === 'on') ]));
+        } else if (n.config.actionType === 'notify') {
+          rows.push(select('Level', n, 'level', ['info', 'warning', 'critical'], 'info'),
+                    field('Message', 'text', n, 'message', { ph: '{value}' }));
+        }
+        rows.push(
+          select('Enabled (shows in dashboard strip)', n, 'enabled', ['yes', 'no'], 'yes', v => v === 'yes'),
+          hint('Creates/updates a Scene (one action) — reruns overwrite the same scene by name, never duplicate it. {value}/{key} resolve against this run’s message.'),
+        );
+        return rows;
+      },
+    },
     mqttOut: {
       label: 'MQTT Out', color: '#34d399', outs: 1,
       fields: (n) => [ field('Topic', 'text', n, 'topic', { ph: 'home/cmd/light' }),
@@ -89,7 +130,52 @@
       fields: (n) => [ row([ select('Method', n, 'method', ['GET', 'POST', 'PUT', 'DELETE'], 'GET'),
                              field('URL', 'text', n, 'url', { ph: 'https://…' }) ]),
                        field('Body', 'text', n, 'body', { ph: '{"soc":{value}}' }),
-                       hint('Response becomes msg.payload for the next node.') ],
+                       field('Save as image (optional)', 'text', n, 'saveAs', { ph: 'e.g. front-door' }),
+                       hint('Response becomes msg.payload for the next node. Fill "Save as image" to fetch binary and serve it at /api/flow-snapshots/<name>.jpg — use like a camera snapshotUrl.') ],
+    },
+    extract: {
+      label: 'Extract', color: '#facc15', outs: 1,
+      fields: (n) => [ field('Regex pattern', 'text', n, 'pattern', { ph: 'data-price="(\\d+)"' }),
+                       row([ field('Flags', 'text', n, 'flags', { ph: 'i (optional)' }),
+                             field('Group', 'number', n, 'group', { ph: '1' }) ]),
+                       hint('Matches the regex against msg.payload (e.g. scraped HTML) and passes the capture group on. No match = flow stops here.') ],
+    },
+    global: {
+      label: 'Global', color: '#38bdf8', outs: 1,
+      fields: (n) => {
+        if (!n.config.mode) n.config.mode = 'get';
+        const rows = [
+          row([ field('Name', 'text', n, 'name', { ph: 'lastMode' }),
+                selectDynamic('Mode', n, 'mode', () => [['get', 'get'], ['set', 'set']], () => refreshNode(n)) ]),
+        ];
+        if (n.config.mode === 'set') {
+          rows.push(field('Value (blank = msg.payload)', 'text', n, 'value', { ph: '{value} or a literal' }));
+        }
+        rows.push(hint('A named value shared across every flow, memory-only (resets on restart). "get" reads it into msg.payload; "set" writes it (blank Value = pass msg.payload straight through).'));
+        return rows;
+      },
+    },
+    store: {
+      label: 'Store', color: '#a3e635', outs: 1,
+      fields: (n) => [
+        field('Name', 'text', n, 'name', { ph: 'e.g. Gold Price' }),
+        row([ field('Unit', 'text', n, 'unit', { ph: 'zł' }),
+              field('Min', 'number', n, 'min', { ph: '-1000000' }),
+              field('Max', 'number', n, 'max', { ph: '1000000' }) ]),
+        hint('Writes msg.payload into a live device (flow/<name>) — shows up on the dashboard and Graphs like any other sensor. Pass-through: wire more nodes after it.'),
+      ],
+    },
+    loxoneXml: {
+      label: 'Loxone XML', color: '#67e8f9', outs: 1,
+      fields: (n) => [
+        field('Name', 'text', n, 'name', { ph: 'Tavex Gold Price' }),
+        row([ field('Unit', 'text', n, 'unit', { ph: 'zł' }),
+              field('Min', 'number', n, 'min', { ph: '-1000000' }),
+              field('Max', 'number', n, 'max', { ph: '1000000' }) ]),
+        row([ field('LSH host (in XML)', 'text', n, 'host', { ph: 'localhost:3001' }),
+              field('API token (in XML)', 'text', n, 'token', { ph: 'YOUR_API_TOKEN' }) ]),
+        hint('Writes msg.payload to a live device (flowloxone/<name>) and (re)builds its Loxone Virtual Input import XML at /api/flow-loxone/<name>.xml — import once into Loxone Config, then it polls /api/devices for live values.'),
+      ],
     },
     delay: {
       label: 'Delay', color: '#8ea2ff', outs: 1,
@@ -125,6 +211,15 @@
     inp.type = type; if (opts.ph) inp.placeholder = opts.ph; if (opts.list) inp.setAttribute('list', opts.list);
     inp.value = node.config[key] ?? '';
     inp.addEventListener('input', () => { node.config[key] = type === 'number' ? Number(inp.value) : inp.value; });
+    return wrapField(label, inp);
+  }
+  function textarea(label, node, key, opts = {}) {
+    const inp = document.createElement('textarea');
+    inp.rows = opts.rows || 3;
+    if (opts.ph) inp.placeholder = opts.ph;
+    inp.style.cssText = 'width:100%;resize:vertical;font:inherit';
+    inp.value = node.config[key] ?? '';
+    inp.addEventListener('input', () => { node.config[key] = inp.value; });
     return wrapField(label, inp);
   }
   function select(label, node, key, options, def, map) {

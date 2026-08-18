@@ -344,6 +344,21 @@ input[type="range"]::-moz-range-thumb {
 .platform-chip[data-on="true"]:hover { border-color: rgba(63,185,80,0.6); }
 .platform-chip[data-on="false"] { border-color: rgba(248,81,73,0.35); opacity: 0.55; }
 
+/* ── Scene strip ─────────────────────────────────────────────────────────── */
+.scene-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 999px;
+  background: var(--card-grad);
+  border: 1px solid var(--border);
+  font-size: 12.5px; font-weight: 600; color: var(--text2);
+  box-shadow: var(--inner-hl);
+  cursor: pointer; user-select: none; white-space: nowrap;
+  transition: border-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+}
+.scene-chip:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.scene-chip:active { transform: translateY(0); }
+.scene-chip[data-running="true"] { opacity: 0.6; pointer-events: none; }
+
 /* ── Energy cards ───────────────────────────────────────────────────────── */
 .ecard {
   --c: var(--accent);

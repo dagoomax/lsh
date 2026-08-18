@@ -11,9 +11,12 @@ const platformStatus = require('./platform-status');
  * same mechanism every other integration in this file uses, just with no
  * real device on the other end of the write.
  *
- * config.virtual.devices[]: { id, name, type, unit? }
+ * config.virtual.devices[]: { id, name, type, unit?, min?, max? }
  *   type: 'switch' | 'dimmer' | 'sensor' | 'text' | 'button'
  *   unit: only meaningful for 'sensor' (e.g. '°C', '%', 'lux')
+ *   min/max: only meaningful for 'sensor' — default -1000/1000, widen for
+ *     values outside that range (e.g. a price in the thousands) so nothing
+ *     downstream (dashboard slider, Loxone Virtual Input clamp) truncates it
  *
  * No polling loop — this is entirely push-driven (the store only changes
  * when something writes to it), so "start" just registers the devices and
@@ -77,7 +80,8 @@ class VirtualClient {
           controllable: true, capabilityId: 'value', writeCmd: 'set', min: 0, max: 100 };
       case 'sensor':
         return { path: 'value', name: 'Value', type: 'range', unit: d.unit || '',
-          controllable: true, capabilityId: 'value', writeCmd: 'set', min: -1000, max: 1000 };
+          controllable: true, capabilityId: 'value', writeCmd: 'set',
+          min: Number.isFinite(d.min) ? d.min : -1000, max: Number.isFinite(d.max) ? d.max : 1000 };
       case 'text':
         return { path: 'value', name: 'Text', type: 'text',
           controllable: true, capabilityId: 'value', writeCmd: 'set' };
