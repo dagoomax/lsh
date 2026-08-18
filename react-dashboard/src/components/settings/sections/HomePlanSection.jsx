@@ -13,10 +13,21 @@ const ROOM_FIELDS = [
   { key: 'd', label: 'D', type: 'number', default: 3 },
 ]
 
+const LAYER_TOGGLES = [
+  ['furniture', 'Furniture (auto-generated per-room icons, or the 3D furniture layer)'],
+  ['appliances', 'Appliances (device chips)'],
+  ['power', 'Power-flow overlay'],
+  ['walls', '3D wall/window layer'],
+  ['textures', 'Floor textures'],
+  ['satellite', 'Satellite imagery around the building (loads from a public map server — reveals your approximate location to it)'],
+  ['surroundings', '3D neighboring buildings/trees (stylized, not a surveyed reconstruction)'],
+]
+
 export default function HomePlanSection() {
   const [rooms, setRooms] = useState(null)
   const [singleFloor, setSingleFloor] = useState(false)
   const [floors, setFloors] = useState({ cellar: { image: '', w: 12, h: 9 }, floor1: { image: '', w: 12, h: 9 }, floor2: { image: '', w: 12, h: 9 } })
+  const [defaultLayers, setDefaultLayers] = useState({})
   const save = useSettingsSave('/api/settings/home-plan')
 
   useEffect(() => {
@@ -24,14 +35,17 @@ export default function HomePlanSection() {
       setRooms(d.plan?.rooms || [])
       setSingleFloor(!!d.plan?.singleFloor)
       if (d.plan?.floors) setFloors(prev => ({ ...prev, ...d.plan.floors }))
+      setDefaultLayers(d.plan?.defaultLayers || {})
     }).catch(() => setRooms([]))
   }, [])
 
   const setFloor = (key, patch) => setFloors(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
+  const setLayer = (key, val) => setDefaultLayers(prev => ({ ...prev, [key]: val }))
 
   const doSave = () => save.save({
     singleFloor, rooms: rooms || [],
     floors: Object.fromEntries(FLOORS.map(([k]) => [k, floors[k]])),
+    defaultLayers,
   })
 
   return (
@@ -53,6 +67,14 @@ export default function HomePlanSection() {
       {rooms == null
         ? <p className="stg-hint">Loading…</p>
         : <ListEditor rows={rooms} onChange={setRooms} fields={ROOM_FIELDS} addLabel="+ Add Room"/>}
+
+      <h4 className="stg-subheading">Default layer visibility</h4>
+      <p className="stg-hint">
+        Starting state of each Plan-view toggle pill, for browsers that haven't set one themselves yet — an explicit tap on a pill always overrides this.
+      </p>
+      {LAYER_TOGGLES.map(([key, label]) => (
+        <Toggle key={key} label={label} checked={defaultLayers[key] !== false} onChange={v => setLayer(key, v)}/>
+      ))}
 
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy} onClick={doSave}>Save Plan</Button>

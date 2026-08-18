@@ -13,6 +13,19 @@ function emojiFor(owmIcon) {
   return ICON_MAP[(owmIcon || '').slice(0, 2)] || '🌡️';
 }
 
+// Dew point (Magnus-Tetens approximation) — OpenWeatherMap's free current-
+// weather endpoint doesn't return it (that's a One Call 3.0 field), so it's
+// computed here from temperature + humidity instead of adding API scope.
+// Works in °C internally regardless of the configured display units.
+function dewPointC(tempC, humidityPct) {
+  if (tempC == null || humidityPct == null || humidityPct <= 0) return null;
+  const a = 17.27, b = 237.7;
+  const alpha = (a * tempC) / (b + tempC) + Math.log(humidityPct / 100);
+  return (b * alpha) / (a - alpha);
+}
+const toC = (t, units) => (units === 'imperial' ? ((t - 32) * 5) / 9 : t);
+const fromC = (t, units) => (units === 'imperial' ? (t * 9) / 5 + 32 : t);
+
 /**
  * OpenWeatherMap — Current Weather Data API (the free-tier, no-subscription
  * endpoint) plus the free 5 Day / 3 Hour Forecast API for the dashboard's
@@ -49,6 +62,7 @@ class OpenWeatherClient {
         { path: 'condition',   name: 'Condition',    type: 'label' },
         { path: 'temperature', name: 'Temperature',  type: 'number', unit: cfg.units === 'imperial' ? '°F' : '°C', precision: 1, homekit: 'temperature' },
         { path: 'feelsLike',   name: 'Feels Like',   type: 'number', unit: cfg.units === 'imperial' ? '°F' : '°C', precision: 1 },
+        { path: 'dewPoint',    name: 'Dew Point',    type: 'number', unit: cfg.units === 'imperial' ? '°F' : '°C', precision: 1 },
         { path: 'humidity',    name: 'Humidity',     type: 'number', unit: '%' },
         { path: 'pressure',    name: 'Pressure',     type: 'number', unit: 'hPa' },
         { path: 'windSpeed',   name: 'Wind Speed',   type: 'number', unit: cfg.units === 'imperial' ? 'mph' : 'm/s', precision: 1 },
@@ -120,6 +134,10 @@ class OpenWeatherClient {
     if (data.weather?.[0]?.description) this._store.update(`${k}/condition`, data.weather[0].description);
     if (data.main?.temp != null)         this._store.update(`${k}/temperature`, data.main.temp);
     if (data.main?.feels_like != null)   this._store.update(`${k}/feelsLike`, data.main.feels_like);
+    if (data.main?.temp != null && data.main?.humidity != null) {
+      const dp = dewPointC(toC(data.main.temp, units), data.main.humidity);
+      if (dp != null) this._store.update(`${k}/dewPoint`, +fromC(dp, units).toFixed(1));
+    }
     if (data.main?.humidity != null)     this._store.update(`${k}/humidity`, data.main.humidity);
     if (data.main?.pressure != null)     this._store.update(`${k}/pressure`, data.main.pressure);
     if (data.wind?.speed != null)        this._store.update(`${k}/windSpeed`, data.wind.speed);

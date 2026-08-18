@@ -9,7 +9,7 @@ const NAV = [
   { label: 'Flows',     href: '/flows.html',    active: false },
 ]
 
-export default function Header({ connection, connected, onLock, onOpenSettings }) {
+export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall }) {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
   })
@@ -67,6 +67,17 @@ export default function Header({ connection, connected, onLock, onOpenSettings }
 
       {/* Connection status + source (right) — vanilla green/red + neutral chip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <button
+          className="header-icon-btn"
+          onClick={onOpenWall}
+          title={gt('wall_view', 'Wall display view')}
+          style={{
+            color: 'var(--text2)',
+            border: '1px solid var(--border)', borderRadius: 8,
+            padding: '4px 8px', fontSize: 13, lineHeight: 1, cursor: 'pointer',
+          }}>
+          🖥️
+        </button>
         <button
           className="header-icon-btn"
           onClick={onLock}

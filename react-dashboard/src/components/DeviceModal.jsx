@@ -579,6 +579,56 @@ function RoborockRoomsPanel({ device }) {
   )
 }
 
+// Compact "3m ago" / "just now" formatting for reading freshness.
+function timeAgo(ts) {
+  if (!ts) return null
+  const s = Math.max(0, Math.floor((Date.now() - ts) / 1000))
+  if (s < 5) return 'just now'
+  if (s < 60) return `${s}s ago`
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
+// Read-only info rows for sensors that are neither controllable nor
+// numeric/boolean (firmware version, IP, status text, …) — otherwise these
+// never surface anywhere in the dashboard.
+function DetailsPanel({ sensors, readings }) {
+  if (!sensors.length) return null
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)', marginBottom: 8 }}>
+        {gt('details', 'Details')}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {sensors.map(s => {
+          const reading = readings[s.path]
+          const v = reading?.value
+          const age = timeAgo(reading?.timestamp)
+          return (
+            <div key={s.path} style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+              background: 'var(--white-03)', border: '1px solid var(--white-07)', borderRadius: 10,
+            }}>
+              <span style={{ fontSize: 12.5, color: 'var(--text2,#aeb6c4)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {s.name || s.label || s.path}
+              </span>
+              <span style={{ fontSize: 12.5, fontWeight: 600, textAlign: 'right', maxWidth: '55%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {v == null ? '—' : typeof v === 'boolean' ? (v ? gt('on', 'On') : gt('off', 'Off')) : `${v}${s.unit || ''}`}
+              </span>
+              {age && (
+                <span style={{ fontSize: 10.5, color: 'var(--text3,#647084)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{age}</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Edit panel: room / icon / name, optionally locked with a PIN ─────────────
 
 function EditPanel({ device, rooms, onClose }) {
@@ -700,8 +750,17 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
     const v = r[s.path]?.value
     return typeof v === 'number' || typeof v === 'boolean'
   })
+  // Everything else that actually has a reading — read-only text/status
+  // fields (firmware, IP, state strings, …) that neither Controls nor the
+  // History chips surface.
+  const extra = sensors.filter(s =>
+    r[s.path]?.value !== undefined &&
+    !controls.some(c => c.path === s.path) &&
+    !graphable.some(g => g.path === s.path))
   const sel = selected && graphable.find(s => s.path === selected) ? selected : graphable[0]?.path
   const selSensor = graphable.find(s => s.path === sel)
+  const freshest = Math.max(0, ...sensors.map(s => r[s.path]?.timestamp || 0))
+  const freshestAgo = timeAgo(freshest)
 
   const cmd = (sensor, value) => {
     setLocalState(s => ({ ...s, [sensor]: value }))
@@ -761,7 +820,11 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
                 <div className="modal-device-title" style={{
                   fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>{device.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted, #8b949e)' }}>{device.key}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted, #8b949e)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span>{device.key}</span>
+                  {device.room && <><span>·</span><span>{device.room}</span></>}
+                  {freshestAgo && <><span>·</span><span>{gt('updated', 'Updated')} {freshestAgo}</span></>}
+                </div>
               </div>
               <button onClick={() => setEditing(e => !e)} title={gt('edit', 'Edit')} style={{
                 width: 32, height: 32, borderRadius: 10, cursor: 'pointer', fontSize: 14,
@@ -868,7 +931,10 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
                 </div>
               )}
 
-              {graphable.length === 0 && controls.length === 0 && (
+              {/* Read-only text/status fields not shown elsewhere */}
+              <DetailsPanel sensors={extra} readings={r} />
+
+              {graphable.length === 0 && controls.length === 0 && extra.length === 0 && (
                 <div style={{ color: 'var(--muted,#8b949e)', fontSize: 13, textAlign: 'center', padding: 24 }}>
                   This device has no numeric sensors or controls.
                 </div>

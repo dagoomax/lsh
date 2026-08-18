@@ -21,6 +21,7 @@ const os   = require('os');
 const sip  = require('sip');
 const platformStatus = require('./platform-status');
 const SipAudioBridge  = require('./sip-audio-bridge');
+const callLog = require('./call-log');
 
 function localIPv4() {
   const ifaces = os.networkInterfaces();
@@ -251,6 +252,9 @@ class SipServer extends EventEmitter {
   }
 
   _end() {
+    if (this._call && !this._call.answered) {
+      callLog.push(this._call.caller);
+    }
     this._audio.stop();
     this._emitState('ended');
     this._call = null;

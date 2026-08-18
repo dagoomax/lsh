@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { resolveIcon, CAT_ICON_COMPONENT } from './Icons'
 import { gt } from '../i18n'
 import { EDIT_EMOJI } from '../emoji'
+import PlanFurniture3D from './PlanFurniture3D'
+import { PLAN_FURNITURE_3D } from '../planFurniture3D'
+import PlanWalls3D from './PlanWalls3D'
+import { PLAN_WALLS_3D } from '../planWalls3D'
+import PlanPowerFlow from './PlanPowerFlow'
+import PlanSurroundings3D from './PlanSurroundings3D'
+import { PLAN_SURROUNDINGS_3D } from '../planSurroundings3D'
 
 // Isometric home plan — rooms from config.homePlan (Settings → Home Plan),
 // falling back to an automatic grid of the rooms assigned to devices.
@@ -9,6 +16,23 @@ import { EDIT_EMOJI } from '../emoji'
 // counter-rotated ("billboarded") so they stay upright and readable.
 
 const CELL = 83 // px per grid unit (at zoom 1)
+
+// Fixed "smart panel" anchor for the power-flow overlay — board metres,
+// placed just inside the entry hall (a stand-in for a real breaker-panel
+// device, which nothing in the registry represents). Floors without an
+// entry here just don't get the overlay.
+const POWER_PANEL = { floor1: { x: 8.45, y: 1.4 } }
+
+// Real aerial imagery for the margin outside the apartment, centered on the
+// coordinates already configured for weather (config.openweather lat/lon —
+// see src/openweather-client.js). Esri World Imagery: free, no API key,
+// unlike Google's Static Maps (which needs a billed key). floorplan-base.svg
+// / floorplan-flat.svg paint the margin fully transparent specifically so
+// this shows through underneath as a second CSS background layer.
+const SATELLITE_URL = {
+  floor1: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export'
+    + '?bbox=18.988665,50.226213,18.990769,50.227399&bboxSR=4326&size=800,708&imageSR=4326&format=jpg&f=image',
+}
 
 // American floor notation; localized via gt() (pl: piwnica / parter / pierwsze piętro)
 const FLOOR_ORDER = ['cellar', 'floor1', 'floor2']
@@ -342,13 +366,18 @@ function PositionedChip({ device, room, origin = { x: 0, y: 0 }, board, U, angle
   )
 }
 
-export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
+export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, energy, kiosk = false }) {
   const [plan, setPlan] = useState(null)
   const [filter, setFilter] = useState(null) // device category, null = all
   const [floor, setFloor] = useState(() => localStorage.getItem('planFloor') || 'floor1')
   const [showAdd, setShowAdd] = useState(false)
   const [showFurniture, setShowFurniture] = useState(() => localStorage.getItem('planFurniture') !== '0')
   const [showAppliances, setShowAppliances] = useState(() => localStorage.getItem('planAppliances') !== '0')
+  const [showPower, setShowPower] = useState(() => localStorage.getItem('planPower') !== '0')
+  const [showWalls3D, setShowWalls3D] = useState(() => localStorage.getItem('planWalls3D') !== '0')
+  const [showTextures, setShowTextures] = useState(() => localStorage.getItem('planTextures') !== '0')
+  const [showSatellite, setShowSatellite] = useState(() => localStorage.getItem('planSatellite') !== '0')
+  const [showSurroundings, setShowSurroundings] = useState(() => localStorage.getItem('planSurroundings') !== '0')
   const toggleLayer = (key, setter) => setter((v) => {
     localStorage.setItem(key, v ? '0' : '1')
     return !v
@@ -439,6 +468,24 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
       .catch(() => {})
   }, [])
 
+  // Settings → Home Plan can configure each layer's default visibility;
+  // only applies to toggles this browser has never touched (no localStorage
+  // key at all) — an explicit user toggle always wins over the config default.
+  useEffect(() => {
+    const dl = plan?.defaultLayers
+    if (!dl) return
+    const seed = (key, val, setter) => {
+      if (typeof val === 'boolean' && localStorage.getItem(key) == null) setter(val)
+    }
+    seed('planFurniture', dl.furniture, setShowFurniture)
+    seed('planAppliances', dl.appliances, setShowAppliances)
+    seed('planPower', dl.power, setShowPower)
+    seed('planWalls3D', dl.walls, setShowWalls3D)
+    seed('planTextures', dl.textures, setShowTextures)
+    seed('planSatellite', dl.satellite, setShowSatellite)
+    seed('planSurroundings', dl.surroundings, setShowSurroundings)
+  }, [plan])
+
   // Run a decor mutation and adopt the returned decor state. Returns true on
   // success; a cancelled PIN prompt is silent, server errors are surfaced.
   const decorOp = async (body) => {
@@ -516,6 +563,22 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
   const activeFloor = floors.includes(floor) ? floor : (floors.includes('floor1') ? 'floor1' : floors[0] || 'floor1')
   const floorRooms = rooms.filter((r) => floorOf(r) === activeFloor)
   const floorCfg = floorCfgs[activeFloor]
+  // A floor with real furniture drawn (matching the background image) makes
+  // the random per-room emoji decor redundant/cluttered — prefer the exact
+  // 3D pieces and skip auto-generating emoji on top of them.
+  const hasFurn3D = !!(floorCfg?.image && PLAN_FURNITURE_3D[activeFloor]?.length)
+  // A floor with a precise wall/window manifest gets real door/window
+  // openings instead of the generic solid-per-side room walls.
+  const hasWalls3D = !!(floorCfg?.image && PLAN_WALLS_3D[activeFloor])
+  // The flat (no-texture) variant only exists for the one hand-authored
+  // asset this session built alongside it — other floor images have no
+  // matching pair, so the Textures toggle only appears (and only swaps the
+  // URL) for that specific file.
+  const hasTextureToggle = floorCfg?.image === '/floorplan-base.svg'
+  const bgImage = (hasTextureToggle && !showTextures) ? '/floorplan-flat.svg' : floorCfg?.image
+  const hasSatellite = !!SATELLITE_URL[activeFloor]
+  const hasSurroundings = !!PLAN_SURROUNDINGS_3D[activeFloor]?.length
+  const satelliteUrl = showSatellite ? SATELLITE_URL[activeFloor] : null
 
   const maxX = floorCfg ? floorCfg.w : Math.max(1, ...floorRooms.map((r) => r.x + r.w))
   const maxY = floorCfg ? floorCfg.h : Math.max(1, ...floorRooms.map((r) => r.y + r.d))
@@ -567,6 +630,32 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
   const matches = (d) => !filter || (groupOf && groupOf(d) === filter)
   const hiddenAuto = new Set(decor._hidden || [])
 
+  // Power-flow overlay: any device reporting a live wattage (unit 'W', on
+  // any platform — Shelly, SmartThings, KNX, ... — this is the one field
+  // every power-capable sensor shares) that's actually placed on this floor.
+  const panelPos = POWER_PANEL[activeFloor]
+  const powerDevices = []
+  if (panelPos) {
+    for (const d of devices) {
+      const wattSensors = (d.sensors || []).filter((s) => s.unit === 'W')
+      if (!wattSensors.length) continue
+      const watts = wattSensors.reduce((sum, s) => sum + (Number(d.readings?.[s.path]?.value) || 0), 0)
+      if (!(watts > 1)) continue
+      let bx, by
+      if (d.planFloor === activeFloor) {
+        bx = (d.planX ?? 0.5) * maxX; by = (d.planY ?? 0.5) * maxY
+      } else if (d.room) {
+        const home = floorRooms.find((r) => r.name === d.room)
+        if (!home) continue
+        bx = home.x + (d.planX ?? 0.5) * home.w
+        by = home.y + (d.planY ?? 0.5) * home.d
+      } else continue
+      powerDevices.push({ key: d.key, label: d.label, watts, x: bx, y: by, icon: resolveIcon(d), customIcon: d.customIcon })
+    }
+  }
+  const totalPowerW = powerDevices.reduce((sum, d) => sum + d.watts, 0)
+  const solarW = energy?.solar?.power
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div className="plan-filter-bar">
@@ -598,12 +687,22 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
             })}
           </>
         )}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, position: 'relative' }}>
-          <button className="plan-filter-pill" data-active={String(showAdd)}
+        {floorRooms.length > 1 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {floorRooms.map((r) => (
+              <button key={r.name} className="plan-filter-pill" data-active={String(focusRoom === r.name)}
+                onClick={() => focusOnRoom(r.name)}>
+                {roomsMeta[r.name]?.icon || '🏠'} {r.name}
+              </button>
+            ))}
+          </div>
+        )}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, position: 'relative', flexWrap: 'wrap' }}>
+          {!kiosk && <button className="plan-filter-pill" data-active={String(showAdd)}
             onClick={() => setShowAdd((v) => !v)}>
             ＋ {gt('add_device', 'Add device')}
-          </button>
-          {showAdd && (
+          </button>}
+          {!kiosk && showAdd && (
             <div className="plan-add-panel" onClick={(e) => e.stopPropagation()}>
               {freeDevs.length > 0 && (
                 <>
@@ -657,16 +756,54 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
             onClick={() => toggleLayer('planAppliances', setShowAppliances)}>
             🔌 {gt('appliances', 'Appliances')}
           </button>
-          <button className="plan-filter-pill" onClick={() => zoomBy(1 / 1.25)} title="Zoom out">−</button>
-          <button className="plan-filter-pill" onClick={() => zoomBy(1.25)} title="Zoom in">+</button>
+          {panelPos && (
+            <button className="plan-filter-pill" data-active={String(showPower)}
+              onClick={() => toggleLayer('planPower', setShowPower)}>
+              ⚡ {gt('power', 'Power')}
+            </button>
+          )}
+          {hasWalls3D && (
+            <button className="plan-filter-pill" data-active={String(showWalls3D)}
+              onClick={() => toggleLayer('planWalls3D', setShowWalls3D)}>
+              🧱 {gt('walls', 'Walls')}
+            </button>
+          )}
+          {hasTextureToggle && (
+            <button className="plan-filter-pill" data-active={String(showTextures)}
+              onClick={() => toggleLayer('planTextures', setShowTextures)}>
+              🎨 {gt('textures', 'Textures')}
+            </button>
+          )}
+          {hasSatellite && (
+            <button className="plan-filter-pill" data-active={String(showSatellite)}
+              onClick={() => toggleLayer('planSatellite', setShowSatellite)}
+              title={gt('satellite_hint', 'Real aerial imagery around the building — loads from a public map server')}>
+              🛰️ {gt('satellite', 'Satellite')}
+            </button>
+          )}
+          {hasSurroundings && (
+            <button className="plan-filter-pill" data-active={String(showSurroundings)}
+              onClick={() => toggleLayer('planSurroundings', setShowSurroundings)}
+              title={gt('surroundings_hint', 'Stylized neighboring buildings/trees — not a surveyed reconstruction')}>
+              🏘️ {gt('surroundings', 'Surroundings')}
+            </button>
+          )}
+          {!kiosk && <button className="plan-filter-pill" onClick={() => zoomBy(1 / 1.25)} title="Zoom out">−</button>}
+          {!kiosk && <button className="plan-filter-pill" onClick={() => zoomBy(1.25)} title="Zoom in">+</button>}
           <button className="plan-filter-pill" onClick={() => rotate(-1)} title="Rotate left">↺</button>
           <button className="plan-filter-pill" onClick={() => rotate(1)} title="Rotate right">↻</button>
-          <button className="plan-filter-pill" data-active={String(mode3d)} onClick={toggle3d}
-            title="Isometric / flat">3D</button>
+          {!kiosk && <button className="plan-filter-pill" data-active={String(mode3d)} onClick={toggle3d}
+            title="Isometric / flat">3D</button>}
         </div>
       </div>
       <div className="plan-viewport" ref={viewportRef}
         style={{ position: 'relative', overflow: focusRoom ? 'hidden' : undefined }}>
+      {kiosk && (
+        <div className="plan-kiosk-zoom">
+          <button onClick={() => zoomBy(1 / 1.25)} title="Zoom out">−</button>
+          <button onClick={() => zoomBy(1.25)} title="Zoom in">+</button>
+        </div>
+      )}
       {focusRoom && (
         <button className="plan-filter-pill plan-zoom-back" onClick={unfocus}>
           ⤺ {roomsMeta[focusRoom]?.icon || '🏠'} {focusRoom}
@@ -684,8 +821,8 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
           width: maxX * U, height: maxY * U,
           '--plan-rz': `${angle}deg`, '--plan-rx': mode3d ? '55deg' : '0deg',
           ...(floorCfg?.image ? {
-            backgroundImage: `url(${floorCfg.image})`,
-            backgroundSize: '100% 100%',
+            backgroundImage: satelliteUrl ? `url(${bgImage}), url(${satelliteUrl})` : `url(${bgImage})`,
+            backgroundSize: satelliteUrl ? '100% 100%, 100% 100%' : '100% 100%',
             borderRadius: 10,
             boxShadow: 'var(--shadow-2)',
           } : {}),
@@ -706,10 +843,12 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
                   left: room.x * U, top: room.y * U,
                   width: room.w * U, height: room.d * U,
                 }}>
-                <div className="plan-wall plan-wall-n"/>
-                <div className="plan-wall plan-wall-s"/>
-                <div className="plan-wall plan-wall-w"/>
-                <div className="plan-wall plan-wall-e"/>
+                {!hasWalls3D && <>
+                  <div className="plan-wall plan-wall-n"/>
+                  <div className="plan-wall plan-wall-s"/>
+                  <div className="plan-wall plan-wall-w"/>
+                  <div className="plan-wall plan-wall-e"/>
+                </>}
                 <div className="plan-room-label-wrap">
                   <div className="plan-room-label">
                     <span style={{ fontSize: 13 }}>{roomsMeta[room.name]?.icon || '🏠'}</span>
@@ -717,7 +856,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
                     {onCount > 0 && <span className="plan-on-badge">{onCount}</span>}
                   </div>
                 </div>
-                {showFurniture && (
+                {showFurniture && !hasFurn3D && (
                   <div className="plan-furniture">
                     {roomDecorations(room).map((f) => {
                       // content-based id (floor + room + emoji + position):
@@ -752,6 +891,12 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen }) {
               </div>
             )
           })}
+          {hasSurroundings && showSurroundings && <PlanSurroundings3D floorKey={activeFloor} U={U} />}
+          {hasWalls3D && showWalls3D && <PlanWalls3D floorKey={activeFloor} U={U} />}
+          {showFurniture && hasFurn3D && <PlanFurniture3D floorKey={activeFloor} U={U} />}
+          {showPower && panelPos && (
+            <PlanPowerFlow devices={powerDevices} panel={panelPos} totalW={totalPowerW} solarW={solarW} U={U} />
+          )}
           {showFurniture && (decor[activeFloor] || []).map((item) => (
             <div key={item.id} className="plan-devices">
               <DecorItem item={item} board={boardRoom} U={U} angle={angle} mode3d={mode3d}

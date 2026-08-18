@@ -264,7 +264,7 @@ class SensorRegistry extends EventEmitter {
       const fullKey = `${deviceKey}/${sensor.path}`;
       const value = this.store.get(fullKey);
       if (value !== null) {
-        readings[sensor.path] = { ...sensor, value };
+        readings[sensor.path] = { ...sensor, value, timestamp: this.store.getTimestamp(fullKey) };
       }
     }
     return { ...device, readings };

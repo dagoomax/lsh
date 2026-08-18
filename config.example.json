@@ -26,6 +26,18 @@
     "siteId": "",
     "apiKey": ""
   },
+  "googleCalendar": {
+    "clientId": "",
+    "clientSecret": "",
+    "calendarId": "primary"
+  },
+  "tariff": {
+    "currency": "£",
+    "windows": [
+      { "label": "Off-Peak", "price": 0.12, "start": "23:00", "end": "16:00" },
+      { "label": "Peak", "price": 0.28, "start": "16:00", "end": "23:00" }
+    ]
+  },
   "smartthings": {
     "token": "",
     "clientId": "",
@@ -169,6 +181,20 @@
           { "name": "Relay 1", "type": "coil", "address": 0, "writable": true }
         ]
       }
+    ]
+  },
+  "domatiq": {
+    "host": "192.168.1.60",
+    "port": 10001,
+    "modules": [
+      { "addr": 20, "label": "Utility Relays" }
+    ]
+  },
+  "domatiqOut": {
+    "host": "192.168.1.60",
+    "port": 10001,
+    "mappings": [
+      { "storeKey": "virtual/domatiq-demo/value", "addr": 20, "action": "switch", "channel": 4 }
     ]
   },
   "knx": {

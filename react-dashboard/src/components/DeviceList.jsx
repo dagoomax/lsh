@@ -1442,7 +1442,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
             <StatsView devices={devices} energy={energy} onOpen={setOpenKey} />
           )}
           {cat === 'Plan' && (
-            <HomePlan devices={devices} roomsMeta={roomsMeta} groupOf={getGroup} onOpen={setOpenKey} />
+            <HomePlan devices={devices} roomsMeta={roomsMeta} groupOf={getGroup} onOpen={setOpenKey} energy={energy} />
           )}
           {/* Energy as the top section of the overview */}
           {cat === 'All' && energy && (

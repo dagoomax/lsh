@@ -324,6 +324,10 @@ class DataStore extends EventEmitter {
     return this.data[key]?.value ?? null;
   }
 
+  getTimestamp(key) {
+    return this.data[key]?.timestamp ?? null;
+  }
+
   getAll() {
     const result = {};
     for (const [k, v] of Object.entries(this.data)) {

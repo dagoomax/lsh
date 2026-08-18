@@ -3,7 +3,7 @@
   "info": {
     "title": "LSH — Lightweight Smart Home API",
     "version": "1.0.1",
-    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 248 endpoints.",
+    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 262 endpoints.",
     "license": {
       "name": "Repository",
       "url": "https://github.com/dagoomax/lsh"
@@ -42,7 +42,19 @@
     },
     {
       "name": "Home plan (isometric floor plan for the dashboard)",
+      "description": "4 endpoints"
+    },
+    {
+      "name": "Private (locally-added) agenda events — never synced to/from Google",
       "description": "2 endpoints"
+    },
+    {
+      "name": "Missed calls (SIP doorbell)",
+      "description": "1 endpoint"
+    },
+    {
+      "name": "Google Calendar (OAuth, read-only)",
+      "description": "5 endpoints"
     },
     {
       "name": "Dashboard lock PIN (screen lock, default 0000)",
@@ -58,7 +70,7 @@
     },
     {
       "name": "Flows (Node-RED-style)",
-      "description": "7 endpoints"
+      "description": "9 endpoints"
     },
     {
       "name": "Satel INTEGRA",
@@ -246,6 +258,10 @@
     },
     {
       "name": "KNX",
+      "description": "2 endpoints"
+    },
+    {
+      "name": "Domatiq CAN bus",
       "description": "2 endpoints"
     },
     {
@@ -1630,6 +1646,356 @@
         }
       }
     },
+    "/tariff": {
+      "get": {
+        "tags": [
+          "Home plan (isometric floor plan for the dashboard)"
+        ],
+        "summary": "GET /tariff",
+        "operationId": "get_tariff",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/tariff": {
+      "post": {
+        "tags": [
+          "Home plan (isometric floor plan for the dashboard)"
+        ],
+        "summary": "POST /settings/tariff",
+        "operationId": "post_settings_tariff",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agenda/private": {
+      "post": {
+        "tags": [
+          "Private (locally-added) agenda events — never synced to/from Google"
+        ],
+        "summary": "POST /agenda/private",
+        "operationId": "post_agenda_private",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agenda/private/{id}": {
+      "delete": {
+        "tags": [
+          "Private (locally-added) agenda events — never synced to/from Google"
+        ],
+        "summary": "DELETE /agenda/private/:id",
+        "operationId": "delete_agenda_private_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/call-log": {
+      "get": {
+        "tags": [
+          "Missed calls (SIP doorbell)"
+        ],
+        "summary": "GET /call-log",
+        "operationId": "get_call_log",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/google-calendar/oauth/start": {
+      "get": {
+        "tags": [
+          "Google Calendar (OAuth, read-only)"
+        ],
+        "summary": "GET /google-calendar/oauth/start",
+        "operationId": "get_google_calendar_oauth_start",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/google-calendar/oauth/callback": {
+      "get": {
+        "tags": [
+          "Google Calendar (OAuth, read-only)"
+        ],
+        "summary": "GET /google-calendar/oauth/callback",
+        "operationId": "get_google_calendar_oauth_callback",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/google-calendar/status": {
+      "get": {
+        "tags": [
+          "Google Calendar (OAuth, read-only)"
+        ],
+        "summary": "GET /google-calendar/status",
+        "operationId": "get_google_calendar_status",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/google-calendar": {
+      "post": {
+        "tags": [
+          "Google Calendar (OAuth, read-only)"
+        ],
+        "summary": "POST /settings/google-calendar",
+        "operationId": "post_settings_google_calendar",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agenda": {
+      "get": {
+        "tags": [
+          "Google Calendar (OAuth, read-only)"
+        ],
+        "summary": "GET /agenda",
+        "operationId": "get_agenda",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/dashboard-pin/verify": {
       "post": {
         "tags": [
@@ -2275,6 +2641,88 @@
             "application/json": {
               "schema": {
                 "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/flow-snapshots/{name}": {
+      "get": {
+        "tags": [
+          "Flows (Node-RED-style)"
+        ],
+        "summary": "GET /flow-snapshots/:name",
+        "operationId": "get_flow_snapshots_name",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/flow-loxone/{name}": {
+      "get": {
+        "tags": [
+          "Flows (Node-RED-style)"
+        ],
+        "summary": "GET /flow-loxone/:name",
+        "operationId": "get_flow_loxone_name",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
               }
             }
           }
@@ -9576,6 +10024,88 @@
         ],
         "summary": "POST /settings/knx",
         "operationId": "post_settings_knx",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-domatiq": {
+      "post": {
+        "tags": [
+          "Domatiq CAN bus"
+        ],
+        "summary": "POST /settings/test-domatiq",
+        "operationId": "post_settings_test_domatiq",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/domatiq": {
+      "post": {
+        "tags": [
+          "Domatiq CAN bus"
+        ],
+        "summary": "POST /settings/domatiq",
+        "operationId": "post_settings_domatiq",
         "responses": {
           "200": {
             "description": "Success",

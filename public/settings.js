@@ -259,6 +259,11 @@ async function loadSettings() {
     setVal('knx-port', data.knx?.port || 3671);
     renderKNXGAList(data.knx?.groupAddresses || []);
 
+    // Domatiq
+    setVal('domatiq-host', data.domatiq?.host || '');
+    setVal('domatiq-port', data.domatiq?.port || 10001);
+    renderDomatiqModulesList(data.domatiq?.modules || []);
+
     // Fibaro
     setVal('fibaro-host', data.fibaro?.host || '');
     setVal('fibaro-port', data.fibaro?.port || 80);
@@ -4426,6 +4431,76 @@ document.getElementById('btn-save-knx').addEventListener('click', async () => {
     const res  = await fetch('/api/settings/knx', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ host: getVal('knx-host'), port: parseInt(getVal('knx-port')) || 3671, groupAddresses: collectKNXGAs() }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── Domatiq ──────────────────────────────────────────────────────────────────
+
+function renderDomatiqModulesList(modules) {
+  const container = document.getElementById('domatiq-modules-list');
+  if (!container) return;
+  container.innerHTML = modules.map(m => domatiqModuleRow(m)).join('');
+}
+
+function domatiqModuleRow(m = {}) {
+  return `<div class="shelly-row" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px" data-domatiq-row>
+    <input type="number" class="domatiq-addr"  placeholder="Address" value="${m.addr ?? ''}" min="0" max="8191" style="width:100px" title="Bus address">
+    <input type="text"   class="domatiq-label" placeholder="Label (optional)" value="${m.label || ''}" style="flex:1;min-width:160px">
+    <button class="btn btn-icon" onclick="this.closest('[data-domatiq-row]').remove()" title="Remove">✕</button>
+  </div>`;
+}
+
+function collectDomatiqModules() {
+  return Array.from(document.querySelectorAll('[data-domatiq-row]')).map(row => ({
+    addr:  parseInt(row.querySelector('.domatiq-addr').value),
+    label: row.querySelector('.domatiq-label').value.trim() || undefined,
+  })).filter(m => Number.isFinite(m.addr));
+}
+
+document.getElementById('btn-add-domatiq-module').addEventListener('click', () => {
+  const container = document.getElementById('domatiq-modules-list');
+  const div = document.createElement('div');
+  div.innerHTML = domatiqModuleRow();
+  container.appendChild(div.firstElementChild);
+});
+
+document.getElementById('btn-test-domatiq').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-test-domatiq');
+  const resultEl = document.getElementById('domatiq-test-result');
+  btn.disabled   = true;
+  resultEl.textContent = 'Testing…';
+  resultEl.className   = 'test-result';
+  try {
+    const res  = await fetch('/api/settings/test-domatiq', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: getVal('domatiq-host'), port: parseInt(getVal('domatiq-port')) || 10001 }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+document.getElementById('btn-save-domatiq').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-domatiq');
+  const resultEl = document.getElementById('domatiq-test-result');
+  btn.disabled   = true;
+  resultEl.textContent = 'Saving…';
+  resultEl.className   = 'test-result';
+  try {
+    const res  = await fetch('/api/settings/domatiq', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: getVal('domatiq-host'), port: parseInt(getVal('domatiq-port')) || 10001, modules: collectDomatiqModules() }),
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;

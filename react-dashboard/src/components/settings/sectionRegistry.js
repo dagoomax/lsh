@@ -7,9 +7,16 @@
 // `component` is lazy-loaded (import()) so unported categories don't pull in
 // component code that doesn't exist yet.
 export const CATEGORIES = [
+  // Unlike every other category here, "calendar" isn't one of the vanilla
+  // page's 57 sections — Google Calendar/agenda is React-only, added
+  // alongside the Wall Dashboard feature it feeds.
+  { id: 'calendar', label: 'Calendar', sections: [
+    { id: 'google-calendar', title: 'Google Calendar', ported: true },
+  ] },
   { id: 'energy', label: 'Energy', sections: [
     { id: 'connection', title: 'MQTT & VRM Connection', ported: true },
     { id: 'energy-extra', title: 'MongoDB & SolarEdge', ported: true },
+    { id: 'tariff', title: 'Electricity Tariff', ported: true },
   ] },
   { id: 'smarthome', label: 'Smart Home', sections: [
     { id: 'smartthings', title: 'Samsung SmartThings', ported: true },

@@ -693,6 +693,29 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: var(--shadow-2);
 }
 
+/* Kiosk mode: the whole .plan-filter-bar is hidden, so zoom needs its own
+   minimal floating control — bottom-center, matching a wall-tablet plan view */
+.plan-kiosk-zoom {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  gap: 1px;
+  background: rgba(20,22,26,0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 999px;
+  padding: 4px;
+}
+.plan-kiosk-zoom button {
+  width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(255,255,255,0.06); color: #fff; font-size: 17px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.plan-kiosk-zoom button:hover { background: rgba(255,255,255,0.16); }
+
 /* ── Camera field-of-view cones (home plan) ── */
 .plan-cam-cone { pointer-events: none; overflow: visible; }
 .plan-cam-handle {
@@ -862,10 +885,10 @@ input[type="range"]::-moz-range-thumb {
   transition: opacity 0.4s;
   backface-visibility: visible;
 }
-.plan-wall-n { left: 0; right: 0; top: 0;    height: 30px; transform-origin: top;    transform: rotateX(-90deg); }
-.plan-wall-s { left: 0; right: 0; bottom: 0; height: 30px; transform-origin: bottom; transform: rotateX(90deg); }
-.plan-wall-w { top: 0; bottom: 0; left: 0;   width: 30px;  transform-origin: left;   transform: rotateY(90deg); }
-.plan-wall-e { top: 0; bottom: 0; right: 0;  width: 30px;  transform-origin: right;  transform: rotateY(-90deg); }
+.plan-wall-n { left: 0; right: 0; top: 0;    height: var(--wall-h, 30px); transform-origin: top;    transform: rotateX(-90deg); }
+.plan-wall-s { left: 0; right: 0; bottom: 0; height: var(--wall-h, 30px); transform-origin: bottom; transform: rotateX(90deg); }
+.plan-wall-w { top: 0; bottom: 0; left: 0;   width: var(--wall-h, 30px);  transform-origin: left;   transform: rotateY(90deg); }
+.plan-wall-e { top: 0; bottom: 0; right: 0;  width: var(--wall-h, 30px);  transform-origin: right;  transform: rotateY(-90deg); }
 .plan-board[data-3d="false"] .plan-wall { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
   .plan-board, .plan-bill, .plan-stage { transition: none; }
@@ -903,11 +926,86 @@ input[type="range"]::-moz-range-thumb {
   background: color-mix(in srgb, var(--accent) 4%, transparent);
   border-color: color-mix(in srgb, var(--accent) 25%, transparent);
 }
-.plan-board[data-img="true"] .plan-wall { opacity: 0.25; }
-/* Image-mode plans: the render provides its own detail — no grid overlay,
-   and the focused room's walls stay subtle over the picture */
+/* The flat top-down image has no extrusion of its own — walls have to carry
+   the whole isometric read here, so they render taller and near-opaque,
+   colour-matched to the artwork's own charcoal wall fill (#2B2E2E) instead
+   of the generic accent-tinted gradient used for imageless/auto floors. */
+.plan-board[data-img="true"] { --wall-h: 48px; }
+.plan-board[data-img="true"] .plan-wall {
+  opacity: 0.94;
+  background: linear-gradient(to bottom, #4b4f4c, #2b2e2e 65%, #1c1e1d);
+  border: 1px solid rgba(0,0,0,0.35);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+}
+/* Image-mode plans: the render provides its own floor detail — no grid
+   overlay, but walls stay fully prominent, including on the focused room */
 .plan-board[data-img="true"] .plan-room::after { display: none; }
-.plan-board[data-img="true"][data-zoomed="true"] .plan-room[data-zoom-target="true"] .plan-wall { opacity: 0.35; }
+.plan-board[data-img="true"][data-zoomed="true"] .plan-room[data-zoom-target="true"] .plan-wall { opacity: 0.98; }
+
+/* Generic extruded 3D box (folded-up faces via rotateX/rotateY around their
+   own edges) — shared by the furniture layer and the precise wall/window
+   segment layer below, each just supplies its own size/height/colour. */
+.plan-box3d { position: absolute; transform-style: preserve-3d; pointer-events: none; }
+.plan-box3d-face { position: absolute; border: 1px solid rgba(0,0,0,0.28); }
+.plan-box3d-top { inset: 0; box-shadow: 0 3px 8px rgba(0,0,0,0.4); }
+.plan-box3d-n { left: 0; right: 0; top: 0;    transform-origin: top;    transform: rotateX(-90deg); }
+.plan-box3d-s { left: 0; right: 0; bottom: 0; transform-origin: bottom; transform: rotateX(90deg); }
+.plan-box3d-w { top: 0; bottom: 0; left: 0;   transform-origin: left;   transform: rotateY(90deg); }
+.plan-box3d-e { top: 0; bottom: 0; right: 0;  transform-origin: right;  transform: rotateY(-90deg); }
+
+.plan-furn3d-layer { position: absolute; inset: 0; pointer-events: none; transform-style: preserve-3d; }
+.plan-board[data-3d="false"] .plan-furn3d-layer { display: none; }
+.plan-surround3d-layer { position: absolute; inset: 0; pointer-events: none; transform-style: preserve-3d; }
+.plan-board[data-3d="false"] .plan-surround3d-layer { display: none; }
+
+/* Precise wall/window segments (image-mode floors with a matching manifest) —
+   replaces the generic per-room .plan-wall boxes so doorway/window openings
+   drawn in the floor plan actually stay open in 3D instead of being paved
+   over by a solid full-length wall. */
+.plan-wall3d-layer { position: absolute; inset: 0; pointer-events: none; transform-style: preserve-3d; }
+.plan-board[data-3d="false"] .plan-wall3d-layer { display: none; }
+/* Note: Box3D sets each face's `background` inline (colors are per-item data
+   for the furniture layer that shares this component), so a class rule here
+   can never win the cascade against it — only non-background properties
+   (border, shadow, radius) are worth setting from CSS. Wall/window color
+   itself is chosen where each <Box3D> is called, in PlanWalls3D.jsx. */
+.plan-wall3d-seg .plan-box3d-face { border: 1px solid rgba(0,0,0,0.4); }
+.plan-wall3d-seg .plan-box3d-top { box-shadow: 0 6px 14px rgba(0,0,0,0.55); border-radius: 0; }
+.plan-wall3d-win .plan-box3d-face { border: 1px solid rgba(43,46,46,0.4); }
+.plan-wall3d-win .plan-box3d-top { box-shadow: none; border-radius: 0; }
+
+/* Live power-flow overlay — reuses .eflow-track/.eflow-flow (defined above
+   for the whole-house Energy tab) for the glowing animated lines themselves;
+   these are just the panel/label chips scattered along the board. */
+.plan-power-layer { position: absolute; inset: 0; pointer-events: none; transform-style: preserve-3d; }
+.plan-board[data-3d="false"] .plan-power-layer { display: none; }
+.plan-power-pos { position: absolute; transform: translate(-50%, -50%) translateZ(20px); transform-style: preserve-3d; }
+.plan-power-panel {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  background: var(--card); border: 2px solid #4A9EFF;
+  box-shadow: 0 0 16px rgba(74,158,255,0.55);
+}
+.plan-power-chip {
+  padding: 3px 9px 3px 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; white-space: nowrap;
+  background: rgba(10,14,20,0.78); color: #bfe3ff;
+  border: 1px solid rgba(74,158,255,0.4); box-shadow: 0 0 10px rgba(74,158,255,0.35);
+  display: inline-flex; align-items: center; gap: 5px;
+}
+/* Lit-up icon: only rendered for devices actively drawing power, so the glow
+   itself is the "on" indicator — no separate on/off state to track here. */
+.plan-power-chip-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%; font-size: 12px; flex-shrink: 0;
+  background: radial-gradient(circle, rgba(74,158,255,0.35), transparent 70%);
+  filter: drop-shadow(0 0 4px #4A9EFF);
+}
+.plan-power-summary {
+  padding: 8px 14px; border-radius: 14px; font-size: 11.5px; font-weight: 700; white-space: nowrap;
+  display: flex; flex-direction: column; gap: 3px;
+  background: rgba(10,14,20,0.82); color: #e7f2ff;
+  border: 1px solid rgba(74,158,255,0.4); box-shadow: 0 0 18px rgba(74,158,255,0.3);
+}
 
 /* Add-device panel */
 .plan-add-panel {
@@ -1430,6 +1528,152 @@ body::before {
   border-color: var(--border-lt);
 }
 
+/* ── Wall Dashboard (kiosk view) ─────────────────────────────────────────
+   Deliberately theme-independent (always dark, like a wall tablet's screen)
+   rather than following the app's light/dark toggle — same reasoning as
+   LockScreen/LoginScreen opting out of the normal theme tokens. */
+.wall-dash {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: radial-gradient(ellipse at 50% 28%, #24262b 0%, #131418 72%);
+  color: #fff;
+  display: grid;
+  grid-template-columns: 260px 1fr 270px;
+  grid-template-rows: 128px 1fr 150px;
+  grid-template-areas:
+    "energy   plan rightcol"
+    "energy   plan rightcol"
+    "forecast plan rightcol";
+  gap: 18px;
+  padding: 26px;
+  overflow: hidden;
+}
+.wall-exit {
+  position: absolute; top: 18px; left: 18px; z-index: 20;
+  width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.55); cursor: pointer;
+  font-size: 14px; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.wall-exit:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+.wall-region { min-width: 0; min-height: 0; }
+.wall-region-energy { grid-area: energy; display: flex; flex-direction: column; align-items: center; gap: 18px; padding-top: 4px; overflow-y: auto; }
+.wall-region-energy > .wall-thermo { align-self: stretch; }
+.wall-region-forecast { grid-area: forecast; align-self: end; }
+.wall-region-rightcol { grid-area: rightcol; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; overflow: hidden; }
+.wall-region-rightcol .wall-agenda { flex: 1; min-height: 0; overflow-y: auto; align-self: stretch; }
+.wall-region-plan {
+  grid-area: plan; position: relative; border-radius: 22px; overflow: hidden;
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+  display: flex; flex-direction: column;
+}
+.wall-region-plan .plan-viewport { background: transparent; }
+/* The filter bar's pills normally read the app's light/dark theme tokens —
+   .wall-dash is deliberately theme-independent (always dark), so give them
+   their own fixed dark-glass look here instead of inheriting whichever
+   theme happens to be active. */
+.wall-region-plan .plan-filter-bar { padding: 6px 2px 10px; }
+.wall-region-plan .plan-filter-pill {
+  background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.14); color: rgba(255,255,255,0.65);
+}
+.wall-region-plan .plan-filter-pill:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+.wall-region-plan .plan-filter-pill[data-active="true"] { background: #4A9EFF; border-color: transparent; color: #fff; }
+
+/* Energy widget */
+.wall-energy-svg { width: 100%; max-width: 180px; height: auto; overflow: visible; }
+
+/* Weather + clock */
+.wall-weatherclock { display: flex; align-items: center; gap: 12px; }
+.wall-weatherclock-icon { font-size: 34px; line-height: 1; }
+.wall-weatherclock-info { text-align: right; }
+.wall-weatherclock-cond { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 2px; }
+.wall-weatherclock-time { font-size: 36px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+/* Weather details (between the clock and the agenda) — one compact 6h trend
+   graph per outdoor metric */
+.wall-wxdetails { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.wall-wxgraph {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 8px 10px; border-radius: 10px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+}
+.wall-wxgraph-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 11.5px; }
+.wall-wxgraph-head span:first-child { color: rgba(255,255,255,0.5); }
+.wall-wxgraph-value { font-weight: 700; font-variant-numeric: tabular-nums; color: #fff; }
+.wall-wxgraph-empty { height: 36px; display: flex; align-items: center; justify-content: center; font-size: 10.5px; color: rgba(255,255,255,0.3); text-align: center; }
+
+/* Forecast strip */
+.wall-forecast { display: flex; flex-direction: column; gap: 8px; max-width: 320px; }
+.wall-forecast-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.wall-forecast-day { width: 34px; flex-shrink: 0; color: rgba(255,255,255,0.55); font-weight: 600; }
+.wall-forecast-icon { flex-shrink: 0; font-size: 15px; }
+.wall-forecast-bar-track { position: relative; flex: 1; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.08); }
+.wall-forecast-bar { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, #4A9EFF, #f0883e); }
+.wall-forecast-temps { flex-shrink: 0; width: 62px; text-align: right; color: rgba(255,255,255,0.75); font-variant-numeric: tabular-nums; }
+
+/* Agenda */
+.wall-agenda { display: flex; flex-direction: column; gap: 10px; }
+.wall-agenda-header { display: flex; align-items: center; justify-content: space-between; }
+.wall-agenda-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+.wall-agenda-add-toggle {
+  width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 13px; line-height: 1;
+}
+.wall-agenda-add-toggle:hover { background: rgba(255,255,255,0.16); color: #fff; }
+.wall-agenda-empty { font-size: 12.5px; color: rgba(255,255,255,0.35); padding: 10px 0; }
+.wall-agenda-item { position: relative; padding: 10px 30px 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+.wall-agenda-date { font-size: 10.5px; color: rgba(255,255,255,0.45); font-weight: 700; margin-bottom: 3px; }
+.wall-agenda-item-title { font-size: 13px; font-weight: 600; }
+.wall-agenda-item-time { font-size: 11.5px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+.wall-agenda-item-remove {
+  position: absolute; top: 8px; right: 8px; width: 18px; height: 18px; border-radius: 50%;
+  border: none; background: transparent; color: rgba(255,255,255,0.3); cursor: pointer; font-size: 11px;
+}
+.wall-agenda-item-remove:hover { color: #f85149; background: rgba(248,81,73,0.15); }
+
+.wall-agenda-add-form { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+.wall-agenda-add-row { display: flex; gap: 6px; }
+.wall-agenda-add-input {
+  flex: 1; min-width: 0; padding: 6px 8px; border-radius: 8px; font-size: 12px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: #fff;
+}
+.wall-agenda-add-input::placeholder { color: rgba(255,255,255,0.35); }
+.wall-agenda-add-btn {
+  flex: 1; padding: 6px 8px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.7);
+}
+.wall-agenda-add-btn.primary { background: #4A9EFF; border-color: transparent; color: #fff; }
+.wall-agenda-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Exit PIN gate */
+.wall-pin-overlay {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(5,7,15,0.75); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+}
+.wall-pin-card {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 28px 32px; border-radius: 20px; width: min(300px, 90%);
+  background: #1b1d22; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.wall-pin-title { font-size: 15px; font-weight: 700; color: #fff; }
+.wall-pin-input {
+  width: 100%; text-align: center; font-size: 22px; letter-spacing: 0.4em; padding: 10px;
+  border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16); color: #fff;
+}
+.wall-pin-input:focus { outline: none; border-color: #4A9EFF; }
+.wall-pin-actions { display: flex; gap: 8px; width: 100%; }
+.wall-pin-btn {
+  flex: 1; padding: 9px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.75);
+}
+.wall-pin-btn.primary { background: #4A9EFF; border-color: transparent; color: #fff; }
+.wall-pin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.wall-pin-err { font-size: 12px; color: #f85149; }
+.wall-pin-shake { animation: auth-shake-react 0.35s ease; }
 
 /* Thermostat panel — left column, below the energy widget */
 .wall-thermo { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 240px; }

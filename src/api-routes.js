@@ -4,6 +4,9 @@ const path = require('path');
 const http = require('http');
 const { generateSetupUri, generateSetupID } = require('./homekit-uri');
 const cameraLog = require('./camera-log');
+const privateEvents = require('./private-events');
+const callLog = require('./call-log');
+const motionLog = require('./motion-log');
 const detectionBoxes = require('./detection-boxes');
 const { getDb } = require('./mongo');
 const { fetchMedia: fetchSmartThingsMedia } = require('./smartthings-media');
@@ -433,14 +436,159 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
         };
       }
     }
+    const defaultLayers = {};
+    if (req.body?.defaultLayers && typeof req.body.defaultLayers === 'object') {
+      for (const k of ['furniture', 'appliances', 'power', 'walls', 'textures', 'satellite', 'surroundings']) {
+        if (typeof req.body.defaultLayers[k] === 'boolean') defaultLayers[k] = req.body.defaultLayers[k];
+      }
+    }
     try {
       const cfg = readConfigFile();
-      cfg.homePlan = { rooms, floors, singleFloor: !!req.body?.singleFloor };
+      cfg.homePlan = { rooms, floors, singleFloor: !!req.body?.singleFloor, defaultLayers };
       writeConfigFile(cfg);
       res.json({ success: true, message: `Saved ${rooms.length} room(s), ${Object.keys(floors).length} floor image(s)` });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
+  });
+
+  // ── Electricity tariff (peak/off-peak pricing shown on the Home Plan's
+  // power-flow overlay) ──────────────────────────────────────────────
+  // Resolves which configured window covers `now`, and which one is next —
+  // windows may wrap midnight (start > end, e.g. 23:00-16:00).
+  function resolveTariff(windows, now = new Date()) {
+    if (!Array.isArray(windows) || !windows.length) return { current: null, next: null };
+    const mins = now.getHours() * 60 + now.getMinutes();
+    const toMin = (t) => {
+      const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || ''));
+      return m ? (parseInt(m[1], 10) * 60 + parseInt(m[2], 10)) : null;
+    };
+    let current = null;
+    let next = null;
+    let bestUntilStart = Infinity;
+    for (const w of windows) {
+      const start = toMin(w.start);
+      const end = toMin(w.end);
+      if (start == null || end == null) continue;
+      const inWindow = start <= end ? (mins >= start && mins < end) : (mins >= start || mins < end);
+      if (inWindow) current = w;
+      const untilStart = start > mins ? start - mins : start + 1440 - mins;
+      if (untilStart > 0 && untilStart < bestUntilStart) { bestUntilStart = untilStart; next = w; }
+    }
+    return { current, next, nextInMinutes: next ? bestUntilStart : null };
+  }
+
+  router.get('/tariff', (req, res) => {
+    const cfg = readConfigFile().tariff || {};
+    const { current, next, nextInMinutes } = resolveTariff(cfg.windows);
+    res.json({ success: true, data: { currency: cfg.currency || '£', current, next, nextInMinutes } });
+  });
+
+  router.post('/settings/tariff', (req, res) => {
+    const currency = String(req.body?.currency || '£').trim().slice(0, 4);
+    const windows = (Array.isArray(req.body?.windows) ? req.body.windows : [])
+      .map((w) => ({
+        label: String(w.label || '').trim().slice(0, 30),
+        price: Math.max(0, Number(w.price) || 0),
+        start: /^\d{1,2}:\d{2}$/.test(w.start) ? w.start : '00:00',
+        end: /^\d{1,2}:\d{2}$/.test(w.end) ? w.end : '00:00',
+      }))
+      .filter((w) => w.label);
+    try {
+      const cfg = readConfigFile();
+      cfg.tariff = { currency, windows };
+      writeConfigFile(cfg);
+      res.json({ success: true, message: `Saved ${windows.length} tariff window(s)` });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Private (locally-added) agenda events — never synced to/from Google ─
+  router.post('/agenda/private', (req, res) => {
+    const { date, title, time } = req.body || {};
+    if (!date || !title) return res.status(400).json({ success: false, error: 'date and title required' });
+    const item = privateEvents.add({ date, title, time });
+    res.json({ success: true, data: item });
+  });
+
+  router.delete('/agenda/private/:id', (req, res) => {
+    const ok = privateEvents.remove(req.params.id);
+    if (!ok) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true });
+  });
+
+  // ── Missed calls (SIP doorbell) ──────────────────────────────────────────
+  router.get('/call-log', (req, res) => {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    res.json({ success: true, data: callLog.getRecent(limit) });
+  });
+
+  // ── Google Calendar (OAuth, read-only) ───────────────────────────────────
+  router.get('/google-calendar/oauth/start', (req, res) => {
+    const gc = clients.googleCalendar;
+    if (!gc) return res.status(503).send('Google Calendar not configured — set clientId/clientSecret in Settings first.');
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/google-calendar/oauth/callback`;
+    try {
+      res.redirect(gc.getAuthUrl(redirectUri));
+    } catch (err) {
+      res.status(500).send(err.message);
+    }
+  });
+
+  router.get('/google-calendar/oauth/callback', async (req, res) => {
+    const gc = clients.googleCalendar;
+    if (!gc) return res.status(503).send('Google Calendar not configured.');
+    const { code, error } = req.query;
+    if (error) return res.redirect('/react/?gc_error=' + encodeURIComponent(error));
+    if (!code) return res.status(400).send('Missing code');
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/google-calendar/oauth/callback`;
+    try {
+      await gc.exchangeCode(code, redirectUri);
+      res.redirect('/react/?gc_connected=1');
+    } catch (err) {
+      res.redirect('/react/?gc_error=' + encodeURIComponent(err.message));
+    }
+  });
+
+  router.get('/google-calendar/status', (req, res) => {
+    const gc = clients.googleCalendar;
+    res.json({ success: true, data: { configured: !!gc, connected: !!gc?.isConnected() } });
+  });
+
+  router.post('/settings/google-calendar', (req, res) => {
+    const clientId = String(req.body?.clientId || '').trim();
+    const clientSecret = String(req.body?.clientSecret || '').trim();
+    const calendarId = String(req.body?.calendarId || '').trim() || 'primary';
+    try {
+      const cfg = readConfigFile();
+      cfg.googleCalendar = { clientId, clientSecret, calendarId };
+      writeConfigFile(cfg);
+      res.json({ success: true, message: 'Saved — restart LSH, then use "Connect with Google".' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Unified agenda feed for the Wall Dashboard: Google Calendar + private
+  // events + missed calls + motion detections, merged and time-sorted ─────
+  router.get('/agenda', (req, res) => {
+    const events = [];
+    const gc = clients.googleCalendar;
+    if (gc?.isConnected()) {
+      for (const ev of gc.getEvents()) events.push({ ...ev, kind: 'calendar' });
+    }
+    for (const ev of privateEvents.getAll()) events.push({ ...ev, kind: 'private' });
+    for (const c of callLog.getRecent(10)) {
+      const d = new Date(c.ts);
+      events.push({ date: d.toISOString().slice(0, 10), title: `Missed call — ${c.caller}`, time: d.toTimeString().slice(0, 5), kind: 'call' });
+    }
+    for (const m of motionLog.getRecent(10)) {
+      const d = new Date(m.ts);
+      events.push({ date: d.toISOString().slice(0, 10), title: `Motion — ${m.device}`, time: d.toTimeString().slice(0, 5), kind: 'motion' });
+    }
+    events.sort((a, b) => `${a.date}T${a.time || '00:00'}`.localeCompare(`${b.date}T${b.time || '00:00'}`));
+    res.json({ success: true, data: events });
   });
 
   // ── Dashboard lock PIN (screen lock, default 0000) ────────
@@ -4297,6 +4445,41 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     try {
       writeConfigFile({ ...current, knx: { host: host.trim(), port: parseInt(port) || 3671, groupAddresses: sanitized } });
       res.json({ success: true, message: `KNX settings saved (${sanitized.length} group address(es)). Restart to apply.` });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Domatiq CAN bus ──────────────────────────────────────────────────────
+
+  router.post('/settings/test-domatiq', (req, res) => {
+    const { host, port = 10001 } = req.body;
+    if (!host) return res.status(400).json({ success: false, error: 'host required' });
+    const net = require('net');
+    const sock = new net.Socket();
+    let done = false;
+    const finish = (ok, msg) => {
+      if (done) return; done = true;
+      sock.destroy();
+      res.json({ success: ok, message: ok ? msg : undefined, error: ok ? undefined : msg });
+    };
+    sock.setTimeout(5000);
+    sock.connect(parseInt(port), host, () => finish(true, `TCP connection to ${host}:${port} succeeded`));
+    sock.on('error', err => finish(false, err.message));
+    sock.on('timeout', () => finish(false, `Connection to ${host}:${port} timed out`));
+  });
+
+  router.post('/settings/domatiq', (req, res) => {
+    const current = readConfigFile();
+    const { host, port, modules } = req.body;
+    if (!host) return res.status(400).json({ success: false, error: 'host required' });
+    const sanitized = (modules || []).map(m => ({
+      addr:  parseInt(m.addr),
+      label: (m.label || '').trim() || undefined,
+    })).filter(m => Number.isFinite(m.addr) && m.addr >= 0 && m.addr <= 0x1fff);
+    try {
+      writeConfigFile({ ...current, domatiq: { host: host.trim(), port: parseInt(port) || 10001, modules: sanitized } });
+      res.json({ success: true, message: `Domatiq settings saved (${sanitized.length} module label(s)). Restart to apply.` });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

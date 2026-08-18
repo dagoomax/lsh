@@ -42,6 +42,34 @@ async function main() {
   const relayController = new RelayController(config, store);
   const sensorRegistry  = new SensorRegistry(store, config.language); // server-side label translation
 
+  // Motion-detector events → agenda feed (src/motion-log.js). Generic across
+  // platforms — indexes each device's motion-ish sensors once (on discovery,
+  // not on every store change) so this doesn't care which integration
+  // reported it, and doesn't add per-event scan cost.
+  {
+    const motionLog = require('./src/motion-log');
+    const MOTION_RE = /motion|presence|occupancy/i;
+    const motionKeys = new Map(); // full store key -> device label
+    const indexMotionSensors = (device) => {
+      for (const s of device.sensors || []) {
+        if (MOTION_RE.test(s.sensorType || s.path || '')) {
+          motionKeys.set(`${device.key}/${s.path}`, device.label || device.key);
+        }
+      }
+    };
+    sensorRegistry.getDevices().forEach(indexMotionSensors);
+    sensorRegistry.on('device-discovered', indexMotionSensors);
+    const motionLastValue = new Map();
+    store.on('change', ({ key, value }) => {
+      const label = motionKeys.get(key);
+      if (!label) return;
+      const truthy = value === 1 || value === true || value === 'on';
+      const wasTruthy = motionLastValue.get(key);
+      motionLastValue.set(key, truthy);
+      if (truthy && !wasTruthy) motionLog.push(label);
+    });
+  }
+
   // Start optional integrations before wiring API routes so unifiProtect is available
   let satelClient = null;
   if (config.satel?.host) {
@@ -419,6 +447,18 @@ async function main() {
         smartThingsStarted.then(deliverToken, () => {});
         setInterval(deliverToken, 24 * 60 * 60 * 1000);
       }
+    }
+  }
+
+  // Start Google Calendar client if configured (OAuth connect happens later,
+  // from Settings — the client itself just needs clientId/clientSecret to
+  // exist so the Settings page can offer the "Connect" link)
+  if (config.googleCalendar?.clientId && config.googleCalendar?.clientSecret) {
+    const GoogleCalendarClient = tryRequire('./src/google-calendar-client');
+    if (GoogleCalendarClient) {
+      const googleCalendar = new GoogleCalendarClient(config);
+      apiClients.googleCalendar = googleCalendar;
+      googleCalendar.start().catch((err) => console.error(`[GoogleCalendar] Start failed: ${err.message}`));
     }
   }
 
@@ -856,6 +896,24 @@ async function main() {
     if (ModbusClient) {
       const modbus = new ModbusClient(config, store, sensorRegistry);
       modbus.start().catch((err) => console.error(`[Modbus] Start failed: ${err.message}`));
+    }
+  }
+
+  // Start Domatiq CAN bus bridge if configured (domatiq-loxone-bridge ESP32 gateway)
+  if (config.domatiq?.host) {
+    const DomatiqClient = tryRequire('./src/domatiq-client');
+    if (DomatiqClient) {
+      const domatiq = new DomatiqClient(config, store, sensorRegistry);
+      domatiq.start().catch((err) => console.error(`[Domatiq] Start failed: ${err.message}`));
+    }
+  }
+
+  // Push LSH values out to the Domatiq CAN bus if configured
+  if (config.domatiqOut?.host && config.domatiqOut?.mappings?.length) {
+    const DomatiqOutClient = tryRequire('./src/domatiq-out-client');
+    if (DomatiqOutClient) {
+      const domatiqOut = new DomatiqOutClient(config, store);
+      domatiqOut.start().catch((err) => console.error(`[DomatiqOut] Start failed: ${err.message}`));
     }
   }
 

@@ -1,21 +1,13 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gt, getLang } from '../i18n'
+import { ICON_ANIM } from '../weatherIcons'
 
 // 5-day forecast strip (OpenWeatherMap's free tier caps at 5 days — see the
 // honesty note in openweather-client.js for why this isn't 7). Self-fetching
 // and self-hiding: renders nothing until /api/openweather/forecast actually
 // has data, so DeviceList can mount it unconditionally.
 const POLL_MS = 10 * 60 * 1000
-
-// Icon → a condition-appropriate motion class (see global.css: .wx-icon-*),
-// so the sun glows, clouds drift, rain falls, storms flicker, etc. instead
-// of every icon sitting dead-still. Falls back to no animation for 🌡️.
-const ICON_ANIM = {
-  '☀️': 'wx-icon-sun', '🌤️': 'wx-icon-partly', '☁️': 'wx-icon-cloud',
-  '🌧️': 'wx-icon-rain', '🌦️': 'wx-icon-partly', '⛈️': 'wx-icon-storm',
-  '❄️': 'wx-icon-snow', '🌫️': 'wx-icon-fog',
-}
 const WIND_DIRS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
 const compass = (deg) => deg == null ? null : WIND_DIRS[Math.round(deg / 22.5) % 16]
 

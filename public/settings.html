@@ -930,6 +930,31 @@
       </div>
     </section>
 
+    <!-- Domatiq -->
+    <section class="card settings-card" data-category="controllers" data-title="Domatiq CAN bus gateway relays covers sensors">
+      <h2>Domatiq <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Bridges a Domatiq CAN bus via a domatiq-loxone-bridge gateway's CAN↔TCP broker. Modules on the bus are discovered automatically — the list below only lets you give known addresses a friendly name.</p>
+
+      <div class="form-row">
+        <label for="domatiq-host">Gateway Host / IP</label>
+        <input type="text" id="domatiq-host" placeholder="192.168.1.60">
+      </div>
+      <div class="form-row">
+        <label for="domatiq-port">Port <span class="hint">(default 10001)</span></label>
+        <input type="number" id="domatiq-port" placeholder="10001" min="1" max="65535" style="width:120px">
+      </div>
+
+      <h3 style="font-size:0.85rem;color:var(--text-muted);margin:16px 0 8px">Module Labels <span class="hint">(optional)</span></h3>
+      <div id="domatiq-modules-list"></div>
+      <button class="btn btn-secondary" id="btn-add-domatiq-module" style="margin-top:8px">+ Add Module Label</button>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-secondary" id="btn-test-domatiq">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-domatiq" data-i18n="s2.save">Save</button>
+        <span class="test-result" id="domatiq-test-result"></span>
+      </div>
+    </section>
+
     <!-- SIP / Intercom -->
     <section class="card settings-card" data-category="communication" data-title="SIP Intercom phone doorbell">
       <h2><span data-i18n="s.sip_title">📞 SIP / Intercom</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>

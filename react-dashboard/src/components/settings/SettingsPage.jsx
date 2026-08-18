@@ -5,6 +5,8 @@ import '../../styles/settings.css'
 
 import ConnectionSection from './sections/ConnectionSection'
 import EnergySection from './sections/EnergySection'
+import TariffSection from './sections/TariffSection'
+import GoogleCalendarSection from './sections/GoogleCalendarSection'
 import SmartHomeSection from './sections/SmartHomeSection'
 import RoborockSection from './sections/RoborockSection'
 import DreameSection from './sections/DreameSection'
@@ -48,6 +50,8 @@ import BackupRestoreSection from './sections/BackupRestoreSection'
 const SECTION_COMPONENTS = {
   connection: ConnectionSection,
   'energy-extra': EnergySection,
+  tariff: TariffSection,
+  'google-calendar': GoogleCalendarSection,
   'smarthome-extra': SmartHomeSection,
   roborock: RoborockSection,
   dreame: DreameSection,
