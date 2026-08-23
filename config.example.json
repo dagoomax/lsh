@@ -374,6 +374,13 @@
     "password": "",
     "devices": []
   },
+  "paging": {
+    "enabled": false,
+    "rooms": [
+      { "id": "livingroom", "label": "Living Room" },
+      { "id": "bedroom",    "label": "Bedroom" }
+    ]
+  },
   "sip": {
     "wsUrl":       "wss://192.168.1.1:5443",
     "username":    "101",

@@ -2257,6 +2257,7 @@ document.addEventListener('click', (e) => {
 let autoRules  = [];
 let autoScenes = [];
 let autoRelays = [];
+let autoPagingRooms = [];
 
 const scenesGrid  = document.getElementById('scenes-grid');
 const sceneStrip  = document.getElementById('scene-strip');
@@ -2265,15 +2266,17 @@ const notifList   = document.getElementById('notif-list');
 
 async function loadAutomation() {
   try {
-    const [r1, r2, r3, r4] = await Promise.all([
+    const [r1, r2, r3, r4, r5] = await Promise.all([
       fetch('/api/automation/rules').then((r) => r.json()),
       fetch('/api/automation/scenes').then((r) => r.json()),
       fetch('/api/automation/notifications').then((r) => r.json()),
       fetch('/api/relays').then((r) => r.json()).catch(() => ({ data: [] })),
+      fetch('/api/paging/rooms').then((r) => r.json()).catch(() => ({ data: [] })),
     ]);
     autoRules  = r1.data || [];
     autoScenes = r2.data || [];
     autoRelays = r4.data || [];
+    autoPagingRooms = r5.data || [];
     renderScenes();
     renderRules();
     renderNotifs(r3.data || []);
@@ -2331,6 +2334,7 @@ function ruleSummary(r) {
     a.type === 'notify' ? `notify "${a.message}"`
     : a.type === 'relay' ? `relay ${a.index} ${a.on ? 'on' : 'off'}`
     : a.type === 'scene' ? `scene ${(autoScenes.find((s) => s.id === a.sceneId) || {}).name || a.sceneId}`
+    : a.type === 'page' ? `page ${a.from} → ${a.to}`
     : `${a.deviceKey}/${a.sensor} → ${a.value}`).join(', ');
   return `When ${cond} → ${acts || '(no actions)'}`;
 }
@@ -2466,10 +2470,16 @@ function actionRowHtml(a = {}, idx) {
   } else if (type === 'scene') {
     fields = `<select class="auto-select" data-af="sceneId">${autoScenes.map((s) =>
       `<option value="${s.id}"${a.sceneId === s.id ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select>`;
+  } else if (type === 'page') {
+    const roomOpts = (selected) => autoPagingRooms.map((r) =>
+      `<option value="${r.id}"${selected === r.id ? ' selected' : ''}>${esc(r.label)}${r.online ? '' : ' (offline)'}</option>`).join('');
+    fields = `
+      <select class="auto-select" data-af="from">${roomOpts(a.from)}</select>
+      <select class="auto-select" data-af="to">${roomOpts(a.to)}</select>`;
   }
   return `<div class="auto-action-row" data-action-idx="${idx}">
     <select class="auto-select auto-select-type" data-af="type">
-      ${['device', 'relay', 'notify', 'scene'].map((t) => `<option value="${t}"${type === t ? ' selected' : ''}>${t}</option>`).join('')}
+      ${['device', 'relay', 'notify', 'scene', 'page'].map((t) => `<option value="${t}"${type === t ? ' selected' : ''}>${t}</option>`).join('')}
     </select>
     ${fields}
     <button class="auto-action-del" title="Remove">✕</button>
@@ -2557,6 +2567,8 @@ function collectActions() {
       actions.push({ type, level: get('level'), message: get('message') });
     } else if (type === 'scene') {
       if (get('sceneId')) actions.push({ type, sceneId: get('sceneId') });
+    } else if (type === 'page') {
+      if (get('from') && get('to')) actions.push({ type, from: get('from'), to: get('to') });
     }
   });
   return actions;

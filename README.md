@@ -147,6 +147,7 @@ A self-hosted home automation dashboard built on Node.js. Aggregates live data f
 7. [Security & Auth](#security--auth)
 8. [HomeKit](#homekit)
 9. [SIP Softphone](#sip-softphone)
+10. [Paging (Room Intercom)](#paging-room-intercom)
 10. [Cameras](#cameras)
 11. [Multi-language (i18n)](#multi-language-i18n)
 12. [HTTPS / TLS](#https--tls)
@@ -315,6 +316,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `loxoneOut` | No | Loxone outbound push — forwards store values to Loxone Virtual Inputs in real time |
 | `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
+| `paging` | No | Room-to-room browser paging (intercom) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
 | `reolink` | No | Reolink PoE cameras / NVR (proxied snapshots + RTSP + AI object detection) |
 | `mobotix` | No | MOBOTIX cameras / IP video door stations (proxied snapshots + RTSP + rcontrol outputs / door relay) |
@@ -1828,6 +1830,20 @@ A SIP-native door station (2N, DoorBird, Akuvox, Grandstream, Loxone's own Inter
 
 **Two-way audio:** on answer, a real PCMU/8000 SDP is negotiated (not a signalling-only fake answer) and bridged via two ffmpeg subprocesses (`src/sip-audio-bridge.js`) — one turning the caller's incoming RTP into a live MP3 stream the dashboard plays, one turning the dashboard's "Hold to talk" mic capture into outgoing RTP back to the caller. Requires `ffmpeg` on the server (`ffmpegPath`, or reuses `ffmpegRtsp.ffmpegPath` if set). `rtpPort`/`audioHttpPort` are fixed local ports (only one call is handled at a time, so no dynamic allocation needed). Expect noticeably higher latency than a phone call — this trades call quality for not needing a server-side WebRTC/DTLS-SRTP stack, which this repo doesn't have.
 
+### `paging`
+
+```json
+"paging": {
+  "enabled": true,
+  "rooms": [
+    { "id": "livingroom", "label": "Living Room" },
+    { "id": "bedroom",    "label": "Bedroom" }
+  ]
+}
+```
+
+Room-to-room paging (intercom) — see [Paging (Room Intercom)](#paging-room-intercom) below. `rooms` is the fixed, config-driven list of pageable rooms; each needs a browser (Wall Dashboard tablet, or any dashboard tab) registered to it before it can send or receive a page.
+
 ### `cameras`
 
 ```json
@@ -2920,6 +2936,19 @@ A WebRTC-based SIP softphone is embedded in the dashboard. It supports:
   "relayIndex":  0
 }
 ```
+
+---
+
+## Paging (Room Intercom)
+
+Room-to-room paging between browsers — e.g. a "Page Bedroom" button on the living-room's Wall Dashboard tablet opens a live two-way audio channel with whatever's registered as the bedroom. Unlike the SIP doorbell above, every endpoint here is a browser, so there's no SIP protocol or ffmpeg RTP bridging involved: audio is plain `MediaRecorder` chunks relayed browser-to-browser over Socket.IO and played back by appending them into a `MediaSource` buffer (`src/paging.js`, `react-dashboard/src/hooks/usePaging.js`).
+
+- **Rooms** are a fixed list in `config.paging.rooms` (see above) — not auto-discovered, since a "room" means a specific device someone deliberately registered, not a device grouping.
+- **Registering a device**: the floating 📟 button (bottom-right of the dashboard and the Wall Dashboard) lets a tablet say which configured room it is — stored in that browser's `localStorage`, so a kiosk tablet only needs this once. A device with no room set can still see live online/offline status for every room and bridge two *other* rooms together, without itself joining the call.
+- **Starting a page**: from a registered device, tap the other room's button — the call opens immediately (no answer step, like a walkie-talkie/paging system), with both ends capturing mic + playing the remote stream until either side taps **End**. Sessions auto-end after 5 minutes as a safety net against a stuck-open mic.
+- **Triggering programmatically**: a `page` automation-rule action type and a `page` Flow-editor node (both `{ from, to }`, both config room ids) start a session between two *already-registered* rooms — useful for e.g. "doorbell rings → also page the bedroom". There's also `GET /api/paging/rooms`, `POST /api/paging/start`, `POST /api/paging/:pageId/end` for external/bearer-token triggering.
+
+**Caveats:** requires a Chromium-based browser (`MediaRecorder`/`MediaSource` with WebM/Opus — what the Wall Dashboard's target hardware, Android Chrome, already uses); each participating device needs mic permission granted once. Not validated against Safari.
 
 ---
 

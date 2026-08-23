@@ -174,6 +174,15 @@ async function main() {
     }
   }
 
+  // Room-to-room paging (intercom) — see src/paging.js. Every endpoint is a
+  // browser (Wall Dashboard tablet or the regular dashboard), so unlike the
+  // SIP doorbell above this needs no ffmpeg/RTP bridging, just Socket.IO.
+  let pagingManager = null;
+  if (config.paging?.enabled) {
+    const PagingManager = tryRequire('./src/paging');
+    if (PagingManager) pagingManager = new PagingManager(config);
+  }
+
   // ── Determine HTTPS mode ─────────────────────────────────────────────────
   const leEnabled     = !!(config.server?.letsEncrypt?.enabled);
   const httpsEnabled  = !!(config.server?.https?.enabled);
@@ -309,7 +318,7 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, openweather, objectDetection };
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // MCP server — exposes devices/sensors as tools for an external Claude
@@ -381,10 +390,13 @@ async function main() {
     mainPort   = config.server?.port || 3001;
   }
 
-  const io = setupWebSocket(mainServer, store, sensorRegistry, connectionMgr, auth, sipServer);
+  const io = setupWebSocket(mainServer, store, sensorRegistry, connectionMgr, auth, sipServer, pagingManager);
+
+  if (pagingManager) pagingManager.setIo(io);
 
   if (automation) {
     automation.setIo(io);
+    automation.setPaging(pagingManager);
     automation.start();
   }
 

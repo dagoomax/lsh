@@ -57,6 +57,7 @@ let nextNotifId = 1;
  *       | { type: 'relay',  index, on }
  *       | { type: 'notify', level: 'info'|'warning'|'critical', message }
  *       | { type: 'scene',  sceneId }
+ *       | { type: 'page',   from, to }   -- see src/paging.js; from/to are config.paging.rooms ids
  * notify messages support {value} and {key} placeholders.
  */
 class AutomationEngine {
@@ -66,6 +67,7 @@ class AutomationEngine {
     this._relays   = relayController;
     this._config   = config || {};
     this._io       = null;
+    this._paging   = null; // src/paging.js — set via setPaging() once server.js constructs it
 
     this.rules  = [];
     this.scenes = [];
@@ -83,6 +85,7 @@ class AutomationEngine {
   }
 
   setIo(io) { this._io = io; }
+  setPaging(pagingManager) { this._paging = pagingManager; }
 
   start() {
     this._load();
@@ -348,6 +351,11 @@ class AutomationEngine {
         if (scene) await this.runActions(scene.actions || [], ctx);
         break;
       }
+      case 'page': {
+        if (!this._paging) throw new Error('Paging not enabled');
+        this._paging.startPage(action.from, action.to);
+        break;
+      }
       default:
         throw new Error(`Unknown action type: ${action.type}`);
     }
@@ -376,6 +384,7 @@ class AutomationEngine {
   //   relay     { index, on }        set relay, pass msg on
   //   notify    { level, message }   toast + log, pass msg on
   //   scene     { sceneId }          run a scene, pass msg on
+  //   page      { from, to }         start a paging session between two config.paging.rooms ids, pass msg on
   //   delay     { seconds }          wait, then pass msg on
   //   time      { intervalSeconds }  entry; fires on a repeating interval
   //   mqttIn    { topic }            entry; fires on an MQTT message (payload = message)
@@ -583,6 +592,12 @@ class AutomationEngine {
       case 'scene': {
         const scene = this.scenes.find((s) => s.id === c.sceneId);
         if (scene) await this.runActions(scene.actions || [], msg);
+        return [msg];
+      }
+      case 'page': {
+        if (!this._paging) throw new Error('Paging not enabled');
+        if (!c.from || !c.to) throw new Error('Page node needs both a "from" and "to" room');
+        this._paging.startPage(c.from, c.to);
         return [msg];
       }
       case 'delay':

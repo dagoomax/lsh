@@ -3,7 +3,7 @@
   const OPS = ['>', '<', '>=', '<=', '==', '!=', 'changes'];
   const ICONS = { trigger: '⚡', time: '⏰', mqttIn: '📥', condition: '⌥', device: '🔌', relay: '⏻',
                   mqttOut: '📤', http: '🌐', notify: '🔔', scene: '✨', delay: '⏱', debug: '🐞', virtual: '🧩',
-                  extract: '🔎', loxoneXml: '🧾', store: '🧵', sceneGen: '🎬', global: '🌍', sync: '🔁' };
+                  extract: '🔎', loxoneXml: '🧾', store: '🧵', sceneGen: '🎬', global: '🌍', sync: '🔁', page: '📟' };
 
   // Node type catalogue: colour, output count, and the config fields to render.
   const TYPES = {
@@ -88,6 +88,17 @@
     scene: {
       label: 'Scene', color: '#ff5db1', outs: 1,
       fields: (n) => [ selectDynamic('Scene', n, 'sceneId', () => SCENES.map(s => [s.id, s.name])) ],
+    },
+    page: {
+      label: 'Page Room', color: '#38bdf8', outs: 1,
+      fields: (n) => {
+        if (!PAGING_ROOMS.length) return [hint('No paging rooms configured — add some to config.paging.rooms.')];
+        const opts = () => PAGING_ROOMS.map(r => [r.id, `${r.label}${r.online ? '' : ' (offline)'}`]);
+        return [
+          row([ selectDynamic('From', n, 'from', opts), selectDynamic('To', n, 'to', opts) ]),
+          hint('Opens a live two-way audio channel between two paging rooms — both need an online device (Wall Dashboard tablet or dashboard tab registered to that room).'),
+        ];
+      },
     },
     sceneGen: {
       label: 'Scene Generator', color: '#fb64b6', outs: 1,
@@ -191,6 +202,7 @@
   let FLOWS = [];
   let SCENES = [];
   let VIRTUAL_DEVICES = []; // [{ key, label, valueType }] — populated from /api/devices
+  let PAGING_ROOMS = []; // [{ id, label, online }] — populated from /api/paging/rooms
   let current = null; // { id, name, enabled, nodes: [] }
 
   const GRID = 22;
@@ -536,6 +548,7 @@
       document.body.appendChild(dl1); document.body.appendChild(dl2);
     } catch {}
     try { const r = await fetch('/api/automation/scenes'); const j = await r.json(); SCENES = j.data || []; } catch {}
+    try { const r = await fetch('/api/paging/rooms'); const j = await r.json(); PAGING_ROOMS = j.data || []; } catch {}
   }
 
   // ── Debug panel (live tap output via Socket.IO) ───────────────────────────

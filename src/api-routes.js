@@ -59,7 +59,7 @@ function dedupeVirtualDevices(devices) {
 }
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
-  const { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, openweather, objectDetection } = clients;
+  const { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, pagingManager, openweather, objectDetection } = clients;
   const manualSnapCache = new Map(); // manual camera idx → { at, buffer }, for /camera/snapshot/:idx
 
   // Secure cookie flag per request, not per server: with both HTTP and HTTPS
@@ -967,6 +967,30 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (!sipServer) return res.status(503).json({ success: false, error: 'SIP server not enabled' });
     sipServer.writeTalkChunk(req.body);
     res.json({ success: true });
+  });
+
+  // ── Room-to-room paging (intercom) ────────────────────────────────────
+  // The live audio channel itself runs over Socket.IO (see src/websocket.js
+  // and src/paging.js) — these REST routes are for status and for starting/
+  // ending a page from outside a paging-aware browser session, e.g. a Flow
+  // editor `http` node, a bearer-token API client, or curl.
+  router.get('/paging/rooms', (req, res) => {
+    res.json({ success: true, data: pagingManager ? pagingManager.getRoomsStatus() : [] });
+  });
+
+  router.post('/paging/start', (req, res) => {
+    if (!pagingManager) return res.status(503).json({ success: false, error: 'Paging not enabled' });
+    const { from, to } = req.body || {};
+    try {
+      res.json({ success: true, data: pagingManager.startPage(from, to) });
+    } catch (err) {
+      res.status(409).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/paging/:pageId/end', (req, res) => {
+    if (!pagingManager) return res.status(503).json({ success: false, error: 'Paging not enabled' });
+    res.json({ success: pagingManager.endPage(req.params.pageId, 'ended-via-api') });
   });
 
   // ── Sonos: URL playback + TTS announcements ───────────────

@@ -3,7 +3,7 @@ const platformStatus = require('./platform-status');
 const cameraLog      = require('./camera-log');
 const detectionBoxes = require('./detection-boxes');
 
-function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, sipServer) {
+function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, sipServer, pagingManager) {
   const io = new Server(httpServer, { cors: { origin: '*' } });
 
   // Socket.io auth middleware
@@ -40,8 +40,32 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, 
     }
     socket.emit('platform-status', platformStatus.getAll());
     if (sipServer) socket.emit('sip-call', sipServer.getState());
+    if (pagingManager) socket.emit('paging-rooms', pagingManager.getRoomsStatus());
 
-    socket.on('disconnect', () => console.log(`[WS] Client disconnected (${socket.id})`));
+    // Room-to-room paging (src/paging.js) — every endpoint is a browser, so
+    // audio is relayed as plain MediaRecorder chunks over these events
+    // rather than through any server-side media pipeline.
+    if (pagingManager) {
+      socket.on('paging:register', (roomId, cb) => {
+        try { pagingManager.registerSocket(socket, roomId); cb?.({ success: true }); }
+        catch (err) { cb?.({ success: false, error: err.message }); }
+      });
+      socket.on('paging:start', ({ from, to } = {}, cb) => {
+        try { cb?.({ success: true, data: pagingManager.startPage(from, to) }); }
+        catch (err) { cb?.({ success: false, error: err.message }); }
+      });
+      socket.on('paging:audio', ({ pageId, chunk } = {}) => {
+        if (pageId && chunk) pagingManager.relayAudio(socket, pageId, chunk);
+      });
+      socket.on('paging:end', ({ pageId } = {}) => {
+        if (pageId) pagingManager.endPage(pageId, 'ended-by-user');
+      });
+    }
+
+    socket.on('disconnect', () => {
+      console.log(`[WS] Client disconnected (${socket.id})`);
+      if (pagingManager) pagingManager.unregisterSocket(socket);
+    });
   });
 
   // Batch data updates (debounce per tick)
@@ -98,6 +122,11 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, 
   // Forward SIP doorbell call state to all browsers
   if (sipServer) {
     sipServer.on('call', (state) => io.emit('sip-call', state));
+  }
+
+  // Forward paging room online/offline status to all browsers
+  if (pagingManager) {
+    pagingManager.on('rooms-changed', (status) => io.emit('paging-rooms', status));
   }
 
   return io;

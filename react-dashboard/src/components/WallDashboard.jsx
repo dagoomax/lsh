@@ -8,6 +8,7 @@ import WeatherClock from './WeatherClock'
 import WeatherDetails from './WeatherDetails'
 import ForecastStrip from './ForecastStrip'
 import AgendaPanel from './AgendaPanel'
+import PagingWidget from './PagingWidget'
 import { gt } from '../i18n'
 
 const AGENDA_POLL_MS = 5 * 60 * 1000
@@ -121,6 +122,7 @@ export default function WallDashboard({ devices, energy, roomsMeta, onClose }) {
       </div>
 
       <DeviceModal device={openDevice} rooms={rooms} onClose={() => setOpenKey(null)} onCommand={onCommand} />
+      <PagingWidget />
     </div>
   )
 }
