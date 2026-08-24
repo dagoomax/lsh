@@ -93,7 +93,10 @@
       label: 'Page Room', color: '#38bdf8', outs: 1,
       fields: (n) => {
         if (!PAGING_ROOMS.length) return [hint('No paging rooms configured — add some to config.paging.rooms.')];
-        const opts = () => PAGING_ROOMS.map(r => [r.id, `${r.label}${r.online ? '' : ' (offline)'}`]);
+        // Rooms are configured as { id: <name>, label: <extension> }, e.g.
+        // { id: "Gabinet", label: "001" } — show both, not just the extension.
+        const roomText = (r) => r.label && r.label !== r.id ? `${r.id} (${r.label})` : r.id;
+        const opts = () => PAGING_ROOMS.map(r => [r.id, `${roomText(r)}${r.online ? '' : ' — offline'}`]);
         return [
           row([ selectDynamic('From', n, 'from', opts), selectDynamic('To', n, 'to', opts) ]),
           hint('Opens a live two-way audio channel between two paging rooms — both need an online device (Wall Dashboard tablet or dashboard tab registered to that room).'),

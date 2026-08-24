@@ -13,6 +13,13 @@ const REJECT = '#ff5a6a'
 // trigger (e.g. App.jsx, next to the Wall Dashboard button) instead of the
 // default bottom-right floating position (e.g. WallDashboard.jsx, which has
 // no header to anchor to).
+// Rooms are configured as { id: <name>, label: <extension> } — e.g.
+// { id: "Gabinet", label: "001" } — so the useful display text combines
+// both rather than showing just the bare extension number.
+function roomText(r) {
+  return r.label && r.label !== r.id ? `${r.id} (${r.label})` : r.id
+}
+
 export function PagingPanel({ rooms, myRoom, setMyRoom, active, error, startPage, endPage, open, setOpen, anchorTop }) {
   const [bridgeFrom, setBridgeFrom] = useState('')
   const [bridgeTo, setBridgeTo] = useState('')
@@ -47,7 +54,7 @@ export function PagingPanel({ rooms, myRoom, setMyRoom, active, error, startPage
               style={{ width: '100%', marginBottom: 12, padding: '6px 8px', borderRadius: 8, background: 'var(--surface2, #171b25)', color: 'var(--text)', border: '1px solid var(--border, rgba(255,255,255,0.14))' }}
             >
               <option value="">{gt('paging.not_a_room', 'Not a fixed room')}</option>
-              {rooms.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+              {rooms.map(r => <option key={r.id} value={r.id}>{roomText(r)}</option>)}
             </select>
 
             {myRoom ? (
@@ -67,7 +74,7 @@ export function PagingPanel({ rooms, myRoom, setMyRoom, active, error, startPage
                     }}
                   >
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: r.online ? 'var(--green)' : 'var(--text3)' }} />
-                    {r.label}{!r.online ? ` (${gt('paging.offline', 'offline')})` : ''}
+                    {roomText(r)}{!r.online ? ` — ${gt('paging.offline', 'offline')}` : ''}
                   </button>
                 ))}
               </div>
@@ -79,12 +86,12 @@ export function PagingPanel({ rooms, myRoom, setMyRoom, active, error, startPage
                 <select value={bridgeFrom} onChange={e => setBridgeFrom(e.target.value)}
                   style={{ padding: '6px 8px', borderRadius: 8, background: 'var(--surface2, #171b25)', color: 'var(--text)', border: '1px solid var(--border, rgba(255,255,255,0.14))' }}>
                   <option value="">{gt('paging.from', 'From…')}</option>
-                  {rooms.map(r => <option key={r.id} value={r.id} disabled={!r.online}>{r.label}{!r.online ? ` (${gt('paging.offline', 'offline')})` : ''}</option>)}
+                  {rooms.map(r => <option key={r.id} value={r.id} disabled={!r.online}>{roomText(r)}{!r.online ? ` — ${gt('paging.offline', 'offline')}` : ''}</option>)}
                 </select>
                 <select value={bridgeTo} onChange={e => setBridgeTo(e.target.value)}
                   style={{ padding: '6px 8px', borderRadius: 8, background: 'var(--surface2, #171b25)', color: 'var(--text)', border: '1px solid var(--border, rgba(255,255,255,0.14))' }}>
                   <option value="">{gt('paging.to', 'To…')}</option>
-                  {rooms.map(r => <option key={r.id} value={r.id} disabled={!r.online}>{r.label}{!r.online ? ` (${gt('paging.offline', 'offline')})` : ''}</option>)}
+                  {rooms.map(r => <option key={r.id} value={r.id} disabled={!r.online}>{roomText(r)}{!r.online ? ` — ${gt('paging.offline', 'offline')}` : ''}</option>)}
                 </select>
                 <button
                   disabled={!bridgeFrom || !bridgeTo || bridgeFrom === bridgeTo}

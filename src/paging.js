@@ -33,7 +33,14 @@ class PagingManager extends EventEmitter {
 
   roomExists(id) { return this._rooms.some((r) => r.id === id); }
 
-  _label(id) { return this._rooms.find((r) => r.id === id)?.label || id; }
+  // Rooms are configured as { id: <name>, label: <extension> } — e.g.
+  // { id: "Gabinet", label: "001" } — so the useful display text combines
+  // both rather than showing just the bare extension number.
+  _label(id) {
+    const r = this._rooms.find((r) => r.id === id);
+    if (!r) return id;
+    return r.label && r.label !== r.id ? `${r.id} (${r.label})` : r.id;
+  }
 
   getRoomsStatus() {
     return this._rooms.map((r) => ({
