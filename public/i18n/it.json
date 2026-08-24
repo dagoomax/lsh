@@ -208,6 +208,10 @@
     "sip_dtmf_hint": "(inviato quando premi Apri durante una chiamata)",
     "sip_relay": "Indice relè porta",
     "sip_relay_hint": "(attiva questo relè all'apertura — lascia vuoto per solo DTMF)",
+    "paging_title": "📢 Chiamata tra Stanze",
+    "paging_enabled": "Abilita chiamata tra stanze",
+    "paging_rooms": "Stanze",
+    "paging_rooms_hint": "(una per riga: id = Etichetta — l'id è usato dal tablet per registrarsi, es. ?pagingRoom=livingroom)",
     "dirigera_title": "IKEA Dirigera",
     "dirigera_host": "Host / IP dell'hub",
     "dirigera_token": "Token Bearer",
@@ -517,6 +521,7 @@
     "d40": "Rilevamento locale di persone/auto/animali per telecamere senza IA integrata (chiave di configurazione <code>objectDetection</code>, l'elenco delle telecamere resta impostato in <code>config.json</code>). Scegli qui sotto il modello di rilevamento — il cambio lo scarica di nuovo e verifica che si carichi prima di salvarlo.",
     "d15f": "Invia i valori di LSH alle variabili globali del <strong>Fibaro Home Center</strong> in tempo reale (alla variazione, debounce 200 ms), così le scene HC possono reagire a tutto ciò che LSH conosce — zone Satel, batteria Victron, campanello UniFi. Le variabili mancanti vengono create automaticamente; una <em>regola di prefisso</em> mappa un intero sottoalbero di chiavi in una volta (<code>/</code> diventa <code>_</code>).",
     "mongo": "Salva il DataStore dei sensori (valori live + cronologia) su <strong>MongoDB</strong> invece del file gzip locale. Il file resta come fallback sicuro allo spegnimento; lasciarlo vuoto mantiene il comportamento predefinito. Riavvia per applicare.",
-    "interface": "Nascondi i link di navigazione che non usi. Si applica al prossimo caricamento — senza riavvio."
+    "interface": "Nascondi i link di navigazione che non usi. Si applica al prossimo caricamento — senza riavvio.",
+    "d41": "Citofono bidirezionale tra tablet browser (es. chioschi Wall Dashboard) — senza SIP o hardware aggiuntivo. Definisci una stanza per ogni dispositivo che vuoi poter chiamare, poi chiama una stanza da un'altra dalla dashboard."
   }
 }

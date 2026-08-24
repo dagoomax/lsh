@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import './styles/global.css'
 import { useLSH }            from './hooks/useLSH'
+import { usePaging }         from './hooks/usePaging'
 import Header                from './components/Header'
 import PlatformBar           from './components/PlatformBar'
 import SceneStrip            from './components/SceneStrip'
 import DeviceList, { Toast } from './components/DeviceList'
 import IncomingCall          from './components/IncomingCall'
-import PagingWidget          from './components/PagingWidget'
+import { PagingPanel }       from './components/PagingWidget'
 import LockScreen            from './components/LockScreen'
 import LoginScreen           from './components/LoginScreen'
 import SettingsPage          from './components/settings/SettingsPage'
@@ -21,6 +22,8 @@ export default function App() {
   const lock   = () => { localStorage.setItem('lsh-locked', '1'); setLocked(true) }
   const unlock = () => { localStorage.setItem('lsh-locked', '0'); setLocked(false) }
   const [view, setView] = useState('dashboard') // 'dashboard' | 'settings' | 'wall'
+  const paging = usePaging()
+  const [pagingOpen, setPagingOpen] = useState(false)
 
   // Re-render the whole tree when the language changes (gt() reads it live)
   const [, setLangTick] = useState(0)
@@ -54,8 +57,9 @@ export default function App() {
     <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--bg)', overflow:'hidden' }}>
       <Toast />
       <IncomingCall />
-      <PagingWidget />
-      <Header connection={connection} connected={connected} onLock={lock} onOpenSettings={() => setView('settings')} onOpenWall={() => setView('wall')} />
+      <PagingPanel {...paging} open={pagingOpen} setOpen={setPagingOpen} anchorTop />
+      <Header connection={connection} connected={connected} onLock={lock} onOpenSettings={() => setView('settings')} onOpenWall={() => setView('wall')}
+        pagingRoomCount={paging.rooms.length} onTogglePaging={() => setPagingOpen(o => !o)} />
 
       <div style={{ flex:1, paddingTop:56, overflow:'hidden', display:'flex', flexDirection:'column' }}>
         <PlatformBar platforms={platforms} />

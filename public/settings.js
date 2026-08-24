@@ -171,6 +171,11 @@ async function loadSettings() {
     setVal('sip-dtmf-unlock',  data.sip?.dtmfUnlock   || '#');
     setVal('sip-relay-index',  data.sip?.relayIndex   ?? '');
 
+    // Paging (room-to-room intercom)
+    const pagingEnabledEl = document.getElementById('paging-enabled');
+    if (pagingEnabledEl) pagingEnabledEl.checked = !!data.paging?.enabled;
+    setVal('paging-rooms', (data.paging?.rooms || []).map(r => `${r.id} = ${r.label || r.id}`).join('\n'));
+
     // Dirigera
     setVal('dirigera-host',  data.dirigera?.host  || '');
     setVal('dirigera-token', data.dirigera?.token ? '••••••••' : '');
@@ -3235,6 +3240,30 @@ document.getElementById('btn-save-sip').addEventListener('click', async () => {
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
     resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
     if (json.success) setVal('sip-password', '••••••••');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── Room-to-room paging ──────────────────────────────────────────────────────
+
+document.getElementById('btn-save-paging').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-paging');
+  const resultEl = document.getElementById('paging-save-result');
+  btn.disabled   = true;
+  try {
+    const rooms = getVal('paging-rooms').split('\n')
+      .map(l => l.trim()).filter(Boolean)
+      .map(l => { const [id, label] = l.split('=').map(s => s.trim()); return id ? { id, label: label || id } : null; })
+      .filter(Boolean);
+    const res = await fetch('/api/settings/paging', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: document.getElementById('paging-enabled').checked, rooms }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
   } catch (err) {
     resultEl.textContent = '✗ ' + err.message;
     resultEl.className = 'test-result err';

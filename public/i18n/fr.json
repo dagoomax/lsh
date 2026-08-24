@@ -206,6 +206,10 @@
     "sip_dtmf_hint": "(envoyé lors du déverrouillage pendant l'appel)",
     "sip_relay": "Index relais de porte",
     "sip_relay_hint": "(pulse ce relais au déverrouillage — vide = DTMF uniquement)",
+    "paging_title": "📢 Interphonie Pièce à Pièce",
+    "paging_enabled": "Activer l'interphonie pièce à pièce",
+    "paging_rooms": "Pièces",
+    "paging_rooms_hint": "(une par ligne : id = Libellé — l'id est utilisé par la tablette pour s'enregistrer, ex. ?pagingRoom=livingroom)",
     "dirigera_title": "IKEA Dirigera",
     "dirigera_host": "Hôte / IP du hub",
     "dirigera_token": "Token Bearer",
@@ -515,6 +519,7 @@
     "d40": "Détection locale de personnes/voitures/animaux pour les caméras sans IA embarquée (clé de configuration <code>objectDetection</code>, la liste des caméras reste définie dans <code>config.json</code>). Choisissez ci-dessous le modèle de détection — le changement le télécharge à nouveau et vérifie son chargement avant de l'enregistrer.",
     "d15f": "Envoie les valeurs LSH vers les variables globales du <strong>Fibaro Home Center</strong> en temps réel (au changement, debounce 200 ms), pour que les scènes HC réagissent à tout ce que LSH connaît — zones Satel, batterie Victron, sonnette UniFi. Les variables manquantes sont créées automatiquement ; une <em>règle de préfixe</em> mappe tout un sous-arbre de clés d'un coup (<code>/</code> devient <code>_</code>).",
     "mongo": "Conserve le DataStore des capteurs (valeurs en direct + historique) dans <strong>MongoDB</strong> au lieu du fichier gzip local. Le fichier reste un repli sûr à l'arrêt ; laisser vide conserve le comportement par défaut. Redémarrez pour appliquer.",
-    "interface": "Masquer les liens de navigation inutilisés. Appliqué au prochain chargement — sans redémarrage."
+    "interface": "Masquer les liens de navigation inutilisés. Appliqué au prochain chargement — sans redémarrage.",
+    "d41": "Interphone bidirectionnel entre tablettes navigateur (ex. kiosques Wall Dashboard) — sans SIP ni matériel supplémentaire. Définissez une pièce par appareil que vous voulez pouvoir appeler, puis appelez une pièce depuis une autre depuis le tableau de bord."
   }
 }

@@ -3766,6 +3766,24 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  router.post('/settings/paging', (req, res) => {
+    const current = readConfigFile();
+    const { enabled, rooms } = req.body;
+    try {
+      const paging = { ...current.paging };
+      if (enabled !== undefined) paging.enabled = !!enabled;
+      if (Array.isArray(rooms)) {
+        paging.rooms = rooms
+          .filter((r) => r && r.id)
+          .map((r) => ({ id: String(r.id).trim(), label: String(r.label || r.id).trim() }));
+      }
+      writeConfigFile({ ...current, paging });
+      res.json({ success: true, message: 'Paging settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   router.post('/settings/tradfri', (req, res) => {
     const current = readConfigFile();
     const { host, securityCode, identity, psk } = req.body;

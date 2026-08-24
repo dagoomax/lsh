@@ -63,6 +63,7 @@ export const CATEGORIES = [
   ] },
   { id: 'communication', label: 'Communication', sections: [
     { id: 'sip', title: 'SIP Intercom', ported: true },
+    { id: 'paging', title: 'Room-to-Room Paging', ported: true },
   ] },
   { id: 'system', label: 'System', sections: [
     { id: 'virtual', title: 'Virtual Devices', ported: true },

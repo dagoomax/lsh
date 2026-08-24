@@ -995,6 +995,28 @@
       </div>
     </section>
 
+    <!-- Room-to-room paging -->
+    <section class="card settings-card" data-category="communication" data-title="Room to room paging intercom tablet">
+      <h2><span data-i18n="s.paging_title">📢 Room-to-Room Paging</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc" data-i18n-html="sdesc.d41">Two-way intercom between browser tablets (e.g. Wall Dashboard kiosks) — no SIP or extra hardware needed. Define one room per device you want pageable, then page one room from another from the dashboard.</p>
+
+      <div class="form-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="paging-enabled">
+          <span data-i18n="s.paging_enabled">Enable room-to-room paging</span>
+        </label>
+      </div>
+      <div class="form-row">
+        <label for="paging-rooms"><span data-i18n="s.paging_rooms">Rooms</span> <span class="hint" data-i18n="s.paging_rooms_hint">(one per line: id = Label — id is used by the tablet to register, e.g. ?pagingRoom=livingroom)</span></label>
+        <textarea id="paging-rooms" rows="5" placeholder="livingroom = Living Room&#10;bedroom = Bedroom" style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-paging" data-i18n="common.save">Save</button>
+        <span class="test-result" id="paging-save-result"></span>
+      </div>
+    </section>
+
     <!-- LG ThinQ -->
     <section class="card settings-card" data-category="climate" data-title="LG ThinQ smart appliances air conditioner washing machine">
       <h2><span data-i18n="s.lgthinq_title">LG ThinQ</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>

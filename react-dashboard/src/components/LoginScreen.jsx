@@ -11,19 +11,27 @@ export default function LoginScreen({ onLogin }) {
   const [err, setErr]   = useState('')
   const [busy, setBusy] = useState(false)
   const userRef = useRef(null)
+  const passRef = useRef(null)
 
   useEffect(() => { userRef.current?.focus() }, [])
 
   const submit = async (e) => {
     e?.preventDefault()
-    if (!username || !password || busy) return
+    // Browser autofill sets the DOM value directly and doesn't always fire
+    // React's onChange, so `username`/`password` state can lag behind what's
+    // actually in the fields (they'd look filled in but the button stayed
+    // disabled and submit silently did nothing) — read the refs as the
+    // source of truth instead of trusting state alone.
+    const user = userRef.current?.value || username
+    const pass = passRef.current?.value || password
+    if (!user || !pass || busy) return
     setBusy(true)
     setErr('')
     try {
       const r = await fetch('/api/auth/login', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: user, password: pass }),
       })
       const d = await r.json()
       if (d.success) { onLogin(); return }
@@ -55,6 +63,7 @@ export default function LoginScreen({ onLogin }) {
           style={{ letterSpacing: 'normal', fontSize: 15 }}
         />
         <input
+          ref={passRef}
           type="password"
           name="password"
           autoComplete="current-password"
@@ -64,7 +73,7 @@ export default function LoginScreen({ onLogin }) {
           className="lock-input"
           style={{ letterSpacing: 'normal', fontSize: 15 }}
         />
-        <button type="submit" className="lock-btn" disabled={busy || !username || !password}>
+        <button type="submit" className="lock-btn" disabled={busy}>
           {busy ? gt('signing_in', 'Signing in…') : gt('sign_in_btn', 'Sign In')}
         </button>
         {err && <div className="lock-err">{err}</div>}

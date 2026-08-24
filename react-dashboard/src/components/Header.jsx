@@ -9,7 +9,7 @@ const NAV = [
   { label: 'Flows',     href: '/flows.html',    active: false },
 ]
 
-export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall }) {
+export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, pagingRoomCount, onTogglePaging }) {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
   })
@@ -78,6 +78,19 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
           }}>
           🖥️
         </button>
+        {pagingRoomCount > 0 && (
+          <button
+            className="header-icon-btn"
+            onClick={onTogglePaging}
+            title={gt('paging.title', 'Paging')}
+            style={{
+              color: 'var(--text2)',
+              border: '1px solid var(--border)', borderRadius: 8,
+              padding: '4px 8px', fontSize: 13, lineHeight: 1, cursor: 'pointer',
+            }}>
+            📟
+          </button>
+        )}
         <button
           className="header-icon-btn"
           onClick={onLock}

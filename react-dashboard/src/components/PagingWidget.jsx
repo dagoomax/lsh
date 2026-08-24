@@ -6,14 +6,14 @@ import { usePaging } from '../hooks/usePaging'
 const ACCENT = '#38bdf8'
 const REJECT = '#ff5a6a'
 
-// Floating room-to-room paging (intercom) control. Self-contained: a small
-// launcher button that expands into a room picker, plus a full-screen
-// overlay while a page is incoming/active. Meant to be mounted once near the
-// app root (see App.jsx) and again in WallDashboard, since a wall tablet is
-// the primary paging endpoint.
-export default function PagingWidget() {
-  const { rooms, myRoom, setMyRoom, active, error, startPage, endPage } = usePaging()
-  const [open, setOpen] = useState(false)
+// Room picker + incoming/active-call overlay for room-to-room paging
+// (intercom). Presentational only — takes paging state and open/setOpen as
+// props so callers decide where the trigger button lives and where the
+// dropdown panel anchors. `anchorTop` positions the panel under a header
+// trigger (e.g. App.jsx, next to the Wall Dashboard button) instead of the
+// default bottom-right floating position (e.g. WallDashboard.jsx, which has
+// no header to anchor to).
+export function PagingPanel({ rooms, myRoom, setMyRoom, active, error, startPage, endPage, open, setOpen, anchorTop }) {
   const [bridgeFrom, setBridgeFrom] = useState('')
   const [bridgeTo, setBridgeTo] = useState('')
 
@@ -23,31 +23,18 @@ export default function PagingWidget() {
   const inSession = !!active
   const iAmParticipant = active && (active.from === myRoom || active.to === myRoom)
 
+  const panelPosition = anchorTop
+    ? { top: 64, right: 20, bottom: 'auto' }
+    : { bottom: 74, right: 18, top: 'auto' }
+
   return (
     <>
-      {!inSession && (
-        <motion.button
-          whileTap={{ scale: 0.94 }}
-          onClick={() => setOpen(o => !o)}
-          title={gt('paging.title', 'Paging')}
-          style={{
-            position: 'fixed', right: 18, bottom: 18, zIndex: 350,
-            width: 48, height: 48, borderRadius: '50%', cursor: 'pointer',
-            background: 'var(--surface, #171b25)', color: ACCENT, fontSize: 20,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 22px rgba(0,0,0,0.4)', border: `1px solid ${ACCENT}55`,
-          }}
-        >
-          📟
-        </motion.button>
-      )}
-
       <AnimatePresence>
         {open && !inSession && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: anchorTop ? -12 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: anchorTop ? -12 : 12 }}
             style={{
-              position: 'fixed', right: 18, bottom: 74, zIndex: 350, width: 260,
+              position: 'fixed', ...panelPosition, zIndex: 350, width: 260,
               background: 'var(--surface, #12151d)', border: `1px solid ${ACCENT}33`, borderRadius: 16,
               padding: 14, boxShadow: '0 16px 44px rgba(0,0,0,0.5)',
             }}
@@ -160,6 +147,40 @@ export default function PagingWidget() {
           </motion.div>
         )}
       </AnimatePresence>
+    </>
+  )
+}
+
+// Self-contained version: floating launcher button + its own paging state,
+// for spots with no header to anchor a trigger to (WallDashboard.jsx — a
+// wall tablet is the primary paging endpoint, and the kiosk view has no
+// top bar). App.jsx instead calls usePaging() itself and renders PagingPanel
+// directly, with the trigger button next to the Wall Dashboard toggle in
+// Header.jsx.
+export default function PagingWidget() {
+  const paging = usePaging()
+  const [open, setOpen] = useState(false)
+  const inSession = !!paging.active
+
+  return (
+    <>
+      {!inSession && (
+        <motion.button
+          whileTap={{ scale: 0.94 }}
+          onClick={() => setOpen(o => !o)}
+          title={gt('paging.title', 'Paging')}
+          style={{
+            position: 'fixed', right: 18, bottom: 18, zIndex: 350,
+            width: 48, height: 48, borderRadius: '50%', cursor: 'pointer',
+            background: 'var(--surface, #171b25)', color: ACCENT, fontSize: 20,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 22px rgba(0,0,0,0.4)', border: `1px solid ${ACCENT}55`,
+          }}
+        >
+          📟
+        </motion.button>
+      )}
+      <PagingPanel {...paging} open={open} setOpen={setOpen} />
     </>
   )
 }

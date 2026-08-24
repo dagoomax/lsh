@@ -209,6 +209,10 @@
     "sip_dtmf_hint": "(wysyłany po naciśnięciu Odblokuj)",
     "sip_relay": "Indeks przekaźnika drzwi",
     "sip_relay_hint": "(impuls przekaźnika przy odblokowaniu — puste = tylko DTMF)",
+    "paging_title": "📢 Przywoływanie Między Pomieszczeniami",
+    "paging_enabled": "Włącz przywoływanie między pomieszczeniami",
+    "paging_rooms": "Pomieszczenia",
+    "paging_rooms_hint": "(jedno na linię: id = Etykieta — id służy tabletowi do rejestracji, np. ?pagingRoom=livingroom)",
     "dirigera_title": "IKEA Dirigera",
     "dirigera_host": "Host / IP koncentratora",
     "dirigera_token": "Token Bearer",
@@ -518,6 +522,7 @@
     "d40": "Lokalne wykrywanie osób/samochodów/zwierząt dla kamer bez własnej AI (klucz konfiguracji <code>objectDetection</code>, lista kamer wciąż ustawiana w <code>config.json</code>). Wybierz poniżej model wykrywania — zmiana pobiera go na nowo i sprawdza, czy się wczytuje, przed zapisaniem.",
     "d15f": "Wysyła wartości LSH do zmiennych globalnych <strong>Fibaro Home Center</strong> w czasie rzeczywistym (przy zmianie, debounce 200 ms), dzięki czemu sceny HC mogą reagować na wszystko, co widzi LSH — strefy Satel, baterię Victron, dzwonek UniFi. Brakujące zmienne są tworzone automatycznie; <em>reguła prefiksu</em> mapuje całe poddrzewo kluczy naraz (<code>/</code> zamienia się w <code>_</code>).",
     "mongo": "Zapisuje DataStore czujników (wartości bieżące + historia) do <strong>MongoDB</strong> zamiast lokalnego pliku gzip. Plik pozostaje bezpiecznym zapasem przy wyłączeniu, więc puste pole zachowuje domyślne działanie. Uruchom ponownie, aby zastosować.",
-    "interface": "Ukryj nieużywane linki nawigacji. Zmiany działają po przeładowaniu strony — bez restartu."
+    "interface": "Ukryj nieużywane linki nawigacji. Zmiany działają po przeładowaniu strony — bez restartu.",
+    "d41": "Dwukierunkowy interkom między tabletami przeglądarkowymi (np. kioskami Wall Dashboard) — bez SIP i dodatkowego sprzętu. Zdefiniuj jedno pomieszczenie na każde urządzenie, które ma być wywoływalne, a następnie przywołaj jedno pomieszczenie z innego na panelu."
   }
 }

@@ -34,6 +34,7 @@ import BroadlinkSection from './sections/BroadlinkSection'
 import WaveshareSection from './sections/WaveshareSection'
 import SatelSection from './sections/SatelSection'
 import SipSection from './sections/SipSection'
+import PagingSection from './sections/PagingSection'
 import SystemMiscSection from './sections/SystemMiscSection'
 import HomeKitSection from './sections/HomeKitSection'
 import HomePlanSection from './sections/HomePlanSection'
@@ -79,6 +80,7 @@ const SECTION_COMPONENTS = {
   waveshare: WaveshareSection,
   satel: SatelSection,
   sip: SipSection,
+  paging: PagingSection,
   'system-misc': SystemMiscSection,
   homekit: HomeKitSection,
   homeplan: HomePlanSection,
