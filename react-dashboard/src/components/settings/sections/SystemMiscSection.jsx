@@ -15,7 +15,77 @@ export default function SystemMiscSection({ config, reload }) {
       <InterfaceCard ui={config.ui} reload={reload}/>
       <RelaysCard relays={config.relays} reload={reload}/>
       <ServerCard server={config.server} reload={reload}/>
+      <RestartCard/>
     </>
+  )
+}
+
+// Restarts the LSH process itself (POST /api/admin/restart → process.exit(0)
+// — see src/api-routes.js), not the host machine. Ported from the classic
+// page's #btn-restart flow: confirm, fire the request (its response never
+// actually arrives — the process exits mid-request, so the fetch rejecting
+// is the expected/normal case, not an error), then poll GET /api/settings
+// until it answers again and reload. A process manager (PM2 in production,
+// per README) is what brings the process back up; running bare via
+// `npm start` with nothing supervising it, restart never returns — the
+// 60s safety reload below is what surfaces that instead of hanging forever.
+function RestartCard() {
+  const [restarting, setRestarting] = useState(false)
+  const [phase, setPhase] = useState('restarting') // 'restarting' | 'back'
+  const [secs, setSecs] = useState(15)
+
+  const restart = async () => {
+    if (!window.confirm('Restart the server now? The page will reconnect automatically.')) return
+    setPhase('restarting')
+    setSecs(15)
+    setRestarting(true)
+    try {
+      await fetch('/api/admin/restart', { method: 'POST', credentials: 'same-origin' })
+    } catch { /* expected — server closes the connection as it exits */ }
+
+    const tick = setInterval(() => setSecs(s => Math.max(0, s - 1)), 1000)
+    const poll = setInterval(async () => {
+      try {
+        const r = await fetch('/api/settings', { cache: 'no-store', credentials: 'same-origin' })
+        if (r.ok) {
+          clearInterval(tick)
+          clearInterval(poll)
+          setPhase('back')
+          setTimeout(() => window.location.reload(), 800)
+        }
+      } catch { /* still down, keep polling */ }
+    }, 1500)
+    setTimeout(() => window.location.reload(), 60000)
+  }
+
+  return (
+    <SettingsCard title={gt('s.restart_title', 'Restart Server')}
+      desc={gt('sdesc.restart', 'Restarts the LSH process — every integration briefly drops and reconnects (MQTT, Loxone, HomeKit, …). Takes a few seconds; this page reconnects on its own once it’s back.')}>
+      <div className="stg-actions">
+        <Button variant="danger" onClick={restart}>{gt('s.restart_btn', 'Restart Server')}</Button>
+      </div>
+      {restarting && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+        }}>
+          <div style={{
+            background: 'var(--card-grad)', border: '1px solid var(--border)', borderRadius: 16,
+            padding: '40px 48px', textAlign: 'center', minWidth: 280,
+          }}>
+            <span className="stg-spinner" style={{ width: 40, height: 40, borderWidth: 4, display: 'inline-block' }}/>
+            <div style={{ fontSize: '1.2rem', fontWeight: 600, margin: '16px 0 8px' }}>
+              {phase === 'back' ? gt('s.restart_back', 'Back online') : gt('s.restarting', 'Restarting…')}
+            </div>
+            <div style={{ fontSize: '0.9rem', color: 'var(--text2)' }}>
+              {phase === 'back'
+                ? gt('s.restart_back_sub', 'Server restarted successfully. Reloading…')
+                : <>{gt('s.restart_sub', 'The server is restarting. Reconnecting in')} <strong>{secs}</strong>s…</>}
+            </div>
+          </div>
+        </div>
+      )}
+    </SettingsCard>
   )
 }
 

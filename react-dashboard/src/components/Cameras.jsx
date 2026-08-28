@@ -602,10 +602,11 @@ function CameraModal({ cam, onClose }) {
               borderRadius: 22, overflow: 'hidden',
             }}>
 
-            {/* gradient border via CSS mask */}
+            {/* gradient border via CSS mask — same Aurora gradient as every
+                other popup, not a one-off blend */}
             <div style={{
               position: 'absolute', inset: 0, borderRadius: 22, padding: 1, pointerEvents: 'none',
-              background: 'linear-gradient(140deg, color-mix(in srgb, var(--accent) 70%, transparent), color-mix(in srgb, var(--teal) 45%, transparent) 45%, color-mix(in srgb, var(--violet) 40%, transparent))',
+              background: 'var(--aurora-gradient)', opacity: 0.8,
               WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
               WebkitMaskComposite: 'xor', maskComposite: 'exclude',
             }} />
@@ -617,7 +618,7 @@ function CameraModal({ cam, onClose }) {
                 background: 'var(--modal-chip-bg)', border: '1px solid var(--modal-chip-border)',
               }}><CameraIcon size={20} color="var(--modal-chip-ink)" /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="modal-device-title" style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div className="modal-device-title" style={{ fontSize: 17, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {cam?.name}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--muted, #8b949e)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

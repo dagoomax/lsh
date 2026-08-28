@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gt, getLang } from '../i18n'
-import { ICON_ANIM } from '../weatherIcons'
+import { weatherIconFor } from '../weatherIcons'
 
 // 5-day forecast strip (OpenWeatherMap's free tier caps at 5 days — see the
 // honesty note in openweather-client.js for why this isn't 7). Self-fetching
@@ -44,6 +44,7 @@ function fullDayLabel(dateStr, index) {
 }
 
 function DayCard({ day, index, onOpen }) {
+  const { Icon: DayIcon, anim: dayAnim } = weatherIconFor(day.icon)
   return (
     <button
       onClick={() => onOpen(day, index)}
@@ -61,7 +62,7 @@ function DayCard({ day, index, onOpen }) {
       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)' }}>
         {dayLabel(day.date, index)}
       </div>
-      <div className={ICON_ANIM[day.icon] || ''} style={{ fontSize: 30, lineHeight: 1 }}>{day.icon}</div>
+      <div className={dayAnim} style={{ lineHeight: 1 }}><DayIcon size={30}/></div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
         <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
           {day.tempMax != null ? Math.round(day.tempMax) : '—'}°
@@ -104,6 +105,7 @@ function DayDetailModal({ day, index, onClose }) {
 
   if (!day) return null
   const dir = compass(day.windDeg)
+  const { Icon: DetailIcon, anim: detailAnim } = weatherIconFor(day.icon)
   return (
     <AnimatePresence>
       <motion.div key="wx-backdrop"
@@ -120,15 +122,17 @@ function DayDetailModal({ day, index, onClose }) {
           exit={{ opacity: 0, scale: 0.92, y: 16 }}
           transition={{ type: 'spring', stiffness: 380, damping: 30 }}
           onClick={e => e.stopPropagation()}
+          className="device-modal-glow"
           style={{
             position: 'relative', width: 'min(380px, 100%)',
             background: 'var(--modal-grad)', borderRadius: 22, overflow: 'hidden',
           }}>
 
-          {/* gradient border via CSS mask */}
+          {/* gradient border via CSS mask — same Aurora gradient as every
+              other popup, not a one-off blend */}
           <div style={{
             position: 'absolute', inset: 0, borderRadius: 22, padding: 1, pointerEvents: 'none',
-            background: 'linear-gradient(140deg, color-mix(in srgb, var(--accent) 70%, transparent), color-mix(in srgb, var(--teal) 45%, transparent) 45%, color-mix(in srgb, var(--violet) 40%, transparent))',
+            background: 'var(--aurora-gradient)', opacity: 0.8,
             WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
             WebkitMaskComposite: 'xor', maskComposite: 'exclude',
           }} />
@@ -141,9 +145,9 @@ function DayDetailModal({ day, index, onClose }) {
 
           {/* header */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '18px 20px 12px' }}>
-            <div className={ICON_ANIM[day.icon] || ''} style={{ fontSize: 34, lineHeight: 1 }}>{day.icon}</div>
+            <div className={detailAnim} style={{ lineHeight: 1 }}><DetailIcon size={34}/></div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em' }}>{fullDayLabel(day.date, index)}</div>
+              <div className="modal-device-title" style={{ fontSize: 16, letterSpacing: '-0.01em' }}>{fullDayLabel(day.date, index)}</div>
               <div style={{ fontSize: 12, color: 'var(--text3)', textTransform: 'capitalize' }}>{day.condition || '—'}</div>
             </div>
             <button onClick={onClose} title={gt('close', 'Close')} style={{
@@ -183,13 +187,14 @@ export default function WeatherForecast() {
   const days = useForecast()
   const [selected, setSelected] = useState(null) // { day, index } | null
   if (!days.length) return null
+  const { Icon: HeaderIcon } = weatherIconFor(days[0]?.icon)
 
   return (
     <div className="card" style={{
       margin: '8px 0 12px', borderRadius: 'var(--radius-lg)', overflow: 'hidden', padding: '12px 14px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <span style={{ fontSize: 15 }}>{days[0]?.icon || '⛅'}</span>
+        <HeaderIcon size={15}/>
         <span style={{ fontSize: 13, fontWeight: 700 }}>{gt('weather_forecast', 'Forecast')}</span>
       </div>
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>

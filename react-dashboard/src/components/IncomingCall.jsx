@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { gt } from '../i18n'
 import { useSipCall } from '../hooks/useSipCall'
 import { useSipTalk } from '../hooks/useSipTalk'
+import { PhoneIcon, MicIcon, BoltIcon, CameraIcon } from './Icons'
 
 // ── Doorbell intercom call overlay ─────────────────────────────────────────
 // CallOverlay is the presentational call UI (blurred backdrop, gradient border,
@@ -137,12 +138,15 @@ function CallButton({ color, onClick, glow, children }) {
 }
 
 // A relay/device control chip. `action` = { label, icon?, active?, run() }.
+// `icon` accepts either an Icons.jsx component (real relay actions here pass
+// BoltIcon) or a plain emoji string (SipDemo.jsx's preview data still does).
 function ActionChip({ action }) {
   const [busy, setBusy] = useState(false)
   const click = async () => {
     setBusy(true)
     try { await action.run() } finally { setTimeout(() => setBusy(false), 600) }
   }
+  const Icon = typeof action.icon === 'function' ? action.icon : null
   return (
     <motion.button
       whileTap={{ scale: 0.95 }} onClick={click}
@@ -154,7 +158,7 @@ function ActionChip({ action }) {
         color: action.active ? '#0b0d13' : 'var(--text2, #aeb6c4)',
       }}
     >
-      <span>{action.icon || '⚙️'}</span>{action.label}{busy ? ' …' : ''}
+      {Icon ? <Icon size={14}/> : <span>{action.icon || '⚙️'}</span>}{action.label}{busy ? ' …' : ''}
     </motion.button>
   )
 }
@@ -163,7 +167,7 @@ function ActionChip({ action }) {
 export function NoCameraFill() {
   return (
     <div style={{ color: 'var(--text3)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 40, opacity: 0.5 }}>📷</span>
+      <span style={{ opacity: 0.5 }}><CameraIcon size={40}/></span>
       {gt('sip.no_camera', 'No camera')}
     </div>
   )
@@ -300,7 +304,7 @@ export function CallOverlay({ call, answer, reject, hangup, openDoor, camera,
                     ✕ {gt('sip.decline', 'Decline')}
                   </CallButton>
                   <CallButton color="var(--green)" onClick={answer} glow="rgba(60,200,120,0.35)">
-                    📞 {gt('sip.answer', 'Answer')}
+                    <PhoneIcon size={16}/> {gt('sip.answer', 'Answer')}
                   </CallButton>
                 </>}
 
@@ -319,7 +323,7 @@ export function CallOverlay({ call, answer, reject, hangup, openDoor, camera,
                         touchAction: 'none', userSelect: 'none',
                       }}
                     >
-                      🎤 {talking ? gt('sip.talking', 'Talking…') : gt('sip.hold_to_talk', 'Hold to talk')}
+                      <MicIcon size={16}/> {talking ? gt('sip.talking', 'Talking…') : gt('sip.hold_to_talk', 'Hold to talk')}
                     </motion.button>
                   )}
                   {call.canOpenDoor && (
@@ -359,7 +363,7 @@ export default function IncomingCall() {
 
   const { relays, toggle } = useRelayActions(visible)
   const actions = relays.map(r => ({
-    id: `relay-${r.index}`, label: r.name || `Relay ${r.index + 1}`, icon: '⚡',
+    id: `relay-${r.index}`, label: r.name || `Relay ${r.index + 1}`, icon: BoltIcon,
     active: !!r.on, run: () => toggle(r.index, !r.on),
   }))
 

@@ -42,7 +42,9 @@
     "token": "",
     "clientId": "",
     "clientSecret": "",
-    "deviceIds": []
+    "deviceIds": [],
+    "webhookUrl": "",
+    "webhookSecret": ""
   },
   "roborock": {
     "cloud": {
@@ -273,6 +275,19 @@
       "maxSeconds": 30,
       "urlTemplate": ""
     }
+  },
+  "airplay": {
+    "enabled": true,
+    "speakers": [
+      {
+        "id": "living-room",
+        "name": "Living Room",
+        "host": "192.168.1.x",
+        "port": 5000,
+        "airplay2": true,
+        "volume": 60
+      }
+    ]
   },
   "loxone": {
     "host": "192.168.1.x",

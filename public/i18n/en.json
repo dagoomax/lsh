@@ -67,6 +67,21 @@
     "call": "📞 Call",
     "call_placeholder": "Extension or SIP URI"
   },
+  "paging": {
+    "title": "Paging",
+    "this_device": "This device",
+    "not_a_room": "Not a fixed room",
+    "page": "Page",
+    "offline": "offline",
+    "bridge": "Connect two rooms",
+    "from": "From…",
+    "to": "To…",
+    "start": "Start",
+    "in_progress": "Paging",
+    "bridged": "Bridged call",
+    "bridged_hint": "You're not a participant — this device only started the connection.",
+    "end": "✗ End"
+  },
   "cam": {
     "event_log": "Event Log",
     "no_events": "No events yet",
@@ -338,7 +353,9 @@
     "mongo_db": "Database",
     "interface_title": "Interface",
     "hide_mqtt": "Hide the MQTT link in the top navigation",
-    "hide_logs": "Hide the Logs link in the top navigation"
+    "hide_logs": "Hide the Logs link in the top navigation",
+    "st_webhook_secret": "Webhook secret",
+    "st_webhook_secret_hint": "Optional — required before /api/webhooks/smartthings accepts anything; set the same value as X-Webhook-Secret (or ?secret=) on the SmartThings-side HTTP action"
   },
   "graphs": {
     "tab": "Graphs",

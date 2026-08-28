@@ -794,10 +794,11 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               borderRadius: 22, overflow: 'hidden',
             }}>
 
-            {/* gradient border via CSS mask */}
+            {/* gradient border via CSS mask — the same Aurora gradient as the
+                header wordmark and energy panel, not a one-off blend */}
             <div style={{
               position: 'absolute', inset: 0, borderRadius: 22, padding: 1, pointerEvents: 'none',
-              background: 'linear-gradient(140deg, color-mix(in srgb, var(--accent) 70%, transparent), color-mix(in srgb, var(--teal) 45%, transparent) 45%, color-mix(in srgb, var(--violet) 40%, transparent))',
+              background: 'var(--aurora-gradient)', opacity: 0.8,
               WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
               WebkitMaskComposite: 'xor', maskComposite: 'exclude',
             }} />
@@ -818,7 +819,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               }}>{(() => { const I = resolveIcon(device); return <I size={24} color="var(--modal-chip-ink)"/> })()}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="modal-device-title" style={{
-                  fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  fontSize: 19, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>{device.label}</div>
                 <div style={{ fontSize: 11, color: 'var(--muted, #8b949e)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span>{device.key}</span>
@@ -826,13 +827,15 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
                   {freshestAgo && <><span>·</span><span>{gt('updated', 'Updated')} {freshestAgo}</span></>}
                 </div>
               </div>
-              <button onClick={() => setEditing(e => !e)} title={gt('edit', 'Edit')} style={{
-                width: 32, height: 32, borderRadius: 10, cursor: 'pointer', fontSize: 14,
+              <button onClick={() => setEditing(e => !e)} title={gt('edit', 'Edit')} aria-label={gt('edit', 'Edit')} style={{
+                width: 44, height: 44, borderRadius: 10, cursor: 'pointer', fontSize: 14, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: `1px solid ${editing ? 'var(--accent)' : 'var(--white-10)'}`,
                 background: editing ? 'var(--accent-dim)' : 'var(--white-05)', color: 'var(--muted,#8b949e)',
               }}>✎</button>
-              <button onClick={onClose} style={{
-                width: 32, height: 32, borderRadius: 10, border: '1px solid var(--white-10)', cursor: 'pointer',
+              <button onClick={onClose} title={gt('close', 'Close')} aria-label={gt('close', 'Close')} style={{
+                width: 44, height: 44, borderRadius: 10, border: '1px solid var(--white-10)', cursor: 'pointer', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: 'var(--white-05)', color: 'var(--muted,#8b949e)', fontSize: 14,
               }}>✕</button>
             </div>

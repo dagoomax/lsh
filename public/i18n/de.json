@@ -67,6 +67,21 @@
     "call": "📞 Anrufen",
     "call_placeholder": "Durchwahl oder SIP-URI"
   },
+  "paging": {
+    "title": "Gegensprechanlage",
+    "this_device": "Dieses Gerät",
+    "not_a_room": "Kein fester Raum",
+    "page": "Rufen",
+    "offline": "offline",
+    "bridge": "Zwei Räume verbinden",
+    "from": "Von…",
+    "to": "Zu…",
+    "start": "Start",
+    "in_progress": "Ruf läuft",
+    "bridged": "Verbundener Anruf",
+    "bridged_hint": "Du bist kein Teilnehmer — dieses Gerät hat die Verbindung nur gestartet.",
+    "end": "✗ Beenden"
+  },
   "cam": {
     "event_log": "Ereignisprotokoll",
     "no_events": "Keine Ereignisse",
@@ -338,7 +353,9 @@
     "mongo_db": "Datenbank",
     "interface_title": "Oberfläche",
     "hide_mqtt": "MQTT-Link in der oberen Navigation ausblenden",
-    "hide_logs": "Protokoll-Link in der oberen Navigation ausblenden"
+    "hide_logs": "Protokoll-Link in der oberen Navigation ausblenden",
+    "st_webhook_secret": "Webhook-Geheimnis",
+    "st_webhook_secret_hint": "Optional — erforderlich, bevor /api/webhooks/smartthings etwas akzeptiert; denselben Wert als X-Webhook-Secret (oder ?secret=) bei der SmartThings-HTTP-Aktion setzen"
   },
   "graphs": {
     "tab": "Diagramme",

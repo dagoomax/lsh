@@ -13,6 +13,31 @@ const COOKIE_NAME  = 'lsh-session';
 const SALT_ROUNDS  = 12;
 const TOKEN_TTL    = '7d';
 
+// API tokens (POST /api/auth/tokens) have no user/role of their own — they're
+// static machine-to-machine credentials, not tied to a person. Minting one is
+// itself an admin-only action (see requireAdmin in api-routes.js), so a
+// request authenticated via a valid token is treated as admin-equivalent —
+// whoever holds it was deliberately handed it by an admin. Previously the
+// middleware called next() here without setting req.user at all, which meant
+// every admin-role check (req.user?.role !== 'admin') silently rejected
+// legitimate token-authenticated requests as unauthorized.
+const API_TOKEN_USER = { id: 'api-token', username: 'api-token', role: 'admin' };
+
+// Login brute-force throttling — in-memory per-IP sliding window. Single
+// fork process (no cluster), so no shared store is needed; resets on
+// restart, an acceptable tradeoff for a self-hosted single-household app
+// versus pulling in a rate-limiting dependency for one endpoint.
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_WINDOW_MS    = 15 * 60 * 1000;
+const _loginFailures = new Map(); // ip -> [failure timestamps]
+
+function recentFailures(ip, now) {
+  const kept = (_loginFailures.get(ip) || []).filter(t => now - t < LOGIN_WINDOW_MS);
+  if (kept.length) _loginFailures.set(ip, kept);
+  else _loginFailures.delete(ip);
+  return kept;
+}
+
 // Paths that never require authentication
 const PUBLIC_HTML = new Set(['/login.html', '/setup.html']);
 const PUBLIC_JS   = new Set(['/login.js', '/setup.js', '/theme.js', '/common.js', '/i18n.js']);
@@ -78,6 +103,14 @@ const auth = {
   COOKIE_NAME,
 
   hasUsers() { return loadUsers().length > 0; },
+
+  // Login brute-force throttling (see LOGIN_MAX_ATTEMPTS/_loginFailures above)
+  isLoginRateLimited(ip) { return recentFailures(ip, Date.now()).length >= LOGIN_MAX_ATTEMPTS; },
+  recordLoginFailure(ip) {
+    const now = Date.now();
+    _loginFailures.set(ip, [...recentFailures(ip, now), now]);
+  },
+  recordLoginSuccess(ip) { _loginFailures.delete(ip); },
 
   async createUser(username, password, role = 'admin') {
     const users = loadUsers();
@@ -239,7 +272,7 @@ const auth = {
       // Check ?token= query param (API tokens only)
       const queryToken = req.query?.token;
       if (queryToken) {
-        if (auth.verifyApiToken(queryToken)) return next();
+        if (auth.verifyApiToken(queryToken)) { req.user = API_TOKEN_USER; return next(); }
         return res.status(401).json({ success: false, error: 'Invalid token' });
       }
 
@@ -247,7 +280,7 @@ const auth = {
       const authHeader = req.headers['authorization'];
       if (authHeader?.startsWith('Bearer ')) {
         const token = authHeader.slice(7);
-        if (auth.verifyApiToken(token)) return next();
+        if (auth.verifyApiToken(token)) { req.user = API_TOKEN_USER; return next(); }
         const payload = auth.verifyToken(token);
         if (payload) { req.user = payload; return next(); }
         return res.status(401).json({ success: false, error: 'Invalid token' });

@@ -136,6 +136,55 @@
 }
 
 
+/* ── Display face — "Aurora" wordmark, panel titles, signature moments ──
+   Self-hosted (react-dashboard/public/fonts) so the dashboard still renders
+   its identity correctly on installs with no outbound internet (Tailscale-
+   only LANs, offline wall tablets). Latin + Latin-ext only — Cyrillic
+   headings (uk locale) fall back to the body stack, which is an acceptable,
+   silent degradation rather than a broken glyph. */
+@font-face {
+  font-family: 'Aurora Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/react/fonts/fraunces-600-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122;
+}
+@font-face {
+  font-family: 'Aurora Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/react/fonts/fraunces-600-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0300-0304, U+0308, U+0329, U+1E00-1EFF, U+2020;
+}
+@font-face {
+  font-family: 'Aurora Display';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/react/fonts/fraunces-500italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122;
+}
+@font-face {
+  font-family: 'Aurora Display';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/react/fonts/fraunces-500italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0300-0304, U+0308, U+0329, U+1E00-1EFF, U+2020;
+}
+
+:root {
+  --font-display: 'Aurora Display', Georgia, 'Times New Roman', serif;
+  /* Same hues the rest of the UI already uses for status/accent — kept in
+     lockstep with the light/dark theme swap above instead of a parallel
+     palette, so the one signature gradient never fights the system it
+     lives in. */
+  --aurora-gradient: linear-gradient(115deg,
+    var(--green) 0%, var(--teal) 32%, var(--accent) 62%, var(--violet) 100%);
+}
+
 html, body { height: 100%; }
 
 body {
@@ -155,17 +204,28 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-/* Ambient depth — fixed aurora glows behind everything, drifting slowly */
+/* Ambient depth — fixed Aurora glows behind everything, drifting slowly.
+   Same four hues as --aurora-gradient (the header wordmark / energy panel /
+   kiosk / popups), as radial spotlights instead of a linear sweep — this is
+   where that identity actually lives at the whole-app level; every other
+   Aurora moment is a concentrated echo of this ambient wash. */
 body::before {
   content: '';
   position: fixed; inset: -8%; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(900px 600px at 12% -8%,  rgba(56,110,200,0.16), transparent 60%),
-    radial-gradient(800px 560px at 95% 0%,   color-mix(in srgb, var(--teal) 8%, transparent), transparent 55%),
-    radial-gradient(700px 500px at 80% 60%,  rgba(217,180,91,0.045), transparent 60%),
-    radial-gradient(1000px 700px at 50% 115%, color-mix(in srgb, var(--violet) 12%, transparent), transparent 60%);
+    radial-gradient(900px 620px at 10% -10%,  color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+    radial-gradient(820px 580px at 96% 2%,    color-mix(in srgb, var(--teal) 16%, transparent), transparent 55%),
+    radial-gradient(760px 520px at 78% 62%,   color-mix(in srgb, var(--green) 12%, transparent), transparent 60%),
+    radial-gradient(1040px 720px at 48% 118%, color-mix(in srgb, var(--violet) 20%, transparent), transparent 60%);
   animation: lux-aurora 60s ease-in-out infinite alternate;
   will-change: transform;
+}
+[data-theme="light"] body::before {
+  background:
+    radial-gradient(900px 620px at 10% -10%,  color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
+    radial-gradient(820px 580px at 96% 2%,    color-mix(in srgb, var(--teal) 7%, transparent), transparent 55%),
+    radial-gradient(760px 520px at 78% 62%,   color-mix(in srgb, var(--green) 6%, transparent), transparent 60%),
+    radial-gradient(1040px 720px at 48% 118%, color-mix(in srgb, var(--violet) 8%, transparent), transparent 60%);
 }
 @keyframes lux-aurora {
   0%   { transform: translate3d(0, 0, 0) scale(1); }
@@ -247,10 +307,17 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: var(--shadow-1), var(--inner-hl);
   transition: transform 0.18s ease, box-shadow 0.18s ease,
               border-color 0.18s ease, background 0.25s ease;
-  animation: fadeIn 0.25s ease both;
+  animation: fadeIn 0.3s cubic-bezier(0.25,0.46,0.45,0.94) both;
+  /* Staggered reveal — each tile waits slightly longer than the last
+     (index set inline as --i), capped so a full category tab doesn't take
+     forever to finish appearing. */
+  animation-delay: calc(min(var(--i, 0), 24) * 22ms);
   position: relative;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .device-tile { animation: none; }
 }
 .device-tile:hover {
   transform: translateY(-2px);
@@ -278,9 +345,15 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 20%, transparent), var(--inner-hl);
 }
 
-/* Device modal title — gradient ink on dark, solid ink on light */
+/* Device modal title — same Aurora wordmark treatment as the header, so
+   every popup reads as the same product opening a closer view of itself.
+   Display italic on both themes; only the ink swaps — gradient on dark,
+   solid on light (a gradient text-fill reads muddy against a white card). */
 .modal-device-title {
-  background: linear-gradient(90deg, #a5d1ff 0%, #e9eef5 50%, #79c0ff 100%);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  background: var(--aurora-gradient);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -524,35 +597,64 @@ input[type="range"]::-moz-range-thumb {
 }
 
 
-/* Device modal breathing glow — cool blue, matches the dashboard system */
+/* Device modal breathing glow — sweeps the full Aurora hue range (green →
+   teal → blue → violet) instead of one fixed accent, so the glow itself
+   feels like a slice of the same curtain of light as the header/energy
+   panel/kiosk, not a separate one-off effect. */
 .device-modal-glow {
   box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px color-mix(in srgb, var(--accent) 28.0%, transparent), 0 0 160px color-mix(in srgb, var(--accent) 12%, transparent);
-  animation: modalBreathe 4.5s ease-in-out infinite alternate;
+  animation: modalBreathe 7s ease-in-out infinite alternate;
 }
 [data-theme="light"] .device-modal-glow {
   box-shadow: 0 24px 80px rgba(31,35,40,0.25), 0 4px 24px rgba(31,35,40,0.12);
   animation: none;
 }
 @keyframes modalBreathe {
-  from { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 55px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 130px color-mix(in srgb, var(--teal) 10%, transparent); }
-  to   { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 95px color-mix(in srgb, var(--accent-lt) 34%, transparent), 0 0 200px color-mix(in srgb, var(--accent) 18%, transparent); }
+  0%   { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 55px color-mix(in srgb, var(--green) 20%, transparent), 0 0 130px color-mix(in srgb, var(--teal) 10%, transparent); }
+  50%  { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 95px color-mix(in srgb, var(--accent-lt) 34%, transparent), 0 0 200px color-mix(in srgb, var(--accent) 18%, transparent); }
+  100% { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px color-mix(in srgb, var(--violet) 26%, transparent), 0 0 160px color-mix(in srgb, var(--accent) 12%, transparent); }
 }
 
 /* ── Energy flow diagram ─────────────────────────────────────────────── */
 .eflow-wrap {
+  position: relative;
   display: flex;
   justify-content: center;
   padding: 10px 0;
   border-radius: var(--radius-lg);
-  background:
-    radial-gradient(circle, var(--white-05) 1px, transparent 1px),
-    radial-gradient(ellipse 60% 70% at 50% 50%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 70%);
-  background-size: 22px 22px, 100% 100%;
+  overflow: hidden;
+  background: radial-gradient(circle, var(--white-05) 1px, transparent 1px);
+  background-size: 22px 22px;
   background-position: center;
 }
+/* The one signature moment: a slow curtain of light behind the inverter hub
+   — the dashboard's namesake, and its actual subject (energy arriving from
+   the sky, redistributed through the house), reserved for this one panel so
+   it stays a landmark rather than wallpaper. */
+.eflow-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: var(--aurora-gradient);
+  opacity: 0.1;
+  filter: blur(40px);
+  animation: aurora-drift 22s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+[data-theme="light"] .eflow-wrap::before { opacity: 0.16; filter: blur(50px); }
+@keyframes aurora-drift {
+  0%   { transform: translate3d(-4%, -2%, 0) rotate(0deg) scale(1); }
+  100% { transform: translate3d(4%, 3%, 0) rotate(6deg) scale(1.15); }
+}
 .eflow-svg {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 720px;
+  /* Scales with the actual browser viewport instead of stopping dead at one
+     fixed cap — cramped on a 4K monitor before, now it keeps growing (up to
+     a point) the more room there actually is. Text/paths scale with it since
+     they're all in the same viewBox coordinate space. */
+  max-width: clamp(360px, 52vw, 980px);
   height: auto;
   display: block;
 }
@@ -604,7 +706,7 @@ input[type="range"]::-moz-range-thumb {
   stroke-linejoin: round;
 }
 @media (prefers-reduced-motion: reduce) {
-  .eflow-flow, .eflow-hub-ring { animation: none; }
+  .eflow-flow, .eflow-hub-ring, .eflow-wrap::before { animation: none; }
 }
 
 /* Room icon edit affordance — visible on row hover */
@@ -1329,22 +1431,6 @@ input[type="range"]::-moz-range-thumb {
               inset 0 1px 0 rgba(255,255,255,0.25);
 }
 
-/* Bolder ambient: richer, more saturated aurora behind everything */
-body::before {
-  background:
-    radial-gradient(900px 620px at 10% -10%,  rgba(56,110,220,0.24), transparent 60%),
-    radial-gradient(820px 580px at 96% 2%,    rgba(45,212,191,0.15), transparent 55%),
-    radial-gradient(760px 520px at 78% 62%,   rgba(255,122,84,0.10), transparent 60%),
-    radial-gradient(1040px 720px at 48% 118%, rgba(140,110,240,0.20), transparent 60%);
-}
-[data-theme="light"] body::before {
-  background:
-    radial-gradient(900px 620px at 10% -10%,  color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
-    radial-gradient(820px 580px at 96% 2%,    rgba(13,148,136,0.07), transparent 55%),
-    radial-gradient(760px 520px at 78% 62%,   rgba(194,65,12,0.05), transparent 60%),
-    radial-gradient(1040px 720px at 48% 118%, rgba(124,58,237,0.08), transparent 60%);
-}
-
 /* Status colours a touch more saturated for punch (dark theme only) */
 :root {
   --green:  #35d07f;
@@ -1536,7 +1622,10 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: 500;
-  background: radial-gradient(ellipse at 50% 28%, #24262b 0%, #131418 72%);
+  /* Deep night sky first, so the curtain has real dark to glow against —
+     this view runs 24/7 on a wall, so it stays fixed-dark and deliberately
+     under-saturated rather than following the app's light/dark toggle. */
+  background: radial-gradient(ellipse at 50% 22%, #14161d 0%, #0a0b10 65%);
   color: #fff;
   display: grid;
   grid-template-columns: 260px 1fr 270px;
@@ -1549,24 +1638,56 @@ body::before {
   padding: 26px;
   overflow: hidden;
 }
+/* The kiosk IS "Aurora" full-screen — the same curtain of light from the
+   energy panel (.eflow-wrap), scaled up and slowed down for a screen that's
+   glanced at, not stared at. Fixed hex stops, not the swappable --green/
+   --accent tokens, so it can't shift if data-theme flips while this is open. */
+.wall-dash::before {
+  content: '';
+  position: absolute;
+  inset: -35%;
+  background: linear-gradient(120deg, #2ee66b 0%, #22d3ee 32%, #4a9dff 62%, #a875ff 100%);
+  opacity: 0.22;
+  filter: blur(70px);
+  animation: aurora-drift 55s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .wall-dash::before { animation: none; } }
 .wall-exit {
-  position: absolute; top: 18px; left: 18px; z-index: 20;
-  width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.14);
+  /* This is the one button on an actual touch-screen wall tablet in the
+     whole app — the 44px minimum matters more here than anywhere else. */
+  position: absolute; top: 14px; left: 14px; z-index: 20;
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.14);
   background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.55); cursor: pointer;
   font-size: 14px; display: flex; align-items: center; justify-content: center;
   transition: background 0.15s, color 0.15s;
 }
 .wall-exit:hover { background: rgba(255,255,255,0.14); color: #fff; }
 
-.wall-region { min-width: 0; min-height: 0; }
-.wall-region-energy { grid-area: energy; display: flex; flex-direction: column; align-items: center; gap: 18px; padding-top: 4px; overflow-y: auto; }
+.wall-region { position: relative; z-index: 1; min-width: 0; min-height: 0; }
+/* Glass panels — same frosted-card language as .wall-region-plan below, so
+   all four regions read as one material floating over the aurora instead of
+   .wall-region-plan being the only "boxed" one. */
+.wall-region-energy, .wall-region-forecast, .wall-region-rightcol {
+  border-radius: 22px;
+  background: rgba(255,255,255,0.035);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 20px 50px rgba(0,0,0,0.35);
+}
+.wall-region-energy { grid-area: energy; display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 20px 16px; overflow-y: auto; }
 .wall-region-energy > .wall-thermo { align-self: stretch; }
-.wall-region-forecast { grid-area: forecast; align-self: end; }
-.wall-region-rightcol { grid-area: rightcol; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; overflow: hidden; }
+.wall-region-forecast { grid-area: forecast; align-self: end; padding: 16px 18px; }
+.wall-region-rightcol { grid-area: rightcol; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; overflow: hidden; padding: 18px 20px; }
 .wall-region-rightcol .wall-agenda { flex: 1; min-height: 0; overflow-y: auto; align-self: stretch; }
 .wall-region-plan {
-  grid-area: plan; position: relative; border-radius: 22px; overflow: hidden;
-  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+  grid-area: plan; border-radius: 22px; overflow: hidden;
+  background: rgba(255,255,255,0.035);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 20px 50px rgba(0,0,0,0.35);
   display: flex; flex-direction: column;
 }
 .wall-region-plan .plan-viewport { background: transparent; }

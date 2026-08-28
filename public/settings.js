@@ -55,6 +55,7 @@ async function loadSettings() {
     // SmartThings
     setVal('st-token', data.smartthings?.token || '');
     setVal('st-device-ids', (data.smartthings?.deviceIds || []).join(', '));
+    setVal('st-webhook-secret', data.smartthings?.webhookSecret || '');
 
     // Somfy
     setVal('somfy-host',     data.somfy?.host || '');
@@ -820,7 +821,7 @@ document.getElementById('btn-save-smartthings').addEventListener('click', async 
     const res = await fetch('/api/settings/smartthings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: getVal('st-token'), deviceIds }),
+      body: JSON.stringify({ token: getVal('st-token'), deviceIds, webhookSecret: getVal('st-webhook-secret') }),
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;

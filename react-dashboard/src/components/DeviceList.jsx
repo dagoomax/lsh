@@ -315,7 +315,7 @@ function ColorPicker({ hueDeg, sat, onCommit }) {
 // ── Device Tile ───────────────────────────────────────────────────────────────
 // memo: the useLSH update merge keeps object identity for untouched devices,
 // so a socket tick only re-renders the tiles whose readings actually changed
-export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }) {
+export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, revealIndex }) {
   const [localState, setLocalState] = useState({})
   const r = device.readings || {}
 
@@ -545,6 +545,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }
       padding: '12px',
       display: 'flex', flexDirection: 'column',
       minHeight: 118,
+      ...(revealIndex != null ? { '--i': revealIndex } : null),
     }}>
 
       {/* Top glow bar when on */}
@@ -561,8 +562,9 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }
         <div style={{
           width:40, height:40, borderRadius:12, flexShrink:0,
           background: tileOn ? 'var(--tile-on-chip)' : 'var(--white-06)',
+          border: `1px solid ${tileOn ? 'color-mix(in srgb, var(--tile-on-ink) 30%, transparent)' : 'var(--white-07)'}`,
           display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow: tileOn ? 'var(--tile-on-glow)' : 'none',
+          boxShadow: tileOn ? 'var(--tile-on-glow), var(--inner-hl)' : 'var(--inner-hl)',
           transition:'all 0.2s',
         }}>
           <IconComp size={21} color={tileOn ? 'var(--tile-on-ink)' : activeColor} />
@@ -788,14 +790,14 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen }
       {/* Bottom: name + status */}
       <div style={{ marginTop:'auto', paddingTop:10 }}>
         <div style={{
-          fontSize:12, fontWeight:600, lineHeight:1.2,
+          fontSize:12, fontWeight:600, lineHeight:1.2, letterSpacing:'-0.01em',
           color: hasSwitch && !isOn ? 'var(--text3)' : 'var(--text)',
           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
         }}>
           {device.label}
         </div>
         <div style={{
-          fontSize:11, marginTop:3, fontWeight:500,
+          fontSize:11, marginTop:3, fontWeight:500, fontVariantNumeric:'tabular-nums',
           color: tileOn ? 'var(--tile-on-ink)'
                : (motActive||presActive) ? 'var(--orange)'
                : !hasSwitch ? activeColor
@@ -1512,8 +1514,8 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
             gap:10,
             paddingTop:8,
           }}>
-            {visible.map(d => (
-              <DeviceTile key={d.key} device={d} onCommand={onCommand} onOpen={setOpenKey} />
+            {visible.map((d, i) => (
+              <DeviceTile key={d.key} device={d} onCommand={onCommand} onOpen={setOpenKey} revealIndex={i} />
             ))}
           </div>}
         </div>

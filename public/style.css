@@ -1691,6 +1691,143 @@ footer {
   transition: color 0.15s, border-color 0.15s;
 }
 
+/* ── Room-to-room paging (intercom) ───────────────────────────── */
+.paging-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.paging-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+.paging-status-dot.paging-dot-green { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+
+.paging-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 4px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+}
+.paging-toggle-btn:hover { color: var(--accent-blue); background: rgba(88,166,255,0.12); }
+
+.paging-panel {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  z-index: 1999;
+  width: 260px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 16px 44px rgba(0,0,0,0.5);
+  animation: fadeIn 0.15s ease;
+}
+
+.paging-panel-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.paging-room-list .paging-panel-label { margin-top: 12px; }
+
+.paging-room-select,
+.paging-bridge-select {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.paging-room-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.paging-room-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.82rem;
+  text-align: left;
+  width: 100%;
+  transition: background 0.15s;
+}
+.paging-room-btn:hover:not(:disabled) { background: rgba(88,166,255,0.1); }
+.paging-room-btn:disabled { color: var(--text-muted); cursor: not-allowed; }
+
+.paging-room-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+.paging-room-dot.online { background: var(--accent-green); }
+
+.paging-bridge-start {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: var(--accent-blue);
+  color: #0d1117;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.paging-bridge-start:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.paging-error {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: var(--accent-red, #f85149);
+}
+.paging-error:empty { display: none; }
+
+.paging-call-icon {
+  font-size: 2.4rem;
+  margin-bottom: 10px;
+}
+
+.paging-call-rooms {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 4px 0 6px;
+}
+
+.paging-call-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
 /* ── Main tab bar ──────────────────────────────────────────── */
 .main-tab-bar {
   display: flex;

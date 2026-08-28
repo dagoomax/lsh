@@ -5,6 +5,7 @@ const http = require('http');
 const { generateSetupUri, generateSetupID } = require('./homekit-uri');
 const cameraLog = require('./camera-log');
 const privateEvents = require('./private-events');
+const pagingMessages = require('./paging-messages');
 const callLog = require('./call-log');
 const motionLog = require('./motion-log');
 const detectionBoxes = require('./detection-boxes');
@@ -59,7 +60,7 @@ function dedupeVirtualDevices(devices) {
 }
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
-  const { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, pagingManager, openweather, objectDetection } = clients;
+  const { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, pagingManager, openweather, objectDetection, airplayClient } = clients;
   const manualSnapCache = new Map(); // manual camera idx → { at, buffer }, for /camera/snapshot/:idx
 
   // Secure cookie flag per request, not per server: with both HTTP and HTTPS
@@ -69,6 +70,21 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // is why the bug never shows on the dev machine itself.
   const reqIsSecure = (req) => req.secure || req.headers['x-forwarded-proto'] === 'https';
   const router = Router();
+
+  // Gate a route to admin-role users. The blanket auth.middleware() only
+  // proves a request is authenticated as *someone* — 'viewer' is a real,
+  // separately-issued role (see POST /auth/users) meant for read-only
+  // access, so anything that writes config, controls a device/relay, or
+  // touches credentials/tokens/alarm/automation needs this on top of that.
+  // Deliberately NOT applied to: self-service routes (logout, own password
+  // change), PIN *verify* endpoints (no state change), live-call handling
+  // (SIP answer/reject/hangup/talk), paging/Sonos/agenda (shared household
+  // features), running an already-defined scene/flow, or camera *viewing*
+  // (WebRTC offer, on-demand snapshot) — those stay available to viewers.
+  const requireAdmin = (req, res, next) => {
+    if (req.user?.role !== 'admin') return res.status(403).json({ success: false, error: 'Admin access required' });
+    next();
+  };
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -94,13 +110,18 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   router.post('/auth/login', async (req, res) => {
     if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
+    if (auth.isLoginRateLimited(req.ip)) {
+      console.warn(`[Auth] Login rate-limited for ${req.ip} — too many recent failures`);
+      return res.status(429).json({ success: false, error: 'Too many failed login attempts. Try again in a few minutes.' });
+    }
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ success: false, error: 'username and password required' });
     }
     const user = await auth.authenticate(username, password);
     console.log(`[Auth] Login ${user ? 'OK' : 'FAILED'} for "${username}" from ${req.ip} over ${reqIsSecure(req) ? 'https' : 'http'} — ${(req.headers['user-agent'] || '?').slice(0, 200)}`);
-    if (!user) return res.status(401).json({ success: false, error: 'Invalid username or password' });
+    if (!user) { auth.recordLoginFailure(req.ip); return res.status(401).json({ success: false, error: 'Invalid username or password' }); }
+    auth.recordLoginSuccess(req.ip);
     const token = auth.signToken(user);
     auth.setCookie(res, token, reqIsSecure(req));
     res.json({ success: true, user });
@@ -167,12 +188,12 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.get('/auth/tokens', (req, res) => {
+  router.get('/auth/tokens', requireAdmin, (req, res) => {
     if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
     res.json({ success: true, data: auth.getApiTokens() });
   });
 
-  router.post('/auth/tokens', (req, res) => {
+  router.post('/auth/tokens', requireAdmin, (req, res) => {
     if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
     const { name } = req.body;
     if (!name?.trim()) return res.status(400).json({ success: false, error: 'Token name required' });
@@ -184,7 +205,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.delete('/auth/tokens/:id', (req, res) => {
+  router.delete('/auth/tokens/:id', requireAdmin, (req, res) => {
     if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
     try {
       auth.deleteApiToken(req.params.id);
@@ -228,7 +249,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, data: relayController.getAll() });
   });
 
-  router.post('/relay/:index/state', async (req, res) => {
+  router.post('/relay/:index/state', requireAdmin, async (req, res) => {
     const index = parseInt(req.params.index);
     const { on } = req.body;
 
@@ -268,7 +289,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, data });
   });
 
-  router.post('/device/:deviceKey(*)/command', async (req, res) => {
+  router.post('/device/:deviceKey(*)/command', requireAdmin, async (req, res) => {
     if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
     const { sensor, value, on } = req.body;
     const cmdValue = value !== undefined ? value : on; // support both 'value' and legacy 'on'
@@ -411,7 +432,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, plan: readConfigFile().homePlan || { rooms: [] } });
   });
 
-  router.post('/settings/home-plan', (req, res) => {
+  router.post('/settings/home-plan', requireAdmin, (req, res) => {
     const rooms = (Array.isArray(req.body?.rooms) ? req.body.rooms : [])
       .map((r) => ({
         name: String(r.name || '').trim().slice(0, 40),
@@ -484,7 +505,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, data: { currency: cfg.currency || '£', current, next, nextInMinutes } });
   });
 
-  router.post('/settings/tariff', (req, res) => {
+  router.post('/settings/tariff', requireAdmin, (req, res) => {
     const currency = String(req.body?.currency || '£').trim().slice(0, 4);
     const windows = (Array.isArray(req.body?.windows) ? req.body.windows : [])
       .map((w) => ({
@@ -556,7 +577,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, data: { configured: !!gc, connected: !!gc?.isConnected() } });
   });
 
-  router.post('/settings/google-calendar', (req, res) => {
+  router.post('/settings/google-calendar', requireAdmin, (req, res) => {
     const clientId = String(req.body?.clientId || '').trim();
     const clientSecret = String(req.body?.clientSecret || '').trim();
     const calendarId = String(req.body?.calendarId || '').trim() || 'primary';
@@ -597,7 +618,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, ok: String(req.body?.pin || '') === pin });
   });
 
-  router.post('/settings/dashboard-pin', (req, res) => {
+  router.post('/settings/dashboard-pin', requireAdmin, (req, res) => {
     const pin = String(req.body?.pin ?? '').trim();
     if (pin && !/^\d{4,8}$/.test(pin)) {
       return res.status(400).json({ success: false, error: 'PIN must be 4–8 digits' });
@@ -612,7 +633,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/edit-pin', (req, res) => {
+  router.post('/settings/edit-pin', requireAdmin, (req, res) => {
     const pin = String(req.body?.pin ?? '').trim();
     if (pin && !/^\d{4,8}$/.test(pin)) {
       return res.status(400).json({ success: false, error: 'PIN must be 4–8 digits' });
@@ -698,21 +719,21 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     const automation = clients.automation;
 
     router.get('/automation/rules', (req, res) => res.json({ success: true, data: automation.rules }));
-    router.post('/automation/rules', (req, res) => {
+    router.post('/automation/rules', requireAdmin, (req, res) => {
       try { res.json({ success: true, data: automation.saveRule(req.body) }); }
       catch (err) { res.status(400).json({ success: false, error: err.message }); }
     });
-    router.delete('/automation/rules/:id', (req, res) => {
+    router.delete('/automation/rules/:id', requireAdmin, (req, res) => {
       automation.deleteRule(req.params.id);
       res.json({ success: true });
     });
 
     router.get('/automation/scenes', (req, res) => res.json({ success: true, data: automation.scenes }));
-    router.post('/automation/scenes', (req, res) => {
+    router.post('/automation/scenes', requireAdmin, (req, res) => {
       try { res.json({ success: true, data: automation.saveScene(req.body) }); }
       catch (err) { res.status(400).json({ success: false, error: err.message }); }
     });
-    router.delete('/automation/scenes/:id', (req, res) => {
+    router.delete('/automation/scenes/:id', requireAdmin, (req, res) => {
       automation.deleteScene(req.params.id);
       res.json({ success: true });
     });
@@ -723,11 +744,11 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
     // ── Flows (Node-RED-style) ──
     router.get('/automation/flows', (req, res) => res.json({ success: true, data: automation.flows }));
-    router.post('/automation/flows', (req, res) => {
+    router.post('/automation/flows', requireAdmin, (req, res) => {
       try { res.json({ success: true, data: automation.saveFlow(req.body) }); }
       catch (err) { res.status(400).json({ success: false, error: err.message }); }
     });
-    router.delete('/automation/flows/:id', (req, res) => {
+    router.delete('/automation/flows/:id', requireAdmin, (req, res) => {
       automation.deleteFlow(req.params.id);
       res.json({ success: true });
     });
@@ -761,12 +782,12 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
     router.get('/automation/notifications', (req, res) => res.json({ success: true, data: automation.getNotifications() }));
     // External systems (Node-RED, scripts) can push a notification → toast + log
-    router.post('/automation/notifications', (req, res) => {
+    router.post('/automation/notifications', requireAdmin, (req, res) => {
       const { level, message, source } = req.body || {};
       if (!message) return res.status(400).json({ success: false, error: 'message required' });
       res.json({ success: true, data: automation.notify(level || 'info', String(message), source || 'api') });
     });
-    router.delete('/automation/notifications', (req, res) => {
+    router.delete('/automation/notifications', requireAdmin, (req, res) => {
       automation.clearNotifications();
       res.json({ success: true });
     });
@@ -815,7 +836,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // Control an output — body: { state: true | false | "on" | "off" }
-  router.post('/satel/output/:num', async (req, res) => {
+  router.post('/satel/output/:num', requireAdmin, async (req, res) => {
     if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
     try {
       await sensorRegistry.sendCommand(`satel/output/${req.params.num}`, 'state', req.body?.state);
@@ -824,7 +845,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // Arm / disarm a partition
-  router.post('/satel/partition/:num/:action(arm|disarm)', async (req, res) => {
+  router.post('/satel/partition/:num/:action(arm|disarm)', requireAdmin, async (req, res) => {
     if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
     try {
       await sensorRegistry.sendCommand(`satel/partition/${req.params.num}`, 'armed', req.params.action === 'arm');
@@ -888,7 +909,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, data: objectDetection.getModelStatus() });
   });
 
-  router.post('/settings/object-detection/model', async (req, res) => {
+  router.post('/settings/object-detection/model', requireAdmin, async (req, res) => {
     if (!objectDetection) {
       return res.status(503).json({ success: false, error: 'Object detection not running — add at least one camera under objectDetection.cameras first' });
     }
@@ -934,7 +955,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, data: openweather.getForecast() });
   });
 
-  router.post('/sip/open-door', async (req, res) => {
+  router.post('/sip/open-door', requireAdmin, async (req, res) => {
     if (!sipServer) return res.status(503).json({ success: false, error: 'SIP server not enabled' });
     try {
       await sipServer.openDoor();
@@ -991,6 +1012,125 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   router.post('/paging/:pageId/end', (req, res) => {
     if (!pagingManager) return res.status(503).json({ success: false, error: 'Paging not enabled' });
     res.json({ success: pagingManager.endPage(req.params.pageId, 'ended-via-api') });
+  });
+
+  // Voice messages — the "leave a message" counterpart to the live channel
+  // above, for when the target room isn't online (startPage() requires both
+  // sides connected) or the sender just prefers an async note. `from`/`to`
+  // travel as query params since the request body is the raw audio blob.
+  router.post('/paging/message', raw({ type: '*/*', limit: '5mb' }), (req, res) => {
+    if (!pagingManager) return res.status(503).json({ success: false, error: 'Paging not enabled' });
+    const { from, to } = req.query;
+    if (!from || !to) return res.status(400).json({ success: false, error: 'from and to are required' });
+    if (!pagingManager.roomExists(from) || !pagingManager.roomExists(to)) {
+      return res.status(400).json({ success: false, error: 'Unknown paging room' });
+    }
+    if (!req.body?.length) return res.status(400).json({ success: false, error: 'Empty recording' });
+    const message = pagingMessages.add({ from, to, buffer: req.body, mimeType: req.get('content-type') });
+    pagingManager.notifyRoom(to, 'paging:message', { id: message.id, from, to, at: message.at });
+    console.log(`[Paging] Voice message ${from} → ${to} (${message.id}, ${req.body.length}b)`);
+    res.json({ success: true, data: { id: message.id, at: message.at } });
+  });
+
+  router.get('/paging/messages', (req, res) => {
+    if (!pagingManager) return res.status(503).json({ success: false, error: 'Paging not enabled' });
+    const room = req.query.room;
+    if (!room) return res.status(400).json({ success: false, error: 'room is required' });
+    res.json({ success: true, data: pagingMessages.getFor(room) });
+  });
+
+  router.get('/paging/message/:id/audio', (req, res) => {
+    const message = pagingMessages.get(req.params.id);
+    const file = pagingMessages.audioFile(req.params.id);
+    if (!message || !file) return res.status(404).json({ success: false, error: 'Message not found' });
+    res.setHeader('Content-Type', message.mimeType || 'audio/webm');
+    res.sendFile(file);
+  });
+
+  router.delete('/paging/message/:id', (req, res) => {
+    res.json({ success: pagingMessages.remove(req.params.id) });
+  });
+
+  // Voice messages disappear 24h after being left unless kept — this exempts
+  // (or re-exposes) one to/from that expiry.
+  router.post('/paging/message/:id/keep', (req, res) => {
+    const kept = req.body?.keep !== false; // default true — the common case is "keep this one"
+    const item = pagingMessages.setKept(req.params.id, kept);
+    if (!item) return res.status(404).json({ success: false, error: 'Message not found' });
+    res.json({ success: true, data: { id: item.id, kept: item.kept } });
+  });
+
+  // ── AirPlay — play prerecorded audio out to a configured speaker ──────
+  // src/airplay-client.js. Household broadcast feature, same "any
+  // authenticated user" tier as paging/Sonos above — not a config write.
+  router.get('/airplay/speakers', (req, res) => {
+    res.json({ success: true, data: airplayClient ? airplayClient.getSpeakers() : [] });
+  });
+
+  // mDNS scan for AirPlay receivers, independent of whether AirPlay is
+  // enabled/configured yet (see AirplayClient.discover doc comment) — the
+  // Settings UI's "Scan network" button. requireAdmin: nudges a device on
+  // the LAN into responding to a probe, same tier as the config write below.
+  router.get('/airplay/discover', requireAdmin, async (req, res) => {
+    const AirplayClient = require('./airplay-client');
+    const found = await AirplayClient.discover();
+    res.json({ success: true, data: found });
+  });
+
+  // Replay one of the paging voice messages (src/paging-messages.js) out
+  // loud on a speaker — the actual "post prerecorded messages" use case.
+  router.post('/airplay/:id/play-message', async (req, res) => {
+    if (!airplayClient) return res.status(503).json({ success: false, error: 'AirPlay not configured' });
+    const file = pagingMessages.audioFile(req.body?.messageId);
+    if (!file) return res.status(404).json({ success: false, error: 'Voice message not found' });
+    try {
+      await airplayClient.play(req.params.id, file);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(502).json({ success: false, error: err.message });
+    }
+  });
+
+  // Play an arbitrary uploaded audio clip (any format ffmpeg reads) —
+  // written to a scratch temp file only for the duration of playback.
+  router.post('/airplay/:id/play', raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
+    if (!airplayClient) return res.status(503).json({ success: false, error: 'AirPlay not configured' });
+    if (!req.body?.length) return res.status(400).json({ success: false, error: 'Empty audio body' });
+    const tmpFile = path.join(require('os').tmpdir(), `lsh-airplay-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    try {
+      fs.writeFileSync(tmpFile, req.body);
+      await airplayClient.play(req.params.id, tmpFile);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(502).json({ success: false, error: err.message });
+    } finally {
+      fs.unlink(tmpFile, () => {}); // best-effort cleanup, playback has already finished reading it
+    }
+  });
+
+  router.post('/settings/airplay', requireAdmin, (req, res) => {
+    const current = readConfigFile();
+    const { enabled, speakers } = req.body;
+    try {
+      const airplay = { ...current.airplay };
+      if (enabled !== undefined) airplay.enabled = !!enabled;
+      if (Array.isArray(speakers)) {
+        airplay.speakers = speakers
+          .filter((s) => s && s.id && s.host)
+          .map((s) => ({
+            id: String(s.id).trim(),
+            name: String(s.name || s.id).trim(),
+            host: String(s.host).trim(),
+            port: Number(s.port) || 5000,
+            airplay2: s.airplay2 !== false,
+            volume: Math.max(0, Math.min(100, Number(s.volume) || 60)),
+          }));
+      }
+      writeConfigFile({ ...current, airplay });
+      res.json({ success: true, message: 'AirPlay settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   // ── Sonos: URL playback + TTS announcements ───────────────
@@ -1142,7 +1282,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/smartthings-camera/:deviceId/presets', async (req, res) => {
+  router.post('/smartthings-camera/:deviceId/presets', requireAdmin, async (req, res) => {
     const { deviceId } = req.params;
     const name = String(req.body?.name || '').trim();
     if (!name) return res.status(400).json({ success: false, error: 'name required' });
@@ -1154,7 +1294,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/smartthings-camera/:deviceId/presets/:presetId/execute', async (req, res) => {
+  router.post('/smartthings-camera/:deviceId/presets/:presetId/execute', requireAdmin, async (req, res) => {
     const { deviceId, presetId } = req.params;
     try {
       await sendSmartThingsCommand(deviceId, 'cameraPreset', 'execute', [presetId]);
@@ -1164,7 +1304,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.delete('/smartthings-camera/:deviceId/presets/:presetId', async (req, res) => {
+  router.delete('/smartthings-camera/:deviceId/presets/:presetId', requireAdmin, async (req, res) => {
     const { deviceId, presetId } = req.params;
     try {
       await sendSmartThingsCommand(deviceId, 'cameraPreset', 'delete', [presetId]);
@@ -1359,23 +1499,23 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   };
 
-  router.post('/reolink/ptz/:idx', ptzHandler((idx, op, speed) => {
+  router.post('/reolink/ptz/:idx', requireAdmin, ptzHandler((idx, op, speed) => {
     if (!reolink) throw new Error('Reolink unavailable');
     return reolink.ptz(idx, op, speed);
   }));
 
-  router.post('/kenik/ptz/:idx', ptzHandler((idx, op, speed) => {
+  router.post('/kenik/ptz/:idx', requireAdmin, ptzHandler((idx, op, speed) => {
     if (!kenik) throw new Error('KENIK unavailable');
     return kenik.ptz(idx, op, speed);
   }));
 
-  router.post('/axis/ptz/:idx', ptzHandler((idx, op, speed) => {
+  router.post('/axis/ptz/:idx', requireAdmin, ptzHandler((idx, op, speed) => {
     if (!axis) throw new Error('Axis unavailable');
     return axis.ptz(idx, op, speed);
   }));
 
   // Manual `cameras` entries with an `onvif: { host, port, username, password }` section
-  router.post('/camera/ptz/:idx', ptzHandler((idx, op, speed) => {
+  router.post('/camera/ptz/:idx', requireAdmin, ptzHandler((idx, op, speed) => {
     const cam = (readConfigFile().cameras || [])[Number(idx)];
     if (!cam?.onvif?.host) throw new Error('Camera has no ONVIF config');
     return require('./onvif-ptz').ptz(cam.onvif, op, speed);
@@ -1404,18 +1544,18 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       try { res.json({ success: true, data: await backend.list(req.params.idx), writable: !!backend.save }); }
       catch (err) { res.status(502).json({ success: false, error: err.message }); }
     });
-    router.post(`/${prefix}/preset/:idx/:id/goto`, async (req, res) => {
+    router.post(`/${prefix}/preset/:idx/:id/goto`, requireAdmin, async (req, res) => {
       try { await backend.goto(req.params.idx, req.params.id); res.json({ success: true }); }
       catch (err) { res.status(502).json({ success: false, error: err.message }); }
     });
     if (backend.save) {
-      router.post(`/${prefix}/preset/:idx`, async (req, res) => {
+      router.post(`/${prefix}/preset/:idx`, requireAdmin, async (req, res) => {
         try { res.json({ success: true, data: await backend.save(req.params.idx, (req.body || {}).name) }); }
         catch (err) { res.status(502).json({ success: false, error: err.message }); }
       });
     }
     if (backend.remove) {
-      router.delete(`/${prefix}/preset/:idx/:id`, async (req, res) => {
+      router.delete(`/${prefix}/preset/:idx/:id`, requireAdmin, async (req, res) => {
         try { await backend.remove(req.params.idx, req.params.id); res.json({ success: true }); }
         catch (err) { res.status(502).json({ success: false, error: err.message }); }
       });
@@ -1447,7 +1587,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Patrol (Reolink only — the only backend with a documented start/stop
   // call; best-effort, reported unreliable on some models/firmware) ───────
-  router.post('/reolink/patrol/:idx', async (req, res) => {
+  router.post('/reolink/patrol/:idx', requireAdmin, async (req, res) => {
     if (!reolink) return res.status(503).json({ success: false, error: 'Reolink unavailable' });
     const { action, id } = req.body || {};
     if (!['start', 'stop'].includes(action)) {
@@ -1462,7 +1602,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // ── Siren + floodlight (Reolink only) ────────────────────
-  router.post('/reolink/siren/:idx', async (req, res) => {
+  router.post('/reolink/siren/:idx', requireAdmin, async (req, res) => {
     if (!reolink) return res.status(503).json({ success: false, error: 'Reolink unavailable' });
     try { await reolink.triggerSiren(req.params.idx, (req.body || {}).times); res.json({ success: true }); }
     catch (err) { res.status(502).json({ success: false, error: err.message }); }
@@ -1474,7 +1614,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     catch (err) { res.status(502).json({ success: false, error: err.message }); }
   });
 
-  router.post('/reolink/floodlight/:idx', async (req, res) => {
+  router.post('/reolink/floodlight/:idx', requireAdmin, async (req, res) => {
     if (!reolink) return res.status(503).json({ success: false, error: 'Reolink unavailable' });
     const { on } = req.body || {};
     if (typeof on !== 'boolean') return res.status(400).json({ success: false, error: 'Body must include on: true|false' });
@@ -1504,7 +1644,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       (idx, mode) => { if (!reolink) throw new Error('Reolink unavailable'); return reolink.setIr(idx, mode); },
     );
     router.get('/reolink/ir/:idx', h.get);
-    router.post('/reolink/ir/:idx', h.post);
+    router.post('/reolink/ir/:idx', requireAdmin, h.post);
   }
   {
     const h = irHandler(
@@ -1512,7 +1652,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       (idx, mode) => { if (!kenik) throw new Error('KENIK unavailable'); return kenik.setIr(idx, mode); },
     );
     router.get('/kenik/ir/:idx', h.get);
-    router.post('/kenik/ir/:idx', h.post);
+    router.post('/kenik/ir/:idx', requireAdmin, h.post);
   }
   {
     const h = irHandler(
@@ -1520,7 +1660,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       (idx, mode) => { if (!axis) throw new Error('Axis unavailable'); return axis.setIr(idx, mode); },
     );
     router.get('/axis/ir/:idx', h.get);
-    router.post('/axis/ir/:idx', h.post);
+    router.post('/axis/ir/:idx', requireAdmin, h.post);
   }
   {
     const onvifImaging = () => require('./onvif-imaging');
@@ -1529,7 +1669,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       (idx, mode) => onvifImaging().setIr(onvifCfgFor(idx), mode),
     );
     router.get('/camera/ir/:idx', h.get);
-    router.post('/camera/ir/:idx', h.post);
+    router.post('/camera/ir/:idx', requireAdmin, h.post);
   }
 
   // WS-Discovery scan for ONVIF cameras on the LAN — used by the Settings
@@ -1545,7 +1685,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // Given ONVIF credentials (from discovery or typed in by hand), fetch the
   // camera's real RTSP/snapshot URIs — the Settings "Fetch via ONVIF" button.
-  router.post('/onvif/probe', async (req, res) => {
+  router.post('/onvif/probe', requireAdmin, async (req, res) => {
     const { host, port, username, password } = req.body || {};
     if (!host) return res.status(400).json({ success: false, error: 'host is required' });
     try {
@@ -1584,7 +1724,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       });
   });
 
-  router.post('/settings/cameras', (req, res) => {
+  router.post('/settings/cameras', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const cameras = req.body;
     if (!Array.isArray(cameras)) {
@@ -1619,7 +1759,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/virtual', (req, res) => {
+  router.post('/settings/virtual', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const devices = req.body;
     if (!Array.isArray(devices)) {
@@ -1635,7 +1775,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // ── Reolink PoE cameras ───────────────────────────────────
-  router.post('/settings/reolink', (req, res) => {
+  router.post('/settings/reolink', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const cams = req.body?.cameras ?? req.body;
     if (!Array.isArray(cams)) return res.status(400).json({ success: false, error: 'Body must be an array of cameras' });
@@ -1666,7 +1806,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // Test a single Reolink camera by pulling one snapshot
-  router.post('/settings/test-reolink', async (req, res) => {
+  router.post('/settings/test-reolink', requireAdmin, async (req, res) => {
     const cam = req.body || {};
     if (!cam.host) return res.status(400).json({ success: false, error: 'host is required' });
     try {
@@ -1679,7 +1819,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // ── MOBOTIX ───────────────────────────────────────────────
-  router.post('/settings/mobotix', (req, res) => {
+  router.post('/settings/mobotix', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const cams = req.body?.cameras ?? req.body;
     if (!Array.isArray(cams)) return res.status(400).json({ success: false, error: 'Body must include a cameras array' });
@@ -1707,7 +1847,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-mobotix', async (req, res) => {
+  router.post('/settings/test-mobotix', requireAdmin, async (req, res) => {
     const cam = req.body || {};
     if (!cam.host) return res.status(400).json({ success: false, error: 'host is required' });
     try {
@@ -1719,7 +1859,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // ── Axis (VAPIX) ──────────────────────────────────────────
-  router.post('/settings/axis', (req, res) => {
+  router.post('/settings/axis', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const cams = req.body?.cameras ?? req.body;
     if (!Array.isArray(cams)) return res.status(400).json({ success: false, error: 'Body must include a cameras array' });
@@ -1749,7 +1889,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-axis', async (req, res) => {
+  router.post('/settings/test-axis', requireAdmin, async (req, res) => {
     const cam = req.body || {};
     if (!cam.host) return res.status(400).json({ success: false, error: 'host is required' });
     try {
@@ -1766,7 +1906,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, data: store.getGrouped().solaredge });
   });
 
-  router.post('/settings/test-solaredge', async (req, res) => {
+  router.post('/settings/test-solaredge', requireAdmin, async (req, res) => {
     const { siteId, apiKey } = req.body;
     if (!siteId || !apiKey) {
       return res.status(400).json({ success: false, error: 'siteId and apiKey are required' });
@@ -1794,7 +1934,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/solaredge', (req, res) => {
+  router.post('/settings/solaredge', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { siteId, apiKey } = req.body;
     const updated = {
@@ -1814,7 +1954,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── SmartThings ───────────────────────────────────────────
 
-  router.post('/settings/test-smartthings', async (req, res) => {
+  router.post('/settings/test-smartthings', requireAdmin, async (req, res) => {
     const { token } = req.body;
     if (!token) return res.status(400).json({ success: false, error: 'token is required' });
     try {
@@ -1833,15 +1973,16 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/smartthings', (req, res) => {
+  router.post('/settings/smartthings', requireAdmin, (req, res) => {
     const current = readConfigFile();
-    const { token, deviceIds, webhookUrl } = req.body;
+    const { token, deviceIds, webhookUrl, webhookSecret } = req.body;
     const updated = {
       ...current,
       smartthings: {
         token: (token && !token.includes('•')) ? token : (current.smartthings?.token ?? ''),
         deviceIds: Array.isArray(deviceIds) ? deviceIds : (current.smartthings?.deviceIds ?? []),
         webhookUrl: webhookUrl || (current.smartthings?.webhookUrl ?? ''),
+        webhookSecret: (webhookSecret && !webhookSecret.includes('•')) ? webhookSecret : (current.smartthings?.webhookSecret ?? ''),
       },
     };
     try {
@@ -1852,10 +1993,28 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  // SmartThings webhook endpoint for real-time state updates
+  // SmartThings webhook endpoint for real-time state updates. Public (see
+  // PUBLIC_API in auth.js) since SmartThings' servers, not a logged-in
+  // browser, call it — so it must verify itself instead of relying on the
+  // session/token auth every other route gets. A shared secret (set in
+  // Settings → SmartThings, and configured as a header/query param on the
+  // SmartThings-side HTTP action that calls this URL) is required before any
+  // event is trusted; without one, an internet-reachable install would let
+  // anyone who finds this URL spoof arbitrary sensor state for real devices.
   router.post('/webhooks/smartthings', (req, res) => {
     const smartThings = clients.smartThings; // see note on the /take route above
     if (!smartThings) return res.status(503).json({ success: false, error: 'SmartThings not configured' });
+
+    const configuredSecret = readConfigFile().smartthings?.webhookSecret || '';
+    if (!configuredSecret) {
+      console.warn('[SmartThings Webhook] Rejected — no webhookSecret configured (Settings → SmartThings)');
+      return res.status(503).json({ success: false, error: 'Webhook secret not configured — set one in Settings → SmartThings' });
+    }
+    const suppliedSecret = req.headers['x-webhook-secret'] || req.query?.secret || '';
+    if (suppliedSecret !== configuredSecret) {
+      console.warn(`[SmartThings Webhook] Rejected — bad secret from ${req.ip}`);
+      return res.status(401).json({ success: false, error: 'Invalid webhook secret' });
+    }
 
     try {
       smartThings.handleWebhookEvent(req.body);
@@ -1868,7 +2027,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Satel ────────────────────────────────────────────────
 
-  router.post('/settings/test-satel', async (req, res) => {
+  router.post('/settings/test-satel', requireAdmin, async (req, res) => {
     const { host, port } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'Host is required' });
     const net = require('net');
@@ -1883,7 +2042,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     sock.on('error', err => { clearTimeout(timer); res.json({ success: false, error: err.message }); });
   });
 
-  router.post('/settings/satel', (req, res) => {
+  router.post('/settings/satel', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, armCode, zoneCount, partitions, zoneNames, partitionNames, outputCount, outputNames } = req.body;
     const updated = {
@@ -1913,7 +2072,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── UniFi Protect ─────────────────────────────────────────
 
-  router.post('/settings/test-unifi', async (req, res) => {
+  router.post('/settings/test-unifi', requireAdmin, async (req, res) => {
     const https = require('https');
     const { host, username, password, apiKey } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'Host is required' });
@@ -1942,7 +2101,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/unifi', (req, res) => {
+  router.post('/settings/unifi', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, username, password, apiKey } = req.body;
     const updated = {
@@ -2018,7 +2177,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   }
 
   // ── VRM test + partial save ───────────────────────────────
-  router.post('/settings/test-vrm', async (req, res) => {
+  router.post('/settings/test-vrm', requireAdmin, async (req, res) => {
     const { email, password, apiToken, installationId } = req.body;
     try {
       const { authHeader } = await vrmResolveAuth({ apiToken, email, password });
@@ -2034,7 +2193,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-vrm-live', async (req, res) => {
+  router.post('/settings/test-vrm-live', requireAdmin, async (req, res) => {
     const { email, password, apiToken, installationId } = req.body;
     if (!installationId) {
       return res.status(400).json({ success: false, error: 'Installation ID is required' });
@@ -2090,7 +2249,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/vrm', (req, res) => {
+  router.post('/settings/vrm', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { email, password, apiToken, installationId } = req.body;
     const updated = {
@@ -2114,7 +2273,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // ── Config backup / restore ───────────────────────────────
-  router.get('/settings/export', (req, res) => {
+  router.get('/settings/export', requireAdmin, (req, res) => {
     const cfg = readConfigFile();
     const filename = `victron-config-${new Date().toISOString().slice(0, 10)}.json`;
     res.setHeader('Content-Type', 'application/json');
@@ -2122,7 +2281,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.send(JSON.stringify(cfg, null, 2));
   });
 
-  router.post('/settings/import', (req, res) => {
+  router.post('/settings/import', requireAdmin, (req, res) => {
     const body = req.body;
     // Basic structure validation
     const required = ['mqtt', 'vrm', 'server', 'homekit'];
@@ -2168,7 +2327,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     } });
   });
 
-  router.post('/settings/ui', (req, res) => {
+  router.post('/settings/ui', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { hideMqtt, hideLogs, customCss } = req.body;
     try {
@@ -2207,9 +2366,21 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (safe.editPin) safe.editPin = '••••••••';
     if (safe.dashboardPin) safe.dashboardPin = '••••••••';
     if (safe.smartthings?.clientSecret) safe.smartthings.clientSecret = '••••••••';
+    if (safe.smartthings?.webhookSecret) safe.smartthings.webhookSecret = '••••••••';
     if (safe.satel?.armCode) safe.satel.armCode = '••••••••';
     if (safe.unifi?.password) safe.unifi.password = '••••••••';
     if (safe.unifi?.apiKey) safe.unifi.apiKey = '••••••••';
+    if (safe.googleCalendar?.clientSecret) safe.googleCalendar.clientSecret = '••••••••';
+    // Defensive — these integrations have no write route in this file (config.json-only),
+    // but redact anyway in case a secret ends up in one of these fields by hand-editing.
+    if (safe.unifiAccess?.password) safe.unifiAccess.password = '••••••••';
+    if (safe.unifiAccess?.apiKey) safe.unifiAccess.apiKey = '••••••••';
+    if (safe.aqara?.token) safe.aqara.token = '••••••••';
+    if (safe.ampio?.password) safe.ampio.password = '••••••••';
+    if (safe.smarttub?.password) safe.smarttub.password = '••••••••';
+    if (safe.zway?.password) safe.zway.password = '••••••••';
+    if (safe.wirenboard?.password) safe.wirenboard.password = '••••••••';
+    if (safe.kenik?.password) safe.kenik.password = '••••••••';
     if (safe.loxone?.password)  safe.loxone.password  = '••••••••';
     if (safe.dirigera?.token)   safe.dirigera.token   = '••••••••';
     if (safe.tradfri?.psk)      safe.tradfri.psk      = '••••••••';
@@ -2274,7 +2445,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, data: safe });
   });
 
-  router.post('/settings', (req, res) => {
+  router.post('/settings', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const body = req.body;
 
@@ -2330,7 +2501,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-mqtt', async (req, res) => {
+  router.post('/settings/test-mqtt', requireAdmin, async (req, res) => {
     const { host, port } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host required' });
 
@@ -2357,7 +2528,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── MongoDB ────────────────────────────────────────────────────────────
 
-  router.post('/settings/mongo', (req, res) => {
+  router.post('/settings/mongo', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { uri, db } = req.body;
     // masked (dots) means "keep the stored URI"; empty means disable Mongo
@@ -2373,7 +2544,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-mongo', async (req, res) => {
+  router.post('/settings/test-mongo', requireAdmin, async (req, res) => {
     let { uri, db } = req.body;
     if (!uri || uri.includes('•')) uri = readConfigFile().mongo?.uri || '';
     if (!uri) return res.status(400).json({ success: false, error: 'Connection URI is required' });
@@ -2396,7 +2567,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Dreame ─────────────────────────────────────────────────────────────
 
-  router.post('/settings/test-dreame', async (req, res) => {
+  router.post('/settings/test-dreame', requireAdmin, async (req, res) => {
     const { host, token } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host is required' });
     if (!token || token.includes('•')) return res.status(400).json({ success: false, error: 'token is required' });
@@ -2424,7 +2595,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/dreame', (req, res) => {
+  router.post('/settings/dreame', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const devices = req.body;
     if (!Array.isArray(devices)) return res.status(400).json({ success: false, error: 'Expected array of devices' });
@@ -2447,7 +2618,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── MC6 Thermostats ────────────────────────────────────────────────────
 
-  router.post('/settings/mc6', (req, res) => {
+  router.post('/settings/mc6', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { broker, port, username, password, devices } = req.body;
     if (!broker) return res.status(400).json({ success: false, error: 'broker is required' });
@@ -2495,7 +2666,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/mc6/:mac/timer', (req, res) => {
+  router.post('/mc6/:mac/timer', requireAdmin, (req, res) => {
     const { minutes, action } = req.body;
     try {
       const data = mc6Client().setCountdownTimer(normalizeMac(req.params.mac), parseFloat(minutes), action || 'off');
@@ -2505,7 +2676,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.delete('/mc6/:mac/timer', (req, res) => {
+  router.delete('/mc6/:mac/timer', requireAdmin, (req, res) => {
     try {
       mc6Client().clearCountdownTimer(normalizeMac(req.params.mac));
       res.json({ success: true });
@@ -2514,7 +2685,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/mc6/:mac/schedule', (req, res) => {
+  router.post('/mc6/:mac/schedule', requireAdmin, (req, res) => {
     const { time, action, days, enabled } = req.body;
     try {
       const entry = mc6Client().addDailySchedule(normalizeMac(req.params.mac), { time, action, days, enabled });
@@ -2524,7 +2695,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.delete('/mc6/:mac/schedule/:id', (req, res) => {
+  router.delete('/mc6/:mac/schedule/:id', requireAdmin, (req, res) => {
     try {
       const removed = mc6Client().removeDailySchedule(normalizeMac(req.params.mac), req.params.id);
       if (!removed) return res.status(404).json({ success: false, error: 'Schedule entry not found' });
@@ -2536,7 +2707,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Roborock ───────────────────────────────────────────────────────────
 
-  router.post('/settings/test-roborock', async (req, res) => {
+  router.post('/settings/test-roborock', requireAdmin, async (req, res) => {
     const { host, token } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host is required' });
     if (!token || token.includes('•')) return res.status(400).json({ success: false, error: 'token is required' });
@@ -2564,7 +2735,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/roborock', (req, res) => {
+  router.post('/settings/roborock', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const devices = req.body;
     if (!Array.isArray(devices)) return res.status(400).json({ success: false, error: 'Expected array of devices' });
@@ -2585,7 +2756,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // Roborock cloud (Roborock-app devices, e.g. Q Revo) — login test + save
-  router.post('/settings/test-roborock-cloud', async (req, res) => {
+  router.post('/settings/test-roborock-cloud', requireAdmin, async (req, res) => {
     const current = readConfigFile();
     const { email } = req.body;
     let { password } = req.body;
@@ -2608,7 +2779,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/roborock-cloud', (req, res) => {
+  router.post('/settings/roborock-cloud', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { email, duid } = req.body;
     let { password } = req.body;
@@ -2625,7 +2796,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // Landroid (Worx / Kress / Landxcape robot mower) — login test + save
-  router.post('/settings/test-landroid', async (req, res) => {
+  router.post('/settings/test-landroid', requireAdmin, async (req, res) => {
     const current = readConfigFile();
     const { brand, email } = req.body;
     let { password } = req.body;
@@ -2648,7 +2819,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/landroid', (req, res) => {
+  router.post('/settings/landroid', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { brand, email, pollInterval } = req.body;
     let { password } = req.body;
@@ -2739,7 +2910,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // Start a room/segment clean. Body: { segments: [16, 17] } or { segment: 16 }.
-  router.post('/roborock/:duid/clean-room', async (req, res) => {
+  router.post('/roborock/:duid/clean-room', requireAdmin, async (req, res) => {
     const rc = clients.roborockCloud;
     if (!rc) return res.status(503).json({ success: false, error: 'Roborock cloud client not running' });
     const segs = req.body.segments ?? req.body.segment;
@@ -2826,7 +2997,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Homey ──────────────────────────────────────────────────────────────
 
-  router.post('/settings/test-homey', async (req, res) => {
+  router.post('/settings/test-homey', requireAdmin, async (req, res) => {
     const { mode = 'local', host, homeyId, token } = req.body;
     if (!token) return res.status(400).json({ success: false, error: 'token is required' });
 
@@ -2853,7 +3024,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/homeconnect', (req, res) => {
+  router.post('/settings/homeconnect', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { clientId, clientSecret, simulator } = req.body;
     try {
@@ -2872,7 +3043,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/miele', (req, res) => {
+  router.post('/settings/miele', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { clientId, clientSecret, username, password, country } = req.body;
     try {
@@ -2894,7 +3065,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // ── OpenWeatherMap ───────────────────────────────────────────────────────
-  router.post('/settings/openweather', (req, res) => {
+  router.post('/settings/openweather', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { lat, lon, name, units, pollInterval } = req.body;
     let { apiKey } = req.body;
@@ -2917,7 +3088,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-openweather', async (req, res) => {
+  router.post('/settings/test-openweather', requireAdmin, async (req, res) => {
     const current = readConfigFile();
     let { apiKey, lat, lon, units } = req.body;
     if (!apiKey || apiKey.includes('•')) apiKey = current.openweather?.apiKey || '';
@@ -2945,7 +3116,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // ── MCP Server ───────────────────────────────────────────────────────────
-  router.post('/settings/mcp', (req, res) => {
+  router.post('/settings/mcp', requireAdmin, (req, res) => {
     const current = readConfigFile();
     try {
       writeConfigFile({ ...current, mcp: { enabled: !!req.body.enabled } });
@@ -2956,7 +3127,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // ── Airly ────────────────────────────────────────────────────────────────
-  router.post('/settings/airly', (req, res) => {
+  router.post('/settings/airly', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { lat, lon, name, pollInterval } = req.body;
     let { apiKey } = req.body;
@@ -2978,7 +3149,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-airly', async (req, res) => {
+  router.post('/settings/test-airly', requireAdmin, async (req, res) => {
     const current = readConfigFile();
     let { apiKey, lat, lon } = req.body;
     if (!apiKey || apiKey.includes('•')) apiKey = current.airly?.apiKey || '';
@@ -3006,7 +3177,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Viessmann ViCare ───────────────────────────────────────────────────────
 
-  router.post('/settings/vicare', (req, res) => {
+  router.post('/settings/vicare', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { user, password, clientId, redirectUri, pollInterval } = req.body;
     try {
@@ -3028,7 +3199,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // ── Thermomix / Cookidoo ────────────────────────────────────
-  router.post('/settings/thermomix', (req, res) => {
+  router.post('/settings/thermomix', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { email, password, country, pollSeconds } = req.body;
     try {
@@ -3049,7 +3220,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   });
 
   // ── Grenton (GATE HTTP) ─────────────────────────────────────
-  router.post('/settings/grenton', (req, res) => {
+  router.post('/settings/grenton', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, path: gpath, token, pollInterval, devices } = req.body;
     if (!Array.isArray(devices)) return res.status(400).json({ success: false, error: 'devices array is required' });
@@ -3088,7 +3259,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── WLED ─────────────────────────────────────────────────────────────────────
 
-  router.post('/settings/wled', (req, res) => {
+  router.post('/settings/wled', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const devs = req.body?.devices ?? req.body;
     if (!Array.isArray(devs)) return res.status(400).json({ success: false, error: 'Body must include a devices array' });
@@ -3112,7 +3283,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-wled', async (req, res) => {
+  router.post('/settings/test-wled', requireAdmin, async (req, res) => {
     const d = req.body || {};
     if (!d.host) return res.status(400).json({ success: false, error: 'host is required' });
     try {
@@ -3125,7 +3296,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/homey', (req, res) => {
+  router.post('/settings/homey', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { mode, host, homeyId, token, pollInterval } = req.body;
     try {
@@ -3147,7 +3318,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Somfy ──────────────────────────────────────────────────────────────
 
-  router.post('/settings/test-somfy', async (req, res) => {
+  router.post('/settings/test-somfy', requireAdmin, async (req, res) => {
     const { mode, region = 'europe', host, port = 8443, email, password } = req.body;
     const https = require('https');
 
@@ -3213,7 +3384,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/somfy', (req, res) => {
+  router.post('/settings/somfy', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { mode, region, host, port, token, email, password, devices, pollInterval } = req.body;
     try {
@@ -3239,7 +3410,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Bayrol ─────────────────────────────────────────────────────────────
 
-  router.post('/settings/test-bayrol', async (req, res) => {
+  router.post('/settings/test-bayrol', requireAdmin, async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ success: false, error: 'email and password are required' });
     const https = require('https');
@@ -3287,7 +3458,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/bayrol', (req, res) => {
+  router.post('/settings/bayrol', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { poolName, username, password, pollInterval } = req.body;
     try {
@@ -3308,7 +3479,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Loxone ─────────────────────────────────────────────────────────────
 
-  router.post('/settings/test-loxone', async (req, res) => {
+  router.post('/settings/test-loxone', requireAdmin, async (req, res) => {
     const { host, port = 80, username, password } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host is required' });
     const auth = Buffer.from(`${username || 'admin'}:${password || ''}`).toString('base64');
@@ -3334,7 +3505,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     reqHttp.on('timeout', () => { reqHttp.destroy(); res.json({ success: false, error: 'Connection timed out' }); });
   });
 
-  router.post('/settings/loxone', (req, res) => {
+  router.post('/settings/loxone', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, username, password } = req.body;
     try {
@@ -3353,7 +3524,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/loxone-out', (req, res) => {
+  router.post('/settings/loxone-out', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, username, password, mappings } = req.body;
     try {
@@ -3373,7 +3544,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/fibaro-out', (req, res) => {
+  router.post('/settings/fibaro-out', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, username, password, mappings } = req.body;
     try {
@@ -3393,7 +3564,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-fibaro-out', async (req, res) => {
+  router.post('/settings/test-fibaro-out', requireAdmin, async (req, res) => {
     const http = require('http');
     const { host, port, username, password } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'Host is required' });
@@ -3422,7 +3593,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/auxair', (req, res) => {
+  router.post('/settings/auxair', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { region, email, password, pollInterval } = req.body;
     try {
@@ -3441,7 +3612,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/denon', (req, res) => {
+  router.post('/settings/denon', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, name, maxVolume, inputs } = req.body;
     try {
@@ -3464,7 +3635,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-denon', async (req, res) => {
+  router.post('/settings/test-denon', requireAdmin, async (req, res) => {
     const net  = require('net');
     const host = req.body.host || readConfigFile().denon?.host || '';
     const port = parseInt(req.body.port) || 23;
@@ -3493,7 +3664,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     });
   });
 
-  router.post('/settings/sony', (req, res) => {
+  router.post('/settings/sony', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, name, maxVolume, pollInterval, inputs } = req.body;
     let { psk } = req.body;
@@ -3516,7 +3687,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-sony', async (req, res) => {
+  router.post('/settings/test-sony', requireAdmin, async (req, res) => {
     const current = readConfigFile();
     const host = req.body.host || current.sony?.host || '';
     let psk    = req.body.psk;
@@ -3542,7 +3713,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/sonos', (req, res) => {
+  router.post('/settings/sonos', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { hosts, discover, pollInterval } = req.body;
     try {
@@ -3563,7 +3734,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-boneio', async (req, res) => {
+  router.post('/settings/test-boneio', requireAdmin, async (req, res) => {
     const mqttLib = require('mqtt');
     const cfg     = readConfigFile();
     const host    = req.body.host || cfg.mqtt?.host || 'localhost';
@@ -3582,7 +3753,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     });
   });
 
-  router.post('/settings/boneio', (req, res) => {
+  router.post('/settings/boneio', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port } = req.body;
     try {
@@ -3596,7 +3767,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/sip', (req, res) => {
+  router.post('/settings/sip', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { enabled, port, domain, allowFrom, cameraName, doorRelay, doorPulseMs, autoAnswer } = req.body;
     try {
@@ -3619,7 +3790,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // The SmartThings client (server.js) writes its current OAuth bearer token
   // here every 24h — the Aeotec 360 is a SmartThings cloud device (no local
   // RTSP), so this is the token needed for direct SmartThings API calls.
-  router.get('/settings/smartthings-token', (req, res) => {
+  router.get('/settings/smartthings-token', requireAdmin, (req, res) => {
     const tokFile = path.join(__dirname, '..', 'persist', 'smartthings-token-latest.txt');
     try {
       const [token, deliveredLine] = fs.readFileSync(tokFile, 'utf8').trim().split('\n');
@@ -3630,7 +3801,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-aeotec', async (req, res) => {
+  router.post('/settings/test-aeotec', requireAdmin, async (req, res) => {
     const { ip, username = 'admin', password = '' } = req.body;
     if (!ip) return res.status(400).json({ success: false, error: 'IP address required' });
     const http = require('http');
@@ -3657,7 +3828,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/scan-snapshot', async (req, res) => {
+  router.post('/settings/scan-snapshot', requireAdmin, async (req, res) => {
     const { ip, username = '', password = '' } = req.body;
     if (!ip) return res.status(400).json({ success: false, error: 'IP address required' });
 
@@ -3703,7 +3874,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-dirigera', async (req, res) => {
+  router.post('/settings/test-dirigera', requireAdmin, async (req, res) => {
     const { host, token } = req.body;
     if (!host || !token) return res.status(400).json({ success: false, error: 'host and token required' });
     const https = require('https');
@@ -3731,7 +3902,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/dirigera', (req, res) => {
+  router.post('/settings/dirigera', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, token } = req.body;
     try {
@@ -3745,7 +3916,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/sip', (req, res) => {
+  router.post('/settings/sip', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { wsUrl, username, domain, password, displayName, dtmfUnlock, relayIndex } = req.body;
     try {
@@ -3766,7 +3937,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/paging', (req, res) => {
+  router.post('/settings/paging', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { enabled, rooms } = req.body;
     try {
@@ -3784,7 +3955,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/tradfri', (req, res) => {
+  router.post('/settings/tradfri', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, securityCode, identity, psk } = req.body;
     try {
@@ -3800,7 +3971,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-shelly', async (req, res) => {
+  router.post('/settings/test-shelly', requireAdmin, async (req, res) => {
     const { host, username, password } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host is required' });
     const http = require('http');
@@ -3826,7 +3997,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/shelly', (req, res) => {
+  router.post('/settings/shelly', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const devices = req.body;
     if (!Array.isArray(devices)) return res.status(400).json({ success: false, error: 'Expected array of devices' });
@@ -3848,7 +4019,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Waveshare Modbus TCP ───────────────────────────────────────────────
 
-  router.post('/settings/test-waveshare', async (req, res) => {
+  router.post('/settings/test-waveshare', requireAdmin, async (req, res) => {
     const { host, port = 502, slaveId = 1 } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host is required' });
     const net = require('net');
@@ -3888,7 +4059,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     });
   });
 
-  router.post('/settings/waveshare', (req, res) => {
+  router.post('/settings/waveshare', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const devices = req.body;
     if (!Array.isArray(devices)) return res.status(400).json({ success: false, error: 'Expected array of devices' });
@@ -3915,7 +4086,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json(bl.getAllCodes());
   });
 
-  router.post('/broadlink/learn/ir', async (req, res) => {
+  router.post('/broadlink/learn/ir', requireAdmin, async (req, res) => {
     const bl = clients.broadlink;
     if (!bl) return res.status(503).json({ success: false, error: 'BroadLink not configured' });
     const { host, name } = req.body;
@@ -3933,7 +4104,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.end();
   });
 
-  router.post('/broadlink/learn/rf', async (req, res) => {
+  router.post('/broadlink/learn/rf', requireAdmin, async (req, res) => {
     const bl = clients.broadlink;
     if (!bl) return res.status(503).json({ success: false, error: 'BroadLink not configured' });
     const { host, name } = req.body;
@@ -3950,7 +4121,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.end();
   });
 
-  router.post('/broadlink/send', async (req, res) => {
+  router.post('/broadlink/send', requireAdmin, async (req, res) => {
     const bl = clients.broadlink;
     if (!bl) return res.status(503).json({ success: false, error: 'BroadLink not configured' });
     const { host, name } = req.body;
@@ -3963,7 +4134,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.delete('/broadlink/codes', (req, res) => {
+  router.delete('/broadlink/codes', requireAdmin, (req, res) => {
     const bl = clients.broadlink;
     if (!bl) return res.status(503).json({ success: false, error: 'BroadLink not configured' });
     const { host, name } = req.body;
@@ -3972,7 +4143,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true });
   });
 
-  router.post('/settings/test-broadlink', (req, res) => {
+  router.post('/settings/test-broadlink', requireAdmin, (req, res) => {
     const { host } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host required' });
     const dgram = require('dgram');
@@ -3991,7 +4162,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     sock.send(probe, 80, host);
   });
 
-  router.post('/settings/broadlink', (req, res) => {
+  router.post('/settings/broadlink', requireAdmin, (req, res) => {
     const current  = readConfigFile();
     const devices  = req.body;
     if (!Array.isArray(devices)) return res.status(400).json({ success: false, error: 'Expected array' });
@@ -4010,7 +4181,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── ESPHome ──────────────────────────────────────────────────────────
 
-  router.post('/settings/test-esphome', async (req, res) => {
+  router.post('/settings/test-esphome', requireAdmin, async (req, res) => {
     const { host, port = 80, password } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host required' });
     const headers = { 'Accept': 'text/event-stream' };
@@ -4034,7 +4205,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     req2.on('timeout', () => { req2.destroy(); if (!res.headersSent) res.json({ success: false, error: `Cannot reach ${host}:${port}` }); });
   });
 
-  router.post('/settings/esphome', (req, res) => {
+  router.post('/settings/esphome', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const devices = req.body;
     if (!Array.isArray(devices)) return res.status(400).json({ success: false, error: 'Expected array' });
@@ -4057,7 +4228,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // ── LG ThinQ ─────────────────────────────────────────────────────────
 
   // One-time login to fetch tokens + user number (password never stored)
-  router.post('/settings/lgthinq-login', async (req, res) => {
+  router.post('/settings/lgthinq-login', requireAdmin, async (req, res) => {
     const { username, password, country = 'EU' } = req.body;
     if (!username || !password) return res.status(400).json({ success: false, error: 'Email and password required' });
 
@@ -4135,7 +4306,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/test-lgthinq', async (req, res) => {
+  router.post('/settings/test-lgthinq', requireAdmin, async (req, res) => {
     const { country = 'US', lang } = req.body;
     // Probe the LG gateway — no credentials needed, just verify connectivity
     const https   = require('https');
@@ -4175,7 +4346,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     req2.on('timeout', () => { req2.destroy(); if (!res.headersSent) res.json({ success: false, error: 'Connection timed out' }); });
   });
 
-  router.post('/settings/lgthinq', (req, res) => {
+  router.post('/settings/lgthinq', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { access_token, refresh_token, user_number, country, lang } = req.body;
     try {
@@ -4211,7 +4382,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Fibaro Home Center ────────────────────────────────────────────────
 
-  router.post('/settings/test-fibaro', async (req, res) => {
+  router.post('/settings/test-fibaro', requireAdmin, async (req, res) => {
     const { host, port = 80, username = 'admin', password = '' } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host is required' });
     const auth = Buffer.from(`${username}:${password}`).toString('base64');
@@ -4237,7 +4408,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     reqHttp.on('timeout', () => { reqHttp.destroy(); res.json({ success: false, error: 'Connection timed out' }); });
   });
 
-  router.post('/settings/fibaro', (req, res) => {
+  router.post('/settings/fibaro', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, username, password } = req.body;
     try {
@@ -4300,7 +4471,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── SmartBob ──────────────────────────────────────────────────────────
 
-  router.post('/settings/test-smartbob', (req, res) => {
+  router.post('/settings/test-smartbob', requireAdmin, (req, res) => {
     const { host, port = 1883 } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host required' });
     const net = require('net');
@@ -4317,7 +4488,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     sock.on('timeout', ()  => finish(false, `Connection to ${host}:${port} timed out`));
   });
 
-  router.post('/settings/smartbob', (req, res) => {
+  router.post('/settings/smartbob', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, name, username, password, entities } = req.body;
     const sanitized = (entities || []).map(e => ({
@@ -4350,7 +4521,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Arduino MQTT ──────────────────────────────────────────────────────
 
-  router.post('/settings/arduino', (req, res) => {
+  router.post('/settings/arduino', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, username, password, devices } = req.body;
     let parsed = [];
@@ -4399,7 +4570,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Suppla ────────────────────────────────────────────────────────────
 
-  router.post('/settings/test-suppla', async (req, res) => {
+  router.post('/settings/test-suppla', requireAdmin, async (req, res) => {
     const https = require('https');
     const http  = require('http');
     const { token, server = 'https://cloud.supla.org' } = req.body;
@@ -4434,7 +4605,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/settings/suppla', (req, res) => {
+  router.post('/settings/suppla', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { token, server, pollInterval } = req.body;
     try {
@@ -4454,7 +4625,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── KNX ───────────────────────────────────────────────────────────────
 
-  router.post('/settings/test-knx', (req, res) => {
+  router.post('/settings/test-knx', requireAdmin, (req, res) => {
     const { host, port = 3671 } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host required' });
     const net = require('net');
@@ -4471,7 +4642,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     sock.on('timeout', () => finish(false, `Connection to ${host}:${port} timed out`));
   });
 
-  router.post('/settings/knx', (req, res) => {
+  router.post('/settings/knx', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, groupAddresses } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host required' });
@@ -4494,7 +4665,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── Domatiq CAN bus ──────────────────────────────────────────────────────
 
-  router.post('/settings/test-domatiq', (req, res) => {
+  router.post('/settings/test-domatiq', requireAdmin, (req, res) => {
     const { host, port = 10001 } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host required' });
     const net = require('net');
@@ -4511,7 +4682,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     sock.on('timeout', () => finish(false, `Connection to ${host}:${port} timed out`));
   });
 
-  router.post('/settings/domatiq', (req, res) => {
+  router.post('/settings/domatiq', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, modules } = req.body;
     if (!host) return res.status(400).json({ success: false, error: 'host required' });
@@ -4534,7 +4705,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, enabled: true, streams: ffmpegRtsp.getStreams() });
   });
 
-  router.post('/settings/ffmpeg-rtsp', (req, res) => {
+  router.post('/settings/ffmpeg-rtsp', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { enabled, basePort, ffmpegPath } = req.body;
     try {
@@ -4567,18 +4738,18 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, name, lines });
   });
 
-  router.delete('/logs/:name', (req, res) => {
+  router.delete('/logs/:name', requireAdmin, (req, res) => {
     const name = req.params.name.replace(/[^a-z0-9_-]/gi, '');
     logger.clear(name);
     res.json({ success: true });
   });
 
-  router.post('/admin/restart', (req, res) => {
+  router.post('/admin/restart', requireAdmin, (req, res) => {
     res.json({ success: true, message: 'Server restarting…' });
     setTimeout(() => process.exit(0), 300);
   });
 
-  router.post('/admin/reset-config', (req, res) => {
+  router.post('/admin/reset-config', requireAdmin, (req, res) => {
     const blank = {
       mqtt:         { host: '', port: 1883, portalId: '' },
       vrm:          { email: '', password: '', apiToken: '', installationId: '' },
@@ -4619,7 +4790,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, data: mqttExplorer.getHistory(topic) });
   });
 
-  router.post('/mqtt-explorer/publish', async (req, res) => {
+  router.post('/mqtt-explorer/publish', requireAdmin, async (req, res) => {
     if (!mqttExplorer) return res.status(503).json({ success: false, error: 'MQTT explorer not available' });
     const { topic, payload, retain } = req.body;
     if (!topic) return res.status(400).json({ success: false, error: 'topic required' });
@@ -4631,7 +4802,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  router.post('/mqtt-explorer/subscribe', (req, res) => {
+  router.post('/mqtt-explorer/subscribe', requireAdmin, (req, res) => {
     if (!mqttExplorer) return res.status(503).json({ success: false, error: 'MQTT explorer not available' });
     const { pattern } = req.body;
     if (!pattern) return res.status(400).json({ success: false, error: 'pattern required' });
@@ -4639,7 +4810,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true });
   });
 
-  router.post('/mqtt-explorer/clear', (req, res) => {
+  router.post('/mqtt-explorer/clear', requireAdmin, (req, res) => {
     if (!mqttExplorer) return res.status(503).json({ success: false, error: 'MQTT explorer not available' });
     mqttExplorer.clear();
     res.json({ success: true });
@@ -4647,7 +4818,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   // ── HTTPS / TLS settings ───────────────────────────────────────────────────
 
-  router.post('/settings/https', (req, res) => {
+  router.post('/settings/https', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const {
       httpsEnabled, httpsPort, certFile, keyFile,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getLang } from '../i18n'
-import { ICON_ANIM } from '../weatherIcons'
+import { weatherIconFor } from '../weatherIcons'
 
 // Top-right corner of the Wall Dashboard: a big live clock plus the current
 // condition/temperature — read straight off the openweather device that's
@@ -36,11 +36,11 @@ export default function WeatherClock({ devices }) {
   const r = weatherDev?.readings || {}
   const condition = r.condition?.value
   const temp = r.temperature?.value
-  const icon = iconFor(condition)
+  const { Icon, anim } = weatherIconFor(iconFor(condition))
 
   return (
     <div className="wall-weatherclock">
-      <div className={`wall-weatherclock-icon ${ICON_ANIM[icon] || ''}`}>{icon}</div>
+      <div className={`wall-weatherclock-icon ${anim}`}><Icon size={34}/></div>
       <div className="wall-weatherclock-info">
         <div className="wall-weatherclock-cond">
           {condition ? condition.replace(/\b\w/g, c => c.toUpperCase()) : '—'}

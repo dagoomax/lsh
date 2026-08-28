@@ -22,6 +22,7 @@ import LightingSection from './sections/LightingSection'
 import WledSection from './sections/WledSection'
 import ShellySection from './sections/ShellySection'
 import MediaSection from './sections/MediaSection'
+import AirplaySection from './sections/AirplaySection'
 import LoxoneSection from './sections/LoxoneSection'
 import FibaroOutSection from './sections/FibaroOutSection'
 import LoxoneXmlSection from './sections/LoxoneXmlSection'
@@ -68,6 +69,7 @@ const SECTION_COMPONENTS = {
   wled: WledSection,
   shelly: ShellySection,
   'media-all': MediaSection,
+  airplay: AirplaySection,
   loxone: LoxoneSection,
   fibaroout: FibaroOutSection,
   loxonexml: LoxoneXmlSection,

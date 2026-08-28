@@ -400,6 +400,34 @@ export function SunIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function MoonIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  )
+}
+
+export function MonitorIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+      <path d="M8 21h8M12 17v4"/>
+    </svg>
+  )
+}
+
+// Paging (room-to-room intercom) — broadcasting audio to another room's
+// device, distinct from PhoneIcon's SIP-doorbell "dial a call" meaning.
+export function BroadcastIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M2 16.1a5 5 0 0 1 3.9 3.9M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/>
+      <circle cx="2" cy="20" r="1" fill={color} stroke="none"/>
+    </svg>
+  )
+}
+
 export function WindIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
@@ -986,6 +1014,82 @@ export function MinusIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
       <path d="M5 12h14"/>
+    </svg>
+  )
+}
+
+// ── Weather condition icons — same outline style as everything else, swapped
+// in for the emoji the server sends (see weatherIcons.js) rather than
+// rendering the raw emoji glyph. ──────────────────────────────────────────
+export function CloudIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M6.5 19a4.5 4.5 0 0 1-.5-8.98A5.5 5.5 0 0 1 16.9 8.5 4 4 0 0 1 17.5 16.5v0M6.5 19h11a3.5 3.5 0 0 0 0-7"/>
+    </svg>
+  )
+}
+
+export function CloudSunIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M9.5 6.5V4M5.7 8.2 4.3 6.8M15.3 8.2l1.4-1.4"/>
+      <circle cx="9.5" cy="10.5" r="3"/>
+      <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7 5 5 0 0 0-4.4-2.9"/>
+    </svg>
+  )
+}
+
+export function CloudRainIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M6.5 16a4.5 4.5 0 0 1-.5-8.98A5.5 5.5 0 0 1 16.9 5.5 4 4 0 0 1 17.5 13.5v0M6.5 16h11a3.5 3.5 0 0 0 0-7"/>
+      <path d="M9 19.5 8 21.5M13 19.5l-1 2M17 19.5l-1 2"/>
+    </svg>
+  )
+}
+
+export function CloudLightningIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M6.5 15a4.5 4.5 0 0 1-.5-8.98A5.5 5.5 0 0 1 16.9 4.5 4 4 0 0 1 17.5 12.5v0M6.5 15h11a3.5 3.5 0 0 0 0-7"/>
+      <path d="M12.5 14 10 18.5h3L11 22"/>
+    </svg>
+  )
+}
+
+export function SnowflakeIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 2.5v19M4.4 6.75l15.2 10.5M4.4 17.25l15.2-10.5"/>
+      <path d="M12 2.5 9.8 4.7M12 2.5l2.2 2.2M12 21.5l-2.2-2.2M12 21.5l2.2-2.2"/>
+    </svg>
+  )
+}
+
+export function CloudFogIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M7 12.5a4 4 0 0 1 0-8 4.9 4.9 0 0 1 9.2-1.8A3.5 3.5 0 0 1 16 10"/>
+      <path d="M4.5 15h15M3 18.5h18M6 22h12"/>
+    </svg>
+  )
+}
+
+// "Keep" — exempt something (a paging voice message) from auto-expiry.
+// `filled` renders it solid for the already-kept state.
+export function StarIcon({ color = 'currentColor', size = 24, filled = false }) {
+  return (
+    <svg {...s(color, size)} fill={filled ? color : 'none'}>
+      <path d="M12 3.5 14.6 9l6 .87-4.3 4.2 1 6-5.3-2.8-5.3 2.8 1-6-4.3-4.2 6-.87Z" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
+export function MicIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="9" y="2" width="6" height="12" rx="3"/>
+      <path d="M5 10.5a7 7 0 0 0 14 0M12 17.5V22M8.5 22h7"/>
     </svg>
   )
 }

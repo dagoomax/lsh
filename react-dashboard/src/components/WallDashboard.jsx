@@ -104,7 +104,7 @@ export default function WallDashboard({ devices, energy, roomsMeta, onClose }) {
 
   return (
     <div className="wall-dash">
-      <button className="wall-exit" onClick={() => setShowExitPin(true)} title={gt('exit_wall', 'Exit wall view')}>✕</button>
+      <button className="wall-exit" onClick={() => setShowExitPin(true)} title={gt('exit_wall', 'Exit wall view')} aria-label={gt('exit_wall', 'Exit wall view')}>✕</button>
       {showExitPin && <ExitPinPrompt onConfirm={onClose} onCancel={() => setShowExitPin(false)} />}
 
       <div className="wall-region wall-region-energy">

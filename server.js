@@ -183,6 +183,16 @@ async function main() {
     if (PagingManager) pagingManager = new PagingManager(config);
   }
 
+  // AirPlay speakers — see src/airplay-client.js. Plays prerecorded audio
+  // (paging voice messages, an uploaded clip) out to a configured speaker
+  // over RAOP/AirPlay; needs ffmpeg on PATH (already required for camera
+  // RTSP elsewhere in this app).
+  let airplayClient = null;
+  if (config.airplay?.enabled) {
+    const AirplayClient = tryRequire('./src/airplay-client');
+    if (AirplayClient) airplayClient = new AirplayClient(config);
+  }
+
   // ── Determine HTTPS mode ─────────────────────────────────────────────────
   const leEnabled     = !!(config.server?.letsEncrypt?.enabled);
   const httpsEnabled  = !!(config.server?.https?.enabled);
@@ -318,7 +328,7 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection };
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // MCP server — exposes devices/sensors as tools for an external Claude

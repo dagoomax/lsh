@@ -45,8 +45,45 @@
         <span class="sip-status-dot" id="sip-status-dot"></span>
         <button class="sip-dial-btn" id="sip-dial-btn" data-i18n-title="header.make_call" title="Make a call">📞</button>
       </div>
+      <div class="paging-status" id="paging-status" style="display:none">
+        <span class="paging-status-dot" id="paging-status-dot"></span>
+        <button class="paging-toggle-btn" id="paging-toggle-btn" data-i18n-title="paging.title" title="Paging">📟</button>
+      </div>
     </div>
   </header>
+
+  <!-- Paging (room intercom) picker panel -->
+  <div class="paging-panel" id="paging-panel" style="display:none">
+    <div class="paging-panel-label" data-i18n="paging.this_device">This device</div>
+    <select class="paging-room-select" id="paging-room-select"></select>
+
+    <div class="paging-room-list" id="paging-room-list" style="display:none">
+      <div class="paging-panel-label" data-i18n="paging.page">Page</div>
+      <div class="paging-room-buttons" id="paging-room-buttons"></div>
+    </div>
+
+    <div class="paging-bridge" id="paging-bridge" style="display:none">
+      <div class="paging-panel-label" data-i18n="paging.bridge">Connect two rooms</div>
+      <select class="paging-bridge-select" id="paging-bridge-from"></select>
+      <select class="paging-bridge-select" id="paging-bridge-to"></select>
+      <button class="paging-bridge-start" id="paging-bridge-start" disabled data-i18n="paging.start">Start</button>
+    </div>
+
+    <div class="paging-error" id="paging-error"></div>
+  </div>
+
+  <!-- Paging active/incoming call modal -->
+  <div id="paging-call-modal" class="sip-call-modal paging-call-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Paging">
+    <div class="sip-call-box paging-call-box">
+      <div class="paging-call-icon">📟</div>
+      <div class="sip-call-state" id="paging-call-state" data-i18n="paging.in_progress">Paging</div>
+      <div class="paging-call-rooms" id="paging-call-rooms"></div>
+      <div class="paging-call-hint" id="paging-call-hint" style="display:none" data-i18n="paging.bridged_hint">You're not a participant — this device only started the connection.</div>
+      <div class="sip-call-actions">
+        <button class="sip-btn-reject" id="paging-btn-end" data-i18n="paging.end">✗ End</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── App shell: left tab sidebar + content ─────────────── -->
   <div class="app-shell">
@@ -817,6 +854,7 @@
   <script src="/lib/jssip.min.js"></script>
   <script src="sip-phone.js"></script>
   <script src="app.js"></script>
+  <script src="paging.js"></script>
   <script src="theme.js"></script>
   <script src="common.js"></script>
 </body>

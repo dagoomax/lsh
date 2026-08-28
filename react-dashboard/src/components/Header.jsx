@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { LANGUAGES, getLang, setLang, gt } from '../i18n'
+import { MonitorIcon, BroadcastIcon, LockIcon, SunIcon, MoonIcon } from './Icons'
 
 const NAV = [
   { label: 'Dashboard', href: '/react/',        active: true },
@@ -9,7 +10,17 @@ const NAV = [
   { label: 'Flows',     href: '/flows.html',    active: false },
 ]
 
-export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, pagingRoomCount, onTogglePaging }) {
+// 44×44 is the WCAG/mobile minimum comfortable touch target — these sit in a
+// fixed 56px header, so there's headroom to hit it without the bar growing.
+const iconBtnStyle = {
+  color: 'var(--text2)',
+  border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+  width: 44, height: 44, flexShrink: 0,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  cursor: 'pointer',
+}
+
+export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, pagingRoomCount, pagingMessageCount, onTogglePaging }) {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
   })
@@ -42,12 +53,19 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
           borderRadius: 9, flexShrink: 0, display: 'block',
           boxShadow: '0 2px 12px color-mix(in srgb, var(--accent) 35%, transparent)',
         }}/>
-        <span style={{
-          fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', whiteSpace: 'nowrap',
-          background: 'linear-gradient(135deg, var(--green) 0%, var(--accent-lt) 55%, var(--accent) 100%)',
-          WebkitBackgroundClip: 'text', backgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-        }}>Lightweight Smart Home</span>
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, whiteSpace: 'nowrap' }}>
+          <span style={{
+            fontFamily: 'var(--font-display)', fontStyle: 'italic', fontWeight: 500,
+            fontSize: 21, letterSpacing: '-0.01em',
+            background: 'var(--aurora-gradient)',
+            WebkitBackgroundClip: 'text', backgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>Aurora</span>
+          <span style={{
+            fontSize: 9.5, fontWeight: 600, letterSpacing: '0.11em', textTransform: 'uppercase',
+            color: 'var(--text3)', marginTop: 2,
+          }}>Lightweight Smart Home</span>
+        </div>
       </div>
 
       {/* Nav (center) — styled in global.css to match vanilla */}
@@ -71,56 +89,47 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
           className="header-icon-btn"
           onClick={onOpenWall}
           title={gt('wall_view', 'Wall display view')}
-          style={{
-            color: 'var(--text2)',
-            border: '1px solid var(--border)', borderRadius: 8,
-            padding: '4px 8px', fontSize: 13, lineHeight: 1, cursor: 'pointer',
-          }}>
-          🖥️
+          aria-label={gt('wall_view', 'Wall display view')}
+          style={iconBtnStyle}>
+          <MonitorIcon size={18}/>
         </button>
         {pagingRoomCount > 0 && (
           <button
             className="header-icon-btn"
             onClick={onTogglePaging}
             title={gt('paging.title', 'Paging')}
-            style={{
-              color: 'var(--text2)',
-              border: '1px solid var(--border)', borderRadius: 8,
-              padding: '4px 8px', fontSize: 13, lineHeight: 1, cursor: 'pointer',
-            }}>
-            📟
+            aria-label={gt('paging.title', 'Paging')}
+            style={{ ...iconBtnStyle, position: 'relative' }}>
+            <BroadcastIcon size={18}/>
+            {pagingMessageCount > 0 && (
+              <span style={{
+                position: 'absolute', top: 4, right: 4, width: 9, height: 9, borderRadius: '50%',
+                background: 'var(--red, #ff4d5e)', border: '2px solid var(--sidebar, #12151d)',
+              }}/>
+            )}
           </button>
         )}
         <button
           className="header-icon-btn"
           onClick={onLock}
           title={gt('lock', 'Lock dashboard')}
-          style={{
-            color: 'var(--text2)',
-            border: '1px solid var(--border)', borderRadius: 8,
-            padding: '4px 8px', fontSize: 13, lineHeight: 1, cursor: 'pointer',
-          }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
-            <rect x="4" y="11" width="16" height="10" rx="2"/>
-            <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
-          </svg>
+          aria-label={gt('lock', 'Lock dashboard')}
+          style={iconBtnStyle}>
+          <LockIcon size={18}/>
         </button>
         <button
           className="header-icon-btn"
           onClick={toggleTheme}
           title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
-          style={{
-            color: 'var(--text2)',
-            border: '1px solid var(--border)', borderRadius: 8,
-            padding: '4px 8px', fontSize: 13, lineHeight: 1, cursor: 'pointer',
-          }}>
-          {theme === 'dark' ? '☀️' : '🌙'}
+          aria-label={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+          style={iconBtnStyle}>
+          {theme === 'dark' ? <SunIcon size={18}/> : <MoonIcon size={18}/>}
         </button>
         <select
           value={getLang()}
           onChange={e => setLang(e.target.value)}
           title="Language"
+          aria-label="Language"
           style={{
             background: 'var(--white-06)', color: 'var(--text2)',
             border: '1px solid var(--border)', borderRadius: 8,

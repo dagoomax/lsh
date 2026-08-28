@@ -306,6 +306,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `vera` | No | MiCasaVerde / Vera controllers — switches, dimmers, locks, thermostats, sensors via the local LuaUPnP JSON API |
 | `wirenboard` | No | Wiren Board controllers — relays, dimmers, inputs, climate sensors via MQTT Conventions |
 | `sonos` | No | Sonos speakers — play/pause, prev/next, volume, mute via UPnP (port 1400) |
+| `airplay` | No | AirPlay speakers — plays prerecorded audio (e.g. paging voice messages) out loud via RAOP/AirPlay 1+2 |
 | `denon` | No | Denon / Marantz AV receivers — power, volume, mute, input via Telnet (port 23) |
 | `beosound` | No | Bang & Olufsen network speakers — power, volume, mute, source via the local BeoPlay App REST API (port 8080) |
 | `sony` | No | Sony Bravia Android TV / Google TV — power, volume, mute, input via the local PSK-authenticated REST API |
@@ -382,7 +383,9 @@ Polls the SolarEdge cloud API every 15 minutes (API rate limit). Data appears on
   "clientId": "your-oauth-client-id",
   "clientSecret": "your-oauth-client-secret",
   "token": "",
-  "deviceIds": []
+  "deviceIds": [],
+  "webhookUrl": "",
+  "webhookSecret": ""
 }
 ```
 
@@ -397,6 +400,8 @@ Leave `deviceIds` empty to discover all devices. Or supply a list of device UUID
 **Auth — PAT (legacy).** A `token` from [account.smartthings.com/tokens](https://account.smartthings.com/tokens) still works, but only pre-2025 tokens are long-lived.
 
 **Bearer token export.** With OAuth configured, LSH writes the current access token to `persist/smartthings-token-latest.txt` on startup and every 24h after — handy for pasting into `curl`/tools outside LSH without digging through `persist/smartthings-oauth.json`. Read it back via `GET /api/settings/smartthings-token` (also shown on the Settings page, under the Aeotec 360 Camera section).
+
+**Webhook (optional, push updates).** The main integration polls every 10s; `POST /api/webhooks/smartthings` is for lower-latency push updates from a SmartThings Rule's HTTP-request action instead of waiting on the next poll. This route is unauthenticated (SmartThings' servers call it, not a logged-in browser) and internet-reachable if you've exposed LSH — so it's rejected outright unless `webhookSecret` is set. Configure the same value on both sides: `smartthings.webhookSecret` in `config.json`, and either an `X-Webhook-Secret` header or a `?secret=` query param on the SmartThings-side HTTP action.
 
 ### `loxone`
 
@@ -1354,6 +1359,36 @@ Auto-discovery sends a `M-SEARCH` UDP multicast to `239.255.255.250:1900` with `
 **Per-speaker sensors:** `playing` (play/pause toggle), `prev` / `next` (triggers), `volume` (0–100), `mute` (toggle), `track` (current title), `artist` (current artist).
 
 **Dashboard tile** (Media category): play/pause button, ⏮/⏭ + mute row, volume slider, track title and artist display.
+
+---
+
+### `airplay`
+
+```json
+"airplay": {
+  "enabled": true,
+  "speakers": [
+    { "id": "living-room", "name": "Living Room", "host": "192.168.1.50", "port": 5000, "airplay2": true, "volume": 60 }
+  ]
+}
+```
+
+Plays prerecorded audio out to **AirPlay** speakers — RAOP/AirPlay 1 and AirPlay 2 auth via [`@lox-audioserver/node-airplay-sender`](https://github.com/lox-audioserver/node-airplay-sender) (AGPL-3.0), no Apple hardware or native bindings required. Requires **ffmpeg** on `PATH` (already needed for camera RTSP elsewhere in this app) to decode the source audio to PCM before it's streamed.
+
+Speakers are a fixed, manually-configured list — same choice as `paging.rooms` and `cameras` — but the list can be filled in from a network scan instead of typing IPs by hand: **Settings → Media → AirPlay Speakers** has a "Scan network" button (mDNS, `_raop._tcp.local` + `_airplay._tcp.local`, ~4s) that lists receivers found on the LAN with a one-click Add into the list below. Discovery only ever appends rows to help populate this config; the saved list stays static afterward, so playback never depends on a scan succeeding at runtime. `port` defaults to `5000` if a speaker is added by hand instead.
+
+| Field | Default | Description |
+|---|---|---|
+| `id` | — | Stable identifier used in API calls, e.g. `living-room` |
+| `name` | `id` | Display name |
+| `host` | — | Speaker's IP or hostname |
+| `port` | `5000` | RAOP port |
+| `airplay2` | `true` | Use AirPlay 2 auth; set `false` for older AirPlay 1-only receivers |
+| `volume` | `60` | Playback volume (0–100) sent at session start |
+
+**API:** `GET /api/airplay/speakers` (list), `GET /api/airplay/discover` (admin-only; one-shot mDNS scan, ~4s, returns `[{name, host, port, airplay2, model}]` — works even before any speaker is configured/enabled), `POST /api/airplay/:id/play-message` with `{"messageId": "..."}` to replay one of the [paging voice messages](#paging-room-intercom) out loud on a speaker, or `POST /api/airplay/:id/play` with a raw audio body (any ffmpeg-readable format) for an ad-hoc clip. All resolve/error based on whether the AirPlay session actually stayed up — a `connection_refused` or similar drop is reported as a failure, not a silent no-op.
+
+**Known limitation:** a genuinely unreachable IP (wrong subnet, speaker powered off with no ARP entry) can't always be distinguished from a working session within a short window — the underlying protocol has no reliable delivery confirmation for that case, so a *misconfigured-but-not-actively-refusing* host may report success without actually playing anything. A wrong `host` that's still reachable (refuses the connection, wrong device entirely) is reported correctly.
 
 ---
 

@@ -65,6 +65,21 @@
     "call": "📞 Appeler",
     "call_placeholder": "Extension ou URI SIP"
   },
+  "paging": {
+    "title": "Interphone",
+    "this_device": "Cet appareil",
+    "not_a_room": "Pas une pièce fixe",
+    "page": "Appeler",
+    "offline": "hors ligne",
+    "bridge": "Relier deux pièces",
+    "from": "De…",
+    "to": "À…",
+    "start": "Démarrer",
+    "in_progress": "Appel interphone",
+    "bridged": "Appel relié",
+    "bridged_hint": "Vous n'êtes pas participant — cet appareil a seulement lancé la connexion.",
+    "end": "✗ Terminer"
+  },
   "cam": {
     "event_log": "Journal d'événements",
     "no_events": "Aucun événement",
@@ -335,7 +350,9 @@
     "mongo_db": "Base de données",
     "interface_title": "Interface",
     "hide_mqtt": "Masquer le lien MQTT dans la navigation",
-    "hide_logs": "Masquer le lien Journaux dans la navigation"
+    "hide_logs": "Masquer le lien Journaux dans la navigation",
+    "st_webhook_secret": "Secret du webhook",
+    "st_webhook_secret_hint": "Facultatif — requis avant que /api/webhooks/smartthings n'accepte quoi que ce soit ; utilisez la même valeur comme X-Webhook-Secret (ou ?secret=) dans l'action HTTP SmartThings"
   },
   "graphs": {
     "tab": "Graphiques",

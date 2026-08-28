@@ -59,7 +59,7 @@ export default function App() {
       <IncomingCall />
       <PagingPanel {...paging} open={pagingOpen} setOpen={setPagingOpen} anchorTop />
       <Header connection={connection} connected={connected} onLock={lock} onOpenSettings={() => setView('settings')} onOpenWall={() => setView('wall')}
-        pagingRoomCount={paging.rooms.length} onTogglePaging={() => setPagingOpen(o => !o)} />
+        pagingRoomCount={paging.rooms.length} pagingMessageCount={paging.messages.length} onTogglePaging={() => setPagingOpen(o => !o)} />
 
       <div style={{ flex:1, paddingTop:56, overflow:'hidden', display:'flex', flexDirection:'column' }}>
         <PlatformBar platforms={platforms} />

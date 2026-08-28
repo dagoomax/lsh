@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { gt, getLang } from '../i18n'
-import { ICON_ANIM } from '../weatherIcons'
+import { weatherIconFor } from '../weatherIcons'
 
 // Bottom-left of the Wall Dashboard: a compact vertical 5-day forecast list
 // (day, icon, low–high gradient bar) matching the reference photo's strip.
@@ -45,10 +45,11 @@ export default function ForecastStrip() {
         const max = day.tempMax ?? day.tempMin
         const left = ((min - lo) / span) * 100
         const width = Math.max(6, ((max - min) / span) * 100)
+        const { Icon: RowIcon, anim: rowAnim } = weatherIconFor(day.icon)
         return (
           <div key={day.date} className="wall-forecast-row">
             <span className="wall-forecast-day">{dayLabel(day.date, i)}</span>
-            <span className={`wall-forecast-icon ${ICON_ANIM[day.icon] || ''}`}>{day.icon}</span>
+            <span className={`wall-forecast-icon ${rowAnim}`}><RowIcon size={15}/></span>
             <div className="wall-forecast-bar-track">
               <div className="wall-forecast-bar" style={{ left: `${left}%`, width: `${width}%` }} />
             </div>

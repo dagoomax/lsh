@@ -336,6 +336,10 @@
         <label for="st-device-ids"><span data-i18n="s.st_device_ids">Device IDs to sync</span> <span class="hint" data-i18n="s.st_device_ids_hint">(comma-separated — leave blank for all devices)</span></label>
         <input type="text" id="st-device-ids" placeholder="abc123-..., def456-...">
       </div>
+      <div class="form-row">
+        <label for="st-webhook-secret"><span data-i18n="s.st_webhook_secret">Webhook secret</span> <span class="hint" data-i18n="s.st_webhook_secret_hint">(optional — required before /api/webhooks/smartthings accepts anything; set the same value as X-Webhook-Secret or ?secret= on the SmartThings-side HTTP action)</span></label>
+        <input type="password" id="st-webhook-secret" placeholder="••••••••••••••••••••••••••••••••••••">
+      </div>
 
       <div class="form-actions">
         <button class="btn btn-secondary" id="btn-test-smartthings" data-i18n="common.test">Test Connection</button>

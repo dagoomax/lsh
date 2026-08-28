@@ -316,6 +316,28 @@ export default function EnergyFlow({ energy }) {
         gridColor={gridColor} exporting={exporting}
       />
 
+      {/* Self-consumption / grid-dependency — already computed for the detail
+          cards further down, surfaced here too since it's the one number
+          that actually says whether the flow diagram above is "good" or not
+          at a glance, without opening/scrolling to the detail row. */}
+      {(selfConsumptionPct != null || gridDependencyPct != null) && (
+        <div style={{
+          display:'flex', justifyContent:'center', flexWrap:'wrap', columnGap:20, rowGap:4,
+          fontSize:11.5, color:'var(--text3)', marginTop:-6,
+        }}>
+          {selfConsumptionPct != null && (
+            <span>{gt('r_self_consumption','Self-consumption')}{' '}
+              <b style={{ color:'var(--green)', fontVariantNumeric:'tabular-nums' }}>{selfConsumptionPct}%</b>
+            </span>
+          )}
+          {gridDependencyPct != null && (
+            <span>{gt('r_grid_dependency','Grid dependency')}{' '}
+              <b style={{ color: gridDependencyPct > 50 ? 'var(--orange)' : 'var(--text2)', fontVariantNumeric:'tabular-nums' }}>{gridDependencyPct}%</b>
+            </span>
+          )}
+        </div>
+      )}
+
       {/* ── Trend sparklines (real 6h history) ── */}
       <TrendRow solarColor="var(--orange)" battColor={battColor} />
 

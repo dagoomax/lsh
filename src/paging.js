@@ -56,6 +56,7 @@ class PagingManager extends EventEmitter {
     if (!this._roomSockets.has(roomId)) this._roomSockets.set(roomId, new Set());
     this._roomSockets.get(roomId).add(socket);
     this._socketRoom.set(socket.id, roomId);
+    console.log(`[Paging] Registered socket ${socket.id} as "${roomId}" (${this._roomSockets.get(roomId).size} socket(s) now on this room)`);
     this.emit('rooms-changed', this.getRoomsStatus());
   }
 
@@ -64,6 +65,7 @@ class PagingManager extends EventEmitter {
     if (roomId == null) return;
     this._roomSockets.get(roomId)?.delete(socket);
     this._socketRoom.delete(socket.id);
+    console.log(`[Paging] Unregistered socket ${socket.id} from "${roomId}" (${this._roomSockets.get(roomId)?.size || 0} socket(s) left on this room)`);
     for (const pageId of [...this._sessions.keys()]) {
       const session = this._sessions.get(pageId);
       if (session?.sockets.has(socket)) this.endPage(pageId, 'disconnected');
@@ -116,6 +118,11 @@ class PagingManager extends EventEmitter {
     const session = this._sessions.get(pageId);
     if (!session || !session.sockets.has(socket)) return;
     socket.to(`page:${pageId}`).emit('paging:audio', { pageId, chunk });
+  }
+
+  /** Push a Socket.IO event to every browser currently registered as `roomId` — used to tell a room a voice message just arrived (see paging-messages.js). */
+  notifyRoom(roomId, event, data) {
+    for (const s of this._roomSockets.get(roomId) || []) s.emit(event, data);
   }
 }
 
