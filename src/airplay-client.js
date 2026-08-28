@@ -70,12 +70,15 @@ class AirplayClient {
         resolve(flags);
       };
       const onFound = (service) => {
-        const h = (service.referer?.address
-          || (service.addresses || []).find((a) => !a.includes(':'))
-          || (service.addresses || [])[0]
-          || ''
-        ).replace(/^::ffff:/, '');
-        if (h !== host) return;
+        // Match against every address this announcement carries (referer +
+        // the full A/AAAA set), not just the first one — a multi-homed
+        // receiver (e.g. a Mac with two active NICs) can advertise from one
+        // interface while the configured host points at another address
+        // that's still genuinely reachable on it.
+        const addrs = [service.referer?.address, ...(service.addresses || [])]
+          .filter(Boolean)
+          .map((a) => a.replace(/^::ffff:/, ''));
+        if (!addrs.includes(host)) return;
         const raw = service.txt?.flags ?? service.txt?.sf;
         if (raw === undefined) return;
         // No radix: receivers advertise these hex-prefixed ("0x18644"), and
