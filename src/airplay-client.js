@@ -20,6 +20,17 @@ const { Bonjour } = require('bonjour-service');
  * pipes it straight into @lox-audioserver/node-airplay-sender's RAOP/
  * AirPlay 1+2 client. No native AirPlay bindings, no intermediate file.
  */
+// AirPlay 2 status-flags bit positions (from the receiver's mDNS `flags`/`sf`
+// TXT record) that mean "this device won't accept transient/PIN-less
+// pairing" — mirrors the bit offsets @lox-audioserver/node-airplay-sender
+// itself checks internally (deviceAirtunes.js), so our pre-check agrees with
+// what the library would decide anyway. Common on Apple TV/HomePod, which
+// treat AirPlay senders like HomeKit accessories; most third-party AirPlay 2
+// speakers don't set any of these.
+const FLAG_PASSWORD_REQUIRED = 1 << 7;
+const FLAG_PIN_REQUIRED = 1 << 3;
+const FLAG_ONE_TIME_PAIRING_REQUIRED = 1 << 9;
+
 class AirplayClient {
   constructor(config) {
     this._speakers = (config.airplay?.speakers || []).filter((s) => s && s.id && s.host);
@@ -36,12 +47,79 @@ class AirplayClient {
   }
 
   /**
+   * One-shot mDNS lookup of a single host's advertised flags (`flags=` from
+   * _airplay._tcp, or `sf=` from _raop._tcp — receivers set either). Returns
+   * null on timeout/no answer, which callers treat as "unknown, proceed" —
+   * never a reason to block playback outright.
+   */
+  _lookupFlags(host, timeoutMs = 1500) {
+    return new Promise((resolve) => {
+      let bonjour;
+      try {
+        bonjour = new Bonjour(undefined, () => { /* swallow async socket errors */ });
+      } catch {
+        resolve(null);
+        return;
+      }
+      let settled = false;
+      const finish = (flags) => {
+        if (settled) return;
+        settled = true;
+        browsers.forEach((b) => { try { b.stop(); } catch { /* already stopped */ } });
+        try { bonjour.destroy(); } catch { /* already destroyed */ }
+        resolve(flags);
+      };
+      const onFound = (service) => {
+        const h = (service.referer?.address
+          || (service.addresses || []).find((a) => !a.includes(':'))
+          || (service.addresses || [])[0]
+          || ''
+        ).replace(/^::ffff:/, '');
+        if (h !== host) return;
+        const raw = service.txt?.flags ?? service.txt?.sf;
+        if (raw === undefined) return;
+        // No radix: receivers advertise these hex-prefixed ("0x18644"), and
+        // parseInt auto-detects that prefix — same approach the sender
+        // library itself uses when it parses these same fields.
+        const parsed = parseInt(raw);
+        if (!Number.isNaN(parsed)) finish(parsed);
+      };
+      const browsers = [
+        bonjour.find({ type: 'airplay' }, onFound),
+        bonjour.find({ type: 'raop' }, onFound),
+      ];
+      setTimeout(() => finish(null), timeoutMs);
+    });
+  }
+
+  /**
    * Play a local audio file (any format ffmpeg reads) out to one configured
    * speaker. Resolves once playback has finished (or the session ended).
    */
-  play(speakerId, filePath) {
+  async play(speakerId, filePath) {
     const speaker = this._find(speakerId);
     if (!fs.existsSync(filePath)) throw new Error(`Audio file not found: ${filePath}`);
+
+    // Fail fast, before ever touching the network for real: a device that
+    // requires real (PIN/password) pairing will never accept the transient
+    // pairing this library always attempts (it has no persistent identity
+    // store, so even a one-time PIN flow couldn't survive to the next
+    // play() call anyway) — rather than let that hang or surface as a
+    // misleading generic "pair_failed", say so plainly up front.
+    if (speaker.airplay2 !== false) {
+      const flags = await this._lookupFlags(speaker.host);
+      if (flags !== null) {
+        const needsRealPairing = (flags & FLAG_PASSWORD_REQUIRED)
+          || (flags & FLAG_PIN_REQUIRED)
+          || (flags & FLAG_ONE_TIME_PAIRING_REQUIRED);
+        if (needsRealPairing) {
+          throw new Error(
+            `"${speaker.name}" requires one-time device pairing (PIN/password) that LSH doesn't support for `
+            + `automated playback — common on Apple TV/HomePod. Try a non-Apple AirPlay 2 speaker instead.`
+          );
+        }
+      }
+    }
 
     // Failure detection (e.g. connection_refused) takes the underlying
     // library ~2.2s to surface — measured against a real refused port, not
