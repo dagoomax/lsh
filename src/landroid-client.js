@@ -38,7 +38,7 @@ const ERRORS = {
 };
 
 // Command codes for the MQTT command channel.
-const CMD = { START: 1, STOP: 2, HOME: 3 };
+const CMD = { START: 1, STOP: 2, HOME: 3, ZONETRAINING: 4 };
 
 class LandroidClient {
   constructor(config, store, sensorRegistry) {
@@ -138,6 +138,8 @@ class LandroidClient {
       // reflect mowing/home as booleans
       this.store.update(`${key}/mow`,  ls === 6 || ls === 33 || ls === 5 ? 1 : 0);
       this.store.update(`${key}/home`, ls === 1 ? 1 : 0);
+      this.store.update(`${key}/edgeCut`,      ls === 32 ? 1 : 0);
+      this.store.update(`${key}/zoneTraining`, ls === 31 ? 1 : 0);
     }
   }
 
@@ -161,10 +163,14 @@ class LandroidClient {
         { path: 'rainDelay', name: 'Rain delay', type: 'number', unit: 'min' },
         { path: 'mow',  name: 'Mow',  type: 'boolean', controllable: true, capabilityId: 'mow',  writeOn: 'on', writeOff: 'off' },
         { path: 'home', name: 'Home', type: 'boolean', controllable: true, capabilityId: 'home', writeOn: 'on', writeOff: 'off' },
+        { path: 'edgeCut',      name: 'Edge cut',      type: 'boolean', controllable: true, capabilityId: 'edgeCut',      writeOn: 'on', writeOff: 'off' },
+        { path: 'zoneTraining', name: 'Zone training', type: 'boolean', controllable: true, capabilityId: 'zoneTraining', writeOn: 'on', writeOff: 'off' },
       ],
       _writeCapability: (capId, command) => {
-        if (capId === 'mow')  return this._command(serial, command === 'on' ? CMD.START : CMD.STOP);
-        if (capId === 'home') return this._command(serial, command === 'on' ? CMD.HOME : CMD.START);
+        if (capId === 'mow')          return this._command(serial, command === 'on' ? CMD.START : CMD.STOP);
+        if (capId === 'home')         return this._command(serial, command === 'on' ? CMD.HOME : CMD.START);
+        if (capId === 'zoneTraining') return this._command(serial, command === 'on' ? CMD.ZONETRAINING : CMD.STOP);
+        if (capId === 'edgeCut')      return command === 'on' ? this._edgeCut(serial) : this._command(serial, CMD.STOP);
         throw new Error(`Landroid: '${capId}' not writable`);
       },
     };
@@ -172,6 +178,24 @@ class LandroidClient {
   }
 
   async _command(serial, cmd) {
+    return this._publish(serial, { cmd });
+  }
+
+  // Edge cut has no dedicated cmd code on the real Worx protocol — it's
+  // requested the same way the app does it, via a one-time schedule entry
+  // (cfg.sc.once = [weekday, hour, minute, durationMinutes, edgeCutFlag])
+  // starting now, with the edge-cut flag set. Weekday is Monday-indexed (0-6)
+  // per the Worx schedule format. Unverified against a live account — see the
+  // file-level note on MQTT commands being best-effort.
+  async _edgeCut(serial) {
+    const minutes  = this.cfg.edgeCutDuration || 30;
+    const now      = new Date();
+    const weekday  = (now.getDay() + 6) % 7; // JS Sunday=0 → Worx Monday=0
+    const once     = [weekday, now.getHours(), now.getMinutes(), minutes, 1];
+    return this._publish(serial, { sc: { once } });
+  }
+
+  async _publish(serial, payload) {
     const m = this.mowers[serial];
     if (!m?.mqtt?.endpoint || !m.mqtt.topicIn) throw new Error('No MQTT command channel for this mower');
     const mqtt = tryRequire('mqtt');
@@ -187,9 +211,9 @@ class LandroidClient {
       });
       this.mqtt.on('error', (err) => console.error(`[Landroid] MQTT: ${err.message}`));
     }
-    const payload = JSON.stringify({ cmd });
+    const body = JSON.stringify(payload);
     return new Promise((resolve, reject) => {
-      this.mqtt.publish(m.mqtt.topicIn, payload, { qos: 1 }, (err) => {
+      this.mqtt.publish(m.mqtt.topicIn, body, { qos: 1 }, (err) => {
         if (err) return reject(err);
         setTimeout(() => this._poll().catch(() => {}), 1500);
         resolve();

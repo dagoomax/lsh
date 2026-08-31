@@ -1629,10 +1629,15 @@ Connects a **Worx Landroid** robot mower — or a **Kress** or **Landxcape** sis
 | `email` / `password` | — | Your Worx/Kress/Landxcape app account credentials |
 | `pollInterval` | `60` | Seconds between status polls |
 | `authHost` / `apiHost` / `clientId` | brand default | Override if a brand moves its endpoints (this has happened before — Worx moved auth from `id.eu.worx.com` to `id.worx.com` in 2025/2026) |
+| `edgeCutDuration` | `30` | Minutes requested for an on-demand edge-cut run (see below) |
 
 **Sensors:** battery percentage, battery charging state, mower status. Exposed to HomeKit via the `Fanv2` service (impersonating a vacuum/fan — HomeKit has no native robot-mower accessory type, so this is the standard trick for a start/stop tile in the Home app).
 
-**Note:** status polling is the reliable core of this integration; the AWS-IoT MQTT command path is best-effort and should be verified against a live account — the auth/API endpoints are brand-specific and do drift over time (see `pyworxcloud`'s `clouds.py` for current canonical values if commands stop working).
+**Commands:** `mow` (start/stop) and `home` (return to dock) as before. Two more are exposed as controllable switches:
+- `edgeCut` — requests an on-demand edge-cutting run. There's no dedicated cmd code for this on the Worx protocol; it's requested the same way the official app does it, via a one-time schedule entry (`cfg.sc.once`) starting now with the edge-cut flag set, running for `edgeCutDuration` minutes.
+- `zoneTraining` — sends cmd code `4` (zone training). Note that on real hardware zone training is normally a physical, on-mower process (walk the mower to each zone boundary and press its button); this switch is unverified against a live account and may not actually start training remotely — treat it as best-effort like the other MQTT commands.
+
+**Note:** status polling is the reliable core of this integration; the AWS-IoT MQTT command path (including edge cut and zone training) is best-effort and should be verified against a live account — the auth/API endpoints are brand-specific and do drift over time (see `pyworxcloud`'s `clouds.py` for current canonical values if commands stop working).
 
 ---
 

@@ -6,9 +6,11 @@
 
 **Worx Landroid** robot mower (and Kress / Landxcape sister brands) via the Worx cloud. Login is OAuth2 password grant; device state is read by polling the cloud REST API; commands are sent over the mower's AWS-IoT MQTT channel (best-effort — polling is the reliable core). The auth/API endpoints and MQTT flow are brand-specific and fully overridable via config (endpoints, clientId); defaults target Worx Landroid EU. Each mower registers with battery, status and error sensors keyed by serial.
 
+Controllable capabilities: `mow`, `home`, `edgeCut` (on-demand edge-cut run, requested via a one-time schedule entry rather than a simple cmd code), `zoneTraining` (cmd code 4 — unverified, zone training is normally a physical on-mower process).
+
 **Config:**
 ```json
-"landroid": { "brand": "worx", "email": "you@example.com", "password": "", "pollInterval": 60 }
+"landroid": { "brand": "worx", "email": "you@example.com", "password": "", "pollInterval": 60, "edgeCutDuration": 30 }
 ```
 
 ---
