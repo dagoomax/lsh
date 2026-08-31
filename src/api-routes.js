@@ -923,6 +923,33 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // Cameras list + tunables — separate from the model-switch route above
+  // since that one validates by actually downloading/loading the model
+  // synchronously, while this is a plain config write (see src/object-
+  // detection.js's header for why any RTSP URL works here, not just
+  // brand-specific integrations).
+  router.post('/settings/object-detection', requireAdmin, (req, res) => {
+    const current = readConfigFile();
+    const { cameras, pollInterval, minConfidence, petVerification, requirePetVerification, autoCreateFlows } = req.body || {};
+    try {
+      const objectDetectionCfg = { ...current.objectDetection };
+      if (Array.isArray(cameras)) {
+        objectDetectionCfg.cameras = cameras
+          .filter((c) => c && c.name && c.url)
+          .map((c) => ({ name: String(c.name).trim(), url: String(c.url).trim() }));
+      }
+      if (pollInterval !== undefined) objectDetectionCfg.pollInterval = Math.max(5, Number(pollInterval) || 15);
+      if (minConfidence !== undefined) objectDetectionCfg.minConfidence = Math.max(0, Math.min(1, Number(minConfidence)));
+      if (petVerification !== undefined) objectDetectionCfg.petVerification = !!petVerification;
+      if (requirePetVerification !== undefined) objectDetectionCfg.requirePetVerification = !!requirePetVerification;
+      if (autoCreateFlows !== undefined) objectDetectionCfg.autoCreateFlows = !!autoCreateFlows;
+      writeConfigFile({ ...current, objectDetection: objectDetectionCfg });
+      res.json({ success: true, message: 'Object detection settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // ── SIP doorbell intercom ─────────────────────────────────
 
   router.get('/sip/status', (req, res) => {
@@ -2416,6 +2443,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       );
     }
     if (safe.roborock?.cloud?.password) safe.roborock.cloud.password = '••••••••';
+    if (safe.karcher?.password) safe.karcher.password = '••••••••';
     if (safe.landroid?.password) safe.landroid.password = '••••••••';
     if (safe.sony?.psk) safe.sony.psk = '••••••••';
     if (safe.openweather?.apiKey) safe.openweather.apiKey = '••••••••';
@@ -2790,6 +2818,56 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     try {
       writeConfigFile({ ...current, roborock: { ...current.roborock, cloud } });
       res.json({ success: true, message: 'Roborock cloud saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Kärcher Home Robots (RCV5/RCV3/RCF5 vacuums) — login test + save.
+  // See src/karcher-client.js header for protocol provenance.
+  router.post('/settings/test-karcher', requireAdmin, async (req, res) => {
+    const current = readConfigFile();
+    const { region } = req.body;
+    const { email } = req.body;
+    let { password } = req.body;
+    if (password && password.includes('•')) password = current.karcher?.password || '';
+    if (!email || !password) return res.status(400).json({ success: false, error: 'email and password are required' });
+
+    let karcher;
+    try { karcher = require('./karcher-client'); }
+    catch (err) { return res.status(500).json({ success: false, error: `Module load failed: ${err.message}` }); }
+
+    try {
+      const baseUrl = karcher.REGION_URLS[region] || karcher.REGION_URLS.eu;
+      const urls = await karcher.getUrls(baseUrl);
+      const session = await karcher.login(urls.appApi, email.trim(), password);
+      const devices = await karcher.getDevices(urls.appApi, session);
+      res.json({
+        success: true,
+        message: `Login OK — ${devices.length} device(s) found`,
+        data: { devices: devices.map((d) => ({ nickname: d.nickname, model: d.model, sn: d.sn, online: d.online })) },
+      });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/karcher', requireAdmin, (req, res) => {
+    const current = readConfigFile();
+    const { email, region, sn } = req.body;
+    let { password } = req.body;
+    const prev = current.karcher || {};
+    if (!password || password.includes('•')) password = prev.password || '';
+    const karcher = {
+      email: (email || '').trim(),
+      password,
+      region: ['eu', 'us', 'cn'].includes(region) ? region : 'eu',
+      sn: (sn || '').trim(),
+    };
+    if (!karcher.email || !karcher.password) return res.status(400).json({ success: false, error: 'email and password are required' });
+    try {
+      writeConfigFile({ ...current, karcher });
+      res.json({ success: true, message: 'Kärcher settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

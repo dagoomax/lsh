@@ -59,6 +59,12 @@
       { "name": "L10S Vacuum", "host": "192.168.1.x", "token": "00000000000000000000000000000000", "type": "vacuum" }
     ]
   },
+  "karcher": {
+    "email": "",
+    "password": "",
+    "region": "eu",
+    "sn": ""
+  },
   "homey": {
     "mode": "local",
     "host": "192.168.1.x",
@@ -262,6 +268,7 @@
   },
   "landroid": {
     "brand": "worx",
+    "edgeCutDuration": 30,
     "email": "you@example.com",
     "password": "",
     "pollInterval": 60
@@ -275,6 +282,14 @@
       "maxSeconds": 30,
       "urlTemplate": ""
     }
+  },
+  "objectDetection": {
+    "cameras": [
+      { "name": "Wejście", "url": "rtsp://192.168.1.50:554/stream1" }
+    ],
+    "pollInterval": 15,
+    "minConfidence": 0.5,
+    "autoCreateFlows": true
   },
   "airplay": {
     "enabled": true,

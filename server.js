@@ -567,6 +567,15 @@ async function main() {
     }
   }
 
+  // Kärcher Home Robots (RCV5/RCV3/RCF5) — cloud-only, see src/karcher-client.js
+  if (config.karcher?.email) {
+    const KarcherClient = tryRequire('./src/karcher-client');
+    if (KarcherClient) {
+      const karcher = new KarcherClient(config, store, sensorRegistry);
+      karcher.start().catch((err) => console.error(`[Karcher] Start failed: ${err.message}`));
+    }
+  }
+
   // Start BroadLink IR/RF client if configured
   if (config.broadlink?.devices?.length) {
     const BroadlinkClient = tryRequire('./src/broadlink-client');

@@ -10,6 +10,7 @@ import GoogleCalendarSection from './sections/GoogleCalendarSection'
 import SmartHomeSection from './sections/SmartHomeSection'
 import RoborockSection from './sections/RoborockSection'
 import DreameSection from './sections/DreameSection'
+import KarcherSection from './sections/KarcherSection'
 import MobotixSection from './sections/MobotixSection'
 import AxisSection from './sections/AxisSection'
 import AeotecSection from './sections/AeotecSection'
@@ -57,6 +58,7 @@ const SECTION_COMPONENTS = {
   'smarthome-extra': SmartHomeSection,
   roborock: RoborockSection,
   dreame: DreameSection,
+  karcher: KarcherSection,
   mobotix: MobotixSection,
   axis: AxisSection,
   aeotec: AeotecSection,

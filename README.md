@@ -287,6 +287,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `shelly` | No | Shelly Gen1 / Gen2 devices |
 | `boneio` | No | BoneIO relay boards (MQTT auto-discovery) |
 | `dreame` | No | Dreame robot vacuums and air purifiers |
+| `karcher` | No | Kärcher Home Robots vacuums (RCV5/RCV3/RCF5) — cloud-only |
 | `homey` | No | Homey Pro (local or cloud) |
 | `dirigera` | No | IKEA Dirigera smart-home hub |
 | `tradfri` | No | IKEA Tradfri gateway |
@@ -1581,6 +1582,31 @@ Two transports under one config key, since Roborock split its fleet across two d
 **Cloud-only extras:** consumable life (filter/brush/mop wear, refreshed at most every 5 min), per-room mapping (`get_room_mapping`) with multi-room clean-segment commands, and a rendered live map (PNG, decrypted/decompressed from the device's raw map payload) shown in the device modal.
 
 Exposed to HomeKit as a vacuum via the same `Fanv2` impersonation trick used for Landroid below (HomeKit has no native robot-vacuum accessory type either).
+
+---
+
+### `karcher`
+
+```json
+"karcher": {
+  "email": "you@example.com",
+  "password": "",
+  "region": "eu",
+  "sn": ""
+}
+```
+
+Connects **Kärcher Home Robots** vacuums (RCV5, RCV3, RCF5) — the same account/login as the Kärcher Home app. There is **no local API** for these robots; everything, including the official app, goes through 3iRobotix's cloud (not Kärcher's own servers), over MQTT. An outage on their end makes the robot unreachable here too, same tradeoff as `roborock.cloud` above.
+
+- `email` / `password` — your Kärcher Home account credentials. Settings → Kärcher Home Robots has a Test Login button.
+- `region` — `eu`, `us`, or `cn`, whichever your account was registered in (default `eu`)
+- `sn` — optional, pins one specific robot's serial number on a multi-robot account
+
+Protocol ported from the MIT-licensed [`python-karcher`](https://github.com/lafriks/python-karcher) reference (login/signing/AES-128-ECB encryption/property polling) and cross-checked against the [`karcher-rcv5-ha`](https://github.com/vosadci/karcher-rcv5-ha) Home Assistant integration for the command set (start/pause/stop/dock/locate/fan-speed/cleaning-mode), verified there against real RCV5 hardware. Session tokens are cached to `persist/karcher-session.json` to avoid re-logging in on every restart.
+
+**Not implemented**: per-room/zone cleaning, map fetch, mop water-level control — whole-home clean plus pause/stop/dock/locate/fan-speed/cleaning-mode covers the common case; room selection would need its own UI (see Roborock's `get_room_mapping` support above for what that looks like) and is a reasonable follow-up rather than a blocker for a first working integration.
+
+Exposed to HomeKit the same way as Roborock above (`Fanv2` impersonation).
 
 ---
 

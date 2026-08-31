@@ -637,6 +637,7 @@ const TYPE_MAP = {
   wirenboard:   DinRailIcon,
   dreame:       RobotVacuumIcon,
   roborock:     RobotVacuumIcon,
+  karcher:      RobotVacuumIcon,
   landroid:     LawnmowerIcon,
   esphome:      ChipIcon,
   shelly:       PlugIcon,

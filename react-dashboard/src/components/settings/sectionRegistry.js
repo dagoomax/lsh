@@ -23,6 +23,7 @@ export const CATEGORIES = [
     { id: 'smarthome-extra', title: 'Homey, Somfy, Landroid, Suppla, Fibaro', ported: true },
     { id: 'roborock', title: 'Roborock', ported: true },
     { id: 'dreame', title: 'Dreame', ported: true },
+    { id: 'karcher', title: 'Kärcher Home Robots', ported: true },
   ] },
   { id: 'cameras', label: 'Cameras', sections: [
     { id: 'cameras-extra', title: 'UniFi Protect & FFmpeg RTSP', ported: true },
