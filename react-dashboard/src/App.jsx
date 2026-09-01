@@ -12,6 +12,7 @@ import LockScreen            from './components/LockScreen'
 import LoginScreen           from './components/LoginScreen'
 import SettingsPage          from './components/settings/SettingsPage'
 import WallDashboard         from './components/WallDashboard'
+import CssEditorPage         from './components/CssEditorPage'
 
 // Single unified view: the "Rooms & Categories" device browser with the
 // Energy flow + relays rendered as the top section (see DeviceList). No more
@@ -21,7 +22,7 @@ export default function App() {
   const [locked, setLocked] = useState(() => localStorage.getItem('lsh-locked') === '1')
   const lock   = () => { localStorage.setItem('lsh-locked', '1'); setLocked(true) }
   const unlock = () => { localStorage.setItem('lsh-locked', '0'); setLocked(false) }
-  const [view, setView] = useState('dashboard') // 'dashboard' | 'settings' | 'wall'
+  const [view, setView] = useState('dashboard') // 'dashboard' | 'settings' | 'wall' | 'css-editor'
   const paging = usePaging()
   const [pagingOpen, setPagingOpen] = useState(false)
 
@@ -44,7 +45,15 @@ export default function App() {
   if (view === 'settings') {
     return (
       <div style={{ height:'100%', background:'var(--bg)', overflow:'hidden' }}>
-        <SettingsPage onClose={() => setView('dashboard')}/>
+        <SettingsPage onClose={() => setView('dashboard')} onOpenCssEditor={() => setView('css-editor')}/>
+      </div>
+    )
+  }
+
+  if (view === 'css-editor') {
+    return (
+      <div style={{ height:'100%', background:'var(--bg)', overflow:'hidden' }}>
+        <CssEditorPage onClose={() => setView('dashboard')}/>
       </div>
     )
   }
@@ -59,6 +68,7 @@ export default function App() {
       <IncomingCall />
       <PagingPanel {...paging} open={pagingOpen} setOpen={setPagingOpen} anchorTop />
       <Header connection={connection} connected={connected} onLock={lock} onOpenSettings={() => setView('settings')} onOpenWall={() => setView('wall')}
+        onOpenCssEditor={() => setView('css-editor')}
         pagingRoomCount={paging.rooms.length} pagingMessageCount={paging.messages.length} onTogglePaging={() => setPagingOpen(o => !o)} />
 
       <div style={{ flex:1, paddingTop:56, overflow:'hidden', display:'flex', flexDirection:'column' }}>

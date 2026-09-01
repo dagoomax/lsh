@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LANGUAGES, getLang, setLang, gt } from '../i18n'
 import { MonitorIcon, BroadcastIcon, LockIcon, SunIcon, MoonIcon } from './Icons'
 
@@ -20,10 +20,28 @@ const iconBtnStyle = {
   cursor: 'pointer',
 }
 
-export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, pagingRoomCount, pagingMessageCount, onTogglePaging }) {
+export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, onOpenCssEditor, pagingRoomCount, pagingMessageCount, onTogglePaging }) {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
   })
+  // The CSS Editor page is admin-gated on its own (see CssEditorPage.jsx) —
+  // this just decides whether the *link* shows up: never for viewers (no
+  // point linking somewhere they'll immediately get "Admin access
+  // required"), and not for admins either if they've hidden it in Settings
+  // → Interface (same on/off pattern as hideMqtt/hideLogs there).
+  const [showCssEditorLink, setShowCssEditorLink] = useState(false)
+  const [version, setVersion] = useState(null)
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/auth/me', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+      fetch('/api/ui-prefs', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+    ]).then(([me, prefs]) => {
+      const isAdmin = me?.success && me.data?.role === 'admin'
+      const hidden = !!prefs?.data?.hideCssEditor
+      setShowCssEditorLink(isAdmin && !hidden)
+      if (prefs?.data?.version) setVersion(prefs.data.version)
+    })
+  }, [])
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark'
     document.documentElement.setAttribute('data-theme', next)
@@ -35,6 +53,7 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
   const live = connected && (connection?.vrm?.connected || connection?.mqtt?.connected)
 
   return (
+    <>
     <header style={{
       position: 'fixed', top: 'env(safe-area-inset-top, 0px)', left: 0, right: 0, zIndex: 100,
       height: 56,
@@ -81,6 +100,14 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
             {gt('nav_' + label.toLowerCase(), label)}
           </a>
         ))}
+        {showCssEditorLink && (
+          <a href="#" onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+            e.preventDefault(); onOpenCssEditor?.()
+          }}>
+            {gt('nav_css_editor', 'CSS Editor')}
+          </a>
+        )}
       </nav>
 
       {/* Connection status + source (right) — vanilla green/red + neutral chip */}
@@ -160,5 +187,16 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
         </span>
       </div>
     </header>
+    {version && (
+      <div style={{
+        position: 'fixed', left: 'calc(env(safe-area-inset-left, 0px) + 10px)',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)', zIndex: 90,
+        fontSize: 10.5, fontWeight: 600, letterSpacing: '0.02em', color: 'var(--text3)',
+        pointerEvents: 'none', userSelect: 'none',
+      }}>
+        v{version}
+      </div>
+    )}
+    </>
   )
 }

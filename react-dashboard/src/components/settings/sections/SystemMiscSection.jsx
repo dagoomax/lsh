@@ -3,16 +3,17 @@ import { SettingsCard, ListEditor, Field, Toggle, Button, ResultBanner } from '.
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { RelayIcon, RouterIcon } from '../../Icons'
 import { gt } from '../../../i18n'
+import CssEditor from '../CssEditor'
 
 const RELAY_FIELDS = [
   { key: 'index', label: 'Index', type: 'number' },
   { key: 'name', label: 'Name' },
 ]
 
-export default function SystemMiscSection({ config, reload }) {
+export default function SystemMiscSection({ config, reload, onOpenCssEditor }) {
   return (
     <>
-      <InterfaceCard ui={config.ui} reload={reload}/>
+      <InterfaceCard ui={config.ui} reload={reload} onOpenCssEditor={onOpenCssEditor}/>
       <RelaysCard relays={config.relays} reload={reload}/>
       <ServerCard server={config.server} reload={reload}/>
       <RestartCard/>
@@ -89,9 +90,10 @@ function RestartCard() {
   )
 }
 
-function InterfaceCard({ ui, reload }) {
+function InterfaceCard({ ui, reload, onOpenCssEditor }) {
   const [hideMqtt, setHideMqtt] = useState(!!ui?.hideMqtt)
   const [hideLogs, setHideLogs] = useState(!!ui?.hideLogs)
+  const [hideCssEditor, setHideCssEditor] = useState(!!ui?.hideCssEditor)
   const [customCss, setCustomCss] = useState(ui?.customCss || '')
   const save = useSettingsSave('/api/settings/ui')
 
@@ -100,10 +102,22 @@ function InterfaceCard({ ui, reload }) {
       desc={gt('sdesc.interface', "Hide navigation links you don't use. Changes apply on the next page load — no restart needed.")}>
       <Toggle label={gt('s.hide_mqtt', 'Hide the MQTT link in the top navigation')} checked={hideMqtt} onChange={setHideMqtt}/>
       <Toggle label={gt('s.hide_logs', 'Hide the Logs link in the top navigation')} checked={hideLogs} onChange={setHideLogs}/>
-      <Field label="Custom CSS" hint="(applies to both dashboards — loaded as a real stylesheet, so it may need !important)"
-        type="textarea" value={customCss} onChange={setCustomCss} placeholder={'/* e.g. */\n.device-tile { border-radius: 4px !important; }'}/>
+      <Toggle label={gt('s.hide_css_editor', 'Hide the CSS Editor link in the top navigation (admins only, either way)')} checked={hideCssEditor} onChange={setHideCssEditor}/>
+      <div className="stg-field">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+          <label style={{ margin: 0 }}>
+            Custom CSS <span className="stg-hint">(applies to both dashboards — loaded as a real stylesheet, so it may need !important)</span>
+          </label>
+          {onOpenCssEditor && (
+            <button type="button" className="stg-disclosure" onClick={onOpenCssEditor} style={{ flexShrink: 0 }}>
+              Open full-page editor ↗
+            </button>
+          )}
+        </div>
+        <CssEditor value={customCss} onChange={setCustomCss}/>
+      </div>
       <div className="stg-actions">
-        <Button variant="primary" busy={save.busy} onClick={() => save.save({ hideMqtt, hideLogs, customCss }).then(reload)}>{gt('common.save', 'Save')}</Button>
+        <Button variant="primary" busy={save.busy} onClick={() => save.save({ hideMqtt, hideLogs, hideCssEditor, customCss }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>
       </div>
     </SettingsCard>

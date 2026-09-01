@@ -1256,7 +1256,7 @@ Connects to a **MiCasaVerde / Vera** controller (Vera Lite/Plus/Edge/Secure, or 
 ```
 
 - `hideMqtt` / `hideLogs` — remove those links from the classic dashboard's top navigation.
-- `customCss` — free-form CSS applied to **both** the classic dashboard and Aurora (React), via `GET /custom.css` (public, outside `/api/` — see the route's comment in `server.js` for why) referenced as a real `<link rel="stylesheet">` in each `<head>` (not fetched-and-injected with JS, so it applies before first paint — no flash of unstyled content). Since it's just another stylesheet in the cascade, overriding the app's own styles may need `!important`. Edit it from Settings → Interface — no restart needed, it's read fresh on every request.
+- `customCss` — free-form CSS applied to **both** the classic dashboard and Aurora (React), via `GET /custom.css` (public, outside `/api/` — see the route's comment in `server.js` for why) referenced as a real `<link rel="stylesheet">` in each `<head>` (not fetched-and-injected with JS, so it applies before first paint — no flash of unstyled content). Since it's just another stylesheet in the cascade, overriding the app's own styles may need `!important`. Edit it from Settings → Interface — no restart needed, it's read fresh on every request. In the React dashboard that field is a small built-in editor (line numbers, one-click example snippets, live preview before saving — `react-dashboard/src/components/settings/CssEditor.jsx`); see [`docs/custom-css.md`](docs/custom-css.md) for ready-to-use examples (accent color, tile density, wall-display font size, AMOLED black, …).
 
 ### `virtual`
 

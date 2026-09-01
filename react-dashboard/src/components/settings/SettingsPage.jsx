@@ -96,7 +96,7 @@ const SECTION_COMPONENTS = {
   backup: BackupRestoreSection,
 }
 
-export default function SettingsPage({ onClose }) {
+export default function SettingsPage({ onClose, onOpenCssEditor }) {
   const [activeId, setActiveId] = useState(FIRST_PORTED_ID)
   const [query, setQuery] = useState('')
   const [config, setConfig] = useState(null)
@@ -182,7 +182,7 @@ export default function SettingsPage({ onClose }) {
           {!config && !loadError && <div className="stg-loading">{gt('stg_loading', 'Loading…')}</div>}
           {config && (
             ActiveComponent
-              ? <ActiveComponent config={config} reload={load}/>
+              ? <ActiveComponent config={config} reload={load} onOpenCssEditor={onOpenCssEditor}/>
               : <NotPortedNotice section={active}/>
           )}
         </div>
