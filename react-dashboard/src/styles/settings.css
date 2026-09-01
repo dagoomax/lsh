@@ -144,9 +144,39 @@
 select.stg-input { cursor: pointer; }
 
 /* ── Custom CSS editor ── */
-.css-editor { display: flex; flex-direction: column; gap: 8px; }
+.css-editor { display: flex; flex-direction: column; gap: 10px; }
+.css-editor-themes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.css-editor-theme-select { width: auto; flex: 0 1 220px; }
+.css-editor-theme-delete { color: var(--red, #ff4d5e); border-color: color-mix(in srgb, var(--red, #ff4d5e) 40%, var(--border)); }
+.css-editor-quick {
+  display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap;
+  padding: 10px 12px; background: var(--white-03); border: 1px solid var(--border);
+  border-radius: 9px;
+}
+.css-editor-quick-item {
+  display: flex; flex-direction: column; gap: 5px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+  color: var(--text3);
+}
+.css-editor-quick-item select { min-width: 150px; }
+.css-editor-quick-item input[type="color"] {
+  width: 36px; height: 30px; padding: 2px; border: 1px solid var(--border);
+  border-radius: 7px; background: transparent; cursor: pointer;
+}
+.css-editor-quick-item input[type="range"] { width: 130px; accent-color: var(--accent); }
+.css-editor-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.css-editor-toggle-chip {
+  display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+  padding: 6px 11px; border-radius: 999px; border: 1px solid var(--border);
+  color: var(--text2); cursor: pointer; user-select: none; transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.css-editor-toggle-chip:hover { border-color: var(--border-lt); }
+.css-editor-toggle-chip input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+.css-editor-toggle-chip[data-on] {
+  background: var(--accent-dim); border-color: var(--accent); color: var(--accent-lt);
+}
 .css-editor-toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.css-editor-examples { width: auto; flex: 0 1 240px; }
+.css-editor-toolbar-spacer { flex: 1; min-width: 8px; }
 .css-editor-preview-toggle {
   display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text2);
   cursor: pointer; user-select: none;

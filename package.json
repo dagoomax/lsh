@@ -19,6 +19,7 @@
     "protobufjs": "^7.6.4"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.122.0",
     "@foxxmd/chromecast-client": "^1.0.4",
     "@kud/androidtv-remote": "^0.1.2",
     "@lox-audioserver/node-airplay-sender": "^0.4.10",

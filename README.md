@@ -1256,7 +1256,62 @@ Connects to a **MiCasaVerde / Vera** controller (Vera Lite/Plus/Edge/Secure, or 
 ```
 
 - `hideMqtt` / `hideLogs` — remove those links from the classic dashboard's top navigation.
-- `customCss` — free-form CSS applied to **both** the classic dashboard and Aurora (React), via `GET /custom.css` (public, outside `/api/` — see the route's comment in `server.js` for why) referenced as a real `<link rel="stylesheet">` in each `<head>` (not fetched-and-injected with JS, so it applies before first paint — no flash of unstyled content). Since it's just another stylesheet in the cascade, overriding the app's own styles may need `!important`. Edit it from Settings → Interface — no restart needed, it's read fresh on every request. In the React dashboard that field is a small built-in editor (line numbers, one-click example snippets, live preview before saving — `react-dashboard/src/components/settings/CssEditor.jsx`); see [`docs/custom-css.md`](docs/custom-css.md) for ready-to-use examples (accent color, tile density, wall-display font size, AMOLED black, …).
+- `customCss` — free-form CSS applied to **both** the classic dashboard and Aurora (React), via `GET /custom.css` (public, outside `/api/` — see the route's comment in `server.js` for why) referenced as a real `<link rel="stylesheet">` in each `<head>` (not fetched-and-injected with JS, so it applies before first paint — no flash of unstyled content). Since it's just another stylesheet in the cascade, overriding the app's own styles may need `!important`. Edit it from Settings → Interface — no restart needed, it's read fresh on every request. In the React dashboard that field is a small built-in editor (line numbers, Tab-inserts-spaces, live preview before saving, "Reset to defaults") with a **Themes** row (load a built-in or previously-saved `.css` file, or "Save as theme…" to write the current box to one — `GET/POST/DELETE /api/settings/css-themes/...`, built-ins in `react-dashboard/public/css-themes/`, saved ones in `persist/css-themes/`) and **Quick controls** below it — a picker/slider row (accent color, font, popup size, tile size) plus toggle chips for the rest (flat tiles, AMOLED black, unified category color, popup shape/title, …) — that write a generated, clearly-marked CSS block into the same text instead of a separate config field, so it stays visible and hand-editable — `react-dashboard/src/components/settings/CssEditor.jsx` / `cssQuickControls.js`); see [`docs/custom-css.md`](docs/custom-css.md) for the underlying CSS each control writes, if you want to hand-edit or copy it elsewhere.
+
+### `claudeCode`
+
+```json
+"claudeCode": {
+  "enabled": true,
+  "apiKey": "sk-ant-...",
+  "model": "claude-opus-5",
+  "workspaceId": ""
+}
+```
+
+An embedded chat panel (Header → **Claude Code**, admin-only) that talks directly to the real Anthropic API and
+can read, write, and run shell commands (`node --check`, `npm run build`, `git diff`, …) **in this repository** —
+`src/claude-code-client.js` / `GET|POST /api/claude-code/*` in `src/api-routes.js`. It's a genuine coding agent
+customizing LSH's own source from the dashboard, not a canned assistant.
+
+Given LSH also drives the alarm panel and door locks, access is deliberately narrower than every other admin
+feature in this app:
+
+- **Localhost/LAN only** — every route 403s outside `127.0.0.1`/`10.0.0.0/8`/`172.16.0.0/12`/`192.168.0.0/16`,
+  checked against `req.socket.remoteAddress` (not a spoofable header). This explicitly excludes Tailscale's
+  `100.64.0.0/10` CGNAT range — remote access to the dashboard does **not** get you access to this chat, by design.
+- **Admin role required**, same `requireAdmin` gate as every other write endpoint.
+- **Per-user `claudeCode` permission required on top of admin** — being an admin no longer implies access. Grant
+  it per-user in Settings → Security, which itself only works while **installer mode** is on
+  (`"installerMode": true` in `config.json`, no in-app toggle by design — see below).
+- File tools (`read_file`/`write_file`/`list_dir`) are confined to the repo root — no path can resolve outside it.
+- It never restarts the server or touches git on its own; after a code change it tells you to restart from
+  Settings → System yourself.
+- `apiKey` can also come from the `ANTHROPIC_API_KEY` env var instead of `config.json`.
+- `workspaceId` (`wrkspc_...`) is only needed for a **personal/identity-linked** API key — those require
+  `anthropic-workspace-id` on every request (400 otherwise: "anthropic-workspace-id is required..."). Find it by
+  switching to the target workspace in the Anthropic Console *before* creating the key — a key created directly
+  inside a workspace never needs this field. Leave it blank if that's how yours was made.
+
+Off (`enabled: false`) and unset by default — nothing calls out to Anthropic's API until you turn this on and
+supply a key.
+
+### `installerMode`
+
+```json
+"installerMode": true
+```
+
+A deliberately config-file-only escape hatch — no in-app toggle — that unlocks `PUT /api/auth/users/:id/permissions`
+in Settings → Security. That endpoint is the only way to grant the extra per-user `flows` and `claudeCode`
+permission flags (both introduced alongside the `claudeCode` feature above): admin role alone no longer implies
+access to either the Flow editor's save/delete actions or the Claude Code chat, on the reasoning that granting
+either should require someone with filesystem access to the box LSH runs on, not just a browser session.
+
+Workflow: set `"installerMode": true`, grant the flags you need in Security (checkboxes next to each user), then
+set it back to `false` (or remove the key) — takes effect immediately, no restart, same as every other
+`config.json`-driven route. Existing users default both flags to `false`; `role: admin`/`viewer` is unaffected —
+this is a layer on top, not a replacement.
 
 ### `virtual`
 

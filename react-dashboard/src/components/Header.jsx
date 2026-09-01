@@ -20,7 +20,7 @@ const iconBtnStyle = {
   cursor: 'pointer',
 }
 
-export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, onOpenCssEditor, pagingRoomCount, pagingMessageCount, onTogglePaging }) {
+export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, onOpenCssEditor, onOpenClaudeCode, pagingRoomCount, pagingMessageCount, onTogglePaging }) {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
   })
@@ -30,6 +30,12 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
   // required"), and not for admins either if they've hidden it in Settings
   // → Interface (same on/off pattern as hideMqtt/hideLogs there).
   const [showCssEditorLink, setShowCssEditorLink] = useState(false)
+  // Claude Code chat is also gated server-side by source IP (localhost/LAN
+  // only — see requireLocalAdmin in api-routes.js), which this client can't
+  // replicate reliably (no equivalent of "am I on the LAN" in the browser).
+  // Show the link to any admin; a denied admin on remote access just sees
+  // the page's own "not available" state instead of a dead link.
+  const [showClaudeCodeLink, setShowClaudeCodeLink] = useState(false)
   const [version, setVersion] = useState(null)
   useEffect(() => {
     Promise.all([
@@ -39,6 +45,10 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
       const isAdmin = me?.success && me.data?.role === 'admin'
       const hidden = !!prefs?.data?.hideCssEditor
       setShowCssEditorLink(isAdmin && !hidden)
+      // Admin role alone is no longer enough — Claude Code additionally
+      // needs the 'claudeCode' permission flag, granted per-user in
+      // Settings → Security (and only while installer mode is on there).
+      setShowClaudeCodeLink(isAdmin && !!me.data?.permissions?.claudeCode)
       if (prefs?.data?.version) setVersion(prefs.data.version)
     })
   }, [])
@@ -106,6 +116,14 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
             e.preventDefault(); onOpenCssEditor?.()
           }}>
             {gt('nav_css_editor', 'CSS Editor')}
+          </a>
+        )}
+        {showClaudeCodeLink && (
+          <a href="#" onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+            e.preventDefault(); onOpenClaudeCode?.()
+          }}>
+            {gt('nav_claude_code', 'Claude Code')}
           </a>
         )}
       </nav>

@@ -1,5 +1,6 @@
 {
   "language": "en",
+  "installerMode": false,
   "mqtt": {
     "host": "192.168.1.100",
     "port": 1883,
@@ -16,6 +17,12 @@
   },
   "mcp": {
     "enabled": false
+  },
+  "claudeCode": {
+    "enabled": false,
+    "apiKey": "sk-ant-...",
+    "model": "claude-opus-5",
+    "workspaceId": ""
   },
   "vrm": {
     "email": "",

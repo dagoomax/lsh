@@ -47,6 +47,11 @@ function loadConfig() {
       siteId: process.env.SOLAREDGE_SITE_ID || fileConfig.solaredge?.siteId || '',
       apiKey: process.env.SOLAREDGE_API_KEY || fileConfig.solaredge?.apiKey || '',
     },
+    claudeCode: {
+      enabled: !!fileConfig.claudeCode?.enabled,
+      apiKey: process.env.ANTHROPIC_API_KEY || fileConfig.claudeCode?.apiKey || '',
+      model: fileConfig.claudeCode?.model || 'claude-opus-5',
+    },
     smartthings: {
       token:        process.env.SMARTTHINGS_TOKEN         || fileConfig.smartthings?.token        || '',
       clientId:     process.env.SMARTTHINGS_CLIENT_ID     || fileConfig.smartthings?.clientId     || '',

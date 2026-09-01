@@ -123,11 +123,16 @@ const auth = {
       username:  username.trim(),
       passwordHash,
       role,
+      // Sensitive capabilities beyond plain admin/viewer — off by default even
+      // for admins. Only settable via setPermission(), which itself requires
+      // installerMode (see requireInstallerMode in api-routes.js): granting
+      // these needs filesystem/config access, not just a web admin session.
+      permissions: { flows: false, claudeCode: false },
       createdAt: new Date().toISOString(),
     };
     users.push(user);
     saveUsers(users);
-    return { id: user.id, username: user.username, role: user.role };
+    return { id: user.id, username: user.username, role: user.role, permissions: user.permissions };
   },
 
   async authenticate(username, password) {
@@ -147,7 +152,33 @@ const auth = {
   },
 
   getUsers() {
-    return loadUsers().map(({ id, username, role, createdAt }) => ({ id, username, role, createdAt }));
+    // Users created before permissions existed have no `permissions` field —
+    // normalize to the same all-false default createUser() now seeds, rather
+    // than letting `undefined.flows` throw wherever this gets read.
+    return loadUsers().map(({ id, username, role, createdAt, permissions }) => ({
+      id, username, role, createdAt,
+      permissions: { flows: !!permissions?.flows, claudeCode: !!permissions?.claudeCode },
+    }));
+  },
+
+  // Live per-user capability check — reads storage fresh every call (not the
+  // JWT) so a revoked permission takes effect on a held session's very next
+  // request, not just after re-login.
+  hasPermission(userId, key) {
+    const user = loadUsers().find(u => u.id === userId);
+    return !!user?.permissions?.[key];
+  },
+
+  // key must be 'flows' or 'claudeCode'; caller (requireInstallerMode in
+  // api-routes.js) is what actually gates who may call this.
+  setPermission(userId, key, value) {
+    if (!['flows', 'claudeCode'].includes(key)) throw new Error(`Unknown permission '${key}'`);
+    const users = loadUsers();
+    const user  = users.find(u => u.id === userId);
+    if (!user) throw new Error('User not found');
+    user.permissions = { flows: !!user.permissions?.flows, claudeCode: !!user.permissions?.claudeCode, [key]: !!value };
+    saveUsers(users);
+    return user.permissions;
   },
 
   deleteUser(id) {

@@ -88,14 +88,16 @@ function PinCard({ title, desc, endpoint, placeholder }) {
 
 function UsersCard() {
   const [users, setUsers] = useState(null)
+  const [installerMode, setInstallerMode] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('viewer')
   const create = useSettingsSave('/api/auth/users')
   const del = useSettingsSave('')
+  const perms = useSettingsSave('')
 
   const load = () => fetch('/api/auth/users', { credentials: 'include' }).then(r => r.json())
-    .then(d => setUsers(d.success ? d.data : []))
+    .then(d => { setUsers(d.success ? d.data : []); setInstallerMode(!!d.installerMode) })
   useEffect(() => { load() }, [])
 
   const addUser = () => create.save({ username, password, role }).then(() => {
@@ -107,15 +109,35 @@ function UsersCard() {
     del.save(undefined, { endpoint: `/api/auth/users/${id}`, method: 'DELETE' }).then(load).catch(() => {})
   }
 
+  const togglePermission = (id, key, value) => {
+    perms.save({ [key]: value }, { endpoint: `/api/auth/users/${id}/permissions`, method: 'PUT' }).then(load).catch(() => {})
+  }
+
   return (
-    <SettingsCard title={gt('s.users', 'Users')}>
+    <SettingsCard title={gt('s.users', 'Users')}
+      desc="Flows and Claude Code need an extra permission beyond Admin, shown below each user — granting it requires installer mode.">
+      <div className={`stg-banner ${installerMode ? 'ok' : ''}`} style={{ marginBottom: 4 }}>
+        {installerMode
+          ? '🔓 Installer mode is ON — permission checkboxes below are editable.'
+          : <>🔒 Installer mode is OFF — permissions are read-only. Set <code>"installerMode": true</code> in <code>config.json</code> to change them (no in-app toggle, by design).</>}
+      </div>
       <div className="stg-token-list">
         {users == null && <span className="stg-token-empty">Loading…</span>}
         {users?.length === 0 && <span className="stg-token-empty">No users</span>}
         {users?.map(u => (
-          <div className="stg-token-row" key={u.id}>
+          <div className="stg-token-row" key={u.id} style={{ flexWrap: 'wrap', rowGap: 6 }}>
             <span className="stg-token-name">{u.username}</span>
             <span className="stg-token-role">{u.role}</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)' }}>
+              <input type="checkbox" className="stg-checkbox" checked={!!u.permissions?.flows} disabled={!installerMode}
+                onChange={(e) => togglePermission(u.id, 'flows', e.target.checked)}/>
+              Flows
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)' }}>
+              <input type="checkbox" className="stg-checkbox" checked={!!u.permissions?.claudeCode} disabled={!installerMode}
+                onChange={(e) => togglePermission(u.id, 'claudeCode', e.target.checked)}/>
+              Claude Code
+            </label>
             <button className="stg-token-delete" onClick={() => removeUser(u.id)}>✕</button>
           </div>
         ))}
@@ -126,7 +148,7 @@ function UsersCard() {
         options={[{ value: 'admin', label: gt('s.role_admin', 'Admin – full access') }, { value: 'viewer', label: gt('s.role_viewer', 'Viewer – read-only') }]}/>
       <div className="stg-actions">
         <Button variant="secondary" busy={create.busy} onClick={addUser}>{gt('s.add_user', 'Add User')}</Button>
-        <ResultBanner result={create.result || del.result}/>
+        <ResultBanner result={create.result || del.result || perms.result}/>
       </div>
     </SettingsCard>
   )

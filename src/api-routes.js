@@ -86,6 +86,35 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     next();
   };
 
+  // Gate a route to a specific per-user capability (currently 'flows' or
+  // 'claudeCode') — a layer *above* requireAdmin, not a replacement for it:
+  // an admin no longer automatically has these, they must be granted the
+  // flag explicitly (via requireInstallerMode below). API tokens are exempt
+  // — they're already "deliberately handed out by an admin" (see the
+  // API_TOKEN_USER comment near the top of this file), not an interactive
+  // session someone could click into Flows/Claude Code from.
+  const requirePermission = (key) => (req, res, next) => {
+    if (req.user?.id === 'api-token') return next();
+    if (!auth || !auth.hasPermission(req.user?.id, key)) {
+      return res.status(403).json({ success: false, error: `Missing '${key}' permission — ask an admin with installer mode enabled to grant it in Settings → Security` });
+    }
+    next();
+  };
+
+  // Gate a route to only work while config.json's top-level `installerMode`
+  // is true. This is what makes granting flows/claudeCode permissions harder
+  // to reach than just being a web admin — flipping it requires filesystem
+  // access to the box LSH runs on, not just a browser session. Deliberately
+  // config-file-only, no in-app toggle (an in-app toggle would defeat the
+  // point). Read fresh via readConfigFile() so it applies immediately, no
+  // restart needed, same as every other config.json-driven route here.
+  const requireInstallerMode = (req, res, next) => {
+    if (readConfigFile().installerMode !== true) {
+      return res.status(403).json({ success: false, error: 'Installer mode is off — set "installerMode": true in config.json to grant permissions' });
+    }
+    next();
+  };
+
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   router.post('/auth/setup', async (req, res) => {
@@ -134,7 +163,15 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
   router.get('/auth/me', (req, res) => {
     if (!req.user) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    res.json({ success: true, data: req.user });
+    // req.user comes straight off the JWT (id/username/role only) — enrich
+    // with a fresh permissions read so a revoked flag reflects immediately
+    // instead of waiting for the session to expire. API tokens have no
+    // underlying user record; they're already admin-equivalent everywhere
+    // (see requirePermission above), so report both capabilities as granted.
+    const permissions = req.user.id === 'api-token'
+      ? { flows: true, claudeCode: true }
+      : (auth?.getUsers().find((u) => u.id === req.user.id)?.permissions || { flows: false, claudeCode: false });
+    res.json({ success: true, data: { ...req.user, permissions } });
   });
 
   router.post('/auth/change-password', async (req, res) => {
@@ -159,7 +196,22 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   router.get('/auth/users', (req, res) => {
     if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
     if (req.user?.role !== 'admin') return res.status(403).json({ success: false, error: 'Admin access required' });
-    res.json({ success: true, data: auth.getUsers() });
+    res.json({ success: true, data: auth.getUsers(), installerMode: readConfigFile().installerMode === true });
+  });
+
+  // Grant/revoke the flows/claudeCode capability flags — see requirePermission
+  // and requireInstallerMode above for why both gates are needed here.
+  router.put('/auth/users/:id/permissions', requireAdmin, requireInstallerMode, (req, res) => {
+    if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
+    const { flows, claudeCode } = req.body || {};
+    try {
+      let permissions;
+      if (flows !== undefined) permissions = auth.setPermission(req.params.id, 'flows', flows);
+      if (claudeCode !== undefined) permissions = auth.setPermission(req.params.id, 'claudeCode', claudeCode);
+      res.json({ success: true, data: permissions });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
   });
 
   router.post('/auth/users', async (req, res) => {
@@ -744,11 +796,11 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
 
     // ── Flows (Node-RED-style) ──
     router.get('/automation/flows', (req, res) => res.json({ success: true, data: automation.flows }));
-    router.post('/automation/flows', requireAdmin, (req, res) => {
+    router.post('/automation/flows', requireAdmin, requirePermission('flows'), (req, res) => {
       try { res.json({ success: true, data: automation.saveFlow(req.body) }); }
       catch (err) { res.status(400).json({ success: false, error: err.message }); }
     });
-    router.delete('/automation/flows/:id', requireAdmin, (req, res) => {
+    router.delete('/automation/flows/:id', requireAdmin, requirePermission('flows'), (req, res) => {
       automation.deleteFlow(req.params.id);
       res.json({ success: true });
     });
@@ -2381,6 +2433,107 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
+  });
+
+  // ── Custom CSS themes ────────────────────────────────────
+  // "Built-in" themes ship with the app (react-dashboard/public/css-themes/
+  // — bundled into dist/ by Vite, read-only from here); "custom" ones are
+  // whatever an admin has saved from the CSS editor's Themes row, living in
+  // persist/css-themes/ like every other user-generated file (plan-decor
+  // images, flow snapshots, …). Loading a theme just copies its text into
+  // the live Custom CSS field client-side — these routes never touch
+  // ui.customCss themselves.
+  const BUILTIN_THEME_DIR = path.join(__dirname, '..', 'react-dashboard', 'public', 'css-themes');
+  const CUSTOM_THEME_DIR = path.join(__dirname, '..', 'persist', 'css-themes');
+
+  // Same sanitization as plan-decor uploads above — keeps the filename
+  // confined to its directory (no `..`, no path separators) regardless of
+  // what a client sends.
+  function sanitizeThemeName(raw) {
+    return String(raw || '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  }
+  function listCssThemes(dir) {
+    try {
+      return fs.readdirSync(dir).filter((f) => f.endsWith('.css')).map((f) => f.slice(0, -4)).sort();
+    } catch {
+      return [];
+    }
+  }
+
+  router.get('/settings/css-themes', (req, res) => {
+    res.json({ success: true, data: {
+      builtin: listCssThemes(BUILTIN_THEME_DIR),
+      custom: listCssThemes(CUSTOM_THEME_DIR),
+    } });
+  });
+
+  router.get('/settings/css-themes/:kind/:name', (req, res) => {
+    const dir = req.params.kind === 'builtin' ? BUILTIN_THEME_DIR
+      : req.params.kind === 'custom' ? CUSTOM_THEME_DIR : null;
+    const name = sanitizeThemeName(req.params.name);
+    if (!dir || !name) return res.status(400).json({ success: false, error: 'kind must be builtin or custom, name required' });
+    try {
+      const css = fs.readFileSync(path.join(dir, `${name}.css`), 'utf8');
+      res.json({ success: true, data: { css } });
+    } catch {
+      res.status(404).json({ success: false, error: 'Theme not found' });
+    }
+  });
+
+  router.post('/settings/css-themes/custom/:name', requireAdmin, (req, res) => {
+    const name = sanitizeThemeName(req.params.name);
+    if (!name) return res.status(400).json({ success: false, error: 'Invalid theme name' });
+    const css = String((req.body || {}).css ?? '');
+    if (css.length > 200 * 1024) return res.status(400).json({ success: false, error: 'CSS too large (max 200 KB)' });
+    fs.mkdirSync(CUSTOM_THEME_DIR, { recursive: true });
+    fs.writeFileSync(path.join(CUSTOM_THEME_DIR, `${name}.css`), css);
+    res.json({ success: true, data: { name } });
+  });
+
+  router.delete('/settings/css-themes/custom/:name', requireAdmin, (req, res) => {
+    const name = sanitizeThemeName(req.params.name);
+    if (!name) return res.status(400).json({ success: false, error: 'Invalid theme name' });
+    try { fs.unlinkSync(path.join(CUSTOM_THEME_DIR, `${name}.css`)); } catch { /* already gone */ }
+    res.sendStatus(204);
+  });
+
+  // ── Embedded Claude Code chat ────────────────────────────
+  // Real code-editing agent (see src/claude-code-client.js) — admin-only,
+  // 'claudeCode' permission-flag-only (installer-mode-granted, see above),
+  // AND local/LAN-only, all three gated below on every route, not just the
+  // read ones.
+  const claudeCode = require('./claude-code-client');
+  const requireLocalAdmin = [requireAdmin, requirePermission('claudeCode'), (req, res, next) => {
+    if (!claudeCode.isLocalRequest(req)) {
+      return res.status(403).json({ success: false, error: 'Claude Code chat is only reachable from localhost/LAN, not over remote access' });
+    }
+    next();
+  }];
+
+  router.get('/claude-code/status', requireLocalAdmin, (req, res) => {
+    const cc = claudeCode.readClaudeCodeConfig();
+    res.json({ success: true, data: { enabled: cc.enabled, configured: !!cc.apiKey, model: cc.model } });
+  });
+
+  router.get('/claude-code/history', requireLocalAdmin, (req, res) => {
+    res.json({ success: true, data: { messages: claudeCode.getHistory() } });
+  });
+
+  router.post('/claude-code/message', requireLocalAdmin, async (req, res) => {
+    const text = String((req.body || {}).message || '').trim();
+    if (!text) return res.status(400).json({ success: false, error: 'message is required' });
+    try {
+      const result = await claudeCode.sendMessage(text);
+      res.json({ success: true, data: result });
+    } catch (err) {
+      console.error('[ClaudeCode] message failed:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/claude-code/reset', requireLocalAdmin, (req, res) => {
+    claudeCode.resetConversation();
+    res.sendStatus(204);
   });
 
   // Note: the public (unauthenticated) GET /custom.css this settings key

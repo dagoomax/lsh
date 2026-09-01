@@ -1,0 +1,119 @@
+/* ============================================================
+   red.css — black + hot-pink "kiosk" reskin for Aurora
+   ============================================================
+   Built-in theme, bundled with the app (react-dashboard/public/
+   css-themes/) — shows up as "red" under Built-in in the CSS
+   editor's Themes row (Settings → Interface → Custom CSS, or the
+   full-page editor). Picking it there copies this file's content
+   into the live Custom CSS field for you; editing it there and
+   "Save as" does NOT overwrite this file — that only writes into
+   persist/css-themes/ (see GET/POST /api/settings/css-themes in
+   src/api-routes.js).
+
+   Inspired by a black/raspberry-red smart-home dashboard reference.
+   Dark-mode only by design (see the :not([data-theme="light"]) scope
+   below) — switching to light theme in Settings gets you the normal
+   light theme back untouched, not a broken red-on-white mix.
+
+   Every selector/variable here is real, checked against
+   react-dashboard/src/styles/global.css, DeviceModal.jsx and
+   DeviceList.jsx — not guessed. Every override that collides with a
+   same-specificity rule in global.css (its bare :root, or a bare
+   .device-tile / .modal-device-title rule) carries !important,
+   because /custom.css loads BEFORE the app's own bundled stylesheet
+   in <head> — on a tie, whichever loads second wins, so without
+   !important these would silently do nothing. See docs/custom-css.md
+   for the full explanation and a per-property audit.
+   ============================================================ */
+
+:root:not([data-theme="light"]) {
+  --bg:        #08020a;
+  --sidebar:   rgba(10, 2, 8, 0.78);
+  --card:      #150410;
+  --card-grad: linear-gradient(165deg, #1c0616 0%, #0d0208 100%);
+  --card-on:   #3a0a24;
+  --surface:   #150410;
+  --surface2:  #200619;
+
+  --border:    rgba(255, 24, 96, 0.16);
+  --border-lt: rgba(255, 24, 96, 0.32);
+  --sep:       rgba(255, 24, 96, 0.1);
+
+  --text:      #fbeaf1;
+  --text2:     #c98aa4;
+  --text3:     #85536a;
+  --muted:     #c98aa4;
+
+  --accent:     #ff1462;
+  --accent-lt:  #ff5c93;
+  --accent-dim: rgba(255, 20, 98, 0.22);
+  --red:        #ff3b5c;
+  --orange:     #ff8a3d;
+
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.55), 0 2px 14px rgba(60,0,20,0.45);
+  --shadow-2: 0 4px 18px rgba(0,0,0,0.6), 0 18px 46px rgba(80,0,26,0.5);
+  --inner-hl: inset 0 1px 0 rgba(255,255,255,0.04);
+
+  --tile-on-ink:  #ffd7e4;
+  --tile-on-chip: rgba(255, 20, 98, 0.3);
+  --tile-on-glow: 0 0 20px rgba(255, 20, 98, 0.45);
+
+  --modal-grad:        linear-gradient(165deg, #200619 0%, #0c0208 100%);
+  --modal-chip-bg:     linear-gradient(135deg, rgba(255,20,98,0.28), rgba(255,138,61,0.14));
+  --modal-chip-border: rgba(255,92,147,0.4);
+  --modal-chip-ink:    #ffb3cc;
+}
+
+/* Bold, letter-spaced nav — active tab is a solid accent pill instead
+   of a faint tint, closer to the reference's punchy section labels. */
+:root:not([data-theme="light"]) .header-nav-react a {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  font-size: 12px;
+}
+:root:not([data-theme="light"]) .header-nav-react a.active {
+  background: var(--accent) !important;
+  color: #fff !important;
+  box-shadow: 0 0 16px var(--accent-dim);
+}
+
+/* Energy/stat cards already carry their own accent bar via --c
+   (defaults to --accent) — just make it bolder. */
+:root:not([data-theme="light"]) .ecard { border-left-width: 4px; }
+
+/* "On" devices go full-bleed accent instead of a subtle tint — the
+   reference's fully-colored highlight cards, mapped onto the one
+   per-tile state Aurora already tracks. Same specificity as
+   global.css's own .device-tile[data-on="true"] rule, loading after
+   custom.css, so this needs !important. */
+:root:not([data-theme="light"]) .device-tile[data-on="true"] {
+  background: linear-gradient(160deg, var(--accent) 0%, #6e0028 100%) !important;
+  border-color: var(--accent) !important;
+}
+:root:not([data-theme="light"]) .device-tile[data-on="true"] * { color: #fff !important; }
+
+/* Sparklines (ThermostatPanel / WeatherDetails) pass their color as a
+   plain SVG attribute (stroke=/fill=), not inline style — a
+   presentational attribute always loses to ANY external CSS rule
+   regardless of load order, so no !important needed here. */
+:root:not([data-theme="light"]) .sparkline-svg path { stroke: var(--accent); }
+:root:not([data-theme="light"]) .sparkline-svg circle { fill: var(--accent); }
+:root:not([data-theme="light"]) .sparkline-svg stop { stop-color: var(--accent); }
+
+/* Squarer, punchier popup card to match the reference's flat blocks —
+   background/radius are inline in DeviceModal.jsx, font-weight is set
+   by global.css's own .modal-device-title rule; both need !important. */
+:root:not([data-theme="light"]) .device-modal-glow {
+  border-radius: 12px !important;
+  background: var(--modal-grad) !important;
+}
+:root:not([data-theme="light"]) .modal-device-title { font-weight: 700 !important; }
+
+/* Thin accent scrollbar — matches the kiosk look, doesn't collide
+   with anything in global.css. */
+:root:not([data-theme="light"]) ::-webkit-scrollbar { width: 8px; height: 8px; }
+:root:not([data-theme="light"]) ::-webkit-scrollbar-thumb {
+  background: var(--accent-dim); border-radius: 999px;
+}
+:root:not([data-theme="light"]) ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
