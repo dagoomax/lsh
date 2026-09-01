@@ -9,6 +9,19 @@ const CAMERA_FIELDS = [
   { key: 'url', label: 'RTSP URL', placeholder: 'rtsp://192.168.1.50:554/stream1' },
 ]
 
+// Per-camera model override — appended once model options are known (see
+// CamerasCard below). An empty value means "use the default model" (set in
+// ModelCard), so cameras don't need one picked to keep working.
+function cameraFieldsWithModel(modelOptions) {
+  return [
+    ...CAMERA_FIELDS,
+    {
+      key: 'model', label: 'Detection Model', type: 'select',
+      options: [{ value: '', label: 'Default' }, ...modelOptions.map(m => ({ value: m.id, label: m.label }))],
+    },
+  ]
+}
+
 function statusText(data) {
   if (!data) return '—'
   if (data.loading) return `Downloading ${data.base}…`
@@ -56,12 +69,18 @@ function CamerasCard({ config, reload }) {
   const [petVerification, setPetVerification] = useState(od.petVerification !== false)
   const [requirePetVerification, setRequirePetVerification] = useState(!!od.requirePetVerification)
   const [autoCreateFlows, setAutoCreateFlows] = useState(od.autoCreateFlows !== false)
+  const [modelOptions, setModelOptions] = useState([])
   const save = useSettingsSave('/api/settings/object-detection')
+
+  useEffect(() => {
+    fetch('/api/settings/object-detection/model', { credentials: 'include' })
+      .then(r => r.json()).then(d => { if (d.success) setModelOptions(d.data.options || []) })
+  }, [])
 
   return (
     <SettingsCard title={gt('s.aidetect_cameras_title', 'Cameras to Watch')}
-      desc={gt('s.aidetect_cameras_desc', "Any RTSP stream works here — it doesn't need to be one of the camera integrations elsewhere in Settings. Each entry gets its own person/dog/cat/etc. sensors (exposed to HomeKit as motion), an auto-created Flow, and — for cat/dog/bird/horse — a second-pass breed guess.")}>
-      <ListEditor rows={cameras} onChange={setCameras} fields={CAMERA_FIELDS} addLabel={gt('common.add_camera', '+ Add Camera')}/>
+      desc={gt('s.aidetect_cameras_desc', "Any RTSP stream works here — it doesn't need to be one of the camera integrations elsewhere in Settings. Each entry gets its own person/dog/cat/etc. sensors (exposed to HomeKit as motion), an auto-created Flow, and — for cat/dog/bird/horse — a second-pass breed guess. Each camera can also use its own detection model instead of the default below — useful to trade accuracy for speed on a camera that matters less, or vice versa.")}>
+      <ListEditor rows={cameras} onChange={setCameras} fields={cameraFieldsWithModel(modelOptions)} addLabel={gt('common.add_camera', '+ Add Camera')}/>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 4 }}>
         <Field label={gt('s.aidetect_poll', 'Poll Interval (s)')} type="number" min={5} value={pollInterval} onChange={setPollInterval}/>
         <Field label={gt('s.aidetect_confidence', 'Min Confidence')} type="number" min={0} max={1} value={minConfidence} onChange={setMinConfidence}/>

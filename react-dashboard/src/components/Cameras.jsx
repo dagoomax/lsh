@@ -198,6 +198,7 @@ function CameraCard({ cam, onOpen }) {
   const hasSnapshot = !!(cam.snapshotUrl && cam.snapshotUrl.trim())
   const hasWebrtc   = !!(cam.webrtcUrl   && cam.webrtcUrl.trim())
   const [src, setSrc] = useState(() => hasMjpeg ? cam.mjpegUrl : (hasSnapshot ? cam.snapshotUrl : ''))
+  const [imgError, setImgError] = useState(false)
 
   useEffect(() => {
     if (hasMjpeg || !hasSnapshot) return
@@ -205,18 +206,21 @@ function CameraCard({ cam, onOpen }) {
     return () => clearInterval(iv)
   }, [cam.snapshotUrl, hasMjpeg, hasSnapshot])
 
+  useEffect(() => { setImgError(false) }, [src])
+
   const badge = hasMjpeg ? 'LIVE' : (hasWebrtc ? 'WebRTC' : null)
 
   return (
     <div className="device-tile" onClick={() => onOpen(cam)} data-cat="Media"
       style={{ padding:0, overflow:'hidden', cursor:'pointer', minHeight:0, display:'flex', flexDirection:'column' }}>
       <div style={{ position:'relative', aspectRatio:'16/9', background:'#05060a', display:'flex', alignItems:'center', justifyContent:'center' }}>
-        {src ? (
-          <img src={src} alt={cam.name} loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+        {src && !imgError ? (
+          <img src={src} alt={cam.name} loading="lazy" onError={() => setImgError(true)}
+            style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
         ) : (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, color:'var(--text3)' }}>
             <CameraIcon size={26} color="var(--text3)" />
-            <span style={{ fontSize:10 }}>{gt('cam_no_snapshot', 'No snapshot')}</span>
+            <span style={{ fontSize:10 }}>{gt(imgError ? 'cam_unreachable' : 'cam_no_snapshot', imgError ? 'Unreachable' : 'No snapshot')}</span>
           </div>
         )}
         {badge && (

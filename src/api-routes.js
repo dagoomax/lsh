@@ -936,7 +936,10 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       if (Array.isArray(cameras)) {
         objectDetectionCfg.cameras = cameras
           .filter((c) => c && c.name && c.url)
-          .map((c) => ({ name: String(c.name).trim(), url: String(c.url).trim() }));
+          .map((c) => ({
+            name: String(c.name).trim(), url: String(c.url).trim(),
+            ...(c.model ? { model: String(c.model).trim() } : {}),
+          }));
       }
       if (pollInterval !== undefined) objectDetectionCfg.pollInterval = Math.max(5, Number(pollInterval) || 15);
       if (minConfidence !== undefined) objectDetectionCfg.minConfidence = Math.max(0, Math.min(1, Number(minConfidence)));

@@ -192,7 +192,9 @@ class ObjectDetectionClient {
     this._store       = store;
     this._registry     = sensorRegistry;
     this._automation   = automation;
-    this._model        = null;
+    this._models        = new Map();  // base id -> loaded coco-ssd model, keyed by MODEL_BASE_IDS
+    this._modelLoading   = new Map();  // base id -> in-flight load promise, dedupes concurrent loads
+    this._defaultBase     = null;      // objectDetection.model — fallback for cameras with no override
     this._petModel      = null;   // MobileNet — breed verification for pet classes only
     this._timer        = null;
     this._registered    = new Set();   // "<camSlug>/<class>" already registered as a device
@@ -210,7 +212,17 @@ class ObjectDetectionClient {
     const cams = (cfg?.cameras || []).filter((c) => c?.url);
     if (!cams.length) return;
 
-    await this._loadModel(cfg.model);
+    this._defaultBase = MODEL_BASE_IDS.includes(cfg.model) ? cfg.model : MODEL_BASE_IDS[0];
+    await this._loadModel(this._defaultBase);
+
+    // Cameras can override the default model (see objectDetection.cameras[].model
+    // in Settings) — preload any distinct ones now so the first poll never
+    // blocks mid-detection on a cold download.
+    const overrides = [...new Set(cams
+      .map((c) => c.model)
+      .filter((m) => MODEL_BASE_IDS.includes(m) && m !== this._defaultBase))];
+    await Promise.all(overrides.map((base) => this._loadModel(base).catch((err) =>
+      console.error(`[ObjectDetection] Preload of override model "${base}" failed: ${err.message}`))));
 
     if (cfg.petVerification !== false) {
       console.log('[ObjectDetection] Loading MobileNet (pet breed verification)…');
@@ -233,25 +245,46 @@ class ObjectDetectionClient {
     this._timer = null;
   }
 
-  // Fetches (and swaps in) a coco-ssd base model. Used both at start() and
-  // by setModel() below for a live switch — detections in flight keep using
-  // the old this._model reference until this resolves, so a poll never sees
-  // a half-loaded model.
-  async _loadModel(base) {
+  // Fetches (and caches) a coco-ssd base model, keyed by base id so distinct
+  // per-camera overrides (see objectDetection.cameras[].model) can live
+  // alongside the default without evicting each other. this._modelStatus
+  // only ever tracks the *default* model — that's the one Settings' single
+  // status indicator (ModelCard) shows — so callers pass isDefault for the
+  // one load that should update it. Concurrent loads of the same base are
+  // deduped via _modelLoading so start()'s default load and an overlapping
+  // preload/setModel call never race each other.
+  async _loadModel(base, { isDefault = (base === this._defaultBase) } = {}) {
     const b = MODEL_BASE_IDS.includes(base) ? base : MODEL_BASE_IDS[0];
-    this._modelStatus = { base: b, loading: true, loaded: false, error: null };
+    if (this._modelLoading.has(b)) return this._modelLoading.get(b);
+    if (isDefault) this._modelStatus = { base: b, loading: true, loaded: false, error: null };
     console.log(`[ObjectDetection] Loading COCO-SSD model (${b})…`);
-    try {
-      await tf.setBackend('cpu');
-      const model = await cocoSsd.load({ base: b });
-      this._model = model;
-      this._modelStatus = { base: b, loading: false, loaded: true, error: null };
-      console.log(`[ObjectDetection] Model ready (${b})`);
-    } catch (err) {
-      this._modelStatus = { base: b, loading: false, loaded: !!this._model, error: err.message };
-      console.error(`[ObjectDetection] Model load failed (${b}): ${err.message}`);
-      throw err;
-    }
+    const promise = (async () => {
+      try {
+        await tf.setBackend('cpu');
+        const model = await cocoSsd.load({ base: b });
+        this._models.set(b, model);
+        if (isDefault) this._modelStatus = { base: b, loading: false, loaded: true, error: null };
+        console.log(`[ObjectDetection] Model ready (${b})`);
+        return model;
+      } catch (err) {
+        if (isDefault) this._modelStatus = { base: b, loading: false, loaded: this._models.has(b), error: err.message };
+        console.error(`[ObjectDetection] Model load failed (${b}): ${err.message}`);
+        throw err;
+      } finally {
+        this._modelLoading.delete(b);
+      }
+    })();
+    this._modelLoading.set(b, promise);
+    return promise;
+  }
+
+  // Resolves which loaded model a given camera's detect() call should use —
+  // its own override if it names one, else the default. Assumes start()
+  // already preloaded every base in use; a poll should never need to await
+  // a cold download.
+  _modelFor(base) {
+    const b = MODEL_BASE_IDS.includes(base) ? base : this._defaultBase;
+    return this._models.get(b) || this._models.get(this._defaultBase);
   }
 
   // Settings-page "download / switch model" action — callable independently
@@ -261,7 +294,8 @@ class ObjectDetectionClient {
     if (!MODEL_BASE_IDS.includes(base)) {
       throw new Error(`Unknown model '${base}'. Options: ${MODEL_BASE_IDS.join(', ')}`);
     }
-    await this._loadModel(base);
+    this._defaultBase = base;
+    await this._loadModel(base, { isDefault: true });
     return this.getModelStatus();
   }
 
@@ -283,8 +317,9 @@ class ObjectDetectionClient {
         const buffer = await grabFrame(cam.url, ffmpegPath);
         const raw    = jpeg.decode(buffer, { useTArray: true });
         const tensor = rawToTensor(raw);
+        const model  = this._modelFor(cam.model);
         let predictions;
-        try { predictions = await this._model.detect(tensor); }
+        try { predictions = await model.detect(tensor); }
         finally { tensor.dispose(); }
         anyOk = true;
 

@@ -861,7 +861,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)', flexShrink:0, maxWidth:'55%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
                       : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
@@ -898,7 +898,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||1) : (s.writeOff||0))} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)', flexShrink:0, maxWidth:'55%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
                       : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
@@ -922,7 +922,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)', flexShrink:0, maxWidth:'55%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
                       : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
@@ -946,7 +946,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)', flexShrink:0, maxWidth:'55%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
                       : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
@@ -969,7 +969,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)', flexShrink:0, maxWidth:'55%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
                       : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
@@ -993,7 +993,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)', flexShrink:0, maxWidth:'55%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
                       : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
@@ -1017,7 +1017,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? 1 : 0)} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)', flexShrink:0, maxWidth:'55%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
                       : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
@@ -1041,7 +1041,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
                   {isToggle
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
                     : s.value != null
-                      ? <span style={{ fontSize:10, color:'var(--text2)' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
+                      ? <span style={{ fontSize:10, color:'var(--text2)', flexShrink:0, maxWidth:'55%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{`${typeof s.value === 'number' ? s.value.toFixed(s.unit === '°C' ? 1 : 0) : s.value}${s.unit || ''}`}</span>
                       : <span style={{ fontSize:10, color:'var(--text3)' }}>—</span>
                   }
                 </div>
@@ -1478,7 +1478,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               {!energyHidden && (
                 <div style={{ padding:'0 12px 12px' }}>
                   <EnergyFlow energy={resolvedEnergy} />
-                  {energy.relays && (
+                  {energy.relays && energy.relays.length > 0 && (
                     <div style={{ marginTop:12, background:'rgba(0,0,0,0.25)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)' }}>
                       <RelayPanel relays={energy.relays} onToggle={onToggleRelay} />
                     </div>
@@ -1508,7 +1508,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               >🎛 {gt('dash_edit_customize', 'Customize Dashboard')}</button>
             </div>
           )}
-          {((cat !== 'All' && cat !== 'Graphs' && cat !== 'Plan') || (cat === 'All' && !customLayoutActive)) && <div className="device-grid" style={{
+          {cat !== 'All' && cat !== 'Graphs' && cat !== 'Plan' && <div className="device-grid" style={{
             display:'grid',
             gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
             gap:10,
@@ -1518,6 +1518,54 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               <DeviceTile key={d.key} device={d} onCommand={onCommand} onOpen={setOpenKey} revealIndex={i} />
             ))}
           </div>}
+          {/* "All" view: chunked into per-category sections (same taxonomy as the
+              sidebar) instead of one undifferentiated wall of tiles — Lighting
+              alone can be 30+ devices, so a flat grid made everything equally
+              hard to scan. Order/labels/on-count badge intentionally mirror the
+              sidebar category list so both stay one mental model. */}
+          {cat === 'All' && !customLayoutActive && visible.length > 0 && (() => {
+            const sectionCats = CATS.filter(c => !['All','Plan','Graphs'].includes(c))
+            const sections = sectionCats
+              .map(c => ({ cat: c, items: visible.filter(d => getGroup(d) === c) }))
+              .filter(s => s.items.length > 0)
+            const indexOf = new Map()
+            sections.flatMap(s => s.items).forEach((d, i) => indexOf.set(d.key, i))
+            return (
+              <div style={{ display:'flex', flexDirection:'column', gap:22, paddingTop:8 }}>
+                {sections.map(({ cat: c, items }) => {
+                  const CatIcon = CAT_ICON_COMPONENT[c]
+                  const onN = items.filter(d => {
+                    const sw = d.readings?.switch?.value
+                    return sw===1 || sw==='on' || sw===true
+                  }).length
+                  return (
+                    <div key={c} data-cat={c}>
+                      <div style={{
+                        display:'flex', alignItems:'center', gap:8, marginBottom:10, paddingBottom:8,
+                        borderBottom:'1px solid var(--sep)',
+                      }}>
+                        <CatIcon size={15} color="var(--cat-c, var(--accent-lt))" />
+                        <span style={{ fontSize:13, fontWeight:700, color:'var(--text2)' }}>
+                          {gt('cat_' + c.toLowerCase(), c)}
+                        </span>
+                        <span className="badge badge-gray">{items.length}</span>
+                        {onN > 0 && <span className="badge badge-yellow">{onN} {gt('b_on', 'on')}</span>}
+                      </div>
+                      <div className="device-grid" style={{
+                        display:'grid',
+                        gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
+                        gap:10,
+                      }}>
+                        {items.map(d => (
+                          <DeviceTile key={d.key} device={d} onCommand={onCommand} onOpen={setOpenKey} revealIndex={indexOf.get(d.key)} />
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
         </div>
       </div>
       {editingRoom && (
