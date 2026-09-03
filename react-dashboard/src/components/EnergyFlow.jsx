@@ -332,6 +332,16 @@ function DetailCard({ icon, title, children }) {
 export default function EnergyFlow({ energy, evPower = null, evEnergy = null, evStatus = null, evDevice = null, onCommand }) {
   const { battery:b, solar:s, grid:g, loads:l } = energy||{}
 
+  // Selected 3D car model (Settings → Energy → EV Charging Visualization) —
+  // fetched here (not inside GWagenEmbed) so its name can also be shown as a
+  // caption next to the model, not just used for the embed itself.
+  const [evVisual, setEvVisual] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/ev-visual').then(r => r.json()).then(d => { if (!cancelled && d?.success) setEvVisual(d) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
   const num = v => (v == null || isNaN(v)) ? 0 : Number(v)
   const sum3 = o => o == null ? null : num(o.power) + num(o.powerL2) + num(o.powerL3)
 
@@ -416,7 +426,7 @@ export default function EnergyFlow({ energy, evPower = null, evEnergy = null, ev
           border:'1px solid color-mix(in srgb, var(--purple, #a371f7) 28%, var(--border))',
         }}>
           <div style={{ flex:'1 1 220px', minWidth:200, maxWidth:320 }}>
-            <GWagenEmbed height={190} />
+            <GWagenEmbed height={190} modelId={evVisual?.modelId} modelName={evVisual?.modelName} />
           </div>
           <div style={{ flex:'1 1 220px', minWidth:220, display:'flex', flexDirection:'column', gap:2 }}>
             <div style={{ marginBottom:6 }}>
@@ -426,6 +436,9 @@ export default function EnergyFlow({ energy, evPower = null, evEnergy = null, ev
               <div style={{ fontSize:15, fontWeight:700, color:'var(--text)' }}>
                 {evDevice?.label || gt('e_ev','EV charging')}
               </div>
+              {evVisual?.modelName && (
+                <div style={{ fontSize:11.5, color:'var(--text3)', marginTop:2 }}>{evVisual.modelName}</div>
+              )}
             </div>
 
             <DetailRow label={gt('r_power','Power')} value={fmtW(evPower)} color="var(--purple, #a371f7)" />

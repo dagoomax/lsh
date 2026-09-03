@@ -8,25 +8,25 @@ import { useEffect, useState } from 'react'
 const DEFAULT_MODEL_ID = 'f583b5bfc17346c08573dc4f1edebefe'
 const DEFAULT_MODEL_NAME = '2025 Mercedes-Benz G-Class AMG G63'
 
-export default function GWagenEmbed({ height = 190 }) {
-  // The car shown is optional/configurable (Settings → Energy → EV
-  // Charging Visualization); this component owns the fetch so callers
-  // (EnergyFlow) don't need to thread config through.
-  const [modelId, setModelId] = useState(DEFAULT_MODEL_ID)
-  const [modelName, setModelName] = useState(DEFAULT_MODEL_NAME)
+// modelId/modelName are optional — pass them when the caller already fetched
+// the selection (e.g. EnergyFlow, which also shows the name as a caption
+// next to the model). Omit them and this component fetches its own default,
+// so it still works standalone.
+export default function GWagenEmbed({ height = 190, modelId: modelIdProp, modelName: modelNameProp }) {
+  const [fetched, setFetched] = useState(null)
 
   useEffect(() => {
+    if (modelIdProp) return // caller already supplied a selection — no need to fetch our own
     let cancelled = false
     fetch('/api/ev-visual')
       .then(r => r.json())
-      .then(d => {
-        if (cancelled || !d?.success) return
-        if (d.modelId) setModelId(d.modelId)
-        if (d.modelName) setModelName(d.modelName)
-      })
+      .then(d => { if (!cancelled && d?.success) setFetched(d) })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [])
+  }, [modelIdProp])
+
+  const modelId = modelIdProp || fetched?.modelId || DEFAULT_MODEL_ID
+  const modelName = modelNameProp || fetched?.modelName || DEFAULT_MODEL_NAME
 
   return (
     <div style={{ width: '100%', height, borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: '#0b0c0e' }}>
