@@ -59,7 +59,7 @@ GET /api/loxone/inputs.xml?type=fibaro&named=1&token=<token>   # Virtual HTTP In
 
 Query parameters:
 
-- `?type=<integration,…>` — filter by integration key (`fibaro`, `somfy`, `satel`, `unifi`, `shelly`, …)
+- `?type=<integration,…>` — filter by integration key (`fibaro`, `somfy`, `satel`, `unifi`, `shelly`, `vitodens`, …)
 - `?device=<key>` — a single device
 - `?named=1` — skip devices with generic fallback labels (e.g. unnamed Satel zones)
 - `?host=` — override the LSH address embedded in the XML

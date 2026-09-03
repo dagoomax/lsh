@@ -60,6 +60,10 @@
     "deviceId": "",
     "label": ""
   },
+  "evVisual": {
+    "modelId": "",
+    "modelName": ""
+  },
   "roborock": {
     "cloud": {
       "email": "",

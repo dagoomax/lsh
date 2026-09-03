@@ -484,6 +484,37 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, plan: readConfigFile().homePlan || { rooms: [] } });
   });
 
+  // ── EV charging visualization (which Sketchfab car embeds on the Energy
+  // tab's EV card) — modelId/modelName are optional; the client falls back to
+  // its own default (2025 Mercedes-Benz G-Class AMG G63) when unset. ────
+  const DEFAULT_EV_MODEL_ID = 'f583b5bfc17346c08573dc4f1edebefe';
+  const DEFAULT_EV_MODEL_NAME = '2025 Mercedes-Benz G-Class AMG G63';
+
+  router.get('/ev-visual', (req, res) => {
+    const ev = readConfigFile().evVisual || {};
+    res.json({
+      success: true,
+      modelId: ev.modelId || DEFAULT_EV_MODEL_ID,
+      modelName: ev.modelName || DEFAULT_EV_MODEL_NAME,
+    });
+  });
+
+  router.post('/settings/ev-visual', requireAdmin, (req, res) => {
+    const modelId = String(req.body?.modelId || '').trim();
+    if (modelId && !/^[a-f0-9]{32}$/.test(modelId)) {
+      return res.status(400).json({ success: false, error: 'Invalid Sketchfab model id' });
+    }
+    const modelName = String(req.body?.modelName || '').trim().slice(0, 120);
+    try {
+      const cfg = readConfigFile();
+      cfg.evVisual = { modelId, modelName };
+      writeConfigFile(cfg);
+      res.json({ success: true, message: modelId ? `EV visualization set to "${modelName || modelId}".` : 'EV visualization reset to default.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   router.post('/settings/home-plan', requireAdmin, (req, res) => {
     const rooms = (Array.isArray(req.body?.rooms) ? req.body.rooms : [])
       .map((r) => ({
