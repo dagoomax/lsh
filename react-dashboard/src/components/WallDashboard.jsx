@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import HomePlan from './HomePlan'
 import DeviceModal from './DeviceModal'
 import { getGroup } from './DeviceList'
 import EnergyRadial from './EnergyRadial'
 import ThermostatPanel from './ThermostatPanel'
+import GWagenEmbed from './GWagenEmbed'
 import WeatherClock from './WeatherClock'
 import WeatherDetails from './WeatherDetails'
 import ForecastStrip from './ForecastStrip'
@@ -88,6 +89,31 @@ function ExitPinPrompt({ onConfirm, onCancel }) {
   )
 }
 
+const fmtEvW = (v) => Math.abs(v) >= 1000 ? `${(Math.abs(v) / 1000).toFixed(2)} kW` : `${Math.round(Math.abs(v))} W`
+
+// Compact companion to EnergyFlow.jsx's EV showcase, sized for the kiosk's
+// narrow left column — same self-fetched car model + caption, no controls
+// (the kiosk view is glanceable, not for adjusting charge settings).
+function EvKioskCard({ evPower }) {
+  const [modelName, setModelName] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/ev-visual').then(r => r.json()).then(d => { if (!cancelled && d?.success) setModelName(d.modelName) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
+  return (
+    <div className="wall-ev-card" style={{ alignSelf: 'stretch' }}>
+      <GWagenEmbed height={110} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 6, fontSize: 12 }}>
+        <span style={{ color: 'rgba(255,255,255,0.65)' }}>{modelName || gt('e_ev', 'EV charging')}</span>
+        <span style={{ fontWeight: 700, color: '#fff' }}>{fmtEvW(evPower)}</span>
+      </div>
+    </div>
+  )
+}
+
 // Full-screen wall-tablet kiosk view, styled after the user's reference
 // photo: energy widget top-left, weather+clock top-right, the isometric
 // floor plan filling the center (HomePlan in `kiosk` mode — no toolbar, just
@@ -102,6 +128,15 @@ export default function WallDashboard({ devices, energy, roomsMeta, onClose }) {
   const [agendaEvents, refreshAgenda] = useAgenda()
   const [showExitPin, setShowExitPin] = useState(false)
 
+  // Same "is anything registered as an EV charger" derivation as
+  // DeviceList.jsx's Energy tab, so the kiosk's left panel shows the same
+  // car whenever a charger is present — not routed through the
+  // solar/battery/grid/loads source picker, which is a different concern.
+  const evDevices = useMemo(() => devices.filter(d => d.category === 'ev-charger'), [devices])
+  const evPower = evDevices.length
+    ? evDevices.reduce((sum, d) => sum + (Number(d.readings?.power?.value) || 0), 0)
+    : null
+
   return (
     <div className="wall-dash">
       <button className="wall-exit" onClick={() => setShowExitPin(true)} title={gt('exit_wall', 'Exit wall view')} aria-label={gt('exit_wall', 'Exit wall view')}>✕</button>
@@ -109,6 +144,7 @@ export default function WallDashboard({ devices, energy, roomsMeta, onClose }) {
 
       <div className="wall-region wall-region-energy">
         <EnergyRadial energy={energy} />
+        {evPower != null && <EvKioskCard evPower={evPower} />}
         <ThermostatPanel devices={devices} onCommand={onCommand} />
       </div>
       <div className="wall-region wall-region-forecast"><ForecastStrip /></div>
