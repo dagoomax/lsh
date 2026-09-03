@@ -1,4 +1,6 @@
-import { SunIcon, PylonIcon, BatteryCellIcon, BoltIcon, HomeIcon } from './Icons'
+import { useEffect, useRef, useState } from 'react'
+import { SunIcon, PylonIcon, BatteryCellIcon, BoltIcon, HomeIcon, GWagenIcon } from './Icons'
+import GWagenEmbed from './GWagenEmbed'
 import { gt } from '../i18n'
 import { useHistoryPoints, smoothPath } from '../historyChart'
 
@@ -123,13 +125,16 @@ function FlowNode({ x, y, icon: Icon, label, color, value, sub, active = true, s
   )
 }
 
-function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, loadW, gridColor, exporting }) {
-  // Geometry: hub at (340,183); solar N, grid W, home E, battery S
+function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, loadW, gridColor, exporting, evW }) {
+  // Geometry: hub at (340,183); solar N, grid W, home E, battery S, EV SE (diagonal, only when present)
   const hub = { x: 340, y: 183 }
+  const ev  = { x: 500, y: 270 }
+  const hasEv = evW != null
+  const label = `Energy flow: solar ${fmtW(solarW)}, grid ${exporting ? 'export' : 'import'} ${fmtW(gridW)}, battery ${battCharging ? 'charging' : 'discharging'} ${fmtW(battW)}, home ${fmtW(loadW)}`
+    + (hasEv ? `, EV charging ${fmtW(evW)}` : '')
   return (
     <div className="eflow-wrap">
-      <svg viewBox="0 0 680 386" className="eflow-svg" role="img"
-        aria-label={`Energy flow: solar ${fmtW(solarW)}, grid ${exporting ? 'export' : 'import'} ${fmtW(gridW)}, battery ${battCharging ? 'charging' : 'discharging'} ${fmtW(battW)}, home ${fmtW(loadW)}`}>
+      <svg viewBox="0 0 680 386" className="eflow-svg" role="img" aria-label={label}>
 
         {/* soft glow behind the hub */}
         <radialGradient id="eflow-hub-glow">
@@ -143,6 +148,7 @@ function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, l
         <FlowPath d={`M 148 ${hub.y} L ${hub.x - 42} ${hub.y}`} color={gridColor} watts={gridW} reverse={exporting}/>
         <FlowPath d={`M ${hub.x} 274 L ${hub.x} ${hub.y + 42}`} color={battColor} watts={battW} reverse={battCharging}/>
         <FlowPath d={`M ${hub.x + 42} ${hub.y} L 532 ${hub.y}`} color="var(--accent-lt)" watts={loadW} reverse/>
+        {hasEv && <FlowPath d={`M 469 253 L 377 203`} color="var(--purple, #a371f7)" watts={evW} reverse/>}
 
         {/* inverter hub */}
         <circle cx={hub.x} cy={hub.y} r="30" fill="var(--card)" stroke="var(--white-09)" strokeWidth="2"/>
@@ -162,6 +168,10 @@ function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, l
         <FlowNode x={340} y={309} icon={BatteryCellIcon} label={battCharging ? gt('e_batt_chg','Battery · charging') : gt('e_batt_dis','Battery · discharging')}
           color={battColor} value={fmtW(battW)} sub={battSoc != null ? `${battSoc}%` : null}
           active={Math.abs(battW ?? 0) > 5} socPct={battSoc}/>
+        {hasEv && (
+          <FlowNode x={ev.x} y={ev.y} icon={GWagenIcon} label={gt('e_ev','EV charging')} color="var(--purple, #a371f7)"
+            value={fmtW(evW)} active={Math.abs(evW ?? 0) > 5}/>
+        )}
       </svg>
     </div>
   )
@@ -243,6 +253,61 @@ function TrendRow({ solarColor, battColor }) {
   )
 }
 
+// ── EV controls (start/stop + charge-current) ────────────────────────────────
+function Toggle({ on, onChange }) {
+  return (
+    <div
+      role="switch" aria-checked={on} className="lux-toggle" data-on={on}
+      onClick={e => { e.stopPropagation(); onChange(!on) }}
+      style={{
+        width:44, height:26, borderRadius:13,
+        background: on
+          ? 'linear-gradient(180deg, var(--accent-lt) -20%, var(--accent) 90%)'
+          : 'linear-gradient(180deg, var(--white-14) 0%, var(--white-08) 100%)',
+        position:'relative', cursor:'pointer', flexShrink:0,
+        transition:'background 0.25s ease, box-shadow 0.25s ease',
+        boxShadow: on
+          ? '0 0 14px color-mix(in srgb, var(--accent) 55%, transparent), inset 0 1px 1px rgba(255,255,255,0.3)'
+          : 'inset 0 1px 2px rgba(0,0,0,0.2)',
+        WebkitTapHighlightColor:'transparent',
+        padding:'8px', margin:'-8px', boxSizing:'content-box',
+      }}>
+      <div style={{
+        position:'absolute', width:20, height:20, borderRadius:'50%',
+        background:'linear-gradient(180deg, #ffffff 0%, #e7ecf3 100%)', top:3, left:3,
+        boxShadow:'0 1px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.9)',
+        transition:'transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1)',
+        transform: on ? 'translateX(18px)' : 'none',
+      }}/>
+    </div>
+  )
+}
+
+// Local state mirrors the slider instantly; the command fires 350ms after
+// the last drag tick (same debounce as DeviceModal's RangeControl).
+function EvRangeControl({ min = 6, max = 32, step = 1, value, unit = 'A', accent, onCommit }) {
+  const [local, setLocal] = useState(value ?? min)
+  const tRef = useRef(null)
+  useEffect(() => { setLocal(value ?? min) }, [value])
+  const pct = ((local - min) / Math.max(1, max - min)) * 100
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:10, flex:1 }}>
+      <input type="range" min={min} max={max} step={step} value={local}
+        onChange={e => {
+          const v = Number(e.target.value); setLocal(v)
+          clearTimeout(tRef.current); tRef.current = setTimeout(() => onCommit(v), 350)
+        }}
+        style={{
+          flex:1, height:6, borderRadius:3, appearance:'none', WebkitAppearance:'none', cursor:'pointer',
+          background: `linear-gradient(90deg, ${accent} 0%, ${accent} ${pct}%, var(--white-09) ${pct}%)`,
+        }}/>
+      <span style={{ fontSize:12, fontWeight:700, color:accent, fontVariantNumeric:'tabular-nums', minWidth:38, textAlign:'right' }}>
+        {Math.round(local)}{unit}
+      </span>
+    </div>
+  )
+}
+
 // ── Full energy detail panel (expandable) ────────────────────────────────────
 function DetailRow({ label, value, color }) {
   return (
@@ -264,7 +329,7 @@ function DetailCard({ icon, title, children }) {
   )
 }
 
-export default function EnergyFlow({ energy }) {
+export default function EnergyFlow({ energy, evPower = null, evEnergy = null, evStatus = null, evDevice = null, onCommand }) {
   const { battery:b, solar:s, grid:g, loads:l } = energy||{}
 
   const num = v => (v == null || isNaN(v)) ? 0 : Number(v)
@@ -307,13 +372,18 @@ export default function EnergyFlow({ energy }) {
         <ECard icon={<PylonIcon color={gridColor} size={24}/>} label={exporting?gt('e_exporting','Exporting'):gt('e_importing','Importing')}
           value={fmtW(gridTotal)} color={gridColor}
           sub={`${fmtV(g?.voltage)} · ${fmtHz(g?.frequency)}`} />
+        {evPower != null && (
+          <ECard icon={<GWagenIcon color="var(--purple, #a371f7)" size={24}/>} label={gt('e_ev','EV charging')}
+            value={fmtW(evPower)} color="var(--purple, #a371f7)"
+            sub={evStatus ? evStatus : (evEnergy != null ? `${evEnergy.toFixed(2)} kWh` : undefined)} />
+        )}
       </div>
 
       {/* ── Animated flow diagram ── */}
       <FlowDiagram
         solarW={s?.power} gridW={gridTotal} battW={battW} loadW={loadTotal}
         battCharging={battCharging} battSoc={b?.soc ?? null} battColor={battColor}
-        gridColor={gridColor} exporting={exporting}
+        gridColor={gridColor} exporting={exporting} evW={evPower}
       />
 
       {/* Self-consumption / grid-dependency — already computed for the detail
@@ -335,6 +405,51 @@ export default function EnergyFlow({ energy }) {
               <b style={{ color: gridDependencyPct > 50 ? 'var(--orange)' : 'var(--text2)', fontVariantNumeric:'tabular-nums' }}>{gridDependencyPct}%</b>
             </span>
           )}
+        </div>
+      )}
+
+      {/* ── EV showcase: 3D model + live stats/controls side by side ── */}
+      {evPower != null && (
+        <div className="detail-card" style={{
+          display:'flex', flexWrap:'wrap', gap:16, padding:14,
+          background:'linear-gradient(135deg, color-mix(in srgb, var(--purple, #a371f7) 9%, var(--card)) 0%, var(--card) 65%)',
+          border:'1px solid color-mix(in srgb, var(--purple, #a371f7) 28%, var(--border))',
+        }}>
+          <div style={{ flex:'1 1 220px', minWidth:200, maxWidth:320 }}>
+            <GWagenEmbed height={190} />
+          </div>
+          <div style={{ flex:'1 1 220px', minWidth:220, display:'flex', flexDirection:'column', gap:2 }}>
+            <div style={{ marginBottom:6 }}>
+              <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text3)' }}>
+                {gt('t_ev','EV Charging')}
+              </div>
+              <div style={{ fontSize:15, fontWeight:700, color:'var(--text)' }}>
+                {evDevice?.label || gt('e_ev','EV charging')}
+              </div>
+            </div>
+
+            <DetailRow label={gt('r_power','Power')} value={fmtW(evPower)} color="var(--purple, #a371f7)" />
+            {evEnergy != null && <DetailRow label={gt('r_session_energy','Session energy')} value={`${evEnergy.toFixed(2)} kWh`} />}
+            {evStatus && <DetailRow label={gt('r_state','State')} value={evStatus} color="var(--text2)" />}
+
+            {evDevice?.readings?.charging?.controllable && (
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 0', borderBottom:'1px solid var(--sep)', fontSize:12 }}>
+                <span style={{ color:'var(--text2)' }}>{gt('r_charging','Charging')}</span>
+                <Toggle on={!!evDevice.readings.charging.value}
+                  onChange={next => onCommand?.(evDevice.key, 'charging', next)} />
+              </div>
+            )}
+            {evDevice?.readings?.currentLimit?.controllable && (
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0 2px', fontSize:12 }}>
+                <span style={{ color:'var(--text2)', flexShrink:0, marginRight:10 }}>{gt('r_charge_current','Charge current')}</span>
+                <EvRangeControl
+                  min={evDevice.readings.currentLimit.min} max={evDevice.readings.currentLimit.max}
+                  value={evDevice.readings.currentLimit.value} unit={evDevice.readings.currentLimit.unit || 'A'}
+                  accent="var(--purple, #a371f7)"
+                  onCommit={v => onCommand?.(evDevice.key, 'currentLimit', v)} />
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -57,7 +57,7 @@
 | | |
 |---|---|
 | **Privacy-conscious market growth** | Users increasingly reject cloud-dependent hubs after outages (SmartThings 2022, Google Nest 2023). LSH's local-first story is a direct answer. |
-| **Victron / solar / EV adoption rising** | Victron Energy is the dominant brand in off-grid solar. EV charger integration + battery relay control gives LSH a unique energy management angle no competitor covers. |
+| **Victron / solar / EV adoption rising** | Victron Energy is the dominant brand in off-grid solar. EV charger support (go-eCharger, Wallbox, Easee, Zaptec, generic OCPP 1.6) plus battery relay control gives LSH a unique energy management angle no competitor covers. |
 | **KNX building automation market** | KNX is the dominant bus in European commercial buildings. First-class KNXnet/IP support opens the professional integrator and architect market. |
 | **Docker image + NAS packaging** | A published Docker Hub image and Synology/Unraid community package would unlock a large segment of homelab users who deploy from package managers. |
 | **Commercial integrator channel** | KNX + Victron + Loxone overlap with professional AV and building automation installers — a channel underserved by Home Assistant's DIY-first positioning. |

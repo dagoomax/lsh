@@ -2,7 +2,7 @@
 
 ‹ [Home](Home) · [Architecture](Architecture) ›
 
-Every JavaScript module in `src/` has a reference page below (65 modules). Pages are generated from source plus the README's module notes.
+Every JavaScript module in `src/` has a reference page below (70 modules). Pages are generated from source plus the README's module notes.
 
 ## Core
 
@@ -79,9 +79,11 @@ Every JavaScript module in `src/` has a reference page below (65 modules). Pages
 | [`denon-client.js`](Module-denon-client) | 213 | `denon` | — |
 | [`dirigera-client.js`](Module-dirigera-client) | 318 | `dirigera` | — |
 | [`dreame-client.js`](Module-dreame-client) | 286 | `dreame` | — |
+| [`easee-client.js`](Module-easee-client) | 157 | `easee` | — |
 | [`esphome-client.js`](Module-esphome-client) | 295 | `esphome` | — |
 | [`fibaro-client.js`](Module-fibaro-client) | 259 | `fibaro` | — |
 | [`fibaro-out-client.js`](Module-fibaro-out-client) | 153 | `fibaroOut` | — |
+| [`goecharger-client.js`](Module-goecharger-client) | 139 | `goecharger` | — |
 | [`grenton-client.js`](Module-grenton-client) | 201 | `grenton` | `grenton` |
 | [`homeconnect-client.js`](Module-homeconnect-client) | 353 | `homeConnect` | `homeconnect` |
 | [`homey-client.js`](Module-homey-client) | 232 | `homey` | `homey` |
@@ -95,6 +97,7 @@ Every JavaScript module in `src/` has a reference page below (65 modules). Pages
 | [`mc6-client.js`](Module-mc6-client) | 127 | `mc` | — |
 | [`miele-client.js`](Module-miele-client) | 353 | `miele` | `miele` |
 | [`mqtt-client.js`](Module-mqtt-client) | 142 | `mqtt` | — |
+| [`ocpp-server.js`](Module-ocpp-server) | 267 | `ocpp` | — |
 | [`reolink-client.js`](Module-reolink-client) | 110 | `json` | — |
 | [`roborock-client.js`](Module-roborock-client) | 211 | `roborock` | — |
 | [`roborock-cloud-client.js`](Module-roborock-cloud-client) | 836 | `roborock` | `roborock` |
@@ -112,7 +115,9 @@ Every JavaScript module in `src/` has a reference page below (65 modules). Pages
 | [`unifi-protect-client.js`](Module-unifi-protect-client) | 312 | `unifi` | `unifi` |
 | [`vents-client.js`](Module-vents-client) | 183 | `vents` | `vents` |
 | [`vrm-client.js`](Module-vrm-client) | 220 | `vrm` | — |
+| [`wallbox-client.js`](Module-wallbox-client) | 162 | `wallbox` | — |
 | [`waveshare-modbus-client.js`](Module-waveshare-modbus-client) | 282 | `waveshare` | — |
 | [`wirenboard-client.js`](Module-wirenboard-client) | 206 | `wirenboard` | — |
+| [`zaptec-client.js`](Module-zaptec-client) | 177 | `zaptec` | — |
 | [`zway-client.js`](Module-zway-client) | 225 | `zway` | — |
 

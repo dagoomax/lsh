@@ -1230,6 +1230,20 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
     [energy, energySources],
   )
 
+  // EV chargers are auto-summed across however many are registered (usually
+  // one) rather than routed through the solar/battery/grid/loads brand
+  // picker above, which exists to mix two specific brands per metric — not
+  // to total an arbitrary number of charger devices.
+  const evDevices = useMemo(() => devices.filter(d => d.category === 'ev-charger'), [devices])
+  const evPower = evDevices.length
+    ? evDevices.reduce((sum, d) => sum + (Number(d.readings?.power?.value) || 0), 0)
+    : null
+  const evEnergy = evDevices.length
+    ? evDevices.reduce((sum, d) => sum + (Number(d.readings?.energy?.value) || 0), 0)
+    : null
+  const evStatus = evDevices.length === 1 ? evDevices[0].readings?.status?.value : null
+  const evDevice = evDevices[0] || null // controls target the primary/first charger
+
   const onCommand = useCallback((key, sensor, value) => {
     sendCommand(key, sensor, value)
   }, [])
@@ -1477,7 +1491,8 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               </div>
               {!energyHidden && (
                 <div style={{ padding:'0 12px 12px' }}>
-                  <EnergyFlow energy={resolvedEnergy} />
+                  <EnergyFlow energy={resolvedEnergy} evPower={evPower} evEnergy={evEnergy} evStatus={evStatus}
+                    evDevice={evDevice} onCommand={onCommand} />
                   {energy.relays && energy.relays.length > 0 && (
                     <div style={{ marginTop:12, background:'rgba(0,0,0,0.25)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)' }}>
                       <RelayPanel relays={energy.relays} onToggle={onToggleRelay} />

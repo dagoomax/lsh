@@ -467,6 +467,46 @@ export function BoltIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function CarIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M4 16V11.5l2-4.5h12l2 4.5V16"/>
+      <path d="M4 16a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1M18 16a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1"/>
+      <path d="M4 13.5h16"/>
+      <circle cx="7.5" cy="16" r="1.5"/>
+      <circle cx="16.5" cy="16" r="1.5"/>
+    </svg>
+  )
+}
+
+// Boxy 4x4 SUV silhouette (upright grille, flat panels, roof rack, rear spare
+// wheel) — used for EV-charger nodes since a G-Wagen-style profile reads more
+// distinctly than a generic sedan at small sizes.
+export function GWagenIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      {/* roof rack */}
+      <path d="M6.5 6h9"/>
+      <path d="M7 6v-.8M11 6v-.8M15 6v-.8"/>
+      {/* upright boxy cabin + hood */}
+      <path d="M4.5 16V9.2a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1V16"/>
+      <path d="M4.5 11h13"/>
+      {/* flat windshield / pillar */}
+      <path d="M6.2 8.2 7 11M15 11l.8-2.8"/>
+      {/* body skirt */}
+      <path d="M3.3 16h1.2M16.5 16h4.2"/>
+      <path d="M4.5 13.2h13"/>
+      {/* round headlamp */}
+      <circle cx="6" cy="9.6" r="0.6" fill={color} stroke="none"/>
+      {/* wheels */}
+      <circle cx="8" cy="16.5" r="1.8"/>
+      <circle cx="16" cy="16.5" r="1.8"/>
+      {/* rear-mounted spare wheel */}
+      <circle cx="19.3" cy="13.4" r="1.4"/>
+    </svg>
+  )
+}
+
 export function RouterIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>

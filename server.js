@@ -529,6 +529,52 @@ async function main() {
     }
   }
 
+  // Start go-eCharger client if devices are configured (local API, no cloud)
+  if (config.goecharger?.devices?.length) {
+    const GoEChargerClient = tryRequire('./src/goecharger-client');
+    if (GoEChargerClient) {
+      const goecharger = new GoEChargerClient(config, store, sensorRegistry);
+      goecharger.start().catch((err) => console.error(`[go-eCharger] Start failed: ${err.message}`));
+    }
+  }
+
+  // Start Wallbox client if configured
+  if (config.wallbox?.email && config.wallbox?.password) {
+    const WallboxClient = tryRequire('./src/wallbox-client');
+    if (WallboxClient) {
+      const wallbox = new WallboxClient(config, store, sensorRegistry);
+      wallbox.start().catch((err) => console.error(`[Wallbox] Start failed: ${err.message}`));
+    }
+  }
+
+  // Start Easee client if configured
+  if (config.easee?.username && config.easee?.password) {
+    const EaseeClient = tryRequire('./src/easee-client');
+    if (EaseeClient) {
+      const easee = new EaseeClient(config, store, sensorRegistry);
+      easee.start().catch((err) => console.error(`[Easee] Start failed: ${err.message}`));
+    }
+  }
+
+  // Start Zaptec client if configured
+  if (config.zaptec?.username && config.zaptec?.password) {
+    const ZaptecClient = tryRequire('./src/zaptec-client');
+    if (ZaptecClient) {
+      const zaptec = new ZaptecClient(config, store, sensorRegistry);
+      zaptec.start().catch((err) => console.error(`[Zaptec] Start failed: ${err.message}`));
+    }
+  }
+
+  // Start OCPP 1.6 central system if enabled (generic EV charger listener —
+  // any brand speaking standard OCPP 1.6-J connects here)
+  if (config.ocpp?.enabled) {
+    const OcppServer = tryRequire('./src/ocpp-server');
+    if (OcppServer) {
+      const ocpp = new OcppServer(config, store, sensorRegistry);
+      ocpp.start().catch((err) => console.error(`[OCPP] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Dreame client if configured
   if (config.dreame?.devices?.length) {
     const DreameClient = tryRequire('./src/dreame-client');

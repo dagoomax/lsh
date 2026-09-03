@@ -246,6 +246,30 @@
     "username": "",
     "pollInterval": 5
   },
+  "goecharger": {
+    "devices": [
+      { "host": "192.168.1.x", "name": "Garage Charger", "ampMin": 6, "ampMax": 32 }
+    ]
+  },
+  "wallbox": {
+    "email": "",
+    "password": "",
+    "pollInterval": 30
+  },
+  "easee": {
+    "username": "",
+    "password": "",
+    "pollInterval": 30
+  },
+  "zaptec": {
+    "username": "",
+    "password": "",
+    "pollInterval": 30
+  },
+  "ocpp": {
+    "enabled": false,
+    "port": 9000
+  },
   "simulators": {
     "grenton": false,
     "miele": false,

@@ -67,7 +67,7 @@
 | | |
 |---|---|
 | **Privacy-conscious market growth** | Users increasingly reject cloud-dependent hubs after outages (SmartThings 2022, Google Nest 2023). LSH's local-first story is a direct answer. |
-| **Victron / solar / EV adoption rising** | Victron Energy is the dominant brand in off-grid solar. EV charger integration + battery relay control gives LSH a unique energy management angle no competitor covers. |
+| **Victron / solar / EV adoption rising** | Victron Energy is the dominant brand in off-grid solar. EV charger support (go-eCharger, Wallbox, Easee, Zaptec, generic OCPP 1.6) plus battery relay control gives LSH a unique energy management angle no competitor covers. |
 | **KNX building automation market** | KNX is the dominant bus in European commercial buildings. First-class KNXnet/IP support opens the professional integrator and architect market. |
 | **Docker image + NAS packaging** | A published Docker Hub image and Synology/Unraid community package would unlock a large segment of homelab users who deploy from package managers. |
 | **Commercial integrator channel** | KNX + Victron + Loxone overlap with professional AV and building automation installers — a channel underserved by Home Assistant's DIY-first positioning. |
@@ -575,6 +575,69 @@ First run: set `securityCode` from the sticker on the gateway back. The server g
 Lights, plugs and Zigbee accessories are **auto-discovered** and polled every `pollInterval` seconds (default 5). Color/white-ambiance lights expose brightness, color temperature and hue/saturation (HomeKit `light-rw`, full color control); smart plugs are switches; Hue motion sensors register as one device with motion + temperature + lux + battery; dimmer switches report their last `buttonevent` and battery.
 
 For development without a bridge, run `node scripts/hue-simulator.js` (a fake bridge on port 8180 with a color light, dimmable light, plug, motion trio and a dimmer switch) and point the config at `"host": "127.0.0.1", "port": 8180, "username": "sim"`.
+
+### EV chargers
+
+Five integrations register EV chargers as `category: 'ev-charger'` devices, each exposing the same sensor set — `power` (W), `energy` (kWh), `status`, a `charging` toggle (start/stop) and a `currentLimit` range (amps). Whatever chargers you have registered are auto-summed into a new EV node on the energy-flow diagram; no separate source-picker setup is needed.
+
+### `goecharger`
+
+```json
+"goecharger": {
+  "devices": [
+    { "host": "192.168.1.x", "name": "Garage Charger", "ampMin": 6, "ampMax": 32 }
+  ]
+}
+```
+
+**go-eCharger** — local-only, no cloud account. Polls the charger's own HTTP API (`/api/status`) on the LAN every 10 s; current-limit and start/stop commands go through `/api/set`.
+
+### `wallbox`
+
+```json
+"wallbox": {
+  "email": "",
+  "password": "",
+  "pollInterval": 30
+}
+```
+
+**Wallbox** (Pulsar/Commander/Copper) — cloud. Wallbox has no official public API; this follows the endpoints reverse-engineered by the community (pywallbox / home-assistant-wallbox), so treat it as best-effort.
+
+### `easee`
+
+```json
+"easee": {
+  "username": "",
+  "password": "",
+  "pollInterval": 30
+}
+```
+
+**Easee** — cloud, against Easee's official documented API (`developer.easee.com`). The best-documented of the cloud EV integrations here.
+
+### `zaptec`
+
+```json
+"zaptec": {
+  "username": "",
+  "password": "",
+  "pollInterval": 30
+}
+```
+
+**Zaptec** — cloud, OAuth2 password grant against `api.zaptec.com`. Zaptec's charger state is a list of numeric ObservationId → value pairs rather than flat fields; verify the exact ids against your own charger's `/api/chargers/{id}/state` response if a reading looks wrong.
+
+### `ocpp`
+
+```json
+"ocpp": {
+  "enabled": false,
+  "port": 9000
+}
+```
+
+Generic **OCPP 1.6-J Central System** — unlike every other integration in LSH, charge points dial *into* LSH rather than the other way around, so any brand speaking standard OCPP 1.6 works without a brand-specific client. Point your charger's Central System URL at `ws://<lsh-host>:<port>/ocpp/<chargePointId>`; the `<chargePointId>` segment becomes the device key `ocpp/<chargePointId>` and the device auto-registers on `BootNotification`.
 
 ### `simulators`
 
