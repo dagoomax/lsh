@@ -481,6 +481,16 @@ async function main() {
     }
   }
 
+  // Start Dyson client if enabled (device list/credentials come from
+  // persist/dyson-tokens.json, produced by scripts/dyson-auth.js)
+  if (config.dyson?.enabled) {
+    const DysonClient = tryRequire('./src/dyson-client');
+    if (DysonClient) {
+      const dyson = new DysonClient(config, store, sensorRegistry);
+      dyson.start().catch((err) => console.error(`[Dyson] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Google Calendar client if configured (OAuth connect happens later,
   // from Settings — the client itself just needs clientId/clientSecret to
   // exist so the Settings page can offer the "Connect" link)

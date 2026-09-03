@@ -428,6 +428,29 @@ Leave `installationId`/`gatewaySerial`/`deviceId` empty to auto-resolve the firs
 
 **Sensors are discovered dynamically**, not hardcoded — every poll (60s) reads whatever "features" the installation actually reports and registers/updates sensors for them, since the exact feature set varies by boiler model and firmware. Common ones (boiler/DHW/room temperature, burner state, operating mode, outside temperature) get a friendly display name; anything else falls back to a humanized version of its raw Viessmann feature name (e.g. `heating.circuits.0.heating.curve`). Writable features (e.g. DHW target temperature) are controllable from the dashboard the same way — again driven by whatever `commands` the API itself reports for that feature, never a guessed command shape, since this controls real heating hardware.
 
+### `dyson`
+
+```json
+"dyson": {
+  "enabled": true,
+  "devices": []
+}
+```
+
+Integrates Dyson's WiFi-connected fans/purifiers/humidifiers (Pure Cool, Pure Hot+Cool, Pure Humidify+Cool, and similar) over **local MQTT** — no cloud calls once set up. Dyson's cordless vacuums (360 Eye/Heurist/Vis Nav) use a completely different cloud protocol and are **not** covered.
+
+**Setup (one-time, offline):**
+
+1. `node scripts/dyson-auth.js you@example.com yourpassword` — logs into your Dyson account (prompts for the one-time code Dyson emails you), then downloads each device's serial/product type and its local MQTT password (Dyson ships it AES-encrypted; the script decrypts it) to `persist/dyson-tokens.json`.
+2. Open `persist/dyson-tokens.json` and fill in each device's `"ip"` field with its local IP (check your router's client list) — LSH only ever talks to devices on your local network, never Dyson's cloud, so it needs to know where to find them.
+3. Set `dyson.enabled: true` in `config.json` and restart LSH.
+
+`devices` in `config.json` is optional — only needed to override an IP without re-editing `dyson-tokens.json` (`[{ "serial": "...", "ip": "192.168.1.50" }]`).
+
+**Sensors are discovered dynamically** from whatever fields each device's local MQTT status reports (power, fan speed, auto mode, oscillation, night mode, filter life, PM2.5/PM10, VOC, NOx, humidity, temperature, …) — a known-fields table gives friendly labels/units to the commonly-documented ones; anything else falls back to its raw field name, same approach as `vitodens` above. Power, fan speed, auto mode, oscillation, and night mode are controllable from the dashboard.
+
+> This integration is built from the community-documented (reverse-engineered) Dyson local protocol — Dyson publishes nothing official — and hasn't been run against real hardware in this repo. If a field looks wrong or a device won't connect, that's the most likely reason; check the actual MQTT payloads (e.g. with the MQTT Explorer page) against `src/dyson-client.js`'s `KNOWN_FIELDS` table.
+
 ### `loxone`
 
 ```json
@@ -2547,6 +2570,19 @@ Polls the **Viessmann ViCare cloud IoT API** every 60 s for a Vitodens (or other
 **Config:**
 ```json
 "vitodens": { "clientId": "..." }
+```
+
+---
+
+### `src/dyson-client.js`
+
+Connects directly to Dyson connected fans/purifiers/humidifiers over **local MQTT** (no cloud calls at runtime). Reads devices/credentials from `persist/dyson-tokens.json`, produced offline by `scripts/dyson-auth.js`. Discovers sensors dynamically from each device's reported state fields, same approach as `vitodens-client.js`. Untested against real hardware — see the `dyson` config reference above for the caveat.
+
+**Setup:** `node scripts/dyson-auth.js <email> <password>`, then fill in each device's IP in `persist/dyson-tokens.json`.
+
+**Config:**
+```json
+"dyson": { "enabled": true }
 ```
 
 ---

@@ -64,6 +64,10 @@
     "modelId": "",
     "modelName": ""
   },
+  "dyson": {
+    "enabled": false,
+    "devices": []
+  },
   "roborock": {
     "cloud": {
       "email": "",

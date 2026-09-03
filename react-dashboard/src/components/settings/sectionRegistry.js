@@ -35,7 +35,7 @@ export const CATEGORIES = [
     { id: 'manualcams', title: 'Cameras', ported: true },
   ] },
   { id: 'climate', label: 'Climate & Appliances', sections: [
-    { id: 'climate-extra', title: 'AuxAir, Bayrol, OpenWeather, Airly, ViCare, Thermomix', ported: true },
+    { id: 'climate-extra', title: 'AuxAir, Bayrol, OpenWeather, Airly, ViCare, Thermomix, Dyson', ported: true },
     { id: 'lgthinq', title: 'LG ThinQ', ported: true },
     { id: 'appliance-cloud', title: 'Home Connect & Miele@home', ported: true },
   ] },

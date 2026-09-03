@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
+import { useEffect, useState } from 'react'
+import { SettingsCard, Field, Button, ResultBanner, Toggle } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { AirCondIcon, PoolIcon, SunIcon, ThermostatIcon, WindIcon } from '../../Icons'
 import { gt } from '../../../i18n'
@@ -20,6 +20,7 @@ export default function ClimateSection({ config, reload }) {
       <AirlyCard airly={config.airly} reload={reload}/>
       <ViCareCard vicare={config.vicare} reload={reload}/>
       <ThermomixCard thermomix={config.thermomix} reload={reload}/>
+      <DysonCard dyson={config.dyson} reload={reload}/>
     </>
   )
 }
@@ -170,6 +171,39 @@ function ThermomixCard({ thermomix, reload }) {
       <Field label="Poll interval" hint="(seconds, min 60)" type="number" value={pollSeconds} onChange={setPollSeconds}/>
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy} onClick={() => save.save({ email, password, country, pollSeconds: Number(pollSeconds) }).then(reload)}>{gt('common.save', 'Save')}</Button>
+        <ResultBanner result={save.result}/>
+      </div>
+    </SettingsCard>
+  )
+}
+
+function DysonCard({ dyson, reload }) {
+  const [enabled, setEnabled] = useState(!!dyson?.enabled)
+  const [devices, setDevices] = useState(null) // null = not loaded yet, [] = loaded, none found
+  const save = useSettingsSave('/api/settings/dyson')
+
+  useEffect(() => {
+    fetch('/api/settings/dyson-devices', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setDevices(d.success ? d.devices : []))
+      .catch(() => setDevices([]))
+  }, [])
+
+  return (
+    <SettingsCard icon={WindIcon} title="Dyson" badge={{ label: gt('common.optional', 'Optional') }}
+      desc={<>Dyson connected fans/purifiers/humidifiers (Pure Cool, Pure Hot+Cool, Pure Humidify+Cool) over local MQTT. One-time setup from a terminal: <code>node scripts/dyson-auth.js you@example.com yourpassword</code> — logs into your Dyson account, decrypts each device's local MQTT password, and saves them to <code>persist/dyson-tokens.json</code>. Open that file afterwards and fill in each device's local IP (find it on your router). Cordless vacuums use a different Dyson protocol and aren't supported here.</>}>
+      {devices != null && (
+        devices.length ? (
+          <div className="stg-hint" style={{ marginBottom: 8 }}>
+            {devices.map(d => `${d.name} (${d.productType}) — ${d.ip ? d.ip : 'no IP set'}`).join(', ')}
+          </div>
+        ) : (
+          <div className="stg-hint" style={{ marginBottom: 8 }}>No devices found yet — run the auth script above.</div>
+        )
+      )}
+      <Toggle label="Enabled" checked={enabled} onChange={setEnabled}/>
+      <div className="stg-actions">
+        <Button variant="primary" busy={save.busy} onClick={() => save.save({ enabled }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>
       </div>
     </SettingsCard>
