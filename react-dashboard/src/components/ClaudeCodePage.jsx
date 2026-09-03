@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { SparkIcon } from './Icons'
 import '../styles/settings.css'
 
 // Full-page chat against the embedded Claude Code agent (src/claude-code-client.js
@@ -80,7 +81,10 @@ export default function ClaudeCodePage({ onClose }) {
             strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           Dashboard
         </button>
-        <h1 className="stg-page-title">Claude Code</h1>
+        <h1 className="stg-page-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <SparkIcon size={17} color="var(--accent)"/>
+          Claude Code
+        </h1>
         <span className="stg-page-title-spacer"/>
         {status === 'ready' && <button className="stg-back" onClick={reset}>New chat</button>}
       </div>
@@ -153,6 +157,12 @@ function ChatBubble({ msg }) {
   const isError = msg.role === 'error'
   return (
     <div style={{ alignSelf: isUser ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+      {!isUser && !isError && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4, paddingLeft: 2 }}>
+          <SparkIcon size={11} color="var(--accent)"/>
+          <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text3)' }}>Claude</span>
+        </div>
+      )}
       <div style={{
         padding: '10px 14px', borderRadius: 14, fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap',
         background: isUser ? 'var(--accent)' : isError ? 'var(--bad-bg, rgba(190,70,70,0.12))' : 'var(--white-05)',

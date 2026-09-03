@@ -472,6 +472,15 @@ async function main() {
     }
   }
 
+  // Start Viessmann Vitodens client if configured
+  if (config.vitodens?.clientId) {
+    const VitodensClient = tryRequire('./src/vitodens-client');
+    if (VitodensClient) {
+      const vitodens = new VitodensClient(config, store, sensorRegistry);
+      vitodens.start().catch((err) => console.error(`[Vitodens] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Google Calendar client if configured (OAuth connect happens later,
   // from Settings — the client itself just needs clientId/clientSecret to
   // exist so the Settings page can offer the "Connect" link)

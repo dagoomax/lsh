@@ -1135,6 +1135,19 @@ export function MicIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+// A generic 4-point sparkle — the common "AI feature" motif used across many
+// products' UIs, not a reproduction of Anthropic's own Claude wordmark/star
+// (that's a specific trademarked asset, not something to recreate from
+// memory). Marks the embedded Claude Code chat as "this talks to an AI",
+// filled rather than outlined so it reads as a mark, not a line icon.
+export function SparkIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M12 2 L14.2 9.8 L22 12 L14.2 14.2 L12 22 L9.8 14.2 L2 12 L9.8 9.8 Z" fill={color}/>
+    </svg>
+  )
+}
+
 export const CAT_ICON_COMPONENT = {
   All:      HomeIcon,
   Victron:  GridPowerIcon,

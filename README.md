@@ -404,6 +404,30 @@ Leave `deviceIds` empty to discover all devices. Or supply a list of device UUID
 
 **Webhook (optional, push updates).** The main integration polls every 10s; `POST /api/webhooks/smartthings` is for lower-latency push updates from a SmartThings Rule's HTTP-request action instead of waiting on the next poll. This route is unauthenticated (SmartThings' servers call it, not a logged-in browser) and internet-reachable if you've exposed LSH — so it's rejected outright unless `webhookSecret` is set. Configure the same value on both sides: `smartthings.webhookSecret` in `config.json`, and either an `X-Webhook-Secret` header or a `?secret=` query param on the SmartThings-side HTTP action.
 
+### `vitodens`
+
+```json
+"vitodens": {
+  "clientId": "your-oauth-client-id",
+  "installationId": "",
+  "gatewaySerial": "",
+  "deviceId": "",
+  "label": "Boiler"
+}
+```
+
+Integrates a Viessmann ViCare-connected heating system (Vitodens boilers, and other ViCare-connected Viessmann systems — the API is model-agnostic) via Viessmann's cloud IoT API.
+
+Leave `installationId`/`gatewaySerial`/`deviceId` empty to auto-resolve the first installation/gateway/device on the account (the normal case — one boiler, one account). Set them explicitly only for a multi-installation account.
+
+**Auth — OAuth2 + PKCE (public client, no secret).**
+
+1. One-time, register a client at the [Viessmann Developer Portal](https://app.developer.viessmann.com/) (log in with your ViCare app account) → *Your clients* → *Add* → redirect URI `https://lsh-callback.invalid/callback` (any registered HTTPS redirect works; it doesn't need to resolve — the auth script uses a paste-the-URL flow, same trick as the SmartThings integration). Note the Client ID.
+2. Put `clientId` in `config.json` and run `node scripts/vitodens-auth.js` — it prints an authorization URL, and saves the token pair to `persist/vitodens-tokens.json`.
+3. Restart LSH. The client refreshes the access token automatically (access tokens last ~1h) and persists the rotated refresh token.
+
+**Sensors are discovered dynamically**, not hardcoded — every poll (60s) reads whatever "features" the installation actually reports and registers/updates sensors for them, since the exact feature set varies by boiler model and firmware. Common ones (boiler/DHW/room temperature, burner state, operating mode, outside temperature) get a friendly display name; anything else falls back to a humanized version of its raw Viessmann feature name (e.g. `heating.circuits.0.heating.curve`). Writable features (e.g. DHW target temperature) are controllable from the dashboard the same way — again driven by whatever `commands` the API itself reports for that feature, never a guessed command shape, since this controls real heating hardware.
+
 ### `loxone`
 
 ```json
@@ -2510,6 +2534,19 @@ Polls the **Samsung SmartThings cloud API** every 10 s. Discovers all devices (o
 **Config:**
 ```json
 "smartthings": { "clientId": "...", "clientSecret": "...", "deviceIds": [] }
+```
+
+---
+
+### `src/vitodens-client.js`
+
+Polls the **Viessmann ViCare cloud IoT API** every 60 s for a Vitodens (or other ViCare-connected) heating system. Auto-resolves the installation/gateway/device, then discovers sensors dynamically from whatever features the API reports rather than a hardcoded list. Writes go through each feature's own self-described `commands` from the live response.
+
+**Setup:** OAuth2+PKCE via `scripts/vitodens-auth.js` (see the `vitodens` config reference above) — tokens then refresh automatically.
+
+**Config:**
+```json
+"vitodens": { "clientId": "..." }
 ```
 
 ---

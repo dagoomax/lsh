@@ -53,6 +53,13 @@
     "webhookUrl": "",
     "webhookSecret": ""
   },
+  "vitodens": {
+    "clientId": "",
+    "installationId": "",
+    "gatewaySerial": "",
+    "deviceId": "",
+    "label": ""
+  },
   "roborock": {
     "cloud": {
       "email": "",

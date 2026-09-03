@@ -123,11 +123,13 @@ const auth = {
       username:  username.trim(),
       passwordHash,
       role,
-      // Sensitive capabilities beyond plain admin/viewer — off by default even
-      // for admins. Only settable via setPermission(), which itself requires
-      // installerMode (see requireInstallerMode in api-routes.js): granting
-      // these needs filesystem/config access, not just a web admin session.
-      permissions: { flows: false, claudeCode: false },
+      // Sensitive capabilities beyond plain admin/viewer. Settable per-user
+      // via setPermission(), which itself requires installerMode (see
+      // requireInstallerMode in api-routes.js) — granting/revoking still
+      // needs filesystem/config access, not just a web admin session. Default
+      // on for new users; flip back to false here if you want new accounts
+      // to start locked out again.
+      permissions: { flows: true, claudeCode: true },
       createdAt: new Date().toISOString(),
     };
     users.push(user);
@@ -152,12 +154,18 @@ const auth = {
   },
 
   getUsers() {
-    // Users created before permissions existed have no `permissions` field —
-    // normalize to the same all-false default createUser() now seeds, rather
-    // than letting `undefined.flows` throw wherever this gets read.
+    // Users created before permissions existed have no `permissions` field at
+    // all — normalize those to the same on-by-default createUser() now
+    // seeds. A user that *does* have the field keeps its explicit value
+    // (including an explicit false from a revoke), so this only fills the
+    // gap for records missing it entirely, not a way to silently re-enable
+    // something that was deliberately turned off.
     return loadUsers().map(({ id, username, role, createdAt, permissions }) => ({
       id, username, role, createdAt,
-      permissions: { flows: !!permissions?.flows, claudeCode: !!permissions?.claudeCode },
+      permissions: {
+        flows: permissions ? !!permissions.flows : true,
+        claudeCode: permissions ? !!permissions.claudeCode : true,
+      },
     }));
   },
 
@@ -166,7 +174,11 @@ const auth = {
   // request, not just after re-login.
   hasPermission(userId, key) {
     const user = loadUsers().find(u => u.id === userId);
-    return !!user?.permissions?.[key];
+    if (!user) return false;
+    // Same rule as getUsers()'s normalization: no `permissions` field at all
+    // (pre-permissions user record) defaults to on; a record that has the
+    // field keeps whatever it explicitly says, revokes included.
+    return user.permissions ? !!user.permissions[key] : true;
   },
 
   // key must be 'flows' or 'claudeCode'; caller (requireInstallerMode in
