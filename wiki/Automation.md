@@ -40,6 +40,41 @@ Rules are edge-triggered: a comparison rule fires once when the condition become
 | `notify` | `level` (`info`/`warning`/`critical`), `message` | Add a notification + toast; `{value}` and `{key}` placeholders supported |
 | `scene` | `sceneId` | Run a scene |
 
+### Flows (Node-RED-style)
+
+For anything a single trigger→actions rule can't express — branching, delays, HTTP calls, MQTT, regex extraction — a flow is a small graph of nodes connected by `wires`. Entry-point node types (`trigger`, `time`, `mqttIn`) start a run; each node transforms/routes the message and forwards it along its wires. Same storage/API shape as rules and scenes (`automations.json`, `GET/POST /api/automation/flows`), and same restriction: flows act on live device state and store values — they can't rewrite `config.json` (a device's configured name, Shelly's per-relay labels, etc. stay a Settings/script-level change, not something a flow node can do).
+
+The full node-type reference (config fields for `condition`, `sync`, `store`, `http`, `mqttOut`, `delay`, …) lives in the doc comment at the top of the "Flows" section in `src/automation-engine.js` — this page only shows a worked example.
+
+**Example — mirror one Shelly relay to another** (built and verified against `scripts/shelly-simulator.js`: toggling `relay_0` reliably turned `relay_1` on/off within one poll cycle, both in the live device reading and the exported Loxone XML):
+
+```json
+{
+  "id": "shellysim-mirror",
+  "name": "Shelly Sim: mirror pump to lights",
+  "enabled": true,
+  "nodes": [
+    {
+      "id": "n1", "type": "trigger",
+      "config": { "key": "shelly/localhost/relay_0", "op": "changes" },
+      "wires": [["n2"]]
+    },
+    {
+      "id": "n2", "type": "device",
+      "config": { "deviceKey": "shelly/localhost", "sensor": "relay_1", "value": "{value}" },
+      "wires": [["n3"]]
+    },
+    {
+      "id": "n3", "type": "notify",
+      "config": { "level": "info", "message": "Garden Pump changed to {value} — Patio Lights mirrored" },
+      "wires": [[]]
+    }
+  ]
+}
+```
+
+`op: "changes"` fires on every store update for that key (not just a value transition); `{value}` in a `device`/`notify` node's config resolves to the triggering message's payload. Swap in real device keys/sensors from your own setup — `GET /api/devices` (or the dashboard) shows the exact keys and sensor paths to use.
+
 ### Scenes
 
 Named action groups run manually — one tap from the **scene strip** shown above all dashboard tabs, or from the Automation tab. Same action types as rules.
