@@ -124,8 +124,8 @@ function addBatteryService(accessory, deviceKey, store) {
  * Adds a Switch service with optional write-back via writeCallback(command).
  * storePath value: 1=on, 0=off
  */
-function addSwitchService(accessory, name, storePath, store, writeCallback) {
-  const svc = accessory.addService(Service.Switch, name);
+function addSwitchService(accessory, name, storePath, store, writeCallback, subtype) {
+  const svc = accessory.addService(Service.Switch, name, subtype || storePath);
 
   svc.getCharacteristic(Characteristic.On)
     .onGet(() => store.get(storePath) === 1)
@@ -848,7 +848,13 @@ function buildDeviceAccessory(device, store) {
   const manufacturer = device.type === 'smartthings' ? 'Samsung SmartThings' : 'Victron Energy';
   setInfo(acc, manufacturer, device.label, device.key);
 
-  for (const hkType of device.homekit) {
+  // device.homekit can list the same tag more than once (e.g. a 2-relay
+  // Shelly's ['switch-rw', 'switch-rw', ...]) — one entry per sensor, not
+  // one per distinct type. Dedupe here; each block below finds/filters its
+  // own matching sensors from device.sensors, so running twice would only
+  // ever re-process the same first match (or, for switch-rw specifically,
+  // crash HAP with a duplicate Service UUID).
+  for (const hkType of new Set(device.homekit)) {
     if (hkType === 'spa') {
       addSpaServices(acc, device, store);
     }
@@ -878,10 +884,17 @@ function buildDeviceAccessory(device, store) {
     }
 
     if (hkType === 'switch-rw') {
-      const s = device.sensors.find((s) => s.homekit === 'switch-rw');
-      if (s && device._writeCapability) {
-        const writeCallback = (command) => device._writeCapability(s.capabilityId, command);
-        addSwitchService(acc, device.label, `${device.key}/${s.path}`, store, writeCallback);
+      const switches = device.sensors.filter((s) => s.homekit === 'switch-rw');
+      if (switches.length && device._writeCapability) {
+        // One device can carry several switches (e.g. a multi-relay Shelly)
+        // — each needs its own name and a unique subtype (its store path
+        // already is one) or HAP rejects the second Service outright.
+        switches.forEach((s) => {
+          const writeCallback = (command) => device._writeCapability(s.capabilityId, command);
+          const name = switches.length > 1 ? `${device.label} ${s.label || s.path}` : device.label;
+          const storePath = `${device.key}/${s.path}`;
+          addSwitchService(acc, name, storePath, store, writeCallback, storePath);
+        });
       }
     }
 
