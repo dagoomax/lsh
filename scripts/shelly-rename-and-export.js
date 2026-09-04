@@ -12,7 +12,15 @@
 //        renames every configured Shelly device to "Shelly 1", "Shelly 2", …
 //        in their current config.json order, then reminds you to restart LSH.
 //
-//   2. node scripts/shelly-rename-and-export.js export --host <lsh-ip:port> --token <api-token>
+//   2. node scripts/shelly-rename-and-export.js label <shelly-host> relay_0="Garden Pump" relay_1="Patio Lights"
+//        renames individual sensors (relays, lights, …) on one already-
+//        configured device, in config.shelly.devices[].sensorLabels — the
+//        device-level "name" above only labels the whole device, not each
+//        channel. Sensor paths are device-specific (relay_0, relay_1,
+//        light_0_on, …); check the dashboard or GET /api/devices for a
+//        device's actual paths if unsure.
+//
+//   3. node scripts/shelly-rename-and-export.js export --host <lsh-ip:port> --token <api-token>
 //        run AFTER restarting, once the new names are live — fetches the
 //        Loxone inputs.xml + outputs.xml for type=shelly and saves them
 //        next to this script (or --out <dir>).
@@ -57,6 +65,37 @@ function rename() {
 
   writeConfig({ ...cfg, shelly: { devices } });
   console.log('\n[Shelly] Saved. Restart LSH for the new names to take effect, then run:');
+  console.log('  node scripts/shelly-rename-and-export.js export --host <lsh-ip:port> --token <api-token>');
+}
+
+function label(args) {
+  const [host, ...pairs] = args;
+  if (!host || !pairs.length) {
+    console.error('Usage: node scripts/shelly-rename-and-export.js label <shelly-host> path=Name [path=Name ...]');
+    process.exit(1);
+  }
+
+  const cfg = readConfig();
+  const devices = cfg.shelly?.devices || [];
+  const device = devices.find((d) => d.host === host);
+  if (!device) {
+    console.error(`[Shelly] No device with host "${host}" in config.shelly.devices — add it first (Settings → Lighting → Shelly, or the "rename" step above).`);
+    process.exit(1);
+  }
+
+  device.sensorLabels = device.sensorLabels || {};
+  console.log(`[Shelly] Labeling sensors on "${device.name || host}":`);
+  for (const pair of pairs) {
+    const eq = pair.indexOf('=');
+    if (eq < 0) { console.error(`  skipping "${pair}" — expected path=Name`); continue; }
+    const sensorPath = pair.slice(0, eq);
+    const newLabel = pair.slice(eq + 1);
+    console.log(`  ${sensorPath} -> "${newLabel}"`);
+    device.sensorLabels[sensorPath] = newLabel;
+  }
+
+  writeConfig({ ...cfg, shelly: { devices } });
+  console.log('\n[Shelly] Saved. Restart LSH for the new sensor names to take effect, then run:');
   console.log('  node scripts/shelly-rename-and-export.js export --host <lsh-ip:port> --token <api-token>');
 }
 
@@ -105,10 +144,12 @@ async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   const opts = parseArgs(rest);
   if (cmd === 'rename') rename();
+  else if (cmd === 'label') label(rest);
   else if (cmd === 'export') await exportXml(opts);
   else {
     console.log('Usage:');
     console.log('  node scripts/shelly-rename-and-export.js rename');
+    console.log('  node scripts/shelly-rename-and-export.js label <shelly-host> path=Name [path=Name ...]');
     console.log('  node scripts/shelly-rename-and-export.js export --host <lsh-ip:port> --token <api-token> [--out <dir>]');
     process.exit(1);
   }

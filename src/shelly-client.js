@@ -53,6 +53,15 @@ class ShellyClient {
       ? this._sensorsGen1(info, status)
       : this._sensorsGen2(status);
 
+    // Per-sensor display name overrides (config.shelly.devices[].sensorLabels,
+    // keyed by sensor path — e.g. { "relay_0": "Garden Pump" }). Relay/light
+    // labels are otherwise auto-numbered ("Switch 1", "Switch 2", …), which
+    // says nothing about what's actually wired to each channel.
+    const sensorLabels = cfg.sensorLabels || {};
+    for (const s of sensors) {
+      if (sensorLabels[s.path]) s.label = sensorLabels[s.path];
+    }
+
     const displayName = name || info.hostname || info.name || host;
 
     const device = {

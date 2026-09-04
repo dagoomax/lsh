@@ -538,12 +538,14 @@ Discovers every door and registers it as a device with two sensors: `contact` (d
 ```json
 "shelly": {
   "devices": [
-    { "name": "Living Room", "host": "192.168.1.50" }
+    { "name": "Living Room", "host": "192.168.1.50", "sensorLabels": { "relay_0": "Garden Pump", "relay_1": "Patio Lights" } }
   ]
 }
 ```
 
 Supports Shelly Gen1 (REST `/status`) and Gen2 (REST `/rpc/Shelly.GetStatus`). Auto-detected per device.
+
+`sensorLabels` is optional — without it, multi-channel relays/lights are just auto-numbered ("Switch 1", "Switch 2", …), which says nothing about what's actually wired to each channel. Keyed by the sensor's path (`relay_0`, `light_0_on`, …); check the dashboard or `GET /api/devices` for a device's actual paths. `scripts/shelly-rename-and-export.js` can set these (and the device-level `name` above) from the CLI, then re-export the Loxone XML templates so they pick up the new labels — see that script's header comment for usage.
 
 ### `boneio`
 
