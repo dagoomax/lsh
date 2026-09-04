@@ -67,7 +67,15 @@ function sendJson(res, obj) {
 
 function log(...args) { console.log('[ShellySim]', ...args); }
 
-const server = http.createServer((req, res) => {
+function readBody(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', (c) => { body += c; });
+    req.on('end', () => resolve(body));
+  });
+}
+
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
   if (url.pathname === '/shelly') return sendJson(res, shellyInfo());
@@ -77,7 +85,14 @@ const server = http.createServer((req, res) => {
   if (relayMatch) {
     const i = Number(relayMatch[1]);
     if (!relays[i]) { res.writeHead(404); return res.end(); }
-    const turn = url.searchParams.get('turn');
+    // The real Gen1 API (and shelly-client.js's _postForm) sends `turn` as a
+    // form-encoded POST body, not a query param — a plain GET with
+    // ?turn=on/off (handy for manual curl testing) is also accepted.
+    let turn = url.searchParams.get('turn');
+    if (!turn && req.method === 'POST') {
+      const body = await readBody(req);
+      turn = new URLSearchParams(body).get('turn');
+    }
     if (turn === 'on' || turn === 'off') {
       relays[i].ison = turn === 'on';
       log(`relay ${i} (${relays[i].name}) -> ${turn}`);
