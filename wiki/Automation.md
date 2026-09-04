@@ -75,6 +75,8 @@ The full node-type reference (config fields for `condition`, `sync`, `store`, `h
 
 `op: "changes"` fires on every store update for that key (not just a value transition); `{value}` in a `device`/`notify` node's config resolves to the triggering message's payload. Swap in real device keys/sensors from your own setup — `GET /api/devices` (or the dashboard) shows the exact keys and sensor paths to use.
 
+Renaming `relay_0`/`relay_1` themselves (or the device's own name) is a separate, unrelated tool — as the restriction above notes, no flow node can do it. Use `scripts/shelly-rename-and-export.js` instead: `rename` for the device-level name, `label <host> path=Name ...` for per-sensor names like "Garden Pump"/"Patio Lights" above, and `export` to re-pull the Loxone XML once the new names are live. See the `shelly` config section in the README for the full `sensorLabels` reference.
+
 ### Scenes
 
 Named action groups run manually — one tap from the **scene strip** shown above all dashboard tabs, or from the Automation tab. Same action types as rules.
