@@ -1,7 +1,8 @@
 'use strict';
 
-const https  = require('https');
-const crypto = require('crypto');
+const https          = require('https');
+const crypto         = require('crypto');
+const platformStatus = require('./platform-status');
 
 const BASE_HOSTS = {
   eu:  'app-service-deu-f0e9ebbb.smarthomecs.de',
@@ -50,6 +51,11 @@ class AuxAirClient {
 
   async start() {
     console.log(`[AuxAir] Starting — host ${this._host}`);
+    // False until a poll actually confirms a device reported real state —
+    // badge appears immediately, goes green only once genuinely connected
+    // (see _poll(), which also flips it back false if every device starts
+    // failing, rather than leaving a stale "connected" from the first poll).
+    platformStatus.set('auxair', false);
     await this._login();
     await this._refreshDevices();
     console.log(`[AuxAir] Found ${this._devices.length} device(s)`);
@@ -118,6 +124,7 @@ class AuxAirClient {
         console.error(`[AuxAir] Poll error (${dev.endpointId}): ${err.message}`);
       }
     }
+    platformStatus.set('auxair', anyOk);
     // Every device failed this cycle. That's as likely to be one offline
     // unit (especially on single-device installs) as a genuine session
     // expiry, and we can't tell the two apart from the API's error shape —
