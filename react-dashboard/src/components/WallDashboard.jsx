@@ -10,6 +10,7 @@ import WeatherDetails from './WeatherDetails'
 import ForecastStrip from './ForecastStrip'
 import AgendaPanel from './AgendaPanel'
 import PagingWidget from './PagingWidget'
+import { loadEnergySources, resolveEnergy } from '../energySources'
 import { gt } from '../i18n'
 
 const AGENDA_POLL_MS = 5 * 60 * 1000
@@ -137,13 +138,19 @@ export default function WallDashboard({ devices, energy, roomsMeta, onClose }) {
     ? evDevices.reduce((sum, d) => sum + (Number(d.readings?.power?.value) || 0), 0)
     : null
 
+  // Same per-metric Victron/SolarEdge mix as the main dashboard's Energy tab
+  // (DeviceList.jsx) — without this, the kiosk widget always showed raw
+  // Victron-only readings and could look empty for anyone who picked
+  // SolarEdge as the source for solar/battery/grid/loads.
+  const resolvedEnergy = useMemo(() => resolveEnergy(energy, loadEnergySources()), [energy])
+
   return (
     <div className="wall-dash">
       <button className="wall-exit" onClick={() => setShowExitPin(true)} title={gt('exit_wall', 'Exit wall view')} aria-label={gt('exit_wall', 'Exit wall view')}>✕</button>
       {showExitPin && <ExitPinPrompt onConfirm={onClose} onCancel={() => setShowExitPin(false)} />}
 
       <div className="wall-region wall-region-energy">
-        <EnergyRadial energy={energy} />
+        <EnergyRadial energy={resolvedEnergy} />
         {evPower != null && <EvKioskCard evPower={evPower} />}
         <ThermostatPanel devices={devices} onCommand={onCommand} />
       </div>
@@ -154,7 +161,7 @@ export default function WallDashboard({ devices, energy, roomsMeta, onClose }) {
         <AgendaPanel events={agendaEvents} onRefresh={refreshAgenda} />
       </div>
       <div className="wall-region wall-region-plan">
-        <HomePlan devices={devices} roomsMeta={roomsMeta} groupOf={getGroup} onOpen={setOpenKey} energy={energy} kiosk />
+        <HomePlan devices={devices} roomsMeta={roomsMeta} groupOf={getGroup} onOpen={setOpenKey} energy={resolvedEnergy} kiosk />
       </div>
 
       <DeviceModal device={openDevice} rooms={rooms} onClose={() => setOpenKey(null)} onCommand={onCommand} />
