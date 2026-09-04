@@ -55,10 +55,9 @@ function SolarEdgeCard({ solaredge, reload }) {
   )
 }
 
-const DEFAULT_EV_MODEL_OPTION = { value: '', label: '— Default (2025 Mercedes-Benz G-Class AMG G63) —' }
-const USE_DEFAULT_OPTION = { value: '', label: '— Use default above —' }
-
 function EvVisualCard({ evVisual, reload }) {
+  const defaultOption = { value: '', label: gt('s.ev_default_option', '— Default (2025 Mercedes-Benz G-Class AMG G63) —') }
+  const useDefaultOption = { value: '', label: gt('s.ev_use_default_option', '— Use default above —') }
   const [models, setModels] = useState([])
   const [chargers, setChargers] = useState([])
   const [modelId, setModelId] = useState(evVisual?.modelId || '')
@@ -82,14 +81,14 @@ function EvVisualCard({ evVisual, reload }) {
   const setDeviceModel = (key, val) => setPerDevice(prev => ({ ...prev, [key]: val }))
 
   return (
-    <SettingsCard icon={GWagenIcon} title="EV Charging Visualization" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Pick which 3D car model shows on the Energy tab while charging — embedded live from Sketchfab (needs internet on the viewing device). With more than one EV charger registered, each gets its own model (up to 10); anything left on "Use default" follows the one below.</>}>
-      <Field label="Default car model" type="select" value={modelId} onChange={setModelId}
-        options={[DEFAULT_EV_MODEL_OPTION, ...carOptions]}/>
+    <SettingsCard icon={GWagenIcon} title={gt('s.ev_title', 'EV Charging Visualization')} badge={{ label: gt('common.optional', 'Optional') }}
+      desc={gt('sdesc.ev', 'Pick which 3D car model shows on the Energy tab while charging — embedded live from Sketchfab (needs internet on the viewing device). With more than one EV charger registered, each gets its own model (up to 10); anything left on "Use default" follows the one below.')}>
+      <Field label={gt('s.ev_default_model', 'Default car model')} type="select" value={modelId} onChange={setModelId}
+        options={[defaultOption, ...carOptions]}/>
 
       {chargers.length > 1 && chargers.slice(0, 10).map(c => (
         <Field key={c.key} label={c.label} type="select" value={perDevice[c.key] || ''}
-          onChange={v => setDeviceModel(c.key, v)} options={[USE_DEFAULT_OPTION, ...carOptions]}/>
+          onChange={v => setDeviceModel(c.key, v)} options={[useDefaultOption, ...carOptions]}/>
       ))}
 
       <div className="stg-actions">

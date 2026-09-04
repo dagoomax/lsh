@@ -191,17 +191,17 @@ function DysonCard({ dyson, reload }) {
 
   return (
     <SettingsCard icon={WindIcon} title="Dyson" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Dyson connected fans/purifiers/humidifiers (Pure Cool, Pure Hot+Cool, Pure Humidify+Cool) over local MQTT. One-time setup from a terminal: <code>node scripts/dyson-auth.js you@example.com yourpassword</code> — logs into your Dyson account, decrypts each device's local MQTT password, and saves them to <code>persist/dyson-tokens.json</code>. Open that file afterwards and fill in each device's local IP (find it on your router). Cordless vacuums use a different Dyson protocol and aren't supported here.</>}>
+      desc={<>{gt('sdesc.dyson_1', 'Dyson connected fans/purifiers/humidifiers (Pure Cool, Pure Hot+Cool, Pure Humidify+Cool) over local MQTT. One-time setup from a terminal: ')}<code>node scripts/dyson-auth.js you@example.com yourpassword</code>{gt('sdesc.dyson_2', " — logs into your Dyson account, decrypts each device's local MQTT password, and saves them to ")}<code>persist/dyson-tokens.json</code>{gt('sdesc.dyson_3', ". Open that file afterwards and fill in each device's local IP (find it on your router). Cordless vacuums use a different Dyson protocol and aren't supported here.")}</>}>
       {devices != null && (
         devices.length ? (
           <div className="stg-hint" style={{ marginBottom: 8 }}>
-            {devices.map(d => `${d.name} (${d.productType}) — ${d.ip ? d.ip : 'no IP set'}`).join(', ')}
+            {devices.map(d => `${d.name} (${d.productType}) — ${d.ip ? d.ip : gt('s.dyson_no_ip', 'no IP set')}`).join(', ')}
           </div>
         ) : (
-          <div className="stg-hint" style={{ marginBottom: 8 }}>No devices found yet — run the auth script above.</div>
+          <div className="stg-hint" style={{ marginBottom: 8 }}>{gt('s.dyson_no_devices', 'No devices found yet — run the auth script above.')}</div>
         )
       )}
-      <Toggle label="Enabled" checked={enabled} onChange={setEnabled}/>
+      <Toggle label={gt('common.enabled', 'Enabled')} checked={enabled} onChange={setEnabled}/>
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy} onClick={() => save.save({ enabled }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>
