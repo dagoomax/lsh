@@ -56,27 +56,50 @@ function SolarEdgeCard({ solaredge, reload }) {
 }
 
 const DEFAULT_EV_MODEL_OPTION = { value: '', label: '— Default (2025 Mercedes-Benz G-Class AMG G63) —' }
+const USE_DEFAULT_OPTION = { value: '', label: '— Use default above —' }
 
 function EvVisualCard({ evVisual, reload }) {
   const [models, setModels] = useState([])
+  const [chargers, setChargers] = useState([])
   const [modelId, setModelId] = useState(evVisual?.modelId || '')
+  // Per-charger overrides, keyed by device key — '' means "use default above".
+  const [perDevice, setPerDevice] = useState(
+    () => Object.fromEntries(Object.entries(evVisual?.devices || {}).map(([k, v]) => [k, v.modelId || '']))
+  )
   const save = useSettingsSave('/api/settings/ev-visual')
 
   // The car list (592 Sketchfab models, name + license) is a static asset
   // rather than bundled JS, since it's only needed on this one settings card.
   useEffect(() => {
     fetch('/react/vehicle-models.json').then(r => r.json()).then(setModels).catch(() => {})
+    fetch('/api/settings/ev-charger-devices', { credentials: 'include' })
+      .then(r => r.json()).then(d => setChargers(d.success ? d.devices : [])).catch(() => {})
   }, [])
 
-  const options = [DEFAULT_EV_MODEL_OPTION, ...models.map(m => ({ value: m.uid, label: `${m.name} (${m.license})` }))]
+  const carOptions = models.map(m => ({ value: m.uid, label: `${m.name} (${m.license})` }))
+  const nameFor = (id) => models.find(m => m.uid === id)?.name || ''
+
+  const setDeviceModel = (key, val) => setPerDevice(prev => ({ ...prev, [key]: val }))
 
   return (
     <SettingsCard icon={GWagenIcon} title="EV Charging Visualization" badge={{ label: gt('common.optional', 'Optional') }}
-      desc="Pick which 3D car model shows on the Energy tab's EV card while charging — embedded live from Sketchfab (needs internet on the viewing device). Leave on Default to keep the built-in car.">
-      <Field label="Car model" type="select" value={modelId} onChange={setModelId} options={options}/>
+      desc={<>Pick which 3D car model shows on the Energy tab while charging — embedded live from Sketchfab (needs internet on the viewing device). With more than one EV charger registered, each gets its own model (up to 10); anything left on "Use default" follows the one below.</>}>
+      <Field label="Default car model" type="select" value={modelId} onChange={setModelId}
+        options={[DEFAULT_EV_MODEL_OPTION, ...carOptions]}/>
+
+      {chargers.length > 1 && chargers.slice(0, 10).map(c => (
+        <Field key={c.key} label={c.label} type="select" value={perDevice[c.key] || ''}
+          onChange={v => setDeviceModel(c.key, v)} options={[USE_DEFAULT_OPTION, ...carOptions]}/>
+      ))}
+
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy}
-          onClick={() => save.save({ modelId, modelName: models.find(m => m.uid === modelId)?.name || '' }).then(reload)}>
+          onClick={() => save.save({
+            default: { modelId, modelName: nameFor(modelId) },
+            devices: Object.fromEntries(
+              Object.entries(perDevice).filter(([, id]) => id).map(([key, id]) => [key, { modelId: id, modelName: nameFor(id) }])
+            ),
+          }).then(reload)}>
           {gt('common.save', 'Save')}
         </Button>
         <ResultBanner result={save.result}/>

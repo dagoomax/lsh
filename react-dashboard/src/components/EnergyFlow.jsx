@@ -329,18 +329,33 @@ function DetailCard({ icon, title, children }) {
   )
 }
 
-export default function EnergyFlow({ energy, evPower = null, evEnergy = null, evStatus = null, evDevice = null, onCommand }) {
+export default function EnergyFlow({ energy, evDevices = [], onCommand }) {
   const { battery:b, solar:s, grid:g, loads:l } = energy||{}
 
-  // Selected 3D car model (Settings → Energy → EV Charging Visualization) —
-  // fetched here (not inside GWagenEmbed) so its name can also be shown as a
-  // caption next to the model, not just used for the embed itself.
+  // Up to 10 vehicles — DeviceList.jsx already filters to category
+  // 'ev-charger'; this is just the hard cap on the showcase below so one
+  // household with an unusual number of chargers can't blow out the layout.
+  const evList = evDevices.slice(0, 10)
+  const evPower = evList.length
+    ? evList.reduce((sum, d) => sum + (Number(d.readings?.power?.value) || 0), 0)
+    : null
+  const evEnergy = evList.length
+    ? evList.reduce((sum, d) => sum + (Number(d.readings?.energy?.value) || 0), 0)
+    : null
+  const evStatus = evList.length === 1 ? evList[0].readings?.status?.value : null
+
+  // Per-vehicle 3D model selection (Settings → Energy → EV Charging
+  // Visualization) — fetched here (not inside GWagenEmbed) so each vehicle's
+  // name can also be shown as a caption next to its model. `devices` maps a
+  // charger's device key to its own model; anything not in that map falls
+  // back to `default`.
   const [evVisual, setEvVisual] = useState(null)
   useEffect(() => {
     let cancelled = false
     fetch('/api/ev-visual').then(r => r.json()).then(d => { if (!cancelled && d?.success) setEvVisual(d) }).catch(() => {})
     return () => { cancelled = true }
   }, [])
+  const modelFor = (deviceKey) => evVisual?.devices?.[deviceKey] || evVisual?.default || {}
 
   const num = v => (v == null || isNaN(v)) ? 0 : Number(v)
   const sum3 = o => o == null ? null : num(o.power) + num(o.powerL2) + num(o.powerL3)
@@ -418,53 +433,60 @@ export default function EnergyFlow({ energy, evPower = null, evEnergy = null, ev
         </div>
       )}
 
-      {/* ── EV showcase: 3D model + live stats/controls side by side ── */}
-      {evPower != null && (
-        <div className="detail-card" style={{
-          display:'flex', flexWrap:'wrap', gap:16, padding:14,
-          background:'linear-gradient(135deg, color-mix(in srgb, var(--purple, #a371f7) 9%, var(--card)) 0%, var(--card) 65%)',
-          border:'1px solid color-mix(in srgb, var(--purple, #a371f7) 28%, var(--border))',
-        }}>
-          <div style={{ flex:'1 1 220px', minWidth:200, maxWidth:320 }}>
-            <GWagenEmbed height={190} modelId={evVisual?.modelId} modelName={evVisual?.modelName} />
-          </div>
-          <div style={{ flex:'1 1 220px', minWidth:220, display:'flex', flexDirection:'column', gap:2 }}>
-            <div style={{ marginBottom:6 }}>
-              <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text3)' }}>
-                {gt('t_ev','EV Charging')}
+      {/* ── EV showcase: one card per vehicle (up to 10), each with its own
+          3D model + live stats/controls side by side ── */}
+      {evList.map(dev => {
+        const model = modelFor(dev.key)
+        const power = Number(dev.readings?.power?.value) || 0
+        const energyKwh = dev.readings?.energy?.value
+        const status = evList.length === 1 ? evStatus : dev.readings?.status?.value
+        return (
+          <div key={dev.key} className="detail-card" style={{
+            display:'flex', flexWrap:'wrap', gap:16, padding:14,
+            background:'linear-gradient(135deg, color-mix(in srgb, var(--purple, #a371f7) 9%, var(--card)) 0%, var(--card) 65%)',
+            border:'1px solid color-mix(in srgb, var(--purple, #a371f7) 28%, var(--border))',
+          }}>
+            <div style={{ flex:'1 1 220px', minWidth:200, maxWidth:320 }}>
+              <GWagenEmbed height={190} modelId={model.modelId} modelName={model.modelName} />
+            </div>
+            <div style={{ flex:'1 1 220px', minWidth:220, display:'flex', flexDirection:'column', gap:2 }}>
+              <div style={{ marginBottom:6 }}>
+                <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text3)' }}>
+                  {gt('t_ev','EV Charging')}
+                </div>
+                <div style={{ fontSize:15, fontWeight:700, color:'var(--text)' }}>
+                  {dev.label || gt('e_ev','EV charging')}
+                </div>
+                {model.modelName && (
+                  <div style={{ fontSize:11.5, color:'var(--text3)', marginTop:2 }}>{model.modelName}</div>
+                )}
               </div>
-              <div style={{ fontSize:15, fontWeight:700, color:'var(--text)' }}>
-                {evDevice?.label || gt('e_ev','EV charging')}
-              </div>
-              {evVisual?.modelName && (
-                <div style={{ fontSize:11.5, color:'var(--text3)', marginTop:2 }}>{evVisual.modelName}</div>
+
+              <DetailRow label={gt('r_power','Power')} value={fmtW(power)} color="var(--purple, #a371f7)" />
+              {energyKwh != null && <DetailRow label={gt('r_session_energy','Session energy')} value={`${Number(energyKwh).toFixed(2)} kWh`} />}
+              {status && <DetailRow label={gt('r_state','State')} value={status} color="var(--text2)" />}
+
+              {dev.readings?.charging?.controllable && (
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 0', borderBottom:'1px solid var(--sep)', fontSize:12 }}>
+                  <span style={{ color:'var(--text2)' }}>{gt('r_charging','Charging')}</span>
+                  <Toggle on={!!dev.readings.charging.value}
+                    onChange={next => onCommand?.(dev.key, 'charging', next)} />
+                </div>
+              )}
+              {dev.readings?.currentLimit?.controllable && (
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0 2px', fontSize:12 }}>
+                  <span style={{ color:'var(--text2)', flexShrink:0, marginRight:10 }}>{gt('r_charge_current','Charge current')}</span>
+                  <EvRangeControl
+                    min={dev.readings.currentLimit.min} max={dev.readings.currentLimit.max}
+                    value={dev.readings.currentLimit.value} unit={dev.readings.currentLimit.unit || 'A'}
+                    accent="var(--purple, #a371f7)"
+                    onCommit={v => onCommand?.(dev.key, 'currentLimit', v)} />
+                </div>
               )}
             </div>
-
-            <DetailRow label={gt('r_power','Power')} value={fmtW(evPower)} color="var(--purple, #a371f7)" />
-            {evEnergy != null && <DetailRow label={gt('r_session_energy','Session energy')} value={`${evEnergy.toFixed(2)} kWh`} />}
-            {evStatus && <DetailRow label={gt('r_state','State')} value={evStatus} color="var(--text2)" />}
-
-            {evDevice?.readings?.charging?.controllable && (
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 0', borderBottom:'1px solid var(--sep)', fontSize:12 }}>
-                <span style={{ color:'var(--text2)' }}>{gt('r_charging','Charging')}</span>
-                <Toggle on={!!evDevice.readings.charging.value}
-                  onChange={next => onCommand?.(evDevice.key, 'charging', next)} />
-              </div>
-            )}
-            {evDevice?.readings?.currentLimit?.controllable && (
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0 2px', fontSize:12 }}>
-                <span style={{ color:'var(--text2)', flexShrink:0, marginRight:10 }}>{gt('r_charge_current','Charge current')}</span>
-                <EvRangeControl
-                  min={evDevice.readings.currentLimit.min} max={evDevice.readings.currentLimit.max}
-                  value={evDevice.readings.currentLimit.value} unit={evDevice.readings.currentLimit.unit || 'A'}
-                  accent="var(--purple, #a371f7)"
-                  onCommit={v => onCommand?.(evDevice.key, 'currentLimit', v)} />
-              </div>
-            )}
           </div>
-        </div>
-      )}
+        )
+      })}
 
       {/* ── Trend sparklines (real 6h history) ── */}
       <TrendRow solarColor="var(--orange)" battColor={battColor} />

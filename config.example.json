@@ -62,7 +62,8 @@
   },
   "evVisual": {
     "modelId": "",
-    "modelName": ""
+    "modelName": "",
+    "devices": {}
   },
   "dyson": {
     "enabled": false,
