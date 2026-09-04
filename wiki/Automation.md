@@ -77,6 +77,34 @@ The full node-type reference (config fields for `condition`, `sync`, `store`, `h
 
 Renaming `relay_0`/`relay_1` themselves (or the device's own name) is a separate, unrelated tool — as the restriction above notes, no flow node can do it. Use `scripts/shelly-rename-and-export.js` instead: `rename` for the device-level name, `label <host> path=Name ...` for per-sensor names like "Garden Pump"/"Patio Lights" above, and `export` to re-pull the Loxone XML once the new names are live. See the `shelly` config section in the README for the full `sensorLabels` reference.
 
+**Example — auto-refresh a Loxone export on a schedule.** `http`'s `saveAs` option fetches a URL and serves the result back from a stable `/api/flow-snapshots/<name>` link, saved under whatever extension its Content-Type maps to (`xml`/`zip`/`json`/`jpg`/…, see `SAVEAS_TYPES` in `src/automation-engine.js`) — originally built for camera snapshots, it works just as well for re-pulling a Loxone export so the link always reflects current names/devices, no manual re-export needed after a rename:
+
+```json
+{
+  "id": "shelly-xml-refresh",
+  "name": "Shelly: refresh Loxone export nightly",
+  "enabled": true,
+  "nodes": [
+    {
+      "id": "n1", "type": "time",
+      "config": { "intervalSeconds": 86400 },
+      "wires": [["n2"]]
+    },
+    {
+      "id": "n2", "type": "http",
+      "config": {
+        "method": "GET",
+        "url": "http://localhost:3001/api/loxone/outputs.xml?type=shelly&token=<api-token>",
+        "saveAs": "shelly-outputs"
+      },
+      "wires": [[]]
+    }
+  ]
+}
+```
+
+Point Loxone Config's import (or a periodic fetch, if you're scripting the import too) at `/api/flow-snapshots/shelly-outputs.zip` — verified end-to-end: a >40-command export correctly saves and serves as `.zip` (`application/zip`), a single-block export as `.xml` (`application/xml`), and existing JPEG-snapshot flows are unaffected. Swap `outputs.xml`/`type=shelly` for `inputs.xml` or a different `?type=` as needed — two `http` nodes off the same `time` trigger covers both.
+
 ### Scenes
 
 Named action groups run manually — one tap from the **scene strip** shown above all dashboard tabs, or from the Automation tab. Same action types as rules.

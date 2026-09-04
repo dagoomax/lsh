@@ -35,6 +35,30 @@ const HTTP_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/5
 // _httpRequest). 3MB comfortably covers a full HTML page while staying bounded.
 const MAX_TEXT_RESPONSE_BYTES = 3 * 1024 * 1024;
 
+// Content-Type -> extension for the http node's saveAs option, originally
+// JPEG-only (camera snapshots). A small explicit table rather than a mime
+// library — saveAs pulls one HTTP response into a served file, not arbitrary
+// content. Unrecognized/missing Content-Type falls back to jpg, preserving
+// the original camera-snapshot behavior for callers that don't care.
+const SAVEAS_TYPES = [
+  { ext: 'jpg',  mime: 'image/jpeg',                    match: /image\/jpe?g/i },
+  { ext: 'png',  mime: 'image/png',                     match: /image\/png/i },
+  { ext: 'xml',  mime: 'application/xml; charset=utf-8', match: /[+/]xml/i },
+  { ext: 'zip',  mime: 'application/zip',                match: /\bzip\b/i },
+  { ext: 'json', mime: 'application/json; charset=utf-8', match: /json/i },
+  { ext: 'pdf',  mime: 'application/pdf',                match: /pdf/i },
+  { ext: 'txt',  mime: 'text/plain; charset=utf-8',      match: /^text\//i },
+];
+
+function extFromContentType(ct) {
+  return (SAVEAS_TYPES.find((t) => t.match.test(ct || '')) || SAVEAS_TYPES[0]).ext;
+}
+
+function mimeForExt(ext) {
+  const e = String(ext || '').replace(/^\./, '').toLowerCase();
+  return (SAVEAS_TYPES.find((t) => t.ext === e) || { mime: 'application/octet-stream' }).mime;
+}
+
 const OPS = {
   '>':  (a, b) => Number(a) >  Number(b),
   '<':  (a, b) => Number(a) <  Number(b),
@@ -217,6 +241,7 @@ class AutomationEngine {
           res.resume(); // drain so the socket can be reused
           return reject(new Error(`HTTP ${res.statusCode}`));
         }
+        const contentType = res.headers['content-type'] || '';
         const chunks = [];
         let bytes = 0;
         res.on('data', (c) => {
@@ -224,7 +249,7 @@ class AutomationEngine {
           if (bytes > MAX_SNAPSHOT_BYTES) { req.destroy(); return reject(new Error('Response too large (>8MB)')); }
           chunks.push(c);
         });
-        res.on('end', () => resolve(Buffer.concat(chunks)));
+        res.on('end', () => resolve({ buffer: Buffer.concat(chunks), contentType }));
       });
       req.on('error', reject);
       req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
@@ -610,14 +635,23 @@ class AutomationEngine {
       case 'http': {
         const method = (c.method || 'GET').toUpperCase();
         if (c.saveAs) {
-          // Fetch as binary and stash it under persist/flow-snapshots — lets a
-          // flow pull a JPEG from any URL and use it like a camera's
-          // snapshotUrl (GET /api/flow-snapshots/<saveAs>).
+          // Fetch as binary and stash it under persist/flow-snapshots — was
+          // JPEG-only (for pulling a camera-style snapshotUrl), now saved
+          // under whatever extension the response's Content-Type maps to
+          // (see SAVEAS_TYPES) — e.g. a scheduled flow re-fetching Loxone's
+          // outputs.xml and serving it back from a stable URL.
           const name = sanitizeSnapshotName(c.saveAs);
-          const buf  = await this._httpRequestBuffer(method, c.url);
+          const { buffer: buf, contentType } = await this._httpRequestBuffer(method, c.url);
+          const ext = extFromContentType(contentType);
           fs.mkdirSync(SNAPSHOTS_DIR, { recursive: true });
-          fs.writeFileSync(path.join(SNAPSHOTS_DIR, `${name}.jpg`), buf);
-          return [{ ...msg, payload: `/api/flow-snapshots/${name}.jpg` }];
+          // Clear any previous save under this name with a different
+          // extension — otherwise a content-type change (e.g. swapping the
+          // saveAs URL) leaves a stale file that could get served instead.
+          for (const f of fs.readdirSync(SNAPSHOTS_DIR)) {
+            if (f !== `${name}.${ext}` && f.startsWith(`${name}.`)) fs.unlinkSync(path.join(SNAPSHOTS_DIR, f));
+          }
+          fs.writeFileSync(path.join(SNAPSHOTS_DIR, `${name}.${ext}`), buf);
+          return [{ ...msg, payload: `/api/flow-snapshots/${name}.${ext}` }];
         }
         const body = c.body ? String(c.body).replace(/\{value\}/g, msg.payload ?? '') : undefined;
         const resp = await this._httpRequest(method, c.url, method === 'GET' ? undefined : body);
@@ -761,3 +795,4 @@ module.exports = AutomationEngine;
 module.exports.SNAPSHOTS_DIR = SNAPSHOTS_DIR;
 module.exports.LOXONE_XML_DIR = LOXONE_XML_DIR;
 module.exports.sanitizeSnapshotName = sanitizeSnapshotName;
+module.exports.mimeForExt = mimeForExt;
