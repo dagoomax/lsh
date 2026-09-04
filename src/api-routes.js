@@ -776,6 +776,11 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (req.query.device) devices = devices.filter((d) => d.key === req.query.device);
     if (req.query.type) {
       const types = new Set(String(req.query.type).split(',').map((t) => t.trim()).filter(Boolean));
+      // vicare-client.js and vitodens-client.js are two separate integration
+      // clients against the same Viessmann brand, registered under two
+      // different type strings — ?type=vicare naturally means "either" to
+      // anyone who doesn't know that split, so treat them as one group here.
+      if (types.has('vicare') || types.has('vitodens')) { types.add('vicare'); types.add('vitodens'); }
       devices = devices.filter((d) => types.has(d.type));
     }
     // ?named=1 — skip devices with generic fallback labels (e.g. unnamed Satel
