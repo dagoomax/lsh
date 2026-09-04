@@ -1,6 +1,6 @@
 {
   "name": "victron-dashboard",
-  "version": "1.0.1",
+  "version": "1.12.0",
   "description": "Lightweight Smart Home — Node.js smart-home hub integrating ~40 platforms, with relay control and HomeKit integration",
   "main": "server.js",
   "scripts": {
