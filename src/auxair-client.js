@@ -173,12 +173,24 @@ class AuxAirClient {
       // previously made every read look like a no-op success.
       throw new Error(`No state in response: ${JSON.stringify(res).slice(0, 300)}`);
     }
-    let state;
-    try { state = JSON.parse(raw); }
+    let parsed;
+    try { parsed = JSON.parse(raw); }
     catch { throw new Error(`Unparseable state payload: ${String(raw).slice(0, 200)}`); }
-    if (!Object.keys(state).length) {
-      throw new Error('Empty state object — device may be offline or session expired');
+    // The real API shape is parallel arrays, not a flat object:
+    // { "params": ["temp","pwr","ac_mode",…], "vals": [[{val,idx}], [{val,idx}], …] }
+    // — params[i] names the field, vals[i][0].val is its value. (Confirmed
+    // against a live device; a flat { pwr, ac_mode, … } object was never
+    // actually returned, which is why every read previously came back empty
+    // despite the request itself succeeding.)
+    const { params, vals } = parsed;
+    if (!Array.isArray(params) || !Array.isArray(vals) || !params.length) {
+      throw new Error('Empty/malformed state payload — device may be offline or session expired');
     }
+    const state = {};
+    params.forEach((name, i) => {
+      const val = vals[i]?.[0]?.val;
+      if (val !== undefined) state[name] = val;
+    });
     return state;
   }
 
