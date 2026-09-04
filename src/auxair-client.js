@@ -164,6 +164,7 @@ class AuxAirClient {
       },
     });
     const res = await this._req('POST', `/device/control/v2/sdkcontrol?license=${LICENSE}`, body);
+    this._captureDevSession(dev, res);
     const raw = res.event?.payload?.data;
     if (!raw) {
       // A "get" always reports at least pwr/ac_mode/temp for a real device —
@@ -213,7 +214,20 @@ class AuxAirClient {
         payload: { act: 'set', params: [param], vals: [[{ idx: 1, val: value }]], did: dev.endpointId },
       },
     });
-    await this._req('POST', `/device/control/v2/sdkcontrol?license=${LICENSE}`, body);
+    const res = await this._req('POST', `/device/control/v2/sdkcontrol?license=${LICENSE}`, body);
+    this._captureDevSession(dev, res);
+  }
+
+  // devSession rotates on every request/response (standard nonce-style
+  // anti-replay token) — reusing a stale one risked the backend eventually
+  // rejecting requests outright. This is protocol hygiene, not a fix for
+  // stale readings: a live test (fresh login, fresh session, three polls
+  // 3s apart, all identical) confirmed AuxAir's own "get" endpoint can
+  // return a frozen snapshot regardless of session freshness — that's
+  // upstream, not something session rotation addresses.
+  _captureDevSession(dev, res) {
+    const next = res.event?.endpoint?.devSession;
+    if (next) dev.devSession = next;
   }
 
   _buildCookie(dev) {
