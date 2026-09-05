@@ -123,13 +123,15 @@ const auth = {
       username:  username.trim(),
       passwordHash,
       role,
-      // Sensitive capabilities beyond plain admin/viewer. Settable per-user
-      // via setPermission(), which itself requires installerMode (see
-      // requireInstallerMode in api-routes.js) — granting/revoking still
-      // needs filesystem/config access, not just a web admin session. Default
-      // on for new users; flip back to false here if you want new accounts
-      // to start locked out again.
-      permissions: { flows: true, claudeCode: true },
+      // Sensitive capabilities beyond plain admin/viewer — off by default even
+      // for admins. Only settable via setPermission(), which itself requires
+      // installerMode (see requireInstallerMode in api-routes.js): granting
+      // these needs filesystem/config access, not just a web admin session.
+      // POST /api/auth/users (this function's caller) only requires
+      // role:'admin', so defaulting these on here would let any web admin
+      // self-grant flows/claudeCode by creating a second account — bypassing
+      // the installerMode gate entirely.
+      permissions: { flows: false, claudeCode: false },
       createdAt: new Date().toISOString(),
     };
     users.push(user);
@@ -155,16 +157,14 @@ const auth = {
 
   getUsers() {
     // Users created before permissions existed have no `permissions` field at
-    // all — normalize those to the same on-by-default createUser() now
-    // seeds. A user that *does* have the field keeps its explicit value
-    // (including an explicit false from a revoke), so this only fills the
-    // gap for records missing it entirely, not a way to silently re-enable
-    // something that was deliberately turned off.
+    // all — normalize those to the same off-by-default createUser() seeds,
+    // consistent with setPermission()'s own fallback below. A user that does
+    // have the field keeps its explicit value either way.
     return loadUsers().map(({ id, username, role, createdAt, permissions }) => ({
       id, username, role, createdAt,
       permissions: {
-        flows: permissions ? !!permissions.flows : true,
-        claudeCode: permissions ? !!permissions.claudeCode : true,
+        flows: !!permissions?.flows,
+        claudeCode: !!permissions?.claudeCode,
       },
     }));
   },
@@ -174,11 +174,7 @@ const auth = {
   // request, not just after re-login.
   hasPermission(userId, key) {
     const user = loadUsers().find(u => u.id === userId);
-    if (!user) return false;
-    // Same rule as getUsers()'s normalization: no `permissions` field at all
-    // (pre-permissions user record) defaults to on; a record that has the
-    // field keeps whatever it explicitly says, revokes included.
-    return user.permissions ? !!user.permissions[key] : true;
+    return !!user?.permissions?.[key];
   },
 
   // key must be 'flows' or 'claudeCode'; caller (requireInstallerMode in
