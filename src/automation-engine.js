@@ -263,15 +263,32 @@ class AutomationEngine {
   // for free — see sensor-registry.js). Registering twice is harmless in
   // itself, but would reset the sensor descriptor (min/max/unit) back to
   // whatever this run's config says, so it's only done once per key.
+  // kind: 'number' (default, a gauge/value tile) | 'boolean' (on/off
+  // indicator) | 'text' (free-form label) — this is what makes a `store`
+  // node a genuine custom dashboard widget rather than always a numeric
+  // gauge, since the flow computing the value can represent any of the
+  // three. icon/color follow the same fields every other device descriptor
+  // uses, so a flow-created tile can look distinct from the default 🧵.
   _registerFlowDevice(c, namespace) {
     const slug = String(c.name).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 60) || 'value';
     const key  = `${namespace}/${slug}`;
     if (!this._flowDeviceKeys.has(key)) {
-      const min = Number.isFinite(c.min) ? c.min : -1000000;
-      const max = Number.isFinite(c.max) ? c.max : 1000000;
+      const sensor = { path: 'value', name: 'Value' };
+      if (c.kind === 'boolean') {
+        Object.assign(sensor, { sensorType: 'switch', format: 'on-off' });
+      } else if (c.kind === 'text') {
+        Object.assign(sensor, { raw: true });
+      } else {
+        const min = Number.isFinite(c.min) ? c.min : -1000000;
+        const max = Number.isFinite(c.max) ? c.max : 1000000;
+        Object.assign(sensor, { type: 'range', unit: c.unit || '', min, max });
+      }
       this._registry.registerDevice({
-        key, label: c.name, type: 'flow', icon: namespace === 'flowloxone' ? '🧾' : '🧵', homekit: [],
-        sensors: [{ path: 'value', name: 'Value', type: 'range', unit: c.unit || '', min, max }],
+        key, label: c.name, type: 'flow',
+        icon: c.icon || (namespace === 'flowloxone' ? '🧾' : '🧵'),
+        color: c.color || undefined,
+        homekit: [],
+        sensors: [sensor],
       });
       this._flowDeviceKeys.add(key);
     }
@@ -429,10 +446,17 @@ class AutomationEngine {
   //                                   'get': payload → the current value (undefined if
   //                                   never set). Use for state one flow computes and
   //                                   another needs — a running count, a mode flag, …
-  //   store     { name, unit, min, max }  writes msg.payload into a throwaway sensor
-  //                                   device (flow/<slug>) — auto-registered on first
-  //                                   run, so it's live on /api/devices (dashboard,
-  //                                   history/Graphs, HomeKit-free); pass-through,
+  //   store     { name, kind, unit, min, max, icon, color }  writes msg.payload into a
+  //                                   custom dashboard widget — a device (flow/<slug>)
+  //                                   auto-registered on first run, so it's live on
+  //                                   /api/devices (dashboard tile, history/Graphs,
+  //                                   Loxone export, HomeKit-free) with whatever value
+  //                                   the flow computed, not tied to any single real
+  //                                   sensor. kind picks the tile's shape: 'number'
+  //                                   (default — a gauge/value tile, unit/min/max
+  //                                   apply), 'boolean' (an on/off indicator), or
+  //                                   'text' (a free-form label). icon (emoji) and
+  //                                   color customize how the tile looks; pass-through,
   //                                   msg unchanged. The generic building block
   //                                   loxoneXml below is layered on top of
   //   loxoneXml { name, unit, min, max, host, token }  writes msg.payload into a
@@ -556,8 +580,17 @@ class AutomationEngine {
       case 'store': {
         if (!c.name) throw new Error('Store node needs a name');
         const key = this._registerFlowDevice(c, 'flow');
-        const num = Number(msg.payload);
-        this._store.update(`${key}/value`, Number.isNaN(num) ? String(msg.payload ?? '') : num);
+        let value;
+        if (c.kind === 'boolean') {
+          value = msg.payload === true || msg.payload === 1 || msg.payload === '1'
+            || msg.payload === 'on' || msg.payload === 'true';
+        } else if (c.kind === 'text') {
+          value = String(msg.payload ?? '');
+        } else {
+          const num = Number(msg.payload);
+          value = Number.isNaN(num) ? String(msg.payload ?? '') : num;
+        }
+        this._store.update(`${key}/value`, value);
         return [msg];
       }
       case 'loxoneXml': {

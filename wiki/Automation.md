@@ -105,6 +105,22 @@ Renaming `relay_0`/`relay_1` themselves (or the device's own name) is a separate
 
 Point Loxone Config's import (or a periodic fetch, if you're scripting the import too) at `/api/flow-snapshots/shelly-outputs.zip` — verified end-to-end: a >40-command export correctly saves and serves as `.zip` (`application/zip`), a single-block export as `.xml` (`application/xml`), and existing JPEG-snapshot flows are unaffected. Swap `outputs.xml`/`type=shelly` for `inputs.xml` or a different `?type=` as needed — two `http` nodes off the same `time` trigger covers both.
 
+**Custom dashboard widgets** — the `store` node isn't just a scratch value: it registers a real device (`flow/<name>`) that shows up on the dashboard, in Graphs history, and in the Loxone export exactly like any physical sensor, but its value is whatever the flow computes rather than tied to one real device. Three widget shapes, via `kind`:
+
+| `kind` | Tile shape | Extra fields |
+|---|---|---|
+| `number` (default) | Gauge/value tile | `unit`, `min`, `max` |
+| `boolean` | On/off indicator | — (payload coerced: `true`/`1`/`'1'`/`'on'`/`'true'` → on, else off) |
+| `text` | Free-form label | — (payload stringified as-is) |
+
+`icon` (an emoji) and `color` customize the tile itself. All three verified live — registering with the correct sensor shape (`type:'range'`/`sensorType:'switch'`/`raw:true` respectively) and icon/color, confirmed via `GET /api/devices`.
+
+```json
+{ "id": "n2", "type": "store", "config": { "name": "Gold Price", "kind": "number", "unit": "zł", "icon": "🪙", "color": "gold" }, "wires": [[]] }
+```
+
+Wire any computation into it — an `http` node scraping a price, a `condition`/`extract` chain, an aggregate from a `sync` fan-out — and the result becomes a first-class dashboard tile with no code change needed. The vanilla Settings → Flows editor (`public/flows.js`) has a **Kind** dropdown plus **Icon**/**Color** fields on the Store node for building these visually.
+
 ### Scenes
 
 Named action groups run manually — one tap from the **scene strip** shown above all dashboard tabs, or from the Automation tab. Same action types as rules.

@@ -171,13 +171,22 @@
     },
     store: {
       label: 'Store', color: '#a3e635', outs: 1,
-      fields: (n) => [
-        field('Name', 'text', n, 'name', { ph: 'e.g. Gold Price' }),
-        row([ field('Unit', 'text', n, 'unit', { ph: 'zł' }),
-              field('Min', 'number', n, 'min', { ph: '-1000000' }),
-              field('Max', 'number', n, 'max', { ph: '1000000' }) ]),
-        hint('Writes msg.payload into a live device (flow/<name>) — shows up on the dashboard and Graphs like any other sensor. Pass-through: wire more nodes after it.'),
-      ],
+      fields: (n) => {
+        if (!n.config.kind) n.config.kind = 'number';
+        const rows = [
+          row([ field('Name', 'text', n, 'name', { ph: 'e.g. Gold Price' }),
+                selectDynamic('Kind', n, 'kind', () => [['number', 'number (gauge)'], ['boolean', 'boolean (on/off)'], ['text', 'text (label)']], () => refreshNode(n)) ]),
+          row([ field('Icon (emoji)', 'text', n, 'icon', { ph: '🧵' }),
+                field('Color', 'text', n, 'color', { ph: 'e.g. teal' }) ]),
+        ];
+        if (n.config.kind === 'number') {
+          rows.push(row([ field('Unit', 'text', n, 'unit', { ph: 'zł' }),
+                field('Min', 'number', n, 'min', { ph: '-1000000' }),
+                field('Max', 'number', n, 'max', { ph: '1000000' }) ]));
+        }
+        rows.push(hint('Writes msg.payload into a custom dashboard widget (flow/<name>) — a number gauge, on/off indicator, or text label depending on Kind. Shows up on the dashboard, Graphs and the Loxone export like any other device. Pass-through: wire more nodes after it.'));
+        return rows;
+      },
     },
     loxoneXml: {
       label: 'Loxone XML', color: '#67e8f9', outs: 1,
