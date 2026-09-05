@@ -115,11 +115,30 @@ Point Loxone Config's import (or a periodic fetch, if you're scripting the impor
 
 `icon` (an emoji) and `color` customize the tile itself. All three verified live — registering with the correct sensor shape (`type:'range'`/`sensorType:'switch'`/`raw:true` respectively) and icon/color, confirmed via `GET /api/devices`.
 
+Wire any computation into it — an `http` node scraping a price, a `condition`/`extract` chain, an aggregate from a `sync` fan-out — and the result becomes a first-class dashboard tile with no code change needed. The vanilla Settings → Flows editor (`public/flows.js`) has a **Kind** dropdown plus **Icon**/**Color** fields on the Store node for building these visually.
+
+**Example — all three kinds, driven by real triggers** (verified live against this repo's own running instance: Solar Power tracked real Victron PV output, AC Power tracked a real AuxAir unit's power state including a live on→off change mid-test, System Status held its literal value):
+
 ```json
-{ "id": "n2", "type": "store", "config": { "name": "Gold Price", "kind": "number", "unit": "zł", "icon": "🪙", "color": "gold" }, "wires": [[]] }
+{
+  "id": "example-custom-widgets",
+  "name": "Example: Custom dashboard widgets",
+  "enabled": true,
+  "nodes": [
+    { "id": "n1", "type": "trigger", "config": { "key": "system/0/Dc/Pv/Power", "op": "changes" }, "wires": [["n2"]] },
+    { "id": "n2", "type": "store", "config": { "name": "Solar Power Demo", "kind": "number", "unit": "W", "icon": "☀️", "color": "orange" }, "wires": [[]] },
+
+    { "id": "n3", "type": "trigger", "config": { "key": "auxair/<device-id>/pwr", "op": "changes" }, "wires": [["n4"]] },
+    { "id": "n4", "type": "store", "config": { "name": "AC Power Demo", "kind": "boolean", "icon": "🔌", "color": "blue" }, "wires": [[]] },
+
+    { "id": "n5", "type": "time", "config": { "intervalSeconds": 3600 }, "wires": [["n7"]] },
+    { "id": "n7", "type": "global", "config": { "name": "sysStatusDemo", "mode": "set", "value": "Nominal" }, "wires": [["n6"]] },
+    { "id": "n6", "type": "store", "config": { "name": "System Status Demo", "kind": "text", "icon": "🟢" }, "wires": [[]] }
+  ]
+}
 ```
 
-Wire any computation into it — an `http` node scraping a price, a `condition`/`extract` chain, an aggregate from a `sync` fan-out — and the result becomes a first-class dashboard tile with no code change needed. The vanilla Settings → Flows editor (`public/flows.js`) has a **Kind** dropdown plus **Icon**/**Color** fields on the Store node for building these visually.
+The third chain shows the pattern for a **literal-value text widget**: a `global` node with `mode:"set"` and a fixed `value` needs an entry node ahead of it (`global` isn't a trigger type itself) — a `time` node works well for something that only needs to exist/refresh periodically rather than react to a real key changing. Swap `<device-id>` and the two real store keys for your own setup — `GET /api/devices` shows what's actually available. This exact flow is in `automations.json` (disabled, as `example-custom-widgets`) as a ready-made template.
 
 ### Scenes
 
