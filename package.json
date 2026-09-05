@@ -17,7 +17,8 @@
   },
   "overrides": {
     "protobufjs": "^7.6.4",
-    "qs": "6.16.0"
+    "qs": "6.16.0",
+    "binary-parser": "2.3.0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",
