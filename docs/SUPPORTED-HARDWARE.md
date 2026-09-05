@@ -53,7 +53,7 @@ reference of every one).
 |---|---|---|
 | **AUX Air** (AC Freedom) | `auxair` | AC on/off, temp, mode, fan |
 | **MC6 thermostats** | `mc6` | Floor/room thermostats |
-| **Viessmann ViCare** | `vicare` | Boilers / heat pumps — temps, burner, mode, hot-water setpoint (cloud) |
+| **Viessmann Vitodens** | `vitodens` | Boilers / heat pumps — dynamic feature discovery (temps, burner, mode, hot-water setpoint) (cloud) |
 | **LG ThinQ** | `lgthinq` | Appliances (token auth, v1 API) |
 | **Home Connect** (Bosch/Siemens) | `homeConnect` | Ovens, dishwashers, etc. |
 | **Miele** | `miele` | Appliances (cloud API) |

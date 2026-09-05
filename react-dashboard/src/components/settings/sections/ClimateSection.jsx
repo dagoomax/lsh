@@ -18,7 +18,7 @@ export default function ClimateSection({ config, reload }) {
       <BayrolCard bayrol={config.bayrol} reload={reload}/>
       <OpenWeatherCard openweather={config.openweather} reload={reload}/>
       <AirlyCard airly={config.airly} reload={reload}/>
-      <ViCareCard vicare={config.vicare} reload={reload}/>
+      <VitodensCard vitodens={config.vitodens} vicare={config.vicare} reload={reload}/>
       <ThermomixCard thermomix={config.thermomix} reload={reload}/>
       <DysonCard dyson={config.dyson} reload={reload}/>
     </>
@@ -129,25 +129,19 @@ function AirlyCard({ airly, reload }) {
   )
 }
 
-function ViCareCard({ vicare, reload }) {
-  const [user, setUser] = useState(vicare?.user || '')
-  const [password, setPassword] = useState(vicare?.password || '')
-  const [clientId, setClientId] = useState(vicare?.clientId || '')
-  const [redirectUri, setRedirectUri] = useState(vicare?.redirectUri || 'http://localhost:4200/')
-  const [pollInterval, setPollInterval] = useState(vicare?.pollInterval ?? 120)
-  const save = useSettingsSave('/api/settings/vicare')
+function VitodensCard({ vitodens, vicare, reload }) {
+  const [clientId, setClientId] = useState(vitodens?.clientId || vicare?.clientId || '')
+  const [pollInterval, setPollInterval] = useState(vitodens?.pollInterval ?? vicare?.pollInterval ?? 120)
+  const save = useSettingsSave('/api/settings/vitodens')
 
   return (
-    <SettingsCard icon={ThermostatIcon} title="Viessmann ViCare" badge={{ label: gt('common.optional', 'Optional') }}
-      desc="Viessmann heating (boilers / heat pumps) via the Viessmann IoT cloud.">
-      <Field label="ViCare Account Email" type="email" value={user} onChange={setUser}/>
-      <Field label="ViCare Account Password" type="password" value={password} onChange={setPassword}/>
+    <SettingsCard icon={ThermostatIcon} title="Viessmann Vitodens" badge={{ label: gt('common.optional', 'Optional') }}
+      desc="Viessmann heating (boilers / heat pumps) via the Viessmann IoT cloud, with dynamic per-installation feature discovery. Create an API client at developer.viessmann.com, then run `node scripts/vitodens-auth.js` on the server once to authorize — there's no password field here, since credentials aren't stored for this integration.">
       <Field label="API Client ID" value={clientId} onChange={setClientId}/>
-      <Field label="Redirect URI" hint="(must match the API client)" value={redirectUri} onChange={setRedirectUri}/>
       <Field label="Poll interval" hint="(seconds, min 60 — API is rate-limited)" type="number" value={pollInterval} onChange={setPollInterval}/>
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy}
-          onClick={() => save.save({ user, password, clientId, redirectUri, pollInterval: Number(pollInterval) }).then(reload)}>{gt('common.save', 'Save')}</Button>
+          onClick={() => save.save({ clientId, pollInterval: Number(pollInterval) }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>
       </div>
     </SettingsCard>

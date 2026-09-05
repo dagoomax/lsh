@@ -1209,35 +1209,23 @@
       </div>
     </section>
 
-    <!-- Viessmann ViCare -->
-    <section class="card settings-card" data-category="climate" data-title="Viessmann ViCare heating boiler heat pump hot water burner">
-      <h2>Viessmann ViCare <span class="badge" data-i18n="common.optional">Optional</span></h2>
-      <p class="section-desc">Viessmann heating (boilers / heat pumps) via the Viessmann IoT cloud. Create a free API client at <a href="https://developer.viessmann.com" target="_blank" rel="noopener">developer.viessmann.com</a> (redirect URI <code>http://localhost:4200/</code>, Google reCAPTCHA disabled), then enter its Client ID plus your ViCare account login.</p>
+    <!-- Viessmann Vitodens / ViCare -->
+    <section class="card settings-card" data-category="climate" data-title="Viessmann Vitodens ViCare heating boiler heat pump hot water burner">
+      <h2>Viessmann Vitodens <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Viessmann heating (boilers / heat pumps) via the Viessmann IoT cloud, with dynamic per-installation feature discovery. Create a free API client at <a href="https://developer.viessmann.com" target="_blank" rel="noopener">developer.viessmann.com</a>, enter its Client ID below, then run <code>node scripts/vitodens-auth.js</code> once from the server to authorize (a one-time interactive login — there's no password field here, since credentials aren't stored for this integration).</p>
 
       <div class="form-row">
-        <label for="vicare-user">ViCare Account Email</label>
-        <input type="email" id="vicare-user" placeholder="you@example.com" autocomplete="off">
+        <label for="vitodens-client-id">API Client ID</label>
+        <input type="text" id="vitodens-client-id" placeholder="" autocomplete="off">
       </div>
       <div class="form-row">
-        <label for="vicare-password">ViCare Account Password</label>
-        <input type="password" id="vicare-password" placeholder="••••••••" autocomplete="off">
-      </div>
-      <div class="form-row">
-        <label for="vicare-client-id">API Client ID</label>
-        <input type="text" id="vicare-client-id" placeholder="" autocomplete="off">
-      </div>
-      <div class="form-row">
-        <label for="vicare-redirect">Redirect URI <span class="hint">(must match the API client)</span></label>
-        <input type="text" id="vicare-redirect" placeholder="http://localhost:4200/" style="max-width:280px">
-      </div>
-      <div class="form-row">
-        <label for="vicare-poll">Poll interval <span class="hint">(seconds, min 60 — API is rate-limited)</span></label>
-        <input type="number" id="vicare-poll" min="60" placeholder="120" style="max-width:120px">
+        <label for="vitodens-poll">Poll interval <span class="hint">(seconds, min 60 — API is rate-limited)</span></label>
+        <input type="number" id="vitodens-poll" min="60" placeholder="120" style="max-width:120px">
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-primary" id="btn-save-vicare" data-i18n="common.save">Save</button>
-        <span class="test-result" id="vicare-test-result"></span>
+        <button class="btn btn-primary" id="btn-save-vitodens" data-i18n="common.save">Save</button>
+        <span class="test-result" id="vitodens-test-result"></span>
       </div>
     </section>
 

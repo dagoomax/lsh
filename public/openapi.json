@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "LSH — Lightweight Smart Home API",
-    "version": "1.0.1",
-    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 265 endpoints.",
+    "version": "1.12.0",
+    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 293 endpoints.",
     "license": {
       "name": "Repository",
       "url": "https://github.com/dagoomax/lsh"
@@ -22,7 +22,7 @@
   "tags": [
     {
       "name": "Auth",
-      "description": "19 endpoints"
+      "description": "20 endpoints"
     },
     {
       "name": "Devices / Sensors",
@@ -42,7 +42,7 @@
     },
     {
       "name": "Home plan (isometric floor plan for the dashboard)",
-      "description": "4 endpoints"
+      "description": "7 endpoints"
     },
     {
       "name": "Private (locally-added) agenda events — never synced to/from Google",
@@ -82,7 +82,7 @@
     },
     {
       "name": "Local object detection (COCO-SSD) model selection",
-      "description": "2 endpoints"
+      "description": "3 endpoints"
     },
     {
       "name": "SIP doorbell intercom",
@@ -90,7 +90,11 @@
     },
     {
       "name": "Room-to-room paging (intercom)",
-      "description": "3 endpoints"
+      "description": "8 endpoints"
+    },
+    {
+      "name": "AirPlay — play prerecorded audio out to a configured speaker",
+      "description": "5 endpoints"
     },
     {
       "name": "Sonos: URL playback + TTS announcements",
@@ -157,6 +161,14 @@
       "description": "2 endpoints"
     },
     {
+      "name": "Custom CSS themes",
+      "description": "4 endpoints"
+    },
+    {
+      "name": "Embedded Claude Code chat",
+      "description": "4 endpoints"
+    },
+    {
       "name": "Settings",
       "description": "3 endpoints"
     },
@@ -174,7 +186,7 @@
     },
     {
       "name": "Roborock",
-      "description": "12 endpoints"
+      "description": "14 endpoints"
     },
     {
       "name": "Somfy covers (casablanca TaHoma) — token/Loxone-friendly per-cover API",
@@ -197,12 +209,12 @@
       "description": "2 endpoints"
     },
     {
-      "name": "Viessmann ViCare",
+      "name": "Viessmann Vitodens",
       "description": "1 endpoint"
     },
     {
       "name": "Thermomix / Cookidoo",
-      "description": "1 endpoint"
+      "description": "3 endpoints"
     },
     {
       "name": "Grenton (GATE HTTP)",
@@ -222,7 +234,7 @@
     },
     {
       "name": "Loxone",
-      "description": "23 endpoints"
+      "description": "24 endpoints"
     },
     {
       "name": "Waveshare Modbus TCP",
@@ -528,6 +540,57 @@
         ],
         "summary": "POST /auth/users",
         "operationId": "post_auth_users",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/users/{id}/permissions": {
+      "put": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "PUT /auth/users/:id/permissions",
+        "operationId": "put_auth_users_id_permissions",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -1603,6 +1666,109 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ev-visual": {
+      "get": {
+        "tags": [
+          "Home plan (isometric floor plan for the dashboard)"
+        ],
+        "summary": "GET /ev-visual",
+        "operationId": "get_ev_visual",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/ev-charger-devices": {
+      "get": {
+        "tags": [
+          "Home plan (isometric floor plan for the dashboard)"
+        ],
+        "summary": "GET /settings/ev-charger-devices",
+        "operationId": "get_settings_ev_charger_devices",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/ev-visual": {
+      "post": {
+        "tags": [
+          "Home plan (isometric floor plan for the dashboard)"
+        ],
+        "summary": "POST /settings/ev-visual",
+        "operationId": "post_settings_ev_visual",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
               }
             }
           }
@@ -3167,6 +3333,47 @@
         }
       }
     },
+    "/settings/object-detection": {
+      "post": {
+        "tags": [
+          "Local object detection (COCO-SSD) model selection"
+        ],
+        "summary": "POST /settings/object-detection",
+        "operationId": "post_settings_object_detection",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
     "/sip/status": {
       "get": {
         "tags": [
@@ -3554,6 +3761,416 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/paging/message": {
+      "post": {
+        "tags": [
+          "Room-to-room paging (intercom)"
+        ],
+        "summary": "POST /paging/message",
+        "operationId": "post_paging_message",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/paging/messages": {
+      "get": {
+        "tags": [
+          "Room-to-room paging (intercom)"
+        ],
+        "summary": "GET /paging/messages",
+        "operationId": "get_paging_messages",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/paging/message/{id}/audio": {
+      "get": {
+        "tags": [
+          "Room-to-room paging (intercom)"
+        ],
+        "summary": "GET /paging/message/:id/audio",
+        "operationId": "get_paging_message_id_audio",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/paging/message/{id}": {
+      "delete": {
+        "tags": [
+          "Room-to-room paging (intercom)"
+        ],
+        "summary": "DELETE /paging/message/:id",
+        "operationId": "delete_paging_message_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/paging/message/{id}/keep": {
+      "post": {
+        "tags": [
+          "Room-to-room paging (intercom)"
+        ],
+        "summary": "POST /paging/message/:id/keep",
+        "operationId": "post_paging_message_id_keep",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/airplay/speakers": {
+      "get": {
+        "tags": [
+          "AirPlay — play prerecorded audio out to a configured speaker"
+        ],
+        "summary": "GET /airplay/speakers",
+        "operationId": "get_airplay_speakers",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/airplay/discover": {
+      "get": {
+        "tags": [
+          "AirPlay — play prerecorded audio out to a configured speaker"
+        ],
+        "summary": "GET /airplay/discover",
+        "operationId": "get_airplay_discover",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/airplay/{id}/play-message": {
+      "post": {
+        "tags": [
+          "AirPlay — play prerecorded audio out to a configured speaker"
+        ],
+        "summary": "POST /airplay/:id/play-message",
+        "operationId": "post_airplay_id_play_message",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/airplay/{id}/play": {
+      "post": {
+        "tags": [
+          "AirPlay — play prerecorded audio out to a configured speaker"
+        ],
+        "summary": "POST /airplay/:id/play",
+        "operationId": "post_airplay_id_play",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/airplay": {
+      "post": {
+        "tags": [
+          "AirPlay — play prerecorded audio out to a configured speaker"
+        ],
+        "summary": "POST /settings/airplay",
+        "operationId": "post_settings_airplay",
         "responses": {
           "200": {
             "description": "Success",
@@ -6427,6 +7044,320 @@
         }
       }
     },
+    "/settings/css-themes": {
+      "get": {
+        "tags": [
+          "Custom CSS themes"
+        ],
+        "summary": "GET /settings/css-themes",
+        "operationId": "get_settings_css_themes",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/css-themes/{kind}/{name}": {
+      "get": {
+        "tags": [
+          "Custom CSS themes"
+        ],
+        "summary": "GET /settings/css-themes/:kind/:name",
+        "operationId": "get_settings_css_themes_kind_name",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/css-themes/custom/{name}": {
+      "post": {
+        "tags": [
+          "Custom CSS themes"
+        ],
+        "summary": "POST /settings/css-themes/custom/:name",
+        "operationId": "post_settings_css_themes_custom_name",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Custom CSS themes"
+        ],
+        "summary": "DELETE /settings/css-themes/custom/:name",
+        "operationId": "delete_settings_css_themes_custom_name",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/claude-code/status": {
+      "get": {
+        "tags": [
+          "Embedded Claude Code chat"
+        ],
+        "summary": "GET /claude-code/status",
+        "operationId": "get_claude_code_status",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/claude-code/history": {
+      "get": {
+        "tags": [
+          "Embedded Claude Code chat"
+        ],
+        "summary": "GET /claude-code/history",
+        "operationId": "get_claude_code_history",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/claude-code/message": {
+      "post": {
+        "tags": [
+          "Embedded Claude Code chat"
+        ],
+        "summary": "POST /claude-code/message",
+        "operationId": "post_claude_code_message",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/claude-code/reset": {
+      "post": {
+        "tags": [
+          "Embedded Claude Code chat"
+        ],
+        "summary": "POST /claude-code/reset",
+        "operationId": "post_claude_code_reset",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings": {
       "get": {
         "tags": [
@@ -7102,6 +8033,88 @@
         ],
         "summary": "POST /settings/roborock-cloud",
         "operationId": "post_settings_roborock_cloud",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-karcher": {
+      "post": {
+        "tags": [
+          "Roborock"
+        ],
+        "summary": "POST /settings/test-karcher",
+        "operationId": "post_settings_test_karcher",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/karcher": {
+      "post": {
+        "tags": [
+          "Roborock"
+        ],
+        "summary": "POST /settings/karcher",
+        "operationId": "post_settings_karcher",
         "responses": {
           "200": {
             "description": "Success",
@@ -7921,13 +8934,13 @@
         }
       }
     },
-    "/settings/vicare": {
+    "/settings/vitodens": {
       "post": {
         "tags": [
-          "Viessmann ViCare"
+          "Viessmann Vitodens"
         ],
-        "summary": "POST /settings/vicare",
-        "operationId": "post_settings_vicare",
+        "summary": "POST /settings/vitodens",
+        "operationId": "post_settings_vitodens",
         "responses": {
           "200": {
             "description": "Success",
@@ -7969,6 +8982,78 @@
         ],
         "summary": "POST /settings/thermomix",
         "operationId": "post_settings_thermomix",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/dyson-devices": {
+      "get": {
+        "tags": [
+          "Thermomix / Cookidoo"
+        ],
+        "summary": "GET /settings/dyson-devices",
+        "operationId": "get_settings_dyson_devices",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/dyson": {
+      "post": {
+        "tags": [
+          "Thermomix / Cookidoo"
+        ],
+        "summary": "POST /settings/dyson",
+        "operationId": "post_settings_dyson",
         "responses": {
           "200": {
             "description": "Success",
@@ -9066,6 +10151,47 @@
         ],
         "summary": "POST /settings/dirigera",
         "operationId": "post_settings_dirigera",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/paging": {
+      "post": {
+        "tags": [
+          "Loxone"
+        ],
+        "summary": "POST /settings/paging",
+        "operationId": "post_settings_paging",
         "responses": {
           "200": {
             "description": "Success",

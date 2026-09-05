@@ -32,10 +32,10 @@ const { translate } = require('./server-i18n');
 const TOKEN_URL   = 'https://iam.viessmann-climatesolutions.com/idp/v3/token';
 const API_BASE    = 'https://api.viessmann-climatesolutions.com/iot';
 const TOKEN_FILE  = path.join(__dirname, '..', 'persist', 'vitodens-tokens.json');
-// Default matches vicare-client.js's — Viessmann's documented per-client
-// rate limit (~1450 calls/day) leaves little headroom at a faster interval
-// once installation-resolution and write commands are counted. Configurable
-// via config.vitodens.pollInterval (seconds) for accounts with more headroom.
+// Viessmann's documented per-client rate limit (~1450 calls/day) leaves
+// little headroom at a faster interval once installation-resolution and
+// write commands are counted. Configurable via config.vitodens.pollInterval
+// (seconds) for accounts with more headroom.
 const DEFAULT_POLL_INTERVAL_MS = 120_000;
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
 
@@ -122,8 +122,21 @@ class VitodensClient {
   }
 
   async start() {
-    const cfg = this.config.vitodens || {};
+    // `vicare` was a separate, older client against a different Viessmann
+    // API domain (viessmann.com vs. this client's viessmann-climatesolutions.com)
+    // with its own inline user/password auth. The two were merged into this
+    // one client since they polled the same physical hardware; `config.vicare`
+    // is accepted here only as a legacy source for clientId/label/pollInterval
+    // — its `user`/`password` fields don't apply to this client's OAuth flow
+    // and are ignored, so anyone migrating from `vicare` still needs to run
+    // the one-time `node scripts/vitodens-auth.js` bootstrap below.
+    const legacy = !this.config.vitodens && this.config.vicare;
+    const cfg = this.config.vitodens || this.config.vicare || {};
     if (!cfg.clientId) throw new Error('vitodens.clientId missing in config.json');
+    this._cfg = cfg;
+    if (legacy) {
+      console.warn('[Vitodens] Using legacy `vicare` config section — rename it to `vitodens` in config.json when convenient. `vicare.user`/`vicare.password` are not used by this client.');
+    }
 
     try {
       this._oauth = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
@@ -322,7 +335,7 @@ class VitodensClient {
   }
 
   async _doRefreshToken() {
-    const clientId = this.config.vitodens.clientId;
+    const clientId = this._cfg.clientId;
     const res = await fetch(TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

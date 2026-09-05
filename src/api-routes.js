@@ -776,11 +776,10 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (req.query.device) devices = devices.filter((d) => d.key === req.query.device);
     if (req.query.type) {
       const types = new Set(String(req.query.type).split(',').map((t) => t.trim()).filter(Boolean));
-      // vicare-client.js and vitodens-client.js are two separate integration
-      // clients against the same Viessmann brand, registered under two
-      // different type strings — ?type=vicare naturally means "either" to
-      // anyone who doesn't know that split, so treat them as one group here.
-      if (types.has('vicare') || types.has('vitodens')) { types.add('vicare'); types.add('vitodens'); }
+      // vicare-client.js was merged into vitodens-client.js (same Viessmann
+      // brand, same registered type) — ?type=vicare still works for anyone
+      // with an old bookmark/export.
+      if (types.has('vicare')) types.add('vitodens');
       devices = devices.filter((d) => types.has(d.type));
     }
     // ?named=1 — skip devices with generic fallback labels (e.g. unnamed Satel
@@ -3492,24 +3491,21 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
-  // ── Viessmann ViCare ───────────────────────────────────────────────────────
+  // ── Viessmann Vitodens ─────────────────────────────────────────────────────
 
-  router.post('/settings/vicare', requireAdmin, (req, res) => {
+  router.post('/settings/vitodens', requireAdmin, (req, res) => {
     const current = readConfigFile();
-    const { user, password, clientId, redirectUri, pollInterval } = req.body;
+    const { clientId, pollInterval } = req.body;
     try {
       writeConfigFile({
         ...current,
-        vicare: {
-          ...current.vicare,
-          user:         user || current.vicare?.user || '',
-          password:     (password && !password.includes('•')) ? password : (current.vicare?.password || ''),
-          clientId:     clientId || current.vicare?.clientId || '',
-          redirectUri:  redirectUri || current.vicare?.redirectUri || 'http://localhost:4200/',
+        vitodens: {
+          ...current.vitodens,
+          clientId:     clientId || current.vitodens?.clientId || '',
           pollInterval: parseInt(pollInterval) || 120,
         },
       });
-      res.json({ success: true, message: 'ViCare settings saved. Restart to apply.' });
+      res.json({ success: true, message: 'Vitodens settings saved. Run node scripts/vitodens-auth.js if you haven\'t authorized yet, then restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

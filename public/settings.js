@@ -215,12 +215,10 @@ async function loadSettings() {
     setVal('miele-password',      data.miele?.password ? '••••••••' : '');
     setVal('miele-country',       data.miele?.country || 'de-DE');
 
-    // Viessmann ViCare
-    setVal('vicare-user',      data.vicare?.user || '');
-    setVal('vicare-password',  data.vicare?.password ? '••••••••' : '');
-    setVal('vicare-client-id', data.vicare?.clientId || '');
-    setVal('vicare-redirect',  data.vicare?.redirectUri || 'http://localhost:4200/');
-    setVal('vicare-poll',      data.vicare?.pollInterval || 120);
+    // Viessmann Vitodens (config.vitodens, falling back to the legacy
+    // config.vicare.clientId/pollInterval fields if that's still in use)
+    setVal('vitodens-client-id', data.vitodens?.clientId || data.vicare?.clientId || '');
+    setVal('vitodens-poll',      data.vitodens?.pollInterval || data.vicare?.pollInterval || 120);
 
     // Thermomix / Cookidoo
     setVal('thermomix-email',    data.thermomix?.email || '');
@@ -1157,21 +1155,18 @@ document.getElementById('btn-test-airly').addEventListener('click', async () => 
   }
 });
 
-// ── Viessmann ViCare ────────────────────────────────────────────────────────
-document.getElementById('btn-save-vicare')?.addEventListener('click', async () => {
-  const btn = document.getElementById('btn-save-vicare');
-  const resultEl = document.getElementById('vicare-test-result');
+// ── Viessmann Vitodens ───────────────────────────────────────────────────────
+document.getElementById('btn-save-vitodens')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-vitodens');
+  const resultEl = document.getElementById('vitodens-test-result');
   btn.disabled = true;
   try {
-    const res = await fetch('/api/settings/vicare', {
+    const res = await fetch('/api/settings/vitodens', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user:         getVal('vicare-user'),
-        password:     getVal('vicare-password'),
-        clientId:     getVal('vicare-client-id'),
-        redirectUri:  getVal('vicare-redirect'),
-        pollInterval: getVal('vicare-poll'),
+        clientId:     getVal('vitodens-client-id'),
+        pollInterval: getVal('vitodens-poll'),
       }),
     });
     const json = await res.json();

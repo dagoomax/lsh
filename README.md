@@ -301,8 +301,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
 | `smarttub` | No | SmartTub hot tubs (Jacuzzi / Sundance / Watkins) — water/set temperature, heat mode, pumps, lights via cloud API |
 | `thermomix` | No | Vorwerk Thermomix (TM6 / TM7) via Cookidoo — shopping-list size, weekly meal plan, next recipe (read-only cloud) |
-| `vicare` | No | Viessmann ViCare heating (boilers / heat pumps) — temperatures, burner, mode, hot-water setpoint via the Viessmann IoT cloud |
-| `vitodens` | No | Same Viessmann IoT cloud as `vicare`, with dynamic per-installation feature discovery instead of a fixed list — pick one, not both (see the `vitodens` section below) |
+| `vitodens` | No | Viessmann heating (boilers / heat pumps) via the Viessmann IoT cloud, dynamic per-installation feature discovery (see the `vitodens` section below; `vicare` is a deprecated alias for this same client) |
 | `wled` | No | WLED addressable-LED controllers (ESP8266/ESP32) — power, brightness, RGB(W) colour via the local JSON API |
 | `zway` | No | Z-Way / RaZberry — Z-Wave switches, dimmers, thermostats, locks, sensors via ZAutomation REST API |
 | `vera` | No | MiCasaVerde / Vera controllers — switches, dimmers, locks, thermostats, sensors via the local LuaUPnP JSON API |
@@ -418,9 +417,7 @@ Leave `deviceIds` empty to discover all devices. Or supply a list of device UUID
 }
 ```
 
-Integrates a Viessmann ViCare-connected heating system (Vitodens boilers, and other ViCare-connected Viessmann systems — the API is model-agnostic) via Viessmann's cloud IoT API.
-
-**Don't also enable `vicare`** — both clients talk to the same Viessmann cloud API for the same hardware; running both polls it twice against Viessmann's shared per-account rate limit and shows the boiler as two separate dashboard devices. `vitodens` is the newer of the two (dynamic per-installation feature discovery instead of a fixed list); pick it unless you specifically need `vicare`'s fixed feature set.
+Integrates a Viessmann ViCare-connected heating system (Vitodens boilers, and other ViCare-connected Viessmann systems — the API is model-agnostic) via Viessmann's cloud IoT API. This is the one client for it — an older, separate `vicare` client (fixed sensor list, different API domain) was merged into this one; see the `vicare` note above if you're migrating from it.
 
 `installationId`/`gatewaySerial`/`deviceId` may be set partially — e.g. just `deviceId` on a multi-installation account — and whatever's given narrows auto-resolution instead of being ignored; leave all three blank to auto-resolve everything. `pollInterval` (seconds, default 120) trades responsiveness against Viessmann's documented ~1450 calls/day account-wide limit — lower it only if you have headroom.
 
@@ -1257,34 +1254,11 @@ Because it rides an undocumented API, every request is defensively parsed and an
 
 ---
 
-### `vicare`
+### `vicare` (merged into `vitodens`)
 
-```json
-"vicare": {
-  "user": "you@example.com",
-  "password": "your-password",
-  "clientId": "your-api-client-id",
-  "redirectUri": "http://localhost:4200/",
-  "pollInterval": 120
-}
-```
+`vicare` was a separate client against Viessmann's older `viessmann.com` API domain, using inline account email/password. It has been merged into **`vitodens`** below (newer `viessmann-climatesolutions.com` domain, dynamic per-installation feature discovery instead of a fixed sensor list) — there is only one Viessmann client now.
 
-Support for **Viessmann ViCare** heating systems (boilers / heat pumps) via the official Viessmann IoT cloud API — the same one the ViCare app and the community PyViCare library use.
-
-**Setup:** create a free API client at [developer.viessmann.com](https://developer.viessmann.com) → *API Keys*, with **Google reCAPTCHA disabled** and redirect URI `http://localhost:4200/`, then paste its **Client ID** here along with your ViCare account e-mail and password.
-
-| Field | Default | Description |
-|---|---|---|
-| `user` / `password` | — | Your ViCare account credentials |
-| `clientId` | — | Client ID of your Viessmann developer API client |
-| `redirectUri` | `http://localhost:4200/` | Must match the redirect URI registered on the API client |
-| `pollInterval` | `120` | Refresh interval in seconds (min 60) |
-
-**Authentication:** OAuth2 Authorization-Code + PKCE against the Viessmann IAM. The authorize endpoint accepts HTTP Basic (your credentials) and 302-redirects with the auth code, so no interactive browser step is needed; the access/refresh tokens are persisted in `persist/vicare-tokens.json` and refreshed automatically.
-
-**Sensors:** Outside / Supply / Boiler / Hot-water temperatures, Burner (on/off), Heating mode, and **Hot Water Target** — adjustable when the device exposes the `setTargetTemperature` command (posted to `heating.dhw.temperature.main`). The outside temperature is bridged to HomeKit.
-
-> The Viessmann API is **rate-limited to ~1450 calls/day per client**, so keep `pollInterval` at 120 s or higher. Requests are parsed defensively and failures downgrade to a warning (red platform badge) rather than crashing the hub.
+If you still have a `vicare` section in `config.json`: its `clientId` and `pollInterval` are read as a fallback by `vitodens-client.js`, but `user`/`password` are **not used** — this client's auth is the one-time interactive `node scripts/vitodens-auth.js` script instead (see below). Rename the section to `vitodens` once you've re-authorized to avoid the startup warning.
 
 ---
 

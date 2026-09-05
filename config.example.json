@@ -421,13 +421,6 @@
     "country": "pl",
     "pollSeconds": 300
   },
-  "vicare": {
-    "user": "you@example.com",
-    "password": "",
-    "clientId": "",
-    "redirectUri": "http://localhost:4200/",
-    "pollInterval": 120
-  },
   "wled": {
     "pollInterval": 5,
     "devices": [

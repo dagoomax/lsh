@@ -472,18 +472,11 @@ async function main() {
     }
   }
 
-  // Start Viessmann Vitodens client if configured
-  if (config.vitodens?.clientId) {
-    // vicare and vitodens are two separate clients against the same
-    // Viessmann IoT cloud API — running both polls the same physical boiler
-    // twice (via two separate token files) against Viessmann's shared
-    // per-account rate limit, and registers it as two separate dashboard
-    // devices. Not blocked outright (a deliberate migration from one to the
-    // other might briefly run both), but flagged loudly since it's easy to
-    // enable by accident.
-    if (config.vicare?.clientId && config.vicare?.user && config.vicare?.password) {
-      console.warn('[Vitodens] Both `vicare` and `vitodens` are configured — they poll the same Viessmann cloud API for the same hardware and will double up on Viessmann\'s rate limit. Pick one (see the `vitodens` section in README.md).');
-    }
+  // Start Viessmann Vitodens client if configured. `vicare` was a separate,
+  // older client (different API domain, inline user/password auth) that has
+  // been merged into this one — `config.vicare.clientId` is still accepted
+  // here as a legacy alias (see vitodens-client.js).
+  if (config.vitodens?.clientId || config.vicare?.clientId) {
     const VitodensClient = tryRequire('./src/vitodens-client');
     if (VitodensClient) {
       const vitodens = new VitodensClient(config, store, sensorRegistry);
@@ -878,14 +871,6 @@ async function main() {
     }
   }
 
-  // Start Viessmann ViCare heating client if configured
-  if (config.vicare?.clientId && config.vicare?.user && config.vicare?.password) {
-    const ViCareClient = tryRequire('./src/vicare-client');
-    if (ViCareClient) {
-      const vicare = new ViCareClient(config, store, sensorRegistry);
-      vicare.start().catch((err) => console.error(`[ViCare] Start failed: ${err.message}`));
-    }
-  }
 
   // Start WLED client if configured
   if (config.wled?.devices?.length) {
