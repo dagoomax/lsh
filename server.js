@@ -474,6 +474,16 @@ async function main() {
 
   // Start Viessmann Vitodens client if configured
   if (config.vitodens?.clientId) {
+    // vicare and vitodens are two separate clients against the same
+    // Viessmann IoT cloud API — running both polls the same physical boiler
+    // twice (via two separate token files) against Viessmann's shared
+    // per-account rate limit, and registers it as two separate dashboard
+    // devices. Not blocked outright (a deliberate migration from one to the
+    // other might briefly run both), but flagged loudly since it's easy to
+    // enable by accident.
+    if (config.vicare?.clientId && config.vicare?.user && config.vicare?.password) {
+      console.warn('[Vitodens] Both `vicare` and `vitodens` are configured — they poll the same Viessmann cloud API for the same hardware and will double up on Viessmann\'s rate limit. Pick one (see the `vitodens` section in README.md).');
+    }
     const VitodensClient = tryRequire('./src/vitodens-client');
     if (VitodensClient) {
       const vitodens = new VitodensClient(config, store, sensorRegistry);

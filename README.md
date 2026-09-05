@@ -302,6 +302,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `smarttub` | No | SmartTub hot tubs (Jacuzzi / Sundance / Watkins) — water/set temperature, heat mode, pumps, lights via cloud API |
 | `thermomix` | No | Vorwerk Thermomix (TM6 / TM7) via Cookidoo — shopping-list size, weekly meal plan, next recipe (read-only cloud) |
 | `vicare` | No | Viessmann ViCare heating (boilers / heat pumps) — temperatures, burner, mode, hot-water setpoint via the Viessmann IoT cloud |
+| `vitodens` | No | Same Viessmann IoT cloud as `vicare`, with dynamic per-installation feature discovery instead of a fixed list — pick one, not both (see the `vitodens` section below) |
 | `wled` | No | WLED addressable-LED controllers (ESP8266/ESP32) — power, brightness, RGB(W) colour via the local JSON API |
 | `zway` | No | Z-Way / RaZberry — Z-Wave switches, dimmers, thermostats, locks, sensors via ZAutomation REST API |
 | `vera` | No | MiCasaVerde / Vera controllers — switches, dimmers, locks, thermostats, sensors via the local LuaUPnP JSON API |
@@ -412,11 +413,16 @@ Leave `deviceIds` empty to discover all devices. Or supply a list of device UUID
   "installationId": "",
   "gatewaySerial": "",
   "deviceId": "",
-  "label": "Boiler"
+  "label": "Boiler",
+  "pollInterval": 120
 }
 ```
 
 Integrates a Viessmann ViCare-connected heating system (Vitodens boilers, and other ViCare-connected Viessmann systems — the API is model-agnostic) via Viessmann's cloud IoT API.
+
+**Don't also enable `vicare`** — both clients talk to the same Viessmann cloud API for the same hardware; running both polls it twice against Viessmann's shared per-account rate limit and shows the boiler as two separate dashboard devices. `vitodens` is the newer of the two (dynamic per-installation feature discovery instead of a fixed list); pick it unless you specifically need `vicare`'s fixed feature set.
+
+`installationId`/`gatewaySerial`/`deviceId` may be set partially — e.g. just `deviceId` on a multi-installation account — and whatever's given narrows auto-resolution instead of being ignored; leave all three blank to auto-resolve everything. `pollInterval` (seconds, default 120) trades responsiveness against Viessmann's documented ~1450 calls/day account-wide limit — lower it only if you have headroom.
 
 Leave `installationId`/`gatewaySerial`/`deviceId` empty to auto-resolve the first installation/gateway/device on the account (the normal case — one boiler, one account). Set them explicitly only for a multi-installation account.
 

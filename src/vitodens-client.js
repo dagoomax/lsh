@@ -27,11 +27,16 @@ const fs   = require('fs');
 const path = require('path');
 
 const platformStatus = require('./platform-status');
+const { translate } = require('./server-i18n');
 
 const TOKEN_URL   = 'https://iam.viessmann-climatesolutions.com/idp/v3/token';
 const API_BASE    = 'https://api.viessmann-climatesolutions.com/iot';
 const TOKEN_FILE  = path.join(__dirname, '..', 'persist', 'vitodens-tokens.json');
-const POLL_INTERVAL_MS = 60_000; // Viessmann's cloud only gets fresh readings from the gateway every few minutes
+// Default matches vicare-client.js's — Viessmann's documented per-client
+// rate limit (~1450 calls/day) leaves little headroom at a faster interval
+// once installation-resolution and write commands are counted. Configurable
+// via config.vitodens.pollInterval (seconds) for accounts with more headroom.
+const DEFAULT_POLL_INTERVAL_MS = 120_000;
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
 
 // Cosmetic only — see file header. Unknown features still show up, just
@@ -150,9 +155,15 @@ class VitodensClient {
     this.connected = true;
     platformStatus.set('vitodens', true);
 
-    this.pollTimer = setInterval(() => this._poll().catch((err) =>
-      console.error(`[Vitodens] Poll failed: ${err.message}`)), POLL_INTERVAL_MS);
-    console.log(`[Vitodens] Started — installation ${this.installationId}, gateway ${this.gatewaySerial}, device ${this.deviceId}, polling every ${POLL_INTERVAL_MS / 1000}s`);
+    const pollIntervalMs = cfg.pollInterval ? Math.max(30, Number(cfg.pollInterval)) * 1000 : DEFAULT_POLL_INTERVAL_MS;
+    this.pollTimer = setInterval(() => this._poll().then(
+      () => platformStatus.set('vitodens', true),
+      (err) => {
+        console.error(`[Vitodens] Poll failed: ${err.message}`);
+        platformStatus.set('vitodens', false);
+      }
+    ), pollIntervalMs);
+    console.log(`[Vitodens] Started — installation ${this.installationId}, gateway ${this.gatewaySerial}, device ${this.deviceId}, polling every ${pollIntervalMs / 1000}s`);
   }
 
   stop() {
@@ -170,14 +181,33 @@ class VitodensClient {
       this.deviceId       = String(cfg.deviceId);
       return;
     }
+    // A partial override (e.g. only deviceId set, per the README's "set them
+    // explicitly only for a multi-installation account" phrasing) previously
+    // fell straight through to full auto-resolve, silently ignoring whatever
+    // was configured. Warn so a typo'd/partial config is visible, then use
+    // each configured field to narrow the lookup instead of discarding it.
+    if (cfg.installationId || cfg.gatewaySerial || cfg.deviceId) {
+      console.warn('[Vitodens] Partial installation override in config.json (installationId/gatewaySerial/deviceId must all be set to skip auto-resolve) — using configured fields to narrow auto-resolution instead.');
+    }
 
     const res = await this._fetch(`${API_BASE}/v1/equipment/installations?includeGateways=true`);
-    const installation = res.data?.[0];
-    if (!installation) throw new Error('No Viessmann installations found on this account');
-    const gateway = installation.gateways?.[0];
-    if (!gateway) throw new Error(`Installation ${installation.id} has no gateways`);
-    const device = gateway.devices?.[0];
-    if (!device) throw new Error(`Gateway ${gateway.serial} has no devices`);
+    const installations = res.data ?? [];
+    const installation = cfg.installationId
+      ? installations.find((i) => String(i.id) === String(cfg.installationId))
+      : installations[0];
+    if (!installation) throw new Error(cfg.installationId ? `Installation ${cfg.installationId} not found on this account` : 'No Viessmann installations found on this account');
+
+    const gateways = installation.gateways || [];
+    const gateway = cfg.gatewaySerial
+      ? gateways.find((g) => g.serial === String(cfg.gatewaySerial))
+      : gateways[0];
+    if (!gateway) throw new Error(cfg.gatewaySerial ? `Gateway ${cfg.gatewaySerial} not found on installation ${installation.id}` : `Installation ${installation.id} has no gateways`);
+
+    const devices = gateway.devices || [];
+    const device = cfg.deviceId
+      ? devices.find((d) => String(d.id) === String(cfg.deviceId))
+      : devices[0];
+    if (!device) throw new Error(cfg.deviceId ? `Device ${cfg.deviceId} not found on gateway ${gateway.serial}` : `Gateway ${gateway.serial} has no devices`);
 
     this.installationId = String(installation.id);
     this.gatewaySerial  = gateway.serial;
@@ -227,17 +257,32 @@ class VitodensClient {
     const commands = this._commandsByFeature.get(feature);
     const setCommand = commands && Object.values(commands).find((c) => c.isExecutable && /^set/i.test(c.name));
     if (setCommand) {
-      sensor.controllable = true;
-      sensor.capabilityId = feature;
-      sensor.writeCmd = setCommand.name;
-      const numericParam = Object.entries(setCommand.params || {}).find(([, p]) => p.type === 'number');
-      if (numericParam) {
+      const paramEntries = Object.entries(setCommand.params || {});
+      // Only exposed as a controllable tile when the command takes exactly
+      // one parameter. The dashboard only ever sends one value per sensor
+      // (sendCommand -> _writeCapability(capId, cmd, [value])), and
+      // _writeCommand fills params positionally from that single-element
+      // array — a command needing more than one (e.g. a heating curve's
+      // shift+slope) would otherwise silently only ever set the first
+      // declared param. Leave those read-only rather than issue a
+      // partial/wrong command to real heating hardware.
+      if (paramEntries.length === 1 && paramEntries[0][1].type === 'number') {
+        sensor.controllable = true;
+        sensor.capabilityId = feature;
+        sensor.writeCmd = setCommand.name;
         sensor.type = 'range';
-        const [, p] = numericParam;
+        const [, p] = paramEntries[0];
         if (p.constraints?.min != null) sensor.min = p.constraints.min;
         if (p.constraints?.max != null) sensor.max = p.constraints.max;
       }
     }
+
+    // Sensors are appended to an already-registered device (see start()), so
+    // they never pass through sensor-registry's one-time translateDevice()
+    // call — translate name/label individually here instead, same effect.
+    const lang = this.sensorRegistry.language;
+    sensor.name  = translate(sensor.name, lang);
+    sensor.label = translate(sensor.label, lang);
 
     this.device.sensors.push(sensor);
   }

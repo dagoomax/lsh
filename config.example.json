@@ -58,7 +58,8 @@
     "installationId": "",
     "gatewaySerial": "",
     "deviceId": "",
-    "label": ""
+    "label": "",
+    "pollInterval": 120
   },
   "evVisual": {
     "modelId": "",
