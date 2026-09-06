@@ -74,12 +74,24 @@ async function exchangeCode(clientId, code, codeVerifier) {
 
 function askForCode() {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     rl.question('Paste the full redirect URL (or just the code) here: ', (answer) => {
       rl.close();
       answer = answer.trim();
-      try { resolve(new URL(answer).searchParams.get('code') || answer); }
-      catch { resolve(answer); }
+      let parsed;
+      try { parsed = new URL(answer); } catch { resolve(answer); return; } // not a URL — treat as a raw code
+      const code = parsed.searchParams.get('code');
+      if (code) { resolve(code); return; }
+      // Parses as a URL but has no `code` param — almost always means the
+      // authorize URL got pasted back by mistake instead of the URL the
+      // browser actually landed on after login (confirmed live: this exact
+      // silent fallback previously sent the whole authorize URL as "the
+      // code", producing an opaque invalid_grant with no clue why).
+      reject(new Error(
+        `That URL has no "code" parameter, so it isn't the redirect you land on after logging in — it looks like the ` +
+        `${parsed.hostname === new URL(AUTHORIZE_URL).hostname ? 'authorize URL you opened, pasted back by mistake' : 'wrong URL'}. ` +
+        `Log in via the printed URL, then copy the URL your browser ends up on (the lsh-callback.invalid DNS-error page) — it'll contain "?code=...".`
+      ));
     });
   });
 }
