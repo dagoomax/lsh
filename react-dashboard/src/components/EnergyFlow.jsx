@@ -524,6 +524,9 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
           <DetailRow label={gt('r_current','Current')} value={fmtA(b?.current)} color={(b?.current??0)>0?'var(--green)':'var(--text2)'} />
           <DetailRow label={gt('r_state','State')}   value={battState}        color="var(--text2)" />
           {timeToGo && <DetailRow label={gt('r_ttg','Time to go')} value={timeToGo} color="var(--text2)" />}
+          {b?.temperature != null && <DetailRow label={gt('r_temperature','Temperature')} value={`${Number(b.temperature).toFixed(1)}°C`} />}
+          {b?.chargedEnergy != null && <DetailRow label={gt('r_total_charged','Total charged')} value={`${Number(b.chargedEnergy).toFixed(1)} kWh`} color="var(--text2)" />}
+          {b?.dischargedEnergy != null && <DetailRow label={gt('r_total_discharged','Total discharged')} value={`${Number(b.dischargedEnergy).toFixed(1)} kWh`} color="var(--text2)" />}
         </DetailCard>
 
         <DetailCard icon={<SunIcon color="var(--text3)" size={13}/>} title={gt('t_solar','Solar MPPT')}>
@@ -531,6 +534,8 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
           <DetailRow label={gt('r_today','Today')}   value={`${(s?.dailyYield??0).toFixed(2)} kWh`} color="var(--orange)" />
           {s?.current != null && <DetailRow label={gt('r_current','Current')} value={fmtA(s.current)} />}
           {s?.panelVoltage != null && <DetailRow label={'PV ' + gt('r_voltage','Voltage')} value={fmtV(s.panelVoltage)} />}
+          {s?.totalYield != null && <DetailRow label={gt('r_total','Total')} value={`${Number(s.totalYield).toFixed(1)} kWh`} color="var(--text2)" />}
+          {s?.temperature != null && <DetailRow label={gt('r_temperature','Temperature')} value={`${Number(s.temperature).toFixed(1)}°C`} />}
           <DetailRow label={gt('r_share','Share of loads')} value={
             loadTotal > 0 ? `${Math.min(100, Math.round(num(s?.power) / loadTotal * 100))}%` : '—'
           } color="var(--text2)" />
@@ -544,6 +549,8 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
           <DetailRow label={gt('r_l2','L2 Power')}  value={fmtW(g?.powerL2)} color={gridColor} />
           <DetailRow label={gt('r_l3','L3 Power')}  value={fmtW(g?.powerL3)} color={gridColor} />
           <DetailRow label={gt('r_voltage','Voltage')}   value={fmtV(g?.voltage)} />
+          {g?.voltageL2 != null && <DetailRow label={gt('r_l2_voltage','L2 Voltage')} value={fmtV(g.voltageL2)} />}
+          {g?.voltageL3 != null && <DetailRow label={gt('r_l3_voltage','L3 Voltage')} value={fmtV(g.voltageL3)} />}
           <DetailRow label={gt('r_freq','Frequency')} value={fmtHz(g?.frequency)} color="var(--text2)" />
           <DetailRow label={gt('r_grid_dependency','Grid dependency')}
             value={gridDependencyPct != null ? `${gridDependencyPct}%` : '—'} color="var(--text2)" />

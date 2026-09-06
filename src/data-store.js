@@ -348,18 +348,33 @@ class DataStore extends EventEmitter {
         power: v('system/0/Dc/Battery/Power'),
         state: v('system/0/Dc/Battery/BatteryState'),
         timeToGo: v('system/0/Dc/Battery/TimeToGo'),
+        // Real Victron topics confirmed against vrm-client.js's own widget-ID
+        // map (battery/0/Temperature already used by device-definitions.js's
+        // Battery device; History/*Energy are the lifetime charge/discharge
+        // counters, the same shape as solaraccelerator's total_battery_*).
+        temperature: v('battery/0/Temperature'),
+        chargedEnergy: v('battery/0/History/ChargedEnergy'),
+        dischargedEnergy: v('battery/0/History/DischargedEnergy'),
       },
       solar: {
         power: v('system/0/Dc/Pv/Power'),
         current: v('system/0/Dc/Pv/Current'),
         dailyYield: v('system/0/PvChargerAggregated/Yield/User'),
+        // Lifetime yield + charger temperature — same pair solaraccelerator
+        // exposes as total_pv_generation/battery_temp-equivalent.
+        totalYield: v('solarcharger/0/Yield/Total'),
+        temperature: v('solarcharger/0/Temperature'),
       },
       grid: {
         power: v('system/0/Ac/Grid/L1/Power'),
         powerL2: v('system/0/Ac/Grid/L2/Power'),
         powerL3: v('system/0/Ac/Grid/L3/Power'),
         current: v('system/0/Ac/Grid/L1/Current'),
+        currentL2: v('system/0/Ac/Grid/L2/Current'),
+        currentL3: v('system/0/Ac/Grid/L3/Current'),
         voltage: v('system/0/Ac/Grid/L1/Voltage'),
+        voltageL2: v('system/0/Ac/Grid/L2/Voltage'),
+        voltageL3: v('system/0/Ac/Grid/L3/Voltage'),
         frequency: v('system/0/Ac/Grid/L1/Frequency'),
         connected: v('system/0/Ac/Grid/Available'),
       },
