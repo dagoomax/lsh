@@ -42,7 +42,7 @@ function Arc({ pct = 0, color, size = 64 }) {
 // ── Mini energy card ─────────────────────────────────────────────────────────
 function ECard({ icon, label, value, sub, color, pct }) {
   return (
-    <div className="ecard" style={{ '--c': color }}>
+    <div className="ecard eflow-bg" style={{ '--c': color }}>
       {pct != null && (
         <div className="energy-card-arc" style={{ position:'relative', flexShrink:0, width:64, height:64 }}>
           <Arc pct={pct} color={color} size={64}/>
@@ -100,11 +100,12 @@ function FlowPath({ d, color, watts, reverse }) {
 }
 
 function FlowNode({ x, y, icon: Icon, label, color, value, sub, active = true, socPct = null }) {
-  const R = 31
+  const R = 36
+  const ICON = 34
   const circ = 2 * Math.PI * R
   return (
     <g className="eflow-node" style={{ opacity: active ? 1 : 0.45, transition: 'opacity 0.6s ease' }}>
-      <text x={x} y={y - R - 13} textAnchor="middle" className="eflow-label">{label}</text>
+      <text x={x} y={y - R - 14} textAnchor="middle" className="eflow-label">{label}</text>
       <circle cx={x} cy={y} r={R} fill="var(--card)" stroke="var(--white-09)" strokeWidth="2"/>
       {socPct == null && (
         <circle cx={x} cy={y} r={R} fill="none" stroke={color} strokeWidth="2"
@@ -116,56 +117,57 @@ function FlowNode({ x, y, icon: Icon, label, color, value, sub, active = true, s
           transform={`rotate(-90 ${x} ${y})`}
           style={{ filter: `drop-shadow(0 0 5px ${color})`, transition: 'stroke-dasharray 0.8s ease' }}/>
       )}
-      <g transform={`translate(${x - 13}, ${y - 13})`}>
-        <Icon color={color} size={26}/>
+      <g transform={`translate(${x - ICON / 2}, ${y - ICON / 2})`}>
+        <Icon color={color} size={ICON}/>
       </g>
-      <text x={x} y={y + R + 20} textAnchor="middle" className="eflow-value" fill={color}>{value}</text>
-      {sub && <text x={x} y={y + R + 35} textAnchor="middle" className="eflow-sub">{sub}</text>}
+      <text x={x} y={y + R + 22} textAnchor="middle" className="eflow-value" fill={color}>{value}</text>
+      {sub && <text x={x} y={y + R + 37} textAnchor="middle" className="eflow-sub">{sub}</text>}
     </g>
   )
 }
 
 function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, loadW, gridColor, exporting, evW }) {
-  // Geometry: hub at (340,183); solar N, grid W, home E, battery S, EV SE (diagonal, only when present)
-  const hub = { x: 340, y: 183 }
-  const ev  = { x: 500, y: 270 }
+  // Geometry: hub at (410,200); solar N, grid W, home E, battery S, EV SE (diagonal, only when present)
+  const hub = { x: 410, y: 200 }
+  const ev  = { x: 570, y: 287 }
+  const hubR = 34, gap = 6, nodeR = 36
   const hasEv = evW != null
   const label = `Energy flow: solar ${fmtW(solarW)}, grid ${exporting ? 'export' : 'import'} ${fmtW(gridW)}, battery ${battCharging ? 'charging' : 'discharging'} ${fmtW(battW)}, home ${fmtW(loadW)}`
     + (hasEv ? `, EV charging ${fmtW(evW)}` : '')
   return (
-    <div className="eflow-wrap">
-      <svg viewBox="0 0 680 386" className="eflow-svg" role="img" aria-label={label}>
+    <div className="eflow-wrap eflow-bg">
+      <svg viewBox="0 0 820 420" className="eflow-svg" role="img" aria-label={label}>
 
         {/* soft glow behind the hub */}
         <radialGradient id="eflow-hub-glow">
           <stop offset="0%"  stopColor="var(--accent)" stopOpacity="0.14"/>
           <stop offset="100%" stopColor="var(--accent)" stopOpacity="0"/>
         </radialGradient>
-        <circle cx={hub.x} cy={hub.y} r="110" fill="url(#eflow-hub-glow)"/>
+        <circle cx={hub.x} cy={hub.y} r="130" fill="url(#eflow-hub-glow)"/>
 
         {/* conduits — every `d` is drawn TOWARD the hub; `reverse` flips the stream */}
-        <FlowPath d={`M ${hub.x} 92  L ${hub.x} ${hub.y - 42}`} color="var(--orange)" watts={solarW}/>
-        <FlowPath d={`M 148 ${hub.y} L ${hub.x - 42} ${hub.y}`} color={gridColor} watts={gridW} reverse={exporting}/>
-        <FlowPath d={`M ${hub.x} 274 L ${hub.x} ${hub.y + 42}`} color={battColor} watts={battW} reverse={battCharging}/>
-        <FlowPath d={`M ${hub.x + 42} ${hub.y} L 532 ${hub.y}`} color="var(--accent-lt)" watts={loadW} reverse/>
-        {hasEv && <FlowPath d={`M 469 253 L 377 203`} color="var(--purple, #a371f7)" watts={evW} reverse/>}
+        <FlowPath d={`M ${hub.x} 106 L ${hub.x} ${hub.y - hubR - gap}`} color="var(--orange)" watts={solarW}/>
+        <FlowPath d={`M 160 ${hub.y} L ${hub.x - hubR - gap} ${hub.y}`} color={gridColor} watts={gridW} reverse={exporting}/>
+        <FlowPath d={`M ${hub.x} 294 L ${hub.x} ${hub.y + hubR + gap}`} color={battColor} watts={battW} reverse={battCharging}/>
+        <FlowPath d={`M ${hub.x + hubR + gap} ${hub.y} L 660 ${hub.y}`} color="var(--accent-lt)" watts={loadW} reverse/>
+        {hasEv && <FlowPath d={`M 533 267 L 445 219`} color="var(--purple, #a371f7)" watts={evW} reverse/>}
 
         {/* inverter hub */}
-        <circle cx={hub.x} cy={hub.y} r="30" fill="var(--card)" stroke="var(--white-09)" strokeWidth="2"/>
-        <circle className="eflow-hub-ring" cx={hub.x} cy={hub.y} r="30" fill="none"
+        <circle cx={hub.x} cy={hub.y} r={hubR} fill="var(--card)" stroke="var(--white-09)" strokeWidth="2"/>
+        <circle className="eflow-hub-ring" cx={hub.x} cy={hub.y} r={hubR} fill="none"
           stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="4 9" strokeLinecap="round" opacity="0.7"/>
-        <g transform={`translate(${hub.x - 11}, ${hub.y - 11})`}>
-          <BoltIcon color="var(--accent-lt)" size={22}/>
+        <g transform={`translate(${hub.x - 13}, ${hub.y - 13})`}>
+          <BoltIcon color="var(--accent-lt)" size={26}/>
         </g>
 
         {/* nodes */}
-        <FlowNode x={340} y={57}  icon={SunIcon} label={gt('e_solar','Solar')} color="var(--orange)"
+        <FlowNode x={hub.x} y={64}  icon={SunIcon} label={gt('e_solar','Solar')} color="var(--orange)"
           value={fmtW(solarW)} active={Math.abs(solarW ?? 0) > 5}/>
-        <FlowNode x={105} y={183} icon={PylonIcon} label={exporting ? gt('e_grid_export','Grid · export') : gt('e_grid_import','Grid · import')} color={gridColor}
+        <FlowNode x={118} y={hub.y} icon={PylonIcon} label={exporting ? gt('e_grid_export','Grid · export') : gt('e_grid_import','Grid · import')} color={gridColor}
           value={fmtW(gridW)} active={Math.abs(gridW ?? 0) > 5}/>
-        <FlowNode x={575} y={183} icon={HomeIcon} label={gt('e_home','Home')} color="var(--accent-lt)"
+        <FlowNode x={702} y={hub.y} icon={HomeIcon} label={gt('e_home','Home')} color="var(--accent-lt)"
           value={fmtW(loadW)} active={Math.abs(loadW ?? 0) > 5}/>
-        <FlowNode x={340} y={309} icon={BatteryCellIcon} label={battCharging ? gt('e_batt_chg','Battery · charging') : gt('e_batt_dis','Battery · discharging')}
+        <FlowNode x={hub.x} y={336} icon={BatteryCellIcon} label={battCharging ? gt('e_batt_chg','Battery · charging') : gt('e_batt_dis','Battery · discharging')}
           color={battColor} value={fmtW(battW)} sub={battSoc != null ? `${battSoc}%` : null}
           active={Math.abs(battW ?? 0) > 5} socPct={battSoc}/>
         {hasEv && (
@@ -226,7 +228,7 @@ function Sparkline({ points, color, id, width = 120, height = 40 }) {
 
 function TrendCard({ icon, label, color, value, points }) {
   return (
-    <div className="detail-card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px' }}>
+    <div className="detail-card eflow-bg" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px' }}>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)', marginBottom: 4 }}>
           {icon}{label}
@@ -347,14 +349,14 @@ function DailyProductionChart({ solarKey, color }) {
   const padBottom = 22, padTop = 6
 
   if (days == null) {
-    return <div className="detail-card" style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', height: height + padBottom }}>
+    return <div className="detail-card eflow-bg" style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', height: height + padBottom }}>
       <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--white-10)', borderTopColor: color, animation: 'eflow-spin 0.9s linear infinite' }} />
     </div>
   }
 
   const known = days.filter(d => d.kwh != null)
   if (!known.length) {
-    return <div className="detail-card" style={{ padding: 14 }}>
+    return <div className="detail-card eflow-bg" style={{ padding: 14 }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
         {gt('e_daily_production', 'Daily Production')}
       </div>
@@ -369,7 +371,7 @@ function DailyProductionChart({ solarKey, color }) {
   const todayId = new Date().toDateString()
 
   return (
-    <div className="detail-card" style={{ padding: 14 }}>
+    <div className="detail-card eflow-bg" style={{ padding: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           {gt('e_daily_production', 'Daily Production')}
@@ -469,7 +471,7 @@ function DetailRow({ label, value, color }) {
 
 function DetailCard({ icon, title, children }) {
   return (
-    <div className="detail-card">
+    <div className="detail-card eflow-bg">
       <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text3)', marginBottom:8 }}>
         {icon}{title}
       </div>
@@ -555,7 +557,7 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
 
       {/* ── Animated flow diagram, with Daily Production alongside it on wide
           screens (stacks below on narrow ones) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 10, alignItems: 'center' }}>
+      <div className="eflow-production-row">
         <FlowDiagram
           solarW={s?.power} gridW={gridTotal} battW={battW} loadW={loadTotal}
           battCharging={battCharging} battSoc={b?.soc ?? null} battColor={battColor}

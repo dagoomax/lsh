@@ -385,6 +385,9 @@ export function HomeIcon({ color = 'currentColor', size = 24 }) {
     <svg {...s(color, size)}>
       <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
       <path d="M9 21V12h6v9"/>
+      {/* chimney on the right slope + a facade window, for a bit more presence at larger sizes */}
+      <rect x="15.1" y="2.6" width="1.7" height="3.6"/>
+      <rect x="5.1" y="12.8" width="2.8" height="2.8" rx="0.4"/>
     </svg>
   )
 }
@@ -394,8 +397,10 @@ export function HomeIcon({ color = 'currentColor', size = 24 }) {
 export function SunIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
-      <circle cx="12" cy="12" r="4"/>
-      <path d="M12 2.5V5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>
+      <circle cx="12" cy="12" r="4.2" fill={color} fillOpacity="0.16"/>
+      <circle cx="12" cy="12" r="4.2"/>
+      <path d="M12 2.3V5.1M12 18.9v2.8M2.3 12H5.1M18.9 12h2.8"/>
+      <path d="M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7l1.7-1.7M17 7l1.7-1.7" strokeWidth="1.35"/>
     </svg>
   )
 }
@@ -444,7 +449,13 @@ export function PylonIcon({ color = 'currentColor', size = 24 }) {
       <path d="M12 3 7.5 21M12 3l4.5 18"/>
       <path d="M4.5 8.5h15"/>
       <path d="M7 14.5h10"/>
+      {/* lattice cross-bracing between the two crossbars, plus insulator studs
+          where the transmission wires would attach */}
+      <path d="M8.7 8.5 12 11.2l3.3-2.7M9.6 14.5 12 16.3l2.4-1.8" strokeWidth="1.3"/>
       <path d="m9.1 14.5 7.4 6.5M14.9 14.5 7.5 21"/>
+      <circle cx="7" cy="8.5" r="0.6" fill={color} stroke="none"/>
+      <circle cx="17" cy="8.5" r="0.6" fill={color} stroke="none"/>
+      <circle cx="12" cy="3" r="0.6" fill={color} stroke="none"/>
     </svg>
   )
 }
@@ -452,9 +463,12 @@ export function PylonIcon({ color = 'currentColor', size = 24 }) {
 export function BatteryCellIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
-      <rect x="7.5" y="4.5" width="9" height="17" rx="2"/>
+      <rect x="7.5" y="4.5" width="9" height="17" rx="2.2"/>
       <path d="M10 2h4"/>
-      <path d="m12.9 9.5-2.4 3.2h3l-2.4 3.2"/>
+      {/* faint gauge ticks suggesting cell segments, plus a soft fill behind
+          the bolt so the icon reads with more weight at larger sizes */}
+      <path d="M7.5 9.2h9M7.5 13h9M7.5 16.8h9" strokeWidth="1" opacity="0.5"/>
+      <path d="m12.9 9.5-2.4 3.2h3l-2.4 3.2" fill={color} fillOpacity="0.16"/>
     </svg>
   )
 }

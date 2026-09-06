@@ -616,12 +616,23 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ── Energy flow diagram ─────────────────────────────────────────────── */
-.eflow-wrap {
+.eflow-production-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: center;
+}
+@media (min-width: 900px) {
+  .eflow-production-row { grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); }
+}
+/* Shared "aurora + dot-grid" card background — the Energy tab's one visual
+   identity, reused by every card on that tab (not just the flow diagram) so
+   the whole tab reads as one surface. z-index:0 on the card + z-index:-1 on
+   its ::before keeps the glow pinned behind that card's own content without
+   every consumer needing its own position/z-index wrapper. */
+.eflow-bg {
   position: relative;
-  display: flex;
-  justify-content: center;
-  padding: 10px 0;
-  border-radius: var(--radius-lg);
+  z-index: 0;
   overflow: hidden;
   background: radial-gradient(circle, var(--white-05) 1px, transparent 1px);
   background-size: 22px 22px;
@@ -629,22 +640,28 @@ input[type="range"]::-moz-range-thumb {
 }
 /* The one signature moment: a slow curtain of light behind the inverter hub
    — the dashboard's namesake, and its actual subject (energy arriving from
-   the sky, redistributed through the house), reserved for this one panel so
-   it stays a landmark rather than wallpaper. */
-.eflow-wrap::before {
+   the sky, redistributed through the house). */
+.eflow-bg::before {
   content: '';
   position: absolute;
   inset: -20%;
+  z-index: -1;
   background: var(--aurora-gradient);
   opacity: 0.1;
   filter: blur(40px);
   animation: aurora-drift 22s ease-in-out infinite alternate;
   pointer-events: none;
 }
-[data-theme="light"] .eflow-wrap::before { opacity: 0.16; filter: blur(50px); }
+[data-theme="light"] .eflow-bg::before { opacity: 0.16; filter: blur(50px); }
 @keyframes aurora-drift {
   0%   { transform: translate3d(-4%, -2%, 0) rotate(0deg) scale(1); }
   100% { transform: translate3d(4%, 3%, 0) rotate(6deg) scale(1.15); }
+}
+.eflow-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  border-radius: var(--radius-lg);
 }
 .eflow-svg {
   position: relative;
