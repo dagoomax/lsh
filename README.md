@@ -2291,6 +2291,8 @@ Configure cameras in **Settings → 📷 Cameras → Reolink** — add a row per
 
 `username` is the bridge MAC address — must be unique per HomeKit home. Generate a random MAC if running multiple instances.
 
+**Bridges over 149 accessories automatically split into more than one Bridge.** This is Apple's actual HomeKit limit (HAP-NodeJS enforces it directly: `Cannot Bridge more than 149 Accessories`), not something LSH can raise — there's no way for one Bridge to "continue" onto another, so once a home crosses that count, LSH publishes a second Bridge (`Victron Energy 2`, next port up, own derived-but-stable MAC/setup code) and keeps adding overflow accessories to it, a third if that also fills, and so on. The first Bridge's identity never changes, so existing pairings are unaffected — you'll only ever need to pair an *additional* bridge in the Home app once your accessory count actually crosses a multiple of 149, and each one shows its own `Setup URI` in the startup log the same way the primary one does.
+
 The HomeKit bridge is **optional**. It requires the `hap-nodejs` npm package, which is not installed by default:
 
 ```bash

@@ -41,6 +41,95 @@ function setInfo(accessory, manufacturer, model, serial) {
     .setCharacteristic(Characteristic.SerialNumber, serial);
 }
 
+// ── Multi-bridge pool (HAP's own hard cap: 149 bridged accessories) ───────
+//
+// HAP-NodeJS enforces Apple's actual HomeKit limit itself — Accessory.js's
+// addBridgedAccessory() throws "Cannot Bridge more than 149 Accessories"
+// once a single Bridge hits it (150 total including the bridge itself, the
+// spec's real ceiling). There's no way around a second, independently-paired
+// Bridge once a home exceeds that — HomeKit has no concept of one bridge
+// "continuing" onto another, so an overflow bridge is a genuinely separate
+// accessory the user has to add in the Home app a second time.
+//
+// The first bridge keeps its exact pre-existing identity (UUID, name,
+// serial, username, port, setupID) so this change is invisible to anyone
+// already paired — only homes with >149 bridged accessories ever see a
+// second bridge appear at all.
+const MAX_ACCESSORIES_PER_BRIDGE = 149;
+
+// Derives a stable-but-distinct MAC-formatted username for an overflow
+// bridge by incrementing the base username's last byte — HAP-NodeJS keys
+// each bridge's persisted pairing/AccessoryInfo by this string, so it must
+// both look like a MAC (documented format, e.g. "CC:22:3D:E3:CE:F6") and
+// stay identical across restarts, or every restart would force a re-pair.
+function deriveUsername(base, index) {
+  const bytes = String(base || 'CC:22:3D:E3:CE:F6').split(':').map((h) => parseInt(h, 16) || 0);
+  bytes[5] = (bytes[5] + index) & 0xff;
+  return bytes.map((n) => n.toString(16).padStart(2, '0').toUpperCase()).join(':');
+}
+
+// Same stability requirement as deriveUsername, for the 4-char setup code
+// embedded in the QR/manual-pairing URI (see homekit-uri.js) — hashed
+// rather than incremented since it isn't numeric/ordered like a MAC byte.
+function deriveSetupID(base, index) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const hash = require('crypto').createHash('sha1').update(`${base || 'HEJX'}-${index}`).digest();
+  let id = '';
+  for (let i = 0; i < 4; i++) id += chars[hash[i] % chars.length];
+  return id;
+}
+
+class BridgePool {
+  constructor(homekitConfig) {
+    this.config = homekitConfig;
+    this.bridges = [];
+    this._addBridge();
+  }
+
+  _addBridge() {
+    const index = this.bridges.length; // 0 = primary, unchanged identity
+    const name = index === 0 ? 'Victron Energy' : `Victron Energy ${index + 1}`;
+    const bridge = new Bridge(name, makeUUID(index === 0 ? 'bridge' : `bridge-${index + 1}`));
+    setInfo(bridge, 'Victron Energy', 'Cerbo GX Dashboard', index === 0 ? 'VICTRON-001' : `VICTRON-00${index + 1}`);
+    bridge._count = 0;
+
+    const port = (this.config.port || 47128) + index;
+    const username = index === 0 ? this.config.username : deriveUsername(this.config.username, index);
+    const setupID = index === 0
+      ? (this.config.setupID || 'HEJX')
+      : deriveSetupID(this.config.setupID, index);
+    // setupID must go through publish()'s own `info` object — hap-nodejs's
+    // Accessory.publish() only honors info.setupID (falling back to
+    // whatever's already persisted on disk, or a random one, otherwise); a
+    // plain `bridge._setupID = ...` assignment beforehand is silently
+    // overwritten during publish() and does nothing, confirmed live (the
+    // primary bridge's printed Setup URI didn't match its configured
+    // setupID until this was fixed to pass it here instead).
+    bridge.publish({ username, pincode: this.config.pin, port, setupID, category: Categories.BRIDGE });
+
+    const uri = generateSetupUri(this.config.pin, setupID);
+    console.log(`[HomeKit] Bridge${index > 0 ? ` ${index + 1}` : ''} on port ${port}  PIN: ${this.config.pin}`);
+    console.log(`[HomeKit] Setup URI: ${uri}`);
+
+    this.bridges.push(bridge);
+    return bridge;
+  }
+
+  // Appends to whichever bridge currently has room, creating (and
+  // immediately publishing) a new one on demand — including well after
+  // startup, since several callers here add accessories asynchronously as
+  // devices/cameras are discovered later (see the various *-discovered
+  // event handlers below). HAP-NodeJS supports adding bridged accessories
+  // to an already-published Bridge, which this file already relied on for
+  // those late-discovery paths before this pool existed.
+  add(accessory) {
+    let bridge = this.bridges[this.bridges.length - 1];
+    if (bridge._count >= MAX_ACCESSORIES_PER_BRIDGE) bridge = this._addBridge();
+    bridge.addBridgedAccessory(accessory);
+    bridge._count++;
+  }
+}
+
 // ── Per-service builders ──────────────────────────────────────────────────
 
 /**
@@ -1053,7 +1142,7 @@ function buildDimmerAccessory(device, sensor, store) {
 
 // ── Camera accessory builder ───────────────────────────────────────────────
 
-function addCameraToBridge(cam, bridge, store) {
+function addCameraToBridge(cam, pool, store) {
   const acc = new Accessory(cam.name, makeUUID(`camera-${cam.name}`));
   acc.category = Categories.CAMERA;
   setInfo(acc, 'Camera', cam.name, `CAM-${cam.name}`);
@@ -1078,7 +1167,7 @@ function addCameraToBridge(cam, bridge, store) {
   delegate.controller = controller;
 
   acc.configureController(controller);
-  bridge.addBridgedAccessory(acc);
+  pool.add(acc);
   const streamType = cam.url ? 'snapshot+stream' : 'snapshot';
   console.log(`[HomeKit] Camera: ${cam.name} (${streamType})${cam.hksv ? ' +HKSV' : ''}`);
 
@@ -1117,9 +1206,7 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
   }
   hap.HAPStorage.setCustomStoragePath(hapDir);
 
-  const bridge = new Bridge('Victron Energy', makeUUID('bridge'));
-
-  setInfo(bridge, 'Victron Energy', 'Cerbo GX Dashboard', 'VICTRON-001');
+  const pool = new BridgePool(config.homekit);
 
   // ── Relay switches (from config) ──────────────────────────
   for (const relay of config.relays) {
@@ -1144,7 +1231,7 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
       }
     });
 
-    bridge.addBridgedAccessory(acc);
+    pool.add(acc);
     console.log(`[HomeKit] Relay switch: ${relay.name}`);
   }
 
@@ -1160,7 +1247,7 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
         cam.fetchSnapshot = () =>
           require('./rtsp-snapshot').grabFrame(cam.url, config.ffmpegRtsp?.ffmpegPath || 'ffmpeg');
       }
-      try { addCameraToBridge(cam, bridge, store); } catch (err) {
+      try { addCameraToBridge(cam, pool, store); } catch (err) {
         console.error(`[HomeKit] Camera failed (${cam.name}): ${err.message}`);
       }
     }
@@ -1169,13 +1256,13 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
   // UniFi Protect cameras may not be discovered yet — add them when ready
   if (unifiProtect) {
     for (const cam of unifiProtect.getCameras()) {
-      try { addCameraToBridge(cam, bridge, store); } catch (err) {
+      try { addCameraToBridge(cam, pool, store); } catch (err) {
         console.error(`[HomeKit] UniFi camera failed (${cam.name}): ${err.message}`);
       }
     }
     unifiProtect.on('cameras-discovered', (cameras) => {
       for (const cam of cameras) {
-        try { addCameraToBridge(cam, bridge, store); } catch (err) {
+        try { addCameraToBridge(cam, pool, store); } catch (err) {
           console.error(`[HomeKit] UniFi camera failed (${cam.name}): ${err.message}`);
         }
       }
@@ -1186,7 +1273,7 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
   if (loxoneClient) {
     loxoneClient.on('cameras-discovered', (cameras) => {
       for (const cam of cameras) {
-        try { addCameraToBridge(cam, bridge, store); } catch (err) {
+        try { addCameraToBridge(cam, pool, store); } catch (err) {
           console.error(`[HomeKit] Loxone camera failed (${cam.name}): ${err.message}`);
         }
       }
@@ -1200,11 +1287,11 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
     // as a single accessory (SmartThings / Loxone / etc.).
     const bridgeDevice = (device, added) => {
       for (const s of dimmerSensors(device)) {
-        bridge.addBridgedAccessory(buildDimmerAccessory(device, s, store));
+        pool.add(buildDimmerAccessory(device, s, store));
         console.log(`[HomeKit] Light${added ? ' added' : ''}: ${s.name || device.label}`);
       }
       if (device.homekit && device.homekit.length > 0) {
-        bridge.addBridgedAccessory(buildDeviceAccessory(device, store));
+        pool.add(buildDeviceAccessory(device, store));
         console.log(`[HomeKit] Sensor${added ? ' added' : ''}: ${device.label} (${device.homekit.join(', ')})`);
       }
     };
@@ -1242,28 +1329,16 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
           // spring back to off so it behaves like a button
           setTimeout(() => svc.getCharacteristic(Characteristic.On).updateValue(false), 1000);
         });
-      bridge.addBridgedAccessory(acc);
+      pool.add(acc);
       console.log(`[HomeKit] Scene switch: ${name}`);
     }
   }
 
-  // ── Publish ────────────────────────────────────────────────
-  if (config.homekit.setupID) {
-    bridge._setupID = config.homekit.setupID;
-  }
-
-  bridge.publish({
-    username: config.homekit.username,
-    pincode: config.homekit.pin,
-    port: config.homekit.port,
-    category: Categories.BRIDGE,
-  });
-
-  const uri = generateSetupUri(config.homekit.pin, config.homekit.setupID);
-  console.log(`[HomeKit] Bridge on port ${config.homekit.port}  PIN: ${config.homekit.pin}`);
-  console.log(`[HomeKit] Setup URI: ${uri}`);
-
-  return bridge;
+  // Publishing happens inside BridgePool as each bridge is created (the
+  // first one at construction, above; any overflow ones on demand from
+  // pool.add()) rather than once at the end here — see BridgePool's own
+  // comment for why that's safe with HAP-NodeJS.
+  return pool;
 }
 
 module.exports = startHomekitBridge;
