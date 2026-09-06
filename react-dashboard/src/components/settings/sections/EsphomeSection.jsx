@@ -19,7 +19,7 @@ export default function EsphomeSection({ config, reload }) {
 
   return (
     <SettingsCard icon={ChipIcon} title="ESPHome" badge={{ label: gt('common.optional', 'Optional') }}
-      desc="Connects to ESP32/ESP8266 devices running ESPHome with the web_server: component enabled. Sensors, switches, binary sensors, lights, and covers are auto-discovered.">
+      desc="Connects to ESP32/ESP8266 devices running ESPHome with the web_server: component enabled. Sensors, switches, binary sensors, lights, and covers are auto-discovered — this also covers mmWave presence sensors like Sensy-One's S1/E1 (web_server: is on by default in their firmware), which bridge to HomeKit/Matter as occupancy sensors.">
       <ListEditor rows={devices} onChange={setDevices} fields={FIELDS} addLabel={gt('common.add_device', '+ Add Device')}
         renderExtra={(row, i) => (
           <Button variant="secondary" busy={test.busy && testingIdx === i}

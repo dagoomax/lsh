@@ -131,7 +131,8 @@ export default function SettingsPage({ onClose, onOpenCssEditor }) {
     const q = query.trim().toLowerCase()
     if (!q) return CATEGORIES
     return CATEGORIES
-      .map(cat => ({ ...cat, sections: cat.sections.filter(s => s.title.toLowerCase().includes(q)) }))
+      .map(cat => ({ ...cat, sections: cat.sections.filter(s =>
+        s.title.toLowerCase().includes(q) || s.keywords?.some(k => k.includes(q))) }))
       .filter(cat => cat.sections.length)
   }, [query])
 

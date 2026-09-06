@@ -56,7 +56,7 @@ export const CATEGORIES = [
     { id: 'boneio-grenton', title: 'BoneIO & Grenton', ported: true },
     { id: 'smartbob', title: 'SmartBob', ported: true },
     { id: 'arduino', title: 'Arduino MQTT', ported: true },
-    { id: 'esphome', title: 'ESPHome', ported: true },
+    { id: 'esphome', title: 'ESPHome', ported: true, keywords: ['sensy', 'sensy-one', 'mmwave', 'presence'] },
     { id: 'broadlink', title: 'BroadLink RM4', ported: true },
     { id: 'waveshare', title: 'Waveshare Modbus TCP', ported: true },
   ] },
