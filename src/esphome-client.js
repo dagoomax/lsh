@@ -47,6 +47,11 @@ function sensorType(domain, deviceClass) {
   if (dc === 'motion')       return 'motion';
   if (dc === 'door' || dc === 'window' || dc === 'opening') return 'door';
   if (dc === 'smoke' || dc === 'moisture') return 'security';
+  // mmWave presence sensors (e.g. Sensy-One's S1/E1, confirmed against its
+  // published ESPHome firmware source) use device_class "presence", not
+  // Home Assistant's more common "occupancy" — reuse the motion icon, same
+  // convention smartthings-client.js already uses for its presence sensors.
+  if (dc === 'presence') return 'motion';
   if (domain === 'binary_sensor') return 'switch';
   return 'sensor';
 }
@@ -56,6 +61,7 @@ function homekitType(domain, deviceClass) {
   if (domain === 'switch')        return 'switch-rw';
   if (domain === 'light')         return 'light-rw';
   if (dc === 'motion')            return 'motion';
+  if (dc === 'presence')          return 'occupancy';
   if (dc === 'door' || dc === 'window' || dc === 'opening') return 'contact';
   if (dc === 'smoke')             return 'smoke';
   if (dc === 'moisture')          return 'leak';
@@ -111,6 +117,19 @@ class ESPHomeClient {
     this._devices[host] = { cfg, entities };
 
     const sensors = [];
+    // Every hk value except 'light-rw' needs to be a plain string on
+    // device.homekit (an array) AND on the matching sensor — that's the tag
+    // convention homekit-bridge.js's main dispatch loop actually reads
+    // (device.sensors.find(s => s.homekit === 'occupancy'), etc.). Confirmed
+    // this was never wired up before: every ESPHome binary_sensor (motion,
+    // contact, smoke, leak, and now presence/occupancy) built a {service,
+    // characteristic} object instead, which nothing but the room-grouped
+    // Lightbulb special case (dimmerSensors() in homekit-bridge.js) ever
+    // reads — so none of them ever reached HomeKit. 'light-rw' keeps that
+    // object shape deliberately: it's what makes each ESPHome light entity
+    // bridge as its own standalone accessory via that same special case,
+    // existing behavior this fix doesn't touch.
+    const deviceHomekitTags = new Set();
     for (const [id, meta] of entities) {
       const dmInfo   = DOMAIN_MAP[meta.domain];
       if (!dmInfo) continue;
@@ -126,7 +145,12 @@ class ESPHomeClient {
         controllable: dmInfo.controllable,
         format:      fmt,
       };
-      if (hk)              sensor.homekit = { service: _hkService(hk), characteristic: 'On' };
+      if (hk === 'light-rw') {
+        sensor.homekit = { service: _hkService(hk), characteristic: 'On' };
+      } else if (hk) {
+        sensor.homekit = hk;
+        deviceHomekitTags.add(hk);
+      }
       if (dmInfo.controllable) {
         sensor.capabilityId = `${meta.domain}/${id}`;
         sensor.writeOn  = 'on';
@@ -144,6 +168,7 @@ class ESPHomeClient {
       label,
       type:   'esphome',
       sensors,
+      homekit: [...deviceHomekitTags],
       _writeCapability: async (capId, command) => this._write(host, port, password, capId, command),
     };
 

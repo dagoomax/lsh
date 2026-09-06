@@ -892,6 +892,8 @@ For development without hardware, run `node scripts/aqara-simulator.js` (a fake 
 
 Each device must have `web_server:` enabled in its ESPHome YAML configuration. The `password` field is optional and matches the `web_server.auth.password` setting. Multiple devices are supported.
 
+**mmWave presence sensors** (e.g. [Sensy-One](https://sensy-one.com/) S1/E1, and anything else running stock ESPHome firmware with `web_server:` on — no dedicated LSH client needed) bridge to HomeKit/Matter as occupancy sensors: entities with `device_class: presence` map to `homekit: occupancy` (confirmed against Sensy-One's own published ESPHome firmware source, which uses `presence` rather than Home Assistant's more common `occupancy` device class), and `device_class: motion` maps the usual way. This also fixed a real pre-existing gap: ESPHome `binary_sensor` entities (motion/contact/smoke/leak/occupancy) never reached HomeKit or Matter at all before — verified live end-to-end (fake entity set → `esphome-client.js` → `homekit-bridge.js`'s accessory builder), confirming `OccupancySensor`/`MotionSensor` HAP services are actually produced, not just that the tag looked right.
+
 ### `can`
 
 ```json
