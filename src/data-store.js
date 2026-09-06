@@ -403,6 +403,7 @@ class DataStore extends EventEmitter {
         // backend store-key names.
         currentPowerKey: 'solaredge/currentPower',
         batteryLevelKey: 'solaredge/batteryLevel',
+        dailyEnergyKey: 'solaredge/dailyEnergy',
       },
       solaraccelerator: (() => {
         // The device key includes the gateway's host (dotted IP with dots
@@ -428,6 +429,7 @@ class DataStore extends EventEmitter {
           // means the frontend can't construct these itself.
           pvPowerKey: key('pv_total_power'),
           batterySocKey: key('battery_soc'),
+          dailyEnergyKey: key('day_pv_energy'),
         };
       })(),
     };

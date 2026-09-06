@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { SunIcon, PylonIcon, BatteryCellIcon, BoltIcon, HomeIcon, GWagenIcon } from './Icons'
 import GWagenEmbed from './GWagenEmbed'
 import { gt } from '../i18n'
-import { useHistoryPoints, smoothPath } from '../historyChart'
+import { useHistoryPoints, smoothPath, fetchHistory } from '../historyChart'
 
 const fmtW  = v => v==null||isNaN(v) ? '—' : Math.abs(v)>=1000 ? `${(Math.abs(v)/1000).toFixed(2)} kW` : `${Math.round(Math.abs(v))} W`
 const fmtV  = v => v==null ? '—' : `${Number(v).toFixed(1)} V`
@@ -244,6 +244,16 @@ function TrendCard({ icon, label, color, value, points }) {
 // fields in getGrouped(), src/data-store.js).
 const VICTRON_SOLAR_KEY   = 'system/0/Dc/Pv/Power'
 const VICTRON_BATTERY_KEY = 'system/0/Dc/Battery/Soc'
+const VICTRON_DAILY_YIELD_KEY = 'system/0/PvChargerAggregated/Yield/User'
+
+// Same idea as trendKey, for the daily-production bar chart: each brand's
+// "today's yield so far" counter resets at midnight and climbs through the
+// day, so its per-day MAX is that day's total production.
+function dailyEnergyKey(source, energy) {
+  if (source === 'solaredge') return energy?.solaredge?.dailyEnergyKey
+  if (source === 'solaraccelerator') return energy?.solaraccelerator?.dailyEnergyKey
+  return VICTRON_DAILY_YIELD_KEY
+}
 
 // Resolves which real store key the trend sparkline should fetch history
 // for, following whichever source is actually selected for that metric —
@@ -289,6 +299,105 @@ function TrendRow({ solarColor, battColor, sources, energy }) {
         <TrendCard icon={<BatteryCellIcon color={VICTRON_TREND_COLOR} size={13} />} label={gt('e_battery_victron', 'Battery (Victron)')} color={VICTRON_TREND_COLOR}
           value={lastVal(victronBattPts, v => `${Math.round(v)}%`)} points={victronBattPts} />
       )}
+    </div>
+  )
+}
+
+// ── Daily production (bar chart, last 14 days) ────────────────────────────────
+// A "today's yield" counter (Victron's PvChargerAggregated/Yield/User,
+// SolarEdge's dailyEnergy, Solar Accelerator's day_pv_energy) resets to ~0 at
+// midnight and climbs through the day — so each calendar day's MAX recorded
+// value is that day's total production. Needs Mongo-backed long-range
+// history (fetchHistory's `hours` beyond ~6 only works if config.mongo is
+// set); with file-only persistence this just shows whatever's still in the
+// in-memory ~6h buffer, i.e. at most today and maybe a sliver of yesterday.
+function useDailyProduction(key, days = 14) {
+  const [points, setPoints] = useState(null)
+  useEffect(() => {
+    let alive = true
+    setPoints(null)
+    if (!key) return undefined
+    const load = () => fetchHistory(key, days * 24).then(p => { if (alive) setPoints(p) })
+    load()
+    const iv = setInterval(load, 5 * 60_000) // daily granularity — no need to poll every minute
+    return () => { alive = false; clearInterval(iv) }
+  }, [key, days])
+
+  if (points == null) return null
+  const byDay = new Map()
+  for (const [t, v] of points) {
+    const d = new Date(t)
+    const dayId = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+    const prev = byDay.get(dayId)
+    if (prev == null || v > prev) byDay.set(dayId, v)
+  }
+  const today = new Date()
+  const out = []
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i)
+    const dayId = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+    out.push({ date: d, kwh: byDay.has(dayId) ? byDay.get(dayId) : null })
+  }
+  return out
+}
+
+function DailyProductionChart({ solarKey, color }) {
+  const days = useDailyProduction(solarKey, 14)
+  const width = 640, height = 130, barGap = 4
+  const padBottom = 22, padTop = 6
+
+  if (days == null) {
+    return <div className="detail-card" style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', height: height + padBottom }}>
+      <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--white-10)', borderTopColor: color, animation: 'eflow-spin 0.9s linear infinite' }} />
+    </div>
+  }
+
+  const known = days.filter(d => d.kwh != null)
+  if (!known.length) {
+    return <div className="detail-card" style={{ padding: 14 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+        {gt('e_daily_production', 'Daily Production')}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--text3)', padding: '20px 0', textAlign: 'center' }}>
+        {gt('e_no_history', 'No history yet — check back after a full day, or enable MongoDB for longer-range charts (see the MongoDB Storage setting).')}
+      </div>
+    </div>
+  }
+
+  const max = Math.max(1, ...known.map(d => d.kwh))
+  const barW = (width - barGap * (days.length - 1)) / days.length
+  const todayId = new Date().toDateString()
+
+  return (
+    <div className="detail-card" style={{ padding: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {gt('e_daily_production', 'Daily Production')}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text3)' }}>{gt('trend_14d', 'Last 14 days')}</div>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height + padBottom}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+        {days.map((d, i) => {
+          const x = i * (barW + barGap)
+          const h = d.kwh != null ? (d.kwh / max) * (height - padTop) : 0
+          const isToday = d.date.toDateString() === todayId
+          return (
+            <g key={i}>
+              {d.kwh != null && (
+                <rect x={x} y={height - h} width={barW} height={Math.max(1, h)} rx={2}
+                  fill={color} opacity={isToday ? 1 : 0.55} />
+              )}
+              <text x={x + barW / 2} y={height + 15} textAnchor="middle"
+                fontSize="9" fill="var(--text3)">
+                {d.date.toLocaleDateString(undefined, { weekday: 'narrow' })}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, textAlign: 'right' }}>
+        {gt('r_today', 'Today')}: {known.find(d => d.date.toDateString() === todayId)?.kwh?.toFixed(2) ?? '—'} kWh
+      </div>
     </div>
   )
 }
@@ -530,6 +639,9 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
 
       {/* ── Trend sparklines (real 6h history) ── */}
       <TrendRow solarColor="var(--orange)" battColor={battColor} sources={energySources} energy={energy} />
+
+      {/* ── Daily production (14-day bar chart, real Mongo-backed history) ── */}
+      <DailyProductionChart solarKey={dailyEnergyKey(energySources?.solar || 'victron', energy)} color="var(--orange)" />
 
       {/* ── Detail row ── */}
       <div className="energy-detail-grid" style={{
