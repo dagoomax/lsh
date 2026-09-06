@@ -430,7 +430,13 @@ Leave `installationId`/`gatewaySerial`/`deviceId` empty to auto-resolve the firs
 2. Put `clientId` in `config.json` and run `node scripts/vitodens-auth.js` — it prints an authorization URL, and saves the token pair to `persist/vitodens-tokens.json`.
 3. Restart LSH. The client refreshes the access token automatically (access tokens last ~1h) and persists the rotated refresh token.
 
-**Sensors are discovered dynamically**, not hardcoded — every poll (60s) reads whatever "features" the installation actually reports and registers/updates sensors for them, since the exact feature set varies by boiler model and firmware. Common ones (boiler/DHW/room temperature, burner state, operating mode, outside temperature) get a friendly display name; anything else falls back to a humanized version of its raw Viessmann feature name (e.g. `heating.circuits.0.heating.curve`). Writable features (e.g. DHW target temperature) are controllable from the dashboard the same way — again driven by whatever `commands` the API itself reports for that feature, never a guessed command shape, since this controls real heating hardware.
+**Sensors are discovered dynamically**, not hardcoded — every poll (60s) reads whatever "features" the installation actually reports and registers/updates sensors for them, since the exact feature set varies by boiler model and firmware. Common ones (boiler/DHW/room temperature, burner state, operating mode, outside temperature) get a friendly display name; anything else falls back to a humanized version of its raw Viessmann feature name (e.g. `heating.circuits.0.heating.curve`). Writable features are controllable from the dashboard the same way — again driven by whatever `commands` the API itself reports for that feature, never a guessed command shape, since this controls real heating hardware. Three shapes are recognized (verified against a real captured Vitodens API response, not guessed):
+
+- A single **numeric** command param (e.g. DHW target temperature) → a slider, `min`/`max` from the feature's own constraints.
+- A single **string** command param (e.g. operating mode: `standby`/`dhw`/`dhwAndHeating`/…) → a free-text field — check the feature's own `commands.<name>.params.<param>.constraints.enum` (via the API directly, or a Flow) for the exact valid values, since there's no dashboard enum-picker for these yet.
+- A zero-parameter **`activate`/`deactivate`** command pair (e.g. DHW one-time charge) → an on/off toggle.
+
+Anything else (multi-parameter commands like a heating curve's shift+slope, or a schedule object) stays read-only rather than risk issuing a partial or wrong command to real heating hardware.
 
 ### `matter`
 

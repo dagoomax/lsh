@@ -268,25 +268,63 @@ class VitodensClient {
     if (extracted.unit === 'celsius') sensor.unit = '°C';
 
     const commands = this._commandsByFeature.get(feature);
-    const setCommand = commands && Object.values(commands).find((c) => c.isExecutable && /^set/i.test(c.name));
-    if (setCommand) {
-      const paramEntries = Object.entries(setCommand.params || {});
-      // Only exposed as a controllable tile when the command takes exactly
-      // one parameter. The dashboard only ever sends one value per sensor
-      // (sendCommand -> _writeCapability(capId, cmd, [value])), and
-      // _writeCommand fills params positionally from that single-element
-      // array — a command needing more than one (e.g. a heating curve's
-      // shift+slope) would otherwise silently only ever set the first
-      // declared param. Leave those read-only rather than issue a
-      // partial/wrong command to real heating hardware.
-      if (paramEntries.length === 1 && paramEntries[0][1].type === 'number') {
-        sensor.controllable = true;
-        sensor.capabilityId = feature;
-        sensor.writeCmd = setCommand.name;
-        sensor.type = 'range';
-        const [, p] = paramEntries[0];
-        if (p.constraints?.min != null) sensor.min = p.constraints.min;
-        if (p.constraints?.max != null) sensor.max = p.constraints.max;
+    // Real command shapes confirmed against a live Vitodens300W API capture
+    // (PyViCare's own test fixture), not guessed:
+    //   heating.dhw.oneTimeCharge     -> activate{}/deactivate{} (zero params,
+    //                                    boolean "active" property)
+    //   heating.circuits.0.operating.modes.active -> setMode(mode: string,
+    //                                    enum-constrained)
+    //   heating.dhw.temperature.main  -> setTargetTemperature(number) (already handled below)
+    // Note isExecutable on activate/deactivate is state-dependent (only the
+    // currently-valid direction shows true) — checking key presence instead,
+    // same as _writeCommand already does by not gating on isExecutable at all.
+    const activateCmd   = commands?.activate;
+    const deactivateCmd = commands?.deactivate;
+    const bothZeroParam = activateCmd && deactivateCmd
+      && !Object.keys(activateCmd.params || {}).length
+      && !Object.keys(deactivateCmd.params || {}).length;
+
+    if (bothZeroParam) {
+      sensor.controllable = true;
+      sensor.capabilityId = feature;
+      sensor.type = 'toggle';
+      sensor.writeOn  = 'activate';
+      sensor.writeOff = 'deactivate';
+    } else {
+      const setCommand = commands && Object.values(commands).find((c) => c.isExecutable && /^set/i.test(c.name));
+      if (setCommand) {
+        const paramEntries = Object.entries(setCommand.params || {});
+        // Only exposed as a controllable tile when the command takes exactly
+        // one parameter. The dashboard only ever sends one value per sensor
+        // (sendCommand -> _writeCapability(capId, cmd, [value])), and
+        // _writeCommand fills params positionally from that single-element
+        // array — a command needing more than one (e.g. a heating curve's
+        // shift+slope, or activateProgram's optional temperature) would
+        // otherwise silently only ever set the first declared param. Leave
+        // those read-only rather than issue a partial/wrong command to real
+        // heating hardware.
+        if (paramEntries.length === 1) {
+          const [, p] = paramEntries[0];
+          if (p.type === 'number') {
+            sensor.controllable = true;
+            sensor.capabilityId = feature;
+            sensor.writeCmd = setCommand.name;
+            sensor.type = 'range';
+            if (p.constraints?.min != null) sensor.min = p.constraints.min;
+            if (p.constraints?.max != null) sensor.max = p.constraints.max;
+          } else if (p.type === 'string') {
+            // e.g. operating mode (standby/dhw/dhwAndHeating/…) — the API's
+            // own enum constraint lists the valid values but there's no
+            // dashboard enum-picker UI for it yet, so this is a plain text
+            // field: valid values are whatever this feature's live
+            // `commands.<name>.params.<param>.constraints.enum` reports.
+            sensor.controllable = true;
+            sensor.capabilityId = feature;
+            sensor.writeCmd = setCommand.name;
+            sensor.type = 'text';
+          }
+          // else: unsupported param type (object/array, e.g. a schedule) — leave read-only
+        }
       }
     }
 
