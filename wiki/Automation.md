@@ -140,6 +140,27 @@ Wire any computation into it — an `http` node scraping a price, a `condition`/
 
 The third chain shows the pattern for a **literal-value text widget**: a `global` node with `mode:"set"` and a fixed `value` needs an entry node ahead of it (`global` isn't a trigger type itself) — a `time` node works well for something that only needs to exist/refresh periodically rather than react to a real key changing. Swap `<device-id>` and the two real store keys for your own setup — `GET /api/devices` shows what's actually available. This exact flow is in `automations.json` (disabled, as `example-custom-widgets`) as a ready-made template.
 
+**Example — a heating thermostat with hysteresis** (verified against a fake store/registry harness driving real temperature transitions through the actual engine: fires heating ON once on the drop below setpoint, stays silent while it hovers there, fires OFF once on the rise above the upper setpoint, stays silent above it, and fires ON again on the next real drop — a plain single-threshold `condition` node would chatter every reading near the boundary, so this uses two separate edge-triggered `trigger` nodes instead, one per direction, with a gap between them):
+
+```json
+{
+  "id": "example-heating-thermostat",
+  "name": "Example: Heating thermostat",
+  "enabled": true,
+  "nodes": [
+    { "id": "n1", "type": "trigger", "config": { "key": "shelly/boiler-room/temperature", "op": "<", "value": 19 }, "wires": [["n2"]] },
+    { "id": "n2", "type": "device", "config": { "deviceKey": "shelly/heating-relay", "sensor": "switch", "value": "on" }, "wires": [["n3"]] },
+    { "id": "n3", "type": "notify", "config": { "level": "info", "message": "Boiler room at {value}°C — below setpoint, heating ON" }, "wires": [[]] },
+
+    { "id": "n4", "type": "trigger", "config": { "key": "shelly/boiler-room/temperature", "op": ">", "value": 21 }, "wires": [["n5"]] },
+    { "id": "n5", "type": "device", "config": { "deviceKey": "shelly/heating-relay", "sensor": "switch", "value": "off" }, "wires": [["n6"]] },
+    { "id": "n6", "type": "notify", "config": { "level": "info", "message": "Boiler room at {value}°C — above setpoint, heating OFF" }, "wires": [[]] }
+  ]
+}
+```
+
+The 2°C gap between the two thresholds (19 to turn on, 21 to turn off) is the deadband — without one, a temperature sitting right at a single setpoint would toggle the relay on every reading that crosses back and forth by a fraction of a degree. Widen or narrow it by moving the two `value` fields; keep them at least a degree or so apart for anything with real thermal mass (a boiler, not a fast-reacting fan). One quirk shared by every edge-triggered trigger in this engine (not specific to this flow): if the temperature is already outside the deadband when LSH starts, the first reading after startup fires once — a feature here, since it means the thermostat enforces the correct relay state immediately rather than waiting for a fresh crossing that might not come for hours. Swap the two device keys for your own sensor/relay and adjust the setpoints before enabling — it ships disabled in `automations.json` as `example-heating-thermostat`.
+
 ### Scenes
 
 Named action groups run manually — one tap from the **scene strip** shown above all dashboard tabs, or from the Automation tab. Same action types as rules.
