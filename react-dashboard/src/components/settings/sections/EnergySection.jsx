@@ -9,6 +9,7 @@ export default function EnergySection({ config, reload }) {
     <>
       <MongoCard mongo={config.mongo} reload={reload}/>
       <SolarEdgeCard solaredge={config.solaredge} reload={reload}/>
+      <SolarAcceleratorCard solaraccelerator={config.solaraccelerator} reload={reload}/>
       <EvVisualCard evVisual={config.evVisual} reload={reload}/>
     </>
   )
@@ -49,6 +50,28 @@ function SolarEdgeCard({ solaredge, reload }) {
       <div className="stg-actions">
         <Button variant="secondary" busy={test.busy} onClick={() => test.save({ siteId, apiKey })}>{gt('common.test', 'Test Connection')}</Button>
         <Button variant="primary" busy={save.busy} onClick={() => save.save({ siteId, apiKey }).then(reload)}>{gt('common.save', 'Save')}</Button>
+        <ResultBanner result={test.result || save.result}/>
+      </div>
+    </SettingsCard>
+  )
+}
+
+function SolarAcceleratorCard({ solaraccelerator, reload }) {
+  const [host, setHost] = useState(solaraccelerator?.host || '')
+  const [port, setPort] = useState(solaraccelerator?.port || '')
+  const [password, setPassword] = useState(solaraccelerator?.password || '')
+  const test = useSettingsSave('/api/settings/test-solaraccelerator')
+  const save = useSettingsSave('/api/settings/solaraccelerator')
+
+  return (
+    <SettingsCard icon={SolarPanelIcon} title="Solar Accelerator" badge={{ label: gt('common.optional', 'Optional') }}
+      desc="Reads a Deye-family hybrid inverter straight from its local SA Connect gateway — no cloud, no API key. Full PV/battery/grid/load readings plus write-capable controls (work mode, charge current limits, TOU schedule) become regular devices, and feed the Energy tab's flow diagram alongside Victron.">
+      <Field label="Gateway Host" value={host} onChange={setHost} placeholder="192.168.1.90"/>
+      <Field label="Port" hint="(optional, default 80)" value={port} onChange={setPort} placeholder="80"/>
+      <Field label="Portal Password" hint="(optional — only if set in the gateway's setup wizard)" type="password" value={password} onChange={setPassword}/>
+      <div className="stg-actions">
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ host, port, password })}>{gt('common.test', 'Test Connection')}</Button>
+        <Button variant="primary" busy={save.busy} onClick={() => save.save({ host, port, password }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={test.result || save.result}/>
       </div>
     </SettingsCard>

@@ -81,6 +81,11 @@
     "enabled": false,
     "devices": []
   },
+  "solaraccelerator": {
+    "host": "",
+    "port": "",
+    "password": ""
+  },
   "roborock": {
     "cloud": {
       "email": "",

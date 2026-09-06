@@ -11,7 +11,7 @@ import { gt }      from '../i18n'
 import { EDIT_EMOJI } from '../emoji'
 import EnergyFlow from './EnergyFlow'
 import EnergySourcePicker from './EnergySourcePicker'
-import { resolveEnergy, hasSolarEdge, loadEnergySources, saveEnergySources } from '../energySources'
+import { resolveEnergy, hasSolarEdge, hasSolarAccelerator, loadEnergySources, saveEnergySources } from '../energySources'
 import HomePlan from './HomePlan'
 import Cameras from './Cameras'
 import RelayPanel from './RelayPanel'
@@ -1224,7 +1224,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
   }
   const [energySources, setEnergySources] = useState(loadEnergySources)
   const changeEnergySources = next => { saveEnergySources(next); setEnergySources(next) }
-  const canMixEnergy = hasSolarEdge(energy)
+  const canMixEnergy = hasSolarEdge(energy) || hasSolarAccelerator(energy)
   const resolvedEnergy = useMemo(
     () => resolveEnergy(energy, energySources),
     [energy, energySources],
@@ -1471,7 +1471,8 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
                   display:'inline-flex', alignItems:'center', gap:8,
                 }}>
                   {!energyHidden && canMixEnergy && (
-                    <EnergySourcePicker sources={energySources} onChange={changeEnergySources} />
+                    <EnergySourcePicker sources={energySources} onChange={changeEnergySources}
+                      available={['victron', hasSolarEdge(energy) && 'solaredge', hasSolarAccelerator(energy) && 'solaraccelerator'].filter(Boolean)} />
                   )}
                   {energyHidden && <span>{gt('hidden', 'hidden')}</span>}
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"

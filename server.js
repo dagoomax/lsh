@@ -505,6 +505,16 @@ async function main() {
     }
   }
 
+  // Start Solar Accelerator Connect client if configured (local SA Connect
+  // gateway — Deye-family hybrid inverters)
+  if (config.solaraccelerator?.host) {
+    const SolarAcceleratorClient = tryRequire('./src/solaraccelerator-client');
+    if (SolarAcceleratorClient) {
+      const solarAccelerator = new SolarAcceleratorClient(config, store, sensorRegistry);
+      solarAccelerator.start().catch((err) => console.error(`[SolarAccelerator] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Dyson client if enabled (device list/credentials come from
   // persist/dyson-tokens.json, produced by scripts/dyson-auth.js)
   if (config.dyson?.enabled) {

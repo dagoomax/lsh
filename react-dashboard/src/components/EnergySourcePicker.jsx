@@ -5,7 +5,8 @@ import { ENERGY_METRICS, ENERGY_SOURCES } from '../energySources'
 // Gear button in the Energy header that opens a small popover letting the user
 // choose which brand feeds each metric (solar / battery / grid / loads).
 // Only rendered when more than one source is actually available.
-export default function EnergySourcePicker({ sources, onChange }) {
+export default function EnergySourcePicker({ sources, onChange, available }) {
+  const options = available ? ENERGY_SOURCES.filter(s => available.includes(s.id)) : ENERGY_SOURCES
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
 
@@ -59,7 +60,7 @@ export default function EnergySourcePicker({ sources, onChange }) {
                 </span>
                 <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.35)',
                   border: '1px solid var(--border)', borderRadius: 8, padding: 2 }}>
-                  {ENERGY_SOURCES.map(s => {
+                  {options.map(s => {
                     const active = sources[m.id] === s.id
                     return (
                       <button

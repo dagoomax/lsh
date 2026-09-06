@@ -384,6 +384,27 @@ class DataStore extends EventEmitter {
         lifetimeEnergy: v('solaredge/lifetimeEnergy'),
         batteryLevel:   v('solaredge/batteryLevel'),
       },
+      solaraccelerator: (() => {
+        // The device key includes the gateway's host (dotted IP with dots
+        // replaced by underscores, see solaraccelerator-client.js) — find
+        // whichever one is actually registered rather than assuming a
+        // single fixed key, since the host is user-configured.
+        const prefix = Object.keys(d).find((k) => k.startsWith('solaraccelerator/'))?.split('/')[1];
+        if (!prefix) return null;
+        const sv = (path) => v(`solaraccelerator/${prefix}/${path}`);
+        const pv = ['pv1_power', 'pv2_power', 'pv3_power', 'pv4_power']
+          .map(sv).filter((n) => n != null).reduce((a, b) => a + b, 0);
+        return {
+          pvPower: pv,
+          dailyPvEnergy: sv('day_pv_energy'),
+          batteryPower: sv('battery_power'),
+          batterySoc: sv('battery_soc'),
+          gridPower: sv('grid_power'),
+          gridVoltage: sv('grid_l1_voltage'),
+          gridFrequency: sv('grid_frequency'),
+          loadPower: sv('load_power'),
+        };
+      })(),
     };
   }
 }

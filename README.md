@@ -279,6 +279,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `mongo` | No | MongoDB persistence for the DataStore snapshot + history (falls back to gzipped-JSON file) |
 | `vrm` | No | Victron VRM cloud API (fallback when MQTT is unreachable) |
 | `solaredge` | No | SolarEdge cloud data |
+| `solaraccelerator` | No | Deye-family hybrid inverter via a local Solar Accelerator Connect gateway — full readings + write-capable controls, no cloud (see the `solaraccelerator` section below) |
 | `smartthings` | No | Samsung SmartThings devices |
 | `loxone` | No | Loxone Miniserver local API |
 | `satel` | No | Satel INTEGRA alarm panel |
@@ -377,6 +378,26 @@ Used as automatic fallback when local MQTT is unreachable. Alternatively set `ap
 ```
 
 Polls the SolarEdge cloud API every 15 minutes (API rate limit). Data appears on the **SolarEdge** dashboard card.
+
+### `solaraccelerator`
+
+```json
+"solaraccelerator": {
+  "host": "192.168.1.90",
+  "port": "",
+  "password": ""
+}
+```
+
+Reads a **Deye-family hybrid inverter** (the SUN-12K-SG04LP3 family and similar) straight from a **Solar Accelerator Connect** gateway on the local network — an ESP32 that speaks Modbus RTU to the inverter and serves a flat JSON snapshot over HTTP. No cloud, no API key; `password` is only needed if one was set in the gateway's own setup wizard (portal user is always `admin`).
+
+Ported from [aLAN-LDZ/solaraccelerator_connect_ha](https://github.com/aLAN-LDZ/solaraccelerator_connect_ha), a Home Assistant custom component for the same gateway — register addresses, bit masks, and the retry/tolerance behavior below come from that project's documented wire protocol (stated there as confirmed against real hardware), not guessed. **Untested against a real gateway from this codebase** — verified with a scripted fake-gateway harness covering every read/decode/write path (including the bitfield read-modify-write math against a real captured register value from that project's own docs), but nobody has run this specific client against physical hardware yet.
+
+**Readings** — the full catalog of ~100 metrics that project's Home Assistant integration exposes: PV strings, battery, grid, load, per-phase output, current-transformer readings, temperatures, and day/total energy counters (`sensorType: 'energy'`, matching Victron's own kWh counters so they behave the same in Graphs/history). Feeds the **Energy tab**'s flow diagram too — pick "Solar Accelerator" as the source for Solar/Battery/Grid/Loads from the sources picker (gear icon) once it's reporting data. A metric the gateway adds later (new firmware, different inverter model) still shows up immediately with a humanized name, same fallback approach as `vitodens`.
+
+**Controls** — write-capable, all ported from that project's register map: work mode (Selling First / Zero Export To Load / Zero Export To CT), max charge/discharge current, PV production limit, grid export/peak-shaving limits, grid peak-shaving on/off, and the full 6-slot Time-of-Use schedule (time, power, SOC target, charging source per slot). Two registers pack multiple settings into shared bits (peak-shaving alongside three other flags; each TOU slot's charging source alongside a "sell" flag) — writes to these go through read-modify-write and are **refused outright** if the current register value isn't known yet, rather than guessing and risking the other bits.
+
+Polling interval isn't a setting here either, same reasoning as `vitodens`'s rate limit but for a different cause: the gateway reports its own Modbus poll interval (`poll_interval_ms`) and this client matches it automatically — polling faster just re-reads the same RAM snapshot, slower loses readings. A lost request every so often is treated as normal Wi-Fi flakiness (matching the source project's stated tolerances): a sensor only goes blank after 3 consecutive polls missing that key, and the whole device only reports offline after 3 consecutive failed poll cycles.
 
 ### `smartthings`
 
