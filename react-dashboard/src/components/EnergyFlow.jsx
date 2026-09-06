@@ -260,9 +260,20 @@ function trendKey(metric, source, energy) {
   return metric === 'solar' ? VICTRON_SOLAR_KEY : VICTRON_BATTERY_KEY
 }
 
+// Fixed accent for the "always Victron" comparison cards, distinct from the
+// dynamic per-selection colors the primary cards use — signals "this is the
+// reference brand's own reading", not the currently-picked source.
+const VICTRON_TREND_COLOR = 'var(--accent, #4a9dff)'
+
 function TrendRow({ solarColor, battColor, sources, energy }) {
-  const solarPts = useHistory(trendKey('solar', sources?.solar, energy))
-  const battPts  = useHistory(trendKey('battery', sources?.battery, energy))
+  const solarSource = sources?.solar || 'victron'
+  const batterySource = sources?.battery || 'victron'
+  const solarPts = useHistory(trendKey('solar', solarSource, energy))
+  const battPts  = useHistory(trendKey('battery', batterySource, energy))
+  // Only fetched (and only shown) when a non-Victron source is actually
+  // selected for that metric — otherwise it'd be the exact same chart twice.
+  const victronSolarPts = useHistory(solarSource !== 'victron' ? VICTRON_SOLAR_KEY : null)
+  const victronBattPts  = useHistory(batterySource !== 'victron' ? VICTRON_BATTERY_KEY : null)
   const lastVal = (pts, fmt) => pts && pts.length ? fmt(pts[pts.length - 1][1]) : '—'
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
@@ -270,6 +281,14 @@ function TrendRow({ solarColor, battColor, sources, energy }) {
         value={lastVal(solarPts, fmtW)} points={solarPts} />
       <TrendCard icon={<BatteryCellIcon color={battColor} size={13} />} label={gt('e_battery', 'Battery')} color={battColor}
         value={lastVal(battPts, v => `${Math.round(v)}%`)} points={battPts} />
+      {solarSource !== 'victron' && (
+        <TrendCard icon={<SunIcon color={VICTRON_TREND_COLOR} size={13} />} label={gt('e_solar_victron', 'Solar (Victron)')} color={VICTRON_TREND_COLOR}
+          value={lastVal(victronSolarPts, fmtW)} points={victronSolarPts} />
+      )}
+      {batterySource !== 'victron' && (
+        <TrendCard icon={<BatteryCellIcon color={VICTRON_TREND_COLOR} size={13} />} label={gt('e_battery_victron', 'Battery (Victron)')} color={VICTRON_TREND_COLOR}
+          value={lastVal(victronBattPts, v => `${Math.round(v)}%`)} points={victronBattPts} />
+      )}
     </div>
   )
 }
