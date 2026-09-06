@@ -61,6 +61,17 @@
     "label": "",
     "pollInterval": 120
   },
+  "matter": {
+    "bridge": {
+      "enabled": false,
+      "port": 5540,
+      "passcode": "",
+      "discriminator": ""
+    },
+    "controller": {
+      "enabled": false
+    }
+  },
   "evVisual": {
     "modelId": "",
     "modelName": "",

@@ -71,6 +71,7 @@ export const CATEGORIES = [
     { id: 'virtual', title: 'Virtual Devices', ported: true },
     { id: 'system-misc', title: 'Interface, Relays & Server', ported: true },
     { id: 'homekit', title: 'HomeKit', ported: true },
+    { id: 'matter', title: 'Matter & Thread', ported: true },
     { id: 'homeplan', title: 'Home Plan', ported: true },
     { id: 'security-auth', title: 'Security & Authentication', ported: true },
     { id: 'backup', title: 'Backup & Restore', ported: true },

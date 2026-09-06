@@ -39,6 +39,7 @@ import SipSection from './sections/SipSection'
 import PagingSection from './sections/PagingSection'
 import SystemMiscSection from './sections/SystemMiscSection'
 import HomeKitSection from './sections/HomeKitSection'
+import MatterSection from './sections/MatterSection'
 import HomePlanSection from './sections/HomePlanSection'
 import VirtualDevicesSection from './sections/VirtualDevicesSection'
 import SmartThingsSection from './sections/SmartThingsSection'
@@ -87,6 +88,7 @@ const SECTION_COMPONENTS = {
   paging: PagingSection,
   'system-misc': SystemMiscSection,
   homekit: HomeKitSection,
+  matter: MatterSection,
   homeplan: HomePlanSection,
   virtual: VirtualDevicesSection,
   smartthings: SmartThingsSection,

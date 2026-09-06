@@ -115,6 +115,7 @@ reference of every one).
 | **OpenWeatherMap** | `openweather` | Current conditions + 5-day forecast (cloud) |
 | **SIP doorbell / softphone** | `sip` | Intercom over WebSocket (e.g. UniFi Talk) |
 | **Apple HomeKit** (out) | `homekit` | Exposes registry devices, relays, cameras |
+| **Matter / Thread** (in + out) | `matter` | Bridge exposes registry devices to Apple/Google/Alexa/SmartThings; controller connects to commissioned Matter/Thread devices |
 | **Victron relays** | `relays` | Cerbo GX relay control |
 
 ---

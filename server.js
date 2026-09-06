@@ -484,6 +484,27 @@ async function main() {
     }
   }
 
+  // Start the Matter bridge if enabled — exposes LSH devices to Apple Home /
+  // Google Home / Alexa / SmartThings etc. as one bridged Matter node.
+  if (config.matter?.bridge?.enabled) {
+    const MatterBridge = tryRequire('./src/matter-bridge');
+    if (MatterBridge) {
+      const matterBridge = new MatterBridge(config, store, sensorRegistry);
+      matterBridge.start().catch((err) => console.error(`[Matter] Bridge start failed: ${err.message}`));
+      apiClients.matterBridge = matterBridge; // exposed for GET /api/matter/bridge/setup
+    }
+  }
+
+  // Start the Matter controller if enabled — connects to devices already
+  // commissioned via scripts/matter-commission.js.
+  if (config.matter?.controller?.enabled) {
+    const MatterClient = tryRequire('./src/matter-client');
+    if (MatterClient) {
+      const matterClient = new MatterClient(config, store, sensorRegistry);
+      matterClient.start().catch((err) => console.error(`[Matter] Controller start failed: ${err.message}`));
+    }
+  }
+
   // Start Dyson client if enabled (device list/credentials come from
   // persist/dyson-tokens.json, produced by scripts/dyson-auth.js)
   if (config.dyson?.enabled) {

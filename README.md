@@ -326,6 +326,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `objectDetection` | No | Local object detection (TensorFlow.js COCO-SSD) for RTSP cameras with no on-device AI of their own |
 | `relays` | No | Victron relay index + display name |
 | `homekit` | No | HomeKit bridge — requires `hap-nodejs` npm package |
+| `matter` | No | Matter/Thread — `matter.bridge` exposes LSH devices to Matter controllers (Apple/Google/Alexa/SmartThings), `matter.controller` connects to already-commissioned Matter/Thread devices (see the `matter` section below) |
 | `server` | Yes | HTTP port, HTTPS, and Let's Encrypt |
 
 ### `mqtt`
@@ -430,6 +431,32 @@ Leave `installationId`/`gatewaySerial`/`deviceId` empty to auto-resolve the firs
 3. Restart LSH. The client refreshes the access token automatically (access tokens last ~1h) and persists the rotated refresh token.
 
 **Sensors are discovered dynamically**, not hardcoded — every poll (60s) reads whatever "features" the installation actually reports and registers/updates sensors for them, since the exact feature set varies by boiler model and firmware. Common ones (boiler/DHW/room temperature, burner state, operating mode, outside temperature) get a friendly display name; anything else falls back to a humanized version of its raw Viessmann feature name (e.g. `heating.circuits.0.heating.curve`). Writable features (e.g. DHW target temperature) are controllable from the dashboard the same way — again driven by whatever `commands` the API itself reports for that feature, never a guessed command shape, since this controls real heating hardware.
+
+### `matter`
+
+```json
+"matter": {
+  "bridge": {
+    "enabled": true,
+    "port": 5540,
+    "passcode": "",
+    "discriminator": ""
+  },
+  "controller": {
+    "enabled": true
+  }
+}
+```
+
+Matter/Thread support, in both directions — enable either section independently, or both:
+
+**`matter.bridge`** exposes LSH's own devices as a single bridged Matter node, so Apple Home, Google Home, Alexa, and SmartThings can all see and control them (the same relationship `homekit` has to HAP, but for Matter). It reuses the exact `homekit` tags every integration client already sets on its devices (see `src/homekit-bridge.js`) — there's no separate `matter`-specific tagging to configure, and no code changes needed in any integration client to bridge a new device once its type is supported. Leave `passcode`/`discriminator` blank to let matter.js generate them (printed to the log and available from `GET /api/matter/bridge/setup` as a manual code + QR payload); set them explicitly to pin a fixed pairing code across restarts, which also lets you print/reuse a physical QR code.
+
+Supported today: on/off switches and plugs, dimmable lights (no colour yet), contact sensors, motion/occupancy sensors, temperature, humidity, illuminance, and window coverings (lift position only, no tilt). Not yet mapped: door locks, thermostats, fans, leak/smoke/CO detectors, light colour/colour-temperature — some of these (door locks especially) have Matter cluster conformance rules that need real hardware to validate rather than guessing, so they're deferred rather than shipped half-verified. A device using an unmapped capability just doesn't get a Matter endpoint for that capability; everything else about it still works normally in LSH.
+
+**`matter.controller`** connects to Matter (including Thread) devices that have already been **commissioned** onto LSH's own controller fabric via `node scripts/matter-commission.js` (a one-time, interactive step per device — see that script's header comment). Matter's multi-fabric model means a device already paired to Apple Home/Google Home/etc. can be commissioned onto LSH too, as an independent additional admin, without leaving its existing ecosystem. A Thread device needs no special handling here beyond already being joined to a Thread mesh via its own Border Router (Apple TV/HomePod mini, or any other) — once on the mesh it's reachable over IP exactly like a Wi-Fi/Ethernet Matter device, since Thread's border router is the thing bridging Thread's radio to IP, not something LSH itself needs to run. Commissioned devices show up in LSH the same way any other integration's devices do, with sensors for whichever of the clusters above they expose.
+
+> Neither direction has been tested against a real Matter controller (phone) or a real third-party Matter/Thread device — verified so far only via matter.js's own local commissioning flow run against LSH's own bridge (see `src/matter-bridge.js` and `src/matter-client.js`'s header comments for what that covered). Please report back what works and what doesn't against real hardware.
 
 ### `dyson`
 
@@ -2552,6 +2579,21 @@ Polls the **Viessmann ViCare cloud IoT API** every 60 s for a Vitodens (or other
 **Config:**
 ```json
 "vitodens": { "clientId": "..." }
+```
+
+---
+
+### `src/matter-bridge.js` / `src/matter-client.js`
+
+Matter/Thread, via [`matter.js`](https://github.com/matter-js/matter.js) (`@matter/main` + `@project-chip/matter.js`). `matter-bridge.js` is the **server** role — one `ServerNode` with an `AggregatorEndpoint`, one bridged endpoint per LSH device/capability, built by reusing the exact `homekit` tags every integration already sets (see `src/homekit-bridge.js`). `matter-client.js` is the **controller** role — a `CommissioningController` that reconnects to devices `scripts/matter-commission.js` already commissioned, subscribes to their attributes, and registers each as a normal LSH device.
+
+Both share `src/matter-storage.js`, a tiny bootstrap that must run before any other `@matter/*` import (matter.js locks its storage path and log level the first time its environment initializes) and points matter.js's own storage at `persist/matter/` — safe to require from both files in the same process since Node's `require()` cache only runs it once.
+
+**Setup:** `matter.bridge.enabled` needs nothing further — it's ready to pair as soon as LSH starts (see the `matter` config reference above for the pairing code/QR). `matter.controller.enabled` needs `node scripts/matter-commission.js <pairing-code>` run once per device first.
+
+**Config:**
+```json
+"matter": { "bridge": { "enabled": true }, "controller": { "enabled": true } }
 ```
 
 ---
