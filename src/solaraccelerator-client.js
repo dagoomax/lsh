@@ -352,6 +352,26 @@ class SolarAcceleratorClient {
       this.store.update(`${this.deviceKey}/${key}`, this._decode(key, value));
     }
 
+    // Synthetic total across all PV strings — the gateway only ever reports
+    // per-string power (pv1_power..pv4_power), so this is the one store key
+    // with real history a "Solar" trend chart/energy-source picker can use;
+    // summing on every read (e.g. in getGrouped()) would give that number no
+    // history of its own.
+    const pvKeys = ['pv1_power', 'pv2_power', 'pv3_power', 'pv4_power'].filter((k) => seen.has(k));
+    if (pvKeys.length) {
+      const total = pvKeys.reduce((sum, k) => sum + (Number(this._rawByKey.get(k)) || 0), 0);
+      if (!this._registeredKeys.has('pv_total_power')) {
+        this._registeredKeys.add('pv_total_power');
+        this.device.sensors.push({
+          path: 'pv_total_power',
+          name: this._lang === 'pl' ? 'Moc PV (łącznie)' : 'PV Total Power',
+          label: this._lang === 'pl' ? 'Moc PV (łącznie)' : 'PV Total Power',
+          sensorType: 'power', format: 'number', unit: 'W',
+        });
+      }
+      this.store.update(`${this.deviceKey}/pv_total_power`, total);
+    }
+
     // Keys that used to report but didn't this cycle — only blank them out
     // after MISSING_TOLERANCE consecutive gaps (see the constant's comment).
     for (const key of this._registeredKeys) {

@@ -1484,7 +1484,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               </div>
               {!energyHidden && (
                 <div style={{ padding:'0 12px 12px' }}>
-                  <EnergyFlow energy={resolvedEnergy} evDevices={evDevices} onCommand={onCommand} />
+                  <EnergyFlow energy={resolvedEnergy} evDevices={evDevices} onCommand={onCommand} energySources={energySources} />
                   {energy.relays && energy.relays.length > 0 && (
                     <div style={{ marginTop:12, background:'rgba(0,0,0,0.25)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)' }}>
                       <RelayPanel relays={energy.relays} onToggle={onToggleRelay} />

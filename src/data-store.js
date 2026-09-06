@@ -383,6 +383,11 @@ class DataStore extends EventEmitter {
         dailyEnergy:    v('solaredge/dailyEnergy'),
         lifetimeEnergy: v('solaredge/lifetimeEnergy'),
         batteryLevel:   v('solaredge/batteryLevel'),
+        // See the same fields on `solaraccelerator` below — lets trend
+        // sparklines fetch real history without the frontend hardcoding
+        // backend store-key names.
+        currentPowerKey: 'solaredge/currentPower',
+        batteryLevelKey: 'solaredge/batteryLevel',
       },
       solaraccelerator: (() => {
         // The device key includes the gateway's host (dotted IP with dots
@@ -391,11 +396,10 @@ class DataStore extends EventEmitter {
         // single fixed key, since the host is user-configured.
         const prefix = Object.keys(d).find((k) => k.startsWith('solaraccelerator/'))?.split('/')[1];
         if (!prefix) return null;
-        const sv = (path) => v(`solaraccelerator/${prefix}/${path}`);
-        const pv = ['pv1_power', 'pv2_power', 'pv3_power', 'pv4_power']
-          .map(sv).filter((n) => n != null).reduce((a, b) => a + b, 0);
+        const key = (path) => `solaraccelerator/${prefix}/${path}`;
+        const sv = (path) => v(key(path));
         return {
-          pvPower: pv,
+          pvPower: sv('pv_total_power'),
           dailyPvEnergy: sv('day_pv_energy'),
           batteryPower: sv('battery_power'),
           batterySoc: sv('battery_soc'),
@@ -403,6 +407,12 @@ class DataStore extends EventEmitter {
           gridVoltage: sv('grid_l1_voltage'),
           gridFrequency: sv('grid_frequency'),
           loadPower: sv('load_power'),
+          // Full store-key names (not values) so the dashboard's trend
+          // sparklines can fetch real per-key history for whichever metric
+          // has this source selected — the per-install host prefix above
+          // means the frontend can't construct these itself.
+          pvPowerKey: key('pv_total_power'),
+          batterySocKey: key('battery_soc'),
         };
       })(),
     };

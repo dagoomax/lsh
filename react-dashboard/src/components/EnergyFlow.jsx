@@ -239,9 +239,30 @@ function TrendCard({ icon, label, color, value, points }) {
   )
 }
 
-function TrendRow({ solarColor, battColor }) {
-  const solarPts = useHistory('system/0/Dc/Pv/Power')
-  const battPts  = useHistory('system/0/Dc/Battery/Soc')
+// Victron's own keys are fixed constants (unlike SolarEdge/SolarAccelerator,
+// which vary per install and so come from the server — see their *Key
+// fields in getGrouped(), src/data-store.js).
+const VICTRON_SOLAR_KEY   = 'system/0/Dc/Pv/Power'
+const VICTRON_BATTERY_KEY = 'system/0/Dc/Battery/Soc'
+
+// Resolves which real store key the trend sparkline should fetch history
+// for, following whichever source is actually selected for that metric —
+// previously this was hardcoded to Victron's own keys regardless of
+// selection, so switching to SolarEdge/SolarAccelerator changed the flow
+// diagram's numbers but silently left the sparkline showing Victron's history.
+function trendKey(metric, source, energy) {
+  if (source === 'solaredge') {
+    return metric === 'solar' ? energy?.solaredge?.currentPowerKey : energy?.solaredge?.batteryLevelKey
+  }
+  if (source === 'solaraccelerator') {
+    return metric === 'solar' ? energy?.solaraccelerator?.pvPowerKey : energy?.solaraccelerator?.batterySocKey
+  }
+  return metric === 'solar' ? VICTRON_SOLAR_KEY : VICTRON_BATTERY_KEY
+}
+
+function TrendRow({ solarColor, battColor, sources, energy }) {
+  const solarPts = useHistory(trendKey('solar', sources?.solar, energy))
+  const battPts  = useHistory(trendKey('battery', sources?.battery, energy))
   const lastVal = (pts, fmt) => pts && pts.length ? fmt(pts[pts.length - 1][1]) : '—'
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
@@ -329,7 +350,7 @@ function DetailCard({ icon, title, children }) {
   )
 }
 
-export default function EnergyFlow({ energy, evDevices = [], onCommand }) {
+export default function EnergyFlow({ energy, evDevices = [], onCommand, energySources }) {
   const { battery:b, solar:s, grid:g, loads:l } = energy||{}
 
   // Up to 10 vehicles — DeviceList.jsx already filters to category
@@ -489,7 +510,7 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand }) {
       })}
 
       {/* ── Trend sparklines (real 6h history) ── */}
-      <TrendRow solarColor="var(--orange)" battColor={battColor} />
+      <TrendRow solarColor="var(--orange)" battColor={battColor} sources={energySources} energy={energy} />
 
       {/* ── Detail row ── */}
       <div className="energy-detail-grid" style={{

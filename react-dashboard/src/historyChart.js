@@ -12,6 +12,7 @@ export function useHistoryPoints(path, intervalMs = 30000, hours = null) {
   useEffect(() => {
     let alive = true
     setPoints(null)
+    if (!path) return undefined // e.g. a source whose key isn't known yet — nothing to fetch
     const load = () => fetchHistory(path, hours).then(p => { if (alive) setPoints(p) })
     load()
     const iv = setInterval(load, intervalMs)
