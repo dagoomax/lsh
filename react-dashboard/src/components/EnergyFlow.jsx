@@ -553,12 +553,16 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
         )}
       </div>
 
-      {/* ── Animated flow diagram ── */}
-      <FlowDiagram
-        solarW={s?.power} gridW={gridTotal} battW={battW} loadW={loadTotal}
-        battCharging={battCharging} battSoc={b?.soc ?? null} battColor={battColor}
-        gridColor={gridColor} exporting={exporting} evW={evPower}
-      />
+      {/* ── Animated flow diagram, with Daily Production alongside it on wide
+          screens (stacks below on narrow ones) ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 10, alignItems: 'center' }}>
+        <FlowDiagram
+          solarW={s?.power} gridW={gridTotal} battW={battW} loadW={loadTotal}
+          battCharging={battCharging} battSoc={b?.soc ?? null} battColor={battColor}
+          gridColor={gridColor} exporting={exporting} evW={evPower}
+        />
+        <DailyProductionChart solarKey={dailyEnergyKey(energySources?.solar || 'victron', energy)} color="var(--orange)" />
+      </div>
 
       {/* Self-consumption / grid-dependency — already computed for the detail
           cards further down, surfaced here too since it's the one number
@@ -639,9 +643,6 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
 
       {/* ── Trend sparklines (real 6h history) ── */}
       <TrendRow solarColor="var(--orange)" battColor={battColor} sources={energySources} energy={energy} />
-
-      {/* ── Daily production (14-day bar chart, real Mongo-backed history) ── */}
-      <DailyProductionChart solarKey={dailyEnergyKey(energySources?.solar || 'victron', energy)} color="var(--orange)" />
 
       {/* ── Detail row ── */}
       <div className="energy-detail-grid" style={{
