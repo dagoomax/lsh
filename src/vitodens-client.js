@@ -203,7 +203,7 @@ class VitodensClient {
       console.warn('[Vitodens] Partial installation override in config.json (installationId/gatewaySerial/deviceId must all be set to skip auto-resolve) — using configured fields to narrow auto-resolution instead.');
     }
 
-    const res = await this._fetch(`${API_BASE}/v1/equipment/installations?includeGateways=true`);
+    const res = await this._fetch(`${API_BASE}/v2/equipment/installations?includeGateways=true`);
     const installations = res.data ?? [];
     const installation = cfg.installationId
       ? installations.find((i) => String(i.id) === String(cfg.installationId))

@@ -136,4 +136,5 @@ function askForCode() {
   fs.mkdirSync(path.dirname(TOKEN_FILE), { recursive: true });
   fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2));
   console.log(`\nSaved ${TOKEN_FILE} — vitodens-client.js will refresh it automatically from here on.`);
+  console.log('Restart the server (or `npm run pm2:restart`) to connect.');
 })().catch((err) => { console.error(err.message); process.exit(1); });
