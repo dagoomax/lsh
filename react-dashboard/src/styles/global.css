@@ -623,7 +623,7 @@ input[type="range"]::-moz-range-thumb {
   align-items: center;
 }
 @media (min-width: 900px) {
-  .eflow-production-row { grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); }
+  .eflow-production-row { grid-template-columns: 1fr 1fr; align-items: stretch; }
 }
 /* Shared "aurora + dot-grid" card background — the Energy tab's one visual
    identity, reused by every card on that tab (not just the flow diagram) so
@@ -1618,6 +1618,229 @@ input[type="range"]::-moz-range-thumb {
   .wx-icon-sun, .wx-icon-partly, .wx-icon-cloud, .wx-icon-rain, .wx-icon-storm, .wx-icon-snow, .wx-icon-fog {
     animation: none;
   }
+}
+
+/* ── Weather day-detail popup: full-bleed condition scene ───────────────────
+   A quiet, living backdrop behind the popup's content — rotating sun rays,
+   drifting cloud blobs, falling rain, flickering lightning, tumbling snow,
+   breathing fog bands — picked per forecast day so the popup itself reads as
+   "sunny" or "rainy", not just its little header icon. */
+.wx-scene { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+/* Cinematic vignette — sits on top of every scene (last in DOM order, so it
+   paints over the sky/clouds/rain/etc. beneath it) and gently darkens the
+   corners, the way a real photo or a proper full-screen weather backdrop
+   reads instead of a flat, edge-to-edge illustration. */
+.wx-scene::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 85% 75% at 50% 40%, transparent 55%, rgba(3, 5, 12, 0.35) 100%);
+}
+/* Full-bleed mood gradient, one per condition — the actual sky/atmosphere
+   color behind the particle effects, not just a corner glow. Color comes
+   from the scene's own inline style (weatherSceneFor drives it), this class
+   only carries the shared geometry. */
+.wx-scene-mood { position: absolute; inset: 0; }
+
+/* Sun — a real glowing disc (not just a rotating grid), tucked in the upper
+   sky like an actual sun, with a soft warm sky wash behind it, a masked
+   ray-burst that fades out radially instead of covering the whole card, and
+   a couple of drifting lens-flare glints for polish. */
+.wx-scene-sky {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 70% 55% at 78% 8%, rgba(255, 205, 120, 0.22), transparent 65%);
+}
+.wx-scene-sun-wrap { position: absolute; top: 4%; right: 8%; width: 46%; aspect-ratio: 1; }
+/* Two ray layers, counter-rotating at different speeds/opacities — a single
+   repeating-conic-gradient reads as a rigid, mechanical pinwheel; overlapping
+   two of them produces a shimmering, uneven moiré much closer to how sunlight
+   actually scintillates through haze. */
+.wx-scene-sun-rays {
+  position: absolute; inset: -55%; border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 214, 110, 0.24) 0deg 1.4deg, transparent 1.4deg 10deg);
+  -webkit-mask-image: radial-gradient(circle, #000 40%, transparent 74%);
+          mask-image: radial-gradient(circle, #000 40%, transparent 74%);
+  animation: wx-scene-spin 60s linear infinite;
+}
+.wx-scene-sun-rays-2 {
+  position: absolute; inset: -40%; border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 190, 90, 0.14) 0deg 2.2deg, transparent 2.2deg 24deg);
+  -webkit-mask-image: radial-gradient(circle, #000 38%, transparent 70%);
+          mask-image: radial-gradient(circle, #000 38%, transparent 70%);
+  animation: wx-scene-spin-rev 38s linear infinite;
+}
+/* Real limb-darkening color progression (bright white-yellow core fading
+   through gold, amber and burnt orange to nothing at the edge) instead of a
+   flat two-stop gradient, plus a few soft mottled patches whose position
+   drifts slowly — a cheap stand-in for granulation/turbulence on the
+   "surface" instead of a perfectly smooth disc. */
+.wx-scene-sun-disc {
+  position: absolute; inset: 20%; border-radius: 50%;
+  background-repeat: no-repeat;
+  background-size: 100% 100%, 160% 160%, 170% 170%, 150% 150%;
+  background-image:
+    radial-gradient(circle at 36% 32%, #fffcf0 0%, #ffe17d 22%, #ffc35e 42%, #ff9d46 62%, #e8721f 82%, rgba(232, 114, 31, 0) 100%),
+    radial-gradient(circle at 28% 62%, rgba(255, 206, 130, 0.35), transparent 40%),
+    radial-gradient(circle at 70% 38%, rgba(255, 224, 160, 0.28), transparent 38%),
+    radial-gradient(circle at 55% 78%, rgba(216, 104, 36, 0.28), transparent 42%);
+  box-shadow: inset 0 0 16px 4px rgba(255, 130, 40, 0.35);
+  animation: wx-scene-sun-pulse 4.5s ease-in-out infinite, wx-scene-sun-churn 10s ease-in-out infinite;
+}
+@keyframes wx-scene-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes wx-scene-spin-rev {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+@keyframes wx-scene-sun-pulse {
+  0%, 100% { box-shadow: inset 0 0 16px 4px rgba(255, 130, 40, 0.35), 0 0 36px 8px rgba(255, 196, 64, 0.4), 0 0 88px 28px rgba(255, 196, 64, 0.18); }
+  50%      { box-shadow: inset 0 0 20px 6px rgba(255, 130, 40, 0.45), 0 0 50px 14px rgba(255, 196, 64, 0.55), 0 0 120px 38px rgba(255, 196, 64, 0.26); }
+}
+@keyframes wx-scene-sun-churn {
+  0%, 100% { background-position: 0% 0%, 0% 0%, 100% 100%, 50% 100%; }
+  50%      { background-position: 0% 0%, 18% 12%, 82% 88%, 62% 84%; }
+}
+.wx-scene-flare {
+  position: absolute; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 240, 200, 0.65), transparent 72%);
+  animation: wx-scene-flare-pulse ease-in-out infinite;
+}
+@keyframes wx-scene-flare-pulse {
+  0%, 100% { opacity: 0.2; transform: scale(0.9); }
+  50%      { opacity: 0.5; transform: scale(1.08); }
+}
+
+/* Clouds — several soft overlapping puffs baked into one radial-gradient
+   background (a real cloud silhouette) plus a faint grey-blue underside for
+   volume, instead of a single flat blurred ellipse. */
+.wx-scene-cloud {
+  position: absolute; filter: blur(5px); animation: wx-scene-drift linear infinite;
+  background:
+    radial-gradient(circle at 28% 65%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 58%),
+    radial-gradient(circle at 50% 30%, rgba(255,255,255,0.9)  0%, rgba(255,255,255,0) 55%),
+    radial-gradient(circle at 72% 60%, rgba(255,255,255,0.8)  0%, rgba(255,255,255,0) 55%),
+    radial-gradient(circle at 50% 78%, rgba(120,140,170,0.28) 0%, rgba(120,140,170,0) 62%);
+}
+[data-theme="light"] .wx-scene-cloud {
+  background:
+    radial-gradient(circle at 28% 65%, rgba(90,100,120,0.35) 0%, rgba(90,100,120,0) 58%),
+    radial-gradient(circle at 50% 30%, rgba(90,100,120,0.4)  0%, rgba(90,100,120,0) 55%),
+    radial-gradient(circle at 72% 60%, rgba(90,100,120,0.32) 0%, rgba(90,100,120,0) 55%),
+    radial-gradient(circle at 50% 78%, rgba(70,80,100,0.22)  0%, rgba(70,80,100,0) 62%);
+}
+@keyframes wx-scene-drift {
+  0%   { transform: translate(-18%, 0); }
+  50%  { transform: translate(0%, -4%); }
+  100% { transform: translate(18%, 0); }
+}
+
+/* Night sky — a deep navy wash + a scattered, twinkling starfield, used
+   behind the moon for clear/partly/cloudy nights (and faintly behind rain,
+   storm and snow scenes after dark for a touch more atmosphere). */
+.wx-scene-night-sky {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 85% 65% at 50% 0%, rgba(40, 52, 92, 0.55), rgba(10, 14, 28, 0.22) 62%, transparent 88%);
+}
+.wx-scene-star {
+  position: absolute; border-radius: 50%; background: #fff;
+  animation: wx-scene-twinkle ease-in-out infinite;
+}
+@keyframes wx-scene-twinkle {
+  0%, 100% { opacity: 0.2; }
+  50%      { opacity: 1; }
+}
+
+/* Rain — angled streaks (windswept, not perfectly vertical) with a brighter
+   leading tip, a looming overcast wash + cloud deck overhead, and puddle
+   ripples along the bottom edge where drops land. */
+.wx-scene-overcast {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(30, 40, 60, 0.38), transparent 48%);
+}
+.wx-scene-rain-layer { position: absolute; inset: -15% -25%; transform: rotate(8deg); }
+.wx-scene-rain-drop {
+  position: absolute; top: -20%; width: 2px; border-radius: 2px;
+  background: linear-gradient(to bottom, transparent, rgba(170, 205, 255, 0.25) 45%, rgba(215, 232, 255, 0.9));
+  animation: wx-scene-fall linear infinite;
+}
+@keyframes wx-scene-fall {
+  from { transform: translateY(-20%); }
+  to   { transform: translateY(520%); }
+}
+.wx-scene-puddle {
+  position: absolute; bottom: 3%; height: 5px; border-radius: 50%;
+  border: 1.5px solid rgba(205, 225, 255, 0.55);
+  animation: wx-scene-ripple linear infinite;
+}
+@keyframes wx-scene-ripple {
+  0%   { transform: scale(0.25); opacity: 0.55; }
+  65%  { opacity: 0.15; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+/* Wet, faintly reflective ground the rain actually lands on — a glossy dark
+   band with a soft horizontal sheen, instead of drops just vanishing at the
+   card's bottom edge. */
+.wx-scene-ground-wet {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 20%;
+  background: linear-gradient(to bottom, transparent, rgba(8, 14, 26, 0.5) 60%, rgba(8, 14, 26, 0.62));
+}
+.wx-scene-ground-wet::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(180, 210, 255, 0.12) 48%, transparent 66%);
+}
+/* Pale, softly piling snow instead of flakes just disappearing at the edge. */
+.wx-scene-ground-snow {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 14%;
+  background: linear-gradient(to bottom, transparent, rgba(235, 242, 252, 0.22));
+}
+
+.wx-scene-flash {
+  position: absolute; inset: 0; background: #eaf1ff; opacity: 0;
+  animation: wx-scene-lightning 6.5s ease-in-out infinite;
+}
+@keyframes wx-scene-lightning {
+  0%, 91%, 100% { opacity: 0; }
+  92%           { opacity: 0.5; }
+  93%           { opacity: 0.05; }
+  94.5%         { opacity: 0.32; }
+  96%           { opacity: 0; }
+}
+
+.wx-scene-snowflake {
+  position: absolute; top: -8%; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9); animation: wx-scene-snowfall linear infinite;
+}
+@keyframes wx-scene-snowfall {
+  0%   { transform: translate(0, -8%); }
+  50%  { transform: translate(10px, 130%); }
+  100% { transform: translate(-6px, 280%); }
+}
+
+.wx-scene-fog-band {
+  position: absolute; left: -25%; width: 150%; height: 30%; border-radius: 50%;
+  background: var(--white-10); filter: blur(16px); animation: wx-scene-fogdrift linear infinite;
+}
+@keyframes wx-scene-fogdrift {
+  from { transform: translateX(-12%); }
+  to   { transform: translateX(12%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-scene-sun-rays, .wx-scene-sun-rays-2, .wx-scene-sun-disc, .wx-scene-flare, .wx-scene-cloud, .wx-scene-rain-drop,
+  .wx-scene-puddle, .wx-scene-flash, .wx-scene-snowflake, .wx-scene-fog-band, .wx-scene-star {
+    animation: none;
+  }
+}
+
+/* Stat rows in the weather popup step in one after another instead of all
+   popping in at once with the card. */
+@keyframes wx-stat-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.wx-stat-in { animation: wx-stat-in 0.32s ease both; }
+@media (prefers-reduced-motion: reduce) {
+  .wx-stat-in { animation: none; }
 }
 
 /* ── Camera modal: recent-snapshots thumbnail strip ─────────────────────── */

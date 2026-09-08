@@ -58,8 +58,6 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
     try { localStorage.setItem('lsh-theme', next) } catch { /* ignore */ }
     setTheme(next)
   }
-  const source = connection?.source === 'vrm'  ? 'VRM Cloud'
-               : connection?.source === 'mqtt' ? 'MQTT Local' : '—'
   const live = connected && (connection?.vrm?.connected || connection?.mqtt?.connected)
 
   return (
@@ -177,8 +175,9 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
           aria-label="Language"
           style={{
             background: 'var(--white-06)', color: 'var(--text2)',
-            border: '1px solid var(--border)', borderRadius: 8,
-            padding: '4px 6px', fontSize: 12, fontWeight: 600, cursor: 'pointer', outline: 'none',
+            border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+            height: 44, flexShrink: 0,
+            padding: '0 10px', fontSize: 13, fontWeight: 600, cursor: 'pointer', outline: 'none',
           }}>
           {LANGUAGES.map(([code, label]) => (
             <option key={code} value={code} style={{ background: 'var(--card)' }}>{label}</option>
@@ -199,10 +198,6 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
             {live ? gt('connected', 'Connected') : gt('offline', 'Offline')}
           </span>
         </div>
-        <span className="header-source" style={{ fontSize: 11, color: 'var(--text2)',
-          background: 'var(--white-04)', padding: '3px 8px', borderRadius: 8, border: '1px solid var(--border)' }}>
-          {source}
-        </span>
       </div>
     </header>
     {version && (

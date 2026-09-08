@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { resolveIcon, CAT_ICON_COMPONENT } from './Icons'
 import { gt } from '../i18n'
 import { EDIT_EMOJI } from '../emoji'
@@ -9,6 +9,9 @@ import { PLAN_WALLS_3D } from '../planWalls3D'
 import PlanPowerFlow from './PlanPowerFlow'
 import PlanSurroundings3D from './PlanSurroundings3D'
 import { PLAN_SURROUNDINGS_3D } from '../planSurroundings3D'
+// Lazy: pulls in three.js + the GLTF/OBJ loaders, a meaningful chunk of code
+// nobody who hasn't imported a model needs on every page load.
+const PlanModelViewer = lazy(() => import('./PlanModelViewer'))
 
 // Isometric home plan — rooms from config.homePlan (Settings → Home Plan),
 // falling back to an automatic grid of the rooms assigned to devices.
@@ -366,6 +369,34 @@ function PositionedChip({ device, room, origin = { x: 0, y: 0 }, board, U, angle
   )
 }
 
+// Scale/rotation controls for an imported 3D model — local editable state so
+// typing doesn't fire a save (and a PIN prompt) on every keystroke.
+function ModelAlignForm({ model, onSave }) {
+  const [scale, setScale] = useState(model.scale ?? 1)
+  const [rotationX, setRotationX] = useState(model.rotationX ?? 0)
+  const [rotationY, setRotationY] = useState(model.rotationY ?? 0)
+  const fieldStyle = { width: '100%', background: 'var(--white-05)', border: '1px solid var(--white-12)',
+    borderRadius: 6, color: 'var(--text)', padding: '5px 8px', fontSize: 12, outline: 'none' }
+  const row = (label, value, setValue, step) => (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ fontSize: 10.5, color: 'var(--text3)', marginBottom: 2 }}>{label}</div>
+      <input type="number" step={step} value={value} style={fieldStyle}
+        onChange={(e) => setValue(e.target.value === '' ? '' : Number(e.target.value))}/>
+    </div>
+  )
+  return (
+    <div style={{ padding: '2px 4px 4px' }}>
+      {row(gt('scale', 'Scale'), scale, setScale, 0.1)}
+      {row(gt('rotation_x', 'Rotation X (°, up-axis fix)'), rotationX, setRotationX, 15)}
+      {row(gt('rotation_y', 'Rotation Y (°, facing)'), rotationY, setRotationY, 15)}
+      <button className="plan-filter-pill" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}
+        onClick={() => onSave({ scale: Number(scale) || 1, rotationX: Number(rotationX) || 0, rotationY: Number(rotationY) || 0 })}>
+        {gt('common.save', 'Save')}
+      </button>
+    </div>
+  )
+}
+
 export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, energy, kiosk = false }) {
   const [plan, setPlan] = useState(null)
   const [filter, setFilter] = useState(null) // device category, null = all
@@ -396,6 +427,12 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
     return Number.isFinite(a) && a !== 0 ? a : -45
   })
   const [mode3d, setMode3d] = useState(() => localStorage.getItem('plan3d') !== '0')
+  // Imported GLB/OBJ floor-plan model — an alternative full-screen view, not
+  // a layer overlaid on the isometric board, so it's its own on/off switch
+  // rather than joining showFurniture/showWalls3D etc. above.
+  const [showModelView, setShowModelView] = useState(false)
+  const [modelBusy, setModelBusy] = useState(false)
+  const [showModelAlign, setShowModelAlign] = useState(false)
 
   const rotate = (dir) => setAngle((a) => {
     const next = a + dir * 90
@@ -529,6 +566,63 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
       setUploading(false)
       if (uploadRef.current) uploadRef.current.value = ''
     }
+  }
+
+  // Import a 3D floor-plan model (GLB or OBJ) — replaces the isometric board
+  // with an orbit-controlled Three.js view of the uploaded file. Only one is
+  // kept at a time; a new upload replaces whatever was there.
+  const modelRef = useRef(null)
+  const uploadModel = async (file) => {
+    if (!file) return
+    const ext = file.name.toLowerCase().split('.').pop()
+    if (ext !== 'glb' && ext !== 'obj') {
+      window.alert(gt('model_bad_type', 'File must be .glb or .obj'))
+      return
+    }
+    setModelBusy(true)
+    try {
+      if (file.size > 50 * 1024 * 1024) {
+        window.alert(gt('model_too_large', 'Model too large (max 50 MB)'))
+        return
+      }
+      let data
+      try {
+        data = await new Promise((resolve, reject) => {
+          const fr = new FileReader()
+          fr.onload = () => resolve(fr.result)
+          fr.onerror = () => reject(fr.error)
+          fr.readAsDataURL(file)
+        })
+      } catch {
+        window.alert(gt('file_read_failed', 'Could not read the file'))
+        return
+      }
+      const d = await postWithPin('/api/plan-model/upload', { name: file.name, data })
+      if (d === null) return
+      if (!d.success) { window.alert(d.error || 'Upload failed'); return }
+      setPlan((p) => ({ ...p, model: d.model }))
+      setShowModelView(true)
+    } finally {
+      setModelBusy(false)
+      if (modelRef.current) modelRef.current.value = ''
+    }
+  }
+
+  const removeModel = async () => {
+    if (!window.confirm(gt('model_remove_confirm', 'Remove the imported floor-plan model?'))) return
+    const d = await postWithPin('/api/plan-model/remove', {})
+    if (d === null) return
+    if (!d.success) { window.alert(d.error || 'Failed'); return }
+    setPlan((p) => { const next = { ...p }; delete next.model; return next })
+    setShowModelView(false)
+    setShowModelAlign(false)
+  }
+
+  const saveModelTransform = async (patch) => {
+    const d = await postWithPin('/api/plan-model/transform', patch)
+    if (d === null) return
+    if (!d.success) { window.alert(d.error || 'Failed'); return }
+    setPlan((p) => ({ ...p, model: d.model }))
   }
 
   if (!plan) {
@@ -788,6 +882,43 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
               🏘️ {gt('surroundings', 'Surroundings')}
             </button>
           )}
+          {!kiosk && (
+            <button className="plan-filter-pill" disabled={modelBusy}
+              title={gt('import_model_hint', 'Import a 3D floor-plan model (.glb or .obj) as an alternative to the drawn board')}
+              onClick={() => modelRef.current?.click()}>
+              {modelBusy ? '…' : '📦'} {gt('import_model', 'Import 3D Model')}
+            </button>
+          )}
+          {!kiosk && (
+            <input ref={modelRef} type="file" style={{ display: 'none' }}
+              accept=".glb,.obj"
+              onChange={(e) => uploadModel(e.target.files?.[0])}/>
+          )}
+          {plan?.model?.url && (
+            <button className="plan-filter-pill" data-active={String(showModelView)}
+              onClick={() => setShowModelView((v) => !v)}
+              title={gt('model_view_hint', 'Switch between the imported 3D model and the drawn board')}>
+              🧊 {gt('model_view', '3D Model')}
+            </button>
+          )}
+          {!kiosk && plan?.model?.url && showModelView && (
+            <button className="plan-filter-pill" data-active={String(showModelAlign)}
+              onClick={() => setShowModelAlign((v) => !v)}
+              title={gt('model_align_hint', 'Adjust scale/rotation to align the model')}>
+              🎚️ {gt('align', 'Align')}
+            </button>
+          )}
+          {!kiosk && showModelAlign && plan?.model?.url && (
+            <div className="plan-add-panel" onClick={(e) => e.stopPropagation()} style={{ minWidth: 190 }}>
+              <div className="plan-add-head">{gt('align_model', 'Align Model')}</div>
+              <ModelAlignForm model={plan.model} onSave={saveModelTransform} />
+            </div>
+          )}
+          {!kiosk && plan?.model?.url && (
+            <button className="plan-filter-pill" onClick={removeModel} title={gt('remove_model', 'Remove imported model')}>
+              🗑️
+            </button>
+          )}
           {!kiosk && <button className="plan-filter-pill" onClick={() => zoomBy(1 / 1.25)} title="Zoom out">−</button>}
           {!kiosk && <button className="plan-filter-pill" onClick={() => zoomBy(1.25)} title="Zoom in">+</button>}
           <button className="plan-filter-pill" onClick={() => rotate(-1)} title="Rotate left">↺</button>
@@ -798,6 +929,15 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
       </div>
       <div className="plan-viewport" ref={viewportRef}
         style={{ position: 'relative', overflow: focusRoom ? 'hidden' : undefined }}>
+      {plan?.model?.url && showModelView && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'var(--card)' }}>
+          <Suspense fallback={
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontSize: 13 }}>…</div>
+          }>
+            <PlanModelViewer model={plan.model} />
+          </Suspense>
+        </div>
+      )}
       {kiosk && (
         <div className="plan-kiosk-zoom">
           <button onClick={() => zoomBy(1 / 1.25)} title="Zoom out">−</button>

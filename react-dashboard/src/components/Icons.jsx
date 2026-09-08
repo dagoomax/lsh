@@ -1076,10 +1076,18 @@ export function MinusIcon({ color = 'currentColor', size = 24 }) {
 // ── Weather condition icons — same outline style as everything else, swapped
 // in for the emoji the server sends (see weatherIcons.js) rather than
 // rendering the raw emoji glyph. ──────────────────────────────────────────
+// The cloud/rain/storm/snow/fog icons below are wrapped in a normalizing
+// `translate → scale → translate` group so every one of them fills the same
+// ~19.4-unit footprint as SunIcon (measured from each path's actual bounding
+// box, not eyeballed) — before this, CloudSun/Snowflake read visibly smaller
+// and CloudRain/CloudLightning/CloudFog visibly larger/taller than the sun
+// at the same `size`, since their raw path art didn't share a common scale.
 export function CloudIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
-      <path d="M6.5 19a4.5 4.5 0 0 1-.5-8.98A5.5 5.5 0 0 1 16.9 8.5 4 4 0 0 1 17.5 16.5v0M6.5 19h11a3.5 3.5 0 0 0 0-7"/>
+      <g transform="translate(12,12) scale(1.006) translate(-11.56,-11.38)">
+        <path d="M6.5 19a4.5 4.5 0 0 1-.5-8.98A5.5 5.5 0 0 1 16.9 8.5 4 4 0 0 1 17.5 16.5v0M6.5 19h11a3.5 3.5 0 0 0 0-7"/>
+      </g>
     </svg>
   )
 }
@@ -1087,9 +1095,11 @@ export function CloudIcon({ color = 'currentColor', size = 24 }) {
 export function CloudSunIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
-      <path d="M9.5 6.5V4M5.7 8.2 4.3 6.8M15.3 8.2l1.4-1.4"/>
-      <circle cx="9.5" cy="10.5" r="3"/>
-      <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7 5 5 0 0 0-4.4-2.9"/>
+      <g transform="translate(12,12) scale(1.162) translate(-12.65,-11.5)">
+        <path d="M9.5 6.5V4M5.7 8.2 4.3 6.8M15.3 8.2l1.4-1.4"/>
+        <circle cx="9.5" cy="10.5" r="3" fill={color} fillOpacity="0.16"/>
+        <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7 5 5 0 0 0-4.4-2.9"/>
+      </g>
     </svg>
   )
 }
@@ -1097,8 +1107,10 @@ export function CloudSunIcon({ color = 'currentColor', size = 24 }) {
 export function CloudRainIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
-      <path d="M6.5 16a4.5 4.5 0 0 1-.5-8.98A5.5 5.5 0 0 1 16.9 5.5 4 4 0 0 1 17.5 13.5v0M6.5 16h11a3.5 3.5 0 0 0 0-7"/>
-      <path d="M9 19.5 8 21.5M13 19.5l-1 2M17 19.5l-1 2"/>
+      <g transform="translate(12,12) scale(0.935) translate(-11.56,-11.13)">
+        <path d="M6.5 16a4.5 4.5 0 0 1-.5-8.98A5.5 5.5 0 0 1 16.9 5.5 4 4 0 0 1 17.5 13.5v0M6.5 16h11a3.5 3.5 0 0 0 0-7"/>
+        <path d="M9 19.5 8 21.5M13 19.5l-1 2M17 19.5l-1 2"/>
+      </g>
     </svg>
   )
 }
@@ -1106,8 +1118,10 @@ export function CloudRainIcon({ color = 'currentColor', size = 24 }) {
 export function CloudLightningIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
-      <path d="M6.5 15a4.5 4.5 0 0 1-.5-8.98A5.5 5.5 0 0 1 16.9 4.5 4 4 0 0 1 17.5 12.5v0M6.5 15h11a3.5 3.5 0 0 0 0-7"/>
-      <path d="M12.5 14 10 18.5h3L11 22"/>
+      <g transform="translate(12,12) scale(0.872) translate(-11.56,-10.88)">
+        <path d="M6.5 15a4.5 4.5 0 0 1-.5-8.98A5.5 5.5 0 0 1 16.9 4.5 4 4 0 0 1 17.5 12.5v0M6.5 15h11a3.5 3.5 0 0 0 0-7"/>
+        <path d="M12.5 14 10 18.5h3L11 22" fill={color} fillOpacity="0.12"/>
+      </g>
     </svg>
   )
 }
@@ -1115,8 +1129,17 @@ export function CloudLightningIcon({ color = 'currentColor', size = 24 }) {
 export function SnowflakeIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
-      <path d="M12 2.5v19M4.4 6.75l15.2 10.5M4.4 17.25l15.2-10.5"/>
-      <path d="M12 2.5 9.8 4.7M12 2.5l2.2 2.2M12 21.5l-2.2-2.2M12 21.5l2.2-2.2"/>
+      <g transform="translate(12,12) scale(1.021) translate(-12,-12)">
+        <path d="M12 2.5v19M4.4 6.75l15.2 10.5M4.4 17.25l15.2-10.5"/>
+        <path d="M12 2.5 9.8 4.7M12 2.5l2.2 2.2M12 21.5l-2.2-2.2M12 21.5l2.2-2.2"/>
+        {/* small crystal tips for a touch more polish than plain line-ends */}
+        <circle cx="12" cy="2.5" r="0.9" fill={color} stroke="none"/>
+        <circle cx="4.4" cy="6.75" r="0.9" fill={color} stroke="none"/>
+        <circle cx="19.6" cy="6.75" r="0.9" fill={color} stroke="none"/>
+        <circle cx="4.4" cy="17.25" r="0.9" fill={color} stroke="none"/>
+        <circle cx="19.6" cy="17.25" r="0.9" fill={color} stroke="none"/>
+        <circle cx="12" cy="21.5" r="0.9" fill={color} stroke="none"/>
+      </g>
     </svg>
   )
 }
@@ -1124,8 +1147,20 @@ export function SnowflakeIcon({ color = 'currentColor', size = 24 }) {
 export function CloudFogIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>
-      <path d="M7 12.5a4 4 0 0 1 0-8 4.9 4.9 0 0 1 9.2-1.8A3.5 3.5 0 0 1 16 10"/>
-      <path d="M4.5 15h15M3 18.5h18M6 22h12"/>
+      <g transform="translate(12,12) scale(0.886) translate(-12,-11.05)">
+        <path d="M7 12.5a4 4 0 0 1 0-8 4.9 4.9 0 0 1 9.2-1.8A3.5 3.5 0 0 1 16 10"/>
+        <path d="M4.5 15h15M3 18.5h18M6 22h12"/>
+      </g>
+    </svg>
+  )
+}
+
+// Precipitation-chance marker for the forecast strip — line-art to match
+// every other weather glyph, instead of a dropped-in emoji.
+export function DropletIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)} fill={color} fillOpacity="0.15">
+      <path d="M12 3c-4.2 5.6-6.2 8.9-6.2 11.7a6.2 6.2 0 0 0 12.4 0C18.2 11.9 16.2 8.6 12 3Z"/>
     </svg>
   )
 }

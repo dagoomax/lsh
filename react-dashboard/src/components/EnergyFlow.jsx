@@ -347,16 +347,18 @@ function DailyProductionChart({ solarKey, color }) {
   const days = useDailyProduction(solarKey, 14)
   const width = 640, height = 130, barGap = 4
   const padBottom = 22, padTop = 6
+  const svgRef = useRef(null)
+  const [hoverIdx, setHoverIdx] = useState(null)
 
   if (days == null) {
-    return <div className="detail-card eflow-bg" style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', height: height + padBottom }}>
+    return <div className="detail-card eflow-bg" style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
       <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--white-10)', borderTopColor: color, animation: 'eflow-spin 0.9s linear infinite' }} />
     </div>
   }
 
   const known = days.filter(d => d.kwh != null)
   if (!known.length) {
-    return <div className="detail-card eflow-bg" style={{ padding: 14 }}>
+    return <div className="detail-card eflow-bg" style={{ padding: 14, height: '100%' }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
         {gt('e_daily_production', 'Daily Production')}
       </div>
@@ -369,36 +371,184 @@ function DailyProductionChart({ solarKey, color }) {
   const max = Math.max(1, ...known.map(d => d.kwh))
   const barW = (width - barGap * (days.length - 1)) / days.length
   const todayId = new Date().toDateString()
+  const hovered = hoverIdx != null ? days[hoverIdx] : null
+
+  // Scrub across the bars (mouse drag or plain hover, and touch) to read
+  // each day's exact figure — screen coords -> viewBox units so this stays
+  // correct regardless of how big the card is actually rendered.
+  const updateHover = (e) => {
+    const rect = svgRef.current?.getBoundingClientRect()
+    if (!rect || !rect.width) return
+    const localX = (e.clientX - rect.left) * (width / rect.width)
+    const idx = Math.min(days.length - 1, Math.max(0, Math.floor(localX / (barW + barGap))))
+    setHoverIdx(idx)
+  }
+  const clearHover = () => setHoverIdx(null)
 
   return (
-    <div className="detail-card eflow-bg" style={{ padding: 14 }}>
+    <div className="detail-card eflow-bg" style={{ padding: 14, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           {gt('e_daily_production', 'Daily Production')}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text3)' }}>{gt('trend_14d', 'Last 14 days')}</div>
+        <div style={{ fontSize: hovered ? 16 : 11, color: hovered ? color : 'var(--text3)', fontWeight: hovered ? 800 : 400, fontVariantNumeric: 'tabular-nums', transition: 'font-size 0.1s ease' }}>
+          {hovered
+            ? `${hovered.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${hovered.kwh != null ? hovered.kwh.toFixed(2) + ' kWh' : gt('e_no_data', 'no data')}`
+            : gt('trend_14d', 'Last 14 days')}
+        </div>
       </div>
-      <svg viewBox={`0 0 ${width} ${height + padBottom}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+      <svg ref={svgRef} viewBox={`0 0 ${width} ${height + padBottom}`} preserveAspectRatio="none"
+        style={{ width: '100%', flex: 1, minHeight: 0, overflow: 'visible', cursor: 'crosshair', touchAction: 'none' }}
+        onPointerMove={updateHover} onPointerDown={updateHover} onPointerLeave={clearHover}>
+        {hoverIdx != null && (
+          <rect x={hoverIdx * (barW + barGap) - barGap / 2} y={0} width={barW + barGap} height={height}
+            fill="var(--white-06)" />
+        )}
         {days.map((d, i) => {
           const x = i * (barW + barGap)
           const h = d.kwh != null ? (d.kwh / max) * (height - padTop) : 0
           const isToday = d.date.toDateString() === todayId
+          const isHovered = i === hoverIdx
           return (
             <g key={i}>
               {d.kwh != null && (
                 <rect x={x} y={height - h} width={barW} height={Math.max(1, h)} rx={2}
-                  fill={color} opacity={isToday ? 1 : 0.55} />
+                  fill={color} opacity={isHovered || isToday ? 1 : 0.55} />
               )}
-              <text x={x + barW / 2} y={height + 15} textAnchor="middle"
-                fontSize="9" fill="var(--text3)">
+              {isHovered && d.kwh != null && (
+                <text x={x + barW / 2} y={Math.max(16, height - h - 8)} textAnchor="middle"
+                  fontSize="15" fontWeight="800" fill={color} style={{ paintOrder: 'stroke' }}
+                  stroke="var(--card)" strokeWidth="3">
+                  {d.kwh.toFixed(2)} kWh
+                </text>
+              )}
+              <text x={x + barW / 2} y={height + 16} textAnchor="middle"
+                fontSize={isHovered ? 12 : 9} fontWeight={isHovered ? 800 : 400}
+                fill={isHovered ? 'var(--text)' : 'var(--text3)'}>
                 {d.date.toLocaleDateString(undefined, { weekday: 'narrow' })}
               </text>
             </g>
           )
         })}
+        {hoverIdx != null && (
+          <line x1={hoverIdx * (barW + barGap) + barW / 2} y1={0} x2={hoverIdx * (barW + barGap) + barW / 2} y2={height}
+            stroke="var(--text3)" strokeWidth="1" strokeDasharray="2 3" />
+        )}
       </svg>
       <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, textAlign: 'right' }}>
         {gt('r_today', 'Today')}: {known.find(d => d.date.toDateString() === todayId)?.kwh?.toFixed(2) ?? '—'} kWh
+      </div>
+    </div>
+  )
+}
+
+// ── Solar gain (TAURON dynamic tariff × today's production, by hour) ────────
+// Reuses the same cumulative "today's yield" counter as the Daily Production
+// chart above, just diffed hour-to-hour instead of day-to-day, so it shares
+// that chart's proven accuracy characteristics rather than integrating noisy
+// instantaneous power samples.
+function useHourlyProduction(key) {
+  const [points, setPoints] = useState(null)
+  useEffect(() => {
+    let alive = true; setPoints(null)
+    if (!key) return undefined
+    const load = () => fetchHistory(key, 24).then(p => { if (alive) setPoints(p) })
+    load()
+    const iv = setInterval(load, 5 * 60_000)
+    return () => { alive = false; clearInterval(iv) }
+  }, [key])
+  if (points == null) return null
+
+  const todayId = new Date().toDateString()
+  const byHour = new Map()
+  for (const [t, v] of points) {
+    const d = new Date(t)
+    if (d.toDateString() !== todayId) continue // the counter resets at midnight — ignore any spillover from yesterday
+    const h = d.getHours()
+    const prev = byHour.get(h)
+    if (prev == null || v > prev) byHour.set(h, v)
+  }
+  const nowHour = new Date().getHours()
+  const out = []
+  let prevCum = 0
+  for (let h = 0; h <= nowHour; h++) {
+    const cum = byHour.has(h) ? byHour.get(h) : prevCum
+    out.push({ hour: h, kwh: Math.max(0, cum - prevCum) })
+    prevCum = cum
+  }
+  return out
+}
+
+function useTariffHourly() {
+  const [hourly, setHourly] = useState(null)
+  useEffect(() => {
+    let alive = true
+    const load = () => fetch('/api/tauron-tariff/hourly', { credentials: 'same-origin' })
+      .then(r => r.ok ? r.json() : { data: [] })
+      .then(j => { if (alive) setHourly(j?.data || []) })
+      .catch(() => { if (alive) setHourly([]) })
+    load()
+    const iv = setInterval(load, 10 * 60_000)
+    return () => { alive = false; clearInterval(iv) }
+  }, [])
+  return hourly
+}
+
+// Same card shell/proportions as DailyProductionChart (viewBox, padding,
+// bar-chart layout) so it reads as the same "kind" of chart, per-hour PLN
+// gain instead of per-day kWh. Renders nothing until the TAURON tariff
+// integration is actually enabled and has synced (energy.tariff is only
+// non-null once its currentPrice sensor exists).
+function SolarGainChart({ solarKey, currentPrice }) {
+  const production = useHourlyProduction(solarKey)
+  const hourly = useTariffHourly()
+  const width = 640, height = 130, barGap = 4, padTop = 6, padBottom = 22
+
+  if (hourly != null && !hourly.length) return null // integration enabled but no price data synced yet — nothing useful to show
+
+  if (production == null || hourly == null) {
+    return <div className="detail-card eflow-bg" style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', height: height + padBottom }}>
+      <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--white-10)', borderTopColor: 'var(--green)', animation: 'eflow-spin 0.9s linear infinite' }} />
+    </div>
+  }
+
+  const priceByHour = new Map(hourly.map(h => [h.hour, h.pricePlnKwh]))
+  const bars = production.map(p => ({ hour: p.hour, gain: p.kwh * (priceByHour.get(p.hour) ?? 0) }))
+  const totalGain = bars.reduce((sum, b) => sum + b.gain, 0)
+  const max = Math.max(0.01, ...bars.map(b => b.gain))
+  const barW = (width - barGap * Math.max(0, bars.length - 1)) / Math.max(1, bars.length)
+  const nowHour = new Date().getHours()
+
+  return (
+    <div className="detail-card eflow-bg" style={{ padding: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {gt('e_solar_gain', 'Solar Gain Today')}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+          {currentPrice != null ? `${gt('e_current_price', 'Current price')}: ${Number(currentPrice).toFixed(2)} PLN/kWh` : ''}
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height + padBottom}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+        {bars.map((b, i) => {
+          const x = i * (barW + barGap)
+          const h = (b.gain / max) * (height - padTop)
+          const isNow = b.hour === nowHour
+          return (
+            <g key={i}>
+              <rect x={x} y={height - h} width={barW} height={Math.max(1, h)} rx={2}
+                fill="var(--green)" opacity={isNow ? 1 : 0.55} />
+              {b.hour % 3 === 0 && (
+                <text x={x + barW / 2} y={height + 15} textAnchor="middle" fontSize="9" fill="var(--text3)">
+                  {String(b.hour).padStart(2, '0')}
+                </text>
+              )}
+            </g>
+          )
+        })}
+      </svg>
+      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, textAlign: 'right' }}>
+        {gt('r_today', 'Today')}: {totalGain.toFixed(2)} PLN
       </div>
     </div>
   )
@@ -590,7 +740,7 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
 
       {/* ── EV showcase: one card per vehicle (up to 10), each with its own
           3D model + live stats/controls side by side ── */}
-      {evList.map(dev => {
+      {evList.map((dev, evIdx) => {
         const model = modelFor(dev.key)
         const power = Number(dev.readings?.power?.value) || 0
         const energyKwh = dev.readings?.energy?.value
@@ -604,6 +754,19 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
             <div style={{ flex:'1 1 220px', minWidth:200, maxWidth:320 }}>
               <GWagenEmbed height={190} modelId={model.modelId} modelName={model.modelName} />
             </div>
+            {/* Solar-gain chart — a whole-house metric (not per-vehicle), so
+                it only shows once, next to the first vehicle's model, even
+                when several EVs are registered. Renders nothing unless the
+                TAURON tariff integration is enabled (energy.tariff is null
+                otherwise). */}
+            {evIdx === 0 && energy?.tariff && (
+              <div style={{ flex:'1 1 220px', minWidth:200, maxWidth:320 }}>
+                <SolarGainChart
+                  solarKey={dailyEnergyKey(energySources?.solar || 'victron', energy)}
+                  currentPrice={energy.tariff.currentPrice}
+                />
+              </div>
+            )}
             <div style={{ flex:'1 1 220px', minWidth:220, display:'flex', flexDirection:'column', gap:2 }}>
               <div style={{ marginBottom:6 }}>
                 <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text3)' }}>
