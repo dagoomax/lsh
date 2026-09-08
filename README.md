@@ -280,6 +280,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `vrm` | No | Victron VRM cloud API (fallback when MQTT is unreachable) |
 | `solaredge` | No | SolarEdge cloud data |
 | `solaraccelerator` | No | Deye-family hybrid inverter via a local Solar Accelerator Connect gateway — full readings + write-capable controls, no cloud (see the `solaraccelerator` section below) |
+| `tauronTariff` | No | Poland's public PSE RCE day-ahead price index (what TAURON's G14dynamic dynamic tariff settles against) — live electricity cost for the Energy tab (see the `tauronTariff` section below) |
 | `smartthings` | No | Samsung SmartThings devices |
 | `loxone` | No | Loxone Miniserver local API |
 | `satel` | No | Satel INTEGRA alarm panel |
@@ -398,6 +399,22 @@ Ported from [aLAN-LDZ/solaraccelerator_connect_ha](https://github.com/aLAN-LDZ/s
 **Controls** — write-capable, all ported from that project's register map: work mode (Selling First / Zero Export To Load / Zero Export To CT), max charge/discharge current, PV production limit, grid export/peak-shaving limits, grid peak-shaving on/off, and the full 6-slot Time-of-Use schedule (time, power, SOC target, charging source per slot). Two registers pack multiple settings into shared bits (peak-shaving alongside three other flags; each TOU slot's charging source alongside a "sell" flag) — writes to these go through read-modify-write and are **refused outright** if the current register value isn't known yet, rather than guessing and risking the other bits.
 
 Polling interval isn't a setting here either, same reasoning as `vitodens`'s rate limit but for a different cause: the gateway reports its own Modbus poll interval (`poll_interval_ms`) and this client matches it automatically — polling faster just re-reads the same RAM snapshot, slower loses readings. A lost request every so often is treated as normal Wi-Fi flakiness (matching the source project's stated tolerances): a sensor only goes blank after 3 consecutive polls missing that key, and the whole device only reports offline after 3 consecutive failed poll cycles.
+
+### `tauronTariff`
+
+```json
+"tauronTariff": {
+  "enabled": true,
+  "markupPlnKwh": 0,
+  "vatRate": 0.23
+}
+```
+
+Tracks **PSE's RCE** (Rynkowa Cena Energii) index — Poland's public day-ahead-market clearing price, published free with no account or API key at `api.raporty.pse.pl` in 15-minute steps. This is the same public index TAURON's **G14dynamic** dynamic tariff settles hourly against, so it's a good live proxy for "what am I paying for electricity right now" without needing TAURON account credentials (there's no public API for those anyway).
+
+Polls once every 30 minutes by default (`pollInterval`, seconds, min 300) — a day-ahead index that PSE republishes once a day, not live telemetry, so anything faster just re-fetches the same rows. Averages the four 15-minute quarters into one rate per hour (PSE's own documented method), then applies `markupPlnKwh` (your supplier's margin per kWh — PSE only publishes the raw wholesale rate) and `vatRate` (default 0.23 = 23%) to approximate a retail price. **This is an estimate, not a bill match** — TAURON's actual invoice also includes distribution charges that vary per contract and aren't published anywhere in fetchable form.
+
+Exposes a `tauron-tariff/pl` device (`currentPrice` in PLN/kWh, `currentPriceRce` the raw PLN/MWh market rate) and feeds the Energy tab's electricity-cost reading plus a per-hour "Solar Gain" chart next to the EV charging card (today's estimated PLN earned from solar production, hour by hour, using the same cumulative yield counter the Daily Production chart already uses). Configurable from **Settings → Energy → Electricity Tariff**, alongside the existing fixed peak/off-peak `tariff` windows (a separate, older feature — the two are independent and can both be set).
 
 ### `smartthings`
 
@@ -520,6 +537,22 @@ Integrates Dyson's WiFi-connected fans/purifiers/humidifiers (Pure Cool, Pure Ho
 ```
 
 Connects via the Loxone WebSocket API. All controls appear as device cards on the dashboard.
+
+### `loxoneWeather`
+
+```json
+"loxoneWeather": {
+  "port": 6066,
+  "lat": 50.2649,
+  "lon": 19.0238,
+  "asl": 266,
+  "name": "Katowice",
+  "country": "PL",
+  "timezone": "Europe/Warsaw"
+}
+```
+
+Emulates the Loxone Weather Service (`weather.loxone.com:6066/forecast/`) using Open-Meteo as the data source, so a Miniserver with no internet route to Loxone's real cloud service (or one you'd rather not depend on) can still get hourly weather. Requires a DNS override on the Miniserver's network pointing `weather.loxone.com` at this host — LSH just answers on port 6066 with plain HTTP, no TLS. Forecast is cached for 30 minutes; the Miniserver itself only polls once an hour (and after every reboot/program upload). **Not verified against a real Miniserver** — `src/loxone-weather-server.js`.
 
 ### `loxoneOut`
 

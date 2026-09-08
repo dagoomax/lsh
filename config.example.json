@@ -86,6 +86,11 @@
     "port": "",
     "password": ""
   },
+  "tauronTariff": {
+    "enabled": false,
+    "markupPlnKwh": 0,
+    "vatRate": 0.23
+  },
   "roborock": {
     "cloud": {
       "email": "",
@@ -373,6 +378,15 @@
     "port": 80,
     "username": "admin",
     "password": ""
+  },
+  "loxoneWeather": {
+    "port": 6066,
+    "lat": 50.2649,
+    "lon": 19.0238,
+    "asl": 266,
+    "name": "Katowice",
+    "country": "PL",
+    "timezone": "Europe/Warsaw"
   },
   "loxoneOut": {
     "host": "192.168.1.x",

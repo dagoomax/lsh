@@ -299,6 +299,17 @@ async function main() {
     }
   }
 
+  // Loxone Weather Service emulator — standalone HTTP listener (not a
+  // device client: no sensors, nothing pushed to the store), so DNS-override
+  // weather.loxone.com to this host to serve Miniservers their hourly forecast.
+  if (config.loxoneWeather) {
+    const LoxoneWeatherServer = tryRequire('./src/loxone-weather-server');
+    if (LoxoneWeatherServer) {
+      const loxoneWeather = new LoxoneWeatherServer(config);
+      loxoneWeather.start().catch((err) => console.error(`[LoxoneWeather] Start failed: ${err.message}`));
+    }
+  }
+
   // Start virtual devices (switches/dimmers/sensors/text/buttons with no
   // real hardware behind them) before the automation engine below — a flow's
   // action can target a virtual device the moment automation.start() begins
