@@ -161,6 +161,9 @@ class OpenWeatherClient {
     }
     const data = await res.json();
     const tzOffset = data.city?.timezone || 0; // seconds, location-local vs UTC
+    const nowSec = Date.now() / 1000;
+    const citySunrise = data.city?.sunrise; // today's real sunrise/sunset, UTC epoch seconds
+    const citySunset  = data.city?.sunset;
 
     // Bucket the 3-hour steps by local calendar date.
     const days = new Map(); // 'YYYY-MM-DD' → { dateKey, entries: [...] }
@@ -170,7 +173,7 @@ class OpenWeatherClient {
       days.get(dateKey).entries.push(step);
     }
 
-    this._forecast = [...days.values()].slice(0, 5).map((day) => {
+    this._forecast = [...days.values()].slice(0, 5).map((day, i) => {
       const temps = day.entries.map((e) => e.main?.temp).filter((n) => n != null);
       const pops  = day.entries.map((e) => e.pop).filter((n) => n != null);
       // Representative condition/icon: the step closest to local noon reads
@@ -182,6 +185,16 @@ class OpenWeatherClient {
         return (!best || dist < best.dist) ? { dist, e } : best;
       }, null)?.e || day.entries[0];
 
+      // Day/night: for today, compare the real clock against today's actual
+      // sunrise/sunset (both plain UTC epoch seconds, so this is correct
+      // regardless of timezone); for other days there's no per-day sunrise/
+      // sunset in this endpoint, so fall back to the representative step's
+      // own day/night flag (OpenWeatherMap's `sys.pod`, 'd' or 'n').
+      let isDay = noonStep?.sys?.pod !== 'n';
+      if (i === 0 && citySunrise != null && citySunset != null) {
+        isDay = nowSec >= citySunrise && nowSec <= citySunset;
+      }
+
       return {
         date:      day.dateKey,
         tempMin:   temps.length ? Math.min(...temps) : null,
@@ -189,6 +202,7 @@ class OpenWeatherClient {
         pop:       pops.length ? Math.round(Math.max(...pops) * 100) : 0,
         condition: noonStep?.weather?.[0]?.description || '',
         icon:      emojiFor(noonStep?.weather?.[0]?.icon),
+        isDay,
         // Extra detail for the dashboard's day popup — same representative
         // (closest-to-noon) step used for condition/icon above, since a
         // per-day humidity/wind/pressure average would blur more than it helps.
