@@ -9,6 +9,7 @@ export default function LoxoneSection({ config, reload }) {
     <>
       <MiniserverCard loxone={config.loxone} reload={reload}/>
       <OutboundPushCard loxoneOut={config.loxoneOut} reload={reload}/>
+      <WeatherEmulatorCard loxoneWeather={config.loxoneWeather} reload={reload}/>
     </>
   )
 }
@@ -64,6 +65,37 @@ function OutboundPushCard({ loxoneOut, reload }) {
         <Button variant="primary" busy={save.busy}
           onClick={() => save.save({ host, port: Number(port), username, password, mappings: parseMappings() }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>
+      </div>
+    </SettingsCard>
+  )
+}
+
+function WeatherEmulatorCard({ loxoneWeather, reload }) {
+  const [port, setPort] = useState(loxoneWeather?.port || 6066)
+  const [lat, setLat] = useState(loxoneWeather?.lat ?? 50.2649)
+  const [lon, setLon] = useState(loxoneWeather?.lon ?? 19.0238)
+  const [asl, setAsl] = useState(loxoneWeather?.asl ?? 266)
+  const [name, setName] = useState(loxoneWeather?.name || '')
+  const [country, setCountry] = useState(loxoneWeather?.country || '')
+  const [timezone, setTimezone] = useState(loxoneWeather?.timezone || '')
+  const test = useSettingsSave('/api/settings/test-loxone-weather')
+  const save = useSettingsSave('/api/settings/loxone-weather')
+  const payload = () => ({ port: Number(port), lat: Number(lat), lon: Number(lon), asl: Number(asl), name, country, timezone })
+
+  return (
+    <SettingsCard icon={LoxoneIcon} title="Loxone Weather Emulator" badge={{ label: gt('common.optional', 'Optional') }}
+      desc={<>Stands in for Loxone's cloud weather service using Open-Meteo. Point <code>weather.loxone.com</code> at this host via DNS override — the Miniserver will fetch its hourly forecast from here on port {port || 6066} instead. Not yet verified against a real Miniserver.</>}>
+      <Field label="Listen Port" hint="(default 6066)" type="number" value={port} onChange={setPort}/>
+      <Field label="Latitude" type="number" value={lat} onChange={setLat}/>
+      <Field label="Longitude" type="number" value={lon} onChange={setLon}/>
+      <Field label="Altitude" hint="(meters above sea level)" type="number" value={asl} onChange={setAsl}/>
+      <Field label="Station Name" value={name} onChange={setName} placeholder="Katowice"/>
+      <Field label="Country Code" value={country} onChange={setCountry} placeholder="PL"/>
+      <Field label="Timezone" value={timezone} onChange={setTimezone} placeholder="Europe/Warsaw"/>
+      <div className="stg-actions">
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>{gt('common.test', 'Test Connection')}</Button>
+        <Button variant="primary" busy={save.busy} onClick={() => save.save(payload()).then(reload)}>{gt('common.save', 'Save')}</Button>
+        <ResultBanner result={test.result || save.result}/>
       </div>
     </SettingsCard>
   )

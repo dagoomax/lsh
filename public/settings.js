@@ -156,6 +156,14 @@ async function loadSettings() {
     setVal('loxone-out-pass', data.loxoneOut?.password ? '••••••••' : '');
     setVal('loxone-out-mappings', (data.loxoneOut?.mappings || []).map(m => `${m.storeKey} = ${m.virtualInput}`).join('\n'));
 
+    setVal('loxone-weather-port', data.loxoneWeather?.port || 6066);
+    setVal('loxone-weather-lat', data.loxoneWeather?.lat ?? 50.2649);
+    setVal('loxone-weather-lon', data.loxoneWeather?.lon ?? 19.0238);
+    setVal('loxone-weather-asl', data.loxoneWeather?.asl ?? 266);
+    setVal('loxone-weather-name', data.loxoneWeather?.name || '');
+    setVal('loxone-weather-country', data.loxoneWeather?.country || '');
+    setVal('loxone-weather-timezone', data.loxoneWeather?.timezone || '');
+
     // Fibaro Outbound Push
     setVal('fibaro-out-host', data.fibaroOut?.host || '');
     setVal('fibaro-out-port', data.fibaroOut?.port || 80);
@@ -1868,6 +1876,56 @@ document.getElementById('btn-save-loxone-out').addEventListener('click', async (
   } finally {
     btn.disabled = false;
   }
+});
+
+// ── Loxone Weather Emulator ─────────────────────────────────────────────────
+
+function loxoneWeatherPayload() {
+  return {
+    port:     getVal('loxone-weather-port'),
+    lat:      getVal('loxone-weather-lat'),
+    lon:      getVal('loxone-weather-lon'),
+    asl:      getVal('loxone-weather-asl'),
+    name:     getVal('loxone-weather-name'),
+    country:  getVal('loxone-weather-country'),
+    timezone: getVal('loxone-weather-timezone'),
+  };
+}
+
+document.getElementById('btn-test-loxone-weather').addEventListener('click', async () => {
+  const resultEl = document.getElementById('loxone-weather-test-result');
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result';
+  try {
+    const res = await fetch('/api/settings/test-loxone-weather', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(loxoneWeatherPayload()),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-loxone-weather').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-loxone-weather');
+  const resultEl = document.getElementById('loxone-weather-test-result');
+  btn.disabled   = true;
+  try {
+    const res = await fetch('/api/settings/loxone-weather', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(loxoneWeatherPayload()),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
 });
 
 // ── Fibaro Outbound Push ───────────────────────────────────────────────────

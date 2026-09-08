@@ -838,6 +838,47 @@
       </div>
     </section>
 
+    <!-- Loxone Weather Emulator -->
+    <section class="card settings-card" data-category="controllers" data-title="Loxone Weather Emulator Open-Meteo forecast">
+      <h2>Loxone Weather Emulator <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Stands in for Loxone's cloud weather service using Open-Meteo. Point <code>weather.loxone.com</code> at this host via DNS override — the Miniserver fetches its hourly forecast from here instead. Not yet verified against a real Miniserver.</p>
+
+      <div class="form-row">
+        <label for="loxone-weather-port">Listen Port <span class="hint">(default 6066)</span></label>
+        <input type="number" id="loxone-weather-port" placeholder="6066" min="1" max="65535" style="max-width:120px">
+      </div>
+      <div class="form-row">
+        <label for="loxone-weather-lat">Latitude</label>
+        <input type="number" step="any" id="loxone-weather-lat" placeholder="50.2649">
+      </div>
+      <div class="form-row">
+        <label for="loxone-weather-lon">Longitude</label>
+        <input type="number" step="any" id="loxone-weather-lon" placeholder="19.0238">
+      </div>
+      <div class="form-row">
+        <label for="loxone-weather-asl">Altitude <span class="hint">(meters above sea level)</span></label>
+        <input type="number" id="loxone-weather-asl" placeholder="266" style="max-width:120px">
+      </div>
+      <div class="form-row">
+        <label for="loxone-weather-name">Station Name</label>
+        <input type="text" id="loxone-weather-name" placeholder="Katowice">
+      </div>
+      <div class="form-row">
+        <label for="loxone-weather-country">Country Code</label>
+        <input type="text" id="loxone-weather-country" placeholder="PL" style="max-width:120px">
+      </div>
+      <div class="form-row">
+        <label for="loxone-weather-timezone">Timezone</label>
+        <input type="text" id="loxone-weather-timezone" placeholder="Europe/Warsaw">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-loxone-weather" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary"   id="btn-save-loxone-weather" data-i18n="common.save">Save</button>
+        <span class="test-result" id="loxone-weather-test-result"></span>
+      </div>
+    </section>
+
     <!-- Fibaro Outbound Push -->
     <section class="card settings-card" data-category="controllers" data-title="Fibaro Outbound Push global variables Satel Home Center scenes">
       <h2>Fibaro Outbound Push <span class="badge" data-i18n="common.optional">Optional</span></h2>

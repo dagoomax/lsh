@@ -3964,6 +3964,49 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  router.post('/settings/test-loxone-weather', requireAdmin, async (req, res) => {
+    const lat = parseFloat(req.body.lat);
+    const lon = parseFloat(req.body.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return res.json({ success: false, error: 'lat/lon must be numbers' });
+    }
+    try {
+      const r = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&forecast_days=1`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      if (!r.ok) return res.json({ success: false, error: `Open-Meteo returned HTTP ${r.status}` });
+      const data = await r.json();
+      const temp = data.hourly?.temperature_2m?.[0];
+      res.json({ success: true, message: `Reachable — current forecast temperature ${temp}°C` });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/loxone-weather', requireAdmin, (req, res) => {
+    const current = readConfigFile();
+    const { port, lat, lon, asl, name, country, timezone } = req.body;
+    const c = current.loxoneWeather || {};
+    try {
+      writeConfigFile({
+        ...current,
+        loxoneWeather: {
+          port:     port != null && port !== '' ? parseInt(port) : (c.port ?? 6066),
+          lat:      lat != null && lat !== '' ? Number(lat) : (c.lat ?? 50.2649),
+          lon:      lon != null && lon !== '' ? Number(lon) : (c.lon ?? 19.0238),
+          asl:      asl != null && asl !== '' ? parseInt(asl) : (c.asl ?? 266),
+          name:     name || c.name || '',
+          country:  country || c.country || '',
+          timezone: timezone || c.timezone || 'UTC',
+        },
+      });
+      res.json({ success: true, message: 'Loxone Weather settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   router.post('/settings/fibaro-out', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, port, username, password, mappings } = req.body;
