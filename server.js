@@ -526,6 +526,19 @@ async function main() {
     }
   }
 
+  // Start Tauron dynamic-tariff tracker if enabled — a public, no-auth PSE
+  // (Polish grid operator) price index that TAURON's G14dynamic tariff
+  // settles against, used for the Energy tab's electricity-cost/solar-gain
+  // reading.
+  if (config.tauronTariff?.enabled) {
+    const TauronTariffClient = tryRequire('./src/tauron-tariff-client');
+    if (TauronTariffClient) {
+      const tauronTariff = new TauronTariffClient(config, store, sensorRegistry);
+      apiClients.tauronTariff = tauronTariff; // exposed for GET /api/tauron-tariff/hourly
+      tauronTariff.start().catch((err) => console.error(`[TauronTariff] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Dyson client if enabled (device list/credentials come from
   // persist/dyson-tokens.json, produced by scripts/dyson-auth.js)
   if (config.dyson?.enabled) {

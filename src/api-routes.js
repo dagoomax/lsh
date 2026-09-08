@@ -1113,6 +1113,15 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     res.json({ success: true, data: openweather.getForecast() });
   });
 
+  // Today's hourly PLN/kWh rate (TAURON dynamic tariff / PSE RCE index) —
+  // same "own small endpoint" reasoning as the forecast above: the Energy
+  // tab's solar-gain chart needs the whole day's curve, not just the one
+  // current-price scalar the generic device/readings mechanism exposes.
+  router.get('/tauron-tariff/hourly', (req, res) => {
+    if (!clients.tauronTariff) return res.status(503).json({ success: false, error: 'Tauron tariff not configured' });
+    res.json({ success: true, data: clients.tauronTariff.getHourly() });
+  });
+
   router.post('/sip/open-door', requireAdmin, async (req, res) => {
     if (!sipServer) return res.status(503).json({ success: false, error: 'SIP server not enabled' });
     try {
@@ -2144,6 +2153,42 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     try {
       writeConfigFile(updated);
       res.json({ success: true, message: 'Solar Accelerator settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── TAURON dynamic tariff (PSE RCE index) ──────────────────
+
+  router.post('/settings/test-tauron-tariff', requireAdmin, async (req, res) => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const r = await fetch(`https://api.raporty.pse.pl/api/rce-pln?$filter=business_date eq '${today}'`, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return res.json({ success: false, error: `PSE returned HTTP ${r.status}` });
+      const data = await r.json();
+      const rows = data.value || [];
+      if (!rows.length) return res.json({ success: false, error: 'PSE returned no rows for today — try again shortly' });
+      const last = rows[rows.length - 1];
+      res.json({ success: true, message: `Reachable — ${rows.length} quarter-hour rows for today, latest RCE ${last.rce_pln} PLN/MWh` });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/tauron-tariff', requireAdmin, (req, res) => {
+    const current = readConfigFile();
+    const { enabled, markupPlnKwh, vatRate } = req.body;
+    const updated = {
+      ...current,
+      tauronTariff: {
+        enabled: !!enabled,
+        markupPlnKwh: markupPlnKwh != null && markupPlnKwh !== '' ? Number(markupPlnKwh) : (current.tauronTariff?.markupPlnKwh ?? 0),
+        vatRate: vatRate != null && vatRate !== '' ? Number(vatRate) : (current.tauronTariff?.vatRate ?? 0.23),
+      },
+    };
+    try {
+      writeConfigFile(updated);
+      res.json({ success: true, message: 'Tauron tariff settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

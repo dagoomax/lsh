@@ -432,6 +432,15 @@ class DataStore extends EventEmitter {
           dailyEnergyKey: key('day_pv_energy'),
         };
       })(),
+      // TAURON dynamic tariff (PSE RCE index) — current PLN/kWh rate for the
+      // Energy tab's electricity-cost reading and solar-gain chart. Fixed
+      // key (unlike solaraccelerator above) since this tracks a public price
+      // index, not a per-install gateway.
+      tariff: v('tauron-tariff/pl/currentPrice') != null ? {
+        currentPrice: v('tauron-tariff/pl/currentPrice'),
+        currentPriceRce: v('tauron-tariff/pl/currentPriceRce'),
+        currency: 'PLN',
+      } : null,
     };
   }
 }
