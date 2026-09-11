@@ -20,7 +20,7 @@ const iconBtnStyle = {
   cursor: 'pointer',
 }
 
-export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, onOpenCssEditor, onOpenClaudeCode, pagingRoomCount, pagingMessageCount, onTogglePaging }) {
+export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, onOpenCssEditor, onOpenClaudeCode, onOpenTerminal, pagingRoomCount, pagingMessageCount, onTogglePaging }) {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
   })
@@ -36,6 +36,8 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
   // Show the link to any admin; a denied admin on remote access just sees
   // the page's own "not available" state instead of a dead link.
   const [showClaudeCodeLink, setShowClaudeCodeLink] = useState(false)
+  // Same reasoning as showClaudeCodeLink above, for the 'terminal' permission.
+  const [showTerminalLink, setShowTerminalLink] = useState(false)
   const [version, setVersion] = useState(null)
   useEffect(() => {
     Promise.all([
@@ -49,6 +51,7 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
       // needs the 'claudeCode' permission flag, granted per-user in
       // Settings → Security (and only while installer mode is on there).
       setShowClaudeCodeLink(isAdmin && !!me.data?.permissions?.claudeCode)
+      setShowTerminalLink(isAdmin && !!me.data?.permissions?.terminal)
       if (prefs?.data?.version) setVersion(prefs.data.version)
     })
   }, [])
@@ -122,6 +125,14 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
             e.preventDefault(); onOpenClaudeCode?.()
           }}>
             {gt('nav_claude_code', 'Claude Code')}
+          </a>
+        )}
+        {showTerminalLink && (
+          <a href="#" onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+            e.preventDefault(); onOpenTerminal?.()
+          }}>
+            {gt('nav_terminal', 'Terminal')}
           </a>
         )}
       </nav>

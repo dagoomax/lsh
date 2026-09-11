@@ -131,7 +131,7 @@ const auth = {
       // role:'admin', so defaulting these on here would let any web admin
       // self-grant flows/claudeCode by creating a second account — bypassing
       // the installerMode gate entirely.
-      permissions: { flows: false, claudeCode: false },
+      permissions: { flows: false, claudeCode: false, terminal: false },
       createdAt: new Date().toISOString(),
     };
     users.push(user);
@@ -165,6 +165,7 @@ const auth = {
       permissions: {
         flows: !!permissions?.flows,
         claudeCode: !!permissions?.claudeCode,
+        terminal: !!permissions?.terminal,
       },
     }));
   },
@@ -177,14 +178,20 @@ const auth = {
     return !!user?.permissions?.[key];
   },
 
-  // key must be 'flows' or 'claudeCode'; caller (requireInstallerMode in
-  // api-routes.js) is what actually gates who may call this.
+  // key must be 'flows', 'claudeCode' or 'terminal'; caller
+  // (requireInstallerMode in api-routes.js) is what actually gates who may
+  // call this.
   setPermission(userId, key, value) {
-    if (!['flows', 'claudeCode'].includes(key)) throw new Error(`Unknown permission '${key}'`);
+    if (!['flows', 'claudeCode', 'terminal'].includes(key)) throw new Error(`Unknown permission '${key}'`);
     const users = loadUsers();
     const user  = users.find(u => u.id === userId);
     if (!user) throw new Error('User not found');
-    user.permissions = { flows: !!user.permissions?.flows, claudeCode: !!user.permissions?.claudeCode, [key]: !!value };
+    user.permissions = {
+      flows: !!user.permissions?.flows,
+      claudeCode: !!user.permissions?.claudeCode,
+      terminal: !!user.permissions?.terminal,
+      [key]: !!value,
+    };
     saveUsers(users);
     return user.permissions;
   },

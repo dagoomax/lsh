@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import './styles/global.css'
 import { useLSH }            from './hooks/useLSH'
 import { usePaging }         from './hooks/usePaging'
@@ -14,6 +14,7 @@ import SettingsPage          from './components/settings/SettingsPage'
 import WallDashboard         from './components/WallDashboard'
 import CssEditorPage         from './components/CssEditorPage'
 import ClaudeCodePage        from './components/ClaudeCodePage'
+const TerminalPage = lazy(() => import('./components/TerminalPage'))
 
 // Single unified view: the "Rooms & Categories" device browser with the
 // Energy flow + relays rendered as the top section (see DeviceList). No more
@@ -23,7 +24,7 @@ export default function App() {
   const [locked, setLocked] = useState(() => localStorage.getItem('lsh-locked') === '1')
   const lock   = () => { localStorage.setItem('lsh-locked', '1'); setLocked(true) }
   const unlock = () => { localStorage.setItem('lsh-locked', '0'); setLocked(false) }
-  const [view, setView] = useState('dashboard') // 'dashboard' | 'settings' | 'wall' | 'css-editor' | 'claude-code'
+  const [view, setView] = useState('dashboard') // 'dashboard' | 'settings' | 'wall' | 'css-editor' | 'claude-code' | 'terminal'
   const paging = usePaging()
   const [pagingOpen, setPagingOpen] = useState(false)
 
@@ -67,6 +68,16 @@ export default function App() {
     )
   }
 
+  if (view === 'terminal') {
+    return (
+      <div style={{ height:'100%', background:'var(--bg)', overflow:'hidden' }}>
+        <Suspense fallback={<div style={{ padding: 24, color: 'var(--text3)' }}>Loading…</div>}>
+          <TerminalPage onClose={() => setView('dashboard')}/>
+        </Suspense>
+      </div>
+    )
+  }
+
   if (view === 'wall') {
     return <WallDashboard devices={devices} energy={energy} roomsMeta={roomsMeta} onClose={() => setView('dashboard')}/>
   }
@@ -77,7 +88,7 @@ export default function App() {
       <IncomingCall />
       <PagingPanel {...paging} open={pagingOpen} setOpen={setPagingOpen} anchorTop />
       <Header connection={connection} connected={connected} onLock={lock} onOpenSettings={() => setView('settings')} onOpenWall={() => setView('wall')}
-        onOpenCssEditor={() => setView('css-editor')} onOpenClaudeCode={() => setView('claude-code')}
+        onOpenCssEditor={() => setView('css-editor')} onOpenClaudeCode={() => setView('claude-code')} onOpenTerminal={() => setView('terminal')}
         pagingRoomCount={paging.rooms.length} pagingMessageCount={paging.messages.length} onTogglePaging={() => setPagingOpen(o => !o)} />
 
       <div style={{ flex:1, paddingTop:56, overflow:'hidden', display:'flex', flexDirection:'column' }}>

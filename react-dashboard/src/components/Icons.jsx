@@ -521,6 +521,16 @@ export function GWagenIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function TerminalIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <rect x="2" y="4" width="20" height="16" rx="2"/>
+      <path d="M6 9l4 3-4 3"/>
+      <path d="M12 15h6"/>
+    </svg>
+  )
+}
+
 export function RouterIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>

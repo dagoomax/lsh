@@ -24,6 +24,9 @@
     "model": "claude-opus-5",
     "workspaceId": ""
   },
+  "terminal": {
+    "enabled": false
+  },
   "vrm": {
     "email": "",
     "password": "",

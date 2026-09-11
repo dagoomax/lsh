@@ -1495,6 +1495,33 @@ feature in this app:
 Off (`enabled: false`) and unset by default — nothing calls out to Anthropic's API until you turn this on and
 supply a key.
 
+### `terminal`
+
+```json
+"terminal": {
+  "enabled": true
+}
+```
+
+A real interactive Linux shell (Header → **Terminal**, admin-only) streamed straight into the dashboard — a
+`node-pty` session run as this server's own OS user, piped over a dedicated `/terminal` Socket.IO namespace
+(`src/terminal-server.js`). No SSH client needed, but strictly more powerful than the `claudeCode` chat above: an
+**uncontained** shell, not confined to this repo — anything that OS user can do, this can do. Every one of
+`claudeCode`'s gates applies here too, plus two more:
+
+- **Localhost/LAN only**, **admin role required**, **per-user `terminal` permission required on top of admin**
+  (installer-mode-gated, same as `flows`/`claudeCode` — see `installerMode` below) — all identical to `claudeCode`.
+- **`enabled: false` by default at the config level, independent of the permission flag** — turning this on needs
+  both a filesystem edit here (or the equivalent toggle in Settings → Security, itself installer-mode-gated) *and*
+  a per-user grant; either alone isn't enough.
+- **No API-token bearer path.** `flows`/`claudeCode` treat a valid `POST /api/auth/tokens`-issued API token as
+  admin-equivalent, since minting one is already an admin-only action. A leaked machine token (handed to Loxone, a
+  webhook, …) must never be able to open an interactive shell, so the `/terminal` namespace only ever accepts a
+  real logged-in admin session (the `lsh-session` cookie) — checked fresh on every connection attempt, not just
+  once at login.
+
+Off (`enabled: false`) and unset by default.
+
 ### `installerMode`
 
 ```json
@@ -1502,14 +1529,15 @@ supply a key.
 ```
 
 A deliberately config-file-only escape hatch — no in-app toggle — that unlocks `PUT /api/auth/users/:id/permissions`
-in Settings → Security. That endpoint is the only way to grant the extra per-user `flows` and `claudeCode`
-permission flags (both introduced alongside the `claudeCode` feature above): admin role alone no longer implies
-access to either the Flow editor's save/delete actions or the Claude Code chat, on the reasoning that granting
-either should require someone with filesystem access to the box LSH runs on, not just a browser session.
+in Settings → Security. That endpoint is the only way to grant the extra per-user `flows`, `claudeCode`, and
+`terminal` permission flags (all introduced alongside their respective features above): admin role alone no longer
+implies access to the Flow editor's save/delete actions, the Claude Code chat, or the embedded terminal, on the
+reasoning that granting any of them should require someone with filesystem access to the box LSH runs on, not just
+a browser session. It also gates the Settings → Security "Embedded Terminal" toggle that flips `terminal.enabled`.
 
 Workflow: set `"installerMode": true`, grant the flags you need in Security (checkboxes next to each user), then
 set it back to `false` (or remove the key) — takes effect immediately, no restart, same as every other
-`config.json`-driven route. Existing users default both flags to `false`; `role: admin`/`viewer` is unaffected —
+`config.json`-driven route. Existing users default all flags to `false`; `role: admin`/`viewer` is unaffected —
 this is a layer on top, not a replacement.
 
 ### `virtual`

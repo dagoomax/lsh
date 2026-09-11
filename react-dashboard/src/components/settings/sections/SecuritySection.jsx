@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SettingsCard, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { ShieldIcon, RouterIcon } from '../../Icons'
+import { ShieldIcon, RouterIcon, TerminalIcon } from '../../Icons'
 import { gt } from '../../../i18n'
 
 // The single worst-case section in the classic page — 6 unrelated
@@ -21,6 +21,7 @@ export default function SecuritySection({ config }) {
         endpoint="/api/settings/dashboard-pin" placeholder="0000"/>
       <UsersCard/>
       <TokensCard/>
+      <TerminalCard terminal={config.terminal}/>
       <McpCard mcp={config.mcp}/>
       <HttpsCard server={config.server}/>
     </>
@@ -38,6 +39,33 @@ function McpCard({ mcp }) {
       <Toggle label="Enable MCP server" checked={enabled} onChange={setEnabled}/>
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy} onClick={() => save.save({ enabled })}>{gt('common.save', 'Save')}</Button>
+        <ResultBanner result={save.result}/>
+      </div>
+    </SettingsCard>
+  )
+}
+
+function TerminalCard({ terminal }) {
+  const [enabled, setEnabled] = useState(!!terminal?.enabled)
+  const [installerMode, setInstallerMode] = useState(false)
+  const save = useSettingsSave('/api/settings/terminal')
+
+  useEffect(() => {
+    fetch('/api/auth/users', { credentials: 'include' }).then(r => r.json())
+      .then(d => setInstallerMode(!!d.installerMode)).catch(() => {})
+  }, [])
+
+  return (
+    <SettingsCard icon={TerminalIcon} title="Embedded Terminal" badge={{ label: gt('common.optional', 'Optional') }}
+      desc="A real interactive Linux shell, run as this server's own OS user, streamed straight into the dashboard — no SSH client needed. Off by default: needs this toggle here, admin + the per-user 'Terminal' permission below (only grantable while installer mode is on), and localhost/LAN access — never reachable over remote access.">
+      <div className={`stg-banner ${installerMode ? 'ok' : ''}`} style={{ marginBottom: 4 }}>
+        {installerMode
+          ? '🔓 Installer mode is ON — this toggle is editable.'
+          : <>🔒 Installer mode is OFF. Set <code>"installerMode": true</code> in <code>config.json</code> to change it (no in-app toggle, by design).</>}
+      </div>
+      <Toggle label="Enable embedded terminal" checked={enabled} onChange={installerMode ? setEnabled : () => {}}/>
+      <div className="stg-actions">
+        <Button variant="primary" busy={save.busy} disabled={!installerMode} onClick={() => save.save({ enabled })}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>
       </div>
     </SettingsCard>
@@ -115,7 +143,7 @@ function UsersCard() {
 
   return (
     <SettingsCard title={gt('s.users', 'Users')}
-      desc="Flows and Claude Code need an extra permission beyond Admin, shown below each user — granting it requires installer mode.">
+      desc="Flows, Claude Code, and Terminal need an extra permission beyond Admin, shown below each user — granting it requires installer mode.">
       <div className={`stg-banner ${installerMode ? 'ok' : ''}`} style={{ marginBottom: 4 }}>
         {installerMode
           ? '🔓 Installer mode is ON — permission checkboxes below are editable.'
@@ -137,6 +165,11 @@ function UsersCard() {
               <input type="checkbox" className="stg-checkbox" checked={!!u.permissions?.claudeCode} disabled={!installerMode}
                 onChange={(e) => togglePermission(u.id, 'claudeCode', e.target.checked)}/>
               Claude Code
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)' }}>
+              <input type="checkbox" className="stg-checkbox" checked={!!u.permissions?.terminal} disabled={!installerMode}
+                onChange={(e) => togglePermission(u.id, 'terminal', e.target.checked)}/>
+              Terminal
             </label>
             <button className="stg-token-delete" onClick={() => removeUser(u.id)}>✕</button>
           </div>

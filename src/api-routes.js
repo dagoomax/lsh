@@ -170,9 +170,13 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     // instead of waiting for the session to expire. API tokens have no
     // underlying user record; they're already admin-equivalent everywhere
     // (see requirePermission above), so report both capabilities as granted.
+    // Note: 'terminal' is deliberately NOT granted here for the api-token
+    // identity — see the no-bearer-token comment at the top of
+    // src/terminal-server.js. An API token stays admin-equivalent for
+    // flows/claudeCode but never for the interactive shell.
     const permissions = req.user.id === 'api-token'
-      ? { flows: true, claudeCode: true }
-      : (auth?.getUsers().find((u) => u.id === req.user.id)?.permissions || { flows: false, claudeCode: false });
+      ? { flows: true, claudeCode: true, terminal: false }
+      : (auth?.getUsers().find((u) => u.id === req.user.id)?.permissions || { flows: false, claudeCode: false, terminal: false });
     res.json({ success: true, data: { ...req.user, permissions } });
   });
 
@@ -205,11 +209,12 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // and requireInstallerMode above for why both gates are needed here.
   router.put('/auth/users/:id/permissions', requireAdmin, requireInstallerMode, (req, res) => {
     if (!auth) return res.status(503).json({ success: false, error: 'Auth not configured' });
-    const { flows, claudeCode } = req.body || {};
+    const { flows, claudeCode, terminal } = req.body || {};
     try {
       let permissions;
       if (flows !== undefined) permissions = auth.setPermission(req.params.id, 'flows', flows);
       if (claudeCode !== undefined) permissions = auth.setPermission(req.params.id, 'claudeCode', claudeCode);
+      if (terminal !== undefined) permissions = auth.setPermission(req.params.id, 'terminal', terminal);
       res.json({ success: true, data: permissions });
     } catch (err) {
       res.status(400).json({ success: false, error: err.message });
@@ -2848,6 +2853,38 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   router.post('/claude-code/reset', requireLocalAdmin, (req, res) => {
     claudeCode.resetConversation();
     res.sendStatus(204);
+  });
+
+  // ── Embedded Linux terminal ──────────────────────────────
+  // Real interactive shell (see src/terminal-server.js — a Socket.IO
+  // namespace at '/terminal', not a route below) — admin-only, 'terminal'
+  // permission-flag-only (installer-mode-granted, see above), local/LAN-only,
+  // AND config.terminal.enabled must be explicitly turned on. Strictly more
+  // powerful than the Claude Code chat above (an uncontained shell, not
+  // confined to this repo), so it gets every one of that feature's gates
+  // plus the enabled flag — see src/terminal-server.js for the full
+  // reasoning. This route only reports status; the socket namespace itself
+  // re-checks every gate independently on connection.
+  const terminalServer = require('./terminal-server');
+  const requireTerminalAccess = [requireAdmin, requirePermission('terminal'), (req, res, next) => {
+    if (!terminalServer.isLocalRequest(req)) {
+      return res.status(403).json({ success: false, error: 'Terminal is only reachable from localhost/LAN, not over remote access' });
+    }
+    next();
+  }];
+
+  router.get('/terminal/status', requireTerminalAccess, (req, res) => {
+    res.json({ success: true, data: { enabled: terminalServer.readTerminalConfig().enabled } });
+  });
+
+  router.post('/settings/terminal', requireAdmin, requireInstallerMode, (req, res) => {
+    const current = readConfigFile();
+    try {
+      writeConfigFile({ ...current, terminal: { enabled: !!(req.body || {}).enabled } });
+      res.json({ success: true, message: 'Terminal setting saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   // Note: the public (unauthenticated) GET /custom.css this settings key

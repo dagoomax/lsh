@@ -417,6 +417,7 @@ async function main() {
   }
 
   const io = setupWebSocket(mainServer, store, sensorRegistry, connectionMgr, auth, sipServer, pagingManager);
+  require('./src/terminal-server').attachTerminalNamespace(io, auth);
 
   if (pagingManager) pagingManager.setIo(io);
 
