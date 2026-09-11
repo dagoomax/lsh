@@ -323,6 +323,39 @@
       </div>
     </section>
 
+    <!-- Sofar Solar -->
+    <section class="card settings-card" data-category="energy" data-title="Sofar Solar K-TLX inverter LSW-3 Solarman">
+      <h2>Sofar Solar <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Reads a Sofar Solar K-TLX grid-tie string inverter directly through its LSW-3 WiFi data-logger dongle — no cloud account, no API key.</p>
+
+      <div class="form-row">
+        <label for="sofar-host">Dongle IP / Hostname</label>
+        <input type="text" id="sofar-host" placeholder="192.168.1.95">
+      </div>
+      <div class="form-row">
+        <label for="sofar-port">Port <span class="hint">(default 8899, rarely changed)</span></label>
+        <input type="number" id="sofar-port" placeholder="8899" style="max-width:120px">
+      </div>
+      <div class="form-row">
+        <label for="sofar-serial">Data Logger Serial Number <span class="hint">(printed on the dongle's label — not the inverter's serial)</span></label>
+        <input type="text" id="sofar-serial" placeholder="1234567890">
+      </div>
+      <div class="form-row">
+        <label for="sofar-slave-id">Modbus Slave ID <span class="hint">(default 1, matches virtually every installation)</span></label>
+        <input type="number" id="sofar-slave-id" placeholder="1" style="max-width:120px">
+      </div>
+      <div class="form-row">
+        <label for="sofar-poll">Poll interval <span class="hint">(seconds)</span></label>
+        <input type="number" id="sofar-poll" min="3" placeholder="10" style="max-width:120px">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" id="btn-test-sofar" data-i18n="common.test">Test Connection</button>
+        <button class="btn btn-primary" id="btn-save-sofar" data-i18n="common.save">Save</button>
+        <span class="test-result" id="sofar-test-result"></span>
+      </div>
+    </section>
+
     <!-- SmartThings -->
     <section class="card settings-card" data-category="smarthome" data-title="Samsung SmartThings">
       <h2><span data-i18n="s.st_title">Samsung SmartThings</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>

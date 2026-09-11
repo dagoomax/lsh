@@ -400,6 +400,24 @@ Ported from [aLAN-LDZ/solaraccelerator_connect_ha](https://github.com/aLAN-LDZ/s
 
 Polling interval isn't a setting here either, same reasoning as `vitodens`'s rate limit but for a different cause: the gateway reports its own Modbus poll interval (`poll_interval_ms`) and this client matches it automatically — polling faster just re-reads the same RAM snapshot, slower loses readings. A lost request every so often is treated as normal Wi-Fi flakiness (matching the source project's stated tolerances): a sensor only goes blank after 3 consecutive polls missing that key, and the whole device only reports offline after 3 consecutive failed poll cycles.
 
+### `sofar`
+
+```json
+"sofar": {
+  "host": "192.168.1.95",
+  "port": 8899,
+  "serialNumber": "1234567890",
+  "slaveId": 1,
+  "pollInterval": 10
+}
+```
+
+Reads a **Sofar Solar K-TLX** grid-tie string inverter directly through its **LSW-3 WiFi data-logger dongle** — no cloud account, no API key. The dongle speaks the "Solarman V5" protocol on `port` (default 8899, rarely changed): a thin proprietary frame wrapping a standard Modbus RTU request/response to the inverter. `serialNumber` is the data logger's own serial (printed on its label / visible in its setup AP page) — not the inverter's serial, and not optional: the dongle validates every request against it. `slaveId` is the inverter's Modbus address (default 1, matches virtually every installation).
+
+Frame layout ported from [jmccrohan/pysolarmanv5](https://github.com/jmccrohan/pysolarmanv5) (the reference implementation many Home Assistant Deye/Sofar/Growatt integrations build on); the register map (addresses, scaling, status/fault enums) ported from [MichaluxPL/Sofar_LSW3](https://github.com/MichaluxPL/Sofar_LSW3)'s `SOFARMap.xml`. **Untested against a real inverter from this codebase** — but cross-checked against a real captured response frame published in that same project's README: the checksum, control code, frame offsets, and Modbus function code all validate cleanly against it, and the decoded values (grid frequency, temperatures, reactive power sign) land in the same range as that project's own independently-captured sample output.
+
+**Readings**: inverter status (enum) and fault code, PV1/PV2 voltage/current/power, output active/reactive power, grid frequency, per-phase (L1/L2/L3) voltage/current, today/total production (kWh), today/total generation time, module/inner temperature, and bus voltage — registers `0x0000`-`0x0027` in one poll. Other Sofar lines (hybrid HYD-xK-ES, three-phase KTL) are known to use different register numbers and are **not** covered by this client.
+
 ### `tauronTariff`
 
 ```json

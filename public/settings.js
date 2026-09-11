@@ -52,6 +52,13 @@ async function loadSettings() {
     setVal('se-site-id', data.solaredge?.siteId || '');
     setVal('se-api-key', data.solaredge?.apiKey || '');
 
+    // Sofar Solar
+    setVal('sofar-host', data.sofar?.host || '');
+    setVal('sofar-port', data.sofar?.port || 8899);
+    setVal('sofar-serial', data.sofar?.serialNumber || '');
+    setVal('sofar-slave-id', data.sofar?.slaveId || 1);
+    setVal('sofar-poll', data.sofar?.pollInterval || 10);
+
     // SmartThings
     setVal('st-token', data.smartthings?.token || '');
     setVal('st-device-ids', (data.smartthings?.deviceIds || []).join(', '));
@@ -3151,6 +3158,68 @@ document.getElementById('btn-save-solaredge').addEventListener('click', async ()
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ siteId: getVal('se-site-id'), apiKey: getVal('se-api-key') }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Sofar Solar test + save ─────────────────────────────────────────────────
+
+document.getElementById('btn-test-sofar').addEventListener('click', async () => {
+  const resultEl = document.getElementById('sofar-test-result');
+  const host = getVal('sofar-host');
+  const serialNumber = getVal('sofar-serial');
+
+  if (!host || !serialNumber) {
+    resultEl.textContent = 'Enter the dongle IP and serial number first';
+    resultEl.className = 'test-result err';
+    return;
+  }
+
+  resultEl.textContent = 'Testing…';
+  resultEl.className = 'test-result loading';
+
+  try {
+    const res = await fetch('/api/settings/test-sofar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host, serialNumber,
+        port: getVal('sofar-port'),
+        slaveId: getVal('sofar-slave-id'),
+      }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  }
+});
+
+document.getElementById('btn-save-sofar').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-sofar');
+  const resultEl = document.getElementById('sofar-test-result');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/settings/sofar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host: getVal('sofar-host'),
+        port: getVal('sofar-port'),
+        serialNumber: getVal('sofar-serial'),
+        slaveId: getVal('sofar-slave-id'),
+        pollInterval: getVal('sofar-poll'),
+      }),
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;

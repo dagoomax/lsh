@@ -86,6 +86,13 @@
     "port": "",
     "password": ""
   },
+  "sofar": {
+    "host": "",
+    "port": 8899,
+    "serialNumber": "",
+    "slaveId": 1,
+    "pollInterval": 10
+  },
   "tauronTariff": {
     "enabled": false,
     "markupPlnKwh": 0,

@@ -9,6 +9,7 @@ export default function EnergySection({ config, reload }) {
     <>
       <MongoCard mongo={config.mongo} reload={reload}/>
       <SolarEdgeCard solaredge={config.solaredge} reload={reload}/>
+      <SofarCard sofar={config.sofar} reload={reload}/>
       <SolarAcceleratorCard solaraccelerator={config.solaraccelerator} reload={reload}/>
       <EvVisualCard evVisual={config.evVisual} reload={reload}/>
     </>
@@ -50,6 +51,32 @@ function SolarEdgeCard({ solaredge, reload }) {
       <div className="stg-actions">
         <Button variant="secondary" busy={test.busy} onClick={() => test.save({ siteId, apiKey })}>{gt('common.test', 'Test Connection')}</Button>
         <Button variant="primary" busy={save.busy} onClick={() => save.save({ siteId, apiKey }).then(reload)}>{gt('common.save', 'Save')}</Button>
+        <ResultBanner result={test.result || save.result}/>
+      </div>
+    </SettingsCard>
+  )
+}
+
+function SofarCard({ sofar, reload }) {
+  const [host, setHost] = useState(sofar?.host || '')
+  const [port, setPort] = useState(sofar?.port || 8899)
+  const [serialNumber, setSerialNumber] = useState(sofar?.serialNumber || '')
+  const [slaveId, setSlaveId] = useState(sofar?.slaveId || 1)
+  const [pollInterval, setPollInterval] = useState(sofar?.pollInterval || 10)
+  const test = useSettingsSave('/api/settings/test-sofar')
+  const save = useSettingsSave('/api/settings/sofar')
+
+  return (
+    <SettingsCard icon={SolarPanelIcon} title="Sofar Solar" badge={{ label: gt('common.optional', 'Optional') }}
+      desc="Reads a Sofar Solar K-TLX grid-tie string inverter directly through its LSW-3 WiFi data-logger dongle — no cloud account, no API key.">
+      <Field label="Dongle IP / Hostname" value={host} onChange={setHost} placeholder="192.168.1.95"/>
+      <Field label="Port" hint="(default 8899, rarely changed)" value={port} onChange={setPort} placeholder="8899"/>
+      <Field label="Data Logger Serial Number" hint="(printed on the dongle's label — not the inverter's serial)" value={serialNumber} onChange={setSerialNumber} placeholder="1234567890"/>
+      <Field label="Modbus Slave ID" hint="(default 1, matches virtually every installation)" value={slaveId} onChange={setSlaveId} placeholder="1"/>
+      <Field label="Poll interval" hint="(seconds)" value={pollInterval} onChange={setPollInterval} placeholder="10"/>
+      <div className="stg-actions">
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ host, port, serialNumber, slaveId })}>{gt('common.test', 'Test Connection')}</Button>
+        <Button variant="primary" busy={save.busy} onClick={() => save.save({ host, port, serialNumber, slaveId, pollInterval }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={test.result || save.result}/>
       </div>
     </SettingsCard>

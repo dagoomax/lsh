@@ -12,6 +12,7 @@ reference of every one).
 | **Victron Energy** (Venus OS / Cerbo GX) | `mqtt` | Local MQTT, first-class; auto-fallback to VRM |
 | **Victron VRM** (cloud) | `vrm` | Cloud fallback when local MQTT is unreachable |
 | **SolarEdge** | `solaredge` | Cloud monitoring API (production, battery, grid) |
+| **Sofar Solar** (K-TLX) | `sofar` | Local, via LSW-3/Solarman WiFi dongle — no cloud, no API key |
 
 ## Smart-home hubs & controllers
 

@@ -3,7 +3,7 @@
   "info": {
     "title": "LSH — Lightweight Smart Home API",
     "version": "1.12.0",
-    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 297 endpoints.",
+    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 308 endpoints.",
     "license": {
       "name": "Repository",
       "url": "https://github.com/dagoomax/lsh"
@@ -39,6 +39,10 @@
     {
       "name": "Uploaded furniture pictures for the home plan",
       "description": "2 endpoints"
+    },
+    {
+      "name": "Imported 3D floor-plan model (GLB or OBJ)",
+      "description": "4 endpoints"
     },
     {
       "name": "Home plan (isometric floor plan for the dashboard)",
@@ -86,7 +90,7 @@
     },
     {
       "name": "SIP doorbell intercom",
-      "description": "8 endpoints"
+      "description": "9 endpoints"
     },
     {
       "name": "Room-to-room paging (intercom)",
@@ -134,6 +138,14 @@
     },
     {
       "name": "Solar Accelerator Connect",
+      "description": "2 endpoints"
+    },
+    {
+      "name": "Sofar Solar (K-TLX via LSW-3 dongle)",
+      "description": "2 endpoints"
+    },
+    {
+      "name": "TAURON dynamic tariff (PSE RCE index)",
       "description": "2 endpoints"
     },
     {
@@ -242,7 +254,7 @@
     },
     {
       "name": "Loxone",
-      "description": "24 endpoints"
+      "description": "26 endpoints"
     },
     {
       "name": "Waveshare Modbus TCP",
@@ -1643,6 +1655,170 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plan-model/upload": {
+      "post": {
+        "tags": [
+          "Imported 3D floor-plan model (GLB or OBJ)"
+        ],
+        "summary": "POST /plan-model/upload",
+        "operationId": "post_plan_model_upload",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plan-model/file/{file}": {
+      "get": {
+        "tags": [
+          "Imported 3D floor-plan model (GLB or OBJ)"
+        ],
+        "summary": "GET /plan-model/file/:file",
+        "operationId": "get_plan_model_file_file",
+        "parameters": [
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plan-model/transform": {
+      "post": {
+        "tags": [
+          "Imported 3D floor-plan model (GLB or OBJ)"
+        ],
+        "summary": "POST /plan-model/transform",
+        "operationId": "post_plan_model_transform",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plan-model/remove": {
+      "post": {
+        "tags": [
+          "Imported 3D floor-plan model (GLB or OBJ)"
+        ],
+        "summary": "POST /plan-model/remove",
+        "operationId": "post_plan_model_remove",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
               }
             }
           }
@@ -3543,6 +3719,37 @@
         ],
         "summary": "GET /openweather/forecast",
         "operationId": "get_openweather_forecast",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tauron-tariff/hourly": {
+      "get": {
+        "tags": [
+          "SIP doorbell intercom"
+        ],
+        "summary": "GET /tauron-tariff/hourly",
+        "operationId": "get_tauron_tariff_hourly",
         "responses": {
           "200": {
             "description": "Success",
@@ -6515,6 +6722,170 @@
         ],
         "summary": "POST /settings/solaraccelerator",
         "operationId": "post_settings_solaraccelerator",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-sofar": {
+      "post": {
+        "tags": [
+          "Sofar Solar (K-TLX via LSW-3 dongle)"
+        ],
+        "summary": "POST /settings/test-sofar",
+        "operationId": "post_settings_test_sofar",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/sofar": {
+      "post": {
+        "tags": [
+          "Sofar Solar (K-TLX via LSW-3 dongle)"
+        ],
+        "summary": "POST /settings/sofar",
+        "operationId": "post_settings_sofar",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-tauron-tariff": {
+      "post": {
+        "tags": [
+          "TAURON dynamic tariff (PSE RCE index)"
+        ],
+        "summary": "POST /settings/test-tauron-tariff",
+        "operationId": "post_settings_test_tauron_tariff",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/tauron-tariff": {
+      "post": {
+        "tags": [
+          "TAURON dynamic tariff (PSE RCE index)"
+        ],
+        "summary": "POST /settings/tauron-tariff",
+        "operationId": "post_settings_tauron_tariff",
         "responses": {
           "200": {
             "description": "Success",
@@ -9667,6 +10038,88 @@
         ],
         "summary": "POST /settings/loxone-out",
         "operationId": "post_settings_loxone_out",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-loxone-weather": {
+      "post": {
+        "tags": [
+          "Loxone"
+        ],
+        "summary": "POST /settings/test-loxone-weather",
+        "operationId": "post_settings_test_loxone_weather",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/loxone-weather": {
+      "post": {
+        "tags": [
+          "Loxone"
+        ],
+        "summary": "POST /settings/loxone-weather",
+        "operationId": "post_settings_loxone_weather",
         "responses": {
           "200": {
             "description": "Success",

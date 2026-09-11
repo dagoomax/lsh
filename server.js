@@ -531,6 +531,16 @@ async function main() {
     }
   }
 
+  // Start Sofar Solar inverter client if configured (K-TLX series via its
+  // local LSW-3/Solarman WiFi dongle — no cloud, no API key)
+  if (config.sofar?.host) {
+    const SofarClient = tryRequire('./src/sofar-client');
+    if (SofarClient) {
+      const sofar = new SofarClient(config, store, sensorRegistry);
+      sofar.start().catch((err) => console.error(`[Sofar] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Tauron dynamic-tariff tracker if enabled — a public, no-auth PSE
   // (Polish grid operator) price index that TAURON's G14dynamic tariff
   // settles against, used for the Energy tab's electricity-cost/solar-gain
