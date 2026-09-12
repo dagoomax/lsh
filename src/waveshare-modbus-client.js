@@ -85,7 +85,13 @@ class ModbusDevice {
     this.host       = cfg.host;
     this.port       = cfg.port || 502;
     this.slaveId    = cfg.slaveId || 1;
-    this.relayCount = Math.min(cfg.relayCount || 8, 64);
+    // Coerce anything non-positive/non-finite (e.g. a stray negative or NaN
+    // from a malformed config) to the default instead of flowing into a
+    // Modbus quantity field that must be a positive 16-bit value — an
+    // out-of-range value there throws inside _poll()'s try block and used to
+    // be swallowed by its catch, silently killing polling forever.
+    const rc = Number(cfg.relayCount);
+    this.relayCount = Number.isFinite(rc) && rc > 0 ? Math.min(Math.floor(rc), 64) : 8;
     this.name       = cfg.name || `Waveshare ${this.host}`;
     this._onState   = onState; // (index, on) => void
     this._socket    = null;
@@ -101,6 +107,11 @@ class ModbusDevice {
   stop() {
     clearTimeout(this._reconnTimer);
     clearInterval(this._pollTimer);
+    if (this._pending) {
+      clearTimeout(this._pending.timer);
+      this._pending.reject(new Error('Device stopped'));
+      this._pending = null;
+    }
     if (this._socket) { this._socket.destroy(); this._socket = null; }
   }
 
@@ -117,7 +128,11 @@ class ModbusDevice {
     this._socket = sock;
     this._rxBuf  = Buffer.alloc(0);
 
-    sock.setTimeout(TIMEOUT_MS);
+    // No blanket sock.setTimeout() here: it fires on plain idle time between
+    // polls (POLL_MS is longer than a request round-trip), not just on a
+    // stuck request, which would tear down and reconnect a perfectly healthy
+    // connection every cycle. _request()'s own per-call timer below already
+    // catches an unresponsive request and destroys the socket.
     sock.connect(this.port, this.host, () => {
       this.connected = true;
       platformStatus.set(`waveshare-${this.host}`, true);
@@ -147,7 +162,6 @@ class ModbusDevice {
       this._reconnTimer = setTimeout(() => this._connect(), RECONNECT_MS);
     };
 
-    sock.on('timeout', () => cleanup('Timeout'));
     sock.on('error',   (err) => cleanup(err.message));
     sock.on('close',   () => cleanup('Connection closed'));
   }
@@ -200,10 +214,19 @@ class ModbusDevice {
       this._rxBuf = this._rxBuf.slice(total);
 
       if (this._pending) {
-        const { resolve, timer } = this._pending;
+        const { resolve, reject, timer } = this._pending;
         this._pending = null;
         clearTimeout(timer);
-        resolve(frame.slice(7)); // return PDU (after MBAP + unit ID)
+        const pdu = frame.slice(7); // PDU (after MBAP + unit ID)
+        // Exception response: function code with the high bit set, followed
+        // by a single exception-code byte — not a normal 2-byte-per-relay
+        // payload. Left undetected, parseCoils() would read past this short
+        // PDU and misreport every relay as off instead of surfacing the error.
+        if (pdu[0] & 0x80) {
+          reject(new Error(`Modbus exception 0x${(pdu[1] ?? 0).toString(16)} on function 0x${(pdu[0] & 0x7f).toString(16)}`));
+        } else {
+          resolve(pdu);
+        }
       }
     }
   }
@@ -227,25 +250,27 @@ class WaveshareModbusClient {
     }
   }
 
+  stop() {
+    for (const dev of this._devices) dev.stop();
+    this._devices = [];
+  }
+
   _addDevice(cfg) {
     const key = `waveshare/${cfg.host.replace(/\./g, '_')}`;
+    // Two config entries for the same host would otherwise both start their
+    // own live socket/poll loop — registerDevice() below silently no-ops the
+    // second registry entry, but nothing stopped the second connection
+    // itself from running unmanaged alongside the first.
+    if (this._registry.devices.has(key)) {
+      console.warn(`[Waveshare] Duplicate config entry for ${cfg.host} — skipping`);
+      return;
+    }
 
     const dev = new ModbusDevice(cfg, (index, on) => {
-      const path    = `relay_${index}`;
-      const fullKey = `${key}/${path}`;
-      this._store.set(fullKey, on ? 1 : 0);
-
-      const regDev = this._registry.devices.get(key);
-      if (regDev) {
-        const sensor = regDev.sensors.find(s => s.path === path);
-        if (sensor) {
-          this._registry.emit('sensor-update', { deviceKey: key, sensorPath: path, value: on ? 1 : 0 });
-        }
-      }
+      this._store.set(`${key}/relay_${index}`, on ? 1 : 0);
     });
 
-    const relayCount = Math.min(cfg.relayCount || 8, 64);
-    const sensors = Array.from({ length: relayCount }, (_, i) => ({
+    const sensors = Array.from({ length: dev.relayCount }, (_, i) => ({
       path:        `relay_${i}`,
       name:        `Relay ${i + 1}`,
       format:      'on-off',
@@ -274,7 +299,7 @@ class WaveshareModbusClient {
 
     dev.start();
     this._devices.push(dev);
-    console.log(`[Waveshare] Starting: ${cfg.name || cfg.host} (${cfg.host}:${cfg.port || 502}, slave ${cfg.slaveId || 1}, ${relayCount} relays)`);
+    console.log(`[Waveshare] Starting: ${cfg.name || cfg.host} (${cfg.host}:${cfg.port || 502}, slave ${cfg.slaveId || 1}, ${dev.relayCount} relays)`);
   }
 }
 
