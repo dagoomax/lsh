@@ -18,6 +18,7 @@
 - [HomeKit](HomeKit)
 - [Cameras & SIP](Cameras-and-SIP)
 - [Loxone Integration](Loxone-Integration)
+- [Export to Loxone](Export-to-Loxone)
 - [UniFi Door Station](UniFi-Door-Station)
 
 **Security & Deploy**

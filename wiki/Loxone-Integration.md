@@ -1,6 +1,6 @@
 # Loxone Integration
 
-‹ [Home](Home) · [REST API](REST-API) · [UniFi Door Station](UniFi-Door-Station) ›
+‹ [Home](Home) · [REST API](REST-API) · [Export to Loxone](Export-to-Loxone) · [UniFi Door Station](UniFi-Door-Station) ›
 
 LSH bridges to a Loxone Miniserver **both ways**:
 
@@ -11,7 +11,7 @@ LSH bridges to a Loxone Miniserver **both ways**:
 | LSH → Loxone (feedback, push) | LSH pushes to Miniserver **Virtual Inputs** | `loxoneOut` config → `/dev/sps/io/<VI>/<value>` |
 | Miniserver → LSH (inbound mirror) | LSH WebSocket client mirrors Loxone controls | `loxone` config |
 
-See [Configuration](Configuration) for the `loxone` (inbound) and `loxoneOut` (push) config sections.
+See [Configuration](Configuration) for the `loxone` (inbound) and `loxoneOut` (push) config sections. For a step-by-step walkthrough of just the export direction (LSH → Loxone), see [Export to Loxone](Export-to-Loxone).
 
 ---
 
