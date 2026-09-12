@@ -215,6 +215,16 @@ Open `http://localhost:3001` in your browser. On first run you will be redirecte
 
 > **Tip:** Every setting is available in the **Settings** page inside the UI. You rarely need to edit `config.json` by hand after initial setup.
 
+### Linux (automated install)
+
+For a fresh Debian/Ubuntu/Raspberry Pi OS box, [`scripts/install-linux.sh`](scripts/install-linux.sh) does the Quick Start steps above for you, plus Node.js + build tools, PM2, and a systemd service so it survives a reboot — the same kind of setup this app actually runs on in production. Run it over SSH on the target machine:
+
+```bash
+ssh you@target-box 'bash -s' < scripts/install-linux.sh
+```
+
+Safe to re-run (idempotent — pulls latest instead of re-cloning, won't touch an existing `config.json`). See the script's own header comment for the env vars it accepts (`REPO_URL`, `INSTALL_DIR`, `NODE_MAJOR`). The equivalent for an Android tablet is [`scripts/install-android-termux.sh`](scripts/install-android-termux.sh) (see [`docs/ANDROID-TABLET-INSTALL.md`](docs/ANDROID-TABLET-INSTALL.md)).
+
 ### Docker
 
 ```bash
@@ -249,7 +259,9 @@ pm2 save                          # remember the process list
 pm2 startup                       # print the command to enable boot-time start (run it once)
 ```
 
-The app is registered under the name **`lsh`** in fork mode (single instance — the server binds fixed HTTP(S)/HomeKit/RTSP ports and holds long-lived MQTT/WebSocket connections, so cluster mode would create instances fighting over the same ports). It restarts automatically and is recycled if it exceeds 300 MB of RAM.
+The app is registered under the name **`lsh`** in fork mode (single instance — the server binds fixed HTTP(S)/HomeKit/RTSP ports and holds long-lived MQTT/WebSocket connections, so cluster mode would create instances fighting over the same ports). It restarts automatically and is recycled if it exceeds 1 GB of RAM (raised from an earlier 300 MB — the optional object-detection module's TensorFlow.js/COCO-SSD backend adds a large fixed memory floor once it loads, which was tripping constant restarts at the old limit).
+
+> **Tip:** [`scripts/install-linux.sh`](scripts/install-linux.sh) wraps this whole section (installing PM2, starting it, and registering the systemd boot service) for a fresh Linux box — see Quick Start above.
 
 Convenience `npm` scripts wrap the common PM2 commands:
 
