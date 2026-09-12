@@ -225,6 +225,8 @@ ssh you@target-box 'bash -s' < scripts/install-linux.sh
 
 Safe to re-run (idempotent — pulls latest instead of re-cloning, won't touch an existing `config.json`). See the script's own header comment for the env vars it accepts (`REPO_URL`, `INSTALL_DIR`, `NODE_MAJOR`). The equivalent for an Android tablet is [`scripts/install-android-termux.sh`](scripts/install-android-termux.sh) (see [`docs/ANDROID-TABLET-INSTALL.md`](docs/ANDROID-TABLET-INSTALL.md)).
 
+Once it's installed, [`scripts/update-linux.sh`](scripts/update-linux.sh) is the repeatable version of the manual "git pull, npm install if needed, pm2 restart" deploy flow — run it from inside the repo (`PM2_APP_NAME=lsh` by default; override if yours runs under a different PM2 name). It aborts instead of pulling over uncommitted local changes to tracked files.
+
 ### Docker
 
 ```bash
