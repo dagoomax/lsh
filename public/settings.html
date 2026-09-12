@@ -1655,6 +1655,20 @@
       </div>
     </section>
 
+    <!-- Tedee Bridge -->
+    <section class="card settings-card" data-category="security" data-title="Tedee smart lock Bridge local API">
+      <h2>Tedee Smart Lock <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Controls Tedee smart locks through a Tedee Bridge's local REST API — no cloud round-trip for lock control. Enable it in the Tedee app first (select the Bridge → Settings → API → toggle on), which is also where the API token is shown.</p>
+
+      <div id="tedee-devices-list"></div>
+      <button class="btn btn-secondary" id="btn-add-tedee" data-i18n="s.tedee_add">+ Add Bridge</button>
+
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn btn-primary" id="btn-save-tedee" data-i18n="common.save_devices">Save Devices</button>
+        <span class="test-result" id="tedee-save-result"></span>
+      </div>
+    </section>
+
     <!-- Aeotec 360 Camera -->
     <section class="card settings-card" data-category="cameras" data-title="Aeotec 360 camera RTSP snapshot">
       <h2><span data-i18n="s.aeotec_title">Aeotec 360 Camera</span> <span class="badge" data-i18n="common.optional">Optional</span></h2>

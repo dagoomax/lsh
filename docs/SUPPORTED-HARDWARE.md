@@ -70,6 +70,7 @@ reference of every one).
 | **Satel INTEGRA** | `satel` | Alarm panel — zones, outputs, partitions (TCP) |
 | **UniFi Protect** | `unifi` | Cameras, motion/contact sensors, doorbell (Integration API + event WebSocket) |
 | **UniFi Access** | `unifiAccess` | Door controllers — lock/unlock, door status |
+| **Tedee** | `tedee` | Smart locks via Bridge's local REST API — no cloud |
 | **Aqara / Xiaomi** | `aqara` | Gateway sensors |
 
 ## Cameras

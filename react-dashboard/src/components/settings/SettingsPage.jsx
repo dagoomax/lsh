@@ -35,6 +35,7 @@ import EsphomeSection from './sections/EsphomeSection'
 import BroadlinkSection from './sections/BroadlinkSection'
 import WaveshareSection from './sections/WaveshareSection'
 import SatelSection from './sections/SatelSection'
+import TedeeSection from './sections/TedeeSection'
 import SipSection from './sections/SipSection'
 import PagingSection from './sections/PagingSection'
 import SystemMiscSection from './sections/SystemMiscSection'
@@ -84,6 +85,7 @@ const SECTION_COMPONENTS = {
   broadlink: BroadlinkSection,
   waveshare: WaveshareSection,
   satel: SatelSection,
+  tedee: TedeeSection,
   sip: SipSection,
   paging: PagingSection,
   'system-misc': SystemMiscSection,

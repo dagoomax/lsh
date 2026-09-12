@@ -279,6 +279,11 @@
       { "name": "Gate Controller", "host": "192.168.1.x", "port": 502, "slaveId": 1, "relayCount": 8 }
     ]
   },
+  "tedee": {
+    "devices": [
+      { "name": "Front Door Bridge", "host": "192.168.1.x", "apiToken": "", "pollInterval": 5 }
+    ]
+  },
   "dirigera": {
     "host": "192.168.x.x",
     "token": ""

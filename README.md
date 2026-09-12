@@ -128,7 +128,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), generic Modbus TCP/RTU, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Google Home / Nest speakers and displays, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), generic Modbus TCP/RTU, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, Tedee smart locks, Sofar Solar inverters, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Google Home / Nest speakers and displays, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -1993,6 +1993,24 @@ Each relay (`relayCount` of them, per device) is registered as an independent co
 
 ---
 
+### `tedee`
+
+```json
+"tedee": {
+  "devices": [
+    { "name": "Front Door Bridge", "host": "192.168.1.x", "apiToken": "", "pollInterval": 5 }
+  ]
+}
+```
+
+Controls **Tedee smart locks** through a **Tedee Bridge**'s local REST API — no cloud round-trip for lock control. Enable it first in the Tedee mobile app (select the Bridge → **Settings** → **API** → toggle on), which is also where `apiToken` is shown; `host` is the Bridge's local IP (also shown there).
+
+Each config entry is one physical Bridge; a Bridge with several paired locks exposes every one of them as its own controllable device (`GET /lock` returns them all in a single poll, every `pollInterval` seconds). Each lock gets a controllable **Lock** toggle (HomeKit-exposed as a real Lock accessory, not a generic switch) plus read-only **Status**, **Battery**, **Door**, and **Jammed** sensors.
+
+Untested against real hardware from this codebase — implemented against Tedee's own published [Bridge API reference](https://docs.tedee.com/bridge-api) (OpenAPI spec + webhook event docs), not guessed.
+
+---
+
 ### `smartbob`
 
 ```json
@@ -3701,6 +3719,7 @@ The `:key` uses `/` separators — use the exact key returned by `GET /api/devic
 | BoneIO | `boneio/<host>` | `boneio/boneio-1234` |
 | Dirigera | `dirigera/<id>` | `dirigera/outlet_abc` |
 | Waveshare | `waveshare/<host>` | `waveshare/192.168.1.50` |
+| Tedee | `tedee/<lockId>` | `tedee/33819` |
 | ESPHome | `esphome/<host>` | `esphome/192.168.1.80` |
 | KNX | `knx/<host>` | `knx/192.168.1.100` |
 | Somfy | `somfy/<deviceURL>` | `somfy/io__1234_5678` |

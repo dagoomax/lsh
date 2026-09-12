@@ -734,6 +734,15 @@ async function main() {
     }
   }
 
+  // Start Tedee Bridge client if configured — local REST API, no cloud
+  if (config.tedee?.devices?.length) {
+    const TedeeClient = tryRequire('./src/tedee-client');
+    if (TedeeClient) {
+      const tedee = new TedeeClient(config, store, sensorRegistry);
+      tedee.start().catch((err) => console.error(`[Tedee] Start failed: ${err.message}`));
+    }
+  }
+
   // Start Home Connect client if configured — Bosch/Siemens/Gaggenau/Neff
   // (OAuth device flow via scripts/homeconnect-auth.js; tokens persisted + auto-refreshed)
   if (config.homeConnect) {

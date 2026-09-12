@@ -295,6 +295,7 @@ async function loadSettings() {
 
     // Waveshare
     renderWaveshareList(data.waveshare?.devices || []);
+    renderTedeeList(data.tedee?.devices || []);
 
     // FFmpeg RTSP proxy
     const ffrtspEnabled = !!(data.ffmpegRtsp?.enabled);
@@ -3609,6 +3610,7 @@ document.getElementById('btn-save-shelly').addEventListener('click', async () =>
 // ── Waveshare Modbus TCP ───────────────────────────────────────────────────
 
 let currentWaveshareDevices = [];
+let currentTedeeDevices = [];
 
 // ── BroadLink ─────────────────────────────────────────────────────────────
 
@@ -3932,6 +3934,100 @@ document.getElementById('btn-save-waveshare').addEventListener('click', async ()
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
     resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
     if (json.success) { currentWaveshareDevices = devices; renderWaveshareList(devices); }
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className = 'test-result err';
+  } finally { btn.disabled = false; }
+});
+
+// ── Tedee Bridge ────────────────────────────────────────────────────────────
+
+function renderTedeeList(devices) {
+  currentTedeeDevices = devices;
+  const container = document.getElementById('tedee-devices-list');
+  container.innerHTML = '';
+
+  if (!devices.length) {
+    container.innerHTML = '<p class="hint" style="margin-bottom:12px">No Tedee bridges configured yet.</p>';
+    return;
+  }
+
+  devices.forEach((dev, i) => {
+    const row = document.createElement('div');
+    row.className = 'shelly-row';
+    row.dataset.index = i;
+    row.innerHTML = `
+      <div class="shelly-row-fields" style="grid-template-columns:1fr 1fr 1fr 90px">
+        <input type="text"     class="tedee-host"  placeholder="192.168.1.x" value="${escapeVal(dev.host || '')}">
+        <input type="text"     class="tedee-name"  placeholder="Name"        value="${escapeVal(dev.name || '')}">
+        <input type="password" class="tedee-token" placeholder="API token"   value="${escapeVal(dev.apiToken || '')}">
+        <input type="number"   class="tedee-poll"  placeholder="5"           value="${escapeVal(dev.pollInterval || 5)}" min="2">
+      </div>
+      <button class="btn btn-remove tedee-remove" title="Remove">✕</button>`;
+    row.querySelector('.tedee-remove').addEventListener('click', () => {
+      currentTedeeDevices = collectTedeeDevices();
+      currentTedeeDevices.splice(i, 1);
+      renderTedeeList(currentTedeeDevices);
+    });
+    const testBtn = document.createElement('button');
+    testBtn.className = 'btn btn-secondary';
+    testBtn.textContent = 'Test';
+    testBtn.style.marginTop = '4px';
+    testBtn.addEventListener('click', async () => {
+      const host     = row.querySelector('.tedee-host').value.trim();
+      const apiToken = row.querySelector('.tedee-token').value.trim();
+      if (!host || !apiToken) return;
+      testBtn.disabled = true; testBtn.textContent = '…';
+      try {
+        const r = await fetch('/api/settings/test-tedee', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host, apiToken }),
+        });
+        const json = await r.json();
+        testBtn.textContent = json.success ? '✓' : '✗';
+        testBtn.title = json.message || json.error || '';
+        setTimeout(() => { testBtn.textContent = 'Test'; testBtn.title = ''; }, 3000);
+      } catch (err) {
+        testBtn.textContent = '✗'; testBtn.title = err.message;
+        setTimeout(() => { testBtn.textContent = 'Test'; testBtn.title = ''; }, 3000);
+      } finally { testBtn.disabled = false; }
+    });
+    row.querySelector('.shelly-row-fields').after(testBtn);
+    container.appendChild(row);
+  });
+}
+
+function collectTedeeDevices() {
+  return Array.from(document.querySelectorAll('#tedee-devices-list .shelly-row')).map(row => ({
+    host:         row.querySelector('.tedee-host').value.trim(),
+    name:         row.querySelector('.tedee-name').value.trim(),
+    apiToken:     row.querySelector('.tedee-token').value.trim(),
+    pollInterval: parseInt(row.querySelector('.tedee-poll').value) || 5,
+  })).filter(d => d.host);
+}
+
+document.getElementById('btn-add-tedee').addEventListener('click', () => {
+  currentTedeeDevices = collectTedeeDevices();
+  currentTedeeDevices.push({ host: '', name: '', apiToken: '', pollInterval: 5 });
+  renderTedeeList(currentTedeeDevices);
+  const rows = document.querySelectorAll('#tedee-devices-list .shelly-row');
+  rows[rows.length - 1]?.querySelector('.tedee-host')?.focus();
+});
+
+document.getElementById('btn-save-tedee').addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-tedee');
+  const resultEl = document.getElementById('tedee-save-result');
+  btn.disabled   = true;
+  try {
+    const devices = collectTedeeDevices();
+    const res = await fetch('/api/settings/tedee', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(devices),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className = 'test-result ' + (json.success ? 'ok' : 'err');
+    if (json.success) { currentTedeeDevices = devices; renderTedeeList(devices); }
   } catch (err) {
     resultEl.textContent = '✗ ' + err.message;
     resultEl.className = 'test-result err';
