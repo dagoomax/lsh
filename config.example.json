@@ -272,6 +272,9 @@
   "broadlink": {
     "devices": [
       { "name": "Living Room", "host": "192.168.1.x", "mac": "AA:BB:CC:DD:EE:FF" }
+    ],
+    "covers": [
+      { "name": "Living Room Blind", "host": "192.168.1.x", "upCode": "Blind Up", "downCode": "Blind Down", "stopCode": "Blind Stop" }
     ]
   },
   "waveshare": {

@@ -3946,6 +3946,18 @@ curl -H 'Authorization: Bearer lsh_xxxx...' \
 
 Every learned code is also registered as a controllable device sensor (`broadlink/<host>/code__<name>`) and exposed to **HomeKit as a Switch** — one per code, named after it. Since a code is a one-shot IR/RF blast rather than a persisted on/off state, turning it on (from HomeKit, the dashboard, or the REST API) fires the code and the switch automatically flips back off ~800 ms later — there's no real "on" state to hold.
 
+**Blinds/curtains as a real WindowCovering:** three separate momentary codes (up/down/stop — typical for an IR/RF blind motor with no position feedback) can be grouped into one HomeKit blind accessory instead of three loose switches:
+
+```json
+"broadlink": {
+  "covers": [
+    { "name": "Living Room Blind", "host": "192.168.1.x", "upCode": "Blind Up", "downCode": "Blind Down", "stopCode": "Blind Stop" }
+  ]
+}
+```
+
+`upCode`/`downCode`/`stopCode` (`stopCode` optional) reference codes already learned for that `host` (same names as in `/api/broadlink/codes`). This shows up in the Home app as a normal blind with an Open/Close slider and, when `stopCode` is set, a Stop control (HomeKit's `HoldPosition` characteristic). Like Somfy RTS covers elsewhere in this app, there's no real position feedback — the percentage shown is just "last direction commanded," not the blind's actual position.
+
 ---
 
 ### User & token management

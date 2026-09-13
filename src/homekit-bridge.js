@@ -523,7 +523,7 @@ function addLockService(accessory, name, storePath, store, writeCallback) {
  * (store value is "% open": 0=closed slats, 100=open) mapped to a 0–90° angle;
  * tiltWrite(pct) sends the tilt command.
  */
-function addWindowCoveringService(accessory, name, storePath, store, writeCallback, levelPath, tiltPath, tiltWrite) {
+function addWindowCoveringService(accessory, name, storePath, store, writeCallback, levelPath, tiltPath, tiltWrite, stopWrite) {
   const svc = accessory.addService(Service.WindowCovering, name);
 
   function getPos() {
@@ -550,6 +550,16 @@ function addWindowCoveringService(accessory, name, storePath, store, writeCallba
 
   svc.getCharacteristic(Characteristic.PositionState)
     .onGet(() => 2); // 2 = STOPPED
+
+  // Optional — only wired up when the caller passes stopWrite (a device that
+  // actually has a stop command, e.g. an IR/RF blind with no position
+  // feedback). Left off by default so this never risks misfiring on covers
+  // that don't recognize a 'stop' command passed through their own
+  // writeCallback (every other current cover-rw/somfy-cover user).
+  if (stopWrite) {
+    svc.getCharacteristic(Characteristic.HoldPosition)
+      .onSet(async (v) => { if (v) await stopWrite(); });
+  }
 
   // Slat tilt: HomeKit uses a signed angle; map "% open" 0-100 → 0-90°.
   const toAngle = (pct) => clamp(Math.round((pct ?? 0) * 0.9), 0, 90);
@@ -1011,10 +1021,18 @@ function buildDeviceAccessory(device, store) {
     if (hkType === 'cover-rw') {
       const s      = device.sensors.find(s => s.path === 'windowShade');
       const level  = device.sensors.find(s => s.path === 'level');
+      // Presence-only marker (see src/broadlink-client.js) — opts this
+      // specific device into the HoldPosition/Stop characteristic above,
+      // without affecting any other cover-rw integration that doesn't have
+      // one (Dirigera, Homey, Tradfri, SmartThings, Matter — none currently
+      // handle a 'stop' command on their windowShade capability).
+      const stop   = device.sensors.find(s => s.path === 'stop');
       if (s && device._writeCapability) {
         addWindowCoveringService(acc, device.label, `${device.key}/${s.path}`, store,
           (cmd, args = []) => device._writeCapability('windowShade', cmd, args),
-          level ? `${device.key}/${level.path}` : null);
+          level ? `${device.key}/${level.path}` : null,
+          null, null,
+          stop ? () => device._writeCapability('windowShade', 'stop') : null);
       }
     }
 

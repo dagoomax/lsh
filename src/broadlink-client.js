@@ -203,6 +203,12 @@ class BroadlinkClient {
       }
       this._registerDevice(cfg);
     }
+
+    for (const cover of this._config.broadlink?.covers || []) {
+      if (!cover.host || !cover.upCode || !cover.downCode) continue;
+      this._registerCover(cover);
+    }
+
     platformStatus.set('broadlink', anyOk);
   }
 
@@ -245,6 +251,49 @@ class BroadlinkClient {
     } else {
       this._registry.devices.get(key).sensors = this._buildSensors(cfg.host);
     }
+  }
+
+  // Groups three plain trigger codes (up/down/[stop]) into one WindowCovering
+  // device — a separate accessory from the per-code switches above, keyed
+  // under 'broadlink-cover/' so it can't collide with a device key. No real
+  // position feedback (same limitation as Somfy RTS motors elsewhere in this
+  // codebase): the store value is just "last direction commanded", used so
+  // the HomeKit slider and dashboard toggle show something sensible.
+  _registerCover(cfg) {
+    const key = `broadlink-cover/${cfg.host.replace(/\./g, '_')}_${safePath(cfg.name || 'blind')}`;
+    if (this._registry.devices.has(key)) return;
+    const self = this;
+
+    const sensors = [
+      { path: 'windowShade', name: 'Position', label: 'Position', format: 'on-off',
+        controllable: true, type: 'toggle', writeOn: 'open', writeOff: 'close', capabilityId: 'windowShade' },
+    ];
+    // Presence-only marker read by homekit-bridge.js's cover-rw handler —
+    // only add it (and so only expose HomeKit's Stop control) when a stop
+    // code was actually configured.
+    if (cfg.stopCode) sensors.push({ path: 'stop', name: 'Stop', label: 'Stop', format: 'string' });
+
+    this._registry.registerDevice({
+      key,
+      label:  cfg.name || `BroadLink Blind ${cfg.host}`,
+      icon:   '🪟',
+      color:  'purple',
+      sensors,
+      homekit: ['cover-rw'],
+      _writeCapability: async (capId, command) => {
+        if (capId !== 'windowShade') return;
+        const storePath = `${key}/windowShade`;
+        if (command === 'open') {
+          await self._sendCode(cfg.host, cfg.upCode);
+          self._store.update(storePath, 1);
+        } else if (command === 'close') {
+          await self._sendCode(cfg.host, cfg.downCode);
+          self._store.update(storePath, 0);
+        } else if (command === 'stop' && cfg.stopCode) {
+          await self._sendCode(cfg.host, cfg.stopCode);
+        }
+      },
+    });
   }
 
   // Codes are stateless triggers (an IR/RF blast, not a persisted on/off
