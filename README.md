@@ -3944,6 +3944,8 @@ curl -H 'Authorization: Bearer lsh_xxxx...' \
 | `POST` | `/api/broadlink/send` | Send a named code `{ host, name }` |
 | `DELETE` | `/api/broadlink/codes` | Delete a code `{ host, name }` |
 
+Every learned code is also registered as a controllable device sensor (`broadlink/<host>/code__<name>`) and exposed to **HomeKit as a Switch** — one per code, named after it. Since a code is a one-shot IR/RF blast rather than a persisted on/off state, turning it on (from HomeKit, the dashboard, or the REST API) fires the code and the switch automatically flips back off ~800 ms later — there's no real "on" state to hold.
+
 ---
 
 ### User & token management

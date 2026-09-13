@@ -180,9 +180,11 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 class BroadlinkClient {
   constructor(config, store, sensorRegistry) {
     this._config   = config;
+    this._store    = store;
     this._registry = sensorRegistry;
     this._devMap   = new Map();
     this._codes    = loadCodes();
+    this._pulseTimers = new Map();
   }
 
   async start() {
@@ -208,12 +210,18 @@ class BroadlinkClient {
     return Object.entries(this._codes[host] || {}).map(([name, entry]) => ({
       path:         `code__${safePath(name)}`,
       name,
+      label:        name,
       format:       'on-off',
       controllable: true,
       type:         'trigger',
       capabilityId: name,
-      writeOn:      'send',
-      writeOff:     null,
+      writeOn:      'on',
+      // HomeKit's generic switch-rw path (addSwitchService in
+      // homekit-bridge.js) always sends the literal string 'on'/'off'
+      // regardless of what's configured here — writeOn must match that
+      // exactly, not some other value, or a HomeKit tap would silently
+      // no-op (see _writeCapability below).
+      homekit:      'switch-rw',
     }));
   }
 
@@ -227,14 +235,28 @@ class BroadlinkClient {
         icon:   '📡',
         color:  'purple',
         sensors: this._buildSensors(cfg.host),
+        homekit: ['switch-rw'],
         _writeCapability: async (capId, command) => {
-          if (command !== 'send') return;
+          if (command !== 'on') return;
           await self._sendCode(cfg.host, capId);
+          self._pulse(key, capId);
         },
       });
     } else {
       this._registry.devices.get(key).sensors = this._buildSensors(cfg.host);
     }
+  }
+
+  // Codes are stateless triggers (an IR/RF blast, not a persisted on/off
+  // state) — flash the store to 1 then back to 0 shortly after a successful
+  // send, same momentary-pulse pattern as the SIP doorbell ring / virtual
+  // "button" type, so a HomeKit switch (and the dashboard toggle) reflects a
+  // brief press instead of getting stuck "on".
+  _pulse(deviceKey, codeName) {
+    const storePath = `${deviceKey}/code__${safePath(codeName)}`;
+    clearTimeout(this._pulseTimers.get(storePath));
+    this._store.update(storePath, 1);
+    this._pulseTimers.set(storePath, setTimeout(() => this._store.update(storePath, 0), 800));
   }
 
   async _sendCode(host, codeName) {
