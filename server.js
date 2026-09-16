@@ -4,6 +4,7 @@ const express      = require('express');
 const path         = require('path');
 const fs           = require('fs');
 const cookieParser = require('cookie-parser');
+const helmet       = require('helmet');
 require('./src/logger').install(); // must be first — patches console before any other module logs
 
 // A single integration's async error (e.g. a listen() failure racing a port
@@ -200,6 +201,7 @@ async function main() {
 
   // ── Express app ──────────────────────────────────────────────────────────
   const app = express();
+  app.use(helmet());
   app.use(cookieParser());
 
   // React dashboard — public static files (API calls are Bearer-token protected)
