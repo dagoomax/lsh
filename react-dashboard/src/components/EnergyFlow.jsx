@@ -44,8 +44,8 @@ function ECard({ icon, label, value, sub, color, pct }) {
   return (
     <div className="ecard eflow-bg" style={{ '--c': color }}>
       {pct != null && (
-        <div className="energy-card-arc" style={{ position:'relative', flexShrink:0, width:64, height:64 }}>
-          <Arc pct={pct} color={color} size={64}/>
+        <div className="energy-card-arc" style={{ position:'relative', flexShrink:0, width:56, height:56 }}>
+          <Arc pct={pct} color={color} size={56}/>
           <div style={{
             position:'absolute', inset:0, display:'flex',
             alignItems:'center', justifyContent:'center',
@@ -55,20 +55,20 @@ function ECard({ icon, label, value, sub, color, pct }) {
       )}
       {pct == null && (
         <div style={{
-          width:44, height:44, borderRadius:12, flexShrink:0,
+          width:38, height:38, borderRadius:11, flexShrink:0,
           background: `${color}15`, display:'flex', alignItems:'center', justifyContent:'center',
-          fontSize: 22,
+          fontSize: 20,
         }}>{icon}</div>
       )}
       <div style={{ minWidth:0 }}>
-        <div style={{ fontSize:11, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:3 }}>
+        <div style={{ fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:2 }}>
           {label}
         </div>
-        <div className="ecard-value" style={{ fontSize:22, fontWeight:700, color, fontVariantNumeric:'tabular-nums', letterSpacing:'-0.5px', lineHeight:1, whiteSpace:'nowrap' }}>
+        <div className="ecard-value" style={{ fontSize:'clamp(26px, 2.3vw, 36px)', fontWeight:700, color, fontVariantNumeric:'tabular-nums', letterSpacing:'-0.02em', lineHeight:1.02, whiteSpace:'nowrap' }}>
           {value}
         </div>
         {sub && (
-          <div className="energy-card-sub" style={{ fontSize:11, color:'var(--text3)', marginTop:4 }}>{sub}</div>
+          <div className="energy-card-sub" style={{ fontSize:10.5, color:'var(--text3)', marginTop:3, fontVariantNumeric:'tabular-nums' }}>{sub}</div>
         )}
       </div>
     </div>
@@ -227,13 +227,17 @@ function Sparkline({ points, color, id, width = 120, height = 40 }) {
 }
 
 function TrendCard({ icon, label, color, value, points }) {
+  // With no samples there is no trend and no value — `lastVal` returns '—'
+  // and the sparkline draws nothing. Hold no space for that; the same figure
+  // is on the detail cards below either way.
+  if (!points || !points.length) return null
   return (
-    <div className="detail-card eflow-bg" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px' }}>
+    <div className="detail-card eflow-bg" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 13px' }}>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)', marginBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text3)', marginBottom: 3 }}>
           {icon}{label}
         </div>
-        <div style={{ fontSize: 15, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em', lineHeight: 1.1 }}>{value}</div>
         <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{gt('trend_6h', 'Last 6h')}</div>
       </div>
       <Sparkline points={points} color={color} id={label} />
@@ -357,14 +361,17 @@ function DailyProductionChart({ solarKey, color }) {
   }
 
   const known = days.filter(d => d.kwh != null)
+  // Nothing recorded yet. A chart that cannot be drawn should not hold a
+  // half-screen box open for a sentence — the row collapses to one column
+  // around .eflow-empty (see global.css) and this becomes a single line.
   if (!known.length) {
-    return <div className="detail-card eflow-bg" style={{ padding: 14, height: '100%' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+    return <div className="detail-card eflow-empty" style={{ padding: '8px 13px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
         {gt('e_daily_production', 'Daily Production')}
-      </div>
-      <div style={{ fontSize: 12, color: 'var(--text3)', padding: '20px 0', textAlign: 'center' }}>
-        {gt('e_no_history', 'No history yet — check back after a full day, or enable MongoDB for longer-range charts (see the MongoDB Storage setting).')}
-      </div>
+      </span>
+      <span style={{ fontSize: 11.5, color: 'var(--text3)' }}>
+        {gt('e_no_history_short', 'Starts charting after a full day of readings. Enable MongoDB Storage for longer-range history.')}
+      </span>
     </div>
   }
 
@@ -812,6 +819,9 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
       {/* ── Detail row ── */}
       <div className="energy-detail-grid" style={{
         display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',
+        // Each card is as tall as its own rows. Stretching them to match the
+        // longest one left the short cards holding ~150px of empty surface.
+        alignItems:'start',
         gap:10,
       }}>
         <DetailCard icon={<BatteryCellIcon color="var(--text3)" size={13}/>} title={gt('t_battery','Battery')}>

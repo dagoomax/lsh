@@ -18,8 +18,8 @@ export default function SceneStrip({ scenes, runScene }) {
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-      padding: '8px 20px 0', flexShrink: 0,
+      display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+      padding: '6px 20px 0', flexShrink: 0,
     }}>
       {visible.map(s => (
         <button key={s.id} className="scene-chip" data-running={String(runningId === s.id)}

@@ -367,9 +367,9 @@ input[type="range"]::-moz-range-thumb {
 /* ── Sidebar buttons ────────────────────────────────────────────────────── */
 .side-btn {
   display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; border-radius: 10px; border: none; cursor: pointer;
+  padding: 6px 9px; border-radius: 9px; border: none; cursor: pointer;
   background: transparent; color: var(--text2);
-  font-size: 13px; font-weight: 400; font-family: inherit;
+  font-size: 12.5px; font-weight: 400; font-family: inherit;
   text-align: left; width: 100%;
   transition: background 0.15s ease, color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
@@ -404,26 +404,38 @@ input[type="range"]::-moz-range-thumb {
 
 /* ── Platform chips ─────────────────────────────────────────────────────── */
 .platform-chip {
-  display: flex; align-items: center; gap: 6px;
-  padding: 3px 10px 3px 4px; border-radius: 999px;
-  background: var(--card-grad);
-  border: 1px solid var(--border);
-  font-size: 11.5px; color: var(--text2); user-select: none;
-  box-shadow: var(--inner-hl);
-  transition: border-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  display: flex; align-items: center; gap: 5px;
+  padding: 2px 9px 2px 3px; border-radius: 999px;
+  background: var(--white-03);
+  border: 1px solid transparent;
+  font-size: 10.5px; color: var(--text3); user-select: none;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
-.platform-chip:hover { transform: translateY(-1px); }
-.platform-chip[data-on="true"]  { border-color: rgba(63,185,80,0.35); }
-.platform-chip[data-on="true"]:hover { border-color: rgba(63,185,80,0.6); }
-.platform-chip[data-on="false"] { border-color: rgba(248,81,73,0.35); opacity: 0.55; }
+.platform-chip:hover { color: var(--text2); background: var(--white-05); }
+/* A platform that is up is not news. On a wall display the only thing worth
+   spending contrast on is the one that has fallen over, so "connected" is the
+   quiet state and "disconnected" is the loud one — the inverse of how this
+   bar used to read, where a failure dimmed itself to 55% and disappeared. */
+.platform-chip[data-on="true"]  { opacity: 0.72; }
+.platform-chip[data-on="true"]:hover { opacity: 1; }
+.platform-chip[data-on="false"] {
+  color: #ff8a8a; background: rgba(248,81,73,0.1);
+  border-color: rgba(248,81,73,0.45); opacity: 1; font-weight: 600;
+}
+/* #ff8a8a is a dark-theme ink — on the light theme it has to darken to stay
+   readable against a near-white bar. */
+[data-theme="light"] .platform-chip[data-on="false"] {
+  color: #b42318; background: rgba(248,81,73,0.09);
+  border-color: rgba(248,81,73,0.4);
+}
 
 /* ── Scene strip ─────────────────────────────────────────────────────────── */
 .scene-chip {
   display: flex; align-items: center; gap: 6px;
-  padding: 5px 12px; border-radius: 999px;
+  padding: 4px 11px; border-radius: 999px;
   background: var(--card-grad);
   border: 1px solid var(--border);
-  font-size: 12.5px; font-weight: 600; color: var(--text2);
+  font-size: 11.5px; font-weight: 600; color: var(--text2);
   box-shadow: var(--inner-hl);
   cursor: pointer; user-select: none; white-space: nowrap;
   transition: border-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
@@ -441,16 +453,16 @@ input[type="range"]::-moz-range-thumb {
   border: 1px solid var(--border);
   border-left: 2px solid var(--c);
   border-radius: var(--radius-lg);
-  padding: 14px 16px;
-  display: flex; align-items: center; gap: 14px;
+  padding: 11px 14px;
+  display: flex; align-items: center; gap: 12px;
   box-shadow: var(--shadow-1), var(--inner-hl);
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 .ecard::after {
   content: '';
-  position: absolute; top: -30px; right: -30px; width: 110px; height: 110px;
+  position: absolute; top: -34px; right: -34px; width: 96px; height: 96px;
   border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle, color-mix(in srgb, var(--c) 14%, transparent), transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 8%, transparent), transparent 70%);
 }
 .ecard:hover {
   transform: translateY(-2px);
@@ -459,6 +471,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .detail-card {
+  font-variant-numeric: tabular-nums;
   background: var(--card-grad);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -624,6 +637,15 @@ input[type="range"]::-moz-range-thumb {
 }
 @media (min-width: 900px) {
   .eflow-production-row { grid-template-columns: 1fr 1fr; align-items: stretch; }
+  /* Nothing to chart yet: the note becomes one line under the diagram instead
+     of a half-screen box holding a sentence. The diagram keeps its own width
+     rather than stretching to fill the freed column — a flow diagram scaled to
+     1400px is not more legible, just larger. */
+  .eflow-production-row:has(> .eflow-empty) {
+    grid-template-columns: minmax(0, 540px) minmax(200px, 300px);
+    justify-content: center;
+    align-items: start;
+  }
 }
 /* Shared "aurora + dot-grid" card background — the Energy tab's one visual
    identity, reused by every card on that tab (not just the flow diagram) so
