@@ -13,3 +13,7 @@ automations.json
 
 # macOS client build output
 macos-client/build/
+
+# Local working files — scratch PDFs, reports, anything dropped here by hand.
+# Not for the repo: this has held third-party confidential material.
+Claude outputs/
