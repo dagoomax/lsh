@@ -545,6 +545,12 @@
       }
     ]
   },
+  "yale": {
+    "username": "you@example.com",
+    "password": "",
+    "loginMethod": "email",
+    "pollInterval": 30
+  },
   "kenik": {
     "host": "192.168.1.90",
     "username": "admin",

@@ -138,6 +138,16 @@ async function main() {
     axis.start().catch((err) => console.error(`[Axis] Start failed: ${err.message}`));
   }
 
+  // Yale doorbell cameras (cloud account, unlike the local cameras above)
+  let yale = null;
+  if (config.yale?.username && config.yale?.password) {
+    const YaleClient = tryRequire('./src/yale-client');
+    if (YaleClient) {
+      yale = new YaleClient(config, store, sensorRegistry);
+      yale.start().catch((err) => console.error(`[Yale] Start failed: ${err.message}`));
+    }
+  }
+
   // Hardware simulator manager — spawns scripts/*-simulator.js per
   // config.simulators; toggled live via /api/simulators
   let simulators = null;
@@ -344,7 +354,7 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient };
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient };
   app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // MCP server — exposes devices/sensors as tools for an external Claude

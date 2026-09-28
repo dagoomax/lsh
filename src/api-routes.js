@@ -62,7 +62,7 @@ function dedupeVirtualDevices(devices) {
 }
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
-  const { unifiProtect, reolink, kenik, mobotix, axis, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, pagingManager, openweather, objectDetection, airplayClient } = clients;
+  const { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, sipServer, pagingManager, openweather, objectDetection, airplayClient } = clients;
   const manualSnapCache = new Map(); // manual camera idx → { at, buffer }, for /camera/snapshot/:idx
 
   // Secure cookie flag per request, not per server: with both HTTP and HTTPS
@@ -1089,6 +1089,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     const kenikCams   = kenik ? kenik.getCameras() : [];
     const mobotixCams = mobotix ? mobotix.getCameras() : [];
     const axisCams    = axis ? axis.getCameras() : [];
+    const yaleCams    = yale ? yale.getCameras() : [];
     // Manual cameras with an `onvif` section get PTZ through the generic proxy;
     // ones with an RTSP `url` but no snapshot/MJPEG source of their own (e.g.
     // WHEP-only) get a thumbnail via the generic ffmpeg-grab-a-frame proxy.
@@ -1102,7 +1103,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       } : {}),
       ...(c.url && !c.snapshotUrl && !c.mjpegUrl ? { snapshotUrl: `/api/camera/snapshot/${idx}` } : {}),
     }));
-    res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...stCams] });
+    res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...yaleCams, ...stCams] });
   });
 
   // ── Local object detection (COCO-SSD) model selection ──────
@@ -1455,6 +1456,30 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       return res.status(404).send('No snapshot available — trigger a capture first');
     }
     await proxySmartThingsMedia(imageUrl, res);
+  });
+
+  // Yale doorbell camera snapshot proxy — same idea as the SmartThings one
+  // above: the image lives at a per-doorbell `secure_url` that yale-client.js
+  // refreshes on every poll into the store, and needs an `Authorization:
+  // <contentToken>` header (the raw token, no "Bearer" prefix — see
+  // yalexs's Doorbell.async_get_doorbell_image) that must never reach the
+  // browser directly.
+  router.get('/yale-camera/:deviceId/snapshot', async (req, res) => {
+    const { deviceId } = req.params;
+    const imageUrl = store.get(`yale/${deviceId}/image`);
+    if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
+      return res.status(404).send('No snapshot available yet');
+    }
+    const contentToken = yale ? yale.getContentToken(deviceId) : '';
+    try {
+      const upstream = await fetch(imageUrl, { headers: { Authorization: contentToken } });
+      if (!upstream.ok) return res.status(502).send(`Image fetch failed: HTTP ${upstream.status}`);
+      res.set('Content-Type', upstream.headers.get('content-type') || 'image/jpeg');
+      res.set('Cache-Control', 'no-cache');
+      res.send(Buffer.from(await upstream.arrayBuffer()));
+    } catch (err) {
+      res.status(502).send('Image fetch failed: ' + err.message);
+    }
   });
 
   // Same proxy, but for an arbitrary past capture's URL — lets the camera
@@ -2942,6 +2967,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (Array.isArray(safe.mobotix?.cameras)) safe.mobotix.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.axis?.cameras)) safe.axis.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.tedee?.devices)) safe.tedee.devices.forEach((d) => { if (d.apiToken) d.apiToken = '••••••••'; });
+    if (safe.yale?.password)        safe.yale.password        = '••••••••';
     if (Array.isArray(safe.cameras)) safe.cameras.forEach((c) => { if (c.onvif?.password) c.onvif.password = '••••••••'; });
     if (safe.somfy?.token)          safe.somfy.token          = '••••••••';
     if (safe.loxoneOut?.password)   safe.loxoneOut.password   = '••••••••';
@@ -4771,6 +4797,72 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     try {
       writeConfigFile({ ...current, tedee: { devices: sanitized.filter(d => d.apiToken) } });
       res.json({ success: true, message: `${sanitized.length} bridge(s) saved. Restart to apply.` });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ── Yale doorbell cameras ────────────────────────────────────────────────
+  // Two-step flow because the Yale/August API ties the very first login for
+  // a given installId to a one-time email/SMS code (see yale-client.js's
+  // header comment) — "Test Connection" attempts login and, if that install
+  // isn't verified yet, sends the code and tells the UI to show the code
+  // field; "Verify" submits it. Both instantiate a fresh YaleAuthenticator,
+  // which is safe because it reads/writes the same persist/yale-auth.json
+  // installId + token cache yale-client.js's poller uses, so this doesn't
+  // need its own session state.
+
+  router.post('/settings/test-yale', requireAdmin, async (req, res) => {
+    const { username, password, loginMethod } = req.body;
+    if (!username || !password) return res.status(400).json({ success: false, error: 'username and password are required' });
+    try {
+      const { YaleAuthenticator } = require('./yale-client');
+      const auth = new YaleAuthenticator({ username, password, loginMethod });
+      const state = await auth.login();
+      if (state === 'authenticated') {
+        res.json({ success: true, message: 'Login successful — this account is already verified.' });
+      } else if (state === 'requires_validation') {
+        await auth.sendVerificationCode();
+        res.json({ success: true, requiresVerification: true, message: `Verification code sent via ${loginMethod === 'phone' ? 'SMS' : 'email'} — enter it below.` });
+      } else {
+        res.json({ success: false, error: 'Login failed — check the username and password.' });
+      }
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/verify-yale', requireAdmin, async (req, res) => {
+    const { username, password, loginMethod, code } = req.body;
+    if (!username || !password || !code) return res.status(400).json({ success: false, error: 'username, password and code are required' });
+    try {
+      const { YaleAuthenticator } = require('./yale-client');
+      const auth = new YaleAuthenticator({ username, password, loginMethod });
+      const state = await auth.validateVerificationCode(code);
+      if (state === 'authenticated') {
+        res.json({ success: true, message: 'Verified! Save your settings and restart LSH to start polling.' });
+      } else {
+        res.json({ success: false, error: `Verification did not complete (${state}) — check the code and try again.` });
+      }
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/yale', requireAdmin, (req, res) => {
+    const current = readConfigFile();
+    const { username, password, loginMethod, pollInterval } = req.body;
+    try {
+      writeConfigFile({
+        ...current,
+        yale: {
+          username:     username     || current.yale?.username     || '',
+          password:     (password && !password.includes('•')) ? password : (current.yale?.password || ''),
+          loginMethod:  loginMethod === 'phone' ? 'phone' : 'email',
+          pollInterval: pollInterval != null ? parseInt(pollInterval) : (current.yale?.pollInterval ?? 30),
+        },
+      });
+      res.json({ success: true, message: 'Yale settings saved. Restart to apply.' });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }

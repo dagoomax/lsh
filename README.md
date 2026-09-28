@@ -2025,6 +2025,27 @@ Untested against real hardware from this codebase — implemented against Tedee'
 
 ---
 
+### `yale`
+
+```json
+"yale": {
+  "username": "you@example.com",
+  "password": "",
+  "loginMethod": "email",
+  "pollInterval": 30
+}
+```
+
+**Yale doorbell cameras** — specifically the "Yale Access" line (Yale Connect / the ex-August-made doorbells), talking to the same cloud API `yalexs` (bundled with Home Assistant's official Yale integration) uses. Note this is *not* the Yale Sync alarm hub (`yale_smart_alarm` in Home Assistant, a different cloud entirely) and not the generic "Yale View" NVR app — those are unrelated backends with no camera support or no known public API respectively.
+
+`loginMethod` is `"email"` or `"phone"`, matching whichever you use to sign into the Yale/August app. Each doorbell becomes a device with **Status**, **Online**, and **Battery** sensors plus a snapshot (`/api/yale-camera/<id>/snapshot`, proxied so credentials never reach the browser) — no live RTSP stream, since this is a cloud snapshot API, not a local one.
+
+First login on a fresh install requires a one-time email/SMS verification code. Easiest path: Settings → Cameras → **Yale Doorbell Cameras** — fill in the fields, click **Test Connection** to send the code, enter it, click **Verify**, then **Save** and restart. Headless/no-UI alternative: `node scripts/yale-verify.js`. Either way, once verified the server re-authenticates on its own indefinitely. Locks on the same account are intentionally out of scope for this integration.
+
+Untested against a real Yale account from this codebase — implemented against `yalexs`'s documented, currently-shipping wire protocol (github.com/Yale-Libs/yalexs), not guessed.
+
+---
+
 ### `smartbob`
 
 ```json

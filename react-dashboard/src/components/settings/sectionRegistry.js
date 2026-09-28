@@ -32,6 +32,7 @@ export const CATEGORIES = [
     { id: 'reolink', title: 'Reolink', ported: true },
     { id: 'mobotix', title: 'MOBOTIX', ported: true },
     { id: 'axis', title: 'Axis (VAPIX)', ported: true },
+    { id: 'yale', title: 'Yale Doorbell Cameras', ported: true },
     { id: 'manualcams', title: 'Cameras', ported: true },
   ] },
   { id: 'climate', label: 'Climate & Appliances', sections: [

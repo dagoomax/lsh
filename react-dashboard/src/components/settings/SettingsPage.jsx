@@ -13,6 +13,7 @@ import DreameSection from './sections/DreameSection'
 import KarcherSection from './sections/KarcherSection'
 import MobotixSection from './sections/MobotixSection'
 import AxisSection from './sections/AxisSection'
+import YaleSection from './sections/YaleSection'
 import AeotecSection from './sections/AeotecSection'
 import AiDetectionSection from './sections/AiDetectionSection'
 import CamerasExtraSection from './sections/CamerasExtraSection'
@@ -63,6 +64,7 @@ const SECTION_COMPONENTS = {
   karcher: KarcherSection,
   mobotix: MobotixSection,
   axis: AxisSection,
+  yale: YaleSection,
   aeotec: AeotecSection,
   aidetect: AiDetectionSection,
   'cameras-extra': CamerasExtraSection,
