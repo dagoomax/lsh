@@ -88,7 +88,8 @@ class BridgePool {
 
   _addBridge() {
     const index = this.bridges.length; // 0 = primary, unchanged identity
-    const name = index === 0 ? 'Victron Energy' : `Victron Energy ${index + 1}`;
+    const baseName = this.config.name || 'Victron Energy'; // config.homekit.name overrides the bridge's HomeKit display name
+    const name = index === 0 ? baseName : `${baseName} ${index + 1}`;
     const bridge = new Bridge(name, makeUUID(index === 0 ? 'bridge' : `bridge-${index + 1}`));
     setInfo(bridge, 'Victron Energy', 'Cerbo GX Dashboard', index === 0 ? 'VICTRON-001' : `VICTRON-00${index + 1}`);
     bridge._count = 0;
