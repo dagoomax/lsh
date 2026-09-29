@@ -331,6 +331,7 @@ async function loadSettings() {
     renderRelaysList(currentRelays);
 
     // HomeKit
+    setVal('hk-name', data.homekit?.name || '');
     setVal('hk-pin', data.homekit?.pin || '031-45-154');
     setVal('hk-port', data.homekit?.port || 47128);
     setVal('hk-username', data.homekit?.username || 'CC:22:3D:E3:CE:F6');
@@ -539,6 +540,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
     },
     relays: currentRelays,
     homekit: {
+      name: getVal('hk-name'),
       pin,
       port: parseInt(getVal('hk-port')) || 47128,
       username: getVal('hk-username'),
@@ -4049,6 +4051,20 @@ document.getElementById('btn-reset-config').addEventListener('click', async () =
     }
   } catch (err) {
     showSaveMsg('Reset failed: ' + err.message, 'err');
+  }
+});
+
+document.getElementById('btn-hk-reset')?.addEventListener('click', async () => {
+  if (!confirm('Reset HomeKit pairing? The bridge will be removed from Apple Home and must be re-paired after restarting the server.')) return;
+  const out = document.getElementById('hk-reset-result');
+  if (out) { out.textContent = '…'; out.className = 'test-result'; }
+  try {
+    const r = await fetch('/api/homekit/reset-pairing', { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (!d.success) throw new Error(d.error || ('HTTP ' + r.status));
+    if (out) { out.textContent = '✓ ' + (d.message || 'Pairing reset — restart the server, then re-pair.'); out.className = 'test-result ok'; }
+  } catch (err) {
+    if (out) { out.textContent = '✗ ' + err.message; out.className = 'test-result err'; }
   }
 });
 

@@ -1900,6 +1900,10 @@
       <p class="section-desc" data-i18n-html="sdesc.d35">Pair the relay bridge in Apple Home using the PIN below.</p>
 
       <div class="form-row">
+        <label for="hk-name" data-i18n="s.hk_name">Bridge Name</label>
+        <input type="text" id="hk-name" placeholder="Victron Energy">
+      </div>
+      <div class="form-row">
         <label for="hk-pin" data-i18n="s.hk_pin">Pairing PIN</label>
         <input type="text" id="hk-pin" placeholder="031-45-154" maxlength="10">
       </div>
@@ -1924,6 +1928,12 @@
           <p class="hint" style="margin-top:6px">Or choose <strong>More Options</strong> and enter the PIN manually.</p>
           <p class="hint qr-setup-id" id="qr-setup-id"></p>
         </div>
+      </div>
+
+      <div class="hk-reset" style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px">
+        <p class="hint" style="margin-bottom:8px" data-i18n="s.hk_reset_hint">Clears the Apple Home pairing so the bridge can be added fresh (e.g. after renaming it, or if a stale pairing blocks re-adding). Restart the server afterwards, then re-pair with the PIN above.</p>
+        <button class="btn btn-danger" id="btn-hk-reset" data-i18n="s.hk_reset">Reset Pairing</button>
+        <span class="test-result" id="hk-reset-result"></span>
       </div>
     </section>
 
@@ -2187,7 +2197,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="i18n.js?v=5"></script>
-  <script src="settings.js?v=9"></script>
+  <script src="settings.js?v=10"></script>
   <script src="theme.js?v=5"></script>
   <script src="common.js?v=5"></script>
 </body>
