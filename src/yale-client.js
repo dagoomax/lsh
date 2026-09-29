@@ -79,13 +79,19 @@ const platformStatus = require('./platform-status');
 // per yalexs const.py; the exact token header + refresh body should be
 // confirmed against a real capture (see docs/comments where flagged UNVERIFIED).
 const USER_AGENT = 'August/2019.12.16.4708 CFNetwork/1121.2.2 Darwin/19.3.0';
-const KEASE_APP_KEY = 'd9984f29-07a6-816e-e1c9-44ec9d1be431'; // password-model app key
+// The two password backends accept DIFFERENT app keys, verified against the
+// live gateways (no-credential probe): api-production.august.com accepts only
+// 7cab4bbd (d9984f29 -> 403 "API key is not valid" there), while
+// api.aaecosystem.com accepts d9984f29 under the x-kease-api-key header. Using
+// one key for both regresses the august brand — keep them separate.
+const AUGUST_APP_KEY = '7cab4bbd-2693-4fc1-b99b-dec0fb20f9d4'; // august.com password-model key
+const KEASE_APP_KEY  = 'd9984f29-07a6-816e-e1c9-44ec9d1be431'; // aaecosystem password-model key
 const GLOBAL_APP_KEY = 'd16a1029-d823-4b55-a4ce-a769a9b56f0e'; // token-model (yale_global) app key
 
 const BRANDS = {
   august: {
     url: 'https://api-production.august.com',
-    apiKey: KEASE_APP_KEY,
+    apiKey: AUGUST_APP_KEY,
     keyHeaders: ['x-kease-api-key', 'x-august-api-key'],
     tokenHeader: 'x-august-access-token',
     mode: 'password',

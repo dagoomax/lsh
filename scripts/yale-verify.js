@@ -35,14 +35,26 @@ const ask = (q) => new Promise((res) => {
   const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   const yaleCfg = cfg.yale || {};
 
+  const ecoSystem = yaleCfg.ecoSystem || 'august';
+
+  // yale_global accounts ("Yale Home" app) authenticate with an OAuth token,
+  // not a password — this interactive email/SMS-code flow does not apply to
+  // them and would just hit the wrong backend. Bail out with a clear pointer.
+  if (ecoSystem === 'yale_global') {
+    console.error('✗ This is a yale_global ("Yale Home") account — it uses an OAuth access token, not password verification.');
+    console.error('  Set yale.accessToken (and yale.refreshToken / yale.clientId) in config.json from a captured Yale Home app token, then restart LSH.');
+    console.error('  Running this verification script does not apply to yale_global.');
+    process.exit(2);
+  }
+
   const username = yaleCfg.username || await ask('Yale account email/phone: ');
   const password = yaleCfg.password || await ask('Yale account password: ');
   const loginMethod = yaleCfg.loginMethod === 'phone' ? 'phone' : 'email';
   if (!username || !password) { console.error('✗ Username and password are required.'); process.exit(1); }
 
-  const auth = new YaleAuthenticator({ username, password, loginMethod });
+  const auth = new YaleAuthenticator({ username, password, loginMethod, ecoSystem });
 
-  console.log('\nLogging in…');
+  console.log(`\nLogging in… (${ecoSystem})`);
   let state = await auth.login();
 
   if (state === 'bad_password') {
