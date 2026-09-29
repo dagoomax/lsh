@@ -705,7 +705,11 @@ Communicates via the Xiaomi miio UDP protocol (port 54321). `type` is `vacuum` o
 }
 ```
 
-`mode` is `local` (Homey Pro 2023+, LAN API) or `cloud` (Homey Pro older / Homey Bridge, uses `homeyId`). Get a token at **Homey Developer Tools → Personal Access Tokens**. `pollInterval` is in seconds.
+`mode` is `local` (Homey Pro 2023+ or a **Homey Self-Hosted Server**, LAN API) or `cloud` (older Homey Pro, uses `homeyId`). Get a token at **Homey Developer Tools → Personal Access Tokens** (needs the `homey.device.readonly` + `homey.device.control` scopes). `pollInterval` is in seconds.
+
+**Homey Self-Hosted Server (SHS):** run it on the same LAN and use `local` mode with the **host including its HTTP port**, e.g. `"host": "127.0.0.1:4859"` (or `"<lan-ip>:4859"`) — the SHS local API does **not** require an active cloud subscription, unlike its cloud/remote URL. The client targets the modern apiVersion-3 capability endpoint (`PUT /api/manager/devices/device/<id>/capability/<capId>`); note a headless SHS has **no Z-Wave/Zigbee radio**, so physical devices that need one will read/sync but can return `500` on control until paired through a real bridge/radio.
+
+`cloud` mode currently uses the legacy `<homeyId>.connect.athom.com` proxy, which no longer resolves for migrated Homey accounts (`yale_global`/`homeyshs.net`) — prefer `local` mode against the SHS/Pro LAN address.
 
 ### `dirigera`
 
