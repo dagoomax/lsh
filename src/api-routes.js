@@ -2703,6 +2703,35 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  // Reset HomeKit pairing — deletes hap-nodejs's persisted AccessoryInfo /
+  // IdentifierCache files (persist/homekit) so the bridge comes back UNPAIRED
+  // on the next restart, ready to add fresh in the Home app (e.g. after
+  // renaming the bridge, or when a stale pairing blocks re-adding it). Takes
+  // effect on restart — the running bridge keeps its in-memory pairing until
+  // then.
+  router.post('/homekit/reset-pairing', requireAdmin, (req, res) => {
+    try {
+      const hapDir = path.join(__dirname, '..', 'persist', 'homekit');
+      let removed = 0;
+      if (fs.existsSync(hapDir)) {
+        for (const f of fs.readdirSync(hapDir)) {
+          if (/^(AccessoryInfo|IdentifierCache)\./.test(f)) {
+            fs.unlinkSync(path.join(hapDir, f));
+            removed++;
+          }
+        }
+      }
+      res.json({
+        success: true,
+        message: removed
+          ? `Removed ${removed} pairing file(s). Restart LSH, then re-add the bridge in the Home app with your PIN.`
+          : 'No pairing files found — the bridge is already unpaired.',
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // ── Matter bridge setup (pairing code / QR) ────────────────
   router.get('/matter/bridge/setup', async (req, res) => {
     const bridge = clients.matterBridge;

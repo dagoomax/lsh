@@ -23,6 +23,7 @@ function loadQrcodejs() {
 }
 
 export default function HomeKitSection({ config, reload }) {
+  const [name, setName] = useState(config.homekit?.name || '')
   const [pin, setPin] = useState(config.homekit?.pin || '')
   const [port, setPort] = useState(config.homekit?.port || 47128)
   const [username, setUsername] = useState(config.homekit?.username || '')
@@ -30,6 +31,7 @@ export default function HomeKitSection({ config, reload }) {
   const [qrError, setQrError] = useState('')
   const qrRef = useRef(null)
   const save = useSettingsSave('/api/settings')
+  const resetPair = useSettingsSave('/api/homekit/reset-pairing')
 
   useEffect(() => {
     let cancelled = false
@@ -53,6 +55,7 @@ export default function HomeKitSection({ config, reload }) {
   return (
     <SettingsCard title={gt('s.hk_title', 'HomeKit Integration')}
       desc={gt('sdesc.d35', 'Pair the relay bridge in Apple Home using the PIN below.')}>
+      <Field label={gt('s.hk_name', 'Bridge Name')} value={name} onChange={setName} placeholder="Victron Energy"/>
       <Field label={gt('s.hk_pin', 'Pairing PIN')} value={pin} onChange={setPin} placeholder="031-45-154" maxLength={10}/>
       <Field label={gt('s.hk_port', 'Bridge Port')} type="number" value={port} onChange={setPort} placeholder="47128"/>
       <Field label={gt('s.hk_username', 'Bridge MAC')} value={username} onChange={setUsername} placeholder="CC:22:3D:E3:CE:F6"/>
@@ -71,8 +74,22 @@ export default function HomeKitSection({ config, reload }) {
 
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy}
-          onClick={() => save.save({ homekit: { pin, port: Number(port), username } }).then(reload)}>{gt('common.save', 'Save')}</Button>
+          onClick={() => save.save({ homekit: { name, pin, port: Number(port), username } }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,0.1))', marginTop: 16, paddingTop: 14 }}>
+        <div className="stg-hint" style={{ marginBottom: 8 }}>
+          {gt('s.hk_reset_hint', 'Clears the Apple Home pairing so the bridge can be added fresh (e.g. after renaming it, or if a stale pairing blocks re-adding). Restart LSH afterwards, then re-pair with the PIN above.')}
+        </div>
+        <div className="stg-actions">
+          <Button variant="danger" busy={resetPair.busy}
+            onClick={() => {
+              if (!window.confirm(gt('s.hk_reset_confirm', 'Reset HomeKit pairing? The bridge will be removed from Apple Home and must be re-paired after restarting LSH.'))) return
+              resetPair.save({})
+            }}>{gt('s.hk_reset', 'Reset Pairing')}</Button>
+          <ResultBanner result={resetPair.result}/>
+        </div>
       </div>
     </SettingsCard>
   )
