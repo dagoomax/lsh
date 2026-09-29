@@ -199,10 +199,16 @@ class HomeyClient {
     } else {
       value = command; // toggle: true / false
     }
+    // apiVersion 3 (homey-shs / softwareVersion 13+) sets a capability value at
+    // .../capability/<capId>; the older .../capability/<capId>/value path 404s.
+    // Re-throw after logging so a genuine write failure reaches the API caller
+    // (POST /device/:key/command, HomeKit) instead of being silently reported
+    // as success — otherwise LSH and the device drift out of sync.
     try {
-      await this._put(`/api/manager/devices/device/${deviceId}/capability/${capId}/value`, { value });
+      await this._put(`/api/manager/devices/device/${deviceId}/capability/${capId}`, { value });
     } catch (err) {
       console.error(`[Homey] Write failed ${deviceId}/${capId}: ${err.message}`);
+      throw err;
     }
   }
 
