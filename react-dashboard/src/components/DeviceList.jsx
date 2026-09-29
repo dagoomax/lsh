@@ -15,6 +15,7 @@ import { resolveEnergy, hasSolarEdge, hasSolarAccelerator, loadEnergySources, sa
 import HomePlan from './HomePlan'
 import Cameras from './Cameras'
 import YaleDoorbells from './YaleDoorbells'
+import SystemMetrics from './SystemMetrics'
 import RelayPanel from './RelayPanel'
 import DashboardGrid, { hasCustomLayout, seedLayoutFromDevices } from './DashboardGrid'
 import WeatherForecast from './WeatherForecast'
@@ -1497,6 +1498,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
           )}
           {cat === 'All' && <WeatherForecast />}
           {cat === 'All' && <YaleDoorbells devices={devices} />}
+          {cat === 'All' && <SystemMetrics devices={devices} />}
           {cat === 'All' && <Cameras />}
           {cat !== 'Graphs' && cat !== 'Plan' && visible.length === 0 && (
             <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>
