@@ -58,7 +58,14 @@ const crypto = require('crypto');
 const platformStatus = require('./platform-status');
 
 const BASE_URL = 'https://api-production.august.com';
-const API_KEY  = 'd9984f29-07a6-816e-e1c9-44ec9d1be431'; // yalexs HEADER_VALUE_API_KEY for the yale_access brand — public, ships in every Yale/August app
+// yalexs calls this one HEADER_VALUE_API_KEY_OLD, but as of 2026-09 it is the
+// only one the live API still accepts for this brand: yalexs's supposedly
+// current HEADER_VALUE_API_KEY (d9984f29-07a6-816e-e1c9-44ec9d1be431) now gets
+// a flat 403 {"code":"Forbidden","message":"API key is not valid"} from
+// POST /session, before any credential is even evaluated. Verified against the
+// real endpoint, not assumed — if logins start 403ing again, re-test both keys
+// against yalexs const.py before touching anything else here.
+const API_KEY  = '7cab4bbd-2693-4fc1-b99b-dec0fb20f9d4'; // public — ships in every Yale/August app
 const AUTH_FILE = path.join(__dirname, '..', 'persist', 'yale-auth.json');
 
 const DEFAULT_POLL_INTERVAL_S = 30;
@@ -85,8 +92,17 @@ async function request(method, urlPath, { accessToken, json } = {}) {
       body: json ? JSON.stringify(json) : undefined,
       signal: controller.signal,
     });
-    if (res.status === 401 || res.status === 403) throw new Error('unauthorized (bad or expired credentials)');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      // Surface what the API actually said. A 403 "API key is not valid" is a
+      // problem with API_KEY above, NOT with the user's credentials, and
+      // reporting it as "bad credentials" sends debugging the wrong way.
+      let detail = '';
+      try { const t = await res.text(); const b = JSON.parse(t); detail = b?.message || b?.code || ''; } catch { /* non-JSON body */ }
+      if (res.status === 401 || res.status === 403) {
+        throw new Error(detail ? `HTTP ${res.status}: ${detail}` : 'unauthorized (bad or expired credentials)');
+      }
+      throw new Error(detail ? `HTTP ${res.status}: ${detail}` : `HTTP ${res.status}`);
+    }
     const newToken = res.headers.get('x-august-access-token') || res.headers.get('x-access-token');
     let body = null;
     const text = await res.text();
