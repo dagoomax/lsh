@@ -138,9 +138,11 @@ async function main() {
     axis.start().catch((err) => console.error(`[Axis] Start failed: ${err.message}`));
   }
 
-  // Yale doorbell cameras (cloud account, unlike the local cameras above)
+  // Yale doorbell cameras (cloud account, unlike the local cameras above).
+  // Password brands (august/yale_home) need username+password; the token brand
+  // (yale_global) needs an accessToken instead — accept either.
   let yale = null;
-  if (config.yale?.username && config.yale?.password) {
+  if ((config.yale?.username && config.yale?.password) || config.yale?.accessToken) {
     const YaleClient = tryRequire('./src/yale-client');
     if (YaleClient) {
       yale = new YaleClient(config, store, sensorRegistry);

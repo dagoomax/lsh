@@ -57,15 +57,61 @@ const path = require('path');
 const crypto = require('crypto');
 const platformStatus = require('./platform-status');
 
-const BASE_URL = 'https://api-production.august.com';
-// yalexs calls this one HEADER_VALUE_API_KEY_OLD, but as of 2026-09 it is the
-// only one the live API still accepts for this brand: yalexs's supposedly
-// current HEADER_VALUE_API_KEY (d9984f29-07a6-816e-e1c9-44ec9d1be431) now gets
-// a flat 403 {"code":"Forbidden","message":"API key is not valid"} from
-// POST /session, before any credential is even evaluated. Verified against the
-// real endpoint, not assumed — if logins start 403ing again, re-test both keys
-// against yalexs const.py before touching anything else here.
-const API_KEY  = '7cab4bbd-2693-4fc1-b99b-dec0fb20f9d4'; // public — ships in every Yale/August app
+// Three brands, two auth models, served from two hosts.
+//
+// PASSWORD model (august, yale_home) — the classic August protocol: email +
+// password + one-time email/SMS code. The public app key must be sent under
+// BOTH x-kease-api-key and x-august-api-key, with the iOS User-Agent below, or
+// the gateway 403s "API key is not valid" before looking at credentials
+// (recipe mirrors openHAB's seime/openhab-august RestApiClient verbatim).
+//   - august     — legacy accounts + Yale accounts not yet migrated.
+//   - yale_home  — accounts migrated to the "Yale Home" app, same protocol
+//                  against api.aaecosystem.com. NOTE: as of 2026-09 this host's
+//                  password surface WAF-throttles by IP aggressively; if it
+//                  serves an HTML 403 block page, use yale_global instead.
+//
+// TOKEN model (yale_global) — the OAuth surface of the SAME aaecosystem host
+// (yalexs's Brand.YALE_GLOBAL). Different key (d16a1029) under x-api-key, token
+// under x-access-token, x-branding: yale. No password login here: it consumes
+// an access/refresh token obtained out-of-band (e.g. captured from the Yale
+// Home app, or via the oauth.aaecosystem.com authorization-code flow) and
+// refreshes it against oauth.aaecosystem.com/access_token. Header/key shapes
+// per yalexs const.py; the exact token header + refresh body should be
+// confirmed against a real capture (see docs/comments where flagged UNVERIFIED).
+const USER_AGENT = 'August/2019.12.16.4708 CFNetwork/1121.2.2 Darwin/19.3.0';
+const KEASE_APP_KEY = 'd9984f29-07a6-816e-e1c9-44ec9d1be431'; // password-model app key
+const GLOBAL_APP_KEY = 'd16a1029-d823-4b55-a4ce-a769a9b56f0e'; // token-model (yale_global) app key
+
+const BRANDS = {
+  august: {
+    url: 'https://api-production.august.com',
+    apiKey: KEASE_APP_KEY,
+    keyHeaders: ['x-kease-api-key', 'x-august-api-key'],
+    tokenHeader: 'x-august-access-token',
+    mode: 'password',
+  },
+  yale_home: {
+    url: 'https://api.aaecosystem.com',
+    apiKey: KEASE_APP_KEY,
+    keyHeaders: ['x-kease-api-key', 'x-august-api-key'],
+    tokenHeader: 'x-august-access-token',
+    mode: 'password',
+  },
+  yale_global: {
+    url: 'https://api.aaecosystem.com',
+    apiKey: GLOBAL_APP_KEY,
+    keyHeaders: ['x-api-key'],
+    brandingHeader: 'x-branding',
+    branding: 'yale',
+    tokenHeader: 'x-access-token',
+    mode: 'token',
+    oauthTokenUrl: 'https://oauth.aaecosystem.com/access_token',
+  },
+};
+const DEFAULT_ECOSYSTEM = 'august';
+function resolveBrand(ecoSystem) {
+  return BRANDS[ecoSystem] || BRANDS[DEFAULT_ECOSYSTEM];
+}
 const AUTH_FILE = path.join(__dirname, '..', 'persist', 'yale-auth.json');
 
 const DEFAULT_POLL_INTERVAL_S = 30;
@@ -76,19 +122,27 @@ const UPDATE_FAILURE_TOLERANCE = 3;
 // (mirrors yalexs's DEFAULT_RENEWAL_THRESHOLD of 7 days).
 const REFRESH_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
-function authHeaders(accessToken) {
-  const h = { 'x-august-api-key': API_KEY, 'x-august-branding': 'yale', 'Accept-Version': '0.0.1', 'x-august-country': 'US' };
-  if (accessToken) h['x-august-access-token'] = accessToken;
+function authHeaders(accessToken, brand) {
+  const b = brand || BRANDS[DEFAULT_ECOSYSTEM];
+  const h = {
+    'User-Agent':     USER_AGENT,
+    'Accept':         'application/json',
+    'Accept-Version': '0.0.1',
+  };
+  for (const kh of b.keyHeaders) h[kh] = b.apiKey;
+  if (b.brandingHeader) h[b.brandingHeader] = b.branding;
+  if (accessToken) h[b.tokenHeader] = accessToken;
   return h;
 }
 
-async function request(method, urlPath, { accessToken, json } = {}) {
+async function request(method, urlPath, { accessToken, json, brand } = {}) {
+  const b = brand || BRANDS[DEFAULT_ECOSYSTEM];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch(`${BASE_URL}${urlPath}`, {
+    const res = await fetch(`${b.url}${urlPath}`, {
       method,
-      headers: { ...authHeaders(accessToken), ...(json ? { 'Content-Type': 'application/json; charset=UTF-8' } : {}) },
+      headers: { ...authHeaders(accessToken, b), ...(json ? { 'Content-Type': 'application/json; charset=UTF-8' } : {}) },
       body: json ? JSON.stringify(json) : undefined,
       signal: controller.signal,
     });
@@ -141,15 +195,28 @@ function saveAuth(auth) {
  * the rest of LSH.
  */
 class YaleAuthenticator {
-  constructor({ username, password, loginMethod = 'email' }) {
+  constructor({ username, password, loginMethod = 'email', ecoSystem = DEFAULT_ECOSYSTEM,
+                accessToken = null, refreshToken = null, clientId = null, clientSecret = null }) {
     this.username = username;
     this.password = password;
     this.loginMethod = loginMethod === 'phone' ? 'phone' : 'email';
+    this.brand = resolveBrand(ecoSystem);
     const cached = loadAuth();
     this.installId = cached?.installId || crypto.randomUUID();
-    this.accessToken = cached?.accessToken || null;
+    // A token supplied via config (yale_global) wins over the cache on first
+    // run; afterwards the refreshed token in the cache is newer, so prefer it.
+    this.accessToken = cached?.accessToken || accessToken || null;
     this.accessTokenExpires = cached?.accessTokenExpires || null;
     this.validated = cached?.validated || false;
+    this.refreshToken = cached?.refreshToken || refreshToken || null;
+    this.clientId = clientId;
+    this.clientSecret = clientSecret;
+    // Pin the installId to disk the first time we mint one, so repeated login
+    // attempts reuse a single installId instead of spraying Yale with a fresh
+    // one every run. A flood of new installIds from one IP is what trips
+    // aaecosystem's abuse throttle, which then answers with a misleading
+    // 403 "API key is not valid" even though the key is fine.
+    if (!cached?.installId) this._persist();
   }
 
   get identifier() { return `${this.loginMethod}:${this.username}`; }
@@ -160,19 +227,33 @@ class YaleAuthenticator {
       accessToken: this.accessToken,
       accessTokenExpires: this.accessTokenExpires,
       validated: this.validated,
+      refreshToken: this.refreshToken,
     });
   }
 
   /** POST /session. Returns 'authenticated' | 'requires_validation' | 'bad_password'. */
   async login() {
+    // Token-model brands have no password/session login — callers should go
+    // through ensureAuthenticated() instead.
+    if (this.brand.mode === 'token') {
+      return this.accessToken ? 'authenticated' : 'requires_token';
+    }
     const { body, newToken } = await request('POST', '/session', {
+      brand: this.brand,
       json: { installId: this.installId, identifier: this.identifier, password: this.password },
     });
     const accessToken = newToken;
-    if (!body?.vPassword || !accessToken) return 'bad_password';
+    // Response shape differs by eco-system: august returns vPassword:false
+    // (alongside a throwaway token) to signal a wrong password, and marks a
+    // trusted install with vInstallId. yale_home (aaecosystem) omits vPassword
+    // and uses hasInstallId instead. So treat an EXPLICIT vPassword:false as a
+    // rejection, but otherwise trust the presence of an access token, and
+    // accept either field as the "install already trusted" signal.
+    if (body?.vPassword === false || !accessToken) return 'bad_password';
     this.accessToken = accessToken;
     this.accessTokenExpires = decodeJwtExpiry(accessToken) || (Date.now() + 24 * 60 * 60 * 1000);
-    if (!body.vInstallId) { this._persist(); return 'requires_validation'; }
+    const installTrusted = body?.vInstallId || body?.hasInstallId;
+    if (!installTrusted) { this._persist(); return 'requires_validation'; }
     this.validated = true;
     this._persist();
     return 'authenticated';
@@ -180,6 +261,7 @@ class YaleAuthenticator {
 
   async sendVerificationCode() {
     await request('POST', `/validation/${this.loginMethod}`, {
+      brand: this.brand,
       accessToken: this.accessToken,
       json: this.loginMethod === 'phone' ? { smsHashString: 'anY0ZsRmXw+', value: this.username } : { value: this.username },
     });
@@ -187,6 +269,7 @@ class YaleAuthenticator {
 
   async validateVerificationCode(code) {
     await request('POST', `/validate/${this.loginMethod}`, {
+      brand: this.brand,
       accessToken: this.accessToken,
       json: { [this.loginMethod]: this.username, code: String(code) },
     });
@@ -194,15 +277,61 @@ class YaleAuthenticator {
     return this.login();
   }
 
+  /**
+   * OAuth2 refresh_token grant against the yale_global token endpoint. Body
+   * shape is the standard OAuth2 form; the exact params (and whether a
+   * client_secret is required) are UNVERIFIED until confirmed from a real
+   * capture of the Yale Home app's token exchange — adjust here if a capture
+   * shows different field names.
+   */
+  async _refreshOAuth() {
+    if (!this.refreshToken || !this.brand.oauthTokenUrl) throw new Error('no refresh token / oauth endpoint');
+    const form = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: this.refreshToken });
+    if (this.clientId) form.set('client_id', this.clientId);
+    if (this.clientSecret) form.set('client_secret', this.clientSecret);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(this.brand.oauthTokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json', 'User-Agent': USER_AGENT },
+        body: form.toString(),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`token refresh HTTP ${res.status}`);
+      const j = await res.json();
+      if (!j.access_token) throw new Error('token refresh: no access_token in response');
+      this.accessToken = j.access_token;
+      if (j.refresh_token) this.refreshToken = j.refresh_token;
+      this.accessTokenExpires = decodeJwtExpiry(j.access_token)
+        || (j.expires_in ? Date.now() + Number(j.expires_in) * 1000 : Date.now() + 60 * 60 * 1000);
+      this._persist();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   /** Ensures this.accessToken is set and not near expiry; re-logs in if needed. */
   async ensureAuthenticated() {
+    // Token model (yale_global): no password login exists. Use the supplied
+    // access token; refresh it via OAuth when it is expired/near-expiry and a
+    // refresh token is available. A minute of skew keeps us clear of the edge.
+    if (this.brand.mode === 'token') {
+      const fresh = this.accessTokenExpires && (this.accessTokenExpires - Date.now()) > 60_000;
+      if (this.accessToken && fresh) return 'authenticated';
+      if (this.refreshToken) {
+        try { await this._refreshOAuth(); return 'authenticated'; }
+        catch { /* fall through: try the (possibly still-valid) token as-is */ }
+      }
+      return this.accessToken ? 'authenticated' : 'requires_token';
+    }
     if (this.accessToken && this.accessTokenExpires && (this.accessTokenExpires - Date.now()) > REFRESH_THRESHOLD_MS) {
       return 'authenticated';
     }
     // Try a cheap refresh first (rides on the response header of any authed call).
     if (this.accessToken && this.validated) {
       try {
-        const { newToken } = await request('GET', '/users/houses/mine', { accessToken: this.accessToken });
+        const { newToken } = await request('GET', '/users/houses/mine', { brand: this.brand, accessToken: this.accessToken });
         if (newToken) {
           this.accessToken = newToken;
           this.accessTokenExpires = decodeJwtExpiry(newToken) || (Date.now() + REFRESH_THRESHOLD_MS);
@@ -215,7 +344,7 @@ class YaleAuthenticator {
   }
 
   async get(urlPath) {
-    const { body, newToken } = await request('GET', urlPath, { accessToken: this.accessToken });
+    const { body, newToken } = await request('GET', urlPath, { brand: this.brand, accessToken: this.accessToken });
     if (newToken && newToken !== this.accessToken) {
       this.accessToken = newToken;
       this.accessTokenExpires = decodeJwtExpiry(newToken) || this.accessTokenExpires;
@@ -242,7 +371,15 @@ class YaleClient {
 
   async start() {
     const cfg = this._config.yale || {};
-    if (!cfg.username || !cfg.password) return;
+    const brand = resolveBrand(cfg.ecoSystem);
+    // Password brands need username+password; the token brand (yale_global)
+    // needs an accessToken instead. Skip startup if the required creds are
+    // absent, matching how server.js gates every other integration.
+    if (brand.mode === 'token') {
+      if (!cfg.accessToken) return;
+    } else if (!cfg.username || !cfg.password) {
+      return;
+    }
 
     this._auth = new YaleAuthenticator(cfg);
     platformStatus.set('yale', false);
@@ -268,6 +405,11 @@ class YaleClient {
       }
       if (state === 'bad_password') {
         console.error('[Yale] Login rejected — check yale.username/yale.password in config.json.');
+        platformStatus.set('yale', false);
+        return;
+      }
+      if (state === 'requires_token') {
+        console.error('[Yale] yale_global needs an access token — set yale.accessToken (and yale.refreshToken) in config.json, or its token expired and could not be refreshed.');
         platformStatus.set('yale', false);
         return;
       }
