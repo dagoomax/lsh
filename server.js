@@ -316,6 +316,17 @@ async function main() {
     }
   }
 
+  // Host system metrics (CPU / memory / disk of the box LSH runs on).
+  // Enabled by default; set config.systemMetrics to false to disable, or to
+  // an object to tune { pollInterval, name, disks }.
+  if (config.systemMetrics !== false) {
+    const SystemMetricsClient = tryRequire('./src/system-metrics-client');
+    if (SystemMetricsClient) {
+      const systemMetrics = new SystemMetricsClient(config, store, sensorRegistry);
+      systemMetrics.start().catch((err) => console.error(`[SystemMetrics] Start failed: ${err.message}`));
+    }
+  }
+
   // Loxone Weather Service emulator — standalone HTTP listener (not a
   // device client: no sensors, nothing pushed to the store), so DNS-override
   // weather.loxone.com to this host to serve Miniservers their hourly forecast.
