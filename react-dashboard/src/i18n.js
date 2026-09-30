@@ -5,6 +5,7 @@ const DICT = {
   pl: {
         trend_6h: 'Ostatnie 6h', r_self_consumption: 'Autokonsumpcja', r_grid_dependency: 'Zależność od sieci',
         weather_feels_like: 'Odczuwalna', weather_precip: 'Opady', weather_humidity: 'Wilgotność', weather_wind: 'Wiatr', weather_pressure: 'Ciśnienie', weather_clouds: 'Zachmurzenie',
+        'system.title': 'System', 'system.cpu': 'Procesor', 'system.memory': 'Pamięć', 'system.disk': 'Dysk', 'system.free': 'wolne', 'system.load': 'obciążenie', 'system.up': 'działa', 'system.healthy': 'W normie', 'system.busy': 'Obciążony', 'system.critical': 'Krytyczny',
         e_expand: 'Pokaż większy',
         weather_hourly: 'Godzinowo', weather_moon_phase: 'Faza księżyca', weather_gusts: 'Porywy', weather_expected: 'przewidywane', weather_no_rain: 'Bez opadów', weather_visibility: 'Widoczność', weather_illuminated: 'oświetlenia', weather_sun: 'Wschód i zachód słońca', weather_low: 'min', weather_high: 'maks', weather_now: 'Teraz', weather_day: 'Dzień', weather_night: 'Noc', weather_moon_new: 'Nów', weather_moon_waxing_crescent: 'Przybywający sierp', weather_moon_first_quarter: 'Pierwsza kwadra', weather_moon_waxing_gibbous: 'Przybywający garb', weather_moon_full: 'Pełnia', weather_moon_waning_gibbous: 'Ubywający garb', weather_moon_last_quarter: 'Ostatnia kwadra', weather_moon_waning_crescent: 'Ubywający sierp',
         origin: 'Źródło', e_sources_title: 'Źródło energii dla każdej metryki',
@@ -81,6 +82,7 @@ const DICT = {
   de: {
         trend_6h: 'Letzte 6h', r_self_consumption: 'Eigenverbrauch', r_grid_dependency: 'Netzabhängigkeit',
         weather_feels_like: 'Gefühlt', weather_precip: 'Niederschlag', weather_humidity: 'Luftfeuchtigkeit', weather_wind: 'Wind', weather_pressure: 'Luftdruck', weather_clouds: 'Bewölkung',
+        'system.title': 'System', 'system.cpu': 'CPU', 'system.memory': 'Arbeitsspeicher', 'system.disk': 'Laufwerk', 'system.free': 'frei', 'system.load': 'Last', 'system.up': 'läuft', 'system.healthy': 'Normal', 'system.busy': 'Ausgelastet', 'system.critical': 'Kritisch',
         e_expand: 'Größer anzeigen',
         weather_hourly: 'Stündlich', weather_moon_phase: 'Mondphase', weather_gusts: 'Böen', weather_expected: 'erwartet', weather_no_rain: 'Kein Regen erwartet', weather_visibility: 'Sichtweite', weather_illuminated: 'beleuchtet', weather_sun: 'Sonnenauf- & -untergang', weather_low: 'T', weather_high: 'H', weather_now: 'Jetzt', weather_day: 'Tag', weather_night: 'Nacht', weather_moon_new: 'Neumond', weather_moon_waxing_crescent: 'Zunehmende Sichel', weather_moon_first_quarter: 'Erstes Viertel', weather_moon_waxing_gibbous: 'Zunehmender Mond', weather_moon_full: 'Vollmond', weather_moon_waning_gibbous: 'Abnehmender Mond', weather_moon_last_quarter: 'Letztes Viertel', weather_moon_waning_crescent: 'Abnehmende Sichel',
         origin: 'Quelle', e_sources_title: 'Energiequelle pro Messwert',
@@ -157,6 +159,7 @@ const DICT = {
   fr: {
         trend_6h: 'Dernières 6h', r_self_consumption: 'Autoconsommation', r_grid_dependency: 'Dépendance au réseau',
         weather_feels_like: 'Ressenti', weather_precip: 'Précipitations', weather_humidity: 'Humidité', weather_wind: 'Vent', weather_pressure: 'Pression', weather_clouds: 'Nébulosité',
+        'system.title': 'Système', 'system.cpu': 'Processeur', 'system.memory': 'Mémoire', 'system.disk': 'Disque', 'system.free': 'libre', 'system.load': 'charge', 'system.up': 'actif', 'system.healthy': 'Normal', 'system.busy': 'Chargé', 'system.critical': 'Critique',
         e_expand: 'Agrandir',
         weather_hourly: 'Par heure', weather_moon_phase: 'Phase de la lune', weather_gusts: 'Rafales', weather_expected: 'prévus', weather_no_rain: 'Pas de pluie prévue', weather_visibility: 'Visibilité', weather_illuminated: 'éclairée', weather_sun: 'Lever et coucher du soleil', weather_low: 'min', weather_high: 'max', weather_now: 'Maint.', weather_day: 'Jour', weather_night: 'Nuit', weather_moon_new: 'Nouvelle lune', weather_moon_waxing_crescent: 'Premier croissant', weather_moon_first_quarter: 'Premier quartier', weather_moon_waxing_gibbous: 'Gibbeuse croissante', weather_moon_full: 'Pleine lune', weather_moon_waning_gibbous: 'Gibbeuse décroissante', weather_moon_last_quarter: 'Dernier quartier', weather_moon_waning_crescent: 'Dernier croissant',
         origin: 'Source', e_sources_title: 'Source d’énergie par mesure',
@@ -233,6 +236,7 @@ const DICT = {
   es: {
         trend_6h: 'Últimas 6h', r_self_consumption: 'Autoconsumo', r_grid_dependency: 'Dependencia de la red',
         weather_feels_like: 'Sensación térmica', weather_precip: 'Precipitación', weather_humidity: 'Humedad', weather_wind: 'Viento', weather_pressure: 'Presión', weather_clouds: 'Nubosidad',
+        'system.title': 'Sistema', 'system.cpu': 'CPU', 'system.memory': 'Memoria', 'system.disk': 'Disco', 'system.free': 'libre', 'system.load': 'carga', 'system.up': 'activo', 'system.healthy': 'Normal', 'system.busy': 'Ocupado', 'system.critical': 'Crítico',
         e_expand: 'Ver más grande',
         weather_hourly: 'Por horas', weather_moon_phase: 'Fase lunar', weather_gusts: 'Ráfagas', weather_expected: 'previstos', weather_no_rain: 'Sin lluvia prevista', weather_visibility: 'Visibilidad', weather_illuminated: 'iluminada', weather_sun: 'Amanecer y atardecer', weather_low: 'mín', weather_high: 'máx', weather_now: 'Ahora', weather_day: 'Día', weather_night: 'Noche', weather_moon_new: 'Luna nueva', weather_moon_waxing_crescent: 'Creciente', weather_moon_first_quarter: 'Cuarto creciente', weather_moon_waxing_gibbous: 'Gibosa creciente', weather_moon_full: 'Luna llena', weather_moon_waning_gibbous: 'Gibosa menguante', weather_moon_last_quarter: 'Cuarto menguante', weather_moon_waning_crescent: 'Menguante',
         origin: 'Origen', e_sources_title: 'Fuente de energía por métrica',
@@ -309,6 +313,7 @@ const DICT = {
   it: {
         trend_6h: 'Ultime 6h', r_self_consumption: 'Autoconsumo', r_grid_dependency: 'Dipendenza dalla rete',
         weather_feels_like: 'Percepita', weather_precip: 'Precipitazioni', weather_humidity: 'Umidità', weather_wind: 'Vento', weather_pressure: 'Pressione', weather_clouds: 'Nuvolosità',
+        'system.title': 'Sistema', 'system.cpu': 'CPU', 'system.memory': 'Memoria', 'system.disk': 'Disco', 'system.free': 'libero', 'system.load': 'carico', 'system.up': 'attivo', 'system.healthy': 'Normale', 'system.busy': 'Occupato', 'system.critical': 'Critico',
         e_expand: 'Mostra più grande',
         weather_hourly: 'Ogni ora', weather_moon_phase: 'Fase lunare', weather_gusts: 'Raffiche', weather_expected: 'previsti', weather_no_rain: 'Nessuna pioggia prevista', weather_visibility: 'Visibilità', weather_illuminated: 'illuminata', weather_sun: 'Alba e tramonto', weather_low: 'min', weather_high: 'max', weather_now: 'Ora', weather_day: 'Giorno', weather_night: 'Notte', weather_moon_new: 'Luna nuova', weather_moon_waxing_crescent: 'Falce crescente', weather_moon_first_quarter: 'Primo quarto', weather_moon_waxing_gibbous: 'Gibbosa crescente', weather_moon_full: 'Luna piena', weather_moon_waning_gibbous: 'Gibbosa calante', weather_moon_last_quarter: 'Ultimo quarto', weather_moon_waning_crescent: 'Falce calante',
         origin: 'Origine', e_sources_title: 'Fonte di energia per metrica',
@@ -385,6 +390,7 @@ const DICT = {
   uk: {
         trend_6h: 'Останні 6 год', r_self_consumption: 'Самоспоживання', r_grid_dependency: 'Залежність від мережі',
         weather_feels_like: 'Відчувається як', weather_precip: 'Опади', weather_humidity: 'Вологість', weather_wind: 'Вітер', weather_pressure: 'Тиск', weather_clouds: 'Хмарність',
+        'system.title': 'Система', 'system.cpu': 'Процесор', 'system.memory': 'Памʼять', 'system.disk': 'Диск', 'system.free': 'вільно', 'system.load': 'навантаження', 'system.up': 'працює', 'system.healthy': 'Норма', 'system.busy': 'Завантажено', 'system.critical': 'Критично',
         e_expand: 'Показати більше',
         weather_hourly: 'Погодинно', weather_moon_phase: 'Фаза місяця', weather_gusts: 'Пориви', weather_expected: 'очікується', weather_no_rain: 'Без опадів', weather_visibility: 'Видимість', weather_illuminated: 'освітлено', weather_sun: 'Схід і захід сонця', weather_low: 'мін', weather_high: 'макс', weather_now: 'Зараз', weather_day: 'День', weather_night: 'Ніч', weather_moon_new: 'Молодик', weather_moon_waxing_crescent: 'Зростаючий серп', weather_moon_first_quarter: 'Перша чверть', weather_moon_waxing_gibbous: 'Зростаючий місяць', weather_moon_full: 'Повня', weather_moon_waning_gibbous: 'Спадний місяць', weather_moon_last_quarter: 'Остання чверть', weather_moon_waning_crescent: 'Спадний серп',
         origin: 'Джерело', e_sources_title: 'Джерело енергії для кожного показника',
