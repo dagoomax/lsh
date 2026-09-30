@@ -1591,15 +1591,16 @@ Switches, dimmers, sensors, text values, and buttons with **no real hardware beh
   "lon": 21.0122,
   "name": "Home",
   "units": "metric",
+  "lang": "pl",
   "pollInterval": 600
 }
 ```
 
 Current weather + a 5-day forecast for one location via **OpenWeatherMap**'s free tier — the **Current Weather Data API** plus the **5 Day / 3 Hour Forecast API**, both usable with just a plain API key (no paid One Call subscription needed). A free account and API key from [openweathermap.org/api](https://openweathermap.org/api) is all that's needed. Polled every `pollInterval` seconds (minimum enforced: 60, to be polite to the free tier's rate limit).
 
-**Sensors:** condition (label), temperature (→ HomeKit), feels-like, humidity, pressure, wind speed/direction, cloudiness, visibility, sunrise/sunset (unix timestamps). `units: "imperial"` switches °F/mph; default is metric (°C/m/s).
+**Sensors:** condition (label), temperature (→ HomeKit), feels-like, humidity, pressure, wind speed/direction, cloudiness, visibility, sunrise/sunset (unix timestamps). `units: "imperial"` switches °F/mph; default is metric (°C/m/s). Optional `lang` (an OpenWeatherMap language code such as `pl`, `de`, `fr`) localises the condition text; omit it for English.
 
-**Forecast:** `GET /api/openweather/forecast` returns up to 5 days (`{ date, tempMin, tempMax, pop, condition, icon }` each), aggregated from the 3-hour steps — capped at 5 rather than padded to 7, since a true 7-8 day forecast needs OpenWeatherMap's separate One Call 3.0 subscription. Shown as a "Forecast" strip on the React dashboard.
+**Forecast:** `GET /api/openweather/forecast` returns up to 5 days (`{ date, tempMin, tempMax, pop, condition, icon, humidity, pressure, windSpeed, windDeg, gustMax, rainMm, clouds, visibility, hours: [...] }` each — `hours` is the day's 3-hour steps; today also carries `sunrise`/`sunset`), aggregated from the 3-hour steps — capped at 5 rather than padded to 7, since a true 7-8 day forecast needs OpenWeatherMap's separate One Call 3.0 subscription. Shown as a "Forecast" strip on the React dashboard.
 
 ### `airly`
 

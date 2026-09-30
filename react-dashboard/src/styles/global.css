@@ -1548,14 +1548,7 @@ input[type="range"]::-moz-range-thumb {
 
 /* Stat rows in the weather popup step in one after another instead of all
    popping in at once with the card. */
-@keyframes wx-stat-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.wx-stat-in { animation: wx-stat-in 0.32s ease both; }
-@media (prefers-reduced-motion: reduce) {
-  .wx-stat-in { animation: none; }
-}
+
 
 /* ── Camera modal: recent-snapshots thumbnail strip ─────────────────────── */
 .cam-snap-thumb {
@@ -1779,3 +1772,57 @@ input[type="range"]::-moz-range-thumb {
 [data-theme="light"] .hm-range-fill { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08); }
 .hm-range-track[data-dragging] .hm-range-fill { transition: opacity 0.15s; }
 @media (prefers-reduced-motion: reduce) { .hm-range-fill { transition: none; } }
+
+/* ── Weather day popup (Homey / iOS-weather layout) ─────────────────────── */
+.wx-hero-scene {
+  position: absolute; top: 0; left: 0; right: 0; height: 320px; pointer-events: none; overflow: hidden;
+  opacity: 0.55;
+  -webkit-mask-image: linear-gradient(#000 55%, transparent);
+          mask-image: linear-gradient(#000 55%, transparent);
+}
+.wx-days {
+  display: flex; align-items: center; gap: 6px; padding-left: 20px; flex: 1; min-width: 0;
+  overflow-x: auto; scrollbar-width: none;
+}
+.wx-days::-webkit-scrollbar { display: none; }
+.wx-day-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0;
+  min-width: 62px; padding: 7px 8px; border-radius: 14px; border: none; cursor: pointer;
+  background: color-mix(in srgb, var(--card) 70%, transparent); color: var(--text);
+  font: inherit; font-size: 11.5px; font-weight: 600;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+.wx-day-tab b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.wx-day-tab:active { transform: scale(0.95); }
+.wx-day-tab[data-active] { background: var(--text); color: var(--bg); }
+.wx-hero { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 2px 4px; }
+.wx-hero-date { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: capitalize; }
+.wx-hero-temp { font-size: 76px; font-weight: 200; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; margin: 2px 0 4px; }
+.wx-hero-cond { font-size: 19px; font-weight: 600; text-transform: capitalize; letter-spacing: -0.01em; }
+.wx-hero-range { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; font-weight: 600; color: var(--text2); font-variant-numeric: tabular-nums; }
+.wx-range-bar { position: relative; width: 110px; height: 6px; border-radius: 3px; background: var(--white-12); }
+.wx-range-bar > div { position: absolute; top: 0; bottom: 0; min-width: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--teal), var(--green), var(--gold), var(--orange)); }
+.wx-hero-feels { font-size: 13px; color: var(--text2); margin-top: 6px; }
+.wx-section, .wx-tile {
+  background: var(--white-06); border-radius: var(--radius-lg); padding: 12px 14px;
+}
+[data-theme="light"] .wx-section, [data-theme="light"] .wx-tile { background: #f2f2f7; }
+.wx-tile-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--text2);
+  margin-bottom: 8px;
+}
+.wx-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 420px) { .wx-grid { grid-template-columns: 1fr; } }
+.wx-big { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.wx-big small { font-size: 15px; font-weight: 600; color: var(--text2); }
+.wx-sub { font-size: 12.5px; color: var(--text2); margin-top: 4px; }
+.wx-meter { height: 6px; border-radius: 3px; background: var(--white-12); overflow: hidden; margin-top: 10px; }
+.wx-meter > div { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.wx-hourly { overflow-x: auto; margin: 0 -6px; padding: 0 6px; scrollbar-width: thin; }
+.wx-hour { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 6px; flex-shrink: 0; }
+.wx-hour-temp { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wx-hour-pop { font-size: 11px; font-weight: 600; color: var(--blue); font-variant-numeric: tabular-nums; }
+.wx-hour-time { font-size: 11.5px; color: var(--text2); font-variant-numeric: tabular-nums; }
+.wx-sun-times { display: flex; justify-content: space-between; max-width: 260px; font-size: 13px; font-weight: 600; color: var(--text2); font-variant-numeric: tabular-nums; margin-top: 4px; }

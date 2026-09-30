@@ -121,7 +121,10 @@ class OpenWeatherClient {
   async _pollImpl(initial) {
     const cfg = this._config.openweather;
     const units = cfg.units === 'imperial' ? 'imperial' : 'metric';
-    const qs = `lat=${encodeURIComponent(cfg.lat)}&lon=${encodeURIComponent(cfg.lon)}&units=${units}&appid=${encodeURIComponent(cfg.apiKey)}`;
+    // Optional `lang` (e.g. "pl") localises the condition text ("zachmurzenie
+    // umiarkowane" instead of "scattered clouds") — OpenWeather's own param.
+    const qs = `lat=${encodeURIComponent(cfg.lat)}&lon=${encodeURIComponent(cfg.lon)}&units=${units}&appid=${encodeURIComponent(cfg.apiKey)}`
+      + (cfg.lang ? `&lang=${encodeURIComponent(cfg.lang)}` : '');
 
     const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?${qs}`);
     if (!res.ok) {
@@ -212,6 +215,26 @@ class OpenWeatherClient {
         windSpeed: noonStep?.wind?.speed ?? null,
         windDeg:   noonStep?.wind?.deg ?? null,
         clouds:    noonStep?.clouds?.all ?? null,
+        // Whole-day extras for the popup: total rain/snow over the day's
+        // 3-hour steps, the strongest gust, and the steps themselves for the
+        // hourly strip (times are location-local "HH:00").
+        rainMm:    +day.entries.reduce((sum, e) => sum + (e.rain?.['3h'] || 0) + (e.snow?.['3h'] || 0), 0).toFixed(1),
+        gustMax:   day.entries.reduce((m, e) => Math.max(m, e.wind?.gust ?? 0), 0) || null,
+        visibility: noonStep?.visibility ?? null,
+        // Only today has real sunrise/sunset in this endpoint (city.*).
+        sunrise:   i === 0 ? citySunrise ?? null : null,
+        sunset:    i === 0 ? citySunset ?? null : null,
+        tzOffset,
+        windUnit:  units === 'imperial' ? 'mph' : 'm/s',
+        hours: day.entries.map((e) => ({
+          time:  new Date((e.dt + tzOffset) * 1000).toISOString().slice(11, 16),
+          temp:  e.main?.temp ?? null,
+          pop:   e.pop != null ? Math.round(e.pop * 100) : 0,
+          icon:  emojiFor(e.weather?.[0]?.icon),
+          isDay: e.sys?.pod !== 'n',
+          wind:  e.wind?.speed ?? null,
+          rain:  (e.rain?.['3h'] || 0) + (e.snow?.['3h'] || 0),
+        })),
       };
     });
   }

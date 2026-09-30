@@ -83,21 +83,6 @@ function DayCard({ day, index, onOpen }) {
   )
 }
 
-function StatRow({ label, value, delay = 0, icon = null }) {
-  if (value == null) return null
-  return (
-    <div className="detail-card wx-stat-in" style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, padding: '10px 14px',
-      animationDelay: `${delay}s`,
-    }}>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--text2, #aeb6c4)' }}>
-        {icon}{label}
-      </span>
-      <span style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
-    </div>
-  )
-}
-
 // Realistic phase-shaded moon disc: a lit disc with a couple of soft maria
 // (mare) patches, overlaid by a same-size dark disc shifted horizontally so
 // the visible sliver matches the actual illumination fraction — the classic
@@ -289,101 +274,289 @@ function WeatherScene({ icon, isDay = true, moonPhase = 0 }) {
   return null
 }
 
-function DayDetailModal({ day, index, onClose }) {
-  useEffect(() => {
-    const esc = e => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', esc)
-    return () => window.removeEventListener('keydown', esc)
-  }, [onClose])
+// ── Day popup (Homey / iOS-weather style) ───────────────────────────────────
+const round = (n) => (n == null ? '—' : Math.round(n))
+// Location-local clock time for a UTC epoch (seconds) + the city's offset.
+const localTime = (epoch, tz = 0) => epoch == null ? null : new Date((epoch + tz) * 1000).toISOString().slice(11, 16)
 
+function WxTile({ icon, label, children, wide = false, delay = 0 }) {
+  return (
+    <motion.div className="wx-tile" style={wide ? { gridColumn: '1 / -1' } : undefined}
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.25 }}>
+      <div className="wx-tile-label">{icon}{label}</div>
+      {children}
+    </motion.div>
+  )
+}
+
+function Meter({ pct, color = 'var(--accent)' }) {
+  return (
+    <div className="wx-meter"><div style={{ width: `${Math.max(0, Math.min(100, pct))}%`, background: color }} /></div>
+  )
+}
+
+// Wind compass: ticks + cardinal letters, arrow points where the wind blows
+// TO (meteorological degrees are where it comes FROM, hence +180).
+function Compass({ deg, size = 84 }) {
+  const c = size / 2, r = c - 6
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="wx-compass">
+      <circle cx={c} cy={c} r={r} fill="none" stroke="var(--white-14)" strokeWidth="1.5" />
+      {Array.from({ length: 24 }, (_, i) => {
+        const a = (i * 15) * Math.PI / 180, long = i % 6 === 0
+        return <line key={i} x1={c + Math.sin(a) * (r - (long ? 7 : 4))} y1={c - Math.cos(a) * (r - (long ? 7 : 4))}
+          x2={c + Math.sin(a) * r} y2={c - Math.cos(a) * r} stroke="var(--text3)" strokeWidth={long ? 1.6 : 1} />
+      })}
+      {['N', 'E', 'S', 'W'].map((l, i) => {
+        const a = i * Math.PI / 2
+        return <text key={l} x={c + Math.sin(a) * (r - 15)} y={c - Math.cos(a) * (r - 15) + 3.5}
+          textAnchor="middle" fontSize="10" fontWeight="700" fill={l === 'N' ? 'var(--red)' : 'var(--text2)'}>{l}</text>
+      })}
+      {deg != null && (
+        <g style={{ transform: `rotate(${deg + 180}deg)`, transformOrigin: `${c}px ${c}px`, transition: 'transform .6s cubic-bezier(.34,1.3,.64,1)' }}>
+          <line x1={c} y1={c + r - 20} x2={c} y2={c - r + 22} stroke="var(--text)" strokeWidth="2.5" strokeLinecap="round" />
+          <path d={`M ${c} ${c - r + 14} l -6 10 h 12 z`} fill="var(--text)" />
+          <circle cx={c} cy={c} r="3.5" fill="var(--text)" />
+        </g>
+      )}
+    </svg>
+  )
+}
+
+// Pressure gauge: 960–1060 hPa over a 240° arc, needle at the reading.
+function PressureGauge({ hpa, size = 84 }) {
+  const c = size / 2, r = c - 8
+  const lo = 960, hi = 1060, sweep = 240, start = -120
+  const t = hpa == null ? 0.5 : Math.max(0, Math.min(1, (hpa - lo) / (hi - lo)))
+  const pt = (deg, rad = r) => [c + Math.sin(deg * Math.PI / 180) * rad, c - Math.cos(deg * Math.PI / 180) * rad]
+  const [x1, y1] = pt(start), [x2, y2] = pt(start + sweep), [xv, yv] = pt(start + sweep * t)
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <path d={`M ${x1} ${y1} A ${r} ${r} 0 1 1 ${x2} ${y2}`} fill="none" stroke="var(--white-14)" strokeWidth="6" strokeLinecap="round" />
+      <path d={`M ${x1} ${y1} A ${r} ${r} 0 ${sweep * t > 180 ? 1 : 0} 1 ${xv} ${yv}`} fill="none" stroke="var(--accent)" strokeWidth="6" strokeLinecap="round" />
+      <circle cx={xv} cy={yv} r="5" fill="#fff" stroke="var(--accent)" strokeWidth="2" />
+      <text x={c} y={c + 4} textAnchor="middle" fontSize="11" fontWeight="600" fill="var(--text2)">hPa</text>
+    </svg>
+  )
+}
+
+// Sun arc for today: sunrise → sunset along a half-ellipse, sun dot at now.
+function SunArc({ sunrise, sunset, tz }) {
+  const W = 200, H = 70, now = Date.now() / 1000
+  const t = Math.max(0, Math.min(1, (now - sunrise) / Math.max(1, sunset - sunrise)))
+  const up = now >= sunrise && now <= sunset
+  const x = 10 + t * (W - 20), y = H - 8 - Math.sin(t * Math.PI) * (H - 20)
+  return (
+    <div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', maxWidth: 260 }}>
+        <line x1="4" y1={H - 8} x2={W - 4} y2={H - 8} stroke="var(--white-14)" strokeWidth="1.5" />
+        <path d={`M 10 ${H - 8} Q ${W / 2} ${-(H - 30)} ${W - 10} ${H - 8}`} fill="none" stroke="var(--white-18)" strokeWidth="2" strokeDasharray="3 5" />
+        {up && <circle cx={x} cy={y} r="7" fill="var(--gold)" />}
+      </svg>
+      <div className="wx-sun-times">
+        <span>↑ {localTime(sunrise, tz)}</span><span>↓ {localTime(sunset, tz)}</span>
+      </div>
+    </div>
+  )
+}
+
+// Hourly strip: 3-hour steps with a smooth temperature curve drawn above.
+function HourlyStrip({ hours, nowFirst = false }) {
+  if (!hours?.length) return null
+  const COL = 60, H = 44
+  const temps = hours.map(h => h.temp).filter(n => n != null)
+  const lo = Math.min(...temps), hi = Math.max(...temps)
+  const y = (t) => (hi === lo ? H / 2 : 6 + (1 - (t - lo) / (hi - lo)) * (H - 12))
+  const pts = hours.map((h, i) => [i * COL + COL / 2, y(h.temp ?? lo)])
+  const d = pts.reduce((acc, [px, py], i) => {
+    if (!i) return `M ${px} ${py}`
+    const [qx, qy] = pts[i - 1], mx = (qx + px) / 2
+    return `${acc} C ${mx} ${qy}, ${mx} ${py}, ${px} ${py}`
+  }, '')
+  const w = hours.length * COL
+  return (
+    <div className="wx-hourly">
+      <div style={{ position: 'relative', width: w, minWidth: '100%' }}>
+        <svg width={w} height={H} style={{ display: 'block' }}>
+          <path d={`${d} L ${pts.at(-1)[0]} ${H} L ${pts[0][0]} ${H} Z`} fill="color-mix(in srgb, var(--orange) 14%, transparent)" />
+          <path d={d} fill="none" stroke="var(--orange)" strokeWidth="2.5" strokeLinecap="round" />
+          {pts.map(([px, py], i) => <circle key={i} cx={px} cy={py} r="3" fill="var(--orange)" />)}
+        </svg>
+        <div style={{ display: 'flex' }}>
+          {hours.map((h, i) => {
+            const { Icon } = weatherIconFor(h.icon)
+            return (
+              <div key={`${i}-${h.time}`} className="wx-hour" style={{ width: COL }}>
+                <span className="wx-hour-temp">{round(h.temp)}°</span>
+                <Icon size={24} />
+                <span className="wx-hour-pop" style={{ visibility: h.pop > 0 ? 'visible' : 'hidden' }}>{h.pop}%</span>
+                <span className="wx-hour-time" style={nowFirst && i === 0 ? { color: 'var(--text)', fontWeight: 700 } : undefined}>
+                  {nowFirst && i === 0 ? gt('weather_now', 'Now') : h.time}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DayDetailModal({ days, index: startIndex, onClose }) {
+  const [index, setIndex] = useState(startIndex)
+  useEffect(() => {
+    const key = e => {
+      if (e.key === 'Escape') onClose()
+      else if (e.key === 'ArrowRight') setIndex(i => Math.min(days.length - 1, i + 1))
+      else if (e.key === 'ArrowLeft') setIndex(i => Math.max(0, i - 1))
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [onClose, days.length])
+
+  const day = days[index]
   if (!day) return null
+  // Today usually has only a few 3-hour steps left — continue into the
+  // following days so the strip always covers roughly the next 24 hours.
+  const hours = index === 0
+    ? days.slice(0, 3).flatMap(d => d.hours || []).slice(0, 9)
+    : day.hours || []
   const dir = compass(day.windDeg)
   const { Icon: DetailIcon, anim: detailAnim } = weatherIconFor(day.icon)
   const isDay = day.isDay !== false
-  const { accent } = weatherSceneFor(day.icon, isDay)
   const moon = moonPhaseFor(new Date(`${day.date}T12:00:00`))
+  // Week-wide temperature scale so each day's low–high bar is comparable.
+  const weekLo = Math.min(...days.map(d => d.tempMin ?? Infinity))
+  const weekHi = Math.max(...days.map(d => d.tempMax ?? -Infinity))
+  const span = Math.max(1, weekHi - weekLo)
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  const cardMotion = isMobile
+    ? { initial: { y: '100%' }, animate: { y: 0 }, exit: { y: '100%' }, transition: { type: 'spring', stiffness: 360, damping: 34 } }
+    : { initial: { opacity: 0, scale: 0.9, y: 24 }, animate: { opacity: 1, scale: 1, y: 0 }, exit: { opacity: 0, scale: 0.94, y: 12 }, transition: { type: 'spring', stiffness: 360, damping: 30 } }
+
   return (
     <AnimatePresence>
-      <motion.div key="wx-backdrop"
+      <motion.div key="wx-backdrop" className="dm-backdrop"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
         onClick={onClose}
         style={{
-          position: 'fixed', inset: 0, zIndex: 300,
-          background: 'rgba(5,7,15,0.72)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+          position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.45)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18,
         }}>
-        <motion.div key="wx-card"
-          initial={{ opacity: 0, scale: 0.86, y: 30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.92, y: 16 }}
-          transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+        <motion.div key="wx-card" {...cardMotion}
           onClick={e => e.stopPropagation()}
-          className="device-modal-glow"
+          className="device-modal-glow dm-card"
           style={{
-            // Scales up on larger screens (like every other popup in the app)
-            // instead of stopping dead at a small flat cap — 50vw up to 680px
-            // (matching DeviceModal's own top-tier cap), falling back to the
-            // available width on narrow/mobile screens.
-            position: 'relative', width: 'min(clamp(400px, 50vw, 680px), 100%)', maxHeight: '88vh',
-            background: 'var(--modal-grad)', borderRadius: 'var(--sheet-radius)', overflow: 'hidden', overflowY: 'auto',
+            position: 'relative', width: 'min(clamp(420px, 52vw, 720px), 100%)', maxHeight: '90vh',
+            display: 'flex', flexDirection: 'column',
+            background: 'var(--modal-grad)', borderRadius: 'var(--sheet-radius)', overflow: 'hidden',
           }}>
+          <div className="dm-handle" aria-hidden="true" />
 
+          {/* condition-specific living backdrop behind the hero only */}
+          <div className="wx-hero-scene"><WeatherScene icon={day.icon} isDay={isDay} moonPhase={moon.phase} /></div>
 
-          {/* ambient glow blobs, tinted to this day's condition */}
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', borderRadius: 22 }}>
-            <div style={{ position: 'absolute', top: -90, left: -60, width: 240, height: 240, borderRadius: '50%', background: `radial-gradient(circle, ${accent}, transparent 65%)` }} />
+          {/* day tabs (scrolling) + close button (fixed at the end) */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '18px 16px 8px 0', flexShrink: 0 }}>
+          <div className="wx-days">
+            {days.map((d, i) => {
+              const { Icon } = weatherIconFor(d.icon)
+              return (
+                <button key={d.date} className="wx-day-tab" data-active={i === index || undefined} onClick={() => setIndex(i)}>
+                  <span>{dayLabel(d.date, i)}</span>
+                  <Icon size={20} />
+                  <b>{round(d.tempMax)}°</b>
+                </button>
+              )
+            })}
+          </div>
+            <button onClick={onClose} title={gt('close', 'Close')} aria-label={gt('close', 'Close')} className="icon-btn" style={{ flexShrink: 0 }}>✕</button>
           </div>
 
-          {/* living, condition-specific backdrop — sun rays, drifting clouds,
-              falling rain/snow, lightning, breathing fog, or (after dark) a
-              real phase-accurate moon under a starfield */}
-          <WeatherScene icon={day.icon} isDay={isDay} moonPhase={moon.phase} />
-
-          {/* header */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14, padding: '22px 24px 12px' }}>
-            <motion.div className={detailAnim} style={{ lineHeight: 1 }}
-              initial={{ scale: 0.4, rotate: -18, opacity: 0 }}
-              animate={{ scale: 1, rotate: 0, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 15, delay: 0.08 }}>
-              <DetailIcon size={46}/>
-            </motion.div>
-            <motion.div style={{ flex: 1, minWidth: 0 }}
-              initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05, duration: 0.25 }}>
-              <div className="modal-device-title" style={{ fontSize: 18, letterSpacing: '-0.01em' }}>{fullDayLabel(day.date, index)}</div>
-              <div style={{ fontSize: 12.5, color: 'var(--text3)', textTransform: 'capitalize' }}>
-                {day.condition || '—'} · {isDay ? gt('weather_day', 'Day') : gt('weather_night', 'Night')}
+          <div style={{ position: 'relative', overflowY: 'auto', padding: '0 20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* hero */}
+            <motion.div key={day.date} className="wx-hero"
+              initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.22 }}>
+              <div style={{ minWidth: 0 }}>
+                <div className="wx-hero-date">{fullDayLabel(day.date, index)}</div>
+                <div className="wx-hero-temp">{round(day.tempMax)}°</div>
+                <div className="wx-hero-cond">{day.condition || '—'}</div>
+                <div className="wx-hero-range">
+                  <span>{gt('weather_low', 'L')} {round(day.tempMin)}°</span>
+                  <div className="wx-range-bar">
+                    <div style={{
+                      left: `${((day.tempMin - weekLo) / span) * 100}%`,
+                      width: `${((day.tempMax - day.tempMin) / span) * 100}%`,
+                    }} />
+                  </div>
+                  <span>{gt('weather_high', 'H')} {round(day.tempMax)}°</span>
+                </div>
+                {day.feelsLike != null && (
+                  <div className="wx-hero-feels">{gt('weather_feels_like', 'Feels like')} {round(day.feelsLike)}°</div>
+                )}
               </div>
+              <motion.div className={detailAnim} style={{ lineHeight: 1, flexShrink: 0 }}
+                initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 16, delay: 0.05 }}>
+                <DetailIcon size={96} />
+              </motion.div>
             </motion.div>
-            <button onClick={onClose} title={gt('close', 'Close')} style={{
-              width: 34, height: 34, borderRadius: 10, border: '1px solid var(--white-10)', cursor: 'pointer',
-              background: 'var(--white-05)', color: 'var(--muted,#8b949e)', fontSize: 15,
-            }}>✕</button>
-          </div>
 
-          {/* body */}
-          <div style={{ position: 'relative', padding: '4px 24px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '4px 2px 12px' }}>
-              <span style={{ fontSize: 46, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
-                {day.tempMax != null ? Math.round(day.tempMax) : '—'}°
-              </span>
-              <span style={{ fontSize: 22, color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' }}>
-                {day.tempMin != null ? Math.round(day.tempMin) : '—'}°
-              </span>
-              {day.feelsLike != null && (
-                <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text3)' }}>
-                  {gt('weather_feels_like', 'Feels like')} {Math.round(day.feelsLike)}°
-                </span>
+            {/* hourly */}
+            {hours.length > 0 && (
+              <div className="wx-section">
+                <div className="wx-tile-label">{gt('weather_hourly', 'Hourly')}</div>
+                <HourlyStrip hours={hours} nowFirst={index === 0} />
+              </div>
+            )}
+
+            {/* tiles */}
+            <div className="wx-grid">
+              <WxTile delay={0.04} label={gt('weather_wind', 'Wind')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Compass deg={day.windDeg} />
+                  <div>
+                    <div className="wx-big">{day.windSpeed != null ? day.windSpeed.toFixed(1) : '—'}<small> {day.windUnit || 'm/s'}</small></div>
+                    {dir && <div className="wx-sub">{dir} · {round(day.windDeg)}°</div>}
+                    {day.gustMax != null && <div className="wx-sub">{gt('weather_gusts', 'Gusts')} {day.gustMax.toFixed(1)} {day.windUnit || 'm/s'}</div>}
+                  </div>
+                </div>
+              </WxTile>
+              <WxTile delay={0.08} label={gt('weather_precip', 'Precipitation')}>
+                <div className="wx-big">{day.pop ?? 0}<small>%</small></div>
+                <Meter pct={day.pop ?? 0} color="var(--blue)" />
+                <div className="wx-sub">{day.rainMm > 0 ? `${day.rainMm} mm ${gt('weather_expected', 'expected')}` : gt('weather_no_rain', 'No rain expected')}</div>
+              </WxTile>
+              <WxTile delay={0.12} label={gt('weather_humidity', 'Humidity')}>
+                <div className="wx-big">{day.humidity ?? '—'}<small>%</small></div>
+                <Meter pct={day.humidity ?? 0} color="var(--teal)" />
+              </WxTile>
+              <WxTile delay={0.16} label={gt('weather_pressure', 'Pressure')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <PressureGauge hpa={day.pressure} />
+                  <div className="wx-big">{day.pressure ?? '—'}</div>
+                </div>
+              </WxTile>
+              <WxTile delay={0.20} label={gt('weather_clouds', 'Cloudiness')}>
+                <div className="wx-big">{day.clouds ?? '—'}<small>%</small></div>
+                <Meter pct={day.clouds ?? 0} color="var(--text2)" />
+                {day.visibility != null && <div className="wx-sub">{gt('weather_visibility', 'Visibility')} {(day.visibility / 1000).toFixed(day.visibility < 10000 ? 1 : 0)} km</div>}
+              </WxTile>
+              <WxTile delay={0.24} label={gt('weather_moon_phase', 'Moon phase')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <MoonDisc phase={moon.phase} size={48} />
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 600 }}>{gt(moon.nameKey, moon.nameFallback)}</div>
+                    <div className="wx-sub">{Math.round(moon.illumination * 100)}% {gt('weather_illuminated', 'lit')}</div>
+                  </div>
+                </div>
+              </WxTile>
+              {day.sunrise != null && day.sunset != null && (
+                <WxTile wide delay={0.28} label={gt('weather_sun', 'Sunrise & sunset')}>
+                  <SunArc sunrise={day.sunrise} sunset={day.sunset} tz={day.tzOffset} />
+                </WxTile>
               )}
             </div>
-            <StatRow delay={0.10} label={gt('weather_precip', 'Precipitation')} value={`${day.pop ?? 0}%`} />
-            <StatRow delay={0.14} label={gt('weather_humidity', 'Humidity')} value={day.humidity != null ? `${day.humidity}%` : null} />
-            <StatRow delay={0.18} label={gt('weather_wind', 'Wind')} value={day.windSpeed != null ? `${day.windSpeed} m/s${dir ? ' ' + dir : ''}` : null} />
-            <StatRow delay={0.22} label={gt('weather_pressure', 'Pressure')} value={day.pressure != null ? `${day.pressure} hPa` : null} />
-            <StatRow delay={0.26} label={gt('weather_clouds', 'Cloudiness')} value={day.clouds != null ? `${day.clouds}%` : null} />
-            <StatRow delay={0.30}
-              icon={<MoonDisc phase={moon.phase} size={16} />}
-              label={gt('weather_moon_phase', 'Moon phase')}
-              value={`${gt(moon.nameKey, moon.nameFallback)} · ${Math.round(moon.illumination * 100)}%`} />
           </div>
         </motion.div>
       </motion.div>
@@ -408,7 +581,7 @@ export default function WeatherForecast() {
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
         {days.map((day, i) => <DayCard key={day.date} day={day} index={i} onOpen={(d, idx) => setSelected({ day: d, index: idx })} />)}
       </div>
-      {selected && <DayDetailModal day={selected.day} index={selected.index} onClose={() => setSelected(null)} />}
+      {selected && <DayDetailModal days={days} index={selected.index} onClose={() => setSelected(null)} />}
     </div>
   )
 }
