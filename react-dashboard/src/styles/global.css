@@ -599,10 +599,11 @@ input[type="range"]::-moz-range-thumb {
   .mobile-cat-pills { padding: 8px 12px !important; gap: 6px !important; }
   .mobile-cat-pills::-webkit-scrollbar { display: none; }
 
-  /* 2-column tile grid, tighter */
+  /* Fluid tile grid: 2 cols on a phone, filling to 3–4 on phablets and small
+     tablets (≤767px) instead of a hard 2-column lock that wastes width. */
   .device-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 7px !important;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+    gap: 8px !important;
     padding-top: 4px !important;
   }
 
