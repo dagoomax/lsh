@@ -662,6 +662,23 @@ input[type="range"]::-moz-range-thumb {
   100% { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px color-mix(in srgb, var(--violet) 26%, transparent), 0 0 160px color-mix(in srgb, var(--accent) 12%, transparent); }
 }
 
+/* ── Touch bottom-sheet: device popup on phones ──────────────────────────── */
+.dm-handle { display: none; }
+@media (max-width: 767px) {
+  .dm-backdrop { align-items: flex-end !important; padding: 0 !important; }
+  .dm-card {
+    width: 100% !important;
+    max-height: 92vh !important;
+    border-radius: 24px 24px 0 0 !important;
+    padding-top: 14px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .dm-handle {
+    display: block; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 42px; height: 5px; border-radius: 3px; background: var(--white-14); z-index: 6;
+  }
+}
+
 /* ── Energy flow diagram ─────────────────────────────────────────────── */
 .eflow-production-row {
   display: grid;

@@ -827,30 +827,38 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
 
   const accent = '#79c0ff'
 
+  // Touch devices get a bottom-sheet popup (slide up from the bottom, rounded
+  // top, drag handle) instead of a centred card; desktop keeps the card.
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  const cardMotion = isMobile
+    ? { initial: { y: '100%' }, animate: { y: 0 }, exit: { y: '100%' }, transition: { type: 'spring', stiffness: 360, damping: 34 } }
+    : { initial: { opacity: 0, scale: 0.88, y: 26 }, animate: { opacity: 1, scale: 1, y: 0 }, exit: { opacity: 0, scale: 0.92, y: 16 }, transition: { type: 'spring', stiffness: 380, damping: 30 } }
+
   return (
     <AnimatePresence>
       {device && (
         <motion.div key="backdrop"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
           onClick={onClose}
+          className="dm-backdrop"
           style={{
             position: 'fixed', inset: 0, zIndex: 300,
             background: 'rgba(5,7,15,0.72)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18,
           }}>
           <motion.div key="card"
-            initial={{ opacity: 0, scale: 0.88, y: 26 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 16 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            {...cardMotion}
             onClick={e => e.stopPropagation()}
-            className="device-modal-glow"
+            className="device-modal-glow dm-card"
             style={{
               position: 'relative', width: 'min(680px, 100%)', maxHeight: '88vh',
               display: 'flex', flexDirection: 'column',
               background: 'var(--modal-grad)',
               borderRadius: 22, overflow: 'hidden',
             }}>
+            {/* drag-handle affordance — CSS reveals it only in the mobile sheet */}
+            <div className="dm-handle" aria-hidden="true" />
+
 
             {/* gradient border via CSS mask — the same Aurora gradient as the
                 header wordmark and energy panel, not a one-off blend */}
