@@ -4,8 +4,8 @@ import { gt } from '../i18n'
 import { usePaging } from '../hooks/usePaging'
 import { BroadcastIcon, MicIcon, StarIcon, SpeakerIcon } from './Icons'
 
-const ACCENT = '#38bdf8'
-const REJECT = '#ff5a6a'
+const ACCENT = '#0a84ff'
+const REJECT = '#ff453a'
 const MESSAGE_TTL_MS = 24 * 60 * 60 * 1000 // mirrors EXPIRE_MS in src/paging-messages.js
 
 // "3m ago" / "just now" — compact enough for the messages list, doesn't need
@@ -76,8 +76,8 @@ export function PagingPanel({
             initial={{ opacity: 0, y: anchorTop ? -12 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: anchorTop ? -12 : 12 }}
             style={{
               position: 'fixed', ...panelPosition, zIndex: 350, width: 340,
-              background: 'var(--surface, #12151d)', border: `1px solid ${ACCENT}33`, borderRadius: 18,
-              padding: 18, boxShadow: '0 16px 44px rgba(0,0,0,0.5)',
+              background: 'var(--surface)', border: `1px solid ${ACCENT}33`, borderRadius: 18,
+              padding: 18, boxShadow: 'var(--shadow-2)',
             }}
           >
             <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)', marginBottom: 10 }}>
@@ -85,7 +85,7 @@ export function PagingPanel({
             </div>
             <select
               value={myRoom} onChange={e => setMyRoom(e.target.value)}
-              style={{ width: '100%', marginBottom: 16, padding: '10px 12px', borderRadius: 10, fontSize: 16, background: 'var(--surface2, #171b25)', color: 'var(--text)', border: '1px solid var(--border, rgba(255,255,255,0.14))' }}
+              style={{ width: '100%', marginBottom: 16, padding: '10px 12px', borderRadius: 10, fontSize: 16, background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)' }}
             >
               <option value="">{gt('paging.not_a_room', 'Not a fixed room')}</option>
               {rooms.map(r => <option key={r.id} value={r.id}>{roomText(r)}</option>)}
@@ -104,7 +104,7 @@ export function PagingPanel({
                         onClick={() => { startPage(myRoom, r.id); setOpen(false) }}
                         style={{
                           flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12,
-                          border: '1px solid var(--border, rgba(255,255,255,0.14))', background: 'var(--surface2, #171b25)',
+                          border: '1px solid var(--border)', background: 'var(--surface2)',
                           color: r.online ? 'var(--text)' : 'var(--text3)', cursor: r.online ? 'pointer' : 'not-allowed', fontSize: 16, fontWeight: 600,
                         }}
                       >
@@ -119,8 +119,8 @@ export function PagingPanel({
                         aria-label={gt('paging.leave_message', 'Leave a voice message')}
                         style={{
                           width: 44, flexShrink: 0, borderRadius: 12, cursor: 'pointer',
-                          border: `1px solid ${recordingTo === r.id ? REJECT : 'var(--border, rgba(255,255,255,0.14))'}`,
-                          background: recordingTo === r.id ? `${REJECT}22` : 'var(--surface2, #171b25)',
+                          border: `1px solid ${recordingTo === r.id ? REJECT : 'var(--border)'}`,
+                          background: recordingTo === r.id ? `${REJECT}22` : 'var(--surface2)',
                           color: recordingTo === r.id ? REJECT : 'var(--text2)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}
@@ -141,7 +141,7 @@ export function PagingPanel({
                         }}>{gt('paging.send', 'Send')}</button>
                         <button onClick={cancelRecordingMessage} style={{
                           padding: '6px 14px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                          border: '1px solid var(--border, rgba(255,255,255,0.14))', background: 'transparent', color: 'var(--text3)',
+                          border: '1px solid var(--border)', background: 'transparent', color: 'var(--text3)',
                         }}>{gt('paging.cancel', 'Cancel')}</button>
                       </div>
                     )}
@@ -154,12 +154,12 @@ export function PagingPanel({
                   {gt('paging.bridge', 'Connect two rooms')}
                 </div>
                 <select value={bridgeFrom} onChange={e => setBridgeFrom(e.target.value)}
-                  style={{ padding: '10px 12px', borderRadius: 10, fontSize: 16, background: 'var(--surface2, #171b25)', color: 'var(--text)', border: '1px solid var(--border, rgba(255,255,255,0.14))' }}>
+                  style={{ padding: '10px 12px', borderRadius: 10, fontSize: 16, background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)' }}>
                   <option value="">{gt('paging.from', 'From…')}</option>
                   {rooms.map(r => <option key={r.id} value={r.id} disabled={!r.online}>{roomText(r)}{!r.online ? ` — ${gt('paging.offline', 'offline')}` : ''}</option>)}
                 </select>
                 <select value={bridgeTo} onChange={e => setBridgeTo(e.target.value)}
-                  style={{ padding: '10px 12px', borderRadius: 10, fontSize: 16, background: 'var(--surface2, #171b25)', color: 'var(--text)', border: '1px solid var(--border, rgba(255,255,255,0.14))' }}>
+                  style={{ padding: '10px 12px', borderRadius: 10, fontSize: 16, background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)' }}>
                   <option value="">{gt('paging.to', 'To…')}</option>
                   {rooms.map(r => <option key={r.id} value={r.id} disabled={!r.online}>{roomText(r)}{!r.online ? ` — ${gt('paging.offline', 'offline')}` : ''}</option>)}
                 </select>
@@ -176,12 +176,12 @@ export function PagingPanel({
               </div>
             )}
             {myRoom && messages.length > 0 && (
-              <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border, rgba(255,255,255,0.14))', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)' }}>
                   {gt('paging.messages', 'Messages')}
                 </div>
                 {messages.map(m => (
-                  <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 12px', borderRadius: 12, background: 'var(--surface2, #171b25)' }}>
+                  <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 12px', borderRadius: 12, background: 'var(--surface2)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <button onClick={() => playMessage(m.id)} title={gt('paging.play', 'Play')} aria-label={gt('paging.play', 'Play')} style={{
                         width: 36, height: 36, borderRadius: '50%', flexShrink: 0, cursor: 'pointer', border: 'none',
@@ -189,7 +189,7 @@ export function PagingPanel({
                       }}>▶</button>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 15, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{roomLabel(m.from)}</div>
-                        <div style={{ fontSize: 12, color: m.kept ? 'var(--gold, #ffc44d)' : 'var(--text3)', lineHeight: 1.35 }}>
+                        <div style={{ fontSize: 12, color: m.kept ? 'var(--gold)' : 'var(--text3)', lineHeight: 1.35 }}>
                           {timeAgo(m.at)} · {expiryText(m)}
                         </div>
                       </div>
@@ -198,16 +198,16 @@ export function PagingPanel({
                         aria-label={m.kept ? gt('paging.unkeep', 'Stop keeping — let it expire normally') : gt('paging.keep', 'Keep — never auto-expire')}
                         style={{
                           width: 30, height: 30, borderRadius: 9, flexShrink: 0, cursor: 'pointer',
-                          border: `1px solid ${m.kept ? 'var(--gold, #ffc44d)' : 'var(--border, rgba(255,255,255,0.14))'}`,
-                          background: m.kept ? 'color-mix(in srgb, var(--gold, #ffc44d) 16%, transparent)' : 'transparent',
-                          color: m.kept ? 'var(--gold, #ffc44d)' : 'var(--text3)',
+                          border: `1px solid ${m.kept ? 'var(--gold)' : 'var(--border)'}`,
+                          background: m.kept ? 'color-mix(in srgb, var(--gold) 16%, transparent)' : 'transparent',
+                          color: m.kept ? 'var(--gold)' : 'var(--text3)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                         <StarIcon size={14} filled={m.kept}/>
                       </button>
                       <button onClick={() => deleteMessage(m.id)} title={gt('paging.delete', 'Delete')} aria-label={gt('paging.delete', 'Delete')} style={{
                         width: 30, height: 30, borderRadius: 9, flexShrink: 0, cursor: 'pointer', fontSize: 14,
-                        border: '1px solid var(--border, rgba(255,255,255,0.14))', background: 'transparent', color: 'var(--text3)',
+                        border: '1px solid var(--border)', background: 'transparent', color: 'var(--text3)',
                       }}>✕</button>
                     </div>
                     {airplaySpeakers.length > 0 && (
@@ -220,8 +220,8 @@ export function PagingPanel({
                           title={gt('paging.play_on_speaker', 'Play on speaker')}
                           style={{
                             flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 8, fontSize: 12,
-                            background: 'var(--surface, #12151d)', color: 'var(--text2)',
-                            border: '1px solid var(--border, rgba(255,255,255,0.14))', cursor: castingId === m.id ? 'wait' : 'pointer',
+                            background: 'var(--surface)', color: 'var(--text2)',
+                            border: '1px solid var(--border)', cursor: castingId === m.id ? 'wait' : 'pointer',
                           }}>
                           <option value="" disabled>
                             {castingId === m.id ? gt('paging.playing', 'Playing…') : gt('paging.play_on_speaker', 'Play on speaker…')}
@@ -244,8 +244,7 @@ export function PagingPanel({
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{
-              position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(5,7,15,0.78)',
-              backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+              position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.55)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
             }}
           >
@@ -254,7 +253,7 @@ export function PagingPanel({
               transition={{ type: 'spring', stiffness: 320, damping: 26 }}
               style={{
                 width: 'min(400px, 92vw)', borderRadius: 24, padding: 34, textAlign: 'center',
-                background: 'var(--surface, #12151d)', border: `1px solid ${ACCENT}44`, boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+                background: 'var(--surface)', border: `1px solid ${ACCENT}44`, boxShadow: 'var(--shadow-2)',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'center', color: ACCENT, marginBottom: 12 }}><BroadcastIcon size={40}/></div>
@@ -274,7 +273,6 @@ export function PagingPanel({
                 style={{
                   marginTop: 24, padding: '14px 26px', borderRadius: 16, border: 'none', cursor: 'pointer',
                   background: REJECT, color: '#fff', fontWeight: 700, fontSize: 17,
-                  boxShadow: '0 8px 26px rgba(255,90,106,0.35)',
                 }}
               >
                 ✕ {gt('paging.end', 'End')}
@@ -311,7 +309,7 @@ export default function PagingWidget() {
             width: 48, height: 48, borderRadius: '50%', cursor: 'pointer',
             background: 'var(--surface, #171b25)', color: ACCENT,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 22px rgba(0,0,0,0.4)', border: `1px solid ${ACCENT}55`,
+            boxShadow: 'var(--shadow-2)', border: `1px solid ${ACCENT}55`,
           }}
         >
           <BroadcastIcon size={22}/>

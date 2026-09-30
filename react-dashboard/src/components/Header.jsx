@@ -13,9 +13,7 @@ const NAV = [
 // 44×44 is the WCAG/mobile minimum comfortable touch target — these sit in a
 // fixed 56px header, so there's headroom to hit it without the bar growing.
 const iconBtnStyle = {
-  color: 'var(--text2)',
-  border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-  width: 44, height: 44, flexShrink: 0,
+  width: 38, height: 38, flexShrink: 0,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   cursor: 'pointer',
 }
@@ -69,10 +67,9 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
       position: 'fixed', top: 'env(safe-area-inset-top, 0px)', left: 0, right: 0, zIndex: 100,
       height: 56,
       background: 'var(--sidebar)',
-      backdropFilter: 'blur(18px) saturate(1.4)',
-      WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-      borderBottom: '1px solid var(--border)',
-      boxShadow: '0 1px 0 var(--white-03), 0 8px 24px rgba(0,0,0,0.25)',
+      backdropFilter: 'blur(20px) saturate(1.8)',
+      WebkitBackdropFilter: 'blur(20px) saturate(1.8)',
+      borderBottom: '0.5px solid var(--sep)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: 12,
       padding: '0 20px', flexShrink: 0,
@@ -81,19 +78,13 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <img src="/logo.svg" alt="LSH" width={32} height={32} style={{
           borderRadius: 9, flexShrink: 0, display: 'block',
-          boxShadow: '0 2px 12px color-mix(in srgb, var(--accent) 35%, transparent)',
         }}/>
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, whiteSpace: 'nowrap' }}>
           <span style={{
-            fontFamily: 'var(--font-display)', fontStyle: 'italic', fontWeight: 500,
-            fontSize: 21, letterSpacing: '-0.01em',
-            background: 'var(--aurora-gradient)',
-            WebkitBackgroundClip: 'text', backgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            fontWeight: 700, fontSize: 20, letterSpacing: '-0.03em', color: 'var(--text)',
           }}>Aurora</span>
           <span style={{
-            fontSize: 9.5, fontWeight: 600, letterSpacing: '0.11em', textTransform: 'uppercase',
-            color: 'var(--text3)', marginTop: 2,
+            fontSize: 11, fontWeight: 500, color: 'var(--text2)', marginTop: 2,
           }}>Lightweight Smart Home</span>
         </div>
       </div>
@@ -158,7 +149,7 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
             {pagingMessageCount > 0 && (
               <span style={{
                 position: 'absolute', top: 4, right: 4, width: 9, height: 9, borderRadius: '50%',
-                background: 'var(--red, #ff4d5e)', border: '2px solid var(--sidebar, #12151d)',
+                background: 'var(--red)', border: '2px solid var(--bg)',
               }}/>
             )}
           </button>
@@ -185,27 +176,25 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
           title="Language"
           aria-label="Language"
           style={{
-            background: 'var(--white-06)', color: 'var(--text2)',
-            border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-            height: 44, flexShrink: 0,
-            padding: '0 10px', fontSize: 13, fontWeight: 600, cursor: 'pointer', outline: 'none',
+            background: 'var(--white-10)', color: 'var(--text)',
+            border: 'none', borderRadius: 999,
+            height: 38, flexShrink: 0,
+            padding: '0 12px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', outline: 'none',
           }}>
           {LANGUAGES.map(([code, label]) => (
             <option key={code} value={code} style={{ background: 'var(--card)' }}>{label}</option>
           ))}
         </select>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6,
-          background: live ? 'rgba(63,185,80,0.15)' : 'rgba(248,81,73,0.15)',
-          border: `1px solid ${live ? 'rgba(63,185,80,0.3)' : 'rgba(248,81,73,0.3)'}`,
-          borderRadius: 20, padding: '3px 10px',
+          background: live ? 'color-mix(in srgb, var(--green) 15%, transparent)' : 'color-mix(in srgb, var(--red) 15%, transparent)',
+          borderRadius: 999, padding: '5px 11px',
         }}>
-          <span className={live ? 'status-dot-live' : undefined} style={{ width: 6, height: 6, borderRadius: '50%',
-            background: live ? 'var(--green)' : '#f85149',
+          <span className={live ? 'status-dot-live' : undefined} style={{ width: 7, height: 7, borderRadius: '50%',
+            background: live ? 'var(--green)' : 'var(--red)',
             display: 'inline-block',
-            boxShadow: live ? '0 0 6px var(--green)' : 'none',
             animation: live ? 'none' : 'pulse 2s infinite',
           }}/>
-          <span style={{ fontSize: 11, fontWeight: 600, color: live ? 'var(--green)' : '#f85149' }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: live ? 'var(--green)' : 'var(--red)' }}>
             {live ? gt('connected', 'Connected') : gt('offline', 'Offline')}
           </span>
         </div>

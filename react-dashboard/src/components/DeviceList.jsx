@@ -156,7 +156,7 @@ export function Toast() {
   return (
     <div style={{
       position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)',
-      background: msg.ok ? 'rgba(63,185,80,0.95)' : 'rgba(248,81,73,0.95)',
+      background: msg.ok ? 'rgba(48,209,88,0.95)' : 'rgba(255,69,58,0.95)',
       color:'#fff', padding:'8px 20px', borderRadius:24,
       fontSize:13, fontWeight:600, backdropFilter:'blur(12px)',
       zIndex:9999, boxShadow:'0 4px 20px rgba(0,0,0,0.4)', pointerEvents:'none',
@@ -206,33 +206,13 @@ const CATS = ['All','Victron','Lighting','Switches','Climate','Media','Security'
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 function Toggle({ on, onChange }) {
+  // iOS/Homey switch — visuals live in global.css (.ios-switch); the negative
+  // margin + padding grows the tap target without changing the drawn size.
   return (
-    <div
-      role="switch" aria-checked={on} className="lux-toggle" data-on={on}
+    <div role="switch" aria-checked={on} data-on={String(on)}
       onClick={e => { e.stopPropagation(); onChange(!on) }}
-      style={{
-        width:48, height:28, borderRadius:14,
-        background: on
-          ? 'linear-gradient(180deg, var(--accent-lt) -20%, var(--accent) 90%)'
-          : 'linear-gradient(180deg, var(--white-14) 0%, var(--white-08) 100%)',
-        position:'relative', cursor:'pointer', flexShrink:0,
-        transition:'background 0.25s ease, box-shadow 0.25s ease',
-        boxShadow: on
-          ? '0 0 14px color-mix(in srgb, var(--accent) 55%, transparent), inset 0 1px 1px rgba(255,255,255,0.3)'
-          : 'inset 0 1px 2px rgba(0,0,0,0.2)',
-        WebkitTapHighlightColor:'transparent',
-        // Extend tap area without changing visual size
-        padding:'8px',
-        margin:'-8px',
-        boxSizing:'content-box',
-      }}>
-      <div className="lux-toggle-knob" style={{
-        position:'absolute', width:22, height:22, borderRadius:'50%',
-        background:'linear-gradient(180deg, #ffffff 0%, #e7ecf3 100%)', top:3, left:3,
-        boxShadow:'0 1px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.9)',
-        transition:'transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.15s ease',
-        transform: on ? 'translateX(20px)' : 'none',
-      }}/>
+      style={{ padding:8, margin:-8, cursor:'pointer', WebkitTapHighlightColor:'transparent' }}>
+      <div className="ios-switch" data-on={String(on)} />
     </div>
   )
 }
@@ -548,41 +528,21 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const tileOn = (isOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying) || (isDenon && denonPower) || (isSpa && spaHeater)
 
   return (
-    <div onClick={() => onOpen?.(device.key)} className={`device-tile${isWide ? ' wide' : ''}`} data-on={String(tileOn)} data-cat={getGroup(device)} style={{
-      padding: '12px',
+    <div onClick={() => onOpen?.(device.key)} className={`device-tile${isWide ? ' wide' : ''}`} data-on={String(tileOn)} data-cat={getGroup(device)}
+      // Dimmable light that's on: brightness drawn as a fill level (CSS reads --level)
+      data-dim={hasLevel && isOn ? '' : undefined}
+      style={{
+      padding: '14px',
       display: 'flex', flexDirection: 'column',
-      minHeight: 118,
+      minHeight: 124,
       ...(revealIndex != null ? { '--i': revealIndex } : null),
-      // Dimmable light that's on: the tile's warm glow tracks the brightness,
-      // so a room at 20% reads dim and one at 100% glows full — the Homey
-      // "living, brightness-aware dimmer card" look.
-      ...(hasLevel && isOn ? {
-        background: `radial-gradient(140% 100% at 18% -10%, color-mix(in srgb, var(--tile-accent) ${Math.round(12 + level * 0.30)}%, transparent) 0%, transparent 60%), linear-gradient(160deg, color-mix(in srgb, var(--tile-accent) ${Math.round(7 + level * 0.13)}%, var(--card)) 0%, var(--card) 100%)`,
-        borderColor: `color-mix(in srgb, var(--tile-accent) ${Math.round(30 + level * 0.30)}%, transparent)`,
-        boxShadow: `0 6px 30px color-mix(in srgb, var(--tile-accent) ${Math.round(14 + level * 0.22)}%, transparent), var(--inner-hl)`,
-      } : null),
+      ...(hasLevel && isOn ? { '--level': level } : null),
     }}>
-
-      {/* Top glow bar when on */}
-      {tileOn && (
-        <div style={{
-          position:'absolute', top:0, left:'15%', right:'15%', height:2,
-          background:'linear-gradient(90deg, transparent, var(--tile-on-ink), transparent)',
-          borderRadius:1,
-        }}/>
-      )}
 
       {/* Top row: icon left + control right */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-        <div style={{
-          width:40, height:40, borderRadius:12, flexShrink:0,
-          background: tileOn ? 'var(--tile-on-chip)' : 'var(--white-06)',
-          border: `1px solid ${tileOn ? 'color-mix(in srgb, var(--tile-on-ink) 30%, transparent)' : 'var(--white-07)'}`,
-          display:'flex', alignItems:'center', justifyContent:'center',
-          boxShadow: tileOn ? 'var(--tile-on-glow), var(--inner-hl)' : 'var(--inner-hl)',
-          transition:'all 0.2s',
-        }}>
-          <IconComp size={21} color={tileOn ? 'var(--tile-on-ink)' : activeColor} />
+        <div className="tile-icon" data-on={String(tileOn)}>
+          <IconComp size={21} color={tileOn ? '#fff' : activeColor} />
         </div>
 
         <div style={{ flexShrink:0 }}>
@@ -596,7 +556,6 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
                 background: sonosPlaying ? 'color-mix(in srgb, var(--accent) 25%, transparent)' : undefined,
                 color: sonosPlaying ? 'var(--tile-on-ink)' : 'var(--text2)',
                 fontSize:15,
-                boxShadow: sonosPlaying ? '0 0 12px color-mix(in srgb, var(--accent) 30%, transparent)' : undefined,
               }}>
               {sonosPlaying ? '⏸' : '▶'}
             </button>
@@ -611,7 +570,6 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
             <span style={{
               width:9, height:9, borderRadius:'50%', display:'block', marginTop:3,
               background: (motActive||presActive) ? 'var(--orange)' : 'var(--white-12)',
-              boxShadow: (motActive||presActive) ? '0 0 8px var(--orange)' : 'none',
             }}/>
           )}
           {!isSonos && !isAC && !hasSwitch && hasBatt && (
@@ -751,8 +709,8 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
             <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('mute', denonMute ? 0 : 1) }}
               style={{
                 width:24, height:24, borderRadius:7, flexShrink:0,
-                background: denonMute ? 'rgba(248,81,73,0.2)' : undefined,
-                color: denonMute ? '#f87171' : 'var(--text2)', fontSize:11,
+                background: denonMute ? 'rgba(255,69,58,0.2)' : undefined,
+                color: denonMute ? '#ff453a' : 'var(--text2)', fontSize:11,
               }}>
               {denonMute ? '🔇' : '🔊'}
             </button>
@@ -789,8 +747,8 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
               style={{ flex:1, height:24, borderRadius:7, color:'var(--text2)', fontSize:12 }}>⏭</button>
             <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('mute', sonosMute ? 0 : 1) }}
               style={{ width:28, height:24, borderRadius:7,
-                background: sonosMute ? 'rgba(248,81,73,0.2)' : undefined,
-                color: sonosMute ? '#f87171' : 'var(--text2)', fontSize:12 }}>
+                background: sonosMute ? 'color-mix(in srgb, var(--red) 18%, transparent)' : undefined,
+                color: sonosMute ? 'var(--red)' : 'var(--text2)', fontSize:12 }}>
               {sonosMute ? '🔇' : '🔊'}
             </button>
           </div>
@@ -804,19 +762,12 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
 
       {/* Bottom: name + status */}
       <div style={{ marginTop:'auto', paddingTop:10 }}>
-        <div style={{
-          fontSize:12, fontWeight:600, lineHeight:1.2, letterSpacing:'-0.01em',
-          color: hasSwitch && !isOn ? 'var(--text3)' : 'var(--text)',
-          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-        }}>
+        <div className="tile-name">
           {device.label}
         </div>
-        <div style={{
-          fontSize:11, marginTop:3, fontWeight:500, fontVariantNumeric:'tabular-nums',
-          color: tileOn ? 'var(--tile-on-ink)'
-               : (motActive||presActive) ? 'var(--orange)'
-               : !hasSwitch ? activeColor
-               : 'var(--text3)',
+        <div className="tile-status" style={{
+          marginTop:2,
+          ...(!tileOn && (motActive||presActive) ? { color:'var(--orange)' } : null),
         }}>
           {statusText}
         </div>
@@ -1069,8 +1020,8 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
             {satelSensors.map(s => {
               const on   = s.value === 1 || s.value === true
               const Icon = SATEL_SENSOR_ICON[s.sensorType] || SecurityIcon
-              const iconColor = s.sensorType === 'fire_alarm' ? (on ? '#f0883e'            : 'var(--text3)')
-                              : s.sensorType === 'alarm'     ? (on ? 'var(--red,#f85149)' : 'var(--text3)')
+              const iconColor = s.sensorType === 'fire_alarm' ? (on ? '#ff9f0a'            : 'var(--text3)')
+                              : s.sensorType === 'alarm'     ? (on ? 'var(--red)' : 'var(--text3)')
                               : s.sensorType === 'violation' ? (on ? 'var(--orange)'       : 'var(--text3)')
                               : on ? 'var(--tile-on-ink)' : 'var(--text3)'
               return (
@@ -1094,7 +1045,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
             {satelSystemInputs.map(s => {
               const ok = s.value === 1 || s.value === true
               const Icon = s.icon
-              const statusColor = ok ? 'var(--green)' : 'var(--red,#f85149)'
+              const statusColor = ok ? 'var(--green)' : 'var(--red)'
               const statusText = ok ? 'OK' : 'FAULT'
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
@@ -1370,7 +1321,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
                 <button key={o} onClick={() => toggleOriginFilter(o)} className="side-btn" style={{
                   padding:'6px 10px', fontSize:12,
                   textTransform:'capitalize',
-                  ...(hidden ? { background:'rgba(248,81,73,0.1)', color:'var(--text3)', opacity:0.6 } : {}),
+                  ...(hidden ? { background:'rgba(255,69,58,0.1)', color:'var(--text3)', opacity:0.6 } : {}),
                 }}>
                   <div style={{
                     width:16, height:16, borderRadius:4, border:'1.5px solid var(--border)',

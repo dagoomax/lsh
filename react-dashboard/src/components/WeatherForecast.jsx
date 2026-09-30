@@ -325,22 +325,13 @@ function DayDetailModal({ day, index, onClose }) {
             // (matching DeviceModal's own top-tier cap), falling back to the
             // available width on narrow/mobile screens.
             position: 'relative', width: 'min(clamp(400px, 50vw, 680px), 100%)', maxHeight: '88vh',
-            background: 'var(--modal-grad)', borderRadius: 22, overflow: 'hidden', overflowY: 'auto',
+            background: 'var(--modal-grad)', borderRadius: 'var(--sheet-radius)', overflow: 'hidden', overflowY: 'auto',
           }}>
 
-          {/* gradient border via CSS mask — same Aurora gradient as every
-              other popup, not a one-off blend */}
-          <div style={{
-            position: 'absolute', inset: 0, borderRadius: 22, padding: 1, pointerEvents: 'none',
-            background: 'var(--aurora-gradient)', opacity: 0.8,
-            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-            WebkitMaskComposite: 'xor', maskComposite: 'exclude',
-          }} />
 
           {/* ambient glow blobs, tinted to this day's condition */}
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', borderRadius: 22 }}>
             <div style={{ position: 'absolute', top: -90, left: -60, width: 240, height: 240, borderRadius: '50%', background: `radial-gradient(circle, ${accent}, transparent 65%)` }} />
-            <div style={{ position: 'absolute', bottom: -110, right: -70, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, color-mix(in srgb, var(--accent) 12%, transparent), transparent 65%)' }} />
           </div>
 
           {/* living, condition-specific backdrop — sun rays, drifting clouds,

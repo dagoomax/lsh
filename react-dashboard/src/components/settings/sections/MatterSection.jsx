@@ -53,7 +53,7 @@ export default function MatterSection({ config, reload }) {
         </>
       )}
 
-      <div style={{ margin: '14px 0', borderTop: '1px solid var(--border, rgba(255,255,255,0.14))' }}/>
+      <div style={{ margin: '14px 0', borderTop: '1px solid var(--sep)' }}/>
 
       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{gt('s.matter_controller', 'Controller (connect to Matter devices)')}</div>
       <Toggle label={gt('s.matter_controller_enabled', 'Enable Matter controller')} checked={controllerEnabled} onChange={setControllerEnabled}/>

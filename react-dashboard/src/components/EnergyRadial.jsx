@@ -13,7 +13,7 @@ function Node({ x, y, icon: Icon, label, color, value }) {
   return (
     <g>
       <circle cx={x} cy={y} r="26" fill="rgba(20,22,26,0.75)" stroke={color} strokeWidth="2"
-        style={{ filter: `drop-shadow(0 0 6px ${color})` }} />
+         />
       <g transform={`translate(${x - 11}, ${y - 15})`}><Icon color={color} size={22} /></g>
       <text x={x} y={y + 20} textAnchor="middle" fontSize="10" fontWeight="700" fill={color}>{value}</text>
       <text x={x} y={y - 34} textAnchor="middle" fontSize="10" fontWeight="600" fill="rgba(255,255,255,0.6)">{label}</text>
@@ -28,7 +28,7 @@ function Line({ d, color, watts }) {
       <path d={d} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2" />
       {active && (
         <path d={d} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round"
-          strokeDasharray="5 13" style={{ animation: 'eflow-dash 1s linear infinite', animationDuration: flowDur(watts), filter: `drop-shadow(0 0 4px ${color})` }} />
+          strokeDasharray="5 13" style={{ animation: 'eflow-dash 1s linear infinite', animationDuration: flowDur(watts) }} />
       )}
     </g>
   )
@@ -44,11 +44,11 @@ export default function EnergyRadial({ energy }) {
   return (
     <svg viewBox="0 0 150 150" className="wall-energy-svg">
       <Line d={`M ${hub.x} ${hub.y} L 112 34`}  color="var(--orange)"    watts={solarW} />
-      <Line d={`M ${hub.x} ${hub.y} L 112 122`} color="var(--pink,#db61a2)" watts={battW} />
+      <Line d={`M ${hub.x} ${hub.y} L 112 122`} color="var(--pink,#ff375f)" watts={battW} />
       <Node x={hub.x} y={hub.y} icon={PylonIcon} label={gt('e_net', 'Net')} color="var(--accent-lt)"
         value={`${exporting ? '↗' : '↙'} ${fmtKw(gridW)}`} />
       <Node x={112} y={34}  icon={SunIcon}         label={gt('e_solar', 'Solar')}   color="var(--orange)" value={fmtKw(solarW)} />
-      <Node x={112} y={122} icon={BatteryCellIcon} label={gt('e_battery', 'Battery')} color="var(--pink,#db61a2)" value={fmtKw(battW)} />
+      <Node x={112} y={122} icon={BatteryCellIcon} label={gt('e_battery', 'Battery')} color="var(--pink,#ff375f)" value={fmtKw(battW)} />
     </svg>
   )
 }

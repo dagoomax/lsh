@@ -6,7 +6,7 @@ import { EDIT_EMOJI } from '../emoji'
 import { useHistoryPoints, smoothPath } from '../historyChart'
 
 // ── Advanced device popup: full controls + history graphs ──────────────────
-// Design language: glow blobs, gradient border (CSS mask), gradient title,
+// Design language: flat Homey sheet — big hero state, grouped control rows,
 // spring entrance — matches the LSH login/setup redesign.
 
 const RANGES = [
@@ -46,7 +46,7 @@ const CATEGORICAL_TYPES = new Set(['pie', 'histogram']) // no time axis — buck
 
 // Qualitative palette for pie/histogram slices — distinct from the single
 // `accent` colour the time-axis charts use, since these need several colors.
-const BUCKET_PALETTE = ['#79c0ff', '#bc8cff', '#f0883e', '#3fb950', '#f85149', '#d29922', '#39c5cf', '#db61a2']
+const BUCKET_PALETTE = ['#0a84ff', '#bf5af2', '#ff9f0a', '#30d158', '#ff453a', '#f5a623', '#64d2ff', '#ff375f']
 
 // Distinct-value counts (boolean/small-cardinality sensors) or equal-width
 // range counts (continuous numeric) — the shared aggregation both Pie and
@@ -147,7 +147,7 @@ function HistogramChart({ buckets, width, height, accent }) {
 }
 
 
-export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
+export function Chart({ deviceKey, sensor, accent = '#0a84ff', height = 190 }) {
   const points = useHistoryPoints(`${deviceKey}/${sensor.path}`, 30000)
   const [rangeH, setRangeH] = useState(6)
   const [hover, setHover] = useState(null) // index into view.pts
@@ -249,7 +249,7 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
         {RANGES.map(r => (
           <button key={r.label} onClick={e => { e.stopPropagation(); setRangeH(r.h) }} style={{
             background: rangeH === r.h ? 'color-mix(in srgb, var(--accent-lt) 15%, transparent)' : 'var(--white-04)',
-            color: rangeH === r.h ? accent : 'var(--muted, #8b949e)',
+            color: rangeH === r.h ? accent : 'var(--text2)',
             border: `1px solid ${rangeH === r.h ? 'color-mix(in srgb, var(--accent-lt) 40%, transparent)' : 'var(--white-08)'}`,
             borderRadius: 8, padding: '3px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}>{r.label}</button>
@@ -272,16 +272,16 @@ export function Chart({ deviceKey, sensor, accent = '#79c0ff', height = 190 }) {
           ))}
         </div>
         {view?.pts.length > 1 && (
-          <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--muted, #8b949e)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             min {view.realMin.toFixed(1)}{u} · avg {view.avg.toFixed(1)}{u} · max {view.realMax.toFixed(1)}{u}
           </span>
         )}
       </div>
 
-      <div style={{ position: 'relative', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--white-06)', borderRadius: 14, overflow: 'hidden' }}>
-        {view === null && <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted,#8b949e)', fontSize: 12 }}>Loading…</div>}
+      <div style={{ position: 'relative', background: 'var(--white-04)', borderRadius: 16, overflow: 'hidden' }}>
+        {view === null && <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)', fontSize: 12 }}>Loading…</div>}
         {view !== null && view.pts.length < 2 && (
-          <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted,#8b949e)', fontSize: 12 }}>
+          <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text2)', fontSize: 12 }}>
             {gt('collecting', 'Collecting data — check back in a few minutes')}
           </div>
         )}
@@ -385,18 +385,15 @@ function BigToggle({ on, onChange }) {
   return (
     <button role="switch" aria-checked={on} onClick={() => onChange(!on)} style={{
       width: W, height: H, borderRadius: 999, border: 'none', cursor: 'pointer', position: 'relative', padding: 0,
-      background: on ? 'linear-gradient(135deg,var(--green),var(--accent))' : 'var(--white-10)',
-      boxShadow: on
-        ? '0 0 30px color-mix(in srgb, var(--accent) 48%, transparent), inset 0 1px 0 rgba(255,255,255,0.2)'
-        : 'inset 0 1px 4px rgba(0,0,0,0.45)',
-      transition: 'background .25s ease, box-shadow .25s ease', flexShrink: 0,
+      background: on ? 'var(--green)' : 'var(--white-18)',
+      transition: 'background .25s ease', flexShrink: 0,
     }}>
       <span style={{
         position: 'absolute', top: pad, left: on ? (W - T - pad) : pad, width: T, height: T, borderRadius: '50%',
-        background: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.4)',
-        transition: 'left .28s cubic-bezier(.34,1.56,.64,1)',
+        background: '#fff', boxShadow: '0 3px 8px rgba(0,0,0,0.15), 0 3px 1px rgba(0,0,0,0.06)',
+        transition: 'left .28s cubic-bezier(.34,1.4,.64,1)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: on ? 'var(--accent)' : '#9aa7ba', fontSize: 22, fontWeight: 700,
+        color: on ? 'var(--green)' : '#8e8e93', fontSize: 22, fontWeight: 700,
       }}>⏻</span>
     </button>
   )
@@ -416,8 +413,8 @@ function RangeControl({ sensor, value, onCommit, accent }) {
           clearTimeout(tRef.current); tRef.current = setTimeout(() => onCommit(v), 350)
         }}
         style={{
-          flex: 1, height: 6, borderRadius: 3, appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer', outline: 'none',
-          background: `linear-gradient(90deg, var(--green) 0%, ${accent} ${pct}%, var(--white-09) ${pct}%)`,
+          flex: 1, height: 10, borderRadius: 999, appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer', outline: 'none',
+          background: `linear-gradient(90deg, ${accent} ${pct}%, var(--white-14) ${pct}%)`,
         }} />
       <span style={{ fontSize: 14, fontWeight: 700, minWidth: 58, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: accent }}>
         {local}{sensor.unit || ''}
@@ -455,14 +452,14 @@ function RoborockMapView({ device }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)' }}>{gt('live_map', 'Live map')}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)' }}>{gt('live_map', 'Live map')}</div>
         <button onClick={() => { setErr(false); setT(Date.now()) }} title={gt('refresh', 'Refresh')}
-          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--muted,#8b949e)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>↻</button>
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>↻</button>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.25)',
-        border: '1px solid var(--white-07)', borderRadius: 14, padding: 10, minHeight: 200 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--white-04)',
+        borderRadius: 16, padding: 10, minHeight: 200 }}>
         {err
-          ? <span style={{ color: 'var(--muted,#8b949e)', fontSize: 12.5 }}>{gt('map_unavailable', 'Map unavailable')}</span>
+          ? <span style={{ color: 'var(--text2)', fontSize: 12.5 }}>{gt('map_unavailable', 'Map unavailable')}</span>
           : <img src={src} alt="map" onError={() => setErr(true)}
               style={{ maxWidth: '100%', maxHeight: 380, imageRendering: 'pixelated', borderRadius: 10 }} />}
       </div>
@@ -481,11 +478,11 @@ function NowPlayingBanner({ device }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-      background: 'var(--modal-chip-bg)', border: '1px solid var(--modal-chip-border)', borderRadius: 14,
+      background: 'var(--modal-chip-bg)', borderRadius: 16,
     }}>
       <span style={{ fontSize: 16 }}>♫</span>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)' }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text2)' }}>
           {gt('now_playing', 'Now Playing')}
         </div>
         <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
@@ -506,16 +503,16 @@ function RoborockConsumables({ device }) {
   const r = device.readings || {}
   const items = RR_CONSUMABLES.map(c => ({ ...c, v: r[c.path]?.value })).filter(c => typeof c.v === 'number')
   if (!items.length) return null
-  const color = v => (v > 50 ? 'var(--green)' : v > 20 ? '#d29922' : '#f85149')
+  const color = v => (v > 50 ? 'var(--green)' : v > 20 ? '#f5a623' : '#ff453a')
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)', marginBottom: 8 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 8 }}>
         {gt('consumables', 'Consumables')}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map(c => (
           <div key={c.path} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 12.5, minWidth: 90, color: 'var(--text2,#aeb6c4)' }}>{c.name}</span>
+            <span style={{ fontSize: 12.5, minWidth: 90, color: 'var(--text2)' }}>{c.name}</span>
             <div style={{ flex: 1, height: 8, borderRadius: 999, background: 'var(--white-08)', overflow: 'hidden' }}>
               <div style={{ width: `${c.v}%`, height: '100%', background: color(c.v), borderRadius: 999 }} />
             </div>
@@ -551,7 +548,7 @@ function RoborockRoomsPanel({ device }) {
   }
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)', marginBottom: 8 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 8 }}>
         {gt('clean_rooms', 'Clean rooms')}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
@@ -562,7 +559,7 @@ function RoborockRoomsPanel({ device }) {
               padding: '5px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: 600,
               border: `1px solid ${on ? 'color-mix(in srgb, var(--accent) 60%, transparent)' : 'var(--white-12)'}`,
               background: on ? 'color-mix(in srgb, var(--accent) 18%, transparent)' : 'var(--white-04)',
-              color: on ? '#c9e3ff' : 'var(--text2,#aeb6c4)',
+              color: on ? 'var(--accent)' : 'var(--text2)',
             }}>{r.name}</button>
           )
         })}
@@ -570,10 +567,10 @@ function RoborockRoomsPanel({ device }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={clean} disabled={busy || !sel.size} style={{
           padding: '7px 18px', borderRadius: 10, border: 'none', cursor: sel.size ? 'pointer' : 'not-allowed',
-          background: 'linear-gradient(135deg,var(--green),var(--accent))', color: '#fff', fontWeight: 700, fontSize: 12,
+          background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 13,
           opacity: sel.size ? 1 : 0.45,
         }}>{gt('clean_selected', 'Clean selected')}{sel.size ? ` (${sel.size})` : ''}</button>
-        {msg && <span style={{ fontSize: 12, color: 'var(--text3,#8b949e)' }}>{msg}</span>}
+        {msg && <span style={{ fontSize: 12, color: 'var(--text3)' }}>{msg}</span>}
       </div>
     </div>
   )
@@ -599,7 +596,7 @@ function DetailsPanel({ sensors, readings }) {
   if (!sensors.length) return null
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)', marginBottom: 8 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 8 }}>
         {gt('details', 'Details')}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -612,7 +609,7 @@ function DetailsPanel({ sensors, readings }) {
               display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
               background: 'var(--white-03)', border: '1px solid var(--white-07)', borderRadius: 10,
             }}>
-              <span style={{ fontSize: 12.5, color: 'var(--text2,#aeb6c4)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 12.5, color: 'var(--text2)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {s.name || s.label || s.path}
               </span>
               <span style={{ fontSize: 12.5, fontWeight: 600, textAlign: 'right', maxWidth: '55%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -667,7 +664,7 @@ function EditPanel({ device, rooms, onClose }) {
   const field = { width: '100%', background: 'var(--white-05)', border: '1px solid var(--white-12)',
     borderRadius: 8, color: 'var(--text)', padding: '8px 10px', fontSize: 13, outline: 'none' }
   const lbl = { fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-    color: 'var(--muted,#8b949e)', marginBottom: 4, display: 'block' }
+    color: 'var(--text2)', marginBottom: 4, display: 'block' }
 
   return (
     <div style={{ background: 'var(--white-04)', border: '1px solid var(--white-10)', borderRadius: 12, padding: 14,
@@ -712,7 +709,7 @@ function EditPanel({ device, rooms, onClose }) {
           ))}
         </div>
       </div>
-      {err && <div style={{ fontSize: 12, color: 'var(--red,#f85149)' }}>{err}</div>}
+      {err && <div style={{ fontSize: 12, color: 'var(--red)' }}>{err}</div>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button onClick={onClose} disabled={busy}
           style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--white-12)', cursor: 'pointer',
@@ -763,25 +760,19 @@ function HeroState({ device, val, accent }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 2px 6px' }}>
       <div style={{
-        width: 66, height: 66, borderRadius: 20, flexShrink: 0,
+        width: 66, height: 66, borderRadius: '50%', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: active
-          ? `linear-gradient(135deg, color-mix(in srgb, ${accent} 32%, transparent), color-mix(in srgb, var(--green) 18%, transparent))`
-          : 'var(--white-05)',
-        border: `1px solid ${active ? `color-mix(in srgb, ${accent} 48%, transparent)` : 'var(--white-10)'}`,
-        boxShadow: active ? `0 0 36px color-mix(in srgb, ${accent} 32%, transparent)` : 'none',
-        transition: 'background .4s ease, box-shadow .4s ease, border-color .4s ease',
+        background: active ? accent : 'var(--white-08)',
+        transition: 'background .3s ease',
       }}>
-        <I size={34} color={active ? '#fff' : 'var(--muted,#8b949e)'} />
+        <I size={32} color={active ? '#fff' : 'var(--text2)'} />
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={{
-          fontSize: 30, fontWeight: 800, lineHeight: 1.04, letterSpacing: '-0.02em',
-          ...(active
-            ? { background: `linear-gradient(120deg, var(--text,#e6edf3), ${accent})`, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent' }
-            : { color: 'var(--muted,#8b949e)' }),
+          fontSize: 34, fontWeight: 700, lineHeight: 1.04, letterSpacing: '-0.03em',
+          color: active ? 'var(--text)' : 'var(--text2)',
         }}>{big}</div>
-        {sub && <div style={{ fontSize: 13, color: 'var(--text2,#aeb6c4)', fontWeight: 600, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>}
+        {sub && <div style={{ fontSize: 13, color: 'var(--text2)', fontWeight: 600, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>}
       </div>
     </div>
   )
@@ -825,7 +816,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
     onCommand(device.key, sensor, value)
   }
 
-  const accent = '#79c0ff'
+  const accent = '#0a84ff'
 
   // Touch devices get a bottom-sheet popup (slide up from the bottom, rounded
   // top, drag handle) instead of a centred card; desktop keeps the card.
@@ -843,7 +834,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
           className="dm-backdrop"
           style={{
             position: 'fixed', inset: 0, zIndex: 300,
-            background: 'rgba(5,7,15,0.72)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+            background: 'rgba(0,0,0,0.45)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18,
           }}>
           <motion.div key="card"
@@ -854,55 +845,37 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               position: 'relative', width: 'min(680px, 100%)', maxHeight: '88vh',
               display: 'flex', flexDirection: 'column',
               background: 'var(--modal-grad)',
-              borderRadius: 22, overflow: 'hidden',
+              borderRadius: 'var(--sheet-radius)', overflow: 'hidden',
             }}>
             {/* drag-handle affordance — CSS reveals it only in the mobile sheet */}
             <div className="dm-handle" aria-hidden="true" />
 
 
-            {/* gradient border via CSS mask — the same Aurora gradient as the
-                header wordmark and energy panel, not a one-off blend */}
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: 22, padding: 1, pointerEvents: 'none',
-              background: 'var(--aurora-gradient)', opacity: 0.8,
-              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-              WebkitMaskComposite: 'xor', maskComposite: 'exclude',
-            }} />
-
-            {/* ambient glow blobs + dot grid */}
-            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', borderRadius: 22 }}>
-              <div style={{ position: 'absolute', top: -90, left: -60, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(63,185,80,0.14), transparent 65%)' }} />
-              <div style={{ position: 'absolute', bottom: -110, right: -70, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, color-mix(in srgb, var(--accent) 12%, transparent), transparent 65%)' }} />
-              <div style={{ position: 'absolute', inset: 0, opacity: 0.5, backgroundImage: 'radial-gradient(var(--white-05) 1px, transparent 1px)', backgroundSize: '22px 22px' }} />
-            </div>
-
             {/* header */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '18px 20px 12px' }}>
               <div style={{
-                width: 44, height: 44, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+                width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
                 background: 'var(--modal-chip-bg)',
-                border: '1px solid var(--modal-chip-border)', boxShadow: '0 0 20px color-mix(in srgb, var(--accent) 12%, transparent)',
               }}>{(() => { const I = resolveIcon(device); return <I size={24} color="var(--modal-chip-ink)"/> })()}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="modal-device-title" style={{
-                  fontSize: 19, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  fontSize: 22, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>{device.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted, #8b949e)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ fontSize: 11, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span>{device.key}</span>
                   {device.room && <><span>·</span><span>{device.room}</span></>}
                   {freshestAgo && <><span>·</span><span>{gt('updated', 'Updated')} {freshestAgo}</span></>}
                 </div>
               </div>
               <button onClick={() => setEditing(e => !e)} title={gt('edit', 'Edit')} aria-label={gt('edit', 'Edit')} style={{
-                width: 44, height: 44, borderRadius: 10, cursor: 'pointer', fontSize: 14, flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: `1px solid ${editing ? 'var(--accent)' : 'var(--white-10)'}`,
-                background: editing ? 'var(--accent-dim)' : 'var(--white-05)', color: 'var(--muted,#8b949e)',
+                width: 34, height: 34, borderRadius: '50%', cursor: 'pointer', fontSize: 14, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none',
+                background: editing ? 'var(--accent)' : 'var(--white-10)', color: editing ? '#fff' : 'var(--text2)',
               }}>✎</button>
               <button onClick={onClose} title={gt('close', 'Close')} aria-label={gt('close', 'Close')} style={{
-                width: 44, height: 44, borderRadius: 10, border: '1px solid var(--white-10)', cursor: 'pointer', flexShrink: 0,
+                width: 34, height: 34, borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'var(--white-05)', color: 'var(--muted,#8b949e)', fontSize: 14,
+                background: 'var(--white-10)', color: 'var(--text2)', fontSize: 14,
               }}>✕</button>
             </div>
 
@@ -923,15 +896,15 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               {/* Controls */}
               {controls.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)', marginBottom: 8 }}>Controls</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 8 }}>Controls</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {controls.map(s => {
                       const v = val(s.path)
                       const isOn = v === 1 || v === true || v === 'on'
                       return (
                         <div key={s.path} style={{
-                          display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px',
-                          background: 'var(--white-03)', border: '1px solid var(--white-07)', borderRadius: 14,
+                          display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px',
+                          background: 'var(--white-06)', borderRadius: 16,
                         }}>
                           <span style={{ fontSize: 13, fontWeight: 600, minWidth: 110, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {s.name || s.label || s.path}
@@ -943,15 +916,14 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
                           {s.type === 'trigger' && (
                             <button onClick={() => cmd(s.path, 1)} style={{
                               marginLeft: 'auto', padding: '7px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                              background: 'linear-gradient(135deg,var(--green),var(--accent))', color: '#fff', fontWeight: 700, fontSize: 12,
-                              boxShadow: '0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent)',
+                              background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 13,
                             }}>▶ Run</button>
                           )}
                           {s.path === 'my' && s.type !== 'range' && (
                             <button onClick={() => cmd('my', 1)} title="Move to favourite (My) position" style={{
                               marginLeft: 'auto', padding: '6px 16px', borderRadius: 10, cursor: 'pointer',
-                              border: '1px solid var(--white-12)', background: 'var(--white-04)',
-                              color: 'var(--text2,#aeb6c4)', display: 'flex', alignItems: 'center',
+                              border: 'none', background: 'var(--white-10)',
+                              color: 'var(--text2)', display: 'flex', alignItems: 'center',
                             }}><MyIcon size={18} /></button>
                           )}
                           {s.type === 'text' && (
@@ -978,7 +950,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               {/* Sensor chips + chart */}
               {graphable.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted,#8b949e)', marginBottom: 8 }}>History</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 8 }}>History</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                     {graphable.map(s => {
                       const active = s.path === sel
@@ -986,13 +958,12 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
                       return (
                         <button key={s.path} onClick={() => setSelected(s.path)} style={{
                           display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
-                          background: active ? 'color-mix(in srgb, var(--accent-lt) 14.0%, transparent)' : 'var(--white-04)',
-                          border: `1px solid ${active ? 'color-mix(in srgb, var(--accent-lt) 45%, transparent)' : 'var(--white-08)'}`,
-                          color: active ? 'var(--tile-on-ink)' : 'var(--muted,#8b949e)', fontSize: 11.5, fontWeight: 600,
-                          boxShadow: active ? '0 0 14px color-mix(in srgb, var(--accent-lt) 15%, transparent)' : 'none', transition: 'all .15s ease',
+                          background: active ? 'var(--text)' : 'var(--white-08)', border: 'none',
+                          color: active ? 'var(--bg)' : 'var(--text)', fontSize: 12.5, fontWeight: 600,
+                          transition: 'all .15s ease',
                         }}>
                           {s.name || s.label || s.path}
-                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: active ? '#79c0ff' : 'inherit' }}>
+                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'inherit', opacity: active ? 1 : 0.6 }}>
                             {typeof v === 'number' ? `${Number.isInteger(v) ? v : v.toFixed(1)}${s.unit || ''}` : v === true ? 'on' : v === false ? 'off' : '—'}
                           </span>
                         </button>
@@ -1007,7 +978,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               <DetailsPanel sensors={extra} readings={r} />
 
               {graphable.length === 0 && controls.length === 0 && extra.length === 0 && (
-                <div style={{ color: 'var(--muted,#8b949e)', fontSize: 13, textAlign: 'center', padding: 24 }}>
+                <div style={{ color: 'var(--text2)', fontSize: 13, textAlign: 'center', padding: 24 }}>
                   This device has no numeric sensors or controls.
                 </div>
               )}

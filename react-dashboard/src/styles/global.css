@@ -1,47 +1,59 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Homey-style foundation ────────────────────────────────────────────────
+   Flat, calm, iOS-like: near-black ground with raised grey cards (dark) or
+   light grey ground with white cards (light). No ambient glows, no grain, no
+   gradient borders — device state reads from the tile itself (muted when
+   off, solid bright when on). Variable names are unchanged from the Aurora
+   era: ~900 inline styles and public/css-themes/red.css reference them. */
 :root {
   color-scheme: dark;
-  /* ── Surfaces — deep blue-violet ground, faintly tinted cards ── */
-  --bg:        #070912;
-  --sidebar:   rgba(10,13,24,0.6);
-  --card:      #141a29;
-  --card-grad: linear-gradient(180deg, #1a2234 0%, #121826 100%);
-  --card-on:   #1b2b48;
-  --surface:   #141a29;
-  --surface2:  #1d2435;
-  --border:    var(--white-09);
-  --border-lt: var(--white-14);
-  --sep:       var(--white-06);
+  /* ── Surfaces ── */
+  --bg:        #000000;
+  --sidebar:   rgba(18,18,20,0.82);
+  --card:      #1c1c1e;
+  --card-grad: #1c1c1e;
+  --card-on:   #f5f5f7;
+  --surface:   #1c1c1e;
+  --surface2:  #2c2c2e;
+  --border:    rgba(255,255,255,0.08);
+  --border-lt: rgba(255,255,255,0.14);
+  --sep:       rgba(84,84,88,0.45);
 
   /* ── Ink ── */
-  --text:      #eef2f8;
-  --text2:     #9aa7ba;
-  --text3:     #667487;
-  --muted:     #9aa7ba;
+  --text:      #ffffff;
+  --text2:     rgba(235,235,245,0.62);
+  --text3:     rgba(235,235,245,0.36);
+  --muted:     rgba(235,235,245,0.62);
 
-  /* ── Accent & status — saturated, electric ── */
-  --accent:     #4a9dff;
-  --accent-lt:  #7bbcff;
-  --accent-dim: rgba(74,157,255,0.2);
-  --blue:       #4a9dff;
-  --green:      #2ee66b;
-  --orange:     #ff9838;
-  --yellow:     #ffc53d;
-  --red:        #ff4d5e;
-  --teal:       #22d3ee;
-  --violet:     #a875ff;
-  --gold:       #ffc44d;
+  /* ── Accent & status — iOS system palette ── */
+  --accent:     #0a84ff;
+  --accent-lt:  #409cff;
+  --accent-dim: rgba(10,132,255,0.18);
+  --blue:       #0a84ff;
+  --green:      #30d158;
+  --orange:     #ff9f0a;
+  --yellow:     #ffd60a;
+  --red:        #ff453a;
+  --teal:       #64d2ff;
+  --violet:     #bf5af2;
+  --gold:       #ffcc00;
 
   /* ── Geometry ── */
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --sheet-radius: 28px;
 
-  /* ── Elevation — deeper, with a faint cool ambient ── */
-  --shadow-1: 0 1px 2px rgba(0,0,0,0.35), 0 2px 10px rgba(8,14,40,0.4);
-  --shadow-2: 0 4px 14px rgba(0,0,0,0.4), 0 16px 40px rgba(8,14,40,0.42);
-  --inner-hl: inset 0 1px 0 var(--white-06);
+  /* ── Type scale ── */
+  --fs-title:   30px;
+  --fs-body:    15px;
+  --fs-caption: 12px;
+
+  /* ── Elevation — none on dark; separation comes from surface steps ── */
+  --shadow-1: none;
+  --shadow-2: 0 8px 28px rgba(0,0,0,0.5);
+  --inner-hl: 0 0 0 transparent;
 
   /* ── Theme-aware washes (white on dark, slate on light) ── */
   --white-03: rgba(255,255,255,0.03);
@@ -57,132 +69,89 @@
   --white-18: rgba(255,255,255,0.18);
   --white-20: rgba(255,255,255,0.2);
 
-  /* ── Active-tile & modal accents ── */
-  --tile-on-ink:  #7bbcff;
-  --tile-on-chip: rgba(74,157,255,0.26);
-  --tile-on-glow: 0 0 18px rgba(74,157,255,0.4);
-  --modal-grad:        linear-gradient(160deg, #182338 0%, #0e1420 100%);
-  --modal-chip-bg:     linear-gradient(135deg, rgba(74,157,255,0.26), rgba(34,211,238,0.16));
-  --modal-chip-border: rgba(123,188,255,0.42);
-  --modal-chip-ink:    #a5d1ff;
-  --tooltip-bg:        rgba(14,20,32,0.94);
+  /* ── Device tiles — muted off, inverted (bright) on ── */
+  --tile-off-bg:   #1c1c1e;
+  --tile-on-bg:    #f5f5f7;
+  --tile-on-text:  #1c1c1e;
+  --tile-on-text2: rgba(28,28,30,0.6);
+  --tile-on-ink:   #1c1c1e;
+  --tile-on-chip:  rgba(0,0,0,0.06);
+  --tile-on-glow:  0 0 0 transparent;
+
+  /* ── Sheets / modals ── */
+  --modal-grad:        #1c1c1e;
+  --modal-chip-bg:     rgba(10,132,255,0.18);
+  --modal-chip-border: transparent;
+  --modal-chip-ink:    #409cff;
+  --tooltip-bg:        rgba(44,44,46,0.96);
+
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Helvetica Neue", Arial, sans-serif;
+  /* Kept for compatibility — resolves to the solid accent, so every former
+     gradient-text/gradient-fill use now renders flat. */
+  --aurora-gradient: linear-gradient(var(--accent), var(--accent));
 }
 
-/* ── Light theme ─────────────────────────────────────────────────────────
-   Palette mirrors the vanilla pages' GitHub-light scheme (public/style.css)
-   so both UIs read as one product. Toggled via data-theme on <html>,
-   shared localStorage key 'lsh-theme'. */
 [data-theme="light"] {
   color-scheme: light;
-  /* Surfaces — cool off-white, faint blue cast */
-  --bg:        #eef2f8;
-  --sidebar:   rgba(238,242,248,0.72);
+  --bg:        #f2f2f7;
+  --sidebar:   rgba(242,242,247,0.82);
   --card:      #ffffff;
-  --card-grad: linear-gradient(180deg, #ffffff 0%, #f5f8fc 100%);
-  --card-on:   #d6e6ff;
+  --card-grad: #ffffff;
+  --card-on:   #ffffff;
   --surface:   #ffffff;
-  --surface2:  #e9eef6;
-  --border:    rgba(15,23,42,0.13);
-  --border-lt: rgba(15,23,42,0.2);
-  --sep:       rgba(15,23,42,0.08);
+  --surface2:  #e5e5ea;
+  --border:    rgba(60,60,67,0.12);
+  --border-lt: rgba(60,60,67,0.2);
+  --sep:       rgba(60,60,67,0.18);
 
-  /* Ink */
-  --text:      #131a24;
-  --text2:     #4b5563;
-  --text3:     #6b7480;
-  --muted:     #4b5563;
+  --text:      #000000;
+  --text2:     rgba(60,60,67,0.62);
+  --text3:     rgba(60,60,67,0.36);
+  --muted:     rgba(60,60,67,0.62);
 
-  /* Accent & status — saturated but AA-legible on white */
-  --accent:     #0a6bf0;
-  --accent-lt:  #0a6bf0;
-  --accent-dim: rgba(10,107,240,0.14);
-  --blue:       #0a6bf0;
-  --green:      #0f9d58;
-  --orange:     #e0620d;
-  --yellow:     #b8860b;
-  --red:        #e02436;
-  --teal:       #0aa2c0;
-  --violet:     #7c3aed;
-  --gold:       #b8860b;
+  --accent:     #007aff;
+  --accent-lt:  #007aff;
+  --accent-dim: rgba(0,122,255,0.12);
+  --blue:       #007aff;
+  --green:      #28a745;
+  --orange:     #f08c00;
+  --yellow:     #c79a00;
+  --red:        #ff3b30;
+  --teal:       #0a9fc9;
+  --violet:     #af52de;
+  --gold:       #d9a400;
 
-  /* Elevation — much softer on light */
-  --shadow-1: 0 1px 2px rgba(31,35,40,0.06), 0 2px 8px rgba(31,35,40,0.05);
-  --shadow-2: 0 4px 12px rgba(31,35,40,0.08), 0 12px 32px rgba(31,35,40,0.07);
-  --inner-hl: inset 0 1px 0 rgba(255,255,255,0.6);
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.04), 0 2px 10px rgba(0,0,0,0.05);
+  --shadow-2: 0 4px 12px rgba(0,0,0,0.06), 0 14px 36px rgba(0,0,0,0.08);
+  --inner-hl: 0 0 0 transparent;
 
-  /* Washes flip to dark-on-light */
-  --white-03: rgba(15,23,42,0.03);
-  --white-04: rgba(15,23,42,0.04);
-  --white-05: rgba(15,23,42,0.05);
-  --white-06: rgba(15,23,42,0.06);
-  --white-07: rgba(15,23,42,0.07);
-  --white-08: rgba(15,23,42,0.08);
-  --white-09: rgba(15,23,42,0.09);
-  --white-10: rgba(15,23,42,0.1);
-  --white-12: rgba(15,23,42,0.12);
-  --white-14: rgba(15,23,42,0.14);
-  --white-18: rgba(15,23,42,0.18);
-  --white-20: rgba(15,23,42,0.2);
+  --white-03: rgba(60,60,67,0.03);
+  --white-04: rgba(60,60,67,0.04);
+  --white-05: rgba(60,60,67,0.05);
+  --white-06: rgba(60,60,67,0.06);
+  --white-07: rgba(60,60,67,0.07);
+  --white-08: rgba(60,60,67,0.08);
+  --white-09: rgba(60,60,67,0.09);
+  --white-10: rgba(60,60,67,0.1);
+  --white-12: rgba(60,60,67,0.12);
+  --white-14: rgba(60,60,67,0.14);
+  --white-18: rgba(60,60,67,0.18);
+  --white-20: rgba(60,60,67,0.2);
 
-  /* Active-tile & modal accents */
-  --tile-on-ink:  #0a5ad0;
-  --tile-on-chip: rgba(10,107,240,0.16);
-  --tile-on-glow: 0 0 16px rgba(10,107,240,0.22);
-  --modal-grad:        linear-gradient(160deg, #ffffff 0%, #eef3fb 100%);
-  --modal-chip-bg:     linear-gradient(135deg, rgba(10,107,240,0.14), rgba(10,162,192,0.1));
-  --modal-chip-border: rgba(10,107,240,0.32);
-  --modal-chip-ink:    #0a6bf0;
+  /* Light: off tiles sit translucent on the grey ground, on tiles pop white */
+  --tile-off-bg:   rgba(255,255,255,0.55);
+  --tile-on-bg:    #ffffff;
+  --tile-on-text:  #000000;
+  --tile-on-text2: rgba(60,60,67,0.62);
+  --tile-on-ink:   #000000;
+  --tile-on-chip:  rgba(0,0,0,0.05);
+  --tile-on-glow:  0 0 0 transparent;
+
+  --modal-grad:        #ffffff;
+  --modal-chip-bg:     rgba(0,122,255,0.1);
+  --modal-chip-border: transparent;
+  --modal-chip-ink:    #007aff;
   --tooltip-bg:        rgba(255,255,255,0.97);
-}
-
-
-/* ── Display face — "Aurora" wordmark, panel titles, signature moments ──
-   Self-hosted (react-dashboard/public/fonts) so the dashboard still renders
-   its identity correctly on installs with no outbound internet (Tailscale-
-   only LANs, offline wall tablets). Latin + Latin-ext only — Cyrillic
-   headings (uk locale) fall back to the body stack, which is an acceptable,
-   silent degradation rather than a broken glyph. */
-@font-face {
-  font-family: 'Aurora Display';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/react/fonts/fraunces-600-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122;
-}
-@font-face {
-  font-family: 'Aurora Display';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/react/fonts/fraunces-600-latin-ext.woff2') format('woff2');
-  unicode-range: U+0100-024F, U+0300-0304, U+0308, U+0329, U+1E00-1EFF, U+2020;
-}
-@font-face {
-  font-family: 'Aurora Display';
-  font-style: italic;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/react/fonts/fraunces-500italic-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122;
-}
-@font-face {
-  font-family: 'Aurora Display';
-  font-style: italic;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/react/fonts/fraunces-500italic-latin-ext.woff2') format('woff2');
-  unicode-range: U+0100-024F, U+0300-0304, U+0308, U+0329, U+1E00-1EFF, U+2020;
-}
-
-:root {
-  --font-display: 'Aurora Display', Georgia, 'Times New Roman', serif;
-  /* Same hues the rest of the UI already uses for status/accent — kept in
-     lockstep with the light/dark theme swap above instead of a parallel
-     palette, so the one signature gradient never fights the system it
-     lives in. */
-  --aurora-gradient: linear-gradient(115deg,
-    var(--green) 0%, var(--teal) 32%, var(--accent) 62%, var(--violet) 100%);
 }
 
 html, body { height: 100%; }
@@ -190,9 +159,10 @@ html, body { height: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: var(--fs-body);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
@@ -204,44 +174,6 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-/* Ambient depth — fixed Aurora glows behind everything, drifting slowly.
-   Same four hues as --aurora-gradient (the header wordmark / energy panel /
-   kiosk / popups), as radial spotlights instead of a linear sweep — this is
-   where that identity actually lives at the whole-app level; every other
-   Aurora moment is a concentrated echo of this ambient wash. */
-body::before {
-  content: '';
-  position: fixed; inset: -8%; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(900px 620px at 10% -10%,  color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
-    radial-gradient(820px 580px at 96% 2%,    color-mix(in srgb, var(--teal) 16%, transparent), transparent 55%),
-    radial-gradient(760px 520px at 78% 62%,   color-mix(in srgb, var(--green) 12%, transparent), transparent 60%),
-    radial-gradient(1040px 720px at 48% 118%, color-mix(in srgb, var(--violet) 20%, transparent), transparent 60%);
-  animation: lux-aurora 60s ease-in-out infinite alternate;
-  will-change: transform;
-}
-[data-theme="light"] body::before {
-  background:
-    radial-gradient(900px 620px at 10% -10%,  color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
-    radial-gradient(820px 580px at 96% 2%,    color-mix(in srgb, var(--teal) 7%, transparent), transparent 55%),
-    radial-gradient(760px 520px at 78% 62%,   color-mix(in srgb, var(--green) 6%, transparent), transparent 60%),
-    radial-gradient(1040px 720px at 48% 118%, color-mix(in srgb, var(--violet) 8%, transparent), transparent 60%);
-}
-@keyframes lux-aurora {
-  0%   { transform: translate3d(0, 0, 0) scale(1); }
-  50%  { transform: translate3d(-1.5%, 1%, 0) scale(1.05); }
-  100% { transform: translate3d(1.5%, -1%, 0) scale(1.02); }
-}
-
-/* Film grain — barely-there texture that kills flat-gradient banding */
-body::after {
-  content: '';
-  position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  opacity: 0.028;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-[data-theme="light"] body::after { opacity: 0.015; }
-
 #root {
   height: 100%;
   display: flex;
@@ -250,58 +182,58 @@ body::after {
   min-height: -webkit-fill-available;
 }
 
-::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(148,166,190,0.22); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(148,166,190,0.4); }
+::-webkit-scrollbar-thumb { background: var(--white-18); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--white-20); }
 
-:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; }
+:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 2px; }
 
-/* ── Range inputs: visible, polished thumbs everywhere ── */
+button { -webkit-tap-highlight-color: transparent; }
+
+/* ── Range inputs: Homey dimmer — thick pill track, big white knob ── */
+input[type="range"] { accent-color: var(--accent); }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
-  width: 16px; height: 16px; border-radius: 50%;
+  width: 24px; height: 24px; border-radius: 50%;
   background: #fff; border: none; cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 0 4px var(--white-08);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25), 0 3px 8px rgba(0,0,0,0.15);
+  transition: transform 0.15s ease;
 }
-input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
-input[type="range"]:active::-webkit-slider-thumb {
-  transform: scale(1.2);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent);
-}
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.1); }
 input[type="range"]::-moz-range-thumb {
-  width: 16px; height: 16px; border-radius: 50%;
+  width: 24px; height: 24px; border-radius: 50%;
   background: #fff; border: none; cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.5), 0 0 0 4px var(--white-08);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25), 0 3px 8px rgba(0,0,0,0.15);
 }
 
 .card {
-  background: var(--card-grad);
-  border-radius: var(--radius-md);
+  background: var(--card);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-1), var(--inner-hl);
+  box-shadow: var(--shadow-1);
 }
+[data-theme="light"] .card { border-color: transparent; }
 
 .badge {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 9px; border-radius: 20px;
-  font-size: 11px; font-weight: 600; letter-spacing: 0.01em;
+  padding: 3px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
 }
-.badge-green  { background: color-mix(in srgb, var(--green) 22%, transparent);  color: var(--green); }
-.badge-blue   { background: color-mix(in srgb, var(--blue) 22%, transparent);   color: var(--blue); }
-.badge-red    { background: color-mix(in srgb, var(--red) 22%, transparent);    color: var(--red); }
-.badge-orange { background: color-mix(in srgb, var(--orange) 22%, transparent); color: var(--orange); }
+.badge-green  { background: color-mix(in srgb, var(--green) 18%, transparent);  color: var(--green); }
+.badge-blue   { background: color-mix(in srgb, var(--blue) 18%, transparent);   color: var(--blue); }
+.badge-red    { background: color-mix(in srgb, var(--red) 18%, transparent);    color: var(--red); }
+.badge-orange { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
 .badge-gray   { background: var(--white-08); color: var(--text2); }
-.badge-yellow { background: color-mix(in srgb, var(--yellow) 22%, transparent); color: var(--yellow); }
-.badge-accent { background: color-mix(in srgb, var(--accent) 26%, transparent); color: var(--accent-lt); }
+.badge-yellow { background: color-mix(in srgb, var(--yellow) 18%, transparent); color: var(--yellow); }
+.badge-accent { background: var(--accent-dim); color: var(--accent); }
 
 /* ── Device tile ────────────────────────────────────────────────────────── */
-/* Homey-style: each tile carries a per-category accent (--tile-accent); when
-   the device is on, the whole tile warms toward that colour with a soft glow,
-   so the grid reads its state at a glance the way Homey's does. */
+/* Homey: an off device is a muted, quiet tile; an on device is a solid bright
+   tile (white on both themes — on dark it inverts) with its icon circle
+   filled in the category colour. State reads from contrast, not glow. */
 .device-tile[data-cat="Lighting"] { --tile-accent: var(--gold); }
 .device-tile[data-cat="Switches"] { --tile-accent: var(--accent); }
 .device-tile[data-cat="Climate"]  { --tile-accent: var(--orange); }
@@ -313,12 +245,11 @@ input[type="range"]::-moz-range-thumb {
 .device-tile {
   --tile-accent: var(--accent);
   cursor: pointer;
-  background: var(--card-grad);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  box-shadow: var(--shadow-1), var(--inner-hl);
-  transition: transform 0.18s ease, box-shadow 0.18s ease,
-              border-color 0.18s ease, background 0.25s ease;
+  background: var(--tile-off-bg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), background 0.25s ease, color 0.25s ease;
   animation: fadeIn 0.3s cubic-bezier(0.25,0.46,0.45,0.94) both;
   /* Staggered reveal — each tile waits slightly longer than the last
      (index set inline as --i), capped so a full category tab doesn't take
@@ -328,228 +259,246 @@ input[type="range"]::-moz-range-thumb {
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
+[data-theme="light"] .device-tile { border-color: rgba(255,255,255,0.7); }
 @media (prefers-reduced-motion: reduce) {
   .device-tile { animation: none; }
 }
-.device-tile:hover {
-  transform: translateY(-2px);
-  border-color: var(--border-lt);
-  box-shadow: var(--shadow-2), var(--inner-hl);
-}
-.device-tile:active { transform: translateY(0) scale(0.985); }
+.device-tile:active { transform: scale(0.97); }
 /* Bento-style wide tile — media players take two columns where the grid has
    room, so now-playing + transport controls get space (Homey-style). Clamps
    to a single column when the grid is only one wide. */
 .device-tile.wide { grid-column: span 2; }
 @media (max-width: 360px) { .device-tile.wide { grid-column: span 1; } }
+
 .device-tile[data-on="true"] {
+  background: var(--tile-on-bg);
+  color: var(--tile-on-text);
+  box-shadow: var(--shadow-1);
+  /* Inside an on tile the secondary inks flip to the tile's own palette, so
+     inline var(--text)/var(--text2) references stay readable on the white. */
+  --text:  var(--tile-on-text);
+  --text2: var(--tile-on-text2);
+  --text3: var(--tile-on-text2);
+  --white-04: rgba(0,0,0,0.04);
+  --white-06: rgba(0,0,0,0.06);
+  --white-07: rgba(0,0,0,0.07);
+  --white-08: rgba(0,0,0,0.08);
+  --white-10: rgba(0,0,0,0.1);
+  --white-12: rgba(0,0,0,0.12);
+}
+/* Dimmers: brightness drawn as a soft category-tinted fill from the left,
+   driven by a single --level (0–100) set inline. */
+.device-tile[data-on="true"][data-dim] {
   background:
-    radial-gradient(120% 80% at 15% 0%, color-mix(in srgb, var(--tile-accent) 16%, transparent) 0%, transparent 60%),
-    linear-gradient(160deg, color-mix(in srgb, var(--tile-accent) 9%, var(--card)) 0%, var(--card) 100%);
-  border-color: color-mix(in srgb, var(--tile-accent) 42%, transparent);
-  box-shadow: 0 6px 30px color-mix(in srgb, var(--tile-accent) 24%, transparent), var(--inner-hl);
-}
-.device-tile[data-on="true"]:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--tile-accent) 60%, transparent);
-  box-shadow: 0 10px 40px color-mix(in srgb, var(--tile-accent) 34%, transparent), var(--inner-hl);
-}
-[data-theme="light"] .device-tile[data-on="true"] {
-  background:
-    radial-gradient(120% 80% at 15% 0%, color-mix(in srgb, var(--tile-accent) 18%, transparent) 0%, transparent 60%),
-    linear-gradient(160deg, color-mix(in srgb, var(--tile-accent) 12%, #ffffff) 0%, #ffffff 100%);
-  border-color: color-mix(in srgb, var(--tile-accent) 40%, transparent);
-  box-shadow: 0 4px 22px color-mix(in srgb, var(--tile-accent) 16%, transparent), var(--inner-hl);
-}
-[data-theme="light"] .device-tile[data-on="true"]:hover {
-  border-color: color-mix(in srgb, var(--tile-accent) 58%, transparent);
-  box-shadow: 0 8px 30px color-mix(in srgb, var(--tile-accent) 22%, transparent), var(--inner-hl);
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--tile-accent) 15%, var(--tile-on-bg)) calc(var(--level, 100) * 1%),
+      var(--tile-on-bg) calc(var(--level, 100) * 1%));
 }
 
-/* Device modal title — same Aurora wordmark treatment as the header, so
-   every popup reads as the same product opening a closer view of itself.
-   Display italic on both themes; only the ink swaps — gradient on dark,
-   solid on light (a gradient text-fill reads muddy against a white card). */
+/* Icon circle */
+.tile-icon {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--white-08);
+  color: var(--text2);
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.tile-icon[data-on="true"] { background: var(--tile-accent); color: #fff; }
+.tile-name {
+  font-size: 14px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.tile-status { font-size: 12.5px; color: var(--text2); font-variant-numeric: tabular-nums; }
+
+/* ── iOS switch (shared Toggle) ── */
+.ios-switch {
+  position: relative; flex-shrink: 0;
+  width: 51px; height: 31px; border-radius: 999px; border: none; padding: 0;
+  background: var(--white-18); cursor: pointer;
+  transition: background 0.25s ease;
+}
+[data-theme="light"] .ios-switch { background: rgba(120,120,128,0.2); }
+.device-tile[data-on="true"] .ios-switch { background: rgba(120,120,128,0.2); }
+.ios-switch[data-on="true"],
+.device-tile[data-on="true"] .ios-switch[data-on="true"] { background: var(--green); }
+.ios-switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 27px; height: 27px; border-radius: 50%; background: #fff;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15), 0 3px 1px rgba(0,0,0,0.06);
+  transition: transform 0.25s cubic-bezier(0.34,1.4,0.64,1);
+}
+.ios-switch[data-on="true"]::after { transform: translateX(20px); }
+.ios-switch.sm { width: 42px; height: 26px; }
+.ios-switch.sm::after { width: 22px; height: 22px; }
+.ios-switch.sm[data-on="true"]::after { transform: translateX(16px); }
+
+/* Device modal title — plain large bold, Homey sheet header */
 .modal-device-title {
   font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 500;
-  background: var(--aurora-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-[data-theme="light"] .modal-device-title {
-  background: none;
-  -webkit-text-fill-color: var(--text);
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 
 /* ── Sidebar buttons ────────────────────────────────────────────────────── */
 .side-btn {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 9px; border-radius: 9px; border: none; cursor: pointer;
-  background: transparent; color: var(--text2);
-  font-size: 12.5px; font-weight: 400; font-family: inherit;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 10px; border: none; cursor: pointer;
+  background: transparent; color: var(--text);
+  font-size: 14px; font-weight: 500; font-family: inherit;
   text-align: left; width: 100%;
   transition: background 0.15s ease, color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.side-btn:hover { background: var(--white-05); color: var(--text); }
+.side-btn:hover { background: var(--white-06); }
 .side-btn[data-active="true"] {
-  background: var(--accent-dim);
-  color: var(--accent-lt);
+  background: var(--accent);
+  color: #fff;
   font-weight: 600;
 }
 
-/* ── Category pills (mobile + filters) ──────────────────────────────────── */
+/* ── Category / zone pills ──────────────────────────────────────────────── */
 .cat-pill {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 12px; border-radius: 999px; cursor: pointer; flex-shrink: 0;
-  border: 1px solid var(--border);
-  background: var(--white-04); color: var(--text2);
-  font-size: 12px; font-weight: 500; font-family: inherit;
-  transition: all 0.15s ease;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 999px; cursor: pointer; flex-shrink: 0;
+  border: none;
+  background: var(--card); color: var(--text);
+  font-size: 13.5px; font-weight: 600; font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.cat-pill:hover { border-color: var(--border-lt); color: var(--text); }
-.cat-pill[data-active="true"] {
-  background: var(--accent); border-color: transparent;
-  color: #fff; font-weight: 600;
-  box-shadow: 0 2px 14px color-mix(in srgb, var(--accent) 40%, transparent);
-}
-.cat-pill[data-variant="soft"][data-active="true"] {
-  background: color-mix(in srgb, var(--accent-lt) 14.0%, transparent); border-color: color-mix(in srgb, var(--accent-lt) 45%, transparent);
-  color: #c9e3ff; box-shadow: none;
-}
+[data-theme="light"] .cat-pill { box-shadow: var(--shadow-1); }
+.cat-pill:active { transform: scale(0.96); }
+.cat-pill[data-active="true"] { background: var(--text); color: var(--bg); }
+.cat-pill[data-variant="soft"][data-active="true"] { background: var(--accent-dim); color: var(--accent); }
 
 /* ── Platform chips ─────────────────────────────────────────────────────── */
 .platform-chip {
   display: flex; align-items: center; gap: 5px;
   padding: 2px 9px 2px 3px; border-radius: 999px;
-  background: var(--white-03);
+  background: var(--white-05);
   border: 1px solid transparent;
-  font-size: 10.5px; color: var(--text3); user-select: none;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  font-size: 11px; font-weight: 500; color: var(--text2); user-select: none;
+  transition: color 0.15s ease, background 0.15s ease;
 }
-.platform-chip:hover { color: var(--text2); background: var(--white-05); }
-/* A platform that is up is not news. On a wall display the only thing worth
-   spending contrast on is the one that has fallen over, so "connected" is the
-   quiet state and "disconnected" is the loud one — the inverse of how this
-   bar used to read, where a failure dimmed itself to 55% and disappeared. */
-.platform-chip[data-on="true"]  { opacity: 0.72; }
+.platform-chip:hover { color: var(--text); background: var(--white-08); }
+/* A platform that is up is not news — "connected" is the quiet state and
+   "disconnected" the loud one. */
+.platform-chip[data-on="true"]  { opacity: 0.75; }
 .platform-chip[data-on="true"]:hover { opacity: 1; }
 .platform-chip[data-on="false"] {
-  color: #ff8a8a; background: rgba(248,81,73,0.1);
-  border-color: rgba(248,81,73,0.45); opacity: 1; font-weight: 600;
-}
-/* #ff8a8a is a dark-theme ink — on the light theme it has to darken to stay
-   readable against a near-white bar. */
-[data-theme="light"] .platform-chip[data-on="false"] {
-  color: #b42318; background: rgba(248,81,73,0.09);
-  border-color: rgba(248,81,73,0.4);
+  color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent);
+  opacity: 1; font-weight: 600;
 }
 
-/* ── Scene strip ─────────────────────────────────────────────────────────── */
-/* Homey-style launcher pills: a colour "run" badge + label, like the app
-   shortcut pills on Homey's dashboard. */
+/* ── Scene strip — Homey "Flows" launcher pills ─────────────────────────── */
 .scene-chip {
   display: flex; align-items: center; gap: 8px;
   padding: 5px 14px 5px 5px; border-radius: 999px;
-  background: var(--card-grad);
-  border: 1px solid var(--border);
-  font-size: 12.5px; font-weight: 600; color: var(--text);
-  box-shadow: var(--shadow-1), var(--inner-hl);
+  background: var(--card);
+  border: none;
+  font-size: 13.5px; font-weight: 600; color: var(--text);
+  box-shadow: var(--shadow-1);
   cursor: pointer; user-select: none; white-space: nowrap;
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 .scene-chip-ic {
-  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center; font-size: 13px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--green) 45%, transparent), color-mix(in srgb, var(--accent) 32%, transparent));
-  box-shadow: inset 0 0 0 1px var(--white-10);
+  background: var(--accent-dim);
 }
-.scene-chip:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--green) 40%, var(--border));
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--green) 16%, transparent), var(--inner-hl);
-}
-.scene-chip:active { transform: translateY(0); }
-.scene-chip[data-running="true"] { opacity: 0.55; pointer-events: none; }
+.scene-chip:active { transform: scale(0.96); }
+.scene-chip[data-running="true"] { opacity: 0.5; pointer-events: none; }
 
 /* ── Energy cards ───────────────────────────────────────────────────────── */
 .ecard {
   --c: var(--accent);
   flex: 1;
   position: relative; overflow: hidden;
-  background: var(--card-grad);
+  background: var(--card);
   border: 1px solid var(--border);
-  border-left: 2px solid var(--c);
   border-radius: var(--radius-lg);
-  padding: 11px 14px;
+  padding: 12px 14px;
   display: flex; align-items: center; gap: 12px;
-  box-shadow: var(--shadow-1), var(--inner-hl);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  box-shadow: var(--shadow-1);
 }
-.ecard::after {
-  content: '';
-  position: absolute; top: -34px; right: -34px; width: 96px; height: 96px;
-  border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle, color-mix(in srgb, var(--c) 8%, transparent), transparent 70%);
-}
-.ecard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px color-mix(in srgb, var(--c) 16%, rgba(0,0,0,0.35)), var(--inner-hl);
-  border-color: color-mix(in srgb, var(--c) 30%, var(--border));
-}
+[data-theme="light"] .ecard { border-color: transparent; }
 
 .detail-card {
   font-variant-numeric: tabular-nums;
-  background: var(--card-grad);
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 12px 14px;
-  box-shadow: var(--inner-hl);
-  transition: border-color 0.18s ease;
 }
-.detail-card:hover { border-color: var(--border-lt); }
+[data-theme="light"] .detail-card { border-color: transparent; box-shadow: var(--shadow-1); }
 
 /* ── Stat / chart cards (Graphs view) ───────────────────────────────────── */
 .stat-card {
   flex: 1 1 120px; min-width: 120px; padding: 12px 16px;
-  background: var(--card-grad);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  position: relative; overflow: hidden;
-  box-shadow: var(--shadow-1), var(--inner-hl);
-  transition: transform 0.18s ease, border-color 0.18s ease;
-}
-.stat-card:hover { transform: translateY(-2px); border-color: var(--border-lt); }
-
-.chart-card {
-  background: var(--card-grad);
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 12px 14px;
-  box-shadow: var(--shadow-1), var(--inner-hl);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  position: relative; overflow: hidden;
+  box-shadow: var(--shadow-1);
 }
-.chart-card:hover { border-color: var(--border-lt); box-shadow: var(--shadow-2), var(--inner-hl); }
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-1);
+}
+[data-theme="light"] .stat-card,
+[data-theme="light"] .chart-card { border-color: transparent; }
 
-/* ── Relay rows ─────────────────────────────────────────────────────────── */
+/* ── Relay rows — grouped list rows ─────────────────────────────────────── */
 .relay-row {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px; border-radius: 10px;
-  background: var(--white-03);
+  padding: 11px 14px; border-radius: var(--radius-md);
+  background: var(--card);
   border: 1px solid var(--border);
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
 }
-.relay-row:hover { border-color: var(--border-lt); background: var(--white-05); }
-.relay-row[data-on="true"] {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+[data-theme="light"] .relay-row { border-color: transparent; }
+.relay-row[data-on="true"] { background: var(--tile-on-bg); color: var(--tile-on-text); --text: var(--tile-on-text); --text2: var(--tile-on-text2); }
+
+/* ── Grouped list (settings-style rows, Homey/iOS) ── */
+.list-group {
+  background: var(--card); border-radius: var(--radius-md); overflow: hidden;
+  border: 1px solid var(--border);
 }
-.relay-row[data-on="true"]:hover { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+[data-theme="light"] .list-group { border-color: transparent; }
+.list-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; min-height: 48px;
+  border-bottom: 0.5px solid var(--sep);
+}
+.list-row:last-child { border-bottom: none; }
+
+/* ── Sheet (modal surface) ── */
+.sheet {
+  background: var(--modal-grad);
+  border-radius: var(--sheet-radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  color: var(--text);
+}
+[data-theme="light"] .sheet { border-color: transparent; }
+.sheet-tile {
+  background: var(--surface2); border-radius: var(--radius-md);
+}
+[data-theme="light"] .sheet-tile { background: #f2f2f7; }
+
+/* ── Round icon button ── */
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--white-10); color: var(--text2); font-size: 15px;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.icon-btn:hover { background: var(--white-14); color: var(--text); }
+.icon-btn:active { transform: scale(0.94); }
 
 @keyframes flowDash {
   to { stroke-dashoffset: -20; }
@@ -559,38 +508,40 @@ input[type="range"]::-moz-range-thumb {
   50%       { opacity: 0.4; }
 }
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
 }
 /* Simulated door-camera scene (SipDemo) */
 @keyframes camScan { to { top: 110%; } }
 @keyframes camGrain { to { transform: translate(1px, 1px); } }
 
-/* Header nav */
+/* Header nav — segmented control */
 .header-nav-react {
   display: flex;
-  gap: 6px;
-  background: var(--white-04);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 4px;
+  gap: 2px;
+  background: var(--white-10);
+  border: none;
+  border-radius: 999px;
+  padding: 3px;
 }
+[data-theme="light"] .header-nav-react { background: rgba(118,118,128,0.12); }
 .header-nav-react a {
-  font-size: 13px;
-  font-weight: 500;
-  padding: 7px 16px;
-  border-radius: 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 999px;
   color: var(--text2);
   text-decoration: none;
   white-space: nowrap;
   transition: color 0.15s, background 0.15s;
 }
-.header-nav-react a:hover { color: var(--text); background: var(--white-06); }
+.header-nav-react a:hover { color: var(--text); }
 .header-nav-react a.active {
-  color: #fff;
-  background: var(--accent);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--text);
+  background: var(--surface2);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
+[data-theme="light"] .header-nav-react a.active { background: #fff; }
 
 /* Responsive layout switching */
 @media (min-width: 768px) {
@@ -610,17 +561,17 @@ input[type="range"]::-moz-range-thumb {
   .header-nav-react    { display: none !important; }
 
   /* Compact header */
-  header { padding: 0 12px !important; height: 50px !important; }
+  header { padding: 0 16px !important; height: 52px !important; }
 
   /* Category pills row */
-  .mobile-cat-pills { padding: 8px 12px !important; gap: 6px !important; }
+  .mobile-cat-pills { padding: 8px 16px !important; gap: 8px !important; }
   .mobile-cat-pills::-webkit-scrollbar { display: none; }
 
   /* Fluid tile grid: 2 cols on a phone, filling to 3–4 on phablets and small
      tablets (≤767px) instead of a hard 2-column lock that wastes width. */
   .device-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
-    gap: 8px !important;
+    gap: 10px !important;
     padding-top: 4px !important;
   }
 
@@ -628,7 +579,7 @@ input[type="range"]::-moz-range-thumb {
   .energy-strip {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
+    gap: 10px !important;
   }
 
   /* Energy detail grid: single column */
@@ -644,23 +595,8 @@ input[type="range"]::-moz-range-thumb {
 }
 
 
-/* Device modal breathing glow — sweeps the full Aurora hue range (green →
-   teal → blue → violet) instead of one fixed accent, so the glow itself
-   feels like a slice of the same curtain of light as the header/energy
-   panel/kiosk, not a separate one-off effect. */
-.device-modal-glow {
-  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px color-mix(in srgb, var(--accent) 28.0%, transparent), 0 0 160px color-mix(in srgb, var(--accent) 12%, transparent);
-  animation: modalBreathe 7s ease-in-out infinite alternate;
-}
-[data-theme="light"] .device-modal-glow {
-  box-shadow: 0 24px 80px rgba(31,35,40,0.25), 0 4px 24px rgba(31,35,40,0.12);
-  animation: none;
-}
-@keyframes modalBreathe {
-  0%   { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 55px color-mix(in srgb, var(--green) 20%, transparent), 0 0 130px color-mix(in srgb, var(--teal) 10%, transparent); }
-  50%  { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 95px color-mix(in srgb, var(--accent-lt) 34%, transparent), 0 0 200px color-mix(in srgb, var(--accent) 18%, transparent); }
-  100% { box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 70px color-mix(in srgb, var(--violet) 26%, transparent), 0 0 160px color-mix(in srgb, var(--accent) 12%, transparent); }
-}
+/* Device modal surface — flat Homey sheet (class name kept for callers) */
+.device-modal-glow { box-shadow: var(--shadow-2); }
 
 /* ── Touch bottom-sheet: device popup on phones ──────────────────────────── */
 .dm-handle { display: none; }
@@ -669,13 +605,13 @@ input[type="range"]::-moz-range-thumb {
   .dm-card {
     width: 100% !important;
     max-height: 92vh !important;
-    border-radius: 24px 24px 0 0 !important;
-    padding-top: 14px;
+    border-radius: var(--sheet-radius) var(--sheet-radius) 0 0 !important;
+    padding-top: 16px;
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .dm-handle {
     display: block; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
-    width: 42px; height: 5px; border-radius: 3px; background: var(--white-14); z-index: 6;
+    width: 36px; height: 5px; border-radius: 3px; background: var(--white-20); z-index: 6;
   }
 }
 
@@ -698,37 +634,11 @@ input[type="range"]::-moz-range-thumb {
     align-items: start;
   }
 }
-/* Shared "aurora + dot-grid" card background — the Energy tab's one visual
-   identity, reused by every card on that tab (not just the flow diagram) so
-   the whole tab reads as one surface. z-index:0 on the card + z-index:-1 on
-   its ::before keeps the glow pinned behind that card's own content without
-   every consumer needing its own position/z-index wrapper. */
+/* Energy tab card surface (class name kept) — plain Homey card, no aurora */
 .eflow-bg {
   position: relative;
   z-index: 0;
   overflow: hidden;
-  background: radial-gradient(circle, var(--white-05) 1px, transparent 1px);
-  background-size: 22px 22px;
-  background-position: center;
-}
-/* The one signature moment: a slow curtain of light behind the inverter hub
-   — the dashboard's namesake, and its actual subject (energy arriving from
-   the sky, redistributed through the house). */
-.eflow-bg::before {
-  content: '';
-  position: absolute;
-  inset: -20%;
-  z-index: -1;
-  background: var(--aurora-gradient);
-  opacity: 0.1;
-  filter: blur(40px);
-  animation: aurora-drift 22s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-[data-theme="light"] .eflow-bg::before { opacity: 0.16; filter: blur(50px); }
-@keyframes aurora-drift {
-  0%   { transform: translate3d(-4%, -2%, 0) rotate(0deg) scale(1); }
-  100% { transform: translate3d(4%, 3%, 0) rotate(6deg) scale(1.15); }
 }
 .eflow-wrap {
   display: flex;
@@ -760,7 +670,6 @@ input[type="range"]::-moz-range-thumb {
   stroke-linecap: round;
   stroke-dasharray: 5 13;                 /* dash+gap = 18, matches keyframe */
   animation: eflow-dash 1s linear infinite;
-  filter: drop-shadow(0 0 5px var(--fc));
 }
 .eflow-rev { animation-direction: reverse; }
 @keyframes eflow-dash { to { stroke-dashoffset: -18; } }
@@ -796,7 +705,7 @@ input[type="range"]::-moz-range-thumb {
   stroke-linejoin: round;
 }
 @media (prefers-reduced-motion: reduce) {
-  .eflow-flow, .eflow-hub-ring, .eflow-wrap::before { animation: none; }
+  .eflow-flow, .eflow-hub-ring { animation: none; }
 }
 
 /* Room icon edit affordance — visible on row hover */
@@ -829,18 +738,12 @@ input[type="range"]::-moz-range-thumb {
 }
 .plan-room {
   position: absolute;
-  border-radius: 11px;
+  border-radius: 14px;
   cursor: pointer;
-  background:
-    repeating-linear-gradient(0deg, transparent 0 12px, var(--white-03) 12px 13px),
-    repeating-linear-gradient(90deg, transparent 0 12px, var(--white-03) 12px 13px),
-    linear-gradient(160deg, var(--surface2) 0%, var(--card) 100%);
-  /* Bigger, bolder, accent-tinted outline with a soft glow */
-  border: 3px solid color-mix(in srgb, var(--accent) 24%, var(--border-lt));
-  box-shadow:
-    inset 0 0 0 1px var(--white-08),
-    0 12px 34px rgba(0,0,0,0.38),
-    0 0 26px color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--card);
+  /* Flat Homey plate: hairline outline, one soft drop shadow */
+  border: 2px solid var(--border-lt);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.22);
   transform-style: preserve-3d;
   transition: box-shadow 0.5s, border-color 0.5s, border-width 0.5s, transform 0.25s,
     opacity 0.55s, filter 0.55s;
@@ -865,16 +768,11 @@ input[type="range"]::-moz-range-thumb {
 }
 .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] {
   border-color: var(--accent);
-  border-width: 4px;
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent),
-    0 0 46px color-mix(in srgb, var(--accent) 38%, transparent), var(--shadow-2);
+  border-width: 3px;
+  box-shadow: var(--shadow-2);
 }
 .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"]::after { opacity: 1; }
 .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] .plan-wall { opacity: 0.85; }
-[data-theme="light"] .plan-board[data-zoomed="true"] .plan-room[data-zoom-target="true"] {
-  box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 20%, transparent), var(--shadow-2);
-}
 .plan-zoom-back {
   position: absolute;
   top: 12px;
@@ -895,18 +793,20 @@ input[type="range"]::-moz-range-thumb {
   z-index: 60;
   display: flex;
   gap: 1px;
-  background: rgba(20,22,26,0.7);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.14);
+  background: var(--sidebar);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
   border-radius: 999px;
   padding: 4px;
 }
 .plan-kiosk-zoom button {
   width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
-  background: rgba(255,255,255,0.06); color: #fff; font-size: 17px; font-weight: 600;
+  background: transparent; color: var(--text); font-size: 17px; font-weight: 600;
   display: flex; align-items: center; justify-content: center;
 }
-.plan-kiosk-zoom button:hover { background: rgba(255,255,255,0.16); }
+.plan-kiosk-zoom button:hover { background: var(--white-10); }
 
 /* ── Camera field-of-view cones (home plan) ── */
 .plan-cam-cone { pointer-events: none; overflow: visible; }
@@ -923,22 +823,10 @@ input[type="range"]::-moz-range-thumb {
 .plan-room:hover {
   border-color: var(--accent);
   transform: translateZ(18px);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent),
-    0 20px 50px rgba(0,0,0,0.5),
-    0 0 44px color-mix(in srgb, var(--accent) 32%, transparent);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.3);
 }
-.plan-room[data-active="true"] {
-  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
-    0 12px 34px rgba(0,0,0,0.38),
-    0 0 34px color-mix(in srgb, var(--accent) 26%, transparent);
-}
-[data-theme="light"] .plan-room[data-active="true"] {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 14.0%, transparent), var(--shadow-1);
-}
+.plan-room[data-active="true"] { border-color: var(--accent); }
+[data-theme="light"] .plan-room { box-shadow: 0 10px 28px rgba(0,0,0,0.08); }
 
 /* Billboard: counter-rotate children so text/icons face the viewer;
    the final translateY stands the marker ON its floor anchor instead of
@@ -979,10 +867,10 @@ input[type="range"]::-moz-range-thumb {
 }
 .plan-on-badge {
   background: var(--accent-dim);
-  color: var(--accent-lt);
+  color: var(--accent);
   font-size: 9.5px;
   font-weight: 700;
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 0 5px;
 }
 .plan-devices {
@@ -1010,8 +898,9 @@ input[type="range"]::-moz-range-thumb {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  border: 1.5px solid var(--border-lt);
-  background: var(--card);
+  border: none;
+  background: var(--tile-off-bg);
+  color: var(--text2);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1020,17 +909,14 @@ input[type="range"]::-moz-range-thumb {
   transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 .plan-chip:hover {
-  transform: scale(1.25);
-  border-color: var(--accent);
+  transform: scale(1.2);
   z-index: 5;
 }
+[data-theme="light"] .plan-chip { background: #fff; }
 .plan-chip[data-on="true"] {
-  border-color: var(--accent);
-  background: var(--card-on);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent);
-}
-[data-theme="light"] .plan-chip[data-on="true"] {
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent);
+  background: var(--tile-on-bg);
+  color: var(--tile-on-text);
+  box-shadow: 0 0 0 3px var(--accent), var(--shadow-1);
 }
 @media (prefers-reduced-motion: reduce) {
   .plan-room, .plan-chip { transition: none; }
@@ -1047,32 +933,26 @@ input[type="range"]::-moz-range-thumb {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 12px;
+  padding: 7px 13px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--white-04);
-  color: var(--text2);
-  font-size: 11.5px;
+  border: none;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  box-shadow: var(--shadow-1);
+  transition: background 0.15s, color 0.15s;
 }
-.plan-filter-pill:hover { border-color: var(--border-lt); color: var(--text); }
-.plan-filter-pill[data-active="true"] {
-  background: var(--accent);
-  border-color: transparent;
-  color: #fff;
-}
+.plan-filter-pill[data-active="true"] { background: var(--text); color: var(--bg); }
 
 /* Pseudo-3D room walls (extruded from the floor plate edges) */
 .plan-wall {
   position: absolute;
   pointer-events: none;
   /* Taller, more solid extrusion for a dramatic 3D read */
-  background: linear-gradient(to bottom,
-    color-mix(in srgb, var(--accent) 10%, var(--white-14)),
-    var(--white-05));
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border-lt));
+  background: linear-gradient(to bottom, var(--white-18), var(--white-06));
+  border: 1px solid var(--border-lt);
   opacity: 0.72;
   transition: opacity 0.4s;
   backface-visibility: visible;
@@ -1175,13 +1055,13 @@ input[type="range"]::-moz-range-thumb {
 .plan-power-panel {
   width: 44px; height: 44px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-size: 20px;
-  background: var(--card); border: 2px solid #4A9EFF;
-  box-shadow: 0 0 16px rgba(74,158,255,0.55);
+  background: var(--card); border: 2px solid var(--accent);
+  box-shadow: var(--shadow-1);
 }
 .plan-power-chip {
   padding: 3px 9px 3px 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; white-space: nowrap;
-  background: rgba(10,14,20,0.78); color: #bfe3ff;
-  border: 1px solid rgba(74,158,255,0.4); box-shadow: 0 0 10px rgba(74,158,255,0.35);
+  background: var(--card); color: var(--text);
+  border: 1px solid var(--border); box-shadow: var(--shadow-1);
   display: inline-flex; align-items: center; gap: 5px;
 }
 /* Lit-up icon: only rendered for devices actively drawing power, so the glow
@@ -1189,14 +1069,13 @@ input[type="range"]::-moz-range-thumb {
 .plan-power-chip-icon {
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; border-radius: 50%; font-size: 12px; flex-shrink: 0;
-  background: radial-gradient(circle, rgba(74,158,255,0.35), transparent 70%);
-  filter: drop-shadow(0 0 4px #4A9EFF);
+  background: var(--accent-dim);
 }
 .plan-power-summary {
   padding: 8px 14px; border-radius: 14px; font-size: 11.5px; font-weight: 700; white-space: nowrap;
   display: flex; flex-direction: column; gap: 3px;
-  background: rgba(10,14,20,0.82); color: #e7f2ff;
-  border: 1px solid rgba(74,158,255,0.4); box-shadow: 0 0 18px rgba(74,158,255,0.3);
+  background: var(--card); color: var(--text);
+  border: 1px solid var(--border); box-shadow: var(--shadow-2);
 }
 
 /* Add-device panel */
@@ -1207,8 +1086,8 @@ input[type="range"]::-moz-range-thumb {
   z-index: 200;
   width: 300px;
   background: var(--card);
-  border: 1px solid var(--border-lt);
-  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-2);
   padding: 8px;
 }
@@ -1279,68 +1158,54 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Vivid backdrop: accent + violet aurora over the ground so the sign-in
-     screen reads as part of the dashboard, not a flat void. */
-  background:
-    radial-gradient(680px 460px at 50% 34%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 68%),
-    radial-gradient(700px 520px at 82% 108%, color-mix(in srgb, var(--violet) 16%, transparent), transparent 62%),
-    var(--bg);
+  background: var(--bg);
 }
 .lock-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 15px;
-  /* Glassy, matching the dashboard tiles */
-  background: color-mix(in srgb, var(--card) 78%, transparent);
-  backdrop-filter: blur(26px) saturate(1.5);
-  -webkit-backdrop-filter: blur(26px) saturate(1.5);
-  border: 1px solid var(--border-lt);
-  border-radius: 22px;
-  padding: 40px 48px;
-  box-shadow:
-    var(--shadow-2),
-    0 0 70px color-mix(in srgb, var(--accent) 22%, transparent),
-    var(--inner-hl);
+  gap: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--sheet-radius);
+  padding: 40px 44px;
+  box-shadow: var(--shadow-2);
 }
+[data-theme="light"] .lock-card { border-color: transparent; }
 .lock-title {
-  font-size: 17px; font-weight: 800; letter-spacing: -0.01em;
+  font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
   color: var(--text);
 }
 .lock-input {
-  width: 200px;
+  width: 220px;
   text-align: center;
-  font-size: 18px;
+  font-size: 20px;
   letter-spacing: 6px;
-  padding: 10px 12px;
-  border-radius: 11px;
-  border: 1.5px solid var(--border-lt);
-  background: var(--white-05);
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background: var(--white-08);
   color: var(--text);
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: box-shadow 0.15s ease;
 }
-.lock-input:focus {
-  border-color: var(--accent);
-  background: var(--white-06);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
-}
+[data-theme="light"] .lock-input { background: rgba(118,118,128,0.12); }
+.lock-input:focus { box-shadow: 0 0 0 2px var(--accent); }
 .lock-btn {
-  width: 200px;
-  padding: 10px 0;
+  width: 220px;
+  padding: 13px 0;
   border: none;
-  border-radius: 11px;
+  border-radius: 14px;
   background: var(--accent);
   color: #fff;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.12s ease, opacity 0.15s ease;
 }
-.lock-btn:not(:disabled):hover { transform: translateY(-1px); }
-.lock-btn:not(:disabled):active { transform: translateY(0); }
-.lock-btn:disabled { opacity: 0.5; cursor: default; }
-.lock-err { font-size: 12px; color: var(--red); }
+.lock-btn:not(:disabled):active { transform: scale(0.97); }
+.lock-btn:disabled { opacity: 0.4; cursor: default; }
+.lock-err { font-size: 13px; color: var(--red); }
 .lock-shake { animation: auth-shake-react 0.35s ease; }
 @keyframes auth-shake-react {
   0%, 100% { transform: translateX(0); }
@@ -1349,288 +1214,64 @@ input[type="range"]::-moz-range-thumb {
   80% { transform: translateX(-3px); }
 }
 
-/* ── Luxury pass ─────────────────────────────────────────────────────────
-   Premium finishing on top of the base system: specular sheens, glassier
-   surfaces, gradient accents, richer numerals. Purely additive — every
-   rule keys off existing classes and both themes are covered. */
+/* ── Category hues ────────────────────────────────────────────────────────
+   Every element tagged data-cat gets a --cat-c hue (read by inline styles,
+   the sidebar and the CSS editor's quick controls). Mapped onto the system
+   status palette so both themes stay in step automatically. */
+[data-cat="Lighting"] { --cat-c: var(--gold); }
+[data-cat="Switches"] { --cat-c: var(--accent); }
+[data-cat="Climate"]  { --cat-c: var(--orange); }
+[data-cat="Media"]    { --cat-c: var(--violet); }
+[data-cat="Security"] { --cat-c: var(--red); }
+[data-cat="Sensors"]  { --cat-c: var(--teal); }
+[data-cat="Victron"]  { --cat-c: var(--green); }
+[data-cat="Other"]    { --cat-c: var(--accent); }
 
-/* Specular sheen — a light band sweeps across tiles/cards on hover */
-.device-tile::before, .ecard::before, .stat-card::before {
-  content: '';
-  position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: linear-gradient(115deg,
-    transparent 32%,
-    rgba(255,255,255,0.05) 44%,
-    rgba(160,200,255,0.11) 50%,
-    rgba(255,255,255,0.05) 56%,
-    transparent 68%);
-  transform: translateX(-130%) skewX(-8deg);
-  opacity: 0;
-}
-.device-tile:hover::before, .ecard:hover::before, .stat-card:hover::before {
-  animation: lux-sheen 0.9s cubic-bezier(0.25, 0.6, 0.35, 1);
-}
-@keyframes lux-sheen {
-  0%   { transform: translateX(-130%) skewX(-8deg); opacity: 1; }
-  100% { transform: translateX(130%)  skewX(-8deg); opacity: 1; }
-}
-[data-theme="light"] .device-tile::before,
-[data-theme="light"] .ecard::before,
-[data-theme="light"] .stat-card::before {
-  background: linear-gradient(115deg,
-    transparent 32%,
-    rgba(255,255,255,0.35) 44%,
-    rgba(255,255,255,0.6) 50%,
-    rgba(255,255,255,0.35) 56%,
-    transparent 68%);
-}
+.device-tile[data-cat] { --tile-accent: var(--cat-c, var(--accent)); }
 
-/* Deeper, softer lift on hover */
-.device-tile:hover { transform: translateY(-3px); }
-.device-tile[data-on="true"]:hover { transform: translateY(-3px); }
-.ecard:hover, .stat-card:hover { transform: translateY(-3px); }
+/* Sidebar category nav: the icon picks up its category colour */
+.side-btn[data-cat] svg { color: var(--cat-c, currentColor); }
+.side-btn[data-active="true"][data-cat] svg { color: #fff; }
 
-/* Active tiles get a delicate gradient hairline instead of a flat border */
-.device-tile[data-on="true"]::after {
-  content: '';
-  position: absolute; inset: 0; pointer-events: none;
-  border-radius: inherit; padding: 1px;
-  background: linear-gradient(160deg,
-    color-mix(in srgb, var(--accent-lt) 55.0%, transparent) 0%, color-mix(in srgb, var(--accent-lt) 12%, transparent) 35%,
-    transparent 60%, color-mix(in srgb, var(--accent) 30%, transparent) 100%);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-}
-[data-theme="light"] .device-tile[data-on="true"]::after {
-  background: linear-gradient(160deg,
-    color-mix(in srgb, var(--accent) 45%, transparent) 0%, color-mix(in srgb, var(--accent) 10%, transparent) 35%,
-    transparent 60%, color-mix(in srgb, var(--accent) 25%, transparent) 100%);
-}
-
-/* Sidebar joins the glass system (header already blurs) */
-.device-sidebar {
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
-}
-
-/* Gradient accent fills — nav pill, category pills, lock button */
-.header-nav-react a.active,
-.cat-pill[data-active="true"],
-.lock-btn {
-  background: linear-gradient(180deg, var(--accent-lt) -40%, var(--accent) 60%);
-  box-shadow: 0 2px 14px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 1px 0 rgba(255,255,255,0.25);
-}
-[data-theme="light"] .header-nav-react a.active,
-[data-theme="light"] .cat-pill[data-active="true"],
-[data-theme="light"] .lock-btn {
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 30%, transparent), inset 0 1px 0 rgba(255,255,255,0.2);
-}
-.cat-pill[data-variant="soft"][data-active="true"] {
-  background: color-mix(in srgb, var(--accent-lt) 14.0%, transparent);
-  box-shadow: none;
-}
-
-/* Platform chips glow softly when their platform is live */
-.platform-chip[data-on="true"] { box-shadow: 0 0 12px rgba(63,185,80,0.12), var(--inner-hl); }
-
-/* Jewelry-grade numerals — lining, tabular, tightly tracked */
 .ecard-value, .stat-card, .modal-device-title {
   font-variant-numeric: lining-nums tabular-nums;
   letter-spacing: -0.02em;
 }
 
-/* Scrollbar thumb picks up a gradient */
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(148,166,190,0.32), rgba(148,166,190,0.16));
-}
-
-/* Luxury is quiet for those who ask for it */
-@media (prefers-reduced-motion: reduce) {
-  body::before { animation: none; }
-  .device-tile::before, .ecard::before, .stat-card::before { display: none; }
-}
-
-/* ══════════════════════════════════════════════════════════════════════════
-   Vivid category system — "bolder & more vivid" pass.
-   Every element tagged data-cat inherits a --cat-c hue; device tiles and the
-   category nav light up in their own colour instead of a uniform blue, so the
-   dashboard reads at a glance and feels energetic. Fully theme-aware; ON tiles
-   pop, OFF tiles stay calm. Falls back to --accent where no hue is mapped. */
-
-[data-cat="Lighting"] { --cat-c: #ffb020; }
-[data-cat="Switches"] { --cat-c: var(--accent); }
-[data-cat="Climate"]  { --cat-c: #ff7d54; }
-[data-cat="Media"]    { --cat-c: #b57bff; }
-[data-cat="Security"] { --cat-c: #ff5470; }
-[data-cat="Sensors"]  { --cat-c: #2dd4bf; }
-[data-cat="Victron"]  { --cat-c: #48d38a; }
-[data-cat="Other"]    { --cat-c: #8ea2ff; }
-
-[data-theme="light"] [data-cat="Lighting"] { --cat-c: #b26a00; }
-[data-theme="light"] [data-cat="Switches"] { --cat-c: var(--accent); }
-[data-theme="light"] [data-cat="Climate"]  { --cat-c: #c2410c; }
-[data-theme="light"] [data-cat="Media"]    { --cat-c: #7c3aed; }
-[data-theme="light"] [data-cat="Security"] { --cat-c: #d61f45; }
-[data-theme="light"] [data-cat="Sensors"]  { --cat-c: #0d9488; }
-[data-theme="light"] [data-cat="Victron"]  { --cat-c: #15803d; }
-[data-theme="light"] [data-cat="Other"]    { --cat-c: #4f46e5; }
-
-/* Tiles: re-point the existing on-state vars at the category hue so the inline
-   icon chip, icon colour and top glow bar (which all read these vars) recolour
-   automatically — no JS change needed. */
-.device-tile[data-cat] {
-  --tile-on-ink:  var(--cat-c, var(--accent-lt));
-  --tile-on-chip: color-mix(in srgb, var(--cat-c, var(--accent)) 22%, transparent);
-  --tile-on-glow: 0 0 18px color-mix(in srgb, var(--cat-c, var(--accent)) 45%, transparent);
-}
-.device-tile[data-cat][data-on="true"] {
-  background: linear-gradient(160deg,
-    color-mix(in srgb, var(--cat-c) 17%, var(--card)) 0%,
-    color-mix(in srgb, var(--cat-c) 5%,  var(--card)) 100%);
-  border-color: color-mix(in srgb, var(--cat-c) 42%, transparent);
-  box-shadow: 0 4px 24px color-mix(in srgb, var(--cat-c) 24%, transparent), var(--inner-hl);
-}
-.device-tile[data-cat][data-on="true"]:hover {
-  border-color: color-mix(in srgb, var(--cat-c) 62%, transparent);
-  box-shadow: 0 10px 34px color-mix(in srgb, var(--cat-c) 34%, transparent), var(--inner-hl);
-}
-/* Gradient hairline picks up the category hue */
-.device-tile[data-cat][data-on="true"]::after {
-  background: linear-gradient(160deg,
-    color-mix(in srgb, var(--cat-c) 70%, white) 0%,
-    color-mix(in srgb, var(--cat-c) 30%, transparent) 35%,
-    transparent 60%,
-    color-mix(in srgb, var(--cat-c) 45%, transparent) 100%);
-}
-
-/* Sidebar category nav: active item wears its category colour */
-.side-btn[data-active="true"][data-cat] {
-  background: color-mix(in srgb, var(--cat-c, var(--accent)) 14%, transparent);
-  color: var(--cat-c, var(--accent-lt));
-}
-
-/* Mobile pills: active pill filled with the category hue */
-.cat-pill[data-active="true"][data-cat] {
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--cat-c, var(--accent)) 88%, white) -30%,
-    var(--cat-c, var(--accent)) 70%);
-  border-color: transparent;
-  box-shadow: 0 2px 14px color-mix(in srgb, var(--cat-c, var(--accent)) 45%, transparent),
-              inset 0 1px 0 rgba(255,255,255,0.25);
-}
-
-/* Status colours a touch more saturated for punch (dark theme only) */
-:root {
-  --green:  #35d07f;
-  --red:    #ff5a6e;
-  --orange: #ff9142;
-  --teal:   #2dd4bf;
-  --violet: #a78bfa;
-}
-
-/* ══════════════════════════════════════════════════════════════════════════
-   Vivid finish — global punch-up. Token shifts above already recolour most of
-   the app; these rules add the last bit of saturation and life to surfaces,
-   selection, scrollbars and focus. All additive, both themes covered. */
-
-/* Selection & focus take the electric accent */
-::selection { background: color-mix(in srgb, var(--accent) 42%, transparent); }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* Scrollbar thumb picks up the accent gradient */
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--accent) 55%, transparent),
-    color-mix(in srgb, var(--accent) 28%, transparent));
-}
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--accent) 75%, transparent),
-    color-mix(in srgb, var(--accent) 45%, transparent));
-}
-
-/* Cards gain a faint cool top-edge sheen for depth */
-.card, .detail-card, .chart-card, .stat-card {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 4%, transparent), transparent 60%),
-    var(--card-grad);
-}
-
-/* Energy cards: stronger coloured corner bloom + brighter left rail */
-.ecard { border-left-width: 3px; }
-.ecard::after {
-  background: radial-gradient(circle, color-mix(in srgb, var(--c) 24%, transparent), transparent 70%);
-  width: 130px; height: 130px;
-}
-
-/* Toggle-ish accents already read from tokens; make the header nav pill pop */
-.header-nav-react a.active {
-  background: linear-gradient(180deg, var(--accent-lt) -30%, var(--accent) 70%);
-  box-shadow: 0 2px 16px color-mix(in srgb, var(--accent) 50%, transparent),
-              inset 0 1px 0 rgba(255,255,255,0.28);
-}
-
-/* Relay rows glow in accent when live */
-.relay-row[data-on="true"] {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 18%, transparent);
-}
-
-/* ══════════════════════════════════════════════════════════════════════════
-   Fine-detail pass — the small in-tile controls (mute, volume ±, transport
-   buttons, header icon buttons) were flat single-tone boxes while every
-   larger surface got gradient fills + inset sheens. This brings them up to
-   the same finish: subtle gradient, inset highlight, soft lift on hover,
-   a tactile press. Purely additive — components keep passing dynamic
-   background/boxShadow inline for their "active" tint; this only supplies
-   the neutral/idle look and the interaction. */
+/* ── Small round controls inside tiles (mute, volume ±, transport) ── */
 .mini-btn {
   border: none;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(180deg, var(--white-10) 0%, var(--white-04) 100%);
-  box-shadow: var(--inner-hl), 0 1px 3px rgba(0,0,0,0.28);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  background: var(--white-10);
+  color: var(--text);
+  transition: transform 0.15s ease, background 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.mini-btn:hover  { transform: translateY(-1px); box-shadow: var(--inner-hl), 0 3px 8px rgba(0,0,0,0.32); }
-.mini-btn:active { transform: translateY(0) scale(0.93); }
-[data-theme="light"] .mini-btn {
-  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.65) 100%);
-  box-shadow: var(--inner-hl), 0 1px 3px rgba(15,23,42,0.1);
-}
-[data-theme="light"] .mini-btn:hover { box-shadow: var(--inner-hl), 0 3px 8px rgba(15,23,42,0.14); }
+[data-theme="light"] .mini-btn { background: rgba(118,118,128,0.12); }
+.device-tile[data-on="true"] .mini-btn { background: rgba(118,118,128,0.14); color: var(--tile-on-text); }
+.mini-btn:active { transform: scale(0.92); }
 @media (prefers-reduced-motion: reduce) {
-  .mini-btn { transition: background 0.15s ease; }
-  .mini-btn:hover, .mini-btn:active { transform: none; }
+  .mini-btn:active { transform: none; }
 }
 
-/* Header icon buttons (lock / theme / language) join the same system */
+/* Header icon buttons (lock / theme / language) */
 .header-icon-btn {
-  background: linear-gradient(180deg, var(--white-08) 0%, var(--white-03) 100%);
-  box-shadow: var(--inner-hl);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  background: var(--white-10);
+  border: none;
+  border-radius: 50%;
+  color: var(--text);
+  transition: transform 0.15s ease, background 0.15s ease;
 }
-.header-icon-btn:hover { transform: translateY(-1px); border-color: var(--border-lt); box-shadow: var(--inner-hl), 0 3px 10px rgba(0,0,0,0.3); }
-.header-icon-btn:active { transform: translateY(0) scale(0.95); }
+[data-theme="light"] .header-icon-btn { background: rgba(118,118,128,0.12); }
+.header-icon-btn:hover { background: var(--white-14); }
+.header-icon-btn:active { transform: scale(0.94); }
 
-/* Connection dot breathes gently while live — a quiet "alive" cue instead of
-   a static pill (the pulse animation was reserved for the down/error state) */
-@keyframes live-breathe {
-  0%, 100% { box-shadow: 0 0 6px var(--green); }
-  50%       { box-shadow: 0 0 12px var(--green), 0 0 20px color-mix(in srgb, var(--green) 40%, transparent); }
-}
-.status-dot-live { animation: live-breathe 2.6s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) {
-  .status-dot-live { animation: none; }
-}
+/* Connection dot: a solid green dot while live — calm, no glow */
+.status-dot-live { box-shadow: none !important; }
 
-/* Toggle switch knob: press ripple (track/knob gradients are set inline in
-   the Toggle component, matching how it already reads on/off from JS state) */
-.lux-toggle:active .lux-toggle-knob { box-shadow: 0 1px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.9), 0 0 0 5px var(--white-10); }
+/* Legacy toggle knob (inline-styled Toggle variants) */
+.lux-toggle:active .lux-toggle-knob { transform: scale(0.95); }
 
 /* Weather forecast day-tile icons — one quiet, condition-appropriate motion
    per icon (sunbeam glow, drifting cloud, falling rain, lightning flicker,
@@ -1935,10 +1576,9 @@ input[type="range"]::-moz-range-thumb {
   position: fixed;
   inset: 0;
   z-index: 500;
-  /* Deep night sky first, so the curtain has real dark to glow against —
-     this view runs 24/7 on a wall, so it stays fixed-dark and deliberately
-     under-saturated rather than following the app's light/dark toggle. */
-  background: radial-gradient(ellipse at 50% 22%, #14161d 0%, #0a0b10 65%);
+  /* Homey dark: pure black ground, runs 24/7 on a wall so it stays fixed-dark
+     rather than following the app's light/dark toggle. */
+  background: #000;
   color: #fff;
   display: grid;
   grid-template-columns: 260px 1fr 270px;
@@ -1951,43 +1591,22 @@ input[type="range"]::-moz-range-thumb {
   padding: 26px;
   overflow: hidden;
 }
-/* The kiosk IS "Aurora" full-screen — the same curtain of light from the
-   energy panel (.eflow-wrap), scaled up and slowed down for a screen that's
-   glanced at, not stared at. Fixed hex stops, not the swappable --green/
-   --accent tokens, so it can't shift if data-theme flips while this is open. */
-.wall-dash::before {
-  content: '';
-  position: absolute;
-  inset: -35%;
-  background: linear-gradient(120deg, #2ee66b 0%, #22d3ee 32%, #4a9dff 62%, #a875ff 100%);
-  opacity: 0.22;
-  filter: blur(70px);
-  animation: aurora-drift 55s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-@media (prefers-reduced-motion: reduce) { .wall-dash::before { animation: none; } }
 .wall-exit {
   /* This is the one button on an actual touch-screen wall tablet in the
      whole app — the 44px minimum matters more here than anywhere else. */
   position: absolute; top: 14px; left: 14px; z-index: 20;
-  width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.55); cursor: pointer;
+  width: 44px; height: 44px; border-radius: 50%; border: none;
+  background: #2c2c2e; color: rgba(255,255,255,0.55); cursor: pointer;
   font-size: 14px; display: flex; align-items: center; justify-content: center;
   transition: background 0.15s, color 0.15s;
 }
-.wall-exit:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.wall-exit:hover { background: #3a3a3c; color: #fff; }
 
 .wall-region { position: relative; z-index: 1; min-width: 0; min-height: 0; }
-/* Glass panels — same frosted-card language as .wall-region-plan below, so
-   all four regions read as one material floating over the aurora instead of
-   .wall-region-plan being the only "boxed" one. */
+/* Homey dark cards — flat #1c1c1e, one shared material for all regions */
 .wall-region-energy, .wall-region-forecast, .wall-region-rightcol {
-  border-radius: 22px;
-  background: rgba(255,255,255,0.035);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.07);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 20px 50px rgba(0,0,0,0.35);
+  border-radius: 24px;
+  background: #1c1c1e;
 }
 .wall-region-energy { grid-area: energy; display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 20px 16px; overflow-y: auto; }
 .wall-region-energy > .wall-thermo { align-self: stretch; }
@@ -1995,12 +1614,8 @@ input[type="range"]::-moz-range-thumb {
 .wall-region-rightcol { grid-area: rightcol; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; overflow: hidden; padding: 18px 20px; }
 .wall-region-rightcol .wall-agenda { flex: 1; min-height: 0; overflow-y: auto; align-self: stretch; }
 .wall-region-plan {
-  grid-area: plan; border-radius: 22px; overflow: hidden;
-  background: rgba(255,255,255,0.035);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.07);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 20px 50px rgba(0,0,0,0.35);
+  grid-area: plan; border-radius: 24px; overflow: hidden;
+  background: #1c1c1e;
   display: flex; flex-direction: column;
 }
 .wall-region-plan .plan-viewport { background: transparent; }
@@ -2010,10 +1625,9 @@ input[type="range"]::-moz-range-thumb {
    theme happens to be active. */
 .wall-region-plan .plan-filter-bar { padding: 6px 2px 10px; }
 .wall-region-plan .plan-filter-pill {
-  background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.14); color: rgba(255,255,255,0.65);
+  background: #2c2c2e; color: #fff; box-shadow: none;
 }
-.wall-region-plan .plan-filter-pill:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
-.wall-region-plan .plan-filter-pill[data-active="true"] { background: #4A9EFF; border-color: transparent; color: #fff; }
+.wall-region-plan .plan-filter-pill[data-active="true"] { background: #fff; color: #000; }
 
 /* Energy widget */
 .wall-energy-svg { width: 100%; max-width: 180px; height: auto; overflow: visible; }
@@ -2044,7 +1658,7 @@ input[type="range"]::-moz-range-thumb {
 .wall-forecast-day { width: 34px; flex-shrink: 0; color: rgba(255,255,255,0.55); font-weight: 600; }
 .wall-forecast-icon { flex-shrink: 0; font-size: 15px; }
 .wall-forecast-bar-track { position: relative; flex: 1; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.08); }
-.wall-forecast-bar { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, #4A9EFF, #f0883e); }
+.wall-forecast-bar { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, #0a84ff, #f0883e); }
 .wall-forecast-temps { flex-shrink: 0; width: 62px; text-align: right; color: rgba(255,255,255,0.75); font-variant-numeric: tabular-nums; }
 
 /* Agenda */
@@ -2066,7 +1680,7 @@ input[type="range"]::-moz-range-thumb {
   position: absolute; top: 8px; right: 8px; width: 18px; height: 18px; border-radius: 50%;
   border: none; background: transparent; color: rgba(255,255,255,0.3); cursor: pointer; font-size: 11px;
 }
-.wall-agenda-item-remove:hover { color: #f85149; background: rgba(248,81,73,0.15); }
+.wall-agenda-item-remove:hover { color: #ff453a; background: rgba(248,81,73,0.15); }
 
 .wall-agenda-add-form { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
 .wall-agenda-add-row { display: flex; gap: 6px; }
@@ -2079,7 +1693,7 @@ input[type="range"]::-moz-range-thumb {
   flex: 1; padding: 6px 8px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.7);
 }
-.wall-agenda-add-btn.primary { background: #4A9EFF; border-color: transparent; color: #fff; }
+.wall-agenda-add-btn.primary { background: #0a84ff; border-color: transparent; color: #fff; }
 .wall-agenda-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Exit PIN gate */
@@ -2098,15 +1712,15 @@ input[type="range"]::-moz-range-thumb {
   width: 100%; text-align: center; font-size: 22px; letter-spacing: 0.4em; padding: 10px;
   border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16); color: #fff;
 }
-.wall-pin-input:focus { outline: none; border-color: #4A9EFF; }
+.wall-pin-input:focus { outline: none; border-color: #0a84ff; }
 .wall-pin-actions { display: flex; gap: 8px; width: 100%; }
 .wall-pin-btn {
   flex: 1; padding: 9px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.75);
 }
-.wall-pin-btn.primary { background: #4A9EFF; border-color: transparent; color: #fff; }
+.wall-pin-btn.primary { background: #0a84ff; border-color: transparent; color: #fff; }
 .wall-pin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.wall-pin-err { font-size: 12px; color: #f85149; }
+.wall-pin-err { font-size: 12px; color: #ff453a; }
 .wall-pin-shake { animation: auth-shake-react 0.35s ease; }
 
 /* Thermostat panel — left column, below the energy widget */
@@ -2117,8 +1731,8 @@ input[type="range"]::-moz-range-thumb {
 .wall-thermo-dial { width: 100%; max-width: 230px; height: auto; touch-action: none; cursor: grab; }
 .wall-thermo-dial:active { cursor: grabbing; }
 .wall-thermo-dial-track { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 14; stroke-linecap: round; }
-.wall-thermo-dial-progress { fill: none; stroke: #4A9EFF; stroke-width: 14; stroke-linecap: round; filter: drop-shadow(0 0 8px rgba(74,158,255,0.55)); }
-.wall-thermo-dial-handle { fill: #fff; stroke: #4A9EFF; stroke-width: 4; }
+.wall-thermo-dial-progress { fill: none; stroke: #0a84ff; stroke-width: 14; stroke-linecap: round; filter: drop-shadow(0 0 8px rgba(74,158,255,0.55)); }
+.wall-thermo-dial-handle { fill: #fff; stroke: #0a84ff; stroke-width: 4; }
 .wall-thermo-dial-center { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; pointer-events: none; }
 .wall-thermo-dial-value { font-size: 34px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .wall-thermo-dial-current { font-size: 11.5px; color: rgba(255,255,255,0.45); margin-top: 2px; }

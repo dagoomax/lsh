@@ -164,7 +164,7 @@ export default function DashboardGrid({ devices, onCommand, onOpen }) {
         <div
           onClick={() => setPicking(false)}
           style={{
-            position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(5,7,15,0.6)',
+            position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.45)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
           }}
         >

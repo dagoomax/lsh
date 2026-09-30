@@ -78,7 +78,7 @@ export default function HomeKitSection({ config, reload }) {
         <ResultBanner result={save.result}/>
       </div>
 
-      <div style={{ borderTop: '1px solid var(--border, rgba(255,255,255,0.1))', marginTop: 16, paddingTop: 14 }}>
+      <div style={{ borderTop: '1px solid var(--sep)', marginTop: 16, paddingTop: 14 }}>
         <div className="stg-hint" style={{ marginBottom: 8 }}>
           {gt('s.hk_reset_hint', 'Clears the Apple Home pairing so the bridge can be added fresh (e.g. after renaming it, or if a stale pairing blocks re-adding). Restart LSH afterwards, then re-pair with the PIN above.')}
         </div>

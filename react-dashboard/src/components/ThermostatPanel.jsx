@@ -41,7 +41,7 @@ function ThermoGraph({ deviceKey }) {
       </div>
       {points != null && points.length < 2
         ? <div className="wall-thermo-graph-empty">{gt('collecting', 'Collecting data — check back in a few minutes')}</div>
-        : <Sparkline points={points} height={56} color="#f0883e" gradientId="thermo-spark-fill" />}
+        : <Sparkline points={points} height={56} color="#ff9f0a" gradientId="thermo-spark-fill" />}
     </div>
   )
 }

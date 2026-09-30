@@ -45,7 +45,7 @@ export default function PlanModelViewer({ model }) {
         <color attach="background" args={['#07070f']} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[6, 10, 4]} intensity={1.2} color="#fff8f0" />
-        <directionalLight position={[-6, 4, -4]} intensity={0.4} color="#4A9EFF" />
+        <directionalLight position={[-6, 4, -4]} intensity={0.4} color="#0a84ff" />
         <Suspense fallback={<Loading />}>
           <Bounds fit clip observe margin={1.2}>
             <Center>

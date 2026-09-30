@@ -317,7 +317,7 @@ function PtzPad({ ptzUrl }) {
               cursor: 'pointer', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none',
               color: '#e9eef5',
               background: pressed === op ? 'color-mix(in srgb, var(--accent) 60%, transparent)' : 'rgba(255,255,255,0.05)',
-              boxShadow: pressed === op ? '0 0 14px color-mix(in srgb, var(--accent) 65%, transparent)' : 'none',
+              boxShadow: 'none',
               transform: `${origin} scale(${pressed === op ? 0.9 : 1})`,
               transition: 'background 0.12s, box-shadow 0.12s, transform 0.1s',
             }}>
@@ -608,26 +608,18 @@ function CameraModal({ cam, onClose }) {
               position: 'relative', width: 'min(1520px, 96vw)', maxHeight: '90vh',
               display: 'flex', flexDirection: 'column',
               background: 'var(--modal-grad)',
-              borderRadius: 22, overflow: 'hidden',
+              borderRadius: 'var(--sheet-radius)', overflow: 'hidden',
             }}>
 
-            {/* gradient border via CSS mask — same Aurora gradient as every
-                other popup, not a one-off blend */}
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: 22, padding: 1, pointerEvents: 'none',
-              background: 'var(--aurora-gradient)', opacity: 0.8,
-              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-              WebkitMaskComposite: 'xor', maskComposite: 'exclude',
-            }} />
 
             {/* header */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px 10px' }}>
               <div style={{
-                width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'var(--modal-chip-bg)', border: '1px solid var(--modal-chip-border)',
+                width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--modal-chip-bg)',
               }}><CameraIcon size={20} color="var(--modal-chip-ink)" /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="modal-device-title" style={{ fontSize: 17, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div className="modal-device-title" style={{ fontSize: 20, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {cam?.name}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--muted, #8b949e)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

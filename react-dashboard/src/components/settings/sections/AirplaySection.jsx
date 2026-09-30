@@ -175,7 +175,7 @@ export default function AirplaySection({ config, reload }) {
         <ResultBanner result={save.result}/>
       </div>
 
-      <div style={{ margin: '14px 0', borderTop: '1px solid var(--border, rgba(255,255,255,0.14))' }}/>
+      <div style={{ margin: '14px 0', borderTop: '1px solid var(--sep)' }}/>
       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{gt('s.airplay_send_title', 'Send audio now')}</div>
       <SendAudioTool/>
     </SettingsCard>

@@ -6,7 +6,7 @@ import { smoothPath } from '../historyChart'
 // EnergyFlow.jsx's power sparklines — a temperature/pressure/etc. series is
 // a tight band, forcing the baseline to 0 would flatten it to nothing)
 // lives in one place.
-export default function Sparkline({ points, width = 220, height = 44, color = '#4A9EFF', gradientId }) {
+export default function Sparkline({ points, width = 220, height = 44, color = '#0a84ff', gradientId }) {
   if (points == null) {
     return <div className="sparkline-empty">…</div>
   }
@@ -39,7 +39,7 @@ export default function Sparkline({ points, width = 220, height = 44, color = '#
       </defs>
       <path d={area} fill={`url(#${gid})`} stroke="none" />
       <path d={line} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx={last[0]} cy={last[1]} r="3.5" fill={color} style={{ filter: `drop-shadow(0 0 4px ${color})` }} />
+      <circle cx={last[0]} cy={last[1]} r="3.5" fill={color}  />
     </svg>
   )
 }

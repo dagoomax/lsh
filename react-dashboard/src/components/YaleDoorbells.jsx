@@ -156,22 +156,16 @@ function DoorbellModal({ bell, src, age, busy, onRefresh, onClose }) {
             style={{
               position: 'relative', width: 'min(430px, 96vw)', maxHeight: '92vh',
               display: 'flex', flexDirection: 'column',
-              background: 'var(--modal-grad)', borderRadius: 22, overflow: 'hidden',
+              background: 'var(--modal-grad)', borderRadius: 'var(--sheet-radius)', overflow: 'hidden',
             }}>
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: 22, padding: 1, pointerEvents: 'none',
-              background: 'var(--aurora-gradient)', opacity: 0.8,
-              WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-              WebkitMaskComposite: 'xor', maskComposite: 'exclude',
-            }} />
 
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px 10px' }}>
               <div style={{
-                width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'var(--modal-chip-bg)', border: '1px solid var(--modal-chip-border)',
+                width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--modal-chip-bg)',
               }}><CameraIcon size={20} color="var(--modal-chip-ink)" /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="modal-device-title" style={{ fontSize: 17, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div className="modal-device-title" style={{ fontSize: 20, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {bell.label}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--muted, #8b949e)' }}>

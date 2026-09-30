@@ -35,8 +35,8 @@ export default function PlanPowerFlow({ devices, panel, totalW, solarW, U }) {
           return (
             <g key={d.key}>
               <path className="eflow-track" d={path} />
-              <path className="eflow-flow" d={path} stroke="#4A9EFF"
-                style={{ '--fc': '#4A9EFF', animationDuration: flowDur(d.watts) }} />
+              <path className="eflow-flow" d={path} stroke="#0a84ff"
+                style={{ '--fc': '#0a84ff', animationDuration: flowDur(d.watts) }} />
             </g>
           )
         })}
@@ -71,7 +71,7 @@ export default function PlanPowerFlow({ devices, panel, totalW, solarW, U }) {
                 <span className="plan-power-chip-icon">
                   {d.customIcon && !d.customIcon.startsWith('svg:')
                     ? d.customIcon
-                    : Icon && <Icon size={13} color="#4A9EFF" />}
+                    : Icon && <Icon size={13} color="#0a84ff" />}
                 </span>
                 {d.label} {fmtW(d.watts)}
               </div>

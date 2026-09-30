@@ -47,7 +47,7 @@ export default function LoginScreen({ onLogin }) {
       <form className={`lock-card${err ? ' lock-shake' : ''}`} onSubmit={submit}>
         <img src="/logo.svg" alt="LSH"
           style={{ width: 44, height: 44, flexShrink: 0, display: 'block',
-                   borderRadius: 11, boxShadow: '0 2px 16px color-mix(in srgb, var(--accent) 35%, transparent)' }}/>
+                   borderRadius: 11 }}/>
         <div className="lock-title">{gt('sign_in', 'Sign in to LSH')}</div>
         <input
           ref={userRef}

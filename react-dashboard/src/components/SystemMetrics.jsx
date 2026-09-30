@@ -44,7 +44,7 @@ function UsageBar({ label, pct, detail, warn = 70, crit = 90 }) {
           {detail && <span style={{ color: 'var(--muted)', fontWeight: 500 }}>{`  ${detail}`}</span>}
         </span>
       </div>
-      <div style={{ height: 6, borderRadius: 6, background: 'var(--glass-border, rgba(255,255,255,0.12))', overflow: 'hidden' }}>
+      <div style={{ height: 6, borderRadius: 6, background: 'var(--white-12)', overflow: 'hidden' }}>
         <div style={{
           width: `${val ?? 0}%`, height: '100%', borderRadius: 6,
           background: barColor(val, warn, crit), transition: 'width .4s ease, background .4s ease',

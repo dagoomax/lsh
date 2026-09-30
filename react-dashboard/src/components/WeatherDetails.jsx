@@ -10,11 +10,11 @@ const WIND_DIRS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW',
 const compass = (deg) => (deg == null ? null : WIND_DIRS[Math.round(deg / 22.5) % 16])
 
 const METRICS = [
-  { path: 'feelsLike', label: 'weather_feels_like', fallback: 'Feels like', color: '#f0883e' },
-  { path: 'dewPoint',  label: 'weather_dew_point',  fallback: 'Dew point',  color: '#3fb950' },
-  { path: 'humidity',  label: 'weather_humidity',   fallback: 'Humidity',   color: '#4A9EFF' },
-  { path: 'windSpeed', label: 'weather_wind',       fallback: 'Wind',       color: '#bc8cff' },
-  { path: 'pressure',  label: 'weather_pressure',   fallback: 'Pressure',   color: '#db61a2' },
+  { path: 'feelsLike', label: 'weather_feels_like', fallback: 'Feels like', color: '#ff9f0a' },
+  { path: 'dewPoint',  label: 'weather_dew_point',  fallback: 'Dew point',  color: '#30d158' },
+  { path: 'humidity',  label: 'weather_humidity',   fallback: 'Humidity',   color: '#0a84ff' },
+  { path: 'windSpeed', label: 'weather_wind',       fallback: 'Wind',       color: '#bf5af2' },
+  { path: 'pressure',  label: 'weather_pressure',   fallback: 'Pressure',   color: '#ff375f' },
 ]
 
 function fmtValue(path, value, windDir) {

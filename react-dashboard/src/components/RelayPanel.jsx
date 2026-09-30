@@ -1,20 +1,11 @@
 import { gt } from '../i18n'
 function Toggle({ on, onChange }) {
+  // Visuals: .ios-switch in global.css (padding/margin widen the tap target)
   return (
-    <div onClick={() => onChange(!on)} style={{
-      width:42, height:24, borderRadius:12,
-      background: on ? 'var(--accent)' : 'var(--white-12)',
-      position:'relative', cursor:'pointer',
-      transition:'background 0.2s', flexShrink:0,
-      boxShadow: on ? '0 0 10px color-mix(in srgb, var(--accent) 50%, transparent)' : 'none',
-    }}>
-      <div style={{
-        position:'absolute', width:18, height:18, borderRadius:'50%',
-        background:'#fff', top:3, left:3,
-        boxShadow:'0 1px 4px rgba(0,0,0,0.5)',
-        transition:'transform 0.2s cubic-bezier(0.4,0,0.2,1)',
-        transform: on ? 'translateX(18px)' : 'none',
-      }}/>
+    <div role="switch" aria-checked={on} data-on={String(on)}
+      onClick={e => { e.stopPropagation(); onChange(!on) }}
+      style={{ padding:8, margin:-8, cursor:'pointer', WebkitTapHighlightColor:'transparent' }}>
+      <div className="ios-switch" data-on={String(on)} />
     </div>
   )
 }

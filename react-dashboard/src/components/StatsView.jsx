@@ -29,14 +29,9 @@ const CLASS_ACCENT = { temp: '#d95926', power: '#9085e9', humid: '#199e70', othe
 
 function StatCard({ label, value, unit, color }) {
   return (
-    <div className="stat-card" style={{
-      boxShadow: `0 6px 24px ${color}22, var(--inner-hl)`,
-      borderColor: `color-mix(in srgb, ${color} 26%, transparent)`,
-    }}>
-      <div style={{ position: 'absolute', top: -26, right: -26, width: 92, height: 92, borderRadius: '50%',
-        background: `radial-gradient(circle, ${color}33, transparent 66%)` }} />
+    <div className="stat-card">
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <span style={{ width: 7, height: 7, borderRadius: 2, background: color, flexShrink: 0 }} />
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
         <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text3)' }}>{label}</span>
       </div>
       <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.3, letterSpacing: '-0.02em' }}>
@@ -204,10 +199,10 @@ export default function StatsView({ devices, energy, onOpen }) {
 
       {/* Summary stat cards */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-        <StatCard label={gt('devices', 'Devices')} value={devices.length} unit="" color="#79c0ff" />
-        <StatCard label={gt('active', 'Active now')} value={onCount} unit="on" color="#d29922" />
-        <StatCard label={gt('series', 'Tracked series')} value={graphable.length} unit="" color="#bc8cff" />
-        {avgTemp != null && <StatCard label={gt('avg_temp', 'Avg temperature')} value={avgTemp.toFixed(1)} unit="°C" color="#f0883e" />}
+        <StatCard label={gt('devices', 'Devices')} value={devices.length} unit="" color="#0a84ff" />
+        <StatCard label={gt('active', 'Active now')} value={onCount} unit="on" color="#f5a623" />
+        <StatCard label={gt('series', 'Tracked series')} value={graphable.length} unit="" color="#bf5af2" />
+        {avgTemp != null && <StatCard label={gt('avg_temp', 'Avg temperature')} value={avgTemp.toFixed(1)} unit="°C" color="#ff9f0a" />}
         {soc != null && <StatCard label={gt('battery', 'Battery')} value={Math.round(soc)} unit="%" color="var(--green)" />}
         {solar != null && <StatCard label={gt('solar', 'Solar')} value={Math.round(solar)} unit="W" color="#f0c000" />}
       </div>

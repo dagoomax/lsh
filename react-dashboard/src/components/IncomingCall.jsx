@@ -6,7 +6,7 @@ import { useSipTalk } from '../hooks/useSipTalk'
 import { PhoneIcon, MicIcon, BoltIcon, CameraIcon } from './Icons'
 
 // ── Doorbell intercom call overlay ─────────────────────────────────────────
-// CallOverlay is the presentational call UI (blurred backdrop, gradient border,
+// CallOverlay is the presentational call UI (dimmed backdrop, flat Homey sheet,
 // camera slot + camera chooser, ring pulse, answer/decline/open-door, and a row
 // of relay/device control chips). It is driven by a call state + action set and
 // takes the camera view as a node, so it is reused by both the live intercom
@@ -118,7 +118,7 @@ function useRingtone(ringing) {
   }, [ringing])
 }
 
-const REJECT = '#ff5a6a'
+const REJECT = '#ff453a'
 
 function CallButton({ color, onClick, glow, children }) {
   return (
@@ -126,10 +126,10 @@ function CallButton({ color, onClick, glow, children }) {
       whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
       onClick={onClick}
       style={{
-        flex: 1, minWidth: 120, padding: '14px 18px', borderRadius: 14, border: 'none',
+        flex: 1, minWidth: 120, padding: '14px 18px', borderRadius: 999, border: 'none',
         cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#0b0d13', background: color,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        boxShadow: glow ? `0 8px 26px ${glow}` : '0 6px 18px rgba(0,0,0,0.35)',
+        boxShadow: 'none',
       }}
     >
       {children}
@@ -151,7 +151,7 @@ function ActionChip({ action }) {
     <motion.button
       whileTap={{ scale: 0.95 }} onClick={click}
       style={{
-        border: '1px solid var(--border, rgba(255,255,255,0.14))', borderRadius: 999,
+        border: '1px solid var(--border)', borderRadius: 999,
         padding: '7px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
         display: 'inline-flex', alignItems: 'center', gap: 6,
         background: action.active ? 'var(--gold, #d9b45b)' : 'var(--surface2, #171b25)',
@@ -214,7 +214,7 @@ export function CallOverlay({ call, answer, reject, hangup, openDoor, camera,
           transition={{ duration: 0.2 }}
           style={{
             position: 'fixed', inset: 0, zIndex: 400,
-            background: 'rgba(5,7,15,0.78)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+            background: 'rgba(0,0,0,0.55)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
           }}
         >
@@ -225,19 +225,11 @@ export function CallOverlay({ call, answer, reject, hangup, openDoor, camera,
             exit={{ scale: 0.92, y: 12, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 320, damping: 26 }}
             style={{
-              position: 'relative', width: 'min(420px, 94vw)', borderRadius: 24,
-              background: 'var(--surface, #12151d)', overflow: 'hidden',
-              boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+              position: 'relative', width: 'min(420px, 94vw)', borderRadius: 'var(--sheet-radius)',
+              background: 'var(--surface)', overflow: 'hidden',
+              boxShadow: 'var(--shadow-2)',
             }}
           >
-            {/* gradient border */}
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: 24, padding: 1, pointerEvents: 'none',
-              background: 'linear-gradient(160deg, rgba(255,255,255,0.22), rgba(255,255,255,0.02) 40%)',
-              WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
-              WebkitMaskComposite: 'xor', maskComposite: 'exclude',
-            }} />
-
             {/* Camera view */}
             <div style={{
               position: 'relative', height: 240, background: '#05070d',
@@ -316,10 +308,10 @@ export function CallOverlay({ call, answer, reject, hangup, openDoor, camera,
                       style={{
                         flex: 1, minWidth: 120, padding: '14px 18px', borderRadius: 14, cursor: 'pointer',
                         fontSize: 15, fontWeight: 600, color: talking ? '#0b0d13' : 'var(--text)',
-                        background: talking ? 'var(--accent, #5ea0ff)' : 'var(--white-08, rgba(255,255,255,0.08))',
-                        border: `1px solid ${talking ? 'var(--accent, #5ea0ff)' : 'var(--border, rgba(255,255,255,0.14))'}`,
+                        background: talking ? 'var(--accent)' : 'var(--white-08)',
+                        border: `1px solid ${talking ? 'var(--accent)' : 'var(--border)'}`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        boxShadow: talking ? '0 8px 26px rgba(94,160,255,0.35)' : 'none',
+                        boxShadow: 'none',
                         touchAction: 'none', userSelect: 'none',
                       }}
                     >

@@ -109,13 +109,13 @@ function FlowNode({ x, y, icon: Icon, label, color, value, sub, active = true, s
       <circle cx={x} cy={y} r={R} fill="var(--card)" stroke="var(--white-09)" strokeWidth="2"/>
       {socPct == null && (
         <circle cx={x} cy={y} r={R} fill="none" stroke={color} strokeWidth="2"
-          style={active ? { filter: `drop-shadow(0 0 5px ${color})` } : undefined}/>
+          />
       )}
       {socPct != null && (
         <circle cx={x} cy={y} r={R} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round"
           strokeDasharray={`${circ * Math.min(1, Math.max(0, socPct / 100))} ${circ}`}
           transform={`rotate(-90 ${x} ${y})`}
-          style={{ filter: `drop-shadow(0 0 5px ${color})`, transition: 'stroke-dasharray 0.8s ease' }}/>
+          style={{ transition: 'stroke-dasharray 0.8s ease' }}/>
       )}
       <g transform={`translate(${x - ICON / 2}, ${y - ICON / 2})`}>
         <Icon color={color} size={ICON}/>
@@ -221,7 +221,7 @@ function Sparkline({ points, color, id, width = 120, height = 40 }) {
       </defs>
       <path d={area} fill={`url(#spark-${id})`} stroke="none" />
       <path d={line} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
-      <circle cx={last[0]} cy={last[1]} r="3" fill={color} style={{ filter: `drop-shadow(0 0 4px ${color})` }} />
+      <circle cx={last[0]} cy={last[1]} r="3" fill={color}  />
     </svg>
   )
 }
@@ -563,30 +563,12 @@ function SolarGainChart({ solarKey, currentPrice }) {
 
 // ── EV controls (start/stop + charge-current) ────────────────────────────────
 function Toggle({ on, onChange }) {
+  // Visuals: .ios-switch in global.css (padding/margin widen the tap target)
   return (
-    <div
-      role="switch" aria-checked={on} className="lux-toggle" data-on={on}
+    <div role="switch" aria-checked={on} data-on={String(on)}
       onClick={e => { e.stopPropagation(); onChange(!on) }}
-      style={{
-        width:44, height:26, borderRadius:13,
-        background: on
-          ? 'linear-gradient(180deg, var(--accent-lt) -20%, var(--accent) 90%)'
-          : 'linear-gradient(180deg, var(--white-14) 0%, var(--white-08) 100%)',
-        position:'relative', cursor:'pointer', flexShrink:0,
-        transition:'background 0.25s ease, box-shadow 0.25s ease',
-        boxShadow: on
-          ? '0 0 14px color-mix(in srgb, var(--accent) 55%, transparent), inset 0 1px 1px rgba(255,255,255,0.3)'
-          : 'inset 0 1px 2px rgba(0,0,0,0.2)',
-        WebkitTapHighlightColor:'transparent',
-        padding:'8px', margin:'-8px', boxSizing:'content-box',
-      }}>
-      <div style={{
-        position:'absolute', width:20, height:20, borderRadius:'50%',
-        background:'linear-gradient(180deg, #ffffff 0%, #e7ecf3 100%)', top:3, left:3,
-        boxShadow:'0 1px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.9)',
-        transition:'transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1)',
-        transform: on ? 'translateX(18px)' : 'none',
-      }}/>
+      style={{ padding:8, margin:-8, cursor:'pointer', WebkitTapHighlightColor:'transparent' }}>
+      <div className="ios-switch" data-on={String(on)} />
     </div>
   )
 }
@@ -755,7 +737,7 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
         return (
           <div key={dev.key} className="detail-card" style={{
             display:'flex', flexWrap:'wrap', gap:16, padding:14,
-            background:'linear-gradient(135deg, color-mix(in srgb, var(--purple, #a371f7) 9%, var(--card)) 0%, var(--card) 65%)',
+            background:'var(--card)',
             border:'1px solid color-mix(in srgb, var(--purple, #a371f7) 28%, var(--border))',
           }}>
             <div style={{ flex:'1 1 220px', minWidth:200, maxWidth:320 }}>
