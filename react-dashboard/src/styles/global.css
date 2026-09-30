@@ -337,6 +337,11 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: var(--shadow-2), var(--inner-hl);
 }
 .device-tile:active { transform: translateY(0) scale(0.985); }
+/* Bento-style wide tile — media players take two columns where the grid has
+   room, so now-playing + transport controls get space (Homey-style). Clamps
+   to a single column when the grid is only one wide. */
+.device-tile.wide { grid-column: span 2; }
+@media (max-width: 360px) { .device-tile.wide { grid-column: span 1; } }
 .device-tile[data-on="true"] {
   background:
     radial-gradient(120% 80% at 15% 0%, color-mix(in srgb, var(--tile-accent) 16%, transparent) 0%, transparent 60%),

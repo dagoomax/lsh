@@ -375,6 +375,9 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const isSonos  = device.type === 'sonos'
   const isDenon  = device.type === 'denon'
   const isSpa    = device.type === 'smarttub'
+  // Bento-style: media players earn a wider card (room for now-playing +
+  // transport) the way Homey features them, instead of a cramped 1×1 tile.
+  const isWide   = isSonos || isDenon || device.type === 'sony' || device.type === 'beosound'
 
   const AC_MODES  = ['Cool','Heat','Dry','Fan','Auto']
   const FAN_NAMES = ['Auto','Low','Med','High','Turbo','Mute']
@@ -543,7 +546,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const tileOn = (isOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying) || (isDenon && denonPower) || (isSpa && spaHeater)
 
   return (
-    <div onClick={() => onOpen?.(device.key)} className="device-tile" data-on={String(tileOn)} data-cat={getGroup(device)} style={{
+    <div onClick={() => onOpen?.(device.key)} className={`device-tile${isWide ? ' wide' : ''}`} data-on={String(tileOn)} data-cat={getGroup(device)} style={{
       padding: '12px',
       display: 'flex', flexDirection: 'column',
       minHeight: 118,
