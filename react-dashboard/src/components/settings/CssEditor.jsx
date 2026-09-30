@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { DEFAULTS, FONT_OPTIONS, TOGGLES, buildQuickBlock, mergeQuickBlock } from '../../cssQuickControls'
+import { DEFAULTS, FONT_OPTIONS, ACCENT_PRESETS, SLIDERS, SELECTS, TOGGLES, buildQuickBlock, mergeQuickBlock, parseQuickState } from '../../cssQuickControls'
 
 // Upgrades the plain <textarea> Custom CSS field into something closer to a
 // real editor: line-number gutter, Tab inserts spaces instead of leaving the
-// field, "Quick controls" (accent/font/popup size/tile size/style toggles —
+// field, "Quick tweaks" (accent/font/tile style/background/sizes/toggles —
 // see cssQuickControls.js) that write a generated, marked block into the
 // text instead of a separate config field, and a live-preview toggle that
 // injects the CSS into <head> on THIS page as you type — so you see the
@@ -13,12 +13,15 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
   const taRef = useRef(null)
   const gutterRef = useRef(null)
   const [preview, setPreview] = useState(false)
-  // Quick-controls state lives here, not parsed back out of `value` — it's a
-  // convenience layer over the generated block (see cssQuickControls.js),
-  // not a second source of truth. Reopening the page resets these to
-  // defaults even if a generated block is still present in the saved CSS;
-  // the block itself is what actually applies either way.
-  const [controls, setControls] = useState(DEFAULTS)
+  // Quick-controls state is restored from the state line the generated block
+  // carries (see parseQuickState) — on first render, and again whenever the
+  // CSS is replaced from outside (loading a theme, the saved config arriving).
+  const [controls, setControls] = useState(() => parseQuickState(value))
+  const lastEmitted = useRef(value)
+  useEffect(() => {
+    if (value !== lastEmitted.current) setControls(parseQuickState(value))
+    lastEmitted.current = value
+  }, [value])
   const [themes, setThemes] = useState({ builtin: [], custom: [] })
   const [themeSel, setThemeSel] = useState('')
 
@@ -34,10 +37,7 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
     if (value.trim() && !window.confirm(`Replace the current Custom CSS with "${name}"? This overwrites everything in the box below.`)) return
     const res = await fetch(`/api/settings/css-themes/${kind}/${encodeURIComponent(name)}`, { credentials: 'include' })
     const data = await res.json()
-    if (data.success) {
-      setControls(DEFAULTS)
-      onChange(data.data.css)
-    }
+    if (data.success) onChange(data.data.css)
   }
 
   const saveTheme = async () => {
@@ -61,8 +61,10 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
 
   const setControl = (patch) => {
     const next = { ...controls, ...patch }
+    const css = mergeQuickBlock(value, buildQuickBlock(next))
     setControls(next)
-    onChange(mergeQuickBlock(value, buildQuickBlock(next)))
+    lastEmitted.current = css
+    onChange(css)
   }
 
   const lineCount = (value.match(/\n/g)?.length || 0) + 1
@@ -129,41 +131,67 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
         )}
       </div>
       <div className="css-editor-quick">
-        <label className="css-editor-quick-item">
-          <span>Accent</span>
-          <input type="color" value={controls.accent} onChange={(e) => setControl({ accent: e.target.value })}/>
-        </label>
-        <label className="css-editor-quick-item">
-          <span>Font</span>
-          <select className="stg-input" value={controls.font} onChange={(e) => setControl({ font: e.target.value })}>
-            {FONT_OPTIONS.map((f) => <option key={f.label} value={f.value}>{f.label}</option>)}
-          </select>
-        </label>
-        <label className="css-editor-quick-item">
-          <span>Popup size ({controls.popupWidth}px)</span>
-          <input type="range" min={480} max={960} step={20} value={controls.popupWidth}
-            onChange={(e) => setControl({ popupWidth: Number(e.target.value) })}/>
-        </label>
-        <label className="css-editor-quick-item">
-          <span>Tile size ({controls.tileSize}px)</span>
-          <input type="range" min={100} max={220} step={10} value={controls.tileSize}
-            onChange={(e) => setControl({ tileSize: Number(e.target.value) })}/>
-        </label>
-        <button type="button" className="stg-disclosure" onClick={() => {
-          setControls(DEFAULTS)
-          onChange(mergeQuickBlock(value, ''))
-        }}>
-          Reset controls
-        </button>
-      </div>
-      <div className="css-editor-toggles">
-        {TOGGLES.map((t) => (
-          <label key={t.key} className="css-editor-toggle-chip" data-on={controls[t.key] || undefined}>
-            <input type="checkbox" checked={!!controls[t.key]}
-              onChange={(e) => setControl({ [t.key]: e.target.checked })}/>
-            {t.label}
+        <div className="css-editor-quick-head">
+          <span>Quick tweaks</span>
+          <button type="button" className="stg-disclosure" onClick={() => setControl(DEFAULTS)}>
+            Reset tweaks
+          </button>
+        </div>
+
+        <div className="css-editor-quick-section">Colour & type</div>
+        <div className="css-editor-quick-row">
+          <div className="css-editor-quick-item">
+            <span>Accent</span>
+            <div className="css-editor-swatches">
+              {ACCENT_PRESETS.map((a) => (
+                <button key={a.value} type="button" title={a.label} aria-label={a.label}
+                  className="css-editor-swatch" style={{ background: a.value }}
+                  data-on={controls.accent.toLowerCase() === a.value || undefined}
+                  onClick={() => setControl({ accent: a.value })}/>
+              ))}
+              <input type="color" title="Custom colour" value={controls.accent}
+                onChange={(e) => setControl({ accent: e.target.value })}/>
+            </div>
+          </div>
+          <label className="css-editor-quick-item">
+            <span>Font</span>
+            <select className="stg-input" value={controls.font} onChange={(e) => setControl({ font: e.target.value })}>
+              {FONT_OPTIONS.map((f) => <option key={f.label} value={f.value}>{f.label}</option>)}
+            </select>
           </label>
-        ))}
+          {SELECTS.map((sel) => (
+            <label key={sel.key} className="css-editor-quick-item">
+              <span>{sel.label}</span>
+              <select className="stg-input" value={controls[sel.key]} onChange={(e) => setControl({ [sel.key]: e.target.value })}>
+                {sel.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </label>
+          ))}
+        </div>
+
+        <div className="css-editor-quick-section">Size & shape</div>
+        <div className="css-editor-quick-row">
+          {SLIDERS.map((sl) => (
+            <label key={sl.key} className="css-editor-quick-item">
+              <span>{sl.label} <b>{controls[sl.key]}{sl.unit}</b></span>
+              <input type="range" min={sl.min} max={sl.max} step={sl.step} value={controls[sl.key]}
+                onChange={(e) => setControl({ [sl.key]: Number(e.target.value) })}
+                onDoubleClick={() => setControl({ [sl.key]: DEFAULTS[sl.key] })}
+                title="Double-click to reset"/>
+            </label>
+          ))}
+        </div>
+
+        <div className="css-editor-quick-section">Tweaks</div>
+        <div className="css-editor-toggles">
+          {TOGGLES.map((t) => (
+            <label key={t.key} className="css-editor-toggle-chip" data-on={controls[t.key] || undefined}>
+              <input type="checkbox" checked={!!controls[t.key]}
+                onChange={(e) => setControl({ [t.key]: e.target.checked })}/>
+              {t.label}
+            </label>
+          ))}
+        </div>
       </div>
       <div className="css-editor-toolbar">
         <label className="css-editor-preview-toggle">
@@ -175,7 +203,6 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
         <button type="button" className="stg-disclosure" onClick={() => {
           if (!value.trim()) return
           if (!window.confirm('Clear all Custom CSS? This removes everything in the box below, not just the Quick controls block.')) return
-          setControls(DEFAULTS)
           onChange('')
         }}>
           Reset to defaults
