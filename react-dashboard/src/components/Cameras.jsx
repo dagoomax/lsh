@@ -231,9 +231,14 @@ function CameraCard({ cam, onOpen }) {
             boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
           }}>{badge}</span>
         )}
-      </div>
-      <div style={{ padding:'7px 10px', fontSize:12, fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-        {cam.name}
+        {/* Homey-style name overlay with a bottom scrim */}
+        <div style={{
+          position:'absolute', left:0, right:0, bottom:0, padding:'20px 12px 9px',
+          background:'linear-gradient(to top, rgba(3,5,10,0.85) 0%, transparent 100%)',
+          fontSize:13, fontWeight:700, color:'#fff',
+          whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+          textShadow:'0 1px 3px rgba(0,0,0,0.6)', pointerEvents:'none',
+        }}>{cam.name}</div>
       </div>
     </div>
   )
@@ -864,7 +869,9 @@ export default function Cameras() {
       {!hidden && (
         <div style={{
           padding: '0 12px 12px', display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10,
+          /* Larger 2×2-style camera cards (Homey-like) — full-width on a
+             phone, two-up on a tablet, more on desktop. */
+          gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12,
         }}>
           {cameras.map(cam => <CameraCard key={cam.name} cam={cam} onOpen={setOpenCam} />)}
         </div>
