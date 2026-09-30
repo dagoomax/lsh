@@ -141,8 +141,36 @@ const FLOW_LAYOUTS = {
 // `compact`: the small dashboard card — icons + large values only (labels at
 // that scale would be unreadable), tap to open the full-size popup (`onOpen`).
 // `large`: the popup rendering, allowed to grow to the sheet's width.
+// Compact card: geometry is generated from the card's measured aspect ratio —
+// fixed height, the horizontal arms stretch to the card's width — so the
+// cross fills whatever space the dashboard layout gives it.
+function fitLayout(aspect) {
+  const H = 372
+  const W = Math.max(H, Math.round(H * aspect))
+  const hx = W / 2, hy = 178
+  const gridX = 64, homeX = W - 64
+  const evArm = Math.min(170, (hx - gridX) * 0.6)
+  return { W, H, hx, hy, gridX, homeX, solarY: 46, battY: 294, ev: { x: hx + evArm, y: hy + 84 } }
+}
+
+function useAspect(ref, enabled) {
+  const [aspect, setAspect] = useState(1.8)
+  useEffect(() => {
+    if (!enabled || !ref.current || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      if (width > 0 && height > 0) setAspect(Math.round((width / height) * 20) / 20)
+    })
+    ro.observe(ref.current)
+    return () => ro.disconnect()
+  }, [enabled])
+  return aspect
+}
+
 function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, loadW, gridColor, exporting, evW, compact = false, large = false, narrow = false, onOpen }) {
-  const L = FLOW_LAYOUTS[compact || narrow ? 'narrow' : 'wide']
+  const fitRef = useRef(null)
+  const aspect = useAspect(fitRef, compact)
+  const L = compact ? fitLayout(aspect) : FLOW_LAYOUTS[narrow ? 'narrow' : 'wide']
   const hub = { x: L.hx, y: L.hy }
   const ev  = L.ev
   const hubR = 34, gap = 6, nodeR = 36, edge = nodeR + 6
@@ -166,7 +194,9 @@ function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, l
           </svg>
         </span>
       )}
-      <svg viewBox={`0 0 ${L.W} ${L.H}`} className="eflow-svg" role="img" aria-label={label}>
+      <div ref={compact ? fitRef : undefined} className={compact ? 'eflow-fit' : undefined} style={compact ? undefined : { display: 'contents' }}>
+      <svg viewBox={`0 0 ${L.W} ${L.H}`} className="eflow-svg" role="img" aria-label={label}
+        preserveAspectRatio="xMidYMid meet">
 
         {/* conduits — every `d` is drawn TOWARD the hub; `reverse` flips the stream */}
         <FlowPath d={`M ${hub.x} ${L.solarY + edge} L ${hub.x} ${hub.y - hubR - gap}`} color="var(--orange)" watts={solarW}/>
@@ -198,6 +228,7 @@ function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, l
             value={fmtW(evW)} active={Math.abs(evW ?? 0) > 5} compact={compact}/>
         )}
       </svg>
+      </div>
     </div>
   )
 }
