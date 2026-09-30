@@ -24,7 +24,7 @@ export default function SceneStrip({ scenes, runScene }) {
       {visible.map(s => (
         <button key={s.id} className="scene-chip" data-running={String(runningId === s.id)}
           onClick={() => run(s.id)} title={`Run scene: ${s.name}`}>
-          <span>{s.icon || '🎬'}</span>
+          <span className="scene-chip-ic">{runningId === s.id ? '⏳' : (s.icon || '▶')}</span>
           {s.name}
         </button>
       ))}
