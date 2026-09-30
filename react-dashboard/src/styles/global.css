@@ -692,6 +692,7 @@ input[type="range"]::-moz-range-thumb {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.3px;
 }
+.eflow-value-lg { font-size: 26px; letter-spacing: -0.5px; }
 .eflow-sub {
   fill: var(--text3);
   font-size: 10.5px;
@@ -1826,3 +1827,30 @@ input[type="range"]::-moz-range-thumb {
 .wx-hour-pop { font-size: 11px; font-weight: 600; color: var(--blue); font-variant-numeric: tabular-nums; }
 .wx-hour-time { font-size: 11.5px; color: var(--text2); font-variant-numeric: tabular-nums; }
 .wx-sun-times { display: flex; justify-content: space-between; max-width: 260px; font-size: 13px; font-weight: 600; color: var(--text2); font-variant-numeric: tabular-nums; margin-top: 4px; }
+
+/* ── Energy flow: compact dashboard card vs. full-size popup ───────────── */
+.eflow-compact {
+  position: relative; cursor: pointer; padding: 8px 0;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  transition: transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+[data-theme="light"] .eflow-compact { border-color: transparent; box-shadow: var(--shadow-1); }
+.eflow-compact:active { transform: scale(0.98); }
+.eflow-compact:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eflow-compact .eflow-svg { max-width: clamp(180px, 16vw, 240px); }
+.eflow-expand {
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--white-10); color: var(--text2);
+}
+.eflow-compact:hover .eflow-expand { color: var(--text); background: var(--white-14); }
+.eflow-large { padding: 4px 0 10px; }
+.eflow-large .eflow-svg { max-width: min(1120px, 100%); }
+/* Phone popup (narrow layout, ~350px wide): bump the viewBox text so it
+   still lands at a readable on-screen size. */
+.eflow-large.eflow-narrow .eflow-svg { max-width: 560px; }
+.eflow-large.eflow-narrow .eflow-label { font-size: 13px; }
+.eflow-large.eflow-narrow .eflow-value { font-size: 21px; }
+.eflow-large.eflow-narrow .eflow-sub   { font-size: 15px; }

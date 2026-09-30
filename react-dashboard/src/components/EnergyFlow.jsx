@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { SunIcon, PylonIcon, BatteryCellIcon, BoltIcon, HomeIcon, GWagenIcon } from './Icons'
 import GWagenEmbed from './GWagenEmbed'
 import { gt } from '../i18n'
@@ -99,13 +100,13 @@ function FlowPath({ d, color, watts, reverse }) {
   )
 }
 
-function FlowNode({ x, y, icon: Icon, label, color, value, sub, active = true, socPct = null }) {
+function FlowNode({ x, y, icon: Icon, label, color, value, sub, active = true, socPct = null, compact = false }) {
   const R = 36
   const ICON = 34
   const circ = 2 * Math.PI * R
   return (
     <g className="eflow-node" style={{ opacity: active ? 1 : 0.45, transition: 'opacity 0.6s ease' }}>
-      <text x={x} y={y - R - 14} textAnchor="middle" className="eflow-label">{label}</text>
+      {!compact && <text x={x} y={y - R - 14} textAnchor="middle" className="eflow-label">{label}</text>}
       <circle cx={x} cy={y} r={R} fill="var(--card)" stroke="var(--white-09)" strokeWidth="2"/>
       {socPct == null && (
         <circle cx={x} cy={y} r={R} fill="none" stroke={color} strokeWidth="2"
@@ -120,37 +121,59 @@ function FlowNode({ x, y, icon: Icon, label, color, value, sub, active = true, s
       <g transform={`translate(${x - ICON / 2}, ${y - ICON / 2})`}>
         <Icon color={color} size={ICON}/>
       </g>
-      <text x={x} y={y + R + 22} textAnchor="middle" className="eflow-value" fill={color}>{value}</text>
-      {sub && <text x={x} y={y + R + 37} textAnchor="middle" className="eflow-sub">{sub}</text>}
+      <text x={x} y={y + R + (compact ? 34 : 22)} textAnchor="middle" className={compact ? 'eflow-value eflow-value-lg' : 'eflow-value'} fill={color}>{value}</text>
+      {sub && !compact && <text x={x} y={y + R + 37} textAnchor="middle" className="eflow-sub">{sub}</text>}
     </g>
   )
 }
 
-function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, loadW, gridColor, exporting, evW }) {
-  // Geometry: hub at (410,200); solar N, grid W, home E, battery S, EV SE (diagonal, only when present)
-  const hub = { x: 410, y: 200 }
-  const ev  = { x: 570, y: 287 }
-  const hubR = 34, gap = 6, nodeR = 36
+// `compact`: the small dashboard card — icons + large values only (labels at
+// that scale would be unreadable), tap to open the full-size popup (`onOpen`).
+// `large`: the popup rendering, allowed to grow to the sheet's width.
+// Two geometries for the same cross: `wide` (landscape, the desktop popup)
+// and `narrow` (squarer, shorter arms — the compact dashboard card and the
+// popup on phones, where the wide one would shrink to unreadable).
+const FLOW_LAYOUTS = {
+  wide:   { W: 820, H: 420, hx: 410, hy: 200, gridX: 118, homeX: 702, solarY: 64, battY: 336, ev: { x: 570, y: 287 } },
+  narrow: { W: 500, H: 450, hx: 250, hy: 215, gridX: 80,  homeX: 420, solarY: 72, battY: 368, ev: { x: 385, y: 340 } },
+}
+
+// `compact`: the small dashboard card — icons + large values only (labels at
+// that scale would be unreadable), tap to open the full-size popup (`onOpen`).
+// `large`: the popup rendering, allowed to grow to the sheet's width.
+function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, loadW, gridColor, exporting, evW, compact = false, large = false, narrow = false, onOpen }) {
+  const L = FLOW_LAYOUTS[compact || narrow ? 'narrow' : 'wide']
+  const hub = { x: L.hx, y: L.hy }
+  const ev  = L.ev
+  const hubR = 34, gap = 6, nodeR = 36, edge = nodeR + 6
   const hasEv = evW != null
+  // EV conduit: from the EV node's edge toward the hub's edge, along the diagonal
+  const evDx = ev.x - hub.x, evDy = ev.y - hub.y, evLen = Math.hypot(evDx, evDy)
+  const evFrom = { x: ev.x - evDx / evLen * edge, y: ev.y - evDy / evLen * edge }
+  const evTo   = { x: hub.x + evDx / evLen * (hubR + gap), y: hub.y + evDy / evLen * (hubR + gap) }
   const label = `Energy flow: solar ${fmtW(solarW)}, grid ${exporting ? 'export' : 'import'} ${fmtW(gridW)}, battery ${battCharging ? 'charging' : 'discharging'} ${fmtW(battW)}, home ${fmtW(loadW)}`
     + (hasEv ? `, EV charging ${fmtW(evW)}` : '')
   return (
-    <div className="eflow-wrap eflow-bg">
-      <svg viewBox="0 0 820 420" className="eflow-svg" role="img" aria-label={label}>
-
-        {/* soft glow behind the hub */}
-        <radialGradient id="eflow-hub-glow">
-          <stop offset="0%"  stopColor="var(--accent)" stopOpacity="0.14"/>
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0"/>
-        </radialGradient>
-        <circle cx={hub.x} cy={hub.y} r="130" fill="url(#eflow-hub-glow)"/>
+    <div className={`eflow-wrap eflow-bg${compact ? ' eflow-compact' : ''}${large ? ' eflow-large' : ''}${compact || narrow ? ' eflow-narrow' : ''}`}
+      {...(compact && onOpen ? {
+        role: 'button', tabIndex: 0, title: gt('e_expand', 'Show larger'), onClick: onOpen,
+        onKeyDown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } },
+      } : null)}>
+      {compact && onOpen && (
+        <span className="eflow-expand" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+        </span>
+      )}
+      <svg viewBox={`0 0 ${L.W} ${L.H}`} className="eflow-svg" role="img" aria-label={label}>
 
         {/* conduits — every `d` is drawn TOWARD the hub; `reverse` flips the stream */}
-        <FlowPath d={`M ${hub.x} 106 L ${hub.x} ${hub.y - hubR - gap}`} color="var(--orange)" watts={solarW}/>
-        <FlowPath d={`M 160 ${hub.y} L ${hub.x - hubR - gap} ${hub.y}`} color={gridColor} watts={gridW} reverse={exporting}/>
-        <FlowPath d={`M ${hub.x} 294 L ${hub.x} ${hub.y + hubR + gap}`} color={battColor} watts={battW} reverse={battCharging}/>
-        <FlowPath d={`M ${hub.x + hubR + gap} ${hub.y} L 660 ${hub.y}`} color="var(--accent-lt)" watts={loadW} reverse/>
-        {hasEv && <FlowPath d={`M 533 267 L 445 219`} color="var(--purple, #a371f7)" watts={evW} reverse/>}
+        <FlowPath d={`M ${hub.x} ${L.solarY + edge} L ${hub.x} ${hub.y - hubR - gap}`} color="var(--orange)" watts={solarW}/>
+        <FlowPath d={`M ${L.gridX + edge} ${hub.y} L ${hub.x - hubR - gap} ${hub.y}`} color={gridColor} watts={gridW} reverse={exporting}/>
+        <FlowPath d={`M ${hub.x} ${L.battY - edge} L ${hub.x} ${hub.y + hubR + gap}`} color={battColor} watts={battW} reverse={battCharging}/>
+        <FlowPath d={`M ${hub.x + hubR + gap} ${hub.y} L ${L.homeX - edge} ${hub.y}`} color="var(--accent-lt)" watts={loadW} reverse/>
+        {hasEv && <FlowPath d={`M ${evFrom.x} ${evFrom.y} L ${evTo.x} ${evTo.y}`} color="var(--purple, #a371f7)" watts={evW} reverse/>}
 
         {/* inverter hub */}
         <circle cx={hub.x} cy={hub.y} r={hubR} fill="var(--card)" stroke="var(--white-09)" strokeWidth="2"/>
@@ -161,18 +184,18 @@ function FlowDiagram({ solarW, gridW, battW, battCharging, battSoc, battColor, l
         </g>
 
         {/* nodes */}
-        <FlowNode x={hub.x} y={64}  icon={SunIcon} label={gt('e_solar','Solar')} color="var(--orange)"
-          value={fmtW(solarW)} active={Math.abs(solarW ?? 0) > 5}/>
-        <FlowNode x={118} y={hub.y} icon={PylonIcon} label={exporting ? gt('e_grid_export','Grid · export') : gt('e_grid_import','Grid · import')} color={gridColor}
-          value={fmtW(gridW)} active={Math.abs(gridW ?? 0) > 5}/>
-        <FlowNode x={702} y={hub.y} icon={HomeIcon} label={gt('e_home','Home')} color="var(--accent-lt)"
-          value={fmtW(loadW)} active={Math.abs(loadW ?? 0) > 5}/>
-        <FlowNode x={hub.x} y={336} icon={BatteryCellIcon} label={battCharging ? gt('e_batt_chg','Battery · charging') : gt('e_batt_dis','Battery · discharging')}
+        <FlowNode x={hub.x} y={L.solarY} icon={SunIcon} label={gt('e_solar','Solar')} color="var(--orange)"
+          value={fmtW(solarW)} active={Math.abs(solarW ?? 0) > 5} compact={compact}/>
+        <FlowNode x={L.gridX} y={hub.y} icon={PylonIcon} label={exporting ? gt('e_grid_export','Grid · export') : gt('e_grid_import','Grid · import')} color={gridColor}
+          value={fmtW(gridW)} active={Math.abs(gridW ?? 0) > 5} compact={compact}/>
+        <FlowNode x={L.homeX} y={hub.y} icon={HomeIcon} label={gt('e_home','Home')} color="var(--accent-lt)"
+          value={fmtW(loadW)} active={Math.abs(loadW ?? 0) > 5} compact={compact}/>
+        <FlowNode x={hub.x} y={L.battY} icon={BatteryCellIcon} label={battCharging ? gt('e_batt_chg','Battery · charging') : gt('e_batt_dis','Battery · discharging')}
           color={battColor} value={fmtW(battW)} sub={battSoc != null ? `${battSoc}%` : null}
-          active={Math.abs(battW ?? 0) > 5} socPct={battSoc}/>
+          active={Math.abs(battW ?? 0) > 5} socPct={battSoc} compact={compact}/>
         {hasEv && (
           <FlowNode x={ev.x} y={ev.y} icon={GWagenIcon} label={gt('e_ev','EV charging')} color="var(--purple, #a371f7)"
-            value={fmtW(evW)} active={Math.abs(evW ?? 0) > 5}/>
+            value={fmtW(evW)} active={Math.abs(evW ?? 0) > 5} compact={compact}/>
         )}
       </svg>
     </div>
@@ -619,6 +642,44 @@ function DetailCard({ icon, title, children }) {
   )
 }
 
+// ── Full-size energy flow popup ──────────────────────────────────────────────
+function EnergyFlowModal({ open, onClose, diagramProps, ratios }) {
+  useEffect(() => {
+    if (!open) return
+    const esc = e => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [open, onClose])
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  const cardMotion = isMobile
+    ? { initial: { y: '100%' }, animate: { y: 0 }, exit: { y: '100%' }, transition: { type: 'spring', stiffness: 360, damping: 34 } }
+    : { initial: { opacity: 0, scale: 0.92, y: 20 }, animate: { opacity: 1, scale: 1, y: 0 }, exit: { opacity: 0, scale: 0.95, y: 10 }, transition: { type: 'spring', stiffness: 360, damping: 30 } }
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div key="eflow-backdrop" className="dm-backdrop"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
+          onClick={onClose}
+          style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+          <motion.div key="eflow-card" {...cardMotion} onClick={e => e.stopPropagation()}
+            className="device-modal-glow dm-card"
+            style={{ position: 'relative', width: 'min(1180px, 100%)', maxHeight: '92vh', overflowY: 'auto',
+              background: 'var(--modal-grad)', borderRadius: 'var(--sheet-radius)', padding: '18px 22px 22px' }}>
+            <div className="dm-handle" aria-hidden="true" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+              <div className="modal-device-title" style={{ fontSize: 22, flex: 1 }}>{gt('energy', 'Energy')}</div>
+              <button onClick={onClose} className="icon-btn" title={gt('close', 'Close')} aria-label={gt('close', 'Close')}>✕</button>
+            </div>
+            <FlowDiagram {...diagramProps} large narrow={isMobile} />
+            {ratios}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 export default function EnergyFlow({ energy, evDevices = [], onCommand, energySources }) {
   const { battery:b, solar:s, grid:g, loads:l } = energy||{}
 
@@ -646,6 +707,7 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
     return () => { cancelled = true }
   }, [])
   const modelFor = (deviceKey) => evVisual?.devices?.[deviceKey] || evVisual?.default || {}
+  const [flowOpen, setFlowOpen] = useState(false)
 
   const num = v => (v == null || isNaN(v)) ? 0 : Number(v)
   const sum3 = o => o == null ? null : num(o.power) + num(o.powerL2) + num(o.powerL3)
@@ -673,8 +735,32 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
   const gridDependencyPct = gridImportW != null && loadTotal > 0
     ? Math.round(Math.min(1, gridImportW / loadTotal) * 100) : null
 
+  const diagramProps = {
+    solarW: s?.power, gridW: gridTotal, battW, loadW: loadTotal,
+    battCharging, battSoc: b?.soc ?? null, battColor,
+    gridColor, exporting, evW: evPower,
+  }
+  const ratios = (selfConsumptionPct != null || gridDependencyPct != null) ? (
+    <div style={{
+      display:'flex', justifyContent:'center', flexWrap:'wrap', columnGap:20, rowGap:4,
+      fontSize:12.5, color:'var(--text2)',
+    }}>
+      {selfConsumptionPct != null && (
+        <span>{gt('r_self_consumption','Self-consumption')}{' '}
+          <b style={{ color:'var(--green)', fontVariantNumeric:'tabular-nums' }}>{selfConsumptionPct}%</b>
+        </span>
+      )}
+      {gridDependencyPct != null && (
+        <span>{gt('r_grid_dependency','Grid dependency')}{' '}
+          <b style={{ color: gridDependencyPct > 50 ? 'var(--orange)' : 'var(--text2)', fontVariantNumeric:'tabular-nums' }}>{gridDependencyPct}%</b>
+        </span>
+      )}
+    </div>
+  ) : null
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      <EnergyFlowModal open={flowOpen} onClose={() => setFlowOpen(false)} diagramProps={diagramProps} ratios={ratios} />
 
       {/* ── Top 4-card strip ── */}
       <div className="energy-strip" style={{ display:'flex', gap:10 }}>
@@ -697,11 +783,7 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
       {/* ── Animated flow diagram, with Daily Production alongside it on wide
           screens (stacks below on narrow ones) ── */}
       <div className="eflow-production-row">
-        <FlowDiagram
-          solarW={s?.power} gridW={gridTotal} battW={battW} loadW={loadTotal}
-          battCharging={battCharging} battSoc={b?.soc ?? null} battColor={battColor}
-          gridColor={gridColor} exporting={exporting} evW={evPower}
-        />
+        <FlowDiagram {...diagramProps} compact onOpen={() => setFlowOpen(true)} />
         <DailyProductionChart solarKey={dailyEnergyKey(energySources?.solar || 'victron', energy)} color="var(--orange)" />
       </div>
 
@@ -709,23 +791,7 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
           cards further down, surfaced here too since it's the one number
           that actually says whether the flow diagram above is "good" or not
           at a glance, without opening/scrolling to the detail row. */}
-      {(selfConsumptionPct != null || gridDependencyPct != null) && (
-        <div style={{
-          display:'flex', justifyContent:'center', flexWrap:'wrap', columnGap:20, rowGap:4,
-          fontSize:11.5, color:'var(--text3)', marginTop:-6,
-        }}>
-          {selfConsumptionPct != null && (
-            <span>{gt('r_self_consumption','Self-consumption')}{' '}
-              <b style={{ color:'var(--green)', fontVariantNumeric:'tabular-nums' }}>{selfConsumptionPct}%</b>
-            </span>
-          )}
-          {gridDependencyPct != null && (
-            <span>{gt('r_grid_dependency','Grid dependency')}{' '}
-              <b style={{ color: gridDependencyPct > 50 ? 'var(--orange)' : 'var(--text2)', fontVariantNumeric:'tabular-nums' }}>{gridDependencyPct}%</b>
-            </span>
-          )}
-        </div>
-      )}
+      {ratios}
 
       {/* ── EV showcase: one card per vehicle (up to 10), each with its own
           3D model + live stats/controls side by side ── */}
