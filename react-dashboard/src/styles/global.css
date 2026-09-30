@@ -1754,3 +1754,28 @@ input[type="range"]::-moz-range-thumb {
 /* Shared Sparkline.jsx (thermostat + weather graphs) */
 .sparkline-svg { width: 100%; height: auto; overflow: visible; }
 .sparkline-empty { height: 44px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: rgba(255,255,255,0.3); }
+
+/* ── Homey dimmer (device popup range controls) ─────────────────────────
+   Horizontal take on Homey's vertical brightness block: grey rounded track,
+   white inset fill growing from the left, min/max glyphs at the ends. */
+.hm-range { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 0; }
+.hm-range-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.hm-range-label { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-range-value { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.hm-range-row { display: flex; align-items: center; gap: 16px; }
+.hm-range-track {
+  position: relative; flex: 1; height: 64px; border-radius: 18px;
+  background: rgba(118,118,128,0.36);
+  cursor: pointer; touch-action: none; user-select: none; outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+[data-theme="light"] .hm-range-track { background: rgba(118,118,128,0.2); }
+.hm-range-track:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent); }
+.hm-range-fill {
+  position: absolute; top: 6px; bottom: 6px; left: 6px;
+  min-width: 10px; border-radius: 12px; background: #fff;
+  transition: width 0.18s cubic-bezier(0.34,1.2,0.64,1), opacity 0.15s;
+}
+[data-theme="light"] .hm-range-fill { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08); }
+.hm-range-track[data-dragging] .hm-range-fill { transition: opacity 0.15s; }
+@media (prefers-reduced-motion: reduce) { .hm-range-fill { transition: none; } }

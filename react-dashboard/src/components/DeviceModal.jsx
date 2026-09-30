@@ -399,26 +399,66 @@ function BigToggle({ on, onChange }) {
   )
 }
 
-function RangeControl({ sensor, value, onCommit, accent }) {
-  const [local, setLocal] = useState(value ?? sensor.min ?? 0)
+// Homey-style dimmer, laid horizontally: a wide rounded track with a white
+// inset block that grows from the left, "min" (empty circle) and "max"
+// (filled ring) glyphs at the ends. Drag anywhere on the track, tap an end
+// glyph to jump to min/max, or use the arrow keys. Commits 350ms after the
+// last change, same debounce as before.
+function RangeControl({ sensor, value, onCommit, label }) {
+  const min = sensor.min ?? 0, max = sensor.max ?? 100, step = sensor.step || 1
+  const [local, setLocal] = useState(value ?? min)
+  const [dragging, setDragging] = useState(false)
   const tRef = useRef(null)
-  useEffect(() => { setLocal(value ?? sensor.min ?? 0) }, [value])
-  const min = sensor.min ?? 0, max = sensor.max ?? 100
-  const pct = ((local - min) / Math.max(1, max - min)) * 100
+  const trackRef = useRef(null)
+  useEffect(() => { if (!dragging) setLocal(value ?? min) }, [value])
+  useEffect(() => () => clearTimeout(tRef.current), [])
+
+  const pct = Math.max(0, Math.min(100, ((local - min) / Math.max(1e-9, max - min)) * 100))
+  const set = (raw) => {
+    const v = Math.max(min, Math.min(max, Math.round((raw - min) / step) * step + min))
+    const clean = Number(v.toFixed(4))
+    setLocal(clean)
+    clearTimeout(tRef.current); tRef.current = setTimeout(() => onCommit(clean), 350)
+  }
+  const fromPointer = (e) => {
+    const r = trackRef.current.getBoundingClientRect()
+    const inset = 6
+    const x = Math.max(0, Math.min(1, (e.clientX - r.left - inset) / Math.max(1, r.width - inset * 2)))
+    set(min + x * (max - min))
+  }
+  const onKey = (e) => {
+    const big = (max - min) / 10
+    const d = { ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step, PageUp: big, PageDown: -big }[e.key]
+    if (d != null) { e.preventDefault(); set(local + d) }
+    else if (e.key === 'Home') { e.preventDefault(); set(min) }
+    else if (e.key === 'End') { e.preventDefault(); set(max) }
+  }
+  const endBtn = { background: 'none', border: 'none', padding: 6, margin: -6, cursor: 'pointer', color: 'var(--text)', display: 'flex', flexShrink: 0 }
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-      <input type="range" min={min} max={max} step={sensor.step || 1} value={local}
-        onChange={e => {
-          const v = Number(e.target.value); setLocal(v)
-          clearTimeout(tRef.current); tRef.current = setTimeout(() => onCommit(v), 350)
-        }}
-        style={{
-          flex: 1, height: 10, borderRadius: 999, appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer', outline: 'none',
-          background: `linear-gradient(90deg, ${accent} ${pct}%, var(--white-14) ${pct}%)`,
-        }} />
-      <span style={{ fontSize: 14, fontWeight: 700, minWidth: 58, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: accent }}>
-        {local}{sensor.unit || ''}
-      </span>
+    <div className="hm-range">
+      <div className="hm-range-head">
+        <span className="hm-range-label">{label}</span>
+        <span className="hm-range-value">{local}{sensor.unit || ''}</span>
+      </div>
+      <div className="hm-range-row">
+        <button type="button" style={endBtn} onClick={() => set(min)} aria-label={`${min}${sensor.unit || ''}`}>
+          <svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10.5" fill="none" stroke="currentColor" strokeWidth="2.5"/></svg>
+        </button>
+        <div ref={trackRef} className="hm-range-track" data-dragging={dragging || undefined}
+          role="slider" tabIndex={0} aria-label={label} aria-valuemin={min} aria-valuemax={max} aria-valuenow={local}
+          aria-valuetext={`${local}${sensor.unit || ''}`}
+          onKeyDown={onKey}
+          onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging(true); fromPointer(e) }}
+          onPointerMove={(e) => { if (dragging) fromPointer(e) }}
+          onPointerUp={() => setDragging(false)}
+          onPointerCancel={() => setDragging(false)}>
+          <div className="hm-range-fill" style={{ width: `calc((100% - 12px) * ${pct / 100})`, opacity: pct > 0 ? 1 : 0 }} />
+        </div>
+        <button type="button" style={endBtn} onClick={() => set(max)} aria-label={`${max}${sensor.unit || ''}`}>
+          <svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10.5" fill="none" stroke="currentColor" strokeWidth="2.5"/><circle cx="13" cy="13" r="6" fill="currentColor"/></svg>
+        </button>
+      </div>
     </div>
   )
 }
@@ -906,11 +946,14 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
                           display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px',
                           background: 'var(--white-06)', borderRadius: 16,
                         }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, minWidth: 110, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {s.name || s.label || s.path}
-                          </span>
+                          {s.type !== 'range' && s.type !== 'color-temp' && (
+                            <span style={{ fontSize: 13, fontWeight: 600, minWidth: 110, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {s.name || s.label || s.path}
+                            </span>
+                          )}
                           {(s.type === 'range' || s.type === 'color-temp') && (
-                            <RangeControl sensor={s} value={typeof v === 'number' ? v : undefined} accent={accent}
+                            <RangeControl sensor={s} value={typeof v === 'number' ? v : undefined}
+                              label={s.name || s.label || s.path}
                               onCommit={nv => cmd(s.path, nv)} />
                           )}
                           {s.type === 'trigger' && (
