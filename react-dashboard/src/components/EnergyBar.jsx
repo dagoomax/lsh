@@ -15,11 +15,20 @@ function Tile({ icon, label, value, unit, glowColor }) {
       display: 'flex',
       flexDirection: 'column',
       gap: 2,
+      // Homey-style colour glow keyed to this metric's colour.
+      boxShadow: `0 6px 26px ${glowColor}, var(--inner-hl)`,
     }}>
+      {/* top-anchored radial glow in the metric's colour */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: `radial-gradient(ellipse 80% 60% at 50% 120%, ${glowColor} 0%, transparent 70%)`,
+        background: `radial-gradient(ellipse 90% 70% at 50% -20%, ${glowColor} 0%, transparent 62%)`,
         pointerEvents: 'none',
+      }} />
+      {/* softer original bottom bloom, kept for depth */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: `radial-gradient(ellipse 80% 60% at 50% 120%, ${glowColor} 0%, transparent 72%)`,
+        pointerEvents: 'none', opacity: 0.6,
       }} />
       <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
         {icon} {label}

@@ -29,9 +29,12 @@ const CLASS_ACCENT = { temp: '#d95926', power: '#9085e9', humid: '#199e70', othe
 
 function StatCard({ label, value, unit, color }) {
   return (
-    <div className="stat-card">
-      <div style={{ position: 'absolute', top: -20, right: -20, width: 70, height: 70, borderRadius: '50%',
-        background: `radial-gradient(circle, ${color}26, transparent 70%)` }} />
+    <div className="stat-card" style={{
+      boxShadow: `0 6px 24px ${color}22, var(--inner-hl)`,
+      borderColor: `color-mix(in srgb, ${color} 26%, transparent)`,
+    }}>
+      <div style={{ position: 'absolute', top: -26, right: -26, width: 92, height: 92, borderRadius: '50%',
+        background: `radial-gradient(circle, ${color}33, transparent 66%)` }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         <span style={{ width: 7, height: 7, borderRadius: 2, background: color, flexShrink: 0 }} />
         <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text3)' }}>{label}</span>
