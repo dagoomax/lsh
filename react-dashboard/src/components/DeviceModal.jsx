@@ -729,6 +729,64 @@ function EditPanel({ device, rooms, onClose }) {
   )
 }
 
+// Homey-style hero band: a large device icon that glows with the accent when
+// the device is active, and the single most important reading shown big — the
+// "at a glance" state you land on when you drill into a device.
+function HeroState({ device, val, accent }) {
+  const r = device?.readings || {}
+  const sensors = (device?.sensors || []).filter(s => !s.hidden)
+  const onoff = sensors.find(s => ['onoff', 'state', 'online', 'playing', 'locked', 'motion', 'contact'].includes(s.path)
+    || s.type === 'boolean' || s.type === 'toggle')
+  const dim = sensors.find(s => ['dim', 'level', 'brightness', 'cover_position', 'volume'].includes(s.path) && typeof val(s.path) === 'number')
+  const numeric = sensors.find(s => {
+    const v = r[s.path]?.value
+    return typeof v === 'number' && (s.unit || ['temperature', 'humidity', 'power', 'battery', 'co2'].includes(s.path))
+  })
+
+  let big, sub, active = false
+  if (onoff) {
+    const v = val(onoff.path)
+    active = v === 1 || v === true || v === 'on' || v === 'online' || v === 'playing'
+    big = active ? gt('on', 'On') : gt('off', 'Off')
+    if (dim) sub = `${Math.round(val(dim.path))}%`
+    else sub = onoff.name || onoff.label
+  } else if (numeric) {
+    const v = val(numeric.path)
+    active = true
+    big = `${Number.isInteger(v) ? v : v.toFixed(1)}${numeric.unit || ''}`
+    sub = numeric.name || numeric.label
+  } else {
+    return null
+  }
+
+  const I = resolveIcon(device)
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 2px 6px' }}>
+      <div style={{
+        width: 66, height: 66, borderRadius: 20, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: active
+          ? `linear-gradient(135deg, color-mix(in srgb, ${accent} 32%, transparent), color-mix(in srgb, var(--green) 18%, transparent))`
+          : 'var(--white-05)',
+        border: `1px solid ${active ? `color-mix(in srgb, ${accent} 48%, transparent)` : 'var(--white-10)'}`,
+        boxShadow: active ? `0 0 36px color-mix(in srgb, ${accent} 32%, transparent)` : 'none',
+        transition: 'background .4s ease, box-shadow .4s ease, border-color .4s ease',
+      }}>
+        <I size={34} color={active ? '#fff' : 'var(--muted,#8b949e)'} />
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{
+          fontSize: 30, fontWeight: 800, lineHeight: 1.04, letterSpacing: '-0.02em',
+          ...(active
+            ? { background: `linear-gradient(120deg, var(--text,#e6edf3), ${accent})`, WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent' }
+            : { color: 'var(--muted,#8b949e)' }),
+        }}>{big}</div>
+        {sub && <div style={{ fontSize: 13, color: 'var(--text2,#aeb6c4)', fontWeight: 600, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>}
+      </div>
+    </div>
+  )
+}
+
 export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) {
   const [selected, setSelected] = useState(null)
   const [localState, setLocalState] = useState({})
@@ -844,6 +902,9 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
             <div style={{ position: 'relative', overflowY: 'auto', padding: '4px 20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {editing && <EditPanel device={device} rooms={rooms} onClose={() => setEditing(false)}/>}
+
+              {/* Homey-style hero: the device's headline state, big */}
+              {!editing && <HeroState device={device} val={val} accent={accent} />}
 
               {/* Now Playing (Denon/Sony/Beosound) */}
               <NowPlayingBanner device={device} />
