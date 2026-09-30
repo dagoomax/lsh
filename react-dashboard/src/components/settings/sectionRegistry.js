@@ -46,7 +46,7 @@ export const CATEGORIES = [
     { id: 'shelly', title: 'Shelly', ported: true },
   ] },
   { id: 'media', label: 'Media', sections: [
-    { id: 'media-all', title: 'Denon, Sony Bravia, Sonos', ported: true },
+    { id: 'media-all', title: 'Denon, Sony Bravia, Sonos, Google Home', ported: true },
     { id: 'airplay', title: 'AirPlay Speakers', ported: true },
   ] },
   { id: 'controllers', label: 'Controllers & Buses', sections: [

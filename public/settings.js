@@ -103,6 +103,10 @@ async function loadSettings() {
     document.getElementById('sonos-discover').checked = data.sonos?.discover !== false;
     setVal('sonos-poll', data.sonos?.pollInterval ?? 5);
 
+    // Google Home / Nest
+    setVal('googlehome-devices', (data.googlehome?.devices || []).map(d => `${d.host}${d.name ? ', ' + d.name : ''}`).join('\n'));
+    setVal('googlehome-poll', data.googlehome?.pollInterval ?? 10);
+
     // AuxAir
     if (data.auxair?.region) document.getElementById('auxair-region').value = data.auxair.region;
     setVal('auxair-email',    data.auxair?.email    || '');
@@ -1817,6 +1821,37 @@ document.getElementById('btn-save-sonos').addEventListener('click', async () => 
     });
     const json = await res.json();
     resultEl.textContent = json.success ? '✓ ' + json.message : '✗ ' + json.error;
+    resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
+  } catch (err) {
+    resultEl.textContent = '✗ ' + err.message;
+    resultEl.className   = 'test-result err';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Google Home / Nest ────────────────────────────────────────────────────
+
+document.getElementById('btn-save-googlehome')?.addEventListener('click', async () => {
+  const btn      = document.getElementById('btn-save-googlehome');
+  const resultEl = document.getElementById('googlehome-result');
+  btn.disabled   = true;
+  try {
+    const devices = getVal('googlehome-devices').split('\n').map((l) => {
+      const line = l.trim();
+      if (!line) return null;
+      const i = line.indexOf(',');
+      const host = (i === -1 ? line : line.slice(0, i)).trim();
+      const name = i === -1 ? '' : line.slice(i + 1).trim();
+      return host ? (name ? { host, name } : { host }) : null;
+    }).filter(Boolean);
+    const res = await fetch('/api/settings/googlehome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ devices, pollInterval: parseInt(getVal('googlehome-poll') || '10') }),
+    });
+    const json = await res.json();
+    resultEl.textContent = json.success ? '✓ ' + (json.message || 'Saved') : '✗ ' + json.error;
     resultEl.className   = 'test-result ' + (json.success ? 'ok' : 'err');
   } catch (err) {
     resultEl.textContent = '✗ ' + err.message;

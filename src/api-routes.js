@@ -4428,6 +4428,30 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     }
   });
 
+  router.post('/settings/googlehome', requireAdmin, (req, res) => {
+    const current = readConfigFile();
+    const { devices, pollInterval } = req.body;
+    try {
+      const list = Array.isArray(devices)
+        ? devices
+            .map(d => (typeof d === 'string'
+              ? { host: d.trim() }
+              : { host: String(d.host || '').trim(), ...(d.name ? { name: String(d.name).trim() } : {}) }))
+            .filter(d => d.host)
+        : (current.googlehome?.devices || []);
+      writeConfigFile({
+        ...current,
+        googlehome: {
+          devices: list,
+          pollInterval: parseInt(pollInterval || 10),
+        },
+      });
+      res.json({ success: true, message: 'Google Home settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   router.post('/settings/sonos', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { hosts, discover, pollInterval } = req.body;

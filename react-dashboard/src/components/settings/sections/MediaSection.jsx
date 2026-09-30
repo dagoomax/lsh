@@ -10,7 +10,43 @@ export default function MediaSection({ config, reload }) {
       <DenonCard denon={config.denon} reload={reload}/>
       <SonyCard sony={config.sony} reload={reload}/>
       <SonosCard sonos={config.sonos} reload={reload}/>
+      <GoogleHomeCard googlehome={config.googlehome} reload={reload}/>
     </>
+  )
+}
+
+function GoogleHomeCard({ googlehome, reload }) {
+  // Devices are edited as "host, name" lines (one per speaker/display) and
+  // stored as config.googlehome.devices = [{ host, name }], via the dedicated
+  // /api/settings/googlehome endpoint (the generic /api/settings merge does
+  // not include the googlehome key).
+  const [devicesText, setDevicesText] = useState(
+    (googlehome?.devices || []).map(d => `${d.host}${d.name ? `, ${d.name}` : ''}`).join('\n'),
+  )
+  const [pollInterval, setPollInterval] = useState(googlehome?.pollInterval ?? 10)
+  const save = useSettingsSave('/api/settings/googlehome')
+
+  const parseDevices = () => devicesText.split('\n').map(l => {
+    const line = l.trim()
+    if (!line) return null
+    const i = line.indexOf(',')
+    const host = (i === -1 ? line : line.slice(0, i)).trim()
+    const name = i === -1 ? '' : line.slice(i + 1).trim()
+    return host ? { host, ...(name ? { name } : {}) } : null
+  }).filter(Boolean)
+
+  return (
+    <SettingsCard icon={SpeakerIcon} title="Google Home / Nest" badge={{ label: gt('common.optional', 'Optional') }}
+      desc="Google Home / Nest speakers and displays (and any Chromecast-built-in device) over the local Cast v2 protocol — volume, mute, play/pause/stop, and now-playing. No Google account needed. Find each device's IP in the Google Home app (device settings → Wi-Fi) or your router's DHCP list.">
+      <Field label="Devices" hint="(one per line — host, name)" type="textarea" value={devicesText} onChange={setDevicesText}
+        placeholder={'192.168.1.41, Kitchen Speaker\n192.168.1.42, Living Room Display'}/>
+      <Field label="Poll Interval" hint="(seconds, min 5)" type="number" value={pollInterval} onChange={setPollInterval}/>
+      <div className="stg-actions">
+        <Button variant="primary" busy={save.busy}
+          onClick={() => save.save({ devices: parseDevices(), pollInterval: Number(pollInterval) }).then(reload)}>{gt('common.save', 'Save')}</Button>
+        <ResultBanner result={save.result}/>
+      </div>
+    </SettingsCard>
   )
 }
 

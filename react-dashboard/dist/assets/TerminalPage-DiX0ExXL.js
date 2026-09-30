@@ -1,4 +1,4 @@
-import{r as Ye,l as Yr,j as Y,T as jr}from"./index-CqDejctv.js";/**
+import{r as Ye,l as Yr,j as Y,T as jr}from"./index-Dr7SmRrO.js";/**
  * Copyright (c) 2014-2024 The xterm.js authors. All rights reserved.
  * @license MIT
  *

@@ -619,6 +619,24 @@
       </div>
     </section>
 
+    <!-- Google Home / Nest -->
+    <section class="card settings-card" data-category="media" data-title="Google Home Nest Cast Chromecast speaker display volume play pause music">
+      <h2>Google Home / Nest <span class="badge" data-i18n="common.optional">Optional</span></h2>
+      <p class="section-desc">Google Home / Nest speakers and displays (and any Chromecast-built-in device) over the local Cast v2 protocol — volume, mute, play/pause/stop, and now-playing. No Google account needed. Find each device's IP in the Google Home app (device settings → Wi-Fi) or your router's DHCP list.</p>
+      <div class="form-group">
+        <label for="googlehome-devices">Devices <span class="hint">(one per line — host, name)</span></label>
+        <textarea id="googlehome-devices" rows="3" placeholder="192.168.1.41, Kitchen Speaker&#10;192.168.1.42, Living Room Display" style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="googlehome-poll">Poll Interval <span class="hint">(seconds, min 5)</span></label>
+        <input type="number" id="googlehome-poll" placeholder="10" min="5" max="60" style="max-width:120px">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="btn-save-googlehome">Save</button>
+        <span class="test-result" id="googlehome-result"></span>
+      </div>
+    </section>
+
     <!-- AuxAir (AC Freedom) -->
     <section class="card settings-card" data-category="climate" data-title="AuxAir AC Freedom air conditioner climate control">
       <h2>AuxAir / AC Freedom <span class="badge" data-i18n="common.optional">Optional</span></h2>
@@ -2197,7 +2215,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="i18n.js?v=5"></script>
-  <script src="settings.js?v=10"></script>
+  <script src="settings.js?v=11"></script>
   <script src="theme.js?v=5"></script>
   <script src="common.js?v=5"></script>
 </body>
