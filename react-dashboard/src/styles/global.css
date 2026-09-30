@@ -299,11 +299,23 @@ input[type="range"]::-moz-range-thumb {
 .badge-accent { background: color-mix(in srgb, var(--accent) 26%, transparent); color: var(--accent-lt); }
 
 /* ── Device tile ────────────────────────────────────────────────────────── */
+/* Homey-style: each tile carries a per-category accent (--tile-accent); when
+   the device is on, the whole tile warms toward that colour with a soft glow,
+   so the grid reads its state at a glance the way Homey's does. */
+.device-tile[data-cat="Lighting"] { --tile-accent: var(--gold); }
+.device-tile[data-cat="Switches"] { --tile-accent: var(--accent); }
+.device-tile[data-cat="Climate"]  { --tile-accent: var(--orange); }
+.device-tile[data-cat="Media"]    { --tile-accent: var(--violet); }
+.device-tile[data-cat="Security"] { --tile-accent: var(--red); }
+.device-tile[data-cat="Sensors"]  { --tile-accent: var(--teal); }
+.device-tile[data-cat="Victron"]  { --tile-accent: var(--green); }
+
 .device-tile {
+  --tile-accent: var(--accent);
   cursor: pointer;
   background: var(--card-grad);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: 20px;
   box-shadow: var(--shadow-1), var(--inner-hl);
   transition: transform 0.18s ease, box-shadow 0.18s ease,
               border-color 0.18s ease, background 0.25s ease;
@@ -326,23 +338,27 @@ input[type="range"]::-moz-range-thumb {
 }
 .device-tile:active { transform: translateY(0) scale(0.985); }
 .device-tile[data-on="true"] {
-  background: linear-gradient(160deg, #14233c 0%, #101a2e 100%);
-  border-color: color-mix(in srgb, var(--accent-lt) 28.0%, transparent);
-  box-shadow: 0 4px 24px rgba(56,110,200,0.22), var(--inner-hl);
+  background:
+    radial-gradient(120% 80% at 15% 0%, color-mix(in srgb, var(--tile-accent) 16%, transparent) 0%, transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--tile-accent) 9%, var(--card)) 0%, var(--card) 100%);
+  border-color: color-mix(in srgb, var(--tile-accent) 42%, transparent);
+  box-shadow: 0 6px 30px color-mix(in srgb, var(--tile-accent) 24%, transparent), var(--inner-hl);
 }
 .device-tile[data-on="true"]:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--accent-lt) 45%, transparent);
-  box-shadow: 0 8px 32px rgba(56,110,200,0.32), var(--inner-hl);
+  border-color: color-mix(in srgb, var(--tile-accent) 60%, transparent);
+  box-shadow: 0 10px 40px color-mix(in srgb, var(--tile-accent) 34%, transparent), var(--inner-hl);
 }
 [data-theme="light"] .device-tile[data-on="true"] {
-  background: linear-gradient(160deg, #dbeafe 0%, #ecf4ff 100%);
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
-  box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 14.0%, transparent), var(--inner-hl);
+  background:
+    radial-gradient(120% 80% at 15% 0%, color-mix(in srgb, var(--tile-accent) 18%, transparent) 0%, transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--tile-accent) 12%, #ffffff) 0%, #ffffff 100%);
+  border-color: color-mix(in srgb, var(--tile-accent) 40%, transparent);
+  box-shadow: 0 4px 22px color-mix(in srgb, var(--tile-accent) 16%, transparent), var(--inner-hl);
 }
 [data-theme="light"] .device-tile[data-on="true"]:hover {
-  border-color: color-mix(in srgb, var(--accent) 55.0%, transparent);
-  box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 20%, transparent), var(--inner-hl);
+  border-color: color-mix(in srgb, var(--tile-accent) 58%, transparent);
+  box-shadow: 0 8px 30px color-mix(in srgb, var(--tile-accent) 22%, transparent), var(--inner-hl);
 }
 
 /* Device modal title — same Aurora wordmark treatment as the header, so
