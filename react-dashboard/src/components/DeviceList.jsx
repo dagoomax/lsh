@@ -375,9 +375,11 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const isSonos  = device.type === 'sonos'
   const isDenon  = device.type === 'denon'
   const isSpa    = device.type === 'smarttub'
-  // Bento-style: media players earn a wider card (room for now-playing +
-  // transport) the way Homey features them, instead of a cramped 1×1 tile.
+  // Bento-style: media players and dimmable lights earn a wider card (room for
+  // now-playing/transport, or a full-width brightness slider) the way Homey
+  // features them, instead of a cramped 1×1 tile.
   const isWide   = isSonos || isDenon || device.type === 'sony' || device.type === 'beosound'
+    || (hasLevel && hasSwitch)
 
   const AC_MODES  = ['Cool','Heat','Dry','Fan','Auto']
   const FAN_NAMES = ['Auto','Low','Med','High','Turbo','Mute']
@@ -551,6 +553,14 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
       display: 'flex', flexDirection: 'column',
       minHeight: 118,
       ...(revealIndex != null ? { '--i': revealIndex } : null),
+      // Dimmable light that's on: the tile's warm glow tracks the brightness,
+      // so a room at 20% reads dim and one at 100% glows full — the Homey
+      // "living, brightness-aware dimmer card" look.
+      ...(hasLevel && isOn ? {
+        background: `radial-gradient(140% 100% at 18% -10%, color-mix(in srgb, var(--tile-accent) ${Math.round(12 + level * 0.30)}%, transparent) 0%, transparent 60%), linear-gradient(160deg, color-mix(in srgb, var(--tile-accent) ${Math.round(7 + level * 0.13)}%, var(--card)) 0%, var(--card) 100%)`,
+        borderColor: `color-mix(in srgb, var(--tile-accent) ${Math.round(30 + level * 0.30)}%, transparent)`,
+        boxShadow: `0 6px 30px color-mix(in srgb, var(--tile-accent) ${Math.round(14 + level * 0.22)}%, transparent), var(--inner-hl)`,
+      } : null),
     }}>
 
       {/* Top glow bar when on */}
