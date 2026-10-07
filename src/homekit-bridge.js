@@ -597,6 +597,9 @@ function addWindowCoveringService(accessory, name, storePath, store, writeCallba
   if (stopWrite) {
     svc.getCharacteristic(Characteristic.HoldPosition)
       .onSet(async (v) => { if (v) await stopWrite(); });
+    // The Home app never renders HoldPosition, so also expose Stop as a
+    // momentary switch on the same accessory (and for Siri / automations).
+    addMomentarySwitchService(accessory, `${name} Stop`, 'stop', stopWrite);
   }
 
   // Slat tilt: HomeKit uses a signed angle; map "% open" 0-100 → 0-90°.
@@ -638,6 +641,88 @@ function addWindowCoveringService(accessory, name, storePath, store, writeCallba
   });
 
   return svc;
+}
+
+/**
+ * Adds a momentary Switch: turning it on runs action() and springs back to
+ * off after a second, like the scene switches in startHomekitBridge.
+ */
+function addMomentarySwitchService(accessory, name, subtype, action) {
+  const svc = accessory.addService(Service.Switch, name, subtype);
+  svc.getCharacteristic(Characteristic.On)
+    .onGet(() => false)
+    .onSet(async (v) => {
+      if (!v) return;
+      setTimeout(() => svc.getCharacteristic(Characteristic.On).updateValue(false), 1000);
+      try {
+        await action();
+      } catch (err) {
+        console.error(`[HomeKit] ${name} failed: ${err.message}`);
+        throw new hap.HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+      }
+    });
+  return svc;
+}
+
+/**
+ * Robot vacuum (Kärcher). HomeKit has no vacuum accessory type, so — as with
+ * mower-rw — the main tile is a Fanv2: Active starts cleaning / sends the
+ * robot back to base, RotationSpeed picks the suction level in equal steps
+ * (4 levels → 25/50/75/100 %). Pause, Return to base and Find robot are
+ * momentary switches; the Battery service reports charging state.
+ */
+function addVacuumServices(acc, device, store) {
+  const key          = device.key;
+  const cleaningPath = `${key}/cleaning`;
+  const fanPath      = `${key}/fan`;
+  const batteryPath  = `${key}/battery`;
+  const statePath    = `${key}/state`;
+  const has   = (p) => device.sensors.some((s) => s.path === p);
+  const write = (capId, cmd, args) => device._writeCapability(capId, cmd, args);
+
+  const svc = acc.addService(Service.Fanv2, device.label);
+  svc.getCharacteristic(Characteristic.Active)
+    .onGet(() => (store.get(cleaningPath) === 1 ? 1 : 0))
+    .onSet(async (v) => {
+      await write('cleaning', v === 1 ? 'start' : 'dock');
+      store.update(cleaningPath, v === 1 ? 1 : 0);
+    });
+
+  const fan    = device.sensors.find((s) => s.path === 'fan');
+  const levels = fan ? (fan.max ?? 3) - (fan.min ?? 0) + 1 : 0;
+  const step   = levels ? 100 / levels : 0;
+  const toSpeed = (idx) => Math.round((clamp(idx ?? 1, 0, levels - 1) + 1) * step);
+  if (fan) {
+    svc.getCharacteristic(Characteristic.RotationSpeed)
+      .setProps({ minStep: step })
+      .onGet(() => toSpeed(store.get(fanPath)))
+      .onSet(async (pct) => {
+        if (!pct) return; // Home sends 0 together with Active=0 when switching off
+        await write('fan', 'setFan', [clamp(Math.round(pct / step) - 1, 0, levels - 1)]);
+      });
+  }
+
+  if (has('pause'))  addMomentarySwitchService(acc, `${device.label} Pause`, 'pause', () => write('pause', 'pause'));
+  if (has('dock'))   addMomentarySwitchService(acc, `${device.label} Return to base`, 'dock', () => write('dock', 'dock'));
+  if (has('locate')) addMomentarySwitchService(acc, `${device.label} Find`, 'locate', () => write('locate', 'locate'));
+
+  const bat = has('battery') ? acc.addService(Service.Battery, `${device.label} Battery`) : null;
+  const charging = () => (store.get(statePath) === 'Charging' ? 1 : 0);
+  if (bat) {
+    bat.getCharacteristic(Characteristic.BatteryLevel).onGet(() => clamp(store.get(batteryPath), 0, 100));
+    bat.getCharacteristic(Characteristic.StatusLowBattery).onGet(() => ((store.get(batteryPath) ?? 100) < 20 ? 1 : 0));
+    bat.getCharacteristic(Characteristic.ChargingState).onGet(charging);
+  }
+
+  store.on('change', ({ key: k, value }) => {
+    if (k === cleaningPath) svc.getCharacteristic(Characteristic.Active).updateValue(value === 1 ? 1 : 0);
+    if (fan && k === fanPath) svc.getCharacteristic(Characteristic.RotationSpeed).updateValue(toSpeed(value));
+    if (bat && k === batteryPath) {
+      bat.getCharacteristic(Characteristic.BatteryLevel).updateValue(clamp(value, 0, 100));
+      bat.getCharacteristic(Characteristic.StatusLowBattery).updateValue(value < 20 ? 1 : 0);
+    }
+    if (bat && k === statePath) bat.getCharacteristic(Characteristic.ChargingState).updateValue(charging());
+  });
 }
 
 /**
@@ -1121,6 +1206,10 @@ function buildDeviceAccessory(device, store) {
         addFanService(acc, device.label, `${device.key}/${s.path}`, store,
           (cmd) => device._writeCapability('mow', cmd));
       }
+    }
+
+    if (hkType === 'vacuum-rw') {
+      if (device._writeCapability) addVacuumServices(acc, device, store);
     }
 
     if (hkType === 'thermostat') {

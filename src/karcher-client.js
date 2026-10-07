@@ -546,7 +546,7 @@ class KarcherClient {
           capabilityId: 'clean_mode', writeCmd: 'setCleanMode',
         },
       ],
-      homekit: ['battery-level', 'switch-rw'],
+      homekit: ['vacuum-rw'],
       _writeCapability: (capId, command, args = []) => this._writeCap(entry, capId, command, args),
     });
     console.log(`[Karcher] Registered ${entry.nickname} (${entry.model}, ${entry.sn})`);
@@ -613,8 +613,8 @@ class KarcherClient {
   async _writeCap(dev, capId, command, args = []) {
     try {
       if (capId === 'cleaning') {
-        if (command === 'start') this._sendCommand(dev, 'set_room_clean', { room_ids: [], ctrl_value: 1, clean_type: 0 });
-        else if (command === 'dock') this._sendCommand(dev, 'start_recharge', {});
+        if (command === 'start' || command === 'on') this._sendCommand(dev, 'set_room_clean', { room_ids: [], ctrl_value: 1, clean_type: 0 });
+        else if (command === 'dock' || command === 'off') this._sendCommand(dev, 'start_recharge', {});
         return;
       }
       if (capId === 'pause') {
