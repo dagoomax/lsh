@@ -8,16 +8,20 @@
 // Reolink's exact device/HomeKit pattern: one sub-device per camera+category,
 // `detected` boolean sensor exposed as a HomeKit motion sensor.
 //
-// Pure-JS TensorFlow.js (CPU backend) on purpose, not @tensorflow/tfjs-node —
-// the native backend needs Node ABI-matched prebuilt bindings per machine,
-// which is a poor fit for LSH running across several different boxes.
-// Slower per-inference (roughly 1s on a modern machine) but nothing to build
-// or match, and periodic snapshot polling doesn't need real-time speed
-// anyway. If tfjs/coco-ssd aren't installed, server.js's tryRequire skips
+// Uses the native @tensorflow/tfjs-node backend when it's installed (an
+// optionalDependency — prebuilt libtensorflow, N-API so not Node-ABI bound),
+// falling back to pure-JS TensorFlow.js (CPU backend) where it isn't. The
+// pure-JS path is ~1s per inference on a modern machine but 10-17s on a
+// low-power box (AMD GX-215JJ), enough to pin a core at a 30s poll interval. If tfjs/coco-ssd aren't installed, server.js's tryRequire skips
 // this client with a warning instead of crashing.
 
 const tf      = require('@tensorflow/tfjs');
 require('@tensorflow/tfjs-backend-cpu');
+let TF_BACKEND = 'cpu';
+try {
+  require('@tensorflow/tfjs-node'); // registers the 'tensorflow' backend on the shared tfjs-core
+  TF_BACKEND = 'tensorflow';
+} catch { /* optional — stay on the pure-JS CPU backend */ }
 const jpeg     = require('jpeg-js');
 const cocoSsd  = require('@tensorflow-models/coco-ssd');
 const mobilenet = require('@tensorflow-models/mobilenet');
@@ -37,6 +41,17 @@ const MODEL_BASES = [
   { id: 'mobilenet_v2',      label: 'MobileNet v2 (more accurate, slower)' },
   { id: 'mobilenet_v1',      label: 'MobileNet v1 (smallest download)' },
 ];
+// EfficientDet-Lite0…4 (see efficientdet.js) — more accurate, same 80 COCO
+// classes; SavedModels, so only offered on the native tfjs-node backend.
+if (TF_BACKEND === 'tensorflow') {
+  MODEL_BASES.push(
+    { id: 'efficientdet_lite0', label: 'EfficientDet-Lite0 (fast, 35 MB)' },
+    { id: 'efficientdet_lite1', label: 'EfficientDet-Lite1 (balanced, 43 MB)' },
+    { id: 'efficientdet_lite2', label: 'EfficientDet-Lite2 (accurate, 49 MB)' },
+    { id: 'efficientdet_lite3', label: 'EfficientDet-Lite3 (more accurate, slower, 65 MB)' },
+    { id: 'efficientdet_lite4', label: 'EfficientDet-Lite4 (most accurate, slowest, 95 MB)' },
+  );
+}
 const MODEL_BASE_IDS = MODEL_BASES.map((m) => m.id);
 
 // Second-opinion breed verification for COCO-SSD's 4 pet-ish classes.
@@ -257,11 +272,13 @@ class ObjectDetectionClient {
     const b = MODEL_BASE_IDS.includes(base) ? base : MODEL_BASE_IDS[0];
     if (this._modelLoading.has(b)) return this._modelLoading.get(b);
     if (isDefault) this._modelStatus = { base: b, loading: true, loaded: false, error: null };
-    console.log(`[ObjectDetection] Loading COCO-SSD model (${b})…`);
+    console.log(`[ObjectDetection] Loading COCO-SSD model (${b}, ${TF_BACKEND} backend)…`);
     const promise = (async () => {
       try {
-        await tf.setBackend('cpu');
-        const model = await cocoSsd.load({ base: b });
+        if (!(await tf.setBackend(TF_BACKEND))) await tf.setBackend('cpu');
+        const model = b.startsWith('efficientdet_')
+          ? await require('./efficientdet').load(b)
+          : await cocoSsd.load({ base: b });
         this._models.set(b, model);
         if (isDefault) this._modelStatus = { base: b, loading: false, loaded: true, error: null };
         console.log(`[ObjectDetection] Model ready (${b})`);
