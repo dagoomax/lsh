@@ -51,6 +51,11 @@ Every `src/*-client.js` follows the same shape — copy an existing one (e.g. `s
 4. For controllable sensors, mark them `controllable` and attach `device._writeCapability(capabilityId, command, args)` — `SensorRegistry.sendCommand()` (called by `POST /api/device/:key/command` and HomeKit) dispatches through it
 5. Report health via `platform-status.js` (`platformStatus.set('platform', true)`) — shown in the UI platform bar
 6. Wire it into `server.js` gated on its config section; clients needing REST routes get added to the `apiClients` object passed to `createApiRoutes`
+7. Run `node scripts/gen-modules-manifest.js` — regenerates `modules.json` and moves the client's npm deps out of `package.json` (then `npm install --package-lock-only`)
+
+### Integration modules (on-demand install)
+
+A fresh install (`scripts/install.sh`) ships only the core: the files in `modules.json` → `core` plus core npm deps. Every other integration is fetched from GitHub (`dagoomax/lsh`, tag `v<package.json version>`, falling back to `main`) by `src/module-manager.js` — automatically at startup when its `when` condition (the exact `if (…)` guard from `server.js`) matches `config.json`, or from Settings → Integration Modules (`GET /api/modules`, `POST /api/modules/:id/install`). Module npm deps are installed `--no-save`; the installed set is tracked in `persist/modules.json`. `config.modules.autoInstall: false` disables startup fetching; `config.modules.githubToken` / `GITHUB_TOKEN` raises the GitHub API rate limit.
 
 ### Frontends (two of them)
 

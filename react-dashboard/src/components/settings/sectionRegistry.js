@@ -77,6 +77,7 @@ export const CATEGORIES = [
     { id: 'homeplan', title: 'Home Plan', ported: true },
     { id: 'security-auth', title: 'Security & Authentication', ported: true },
     { id: 'backup', title: 'Backup & Restore', ported: true },
+    { id: 'modules', title: 'Integration Modules', ported: true, keywords: ['install', 'github', 'plugins', 'update'] },
   ] },
 ]
 

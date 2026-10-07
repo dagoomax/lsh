@@ -11,9 +11,7 @@ const callLog = require('./call-log');
 const motionLog = require('./motion-log');
 const detectionBoxes = require('./detection-boxes');
 const { getDb } = require('./mongo');
-const { fetchMedia: fetchSmartThingsMedia } = require('./smartthings-media');
 const engineExports = require('./automation-engine');
-const SofarClient = require('./sofar-client');
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
 
@@ -1439,7 +1437,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // silently sending no auth at all.
   async function proxySmartThingsMedia(url, res) {
     try {
-      const { buffer, contentType } = await fetchSmartThingsMedia(url, clients.smartThings);
+      const { buffer, contentType } = await require('./smartthings-media').fetchMedia(url, clients.smartThings);
       res.set('Content-Type', contentType);
       res.set('Cache-Control', 'no-cache');
       res.send(buffer);
@@ -2270,7 +2268,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (!host) return res.status(400).json({ success: false, error: 'host is required' });
     if (!serialNumber) return res.status(400).json({ success: false, error: 'serialNumber is required' });
     try {
-      const registers = await SofarClient.readRegisters({
+      const registers = await require('./sofar-client').readRegisters({
         host, port: port ? Number(port) : 8899, serial: Number(serialNumber),
         slaveId: slaveId ? Number(slaveId) : 1, startAddr: 0x0000, quantity: 1, timeoutMs: 5000,
       });
@@ -2947,6 +2945,27 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
   // even when a path looks like a static asset), so it has to live outside
   // the /api prefix to actually be reachable pre-login, same as /i18n/*.json
   // vs the gated /api/i18n/*.json.
+
+  // ── Integration modules (src/module-manager.js) ──────────
+  // Listing is admin-only too: it reveals which integrations are configured.
+  router.get('/modules', requireAdmin, (req, res) => {
+    try {
+      res.json({ success: true, data: require('./module-manager').list(readConfigFile()) });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Fetch a module's files from GitHub + npm-install its deps. update=true
+  // re-fetches files that are already present. Takes effect on restart.
+  router.post('/modules/:id/install', requireAdmin, async (req, res) => {
+    try {
+      const [status] = await require('./module-manager').install([req.params.id], readConfigFile(), { force: !!req.body?.update });
+      res.json({ success: true, data: status, message: 'Installed — restart LSH to load it.' });
+    } catch (err) {
+      res.status(/^Unknown module/.test(err.message) ? 404 : 500).json({ success: false, error: err.message });
+    }
+  });
 
   // ── Settings ─────────────────────────────────────────────
   router.get('/settings', (req, res) => {

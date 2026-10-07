@@ -34,6 +34,10 @@ function tryRequire(mod, hint) {
 
 async function main() {
   const config          = loadConfig();
+  // Fetch any configured integration whose files/npm deps aren't on disk yet
+  // (a fresh install ships core only — see src/module-manager.js). Must run
+  // before the tryRequire calls below so they find what it just installed.
+  await require('./src/module-manager').ensureConfigured(config);
   const store           = new DataStore();
   // restore saved sensor data + history, save every 5 min and on shutdown;
   // persists to MongoDB when config.mongo.uri is set, else gzipped JSON in persist/

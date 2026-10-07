@@ -1,0 +1,984 @@
+{
+  "repo": "dagoomax/lsh",
+  "core": [
+    "src/acme.js",
+    "src/api-routes.js",
+    "src/auth.js",
+    "src/automation-engine.js",
+    "src/axis-client.js",
+    "src/call-log.js",
+    "src/camera-log.js",
+    "src/config-file-cache.js",
+    "src/connection-manager.js",
+    "src/data-store.js",
+    "src/detection-boxes.js",
+    "src/device-definitions.js",
+    "src/homekit-bridge.js",
+    "src/homekit-camera.js",
+    "src/homekit-uri.js",
+    "src/kenik-client.js",
+    "src/logger.js",
+    "src/loxone-xml.js",
+    "src/mobotix-client.js",
+    "src/mongo.js",
+    "src/motion-log.js",
+    "src/mqtt-client.js",
+    "src/paging-messages.js",
+    "src/platform-status.js",
+    "src/private-events.js",
+    "src/relay-controller.js",
+    "src/reolink-client.js",
+    "src/rtsp-backchannel.js",
+    "src/sensor-registry.js",
+    "src/server-i18n.js",
+    "src/simulator-manager.js",
+    "src/system-metrics-client.js",
+    "src/vrm-client.js",
+    "src/websocket.js"
+  ],
+  "modules": {
+    "satel": {
+      "entry": "src/satel-client.js",
+      "configKeys": [
+        "satel"
+      ],
+      "when": "(config.satel?.host)",
+      "files": [
+        "src/satel-client.js"
+      ],
+      "deps": {}
+    },
+    "unifi-protect": {
+      "entry": "src/unifi-protect-client.js",
+      "configKeys": [
+        "unifi"
+      ],
+      "when": "(config.unifi?.host)",
+      "files": [
+        "src/unifi-protect-client.js"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
+    },
+    "unifi-access": {
+      "entry": "src/unifi-access-client.js",
+      "configKeys": [
+        "unifiAccess"
+      ],
+      "when": "(config.unifiAccess?.host && config.unifiAccess?.apiKey)",
+      "files": [
+        "src/unifi-access-client.js"
+      ],
+      "deps": {}
+    },
+    "yale": {
+      "entry": "src/yale-client.js",
+      "configKeys": [
+        "yale"
+      ],
+      "when": "((config.yale?.username && config.yale?.password) || config.yale?.accessToken)",
+      "files": [
+        "src/yale-client.js"
+      ],
+      "deps": {}
+    },
+    "mqtt-explorer": {
+      "entry": "src/mqtt-explorer.js",
+      "configKeys": [
+        "mqtt"
+      ],
+      "when": "(config.mqtt?.host)",
+      "files": [
+        "src/mqtt-explorer.js"
+      ],
+      "deps": {}
+    },
+    "sip-server": {
+      "entry": "src/sip-server.js",
+      "configKeys": [
+        "sip"
+      ],
+      "when": "(config.sip?.enabled)",
+      "files": [
+        "src/sip-audio-bridge.js",
+        "src/sip-server.js"
+      ],
+      "deps": {
+        "sip": "^0.0.6"
+      }
+    },
+    "paging": {
+      "entry": "src/paging.js",
+      "configKeys": [
+        "paging"
+      ],
+      "when": "(config.paging?.enabled)",
+      "files": [
+        "src/paging.js"
+      ],
+      "deps": {}
+    },
+    "airplay": {
+      "entry": "src/airplay-client.js",
+      "configKeys": [
+        "airplay"
+      ],
+      "when": "(config.airplay?.enabled)",
+      "files": [
+        "src/airplay-client.js"
+      ],
+      "deps": {
+        "@lox-audioserver/node-airplay-sender": "^0.4.10",
+        "bonjour-service": "^1.4.4"
+      }
+    },
+    "ffmpeg-rtsp": {
+      "entry": "src/ffmpeg-rtsp.js",
+      "configKeys": [
+        "ffmpegRtsp"
+      ],
+      "when": "(config.ffmpegRtsp?.enabled)",
+      "files": [
+        "src/ffmpeg-rtsp.js"
+      ],
+      "deps": {}
+    },
+    "openweather": {
+      "entry": "src/openweather-client.js",
+      "configKeys": [
+        "openweather"
+      ],
+      "when": "(config.openweather?.apiKey)",
+      "files": [
+        "src/openweather-client.js"
+      ],
+      "deps": {}
+    },
+    "loxone-weather-server": {
+      "entry": "src/loxone-weather-server.js",
+      "configKeys": [
+        "loxoneWeather"
+      ],
+      "when": "(config.loxoneWeather)",
+      "files": [
+        "src/loxone-weather-server.js"
+      ],
+      "deps": {}
+    },
+    "virtual": {
+      "entry": "src/virtual-client.js",
+      "configKeys": [
+        "virtual"
+      ],
+      "when": "(config.virtual?.devices?.length)",
+      "files": [
+        "src/virtual-client.js"
+      ],
+      "deps": {}
+    },
+    "object-detection": {
+      "entry": "src/object-detection.js",
+      "configKeys": [
+        "objectDetection"
+      ],
+      "when": "(config.objectDetection?.cameras?.length)",
+      "files": [
+        "src/object-detection.js",
+        "src/rtsp-snapshot.js"
+      ],
+      "deps": {
+        "@tensorflow/tfjs": "^4.22.0",
+        "jpeg-js": "^0.4.4",
+        "@tensorflow-models/coco-ssd": "^2.2.3",
+        "@tensorflow-models/mobilenet": "^2.1.1"
+      }
+    },
+    "mcp-server": {
+      "entry": "src/mcp-server.js",
+      "configKeys": [
+        "mcp"
+      ],
+      "when": "(config.mcp?.enabled)",
+      "files": [
+        "src/mcp-server.js"
+      ],
+      "deps": {
+        "@modelcontextprotocol/sdk": "^1.30.0",
+        "zod": "^3.25.76"
+      }
+    },
+    "solaredge": {
+      "entry": "src/solaredge-client.js",
+      "configKeys": [
+        "solaredge"
+      ],
+      "when": "(config.solaredge?.siteId && config.solaredge?.apiKey)",
+      "files": [
+        "src/solaredge-client.js"
+      ],
+      "deps": {}
+    },
+    "smartthings": {
+      "entry": "src/smartthings-client.js",
+      "configKeys": [
+        "smartthings"
+      ],
+      "when": "(config.smartthings?.token || (config.smartthings?.clientId && config.smartthings?.clientSecret))",
+      "files": [
+        "src/object-detection.js",
+        "src/rtsp-snapshot.js",
+        "src/smartthings-client.js",
+        "src/smartthings-media.js"
+      ],
+      "deps": {
+        "jpeg-js": "^0.4.4",
+        "@tensorflow-models/coco-ssd": "^2.2.3",
+        "@tensorflow/tfjs": "^4.22.0",
+        "@tensorflow-models/mobilenet": "^2.1.1"
+      }
+    },
+    "vitodens": {
+      "entry": "src/vitodens-client.js",
+      "configKeys": [
+        "vitodens",
+        "vicare"
+      ],
+      "when": "(config.vitodens?.clientId || config.vicare?.clientId)",
+      "files": [
+        "src/vitodens-client.js"
+      ],
+      "deps": {}
+    },
+    "matter-bridge": {
+      "entry": "src/matter-bridge.js",
+      "configKeys": [
+        "matter"
+      ],
+      "when": "(config.matter?.bridge?.enabled)",
+      "files": [
+        "src/matter-bridge.js",
+        "src/matter-storage.js"
+      ],
+      "deps": {
+        "@matter/main": "^0.17.9",
+        "@matter/nodejs": "^0.17.9"
+      }
+    },
+    "matter": {
+      "entry": "src/matter-client.js",
+      "configKeys": [
+        "matter"
+      ],
+      "when": "(config.matter?.controller?.enabled)",
+      "files": [
+        "src/matter-client.js",
+        "src/matter-storage.js"
+      ],
+      "deps": {
+        "@matter/main": "^0.17.9",
+        "@project-chip/matter.js": "^0.17.9",
+        "@matter/nodejs": "^0.17.9"
+      }
+    },
+    "solaraccelerator": {
+      "entry": "src/solaraccelerator-client.js",
+      "configKeys": [
+        "solaraccelerator"
+      ],
+      "when": "(config.solaraccelerator?.host)",
+      "files": [
+        "src/solaraccelerator-client.js"
+      ],
+      "deps": {}
+    },
+    "sofar": {
+      "entry": "src/sofar-client.js",
+      "configKeys": [
+        "sofar"
+      ],
+      "when": "(config.sofar?.host)",
+      "files": [
+        "src/sofar-client.js"
+      ],
+      "deps": {}
+    },
+    "tauron-tariff": {
+      "entry": "src/tauron-tariff-client.js",
+      "configKeys": [
+        "tauronTariff"
+      ],
+      "when": "(config.tauronTariff?.enabled)",
+      "files": [
+        "src/tauron-tariff-client.js"
+      ],
+      "deps": {}
+    },
+    "dyson": {
+      "entry": "src/dyson-client.js",
+      "configKeys": [
+        "dyson"
+      ],
+      "when": "(config.dyson?.enabled)",
+      "files": [
+        "src/dyson-client.js"
+      ],
+      "deps": {}
+    },
+    "google-calendar": {
+      "entry": "src/google-calendar-client.js",
+      "configKeys": [
+        "googleCalendar"
+      ],
+      "when": "(config.googleCalendar?.clientId && config.googleCalendar?.clientSecret)",
+      "files": [
+        "src/google-calendar-client.js"
+      ],
+      "deps": {}
+    },
+    "boneio": {
+      "entry": "src/boneio-client.js",
+      "configKeys": [
+        "boneio"
+      ],
+      "when": "(config.boneio)",
+      "files": [
+        "src/boneio-client.js"
+      ],
+      "deps": {}
+    },
+    "dirigera": {
+      "entry": "src/dirigera-client.js",
+      "configKeys": [
+        "dirigera"
+      ],
+      "when": "(config.dirigera?.host && config.dirigera?.token)",
+      "files": [
+        "src/dirigera-client.js"
+      ],
+      "deps": {}
+    },
+    "tradfri": {
+      "entry": "src/tradfri-client.js",
+      "configKeys": [
+        "tradfri"
+      ],
+      "when": "(config.tradfri?.host)",
+      "files": [
+        "src/tradfri-client.js"
+      ],
+      "deps": {
+        "node-tradfri-client": "^3.2.0"
+      }
+    },
+    "esphome": {
+      "entry": "src/esphome-client.js",
+      "configKeys": [
+        "esphome"
+      ],
+      "when": "(config.esphome?.devices?.length)",
+      "files": [
+        "src/esphome-client.js"
+      ],
+      "deps": {}
+    },
+    "shelly": {
+      "entry": "src/shelly-client.js",
+      "configKeys": [
+        "shelly"
+      ],
+      "when": "(config.shelly?.devices?.length)",
+      "files": [
+        "src/shelly-client.js"
+      ],
+      "deps": {}
+    },
+    "goecharger": {
+      "entry": "src/goecharger-client.js",
+      "configKeys": [
+        "goecharger"
+      ],
+      "when": "(config.goecharger?.devices?.length)",
+      "files": [
+        "src/goecharger-client.js"
+      ],
+      "deps": {}
+    },
+    "wallbox": {
+      "entry": "src/wallbox-client.js",
+      "configKeys": [
+        "wallbox"
+      ],
+      "when": "(config.wallbox?.email && config.wallbox?.password)",
+      "files": [
+        "src/wallbox-client.js"
+      ],
+      "deps": {}
+    },
+    "easee": {
+      "entry": "src/easee-client.js",
+      "configKeys": [
+        "easee"
+      ],
+      "when": "(config.easee?.username && config.easee?.password)",
+      "files": [
+        "src/easee-client.js"
+      ],
+      "deps": {}
+    },
+    "zaptec": {
+      "entry": "src/zaptec-client.js",
+      "configKeys": [
+        "zaptec"
+      ],
+      "when": "(config.zaptec?.username && config.zaptec?.password)",
+      "files": [
+        "src/zaptec-client.js"
+      ],
+      "deps": {}
+    },
+    "ocpp-server": {
+      "entry": "src/ocpp-server.js",
+      "configKeys": [
+        "ocpp"
+      ],
+      "when": "(config.ocpp?.enabled)",
+      "files": [
+        "src/ocpp-server.js"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
+    },
+    "dreame": {
+      "entry": "src/dreame-client.js",
+      "configKeys": [
+        "dreame"
+      ],
+      "when": "(config.dreame?.devices?.length)",
+      "files": [
+        "src/dreame-client.js"
+      ],
+      "deps": {}
+    },
+    "mc6": {
+      "entry": "src/mc6-client.js",
+      "configKeys": [
+        "mc6"
+      ],
+      "when": "(config.mc6?.broker && config.mc6?.devices?.length)",
+      "files": [
+        "src/mc6-client.js"
+      ],
+      "deps": {}
+    },
+    "roborock": {
+      "entry": "src/roborock-client.js",
+      "configKeys": [
+        "roborock"
+      ],
+      "when": "(config.roborock?.devices?.length)",
+      "files": [
+        "src/roborock-client.js"
+      ],
+      "deps": {}
+    },
+    "roborock-cloud": {
+      "entry": "src/roborock-cloud-client.js",
+      "configKeys": [
+        "roborock"
+      ],
+      "when": "(config.roborock?.cloud?.email)",
+      "files": [
+        "src/roborock-cloud-client.js",
+        "src/roborock-map.js"
+      ],
+      "deps": {}
+    },
+    "karcher": {
+      "entry": "src/karcher-client.js",
+      "configKeys": [
+        "karcher"
+      ],
+      "when": "(config.karcher?.email)",
+      "files": [
+        "src/karcher-client.js"
+      ],
+      "deps": {}
+    },
+    "broadlink": {
+      "entry": "src/broadlink-client.js",
+      "configKeys": [
+        "broadlink"
+      ],
+      "when": "(config.broadlink?.devices?.length)",
+      "files": [
+        "src/broadlink-client.js"
+      ],
+      "deps": {}
+    },
+    "waveshare-modbus": {
+      "entry": "src/waveshare-modbus-client.js",
+      "configKeys": [
+        "waveshare"
+      ],
+      "when": "(config.waveshare?.devices?.length)",
+      "files": [
+        "src/waveshare-modbus-client.js"
+      ],
+      "deps": {}
+    },
+    "tedee": {
+      "entry": "src/tedee-client.js",
+      "configKeys": [
+        "tedee"
+      ],
+      "when": "(config.tedee?.devices?.length)",
+      "files": [
+        "src/tedee-client.js"
+      ],
+      "deps": {}
+    },
+    "homeconnect": {
+      "entry": "src/homeconnect-client.js",
+      "configKeys": [
+        "homeConnect"
+      ],
+      "when": "(config.homeConnect)",
+      "files": [
+        "src/homeconnect-client.js"
+      ],
+      "deps": {}
+    },
+    "grenton": {
+      "entry": "src/grenton-client.js",
+      "configKeys": [
+        "grenton"
+      ],
+      "when": "(config.grenton?.host && config.grenton?.devices?.length)",
+      "files": [
+        "src/grenton-client.js"
+      ],
+      "deps": {}
+    },
+    "ampio": {
+      "entry": "src/ampio-client.js",
+      "configKeys": [
+        "ampio"
+      ],
+      "when": "(config.ampio?.host && config.ampio?.devices?.length)",
+      "files": [
+        "src/ampio-client.js"
+      ],
+      "deps": {}
+    },
+    "hue": {
+      "entry": "src/hue-client.js",
+      "configKeys": [
+        "hue"
+      ],
+      "when": "(config.hue?.host && config.hue?.username)",
+      "files": [
+        "src/hue-client.js"
+      ],
+      "deps": {}
+    },
+    "aqara": {
+      "entry": "src/aqara-client.js",
+      "configKeys": [
+        "aqara"
+      ],
+      "when": "(config.aqara?.gateways?.length)",
+      "files": [
+        "src/aqara-client.js"
+      ],
+      "deps": {}
+    },
+    "miele": {
+      "entry": "src/miele-client.js",
+      "configKeys": [
+        "miele"
+      ],
+      "when": "(config.miele)",
+      "files": [
+        "src/miele-client.js"
+      ],
+      "deps": {}
+    },
+    "lgthinq": {
+      "entry": "src/lgthinq-client.js",
+      "configKeys": [
+        "lgthinq"
+      ],
+      "when": "(config.lgthinq)",
+      "files": [
+        "src/lgthinq-client.js"
+      ],
+      "deps": {}
+    },
+    "somfy": {
+      "entry": "src/somfy-client.js",
+      "configKeys": [
+        "somfy"
+      ],
+      "when": "( (config.somfy?.mode === 'cloud' && config.somfy?.email && config.somfy?.password) || (config.somfy?.host && (config.somfy?.token || (config.somfy?.email && config.somfy?.password))) )",
+      "files": [
+        "src/somfy-client.js"
+      ],
+      "deps": {}
+    },
+    "loxone-out": {
+      "entry": "src/loxone-out-client.js",
+      "configKeys": [
+        "loxoneOut"
+      ],
+      "when": "(config.loxoneOut?.host && config.loxoneOut?.mappings?.length)",
+      "files": [
+        "src/loxone-out-client.js"
+      ],
+      "deps": {}
+    },
+    "auxair": {
+      "entry": "src/auxair-client.js",
+      "configKeys": [
+        "auxair"
+      ],
+      "when": "(config.auxair) && !(!config.auxair.email || !config.auxair.password)",
+      "files": [
+        "src/auxair-client.js"
+      ],
+      "deps": {}
+    },
+    "denon": {
+      "entry": "src/denon-client.js",
+      "configKeys": [
+        "denon"
+      ],
+      "when": "(config.denon?.host)",
+      "files": [
+        "src/denon-client.js"
+      ],
+      "deps": {}
+    },
+    "beosound": {
+      "entry": "src/beosound-client.js",
+      "configKeys": [
+        "beosound"
+      ],
+      "when": "(config.beosound?.host)",
+      "files": [
+        "src/beosound-client.js"
+      ],
+      "deps": {}
+    },
+    "sony": {
+      "entry": "src/sony-client.js",
+      "configKeys": [
+        "sony"
+      ],
+      "when": "(config.sony?.host)",
+      "files": [
+        "src/sony-client.js"
+      ],
+      "deps": {}
+    },
+    "googletv": {
+      "entry": "src/googletv-client.js",
+      "configKeys": [
+        "googletv"
+      ],
+      "when": "(config.googletv?.host)",
+      "files": [
+        "src/googletv-client.js"
+      ],
+      "deps": {
+        "@kud/androidtv-remote": "^0.1.2"
+      }
+    },
+    "vents": {
+      "entry": "src/vents-client.js",
+      "configKeys": [
+        "vents"
+      ],
+      "when": "(config.vents?.host)",
+      "files": [
+        "src/vents-client.js"
+      ],
+      "deps": {}
+    },
+    "landroid": {
+      "entry": "src/landroid-client.js",
+      "configKeys": [
+        "landroid"
+      ],
+      "when": "(config.landroid?.email && config.landroid?.password)",
+      "files": [
+        "src/landroid-client.js"
+      ],
+      "deps": {}
+    },
+    "sonos": {
+      "entry": "src/sonos-client.js",
+      "configKeys": [
+        "sonos"
+      ],
+      "when": "(config.sonos)",
+      "files": [
+        "src/sonos-client.js"
+      ],
+      "deps": {}
+    },
+    "googlehome": {
+      "entry": "src/googlehome-client.js",
+      "configKeys": [
+        "googlehome"
+      ],
+      "when": "(config.googlehome?.devices?.length)",
+      "files": [
+        "src/googlehome-client.js"
+      ],
+      "deps": {
+        "@foxxmd/chromecast-client": "^1.0.4"
+      }
+    },
+    "bayrol": {
+      "entry": "src/bayrol-client.js",
+      "configKeys": [
+        "bayrol"
+      ],
+      "when": "(config.bayrol?.username && config.bayrol?.password)",
+      "files": [
+        "src/bayrol-client.js"
+      ],
+      "deps": {}
+    },
+    "airly": {
+      "entry": "src/airly-client.js",
+      "configKeys": [
+        "airly"
+      ],
+      "when": "(config.airly?.apiKey)",
+      "files": [
+        "src/airly-client.js"
+      ],
+      "deps": {}
+    },
+    "smarttub": {
+      "entry": "src/smarttub-client.js",
+      "configKeys": [
+        "smarttub"
+      ],
+      "when": "(config.smarttub?.email && config.smarttub?.password)",
+      "files": [
+        "src/smarttub-client.js"
+      ],
+      "deps": {}
+    },
+    "thermomix": {
+      "entry": "src/thermomix-client.js",
+      "configKeys": [
+        "thermomix"
+      ],
+      "when": "(config.thermomix?.email && config.thermomix?.password)",
+      "files": [
+        "src/thermomix-client.js"
+      ],
+      "deps": {}
+    },
+    "wled": {
+      "entry": "src/wled-client.js",
+      "configKeys": [
+        "wled"
+      ],
+      "when": "(config.wled?.devices?.length)",
+      "files": [
+        "src/wled-client.js"
+      ],
+      "deps": {}
+    },
+    "smartbob": {
+      "entry": "src/smartbob-client.js",
+      "configKeys": [
+        "smartbob"
+      ],
+      "when": "(config.smartbob?.entities?.length)",
+      "files": [
+        "src/smartbob-client.js"
+      ],
+      "deps": {}
+    },
+    "suppla": {
+      "entry": "src/suppla-client.js",
+      "configKeys": [
+        "suppla"
+      ],
+      "when": "(config.suppla?.token)",
+      "files": [
+        "src/suppla-client.js"
+      ],
+      "deps": {}
+    },
+    "arduino": {
+      "entry": "src/arduino-client.js",
+      "configKeys": [
+        "arduino"
+      ],
+      "when": "(config.arduino?.devices?.length)",
+      "files": [
+        "src/arduino-client.js"
+      ],
+      "deps": {}
+    },
+    "zway": {
+      "entry": "src/zway-client.js",
+      "configKeys": [
+        "zway"
+      ],
+      "when": "(config.zway?.host)",
+      "files": [
+        "src/zway-client.js"
+      ],
+      "deps": {}
+    },
+    "zwave-js": {
+      "entry": "src/zwave-js-client.js",
+      "configKeys": [
+        "zwaveJs"
+      ],
+      "when": "(config.zwaveJs?.host)",
+      "files": [
+        "src/zwave-js-client.js"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
+    },
+    "vera": {
+      "entry": "src/vera-client.js",
+      "configKeys": [
+        "vera"
+      ],
+      "when": "(config.vera?.host)",
+      "files": [
+        "src/vera-client.js"
+      ],
+      "deps": {}
+    },
+    "wirenboard": {
+      "entry": "src/wirenboard-client.js",
+      "configKeys": [
+        "wirenboard"
+      ],
+      "when": "(config.wirenboard?.host)",
+      "files": [
+        "src/wirenboard-client.js"
+      ],
+      "deps": {}
+    },
+    "knx": {
+      "entry": "src/knx-client.js",
+      "configKeys": [
+        "knx"
+      ],
+      "when": "(config.knx?.host)",
+      "files": [
+        "src/knx-client.js"
+      ],
+      "deps": {
+        "knx": "^2.5.4"
+      }
+    },
+    "fibaro": {
+      "entry": "src/fibaro-client.js",
+      "configKeys": [
+        "fibaro"
+      ],
+      "when": "(config.fibaro?.host)",
+      "files": [
+        "src/fibaro-client.js"
+      ],
+      "deps": {}
+    },
+    "fibaro-out": {
+      "entry": "src/fibaro-out-client.js",
+      "configKeys": [
+        "fibaroOut"
+      ],
+      "when": "(config.fibaroOut?.host && config.fibaroOut?.mappings?.length)",
+      "files": [
+        "src/fibaro-out-client.js"
+      ],
+      "deps": {}
+    },
+    "can": {
+      "entry": "src/can-client.js",
+      "configKeys": [
+        "can"
+      ],
+      "when": "(config.can?.transport || config.can?.interface || config.can?.serialPort)",
+      "files": [
+        "src/can-client.js"
+      ],
+      "deps": {}
+    },
+    "modbus": {
+      "entry": "src/modbus-client.js",
+      "configKeys": [
+        "modbus"
+      ],
+      "when": "(config.modbus?.devices?.length)",
+      "files": [
+        "src/modbus-client.js"
+      ],
+      "deps": {}
+    },
+    "domatiq": {
+      "entry": "src/domatiq-client.js",
+      "configKeys": [
+        "domatiq"
+      ],
+      "when": "(config.domatiq?.host)",
+      "files": [
+        "src/domatiq-client.js",
+        "src/domatiq-packet.js"
+      ],
+      "deps": {}
+    },
+    "domatiq-out": {
+      "entry": "src/domatiq-out-client.js",
+      "configKeys": [
+        "domatiqOut"
+      ],
+      "when": "(config.domatiqOut?.host && config.domatiqOut?.mappings?.length)",
+      "files": [
+        "src/domatiq-out-client.js",
+        "src/domatiq-packet.js"
+      ],
+      "deps": {}
+    },
+    "homey": {
+      "entry": "src/homey-client.js",
+      "configKeys": [
+        "homey"
+      ],
+      "when": "(config.homey?.token && (config.homey?.host || config.homey?.homeyId))",
+      "files": [
+        "src/homey-client.js"
+      ],
+      "deps": {}
+    },
+    "loxone": {
+      "entry": "src/loxone-client.js",
+      "configKeys": [
+        "loxone"
+      ],
+      "when": "(config.loxone?.host)",
+      "files": [
+        "src/loxone-client.js"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
+    }
+  }
+}

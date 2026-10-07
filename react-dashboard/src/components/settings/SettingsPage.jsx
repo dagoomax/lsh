@@ -49,6 +49,7 @@ import SecuritySection from './sections/SecuritySection'
 import ReolinkSection from './sections/ReolinkSection'
 import CamerasSection from './sections/CamerasSection'
 import BackupRestoreSection from './sections/BackupRestoreSection'
+import ModulesSection from './sections/ModulesSection'
 
 // Section id → component, for the handful ported so far (see sectionRegistry
 // for the full 57-section map). Anything not listed here renders a stub
@@ -100,6 +101,7 @@ const SECTION_COMPONENTS = {
   reolink: ReolinkSection,
   manualcams: CamerasSection,
   backup: BackupRestoreSection,
+  modules: ModulesSection,
 }
 
 export default function SettingsPage({ onClose, onOpenCssEditor }) {
