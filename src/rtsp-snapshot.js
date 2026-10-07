@@ -6,9 +6,25 @@
 
 const { spawn } = require('child_process');
 
-const SNAP_TIMEOUT = 12000;
+// Cloud-relayed streams (e.g. tuya-ipc-terminal, which opens a fresh WebRTC
+// session per RTSP client) take ~11 s to deliver a first frame, so 12 s was
+// timing out whenever a few grabs overlapped.
+const SNAP_TIMEOUT = 25000;
+
+// One ffmpeg per URL at a time: the dashboard, HomeKit and object detection
+// often ask for the same camera at once — share the in-flight grab instead of
+// opening N parallel upstream sessions.
+const inFlight = new Map();
 
 function grabFrame(rtspUrl, ffmpegPath = 'ffmpeg') {
+  const key = `${ffmpegPath}\n${rtspUrl}`;
+  if (inFlight.has(key)) return inFlight.get(key);
+  const p = spawnGrab(rtspUrl, ffmpegPath).finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
+  return p;
+}
+
+function spawnGrab(rtspUrl, ffmpegPath) {
   return new Promise((resolve, reject) => {
     const proc = spawn(ffmpegPath, [
       '-rtsp_transport', 'tcp', '-i', rtspUrl,

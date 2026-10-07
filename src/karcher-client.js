@@ -14,8 +14,11 @@
  * neither project's README documents on its own (start/pause/stop/dock/
  * locate/fan-speed — verified against real RCV5 hardware by that project).
  *
- * Not implemented (out of scope for v1): per-room/zone cleaning, map
- * fetch/render, mop-water level control. Whole-home clean + pause/stop/
+ * Map: fetched over REST (storage-management getAccessUrl → signed download)
+ * and rendered server-side by karcher-map.js — see fetchMapPng below.
+ *
+ * Not implemented (out of scope for v1): per-room/zone cleaning, mop-water
+ * level control. Whole-home clean + pause/stop/
  * dock/locate/fan-speed/cleaning-mode covers the common case; room
  * selection would need its own UI (see roborock-cloud-client.js's rooms
  * support for what that'd look like) and is a reasonable follow-up, not
@@ -59,6 +62,7 @@ const ROBOT_PROPERTIES = [
 ];
 
 const POLL_MS     = 30_000;
+const MAP_CACHE_MS = 10_000; // matches the plan view's 10 s live-map refresh
 const CMD_TIMEOUT = 10_000;
 
 // work_mode → coarse state, traffic-verified by karcher-rcv5-ha against real
@@ -170,6 +174,32 @@ function httpsJson(baseUrl, method, urlPath, { body, query, session } = {}) {
   });
 }
 
+// The 3iRobotix API has served both lowercase (app_api, auth, emq_token —
+// what python-karcher was written against) and uppercase (APP_api, AUTH,
+// EMQ_TOKEN — seen live on EU in 2026-10) spellings of the same fields, so
+// look them up case-insensitively rather than assuming either one.
+function field(obj, key) {
+  if (!obj || typeof obj !== 'object') return undefined;
+  if (obj[key] !== undefined) return obj[key];
+  const lk = key.toLowerCase();
+  const k = Object.keys(obj).find((x) => x.toLowerCase() === lk);
+  return k === undefined ? undefined : obj[k];
+}
+
+function httpsGetBuffer(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': USER_AGENT }, timeout: 20000 }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => (res.statusCode === 200
+        ? resolve(Buffer.concat(chunks))
+        : reject(new Error(`Map download HTTP ${res.statusCode}`))));
+    });
+    req.on('error', reject);
+    req.on('timeout', () => req.destroy(new Error('Map download timeout')));
+  });
+}
+
 function checkResponse(resp, urlPath) {
   if (!resp || resp.code !== 0) {
     throw new Error(`Kärcher API error on ${urlPath}: ${resp ? `${resp.msg} (code ${resp.code})` : 'no response'}`);
@@ -185,9 +215,10 @@ async function getUrls(baseUrl) {
   });
   const result = checkResponse(resp, 'domains/list');
   const domain = JSON.parse(decrypt(result.domain));
+  const appApi = field(domain, 'app_api');
   return {
-    appApi: domain.app_api ? 'https://' + domain.app_api : baseUrl,
-    mqtt: domain.mqtt || null,
+    appApi: appApi ? 'https://' + appApi : baseUrl,
+    mqtt: field(domain, 'mqtt') || null,
   };
 }
 
@@ -212,10 +243,12 @@ async function login(baseUrl, email, password) {
   });
   const result = checkResponse(resp, 'auth/login');
   const data = result.data || result;
+  const authToken = field(data, 'auth');
+  if (!authToken) throw new Error('Kärcher login returned no auth token');
   return {
-    userId: String(result.id ?? data.id ?? data.userId),
-    authToken: data.auth,
-    mqttToken: data.emq_token,
+    userId: String(result.id ?? field(data, 'id') ?? field(data, 'userId')),
+    authToken,
+    mqttToken: field(data, 'emq_token'),
   };
 }
 
@@ -229,6 +262,7 @@ async function getDevices(appApi, session) {
     mac: d.mac,
     nickname: d.nickname || d.sn,
     productId: String(d.productId),
+    productModeCode: d.productModeCode,
     model: PRODUCT_MODELS[String(d.productId)] || String(d.productId),
     online: d.status === 1,
   }));
@@ -265,6 +299,10 @@ class KarcherClient {
     this._pending  = new Map(); // sn -> {resolve, reject, timer}
     this._timer    = null;
     this._mqtt     = null;
+    this._mapCache = new Map(); // sn -> { at, buf, pending }
+    // Resolves once devices are known (start() succeeded) — consumers that
+    // are built before start() finishes (HomeKit bridge) wait on this.
+    this.ready = new Promise((resolve) => { this._resolveReady = resolve; });
   }
 
   async start() {
@@ -288,6 +326,14 @@ class KarcherClient {
     }
     this._session = session;
     this._urls    = urls;
+    // ISO-3166 alpha-3, sent with map download requests (python-karcher
+    // derives it from the account's country). Configurable; default by region.
+    this._countryCode = cfg.countryCode || { eu: 'DEU', us: 'USA', cn: 'CHN' }[region];
+    this._relogin = async () => {
+      const s = await login(urls.appApi, email, password);
+      saveSession(s);
+      return s;
+    };
     if (!urls.mqtt) throw new Error('Kärcher API did not return an MQTT broker address');
 
     let devices = await getDevices(urls.appApi, session);
@@ -299,6 +345,7 @@ class KarcherClient {
     for (const entry of this._devs) this._registerDevice(entry);
 
     platformStatus.set('karcher', true);
+    this._resolveReady();
     this._timer = setInterval(() => this._pollAll(), POLL_MS);
     console.log(`[Karcher] Started — ${this._devs.length} device(s) via ${region.toUpperCase()}`);
   }
@@ -370,6 +417,92 @@ class KarcherClient {
       this._pending.delete(dev.sn);
       pend.resolve();
     }
+  }
+
+  // One pseudo-camera per robot whose snapshot is the rendered map, so it
+  // shows up on the dashboard's Cameras view next to real cameras.
+  getCameras() {
+    return this._devs.map((d) => ({
+      name:        `${d.nickname} map`,
+      url:         '',
+      snapshotUrl: `/api/karcher/${encodeURIComponent(d.sn)}/map.png`,
+      mjpegUrl:    '',
+      webrtcUrl:   '',
+      _karcher:    true,
+      _deviceKey:  d.deviceKey,
+    }));
+  }
+
+  // HomeKit snapshots must be JPEG: flatten the (transparent) map onto white.
+  async fetchMapJpeg(sn) {
+    await this.fetchMapPng(sn);
+    const { w, h, rgba } = this._mapCache.get(sn) || {};
+    if (!rgba) throw new Error('Map not available');
+    const flat = Buffer.alloc(rgba.length);
+    for (let i = 0; i < rgba.length; i += 4) {
+      const a = rgba[i + 3] / 255;
+      flat[i]     = Math.round(rgba[i] * a + 255 * (1 - a));
+      flat[i + 1] = Math.round(rgba[i + 1] * a + 255 * (1 - a));
+      flat[i + 2] = Math.round(rgba[i + 2] * a + 255 * (1 - a));
+      flat[i + 3] = 255;
+    }
+    return require('jpeg-js').encode({ data: flat, width: w, height: h }, 90).data;
+  }
+
+  // Snapshot-only HomeKit cameras (no RTSP url → no live stream), one per robot.
+  getHomekitCameras() {
+    return this._devs.map((d) => ({
+      name: `${d.nickname} map`,
+      fetchSnapshot: () => this.fetchMapJpeg(d.sn),
+    }));
+  }
+
+  // Authenticated REST call that re-logs in once if the cached session has
+  // gone stale (the MQTT side keeps working on an old token, REST doesn't).
+  async _rest(method, urlPath, opts = {}) {
+    let resp = await httpsJson(this._urls.appApi, method, urlPath, { ...opts, session: this._session });
+    if (resp && resp.code !== 0 && this._relogin) {
+      this._session = await this._relogin();
+      resp = await httpsJson(this._urls.appApi, method, urlPath, { ...opts, session: this._session });
+    }
+    return checkResponse(resp, urlPath);
+  }
+
+  async _downloadMap(dev, n) {
+    // Same fixed path layout python-karcher uses (its get_map_data):
+    // <tenant>/<productModeCode>/<sn>/01-01-2022/map/temp/0046690461_<sn>_<n>
+    // n=1 is the map with the cleaning path, n=2 the live map with the
+    // robot's current pose.
+    const dir = `${TENANT_ID}/${dev.productModeCode}/${dev.sn}/01-01-2022/map/temp/0046690461_${dev.sn}_${n}`;
+    const res = await this._rest('POST', '/storage-management/storage/aws/getAccessUrl', {
+      body: { dir, countryCode: this._countryCode, serviceType: 2, tenantId: TENANT_ID },
+    });
+    const url = res.cdnDomain ? `https://${res.cdnDomain}/${res.dir}` : res.url;
+    const body = await httpsGetBuffer(url);
+    const { decryptMap, parseMap } = require('./karcher-map');
+    return parseMap(decryptMap(dev.sn, dev.mac, dev.productId, body));
+  }
+
+  async fetchMapPng(sn) {
+    const dev = this._devs.find((d) => d.sn === sn);
+    if (!dev) throw new Error(`Unknown Kärcher device ${sn}`);
+    const hit = this._mapCache.get(sn);
+    if (hit && Date.now() - hit.at < MAP_CACHE_MS) return hit.buf;
+    if (hit?.pending) return hit.pending;
+
+    const pending = (async () => {
+      const [main, live] = await Promise.allSettled([this._downloadMap(dev, 1), this._downloadMap(dev, 2)]);
+      const map = main.status === 'fulfilled' ? main.value : live.status === 'fulfilled' ? live.value : null;
+      if (!map) throw (main.reason || live.reason);
+      const pose = live.status === 'fulfilled' ? live.value.robot : null;
+      const { renderMap } = require('./karcher-map');
+      const { buf, w, h, rgba } = renderMap(map, { pose });
+      this._mapCache.set(sn, { at: Date.now(), buf, w, h, rgba });
+      return buf;
+    })();
+    this._mapCache.set(sn, { ...(hit || {}), pending });
+    try { return await pending; }
+    catch (err) { this._mapCache.delete(sn); if (hit?.buf) return hit.buf; throw err; }
   }
 
   _registerDevice(entry) {

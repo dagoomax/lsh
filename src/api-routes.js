@@ -651,6 +651,11 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
           image,
           w: Math.max(4, Math.min(40, Number(src.w) || 12)),
           h: Math.max(4, Math.min(40, Number(src.h) || 9)),
+          // Optional live background (e.g. a robot vacuum map): the plan view
+          // re-fetches the image every refreshSec seconds.
+          ...(Number(src.refreshSec) > 0
+            ? { refreshSec: Math.max(2, Math.min(3600, Math.round(Number(src.refreshSec)))) }
+            : {}),
         };
       }
     }
@@ -1090,6 +1095,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     const mobotixCams = mobotix ? mobotix.getCameras() : [];
     const axisCams    = axis ? axis.getCameras() : [];
     const yaleCams    = yale ? yale.getCameras() : [];
+    const karcherCams = clients.karcher ? clients.karcher.getCameras() : [];
     // Manual cameras with an `onvif` section get PTZ through the generic proxy;
     // ones with an RTSP `url` but no snapshot/MJPEG source of their own (e.g.
     // WHEP-only) get a thumbnail via the generic ffmpeg-grab-a-frame proxy.
@@ -1103,7 +1109,7 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
       } : {}),
       ...(c.url && !c.snapshotUrl && !c.mjpegUrl ? { snapshotUrl: `/api/camera/snapshot/${idx}` } : {}),
     }));
-    res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...yaleCams, ...stCams] });
+    res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...yaleCams, ...stCams, ...karcherCams] });
   });
 
   // ── Local object detection (COCO-SSD) model selection ──────
@@ -3577,6 +3583,21 @@ function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, 
     if (!rc) return res.status(503).send('Roborock cloud client not running');
     try {
       const buf = await rc.fetchMapPng(req.params.duid);
+      res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'no-cache');
+      res.send(buf);
+    } catch (err) {
+      res.status(500).send('Map error: ' + err.message);
+    }
+  });
+
+  // Rendered map PNG for a Kärcher robot (cached ~30 s in the client). Also
+  // the snapshotUrl of the robot's pseudo-camera in /api/cameras.
+  router.get('/karcher/:sn/map.png', async (req, res) => {
+    const kc = clients.karcher;
+    if (!kc) return res.status(503).send('Kärcher client not running');
+    try {
+      const buf = await kc.fetchMapPng(req.params.sn);
       res.set('Content-Type', 'image/png');
       res.set('Cache-Control', 'no-cache');
       res.send(buf);

@@ -78,7 +78,7 @@ function buildRecordingOptions() {
     video: {
       type: VideoCodecType.H264,
       parameters: {
-        profiles: [H264Profile.HIGH],
+        profiles: [H264Profile.HIGH, H264Profile.MAIN],
         levels: [H264Level.LEVEL4_0],
       },
       resolutions: [
@@ -330,6 +330,37 @@ class CameraDelegate {
     const width   = videoInfo?.width        || 1280;
     const height  = videoInfo?.height       || 720;
 
+    // cam.liveVideo: 'copy' sends the camera's own H.264 as-is (near-zero
+    // CPU per viewer, at the source's resolution/bitrate rather than the
+    // negotiated one — fine on a LAN for an H.264 camera with short GOPs).
+    // Otherwise transcode, with x264's ultrafast preset: the default
+    // "medium" preset pinned a full core per viewer on low-power hosts.
+    // cam.maxFps caps the output rate at the source's real frame rate so a
+    // 15 fps camera isn't padded to the 30 fps HomeKit asks for.
+    const outFps = Math.min(fps, Number(this.cam.maxFps) || fps);
+    const videoArgs = this.cam.liveVideo === 'copy'
+      ? ['-vcodec', 'copy']
+      : [
+          // Scale to whatever resolution HomeKit actually negotiated — the
+          // source camera's native resolution can exceed it (e.g. this
+          // stream is 1920x1080), and encoding un-scaled at a fixed low
+          // H.264 level silently fails: libx264 rejects the frame's
+          // macroblock count for that level instead of erroring loudly.
+          '-vf', `scale=${width}:${height}`,
+          '-vcodec', 'libx264',
+          '-preset', 'ultrafast', '-tune', 'zerolatency',
+          '-profile:v', 'baseline',
+          // 4.0 comfortably covers every resolution in STREAMING_OPTIONS
+          // (up to 1920x1080), unlike the previous hardcoded 3.1.
+          '-level:v', '4.0',
+          '-b:v', `${bitrate}k`,
+          '-bufsize', `${bitrate * 4}k`,
+          '-maxrate', `${bitrate}k`,
+          '-r', String(outFps),
+          '-g', String(outFps * 2),
+          '-pix_fmt', 'yuv420p',
+        ];
+
     // One ffmpeg process pulling the RTSP source once, with two independent
     // encode+output chains (-map picks which stream each one that follows
     // applies to) — rather than a second process re-pulling the same
@@ -341,23 +372,7 @@ class CameraDelegate {
 
       // ── video ──
       '-map', '0:v:0',
-      // Scale to whatever resolution HomeKit actually negotiated — the
-      // source camera's native resolution can exceed it (e.g. this stream
-      // is 1920x1080), and encoding un-scaled at a fixed low H.264 level
-      // silently fails: libx264 rejects the frame's macroblock count for
-      // that level instead of erroring loudly.
-      '-vf', `scale=${width}:${height}`,
-      '-vcodec', 'libx264',
-      '-profile:v', 'baseline',
-      // 4.0 comfortably covers every resolution in STREAMING_OPTIONS
-      // (up to 1920x1080), unlike the previous hardcoded 3.1.
-      '-level:v', '4.0',
-      '-b:v', `${bitrate}k`,
-      '-bufsize', `${bitrate * 4}k`,
-      '-maxrate', `${bitrate}k`,
-      '-r', String(fps),
-      '-g', String(fps * 2),
-      '-pix_fmt', 'yuv420p',
+      ...videoArgs,
       '-payload_type', '99',
       '-ssrc', String(videoSSRC),
       '-f', 'rtp',
@@ -390,7 +405,7 @@ class CameraDelegate {
       );
     }
 
-    console.log(`[HomeKit Cam] Stream start: ${this.cam.name} → ${targetAddress}:${videoPort}${audioInfo?.codec === 'OPUS' ? ' (+audio)' : ''}`);
+    console.log(`[HomeKit Cam] Stream start: ${this.cam.name} → ${targetAddress}:${videoPort} (${this.cam.liveVideo === 'copy' ? 'video copy' : `${width}x${height}@${outFps} x264`})${audioInfo?.codec === 'OPUS' ? ' (+audio)' : ''}`);
     const proc = spawn('ffmpeg', args);
 
     proc.stderr.on('data', (d) => {
@@ -544,26 +559,39 @@ class CameraDelegate {
         ]
       : ['-an'];
 
+    // cam.hksvVideo: 'copy' passes the camera's own H.264 through untouched
+    // (near-zero CPU) — fine when the source is H.264 with keyframes at
+    // least every ~4 s, which HKSV fragments on. Otherwise re-encode; the
+    // ultrafast preset is the one that keeps up in real time on low-power
+    // hosts (x264's default "medium" managed 0.47x at 1080p on an AMD
+    // GX-215JJ, so recordings fell behind and failed).
+    const videoArgs = this.cam.hksvVideo === 'copy'
+      ? ['-codec:v', 'copy']
+      : [
+          '-codec:v', 'libx264',
+          '-preset', 'ultrafast', '-tune', 'zerolatency',
+          '-pix_fmt', 'yuv420p',
+          '-vf', `scale=${width}:${height}`,
+          '-r', String(fps),
+          '-profile:v', profile,
+          '-level:v', level,
+          '-b:v', `${config.videoCodec.parameters.bitRate}k`,
+          '-force_key_frames', `expr:eq(t,n_forced*${config.videoCodec.parameters.iFrameInterval / 1000})`,
+        ];
+
     const args = [
       '-loglevel', 'error',
       '-rtsp_transport', 'tcp',
       '-i', this.cam.url,
       ...audioArgs,
       '-sn', '-dn',
-      '-codec:v', 'libx264',
-      '-pix_fmt', 'yuv420p',
-      '-vf', `scale=${width}:${height}`,
-      '-r', String(fps),
-      '-profile:v', profile,
-      '-level:v', level,
-      '-b:v', `${config.videoCodec.parameters.bitRate}k`,
-      '-force_key_frames', `expr:eq(t,n_forced*${config.videoCodec.parameters.iFrameInterval / 1000})`,
+      ...videoArgs,
       '-f', 'mp4',
       '-fflags', '+genpts', '-reset_timestamps', '1',
       '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
     ];
 
-    console.log(`[HomeKit Cam] Recording start: ${this.cam.name} (streamId ${streamId}, audio ${audioActive ? 'on' : 'off'})`);
+    console.log(`[HomeKit Cam] Recording start: ${this.cam.name} (streamId ${streamId}, video ${this.cam.hksvVideo === 'copy' ? 'copy' : `${width}x${height} x264`}, audio ${audioActive ? 'on' : 'off'})`);
     cameraLog.push(this.cam.name, 'recording', `HKSV recording started${audioActive ? ' (with audio)' : ''}`);
     const server = new MP4StreamingServer('ffmpeg', args);
     this._recordingServer = server;

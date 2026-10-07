@@ -39,6 +39,30 @@ const SATELLITE_URL = {
 
 // American floor notation; localized via gt() (pl: piwnica / parter / pierwsze piętro)
 const FLOOR_ORDER = ['cellar', 'floor1', 'floor2']
+
+// Cache-busted URL for a live floor background (appends/extends the query).
+const withBust = (url, bust) => (url && bust ? `${url}${url.includes('?') ? '&' : '?'}_=${bust}` : url)
+
+// Floors with plan.floors[f].refreshSec set get their background re-fetched
+// on that interval (e.g. a robot vacuum's live map). Each new image is
+// preloaded and only swapped in once it has loaded, so the board never
+// flashes empty; skipped while the tab is hidden. Returns floor -> bust.
+function useRefreshingFloorImages(plan) {
+  const [bust, setBust] = useState({})
+  const floorsKey = JSON.stringify(plan?.floors || {})
+  useEffect(() => {
+    const live = Object.entries(plan?.floors || {}).filter(([, f]) => f?.image && Number(f.refreshSec) > 0)
+    const timers = live.map(([id, f]) => setInterval(() => {
+      if (document.hidden) return
+      const b = Date.now()
+      const img = new Image()
+      img.onload = () => setBust((prev) => ({ ...prev, [id]: b }))
+      img.src = withBust(f.image, b)
+    }, Math.max(2, Number(f.refreshSec)) * 1000))
+    return () => timers.forEach(clearInterval)
+  }, [floorsKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  return bust
+}
 const FLOOR_FALLBACK = { cellar: 'Cellar', floor1: '1st Floor', floor2: '2nd Floor' }
 const floorOf = (r) => r.floor || 'floor1'
 
@@ -399,6 +423,7 @@ function ModelAlignForm({ model, onSave }) {
 
 export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, energy, kiosk = false }) {
   const [plan, setPlan] = useState(null)
+  const floorBust = useRefreshingFloorImages(plan)
   const [filter, setFilter] = useState(null) // device category, null = all
   const [floor, setFloor] = useState(() => localStorage.getItem('planFloor') || 'floor1')
   const [showAdd, setShowAdd] = useState(false)
@@ -669,7 +694,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
   // matching pair, so the Textures toggle only appears (and only swaps the
   // URL) for that specific file.
   const hasTextureToggle = floorCfg?.image === '/floorplan-base.svg'
-  const bgImage = (hasTextureToggle && !showTextures) ? '/floorplan-flat.svg' : floorCfg?.image
+  const bgImage = (hasTextureToggle && !showTextures) ? '/floorplan-flat.svg' : withBust(floorCfg?.image, floorBust[activeFloor])
   const hasSatellite = !!SATELLITE_URL[activeFloor]
   const hasSurroundings = !!PLAN_SURROUNDINGS_3D[activeFloor]?.length
   const satelliteUrl = showSatellite ? SATELLITE_URL[activeFloor] : null

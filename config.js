@@ -121,6 +121,10 @@ function loadConfig() {
       port: parseInt(process.env.SERVER_PORT || fileConfig.server?.port || 3000),
     },
     homekit: {
+      // Keep every other homekit key (name, bind, advertiser, …) — the
+      // bridge reads them, and listing only the four below silently dropped
+      // them (the bridge always came up as "Victron Energy" on bonjour-hap).
+      ...fileConfig.homekit,
       pin: process.env.HOMEKIT_PIN || fileConfig.homekit?.pin || '031-45-154',
       port: parseInt(process.env.HOMEKIT_PORT || fileConfig.homekit?.port || 47128),
       username: fileConfig.homekit?.username || 'CC:22:3D:E3:CE:F6',

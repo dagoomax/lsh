@@ -482,13 +482,18 @@ function TextControl({ value, onCommit }) {
 
 // ── Modal ───────────────────────────────────────────────────────────────────
 
-// Live map view for Roborock devices.
+// Live map view for robot vacuums with a server-rendered map PNG.
+const MAP_PNG_URL = {
+  roborock: (id) => `/api/roborock/${encodeURIComponent(id)}/map.png`,
+  karcher:  (id) => `/api/karcher/${encodeURIComponent(id)}/map.png`,
+}
 function RoborockMapView({ device }) {
   const [t, setT] = useState(Date.now())
   const [err, setErr] = useState(false)
-  if (device.type !== 'roborock') return null
-  const duid = String(device.key).split('/')[1]
-  const src = `/api/roborock/${encodeURIComponent(duid)}/map.png?t=${t}`
+  const mapUrl = MAP_PNG_URL[device.type]
+  if (!mapUrl) return null
+  const id = String(device.key).split('/')[1]
+  const src = `${mapUrl(id)}?t=${t}`
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>

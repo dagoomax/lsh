@@ -59,6 +59,8 @@ export default function HomePlanSection() {
             <Field label={label} value={floors[key]?.image || ''} onChange={v => setFloor(key, { image: v })} placeholder="Background image URL (optional)"/>
             <Field label="W" type="number" value={floors[key]?.w ?? 12} onChange={v => setFloor(key, { w: v })}/>
             <Field label="D" type="number" value={floors[key]?.h ?? 9} onChange={v => setFloor(key, { h: v })}/>
+            <Field label="Refresh (s)" type="number" value={floors[key]?.refreshSec ?? ''} placeholder="off"
+              onChange={v => setFloor(key, { refreshSec: v === '' ? undefined : Number(v) })}/>
           </div>
         </div>
       ))}

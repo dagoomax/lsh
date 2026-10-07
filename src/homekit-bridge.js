@@ -106,7 +106,17 @@ class BridgePool {
     // overwritten during publish() and does nothing, confirmed live (the
     // primary bridge's printed Setup URI didn't match its configured
     // setupID until this was fixed to pass it here instead).
-    bridge.publish({ username, pincode: this.config.pin, port, setupID, category: Categories.BRIDGE });
+    // config.homekit.advertiser: 'ciao' (hap-nodejs default) | 'bonjour-hap' |
+    // 'avahi' | 'resolved'. Use 'avahi' on Linux hosts already running
+    // avahi-daemon — ciao's own responder stays silent on a box with two
+    // interfaces on the same subnet (wired + Wi-Fi). config.homekit.bind
+    // (interface names / IPs) limits which interfaces the HAP server uses.
+    const { advertiser, bind } = this.config;
+    bridge.publish({
+      username, pincode: this.config.pin, port, setupID, category: Categories.BRIDGE,
+      ...(advertiser ? { advertiser } : {}),
+      ...(bind ? { bind } : {}),
+    });
 
     const uri = generateSetupUri(this.config.pin, setupID);
     console.log(`[HomeKit] Bridge${index > 0 ? ` ${index + 1}` : ''} on port ${port}  PIN: ${this.config.pin}`);
@@ -128,6 +138,33 @@ class BridgePool {
     if (bridge._count >= MAX_ACCESSORIES_PER_BRIDGE) bridge = this._addBridge();
     bridge.addBridgedAccessory(accessory);
     bridge._count++;
+  }
+
+  // Publishes an accessory on its own instead of bridging it — used for
+  // HomeKit Secure Video cameras: the Home app only offers "Recording
+  // Options" for a camera paired as a standalone accessory, never for one
+  // behind a bridge. It's paired separately (same PIN as the bridge, its
+  // own setup URI). Identity (username/setupID) is derived from `key` so
+  // it stays the same across restarts — HAP-NodeJS keys the persisted
+  // pairing by username — and the port from a per-pool counter offset well
+  // clear of the bridges' own ports.
+  publishStandalone(accessory, key, category) {
+    const hash = require('crypto').createHash('sha1').update(`standalone-${key}`).digest();
+    const base = String(this.config.username || 'CC:22:3D:E3:CE:F6').split(':');
+    const username = [base[0], base[1], base[2], ...[0, 1, 2].map((i) => hash[i].toString(16).padStart(2, '0'))]
+      .join(':').toUpperCase();
+    const setupID = deriveSetupID(this.config.setupID, `standalone-${key}`);
+    this._standaloneCount = (this._standaloneCount || 0) + 1;
+    const port = (this.config.port || 47128) + 100 + this._standaloneCount;
+    const { advertiser, bind } = this.config;
+    accessory.publish({
+      username, pincode: this.config.pin, port, setupID, category,
+      ...(advertiser ? { advertiser } : {}),
+      ...(bind ? { bind } : {}),
+    });
+    const uri = generateSetupUri(this.config.pin, setupID, category);
+    console.log(`[HomeKit] Standalone accessory "${accessory.displayName}" on port ${port}  PIN: ${this.config.pin}  Setup URI: ${uri}`);
+    return { username, port, uri };
   }
 }
 
@@ -1186,7 +1223,10 @@ function addCameraToBridge(cam, pool, store) {
   delegate.controller = controller;
 
   acc.configureController(controller);
-  pool.add(acc);
+  // HKSV cameras must be standalone (see BridgePool.publishStandalone);
+  // cam.standalone forces it for any camera (also better streaming).
+  if (cam.hksv || cam.standalone) pool.publishStandalone(acc, `camera-${cam.name}`, Categories.CAMERA);
+  else pool.add(acc);
   const streamType = cam.url ? 'snapshot+stream' : 'snapshot';
   console.log(`[HomeKit] Camera: ${cam.name} (${streamType})${cam.hksv ? ' +HKSV' : ''}`);
 
@@ -1208,7 +1248,7 @@ function addCameraToBridge(cam, pool, store) {
 
 // ── Main bridge factory ────────────────────────────────────────────────────
 
-function startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient, automation } = {}) {
+function startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient, automation, karcher } = {}) {
   // Give hap-nodejs its own folder inside persist/. Without this it falls back
   // to node-persist's default "./persist" — the shared LSH state dir — and
   // node-persist crashes on ANY subdirectory there (EISDIR on scan), e.g.
@@ -1283,6 +1323,17 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
       for (const cam of cameras) {
         try { addCameraToBridge(cam, pool, store); } catch (err) {
           console.error(`[HomeKit] UniFi camera failed (${cam.name}): ${err.message}`);
+        }
+      }
+    });
+  }
+
+  // Kärcher robot maps as snapshot-only cameras, once the cloud login is done.
+  if (karcher?.ready) {
+    karcher.ready.then(() => {
+      for (const cam of karcher.getHomekitCameras()) {
+        try { addCameraToBridge(cam, pool, store); } catch (err) {
+          console.error(`[HomeKit] Kärcher map camera failed (${cam.name}): ${err.message}`);
         }
       }
     });

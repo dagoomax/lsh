@@ -734,6 +734,7 @@ async function main() {
     const KarcherClient = tryRequire('./src/karcher-client');
     if (KarcherClient) {
       const karcher = new KarcherClient(config, store, sensorRegistry);
+      apiClients.karcher = karcher; // expose for /api/karcher/* (map) and /api/cameras
       karcher.start().catch((err) => console.error(`[Karcher] Start failed: ${err.message}`));
     }
   }
@@ -1134,7 +1135,7 @@ async function main() {
     const startHomekitBridge = tryRequire('./src/homekit-bridge', 'install hap-nodejs to enable HomeKit');
     if (startHomekitBridge) {
       try {
-        startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient, automation });
+        startHomekitBridge(config, store, relayController, sensorRegistry, { unifiProtect, loxoneClient, automation, karcher: apiClients.karcher });
       } catch (err) {
         console.error(`[HomeKit] Start failed: ${err.message}`);
       }
