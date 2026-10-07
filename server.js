@@ -355,6 +355,15 @@ async function main() {
   const AutomationEngine = tryRequire('./src/automation-engine');
   if (AutomationEngine) automation = new AutomationEngine(store, sensorRegistry, relayController, config);
 
+  // Daily check of the Tuya cloud login behind tuya-ipc-terminal (Tuya cameras)
+  if (config.tuyaIpc) {
+    const TuyaIpcWatchdog = tryRequire('./src/tuya-ipc-watchdog');
+    if (TuyaIpcWatchdog) {
+      new TuyaIpcWatchdog(config, store, sensorRegistry, automation).start()
+        .catch((err) => console.error(`[TuyaIPC] Start failed: ${err.message}`));
+    }
+  }
+
   // Local object detection (COCO-SSD) for RTSP-only cameras with no on-device
   // AI of their own — tryRequire so a missing/uninstalled tfjs on this box
   // just skips the feature instead of crashing.
