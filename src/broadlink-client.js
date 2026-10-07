@@ -9,7 +9,7 @@ let platformStatus;
 try { platformStatus = require('./platform-status'); } catch { platformStatus = { set: () => {} }; }
 
 const BROADLINK_PORT = 80;
-const DEFAULT_KEY    = Buffer.from('097628343fe99e23765c1513accfd925', 'hex');
+const DEFAULT_KEY    = Buffer.from('097628343fe99e23765c1513accf8b02', 'hex');
 const DEFAULT_IV     = Buffer.from('562e17996d093d28ddb3ba695a2e6f58', 'hex');
 const CODES_FILE     = path.join(__dirname, '..', 'persist', 'broadlink-codes.json');
 
@@ -73,8 +73,14 @@ function parseResponse(data, key, iv) {
 
 // ── Device ──────────────────────────────────────────────────────────────────
 
+// RM4-generation devices (RM4 mini/pro, RM mini 3 "B" — all devtypes 0x5000+;
+// every older RM is 0x27xx) prefix each command with a 2-byte length and
+// answer in the same framing — python-broadlink's rmminib vs rmmini.
+const isRm4Family = (devtype) => devtype >= 0x5000;
+
 class BroadlinkDevice {
-  constructor(host, macStr) {
+  constructor(host, macStr, devtype = 0) {
+    this.devtype = typeof devtype === 'string' ? parseInt(devtype, 16) : Number(devtype) || 0;
     this.host   = host;
     this.mac    = macStr ? Buffer.from(macStr.replace(/[:\-]/g, ''), 'hex') : Buffer.alloc(6);
     this.key    = Buffer.from(DEFAULT_KEY);
@@ -113,52 +119,60 @@ class BroadlinkDevice {
     this.authed = true;
   }
 
-  async _cmd(payload) {
+  async _cmd(command, data = Buffer.alloc(0)) {
     if (!this.authed) await this.auth();
+    const head = Buffer.alloc(4); head.writeUInt32LE(command, 0);
+    let payload = Buffer.concat([head, data]);
+    if (isRm4Family(this.devtype)) {
+      const len = Buffer.alloc(2); len.writeUInt16LE(payload.length, 0);
+      payload = Buffer.concat([len, payload]);
+    }
     const pkt  = buildPacket({ command: 0x006a, mac: this.mac, id: this.id, key: this.key, iv: this.iv, payload, count: this._tick() });
     const resp = await this._send(pkt);
-    return parseResponse(resp, this.key, this.iv);
+    const dec  = parseResponse(resp, this.key, this.iv);
+    if (isRm4Family(this.devtype)) {
+      const pLen = dec.length >= 2 ? dec.readUInt16LE(0) : 0;
+      return dec.slice(0x06, pLen + 2);
+    }
+    return dec.slice(0x04);
   }
 
   async sendCode(dataHex) {
-    const data = Buffer.from(dataHex, 'hex');
-    await this._cmd(Buffer.concat([Buffer.from([0x02, 0x00, 0x00, 0x00]), data]));
+    await this._cmd(0x02, Buffer.from(dataHex, 'hex'));
   }
 
   async enterLearning() {
-    await this._cmd(Buffer.from([0x03, 0x00, 0x00, 0x00]));
+    await this._cmd(0x03);
   }
 
+  // Learned IR or RF code, or null while nothing is captured yet (the device
+  // answers with an error code until it is — callers poll this).
   async checkIRData() {
-    const dec = await this._cmd(Buffer.from([0x04, 0x00, 0x00, 0x00]));
-    if (!dec || dec.length < 5 || dec[0] !== 0) return null;
-    return dec.slice(0x04).toString('hex');
+    const data = await this._cmd(0x04);
+    return data.length ? data.toString('hex') : null;
   }
 
   async cancelLearning() {
-    try { await this._cmd(Buffer.from([0x1e, 0x00, 0x00, 0x00])); } catch { /* ignore */ }
+    try { await this._cmd(0x1e); } catch { /* ignore */ }
   }
 
-  // RF (RM4 Pro only)
+  // RF (RM4 Pro / RM Pro only)
   async enterRFSweep() {
-    await this._cmd(Buffer.from([0x19, 0x00, 0x00, 0x00]));
+    await this._cmd(0x19);
   }
 
   async checkRFFrequency() {
-    const dec = await this._cmd(Buffer.from([0x1a, 0x00, 0x00, 0x00]));
-    if (!dec || dec[0] !== 1) return null;
-    return dec.slice(0x01, 0x05);
+    const data = await this._cmd(0x1a);
+    if (!data.length || data[0] !== 1) return null;
+    return data.slice(0x01, 0x05);
   }
 
   async enterRFLearn(freqBuf) {
-    const cmd = Buffer.concat([Buffer.from([0x1b]), freqBuf, Buffer.alloc(3)]);
-    await this._cmd(cmd);
+    await this._cmd(0x1b, freqBuf);
   }
 
   async checkRFData() {
-    const dec = await this._cmd(Buffer.from([0x1c, 0x00, 0x00, 0x00]));
-    if (!dec || dec.length < 5 || dec[0] !== 0) return null;
-    return dec.slice(0x04).toString('hex');
+    return this.checkIRData(); // same "check data" command (0x04) for RF
   }
 }
 
@@ -192,7 +206,7 @@ class BroadlinkClient {
     let anyOk = false;
     for (const cfg of cfgs) {
       if (!cfg.host) continue;
-      const dev = new BroadlinkDevice(cfg.host, cfg.mac || '');
+      const dev = new BroadlinkDevice(cfg.host, cfg.mac || '', cfg.devtype);
       this._devMap.set(cfg.host, dev);
       try {
         await dev.auth();
