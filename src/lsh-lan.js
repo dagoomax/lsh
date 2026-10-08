@@ -316,6 +316,8 @@ function identify(h) {
   const names = `${h.mdns?.services?.map((x) => x.name).join(' ') || ''} ${h.mdns?.hostname || ''} ${h.ssdp?.description?.manufacturer || ''}`.toLowerCase()
   if (/miele/.test(names) || /miele/.test(vendor)) return { kind: 'appliance', label: 'Miele appliance', integration: 'miele' }
   if (/tado/.test(names)) return { kind: 'climate', label: 'tado bridge', integration: null }
+  if (/athom/.test(vendor) || /homey/.test(names + ' ' + (h.hostname || ''))) return { kind: 'homey', label: 'Homey', integration: 'homey' }
+  if (/viessmann/.test(vendor)) return { kind: 'climate', label: 'Viessmann heating', integration: 'vitodens' }
   if (/sensibo/.test(names)) return { kind: 'climate', label: 'Sensibo AC controller', integration: null }
   if (svc('_hap')) return { kind: 'homekit', label: 'HomeKit accessory', integration: null }
   if (svc('_matter') || has(5540)) return { kind: 'matter', label: 'Matter device', integration: 'matter' }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 // Generated network map for Settings → System → LAN scan. Logical, not
 // physical: a single host's scan can't see which mesh node / switch port a
@@ -14,7 +14,7 @@ const GROUPS = [
   { id: 'climate', label: 'Climate & appliances', color: '#30d158', kinds: ['climate', 'appliance', 'victron'] },
   { id: 'lighting', label: 'Lighting & switches', color: '#ffd60a', kinds: ['hue', 'shelly', 'esphome', 'wled'] },
   { id: 'media', label: 'Media', color: '#ff375f', kinds: ['cast', 'androidtv', 'sonos'] },
-  { id: 'hubs', label: 'Hubs & automation', color: '#0a84ff', kinds: ['homeassistant', 'nodered', 'mqtt', 'loxone', 'fibaro', 'knx', 'modbus'] },
+  { id: 'hubs', label: 'Hubs & automation', color: '#0a84ff', kinds: ['homeassistant', 'homey', 'nodered', 'mqtt', 'loxone', 'fibaro', 'knx', 'modbus'] },
   { id: 'cameras', label: 'Cameras', color: '#ff6961', kinds: ['camera'] },
   { id: 'printers', label: 'Printers', color: '#8e8e93', kinds: ['printer'] },
   { id: 'other', label: 'Other', color: '#636366', kinds: [] },
@@ -24,11 +24,21 @@ const short = (s, n = 18) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s)
 
 export default function LanTopology({ data, onSelect, selected }) {
   const [hover, setHover] = useState(null)
+  const [expanded, setExpanded] = useState(false)
+  useEffect(() => {
+    if (!expanded) return
+    const onKey = (e) => { if (e.key === 'Escape') setExpanded(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [expanded])
 
   const { nodes, edges, size } = useMemo(() => layout(data), [data])
 
   return (
-    <div className="lan-topo">
+    <div className={`lan-topo${expanded ? ' expanded' : ''}`}>
+      <button className="lan-expand" onClick={() => setExpanded(!expanded)} title={expanded ? 'Close (Esc)' : 'Full screen'}>
+        {expanded ? '✕' : '⤢'}
+      </button>
       <svg viewBox={`${-size / 2} ${-size / 2} ${size} ${size}`} className="lan-topo-svg" role="img" aria-label="Network topology">
         {edges.map((e, i) => (
           <line key={i} x1={e.a.x} y1={e.a.y} x2={e.b.x} y2={e.b.y} className={`lan-edge lan-edge-${e.type}`}
@@ -81,8 +91,8 @@ function layout(data) {
   const selfHosts = others.filter((h) => h.self)
 
   const leafCount = clusters.reduce((a, c) => a + c.hosts.length, 0) + selfHosts.length
-  const R1 = 150, R2 = Math.max(290, 120 + leafCount * 6.5)
-  const size = (R2 + 150) * 2
+  const R1 = 130, R2 = Math.max(250, 110 + leafCount * 6)
+  const size = (R2 + 125) * 2
 
   const nodes = []
   const edges = []
@@ -91,7 +101,12 @@ function layout(data) {
   nodes.push(root)
 
   // Angular share proportional to cluster size (min share for small ones).
-  const spokes = [...selfHosts.map((h) => ({ self: h, weight: 1.5 })), ...clusters.map((c) => ({ c, weight: Math.max(c.hosts.length, 2) }))]
+  // Alternate big and small clusters so small ones (and their labels)
+  // don't bunch up on one side.
+  const bySize = [...clusters].sort((a, b) => b.hosts.length - a.hosts.length)
+  const mixed = []
+  while (bySize.length) { mixed.push(bySize.shift()); if (bySize.length) mixed.push(bySize.pop()) }
+  const spokes = [...selfHosts.map((h) => ({ self: h, weight: 2 })), ...mixed.map((c) => ({ c, weight: Math.max(c.hosts.length, 3) }))]
   const total = spokes.reduce((a, s) => a + s.weight, 0)
   let angle = -Math.PI / 2
   for (const s of spokes) {
@@ -105,8 +120,10 @@ function layout(data) {
       edges.push({ a: root, b: n, type: 'self', color: '#ffcc00' })
     } else {
       const { g, hosts: hs } = s.c
+      // Group label just outside the node, along the spoke — away from the centre.
       const gn = { key: `g-${g.id}`, type: 'group', x: Math.cos(mid) * R1, y: Math.sin(mid) * R1, r: 13,
-        fill: 'var(--bg)', stroke: g.color, label: `${g.label} (${hs.length})`, labelY: -20 }
+        fill: 'var(--bg)', stroke: g.color, label: `${g.label} (${hs.length})`,
+        labelX: Math.cos(mid) * 22, labelY: Math.sin(mid) * 22 + 4, anchor: Math.abs(Math.cos(mid)) < 0.3 ? 'middle' : Math.cos(mid) > 0 ? 'start' : 'end' }
       nodes.push(gn)
       edges.push({ a: root, b: gn, type: 'trunk', color: g.color })
       hs.forEach((h, i) => {
