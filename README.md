@@ -383,6 +383,28 @@ Optional. When a `uri` is set, the **DataStore** (live sensor values + history) 
 
 Used as automatic fallback when local MQTT is unreachable. Alternatively set `apiToken` instead of `email`/`password`.
 
+### `victronBle`
+
+Victron devices read **directly over Bluetooth** ("Instant Readout") by the LSH host — no GX device, no ESP32. Made for the **Arduino UNO Q** (its Linux side has Bluetooth); works on any Linux host with BlueZ. Separate module: installs itself (plus `dbus-next`) the first time this section is configured.
+
+```json
+"victronBle": {
+  "adapter": "hci0",
+  "feedDashboard": true,
+  "devices": [
+    { "name": "SmartShunt", "mac": "60:A4:23:91:8F:55", "bindkey": "0df4d0395b7d1a876c0c33ecb9e70dcd" },
+    { "name": "SmartSolar", "mac": "60:A4:23:91:8F:56", "bindkey": "0df4d0395b7d1a876c0c33ecb9e70aea" }
+  ]
+}
+```
+
+- **Encryption key:** VictronConnect → device → Settings → Product info → enable *Instant readout via Bluetooth* → *Show* encryption data. While VictronConnect is connected to a device it stops advertising, so disconnect the app.
+- **Device type** (SmartShunt/BMV, SmartSolar/BlueSolar MPPT, Orion Smart/XS, Phoenix inverter, Inverter RS, Multi RS, VE.Bus, Blue Smart charger, Smart BatteryProtect, Smart Lithium, Lynx Smart BMS, DC energy meter) is detected from the advertisement.
+- **`feedDashboard`** (default on): the first battery monitor (else Lynx BMS / VE.Bus / Smart Lithium) supplies battery SOC/voltage/current/power/time-to-go, solar chargers' PV power and yield are summed — into the same keys a GX device would fill, so the Energy dashboard works without one. If a GX source (MQTT/VRM) is writing those keys, it wins.
+- **Host requirements:** `bluetoothd` running; the user LSH runs as must be allowed to use BlueZ on the system bus (Debian: `sudo usermod -aG bluetooth <user>`, then re-login / restart LSH).
+- Settings → Energy → **Victron Bluetooth** edits this section and shows each device's last reading time or decode error (e.g. a wrong key).
+- The decoder (`src/victron-ble.js`) is ported from [esphome-victron_ble](https://github.com/Fabian-Schmidt/esphome-victron_ble) by Fabian Schmidt and is licensed **GPL-3.0-or-later** like the original.
+
 ### `solaredge`
 
 ```json

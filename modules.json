@@ -107,6 +107,7 @@
     "src/routes/thermomix.js",
     "src/routes/ui-preferences.js",
     "src/routes/unifi-protect.js",
+    "src/routes/victron-ble.js",
     "src/routes/vitodens.js",
     "src/routes/vrm.js",
     "src/routes/waveshare.js",
@@ -1082,6 +1083,20 @@
         "src/homey-client.js"
       ],
       "deps": {}
+    },
+    "victron-ble": {
+      "entry": "src/victron-ble-client.js",
+      "configKeys": [
+        "victronBle"
+      ],
+      "when": "(config.victronBle?.devices?.length)",
+      "files": [
+        "src/victron-ble-client.js",
+        "src/victron-ble.js"
+      ],
+      "deps": {
+        "dbus-next": "^0.10.2"
+      }
     }
   }
 }

@@ -87,6 +87,7 @@ const ROUTE_GROUPS = [
   require('./routes/logs'),
   require('./routes/mqtt-explorer'),
   require('./routes/https'),
+  require('./routes/victron-ble'),
 ];
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {

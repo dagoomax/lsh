@@ -92,4 +92,6 @@ module.exports = [
   // Start Domatiq CAN bus bridge if configured (domatiq-loxone-bridge ESP32 gateway)
   { file: 'domatiq-client', label: 'Domatiq', when: (config) => config.domatiq?.host },
   { file: 'homey-client', label: 'Homey', when: (config) => config.homey?.token && (config.homey?.host || config.homey?.homeyId) },
+  // Victron devices over Bluetooth, read by the LSH host itself (Arduino UNO Q)
+  { file: 'victron-ble-client', label: 'VictronBLE', expose: 'victronBle', when: (config) => config.victronBle?.devices?.length },
 ];

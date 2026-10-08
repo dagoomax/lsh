@@ -64,6 +64,7 @@ module.exports = function register(router, ctx) {
     if (safe.loxoneOut?.password)   safe.loxoneOut.password   = '••••••••';
     if (safe.fibaroOut?.password)   safe.fibaroOut.password   = '••••••••';
     if (safe.auxair?.password)      safe.auxair.password      = '••••••••';
+    if (Array.isArray(safe.victronBle?.devices)) safe.victronBle.devices.forEach((d) => { if (d.bindkey) d.bindkey = '••••••••'; });
     if (safe.dreame?.devices) {
       safe.dreame.devices = safe.dreame.devices.map(d =>
         d.token ? { ...d, token: '••••••••' } : d
