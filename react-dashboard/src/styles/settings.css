@@ -658,3 +658,35 @@ select.stg-input { cursor: pointer; }
 .mb-table tr:hover td { background: var(--white-04); }
 @media (max-width: 640px) { .mb-grid { width: 100%; grid-template-columns: repeat(8, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .mb-grid i { animation: none !important; } }
+
+/* Modbus emulator (ModbusEmuSection.jsx) */
+.emu-dev { margin-top: 12px; }
+.emu-name { font: inherit; font-weight: 700; font-size: 15px; color: var(--text); background: none; border: none; border-bottom: 1px dashed var(--sep); padding: 0 0 2px; width: 100%; max-width: 360px; }
+.emu-name:focus { outline: none; border-bottom-color: var(--lan); }
+.emu-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text2); cursor: pointer; flex-shrink: 0; }
+.emu-x { border: none; background: var(--white-08); color: var(--text2); width: 28px; height: 28px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
+.emu-x:hover { color: var(--red); }
+.emu-table td { text-align: left; vertical-align: top; padding: 4px 6px; }
+.emu-table th { text-align: left; }
+.emu-in { font: inherit; font-family: inherit; font-size: 12.5px; color: var(--text); background: var(--white-04); border: 0.5px solid var(--sep); border-radius: 7px; padding: 5px 7px; min-width: 0; }
+.emu-in:focus { outline: none; border-color: var(--lan); }
+.emu-in.w-num { width: 74px; }
+.emu-in.w-label { width: 150px; font-family: -apple-system, system-ui, sans-serif; }
+.emu-in.w-src { width: 230px; }
+.emu-type { display: inline-flex; gap: 4px; align-items: center; }
+.emu-src-hint { font-size: 10.5px; color: var(--text3); margin-top: 2px; font-family: -apple-system, system-ui, sans-serif; max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+.emu-live b { display: block; color: var(--green); }
+.emu-live span { font-size: 10.5px; color: var(--text3); }
+.emu-dev code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; padding: 1px 5px; border-radius: 5px; background: var(--white-08); overflow-wrap: anywhere; }
+.mb-form label.mid { flex: 0 0 150px; min-width: 130px; }
+.emu-in.w-label { width: 120px; }
+.emu-in.w-src { width: 190px; }
+.emu-in.w-num { width: 64px; }
+.emu-table { font-size: 12px; }
+.emu-table td, .emu-table th { padding: 4px 4px; }
+.emu-regs { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.emu-reg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px; border-radius: 10px; background: var(--white-04); }
+.emu-reg .emu-live { margin-left: auto; text-align: right; min-width: 70px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.emu-reg .emu-src-hint { flex-basis: 100%; margin: -2px 0 0 2px; }
+.emu-src { display: inline-flex; gap: 4px; }
+.emu-x-label { color: var(--text3); font-size: 12px; }

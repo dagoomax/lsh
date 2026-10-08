@@ -61,6 +61,7 @@ export const CATEGORIES = [
     { id: 'esphome', title: 'ESPHome', ported: true, keywords: ['sensy', 'sensy-one', 'mmwave', 'presence'] },
     { id: 'broadlink', title: 'BroadLink RM4', ported: true },
     { id: 'waveshare', title: 'Waveshare Modbus TCP', ported: true },
+    { id: 'modbus-emu', title: 'Modbus emulator', ported: true, keywords: ['modbus', 'emulator', 'slave', 'server', 'registers', 'rtu', 'rs485', 'sdm630', 'sdm120', 'plc', 'scada'] },
   ] },
   { id: 'security', label: 'Security', sections: [
     { id: 'satel', title: 'Satel INTEGRA', ported: true },

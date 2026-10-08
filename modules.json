@@ -80,6 +80,7 @@
     "src/routes/mcp-server.js",
     "src/routes/missed-calls.js",
     "src/routes/mobotix.js",
+    "src/routes/modbus-emu.js",
     "src/routes/modules.js",
     "src/routes/mongodb.js",
     "src/routes/mqtt-explorer.js",
@@ -1123,6 +1124,19 @@
       ],
       "deps": {
         "dbus-next": "^0.10.2"
+      }
+    },
+    "modbus-emulator": {
+      "entry": "src/modbus-emulator.js",
+      "configKeys": [
+        "modbusEmu"
+      ],
+      "when": "(config.modbusEmu?.enabled)",
+      "files": [
+        "src/modbus-emulator.js"
+      ],
+      "deps": {
+        "serialport": "^13.0.0"
       }
     },
     "dsc": {

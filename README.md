@@ -426,6 +426,30 @@ Settings → System → Modbus scan finds Modbus devices **read-only** (function
 
 A unit counts as present when it answers at all (data or a Modbus exception other than the gateway "no device" ones). Identification: FC 0x2B device identification, **SunSpec** (manufacturer, model, serial, model list), **Victron GX** (unit 100: serial + battery V/A/W/SOC), **Eastron SDM-style** energy meters (float32 input registers) and **Huawei SUN2000**. Each device opens a register explorer (holding/input registers, coils, discrete inputs) showing u16 / i16 / hex / ASCII / u32 / float32. `node scripts/modbus-simulator.js [port]` serves a SunSpec inverter, a meter, a Victron GX and an exception-only unit for testing.
 
+### `modbusEmu` — Modbus device emulator
+
+LSH answers Modbus queries like a real device, so a PLC, SCADA system, Loxone, an inverter or any Modbus master can read LSH values as registers. Settings → Controllers & Buses → Modbus emulator edits the map and applies it live (no restart).
+
+```json
+"modbusEmu": {
+  "enabled": true,
+  "devices": [{
+    "id": "plc", "name": "LSH to PLC", "transport": "tcp", "port": 1502, "unitId": 1,
+    "registers": [
+      { "table": "holding", "address": 0, "type": "i16", "source": "victron/battery/current", "scale": 10, "label": "Battery current ×10" },
+      { "table": "input",   "address": 0, "type": "f32", "source": "openweather/weather/temperature" },
+      { "table": "holding", "address": 10, "type": "u16", "value": 0, "writable": true, "command": "shelly/relay1/switch" }
+    ]
+  }]
+}
+```
+
+- **Transports:** Modbus TCP (`port`, default 1502 — 502 needs root or an iptables redirect) or RTU slave on RS-485 (`transport: "rtu"`, `serialPort`, `baud`, `parity`; needs the module's `serialport` dep).
+- **Registers:** `table` holding / input / coil / discrete; `type` u16, i16, u32, i32, f32, string (`length` registers), bool; 32-bit `wordOrder` `be` (AB CD) or `le` (CD AB); `source` = an LSH store key (`<device key>/<sensor>`) or a constant `value`; raw = value × `scale`.
+- **Unmapped registers** read as 0, or exception 2 with `strict: true`. FC 0x2B device identification answers vendor "LSH" and the device name.
+- **Writes** (FC 5/6/15/16) are refused unless the register is `writable`; a write is stored, published as `modbus-emu/<id>/<table>/<address>` (usable in flows) and, with `command`, sent to that LSH device sensor (value ÷ scale).
+- **Templates:** Eastron SDM630 and SDM120 meter maps (input registers, float32) — e.g. to present a meter that LSH reads from elsewhere to an inverter's export limiter. Check the inverter's expectations before relying on that for export control.
+
 ### `solaredge`
 
 ```json

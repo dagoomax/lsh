@@ -91,6 +91,7 @@ const ROUTE_GROUPS = [
   require('./routes/lsh-lan'),
   require('./routes/lsh-can'),
   require('./routes/lsh-modbus'),
+  require('./routes/modbus-emu'),
   require('./routes/dsc'),
 ];
 
