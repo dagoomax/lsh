@@ -131,6 +131,15 @@ function setIp(key, ip) {
   save();
 }
 
+// icon: { file, source: 'vendor'|'favicon'|'url', ref } or null
+function setIcon(key, icon) {
+  const dev = load().devices[key];
+  if (!dev) throw new Error('Unknown device');
+  dev.icon = icon || null;
+  save();
+  return dev;
+}
+
 function remove(key) {
   const d = load();
   if (d.devices[key]?.permanent) throw new Error('This device is permanent — remove the permanent tag first');
@@ -158,4 +167,4 @@ function allTags() {
 
 function _reset() { db = null; } // tests
 
-module.exports = { mergeScan, list, get, update, setIp, remove, acknowledge, monitored, allTags, keyOf, cleanTags, SYSTEM_TAGS, SUGGESTED_TAGS, FILE, _reset };
+module.exports = { mergeScan, list, get, update, setIp, setIcon, remove, acknowledge, monitored, allTags, keyOf, cleanTags, SYSTEM_TAGS, SUGGESTED_TAGS, FILE, _reset };

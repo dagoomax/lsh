@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { SettingsCard, Button } from '../primitives'
 import LanTopology from '../LanTopology'
-import LanDevices, { TagChips } from '../LanDevices'
+import LanDevices, { TagChips, DeviceIcon } from '../LanDevices'
 
 // Settings → System → LAN scan — what's on this LSH host's local network
 // (tool module lsh-lan, installed from here on first use). Click a host for
@@ -21,6 +21,13 @@ export default function LanScanSection() {
   const [filter, setFilter] = useState('')
   const [view, setView] = useState('list') // 'list' | 'topology' | 'devices'
   const [devicesKey, setDevicesKey] = useState(0)
+  // Saved-device icons for the topology map (ip → icon), refreshed with the list.
+  const [saved, setSaved] = useState([])
+  useEffect(() => {
+    if (view !== 'topology') return
+    fetch('/api/lsh-lan/devices', { credentials: 'include' }).then((r) => r.json()).then((j) => j.success && setSaved(j.data)).catch(() => {})
+  }, [view, devicesKey])
+  const icons = useMemo(() => new Map(saved.filter((d) => d.icon).map((d) => [d.ip, d.icon])), [saved])
 
   const post = (url, body) => fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
     .then((r) => r.json()).catch((e) => ({ success: false, error: e.message }))
@@ -70,7 +77,7 @@ export default function LanScanSection() {
       )}
       {data && view === 'topology' && (
         <>
-          <LanTopology data={data} selected={open} onSelect={(ip) => setOpen(open === ip ? null : ip)}
+          <LanTopology data={data} icons={icons} selected={open} onSelect={(ip) => setOpen(open === ip ? null : ip)}
             renderDetails={(ip) => <LanDeepDive key={ip} ip={ip} post={post}/>}/>
         </>
       )}
@@ -85,7 +92,7 @@ export default function LanScanSection() {
           {hosts.map((h) => (
             <div key={h.ip}>
               <div className={`stg-ble-row${open === h.ip ? ' open' : ''}`} onClick={() => setOpen(open === h.ip ? null : h.ip)}>
-                <span style={{ fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 }}>{KIND_ICON[h.id?.kind] || '❔'}</span>
+                {h.saved?.icon ? <DeviceIcon icon={h.saved.icon} size={24}/> : <span style={{ fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 }}>{KIND_ICON[h.id?.kind] || '❔'}</span>}
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div className="stg-ble-name">
                     {h.name || h.id?.label || h.ip}

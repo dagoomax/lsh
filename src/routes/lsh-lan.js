@@ -113,6 +113,66 @@ module.exports = function register(router, ctx) {
     res.json({ success: true });
   });
 
+  // ── Device icons (src/lsh-lan-icons.js) ─────────────────
+  // Any signed-in user may view them (they're drawn on the dashboard).
+  router.get('/lsh-lan/icons/:file', (req, res) => {
+    let icons;
+    try { icons = require('../lsh-lan-icons'); } catch { return res.status(404).end(); }
+    const f = icons.filePath(req.params.file);
+    if (!f) return res.status(404).end();
+    res.set({
+      'Content-Type': f.mime, 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+    });
+    res.sendFile(f.path);
+  });
+
+  // body: { source: 'vendor' | 'favicon' | 'url', url? }
+  router.post('/lsh-lan/devices/:key/icon', requireAdmin, async (req, res) => {
+    const lan = load(res);
+    if (!lan) return;
+    const dev = lan.inventory.get(req.params.key);
+    if (!dev) return res.status(404).json({ success: false, error: 'Unknown device' });
+    const source = req.body?.source;
+    try {
+      let icon = null;
+      if (source === 'vendor') icon = await lan.icons.vendorIcon(dev);
+      else if (source === 'favicon') icon = await lan.icons.faviconIcon(dev);
+      else if (source === 'url') icon = await lan.icons.urlIcon(String(req.body?.url || ''));
+      else return res.status(400).json({ success: false, error: 'source must be vendor, favicon or url' });
+      if (!icon) {
+        const why = source === 'vendor' ? `no brand logo found for "${dev.vendor || dev.name || dev.ip}"` : 'the device has no web icon';
+        return res.status(404).json({ success: false, error: `No icon: ${why}` });
+      }
+      res.json({ success: true, data: lan.inventory.setIcon(dev.key, icon) });
+    } catch (err) {
+      res.status(502).json({ success: false, error: `Download failed: ${err.message}` });
+    }
+  });
+
+  router.delete('/lsh-lan/devices/:key/icon', requireAdmin, (req, res) => {
+    const lan = load(res);
+    if (!lan) return;
+    try { res.json({ success: true, data: lan.inventory.setIcon(req.params.key, null) }); }
+    catch (err) { res.status(404).json({ success: false, error: err.message }); }
+  });
+
+  // Brand logos for every saved device that has no icon yet.
+  router.post('/lsh-lan/icons/auto', requireAdmin, async (req, res) => {
+    const lan = load(res);
+    if (!lan) return;
+    const todo = lan.inventory.list().filter((d) => !d.icon || req.body?.replace);
+    let set = 0, none = 0, failed = 0;
+    for (const d of todo) {
+      try {
+        const icon = await lan.icons.vendorIcon(d);
+        if (icon) { lan.inventory.setIcon(d.key, icon); set++; } else none++;
+      } catch { failed++; }
+    }
+    res.json({ success: true, data: { set, none, failed, total: todo.length },
+      message: `${set} icon${set === 1 ? '' : 's'} added${none ? `, ${none} without a known brand` : ''}${failed ? `, ${failed} download failures` : ''}` });
+  });
+
   router.post('/settings/lsh-lan', requireAdmin, (req, res) => {
     const b = req.body || {};
     const current = readConfigFile();

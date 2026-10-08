@@ -19,6 +19,14 @@ const api = (url, method = 'GET', body) => fetch(url, {
   method, credentials: 'include', headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined,
 }).then((r) => r.json()).catch((e) => ({ success: false, error: e.message }))
 
+export const iconUrl = (icon) => (icon?.file ? `/api/lsh-lan/icons/${encodeURIComponent(icon.file)}` : null)
+
+export function DeviceIcon({ icon, size = 26 }) {
+  const url = iconUrl(icon)
+  if (!url) return null
+  return <img className={`lan-icon-img${icon.source === 'vendor' ? ' brand' : ''}`} src={url} alt="" width={size} height={size} loading="lazy"/>
+}
+
 export function TagChips({ tags, onRemove }) {
   return (tags || []).map((t) => (
     <span key={t} className={`lan-tag ${SYSTEM[t] || ''}`}>
@@ -79,6 +87,7 @@ export default function LanDevices({ onInspect, refreshKey }) {
               </button>
             ))}
             <input className="stg-input" style={{ maxWidth: 220, padding: '6px 10px', fontSize: 13 }} placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)}/>
+            <IconsAuto onDone={load}/>
             {(counts.new > 0 || counts['ip-changed'] > 0) && (
               <Button variant="secondary" onClick={() => api('/api/lsh-lan/devices/acknowledge', 'POST', {}).then(load)}>✓ Mark all known</Button>
             )}
@@ -87,6 +96,7 @@ export default function LanDevices({ onInspect, refreshKey }) {
             {shown.map((d) => (
               <div key={d.key}>
                 <div className={`stg-ble-row${edit === d.key ? ' open' : ''}`} onClick={() => setEdit(edit === d.key ? null : d.key)}>
+                  <DeviceIcon icon={d.icon}/>
                   <span className={`lan-dot ${d.status?.online === true ? 'on' : d.status?.online === false ? 'off' : ''}`}
                     title={d.monitored ? (d.status?.online == null ? 'checking…' : d.status.online ? 'online' : 'offline') : 'not monitored'}/>
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -103,7 +113,7 @@ export default function LanDevices({ onInspect, refreshKey }) {
                   </div>
                   <span className="stg-ble-caret">{edit === d.key ? '▾' : '▸'}</span>
                 </div>
-                {edit === d.key && <DeviceEditor d={d} suggestions={userTags} onSave={(body) => patch(d.key, body).then(() => setEdit(null))}
+                {edit === d.key && <DeviceEditor d={d} suggestions={userTags} onIconChanged={load} onSave={(body) => patch(d.key, body).then(() => setEdit(null))}
                   onDelete={() => api(`/api/lsh-lan/devices/${encodeURIComponent(d.key)}`, 'DELETE').then(() => { setEdit(null); load() })}
                   onInspect={() => onInspect?.(d.ip)}/>}
               </div>
@@ -116,7 +126,52 @@ export default function LanDevices({ onInspect, refreshKey }) {
   )
 }
 
-function DeviceEditor({ d, suggestions, onSave, onDelete, onInspect }) {
+function IconsAuto({ onDone }) {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState(null)
+  const run = async () => {
+    setBusy(true); setMsg(null)
+    const j = await api('/api/lsh-lan/icons/auto', 'POST', {})
+    setBusy(false); setMsg(j.success ? j.message : j.error)
+    onDone()
+  }
+  return (
+    <>
+      <Button variant="secondary" busy={busy} onClick={run} title="Download brand logos (Simple Icons) for devices without an icon">🖼 Fetch icons</Button>
+      {msg && <span className="stg-hint">{msg}</span>}
+    </>
+  )
+}
+
+function IconEditor({ d, onChanged }) {
+  const [busy, setBusy] = useState(null)
+  const [url, setUrl] = useState('')
+  const [err, setErr] = useState(null)
+  const set = async (source) => {
+    setBusy(source); setErr(null)
+    const j = await api(`/api/lsh-lan/devices/${encodeURIComponent(d.key)}/icon`, 'POST', { source, url })
+    setBusy(null)
+    if (!j.success) setErr(j.error); else { setUrl(''); onChanged() }
+  }
+  const remove = async () => { await api(`/api/lsh-lan/devices/${encodeURIComponent(d.key)}/icon`, 'DELETE'); onChanged() }
+  return (
+    <div>
+      <label className="stg-hint">Icon</label>
+      <div className="lan-icon-edit">
+        <span className="lan-icon-preview">{d.icon ? <DeviceIcon icon={d.icon} size={40}/> : <span className="stg-hint">none</span>}</span>
+        <Button variant="secondary" busy={busy === 'vendor'} onClick={() => set('vendor')}>Brand logo</Button>
+        <Button variant="secondary" busy={busy === 'favicon'} onClick={() => set('favicon')}>Device's own icon</Button>
+        <input className="stg-input" placeholder="https://… image URL" value={url} onChange={(e) => setUrl(e.target.value)}/>
+        <Button variant="secondary" busy={busy === 'url'} disabled={!/^https?:\/\//.test(url)} onClick={() => set('url')}>Download</Button>
+        {d.icon && <Button variant="danger" onClick={remove}>Remove</Button>}
+      </div>
+      {d.icon && <div className="stg-hint">Source: {d.icon.source}{d.icon.ref ? ` · ${d.icon.ref}` : ''}</div>}
+      {err && <div className="stg-banner err">✗ {err}</div>}
+    </div>
+  )
+}
+
+function DeviceEditor({ d, suggestions, onSave, onDelete, onInspect, onIconChanged }) {
   const [label, setLabel] = useState(d.label || '')
   const [tags, setTags] = useState(d.tags.filter((t) => t !== 'offline' && t !== 'permanent'))
   const [tagInput, setTagInput] = useState('')
@@ -146,6 +201,7 @@ function DeviceEditor({ d, suggestions, onSave, onDelete, onInspect }) {
           ))}
         </div>
       </div>
+      <IconEditor d={d} onChanged={onIconChanged}/>
       <Field label="Notes" type="textarea" value={notes} onChange={setNotes} placeholder="Where it is, who owns it…"/>
       <Toggle label="Permanent device" checked={permanent} onChange={(v) => { setPermanent(v); if (v) setMonitored(true) }}
         hint="always monitored, always on the dashboard, offline = critical alert, can't be forgotten"/>

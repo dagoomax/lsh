@@ -491,4 +491,5 @@ module.exports = {
   _tcpProbe: tcpProbe, _arpTable: arpTable, _arpPoke: (ip) => arpSweep([ip]),
   // saved devices (bundled with this module)
   inventory: require('./lsh-lan-inventory'),
+  icons: require('./lsh-lan-icons'),
 }

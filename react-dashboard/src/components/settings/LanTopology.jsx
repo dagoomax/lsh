@@ -22,9 +22,9 @@ const GROUPS = [
 const groupOf = (h) => GROUPS.find((g) => g.kinds.includes(h.id?.kind)) || GROUPS[GROUPS.length - 1]
 const short = (s, n = 18) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s)
 
-export default function LanTopology({ data, onSelect, selected, renderDetails }) {
+export default function LanTopology({ data, onSelect, selected, renderDetails, icons }) {
   const [popup, setPopup] = useState(false)
-  const graph = useMemo(() => layout(data), [data])
+  const graph = useMemo(() => layout(data, icons), [data, icons])
   return (
     <>
       <div className="lan-topo">
@@ -139,6 +139,13 @@ function Graph({ graph, data, selected, onSelect, interactive }) {
             {n.integration && <circle r={n.r + 4} className="lan-int-ring"/>}
             <circle r={n.r} fill={n.fill} stroke={n.stroke} strokeWidth={n.type === 'group' ? 2 : 1.5}/>
             {n.icon && <text className="lan-icon" fontSize={n.r * 1.05} dy="0.36em">{n.icon}</text>}
+            {n.img && (
+              <>
+                <clipPath id={`clip-${n.key.replace(/[^a-z0-9]/gi, '')}`}><circle r={n.r - 2}/></clipPath>
+                <image href={n.img} x={-(n.r - 3)} y={-(n.r - 3)} width={(n.r - 3) * 2} height={(n.r - 3) * 2}
+                  clipPath={n.imgBrand ? undefined : `url(#clip-${n.key.replace(/[^a-z0-9]/gi, '')})`} preserveAspectRatio="xMidYMid meet" style={{ pointerEvents: 'none' }}/>
+              </>
+            )}
             {n.label && (
               <text className={`lan-label lan-label-${n.type}`} y={n.labelY ?? n.r + 12}
                 textAnchor={n.anchor || 'middle'} x={n.labelX || 0}>{zoomed && n.host?.ip && n.type === 'host' ? `${n.label} · ${n.host.ip}` : n.label}</text>
@@ -172,7 +179,8 @@ function Legend({ data }) {
   )
 }
 
-function layout(data) {
+// icons: Map(ip → { file, source }) from the saved-device list
+function layout(data, icons) {
   const hosts = data.hosts
   const gwIp = data.gateway?.ip || hosts.find((h) => h.gateway)?.ip || null
   const gw = hosts.find((h) => h.ip === gwIp) || null
@@ -222,8 +230,10 @@ function layout(data) {
         const a = hs.length === 1 ? mid : angle + (span * (i + 0.5)) / hs.length
         const x = Math.cos(a) * R2, y = Math.sin(a) * R2
         const right = Math.cos(a) >= 0
-        const n = { key: `h-${h.ip}`, type: 'host', host: h, x, y, r: 9, fill: g.color, stroke: 'var(--bg)',
-          label: short(h.name || h.ip), labelX: right ? 13 : -13, labelY: 4, anchor: right ? 'start' : 'end',
+        const icon = icons?.get(h.ip) || h.saved?.icon
+        const n = { key: `h-${h.ip}`, type: 'host', host: h, x, y, r: icon ? 13 : 9, fill: g.color, stroke: 'var(--bg)',
+          img: icon?.file ? `/api/lsh-lan/icons/${encodeURIComponent(icon.file)}` : null, imgBrand: icon?.source === 'vendor',
+          label: short(h.saved?.label || h.name || h.ip), labelX: right ? (icon ? 17 : 13) : (icon ? -17 : -13), labelY: 4, anchor: right ? 'start' : 'end',
           integration: !!h.id?.integration }
         nodes.push(n)
         edges.push({ a: gn, b: n, type: 'leaf', color: g.color })

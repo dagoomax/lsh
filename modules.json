@@ -272,6 +272,7 @@
       ],
       "when": "(config.lshLan?.enabled)",
       "files": [
+        "src/lsh-lan-icons.js",
         "src/lsh-lan-inventory.js",
         "src/lsh-lan-monitor.js",
         "src/lsh-lan.js"
@@ -1123,6 +1124,7 @@
       "when": null,
       "tool": true,
       "files": [
+        "src/lsh-lan-icons.js",
         "src/lsh-lan-inventory.js",
         "src/lsh-lan.js"
       ],

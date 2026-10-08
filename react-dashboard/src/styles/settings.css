@@ -468,3 +468,12 @@ select.stg-input { cursor: pointer; }
 .lan-new-count { color: var(--orange); cursor: pointer; }
 .lan-viewtoggle button:disabled { opacity: 0.4; cursor: default; }
 .lan-tag.tag-perm { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+
+/* LAN device icons */
+.lan-icon-img { width: 26px; height: 26px; border-radius: 7px; object-fit: contain; flex-shrink: 0; background: var(--white-08); padding: 2px; }
+.lan-icon-img.brand { padding: 4px; background: #3a3a3c; }
+[data-theme="light"] .lan-icon-img.brand { background: #48484a; }
+.lan-icon-edit { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+.lan-icon-edit .stg-input { width: 240px; padding: 6px 10px; font-size: 13px; }
+.lan-icon-preview { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
+.lan-icon-preview .lan-icon-img { width: 40px; height: 40px; }
