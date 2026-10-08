@@ -1,4 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { weatherText } from '../weatherConditions'
+import { getLang } from '../i18n'
 import { io } from 'socket.io-client'
 
 // Auth: /react is served same-origin as /api, so requests carry the
@@ -137,5 +139,17 @@ export function useLSH() {
     await fetch(`/api/automation/scenes/${id}/run`, { method: 'POST', credentials: 'same-origin' })
   }, [])
 
-  return { energy, devices, connection, connected, lastUpdate, platforms, roomsMeta, toggleRelay, authRequired, setupRequired, onLogin, scenes, runScene }
+  // OpenWeather's condition text arrives in English — show it in this
+  // browser's language. `raw` keeps the English original for code that
+  // pattern-matches it (weather icons). Recomputed when the language
+  // changes (App re-renders on lsh-lang-changed, so getLang() moves).
+  const lang = getLang()
+  const localizedDevices = useMemo(() => devices.map((d) => {
+    const cond = d.type === 'openweather' && d.readings?.condition
+    if (!cond || typeof cond.value !== 'string') return d
+    const raw = cond.raw ?? cond.value
+    return { ...d, readings: { ...d.readings, condition: { ...cond, raw, value: weatherText(raw, lang) } } }
+  }), [devices, lang])
+
+  return { energy, devices: localizedDevices, connection, connected, lastUpdate, platforms, roomsMeta, toggleRelay, authRequired, setupRequired, onLogin, scenes, runScene }
 }

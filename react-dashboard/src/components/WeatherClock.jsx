@@ -35,8 +35,9 @@ export default function WeatherClock({ devices }) {
   const weatherDev = devices?.find(d => d.type === 'openweather')
   const r = weatherDev?.readings || {}
   const condition = r.condition?.value
+  const conditionEn = r.condition?.raw ?? condition // icon regexes match OpenWeather's English text
   const temp = r.temperature?.value
-  const { Icon, anim } = weatherIconFor(iconFor(condition))
+  const { Icon, anim } = weatherIconFor(iconFor(conditionEn))
 
   return (
     <div className="wall-weatherclock">
