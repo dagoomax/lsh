@@ -6,7 +6,7 @@
 
 ### User Accounts
 
-- Create the admin account on first run at `/setup.html`
+- Create the admin account on first run at `/react/`
 - Additional users (admin or viewer role) can be added in **Settings → Security → Users**
 - Passwords are bcrypt-hashed with 12 salt rounds and stored in `persist/users.json`
 - Sessions use JWT cookies (`lsh-session`, 7-day TTL, `httpOnly`, `sameSite: strict`)

@@ -49,6 +49,7 @@ import SecuritySection from './sections/SecuritySection'
 import ReolinkSection from './sections/ReolinkSection'
 import CamerasSection from './sections/CamerasSection'
 import BackupRestoreSection from './sections/BackupRestoreSection'
+import ModulesSection from './sections/ModulesSection'
 
 // Section id → component, for the handful ported so far (see sectionRegistry
 // for the full 57-section map). Anything not listed here renders a stub
@@ -100,6 +101,7 @@ const SECTION_COMPONENTS = {
   reolink: ReolinkSection,
   manualcams: CamerasSection,
   backup: BackupRestoreSection,
+  modules: ModulesSection,
 }
 
 export default function SettingsPage({ onClose, onOpenCssEditor }) {
@@ -202,8 +204,7 @@ function NotPortedNotice({ section }) {
   return (
     <div className="stg-stub">
       <h2>{section?.title}</h2>
-      <p>{gt('stg_stub_desc', "This section hasn't been rebuilt in the new Settings yet — it still works exactly as before in the classic page.")}</p>
-      <a className="stg-btn stg-btn-primary" href="/settings.html">{gt('stg_open_classic', 'Open classic Settings')} →</a>
+      <p>{gt('stg_stub_desc_v2', "This section isn't available in this version.")}</p>
     </div>
   )
 }

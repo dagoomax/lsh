@@ -38,9 +38,8 @@ function recentFailures(ip, now) {
   return kept;
 }
 
-// Paths that never require authentication
-const PUBLIC_HTML = new Set(['/login.html', '/setup.html']);
-const PUBLIC_JS   = new Set(['/login.js', '/setup.js', '/theme.js', '/common.js', '/i18n.js']);
+// API paths that never require authentication (sign-in and first-run setup
+// happen in the React app — LoginScreen / SetupScreen)
 const PUBLIC_API  = ['/api/auth/login', '/api/auth/setup', '/api/webhooks/smartthings'];
 
 function ensurePersist() {
@@ -61,9 +60,23 @@ function loadUsers() {
   return _usersCache;
 }
 
+// users.json (bcrypt hashes) and api-tokens.json (token values, kept
+// readable because Loxone XML export embeds them — getApiTokenValue) are
+// owner-only. writeFileSync's mode only applies on create, so chmod too for
+// files written by older versions with the default 0644.
+function writePrivate(file, data) {
+  fs.writeFileSync(file, JSON.stringify(data, null, 2), { mode: 0o600 });
+  try { fs.chmodSync(file, 0o600); } catch {}
+}
+
+// Tighten files left 0644 by older versions without waiting for a save.
+for (const f of [USERS_FILE, TOKENS_FILE]) {
+  try { if ((fs.statSync(f).mode & 0o077) !== 0) fs.chmodSync(f, 0o600); } catch {}
+}
+
 function saveUsers(users) {
   ensurePersist();
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  writePrivate(USERS_FILE, users);
   _usersCache = users;
 }
 
@@ -77,7 +90,7 @@ function loadTokens() {
 
 function saveTokens(tokens) {
   ensurePersist();
-  fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
+  writePrivate(TOKENS_FILE, tokens);
   _tokensCache = tokens;
 }
 
@@ -91,7 +104,7 @@ function jwtSecret() {
       // Auto-generate and persist
       _jwtSecret = crypto.randomBytes(32).toString('hex');
       cfg.jwtSecret = _jwtSecret;
-      fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
+      require('./config-file-cache').writeConfigFile(cfg);
       return _jwtSecret;
     }
   } catch { /* ignore */ }
@@ -220,8 +233,16 @@ const auth = {
   },
 
   verifyApiToken(token) {
-    if (!token) return false;
-    return loadTokens().some(t => t.token === token);
+    if (!token || typeof token !== 'string') return false;
+    // Constant-time: compare fixed-length digests so neither content nor
+    // length of a stored token leaks through response timing.
+    const digest = (v) => crypto.createHash('sha256').update(v).digest();
+    const given = digest(token);
+    let ok = false;
+    for (const t of loadTokens()) {
+      if (t.token && crypto.timingSafeEqual(given, digest(t.token))) ok = true;
+    }
+    return ok;
   },
 
   getApiTokens() {
@@ -280,8 +301,6 @@ const auth = {
       // path looks like an asset, e.g. /api/roborock/:duid/map.png).
       if (
         !p.startsWith('/api/') && (
-          PUBLIC_HTML.has(p) ||
-          PUBLIC_JS.has(p) ||
           p.endsWith('.css') ||
           p.endsWith('.svg') ||
           p.endsWith('.ico') ||
@@ -289,12 +308,10 @@ const auth = {
           p.endsWith('.woff2') ||
           p.endsWith('.woff') ||
           p.endsWith('manifest.json') ||
-          p.startsWith('/lib/') ||
-          p.startsWith('/i18n/') ||
           p.startsWith('/socket.io/') ||
           // React PWA shell: static files only (all data comes from /api,
           // which stays authenticated). Must be public — the iOS home-screen
-          // webapp has manifest scope /react/, and a 302 to /login.html at
+          // webapp has manifest scope /react/, and a redirect out of it at
           // launch would leave that scope (Safari opens out-of-scope pages in
           // a separate context whose cookie the webapp never gets); the app
           // shows its own in-app LoginScreen instead.
@@ -310,9 +327,9 @@ const auth = {
       // First-run guard: no users yet → force setup
       if (!auth.hasUsers()) {
         if (p.startsWith('/api/')) {
-          return res.status(503).json({ success: false, error: 'Server not configured. Go to /setup.html to create your admin account.' });
+          return res.status(503).json({ success: false, setupRequired: true, error: 'Server not configured — open the dashboard to create your admin account.' });
         }
-        return res.redirect('/setup.html');
+        return res.redirect('/react/');
       }
 
       // Check ?token= query param (API tokens only)
@@ -344,7 +361,8 @@ const auth = {
       if (p.startsWith('/api/')) {
         return res.status(401).json({ success: false, error: 'Authentication required' });
       }
-      return res.redirect(`/login.html?next=${encodeURIComponent(req.originalUrl)}`);
+      // Sign-in is the React app's LoginScreen; it returns to `next` after.
+      return res.redirect(`/react/?next=${encodeURIComponent(req.originalUrl)}`);
     };
   },
 };

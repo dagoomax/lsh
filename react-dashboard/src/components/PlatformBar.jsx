@@ -24,8 +24,27 @@ const PLATFORMS = [
   { key: 'wirenboard',   label: 'WirenBoard',  color: '#4caf50', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><rect x="9" y="9" width="14" height="14" rx="2" fill="none" stroke="#fff" strokeWidth="2"/><path d="M12 13v6M16 13v6M20 13v6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/></svg> },
 ]
 
+// Platforms without a hand-drawn badge above still report status (about 60
+// clients do) — show them with a generic lettered badge instead of hiding them.
+const KNOWN = new Set(PLATFORMS.map(p => p.key))
+const prettify = (key) => key
+  .replace(/([a-z])([A-Z])/g, '$1 $2')
+  .replace(/[-_]/g, ' ')
+  .replace(/\b\w/g, c => c.toUpperCase())
+const genericPlatform = (key) => {
+  const label = prettify(key)
+  return {
+    key, label, color: 'var(--text3)',
+    svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><text x="16" y="21" textAnchor="middle" fontSize="14" fontWeight="700" fill="#fff">{label[0]}</text></svg>,
+  }
+}
+
 export default function PlatformBar({ platforms }) {
-  const visible = PLATFORMS.filter(p => p.key in (platforms || {}))
+  const reported = Object.keys(platforms || {})
+  const visible = [
+    ...PLATFORMS.filter(p => p.key in (platforms || {})),
+    ...reported.filter(k => !KNOWN.has(k)).sort().map(genericPlatform),
+  ]
   if (!visible.length) return null
 
   return (

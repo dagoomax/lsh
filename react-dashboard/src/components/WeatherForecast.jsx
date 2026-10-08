@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { weatherText } from '../weatherConditions'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gt, getLang } from '../i18n'
 import { weatherIconFor, weatherSceneFor, moonPhaseFor } from '../weatherIcons'
@@ -480,7 +481,7 @@ function DayDetailModal({ days, index: startIndex, onClose }) {
               <div style={{ minWidth: 0 }}>
                 <div className="wx-hero-date">{fullDayLabel(day.date, index)}</div>
                 <div className="wx-hero-temp">{round(day.tempMax)}°</div>
-                <div className="wx-hero-cond">{day.condition || '—'}</div>
+                <div className="wx-hero-cond">{weatherText(day.condition) || '—'}</div>
                 <div className="wx-hero-range">
                   <span>{gt('weather_low', 'L')} {round(day.tempMin)}°</span>
                   <div className="wx-range-bar">

@@ -1,6 +1,6 @@
 'use strict';
 
-const platformStatus = require('./platform-status');
+const PollingClient = require('./polling-client');
 
 // OpenWeatherMap's icon code → a small emoji set matching this app's existing
 // convention of emoji icons for simpler devices (🔔 the SIP doorbell, 🧩
@@ -38,12 +38,12 @@ const fromC = (t, units) => (units === 'imperial' ? (t * 9) / 5 + 32 : t);
  *
  * cfg = { apiKey, lat, lon, units: 'metric'|'imperial', name?, pollInterval }
  */
-class OpenWeatherClient {
+class OpenWeatherClient extends PollingClient {
   constructor(config, store, sensorRegistry) {
+    super({ statusKey: 'openweather', logTag: 'OpenWeather' });
     this._config   = config;
     this._store    = store;
     this._registry = sensorRegistry;
-    this._timer    = null;
     this._forecast = [];
   }
 
@@ -74,48 +74,16 @@ class OpenWeatherClient {
       ],
     });
 
-    // Interval is armed before the first poll runs — a failed initial poll
-    // (e.g. a transient network blip during boot) must not leave polling
-    // stopped forever with only a process restart able to recover it.
+    // PollingClient keeps polling after failures (a failed first poll during
+    // boot used to stop it for good) and never overlaps polls.
     const interval = Math.max(cfg.pollInterval || 600, 60) * 1000; // min 60s — be polite to the free tier
-    this._timer = setInterval(() => this._poll().catch((err) => {
-      console.error(`[OpenWeather] Poll error: ${err.message}`);
-      platformStatus.set('openweather', false);
-    }), interval);
     console.log(`[OpenWeather] Started — polling every ${interval / 1000}s`);
-
-    await this._poll(true).catch((err) => {
-      console.error(`[OpenWeather] Initial poll failed, will retry on schedule: ${err.message}`);
-      platformStatus.set('openweather', false);
-    });
-  }
-
-  stop() {
-    clearInterval(this._timer);
-    this._timer = null;
+    await this.startPolling(interval);
   }
 
   /** Cached daily forecast (see aggregation notes on the class) — for the dashboard's forecast strip. */
   getForecast() {
     return this._forecast;
-  }
-
-  async _poll(initial = false) {
-    // Re-entrancy guard: the recurring interval is armed before the initial
-    // poll resolves (see start()), so a slow first request could otherwise
-    // overlap a scheduled tick — two in-flight requests racing to write
-    // this._forecast/the store. Skip rather than queue; the next tick or
-    // the initial call (whichever is still running) will cover it.
-    if (this._polling) {
-      console.warn('[OpenWeather] Skipping poll — previous one still in flight');
-      return;
-    }
-    this._polling = true;
-    try {
-      await this._pollImpl(initial);
-    } finally {
-      this._polling = false;
-    }
   }
 
   async _pollImpl(initial) {
@@ -152,7 +120,6 @@ class OpenWeatherClient {
 
     await this._pollForecast(qs, units).catch((err) => console.error(`[OpenWeather] Forecast poll failed: ${err.message}`));
 
-    platformStatus.set('openweather', true);
     if (initial) console.log(`[OpenWeather] Started for ${data.name || `${cfg.lat},${cfg.lon}`}`);
   }
 

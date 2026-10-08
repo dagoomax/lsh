@@ -7,16 +7,11 @@ const path = require('node:path');
 
 // Real Safari (unlike Chromium) renders native form controls — checkboxes,
 // scrollbars — with the OS-default light appearance unless the page
-// explicitly declares `color-scheme`. That fix landed in style.css and
-// flows.html, then had to land a second time for settings.html because it
-// carries its own separate inline copy of the same token block and the
-// first pass missed it. One test per surface so a future edit to any of
-// them can't silently drop the declaration again.
+// explicitly declares `color-scheme`. It once had to be fixed separately in
+// each classic page's own copy of the token block; the React dashboard (the
+// only frontend now) declares it once, in global.css.
 const root = path.join(__dirname, '..');
 const targets = [
-  path.join(root, 'public', 'style.css'),
-  path.join(root, 'public', 'flows.html'),
-  path.join(root, 'public', 'settings.html'),
   path.join(root, 'react-dashboard', 'src', 'styles', 'global.css'),
 ];
 

@@ -38,7 +38,7 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, 
     if (connectionMgr) {
       socket.emit('connection-status', connectionMgr.getStatus());
     }
-    socket.emit('platform-status', platformStatus.getAll());
+    socket.emit('platform-status', platformStatus.getVisible());
     if (sipServer) socket.emit('sip-call', sipServer.getState());
     if (pagingManager) socket.emit('paging-rooms', pagingManager.getRoomsStatus());
 
@@ -105,8 +105,8 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, 
   }
 
   // Forward platform status changes
-  platformStatus.on('change', (status) => {
-    io.emit('platform-status', status);
+  platformStatus.on('change', () => {
+    io.emit('platform-status', platformStatus.getVisible());
   });
 
   // Forward camera events

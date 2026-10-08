@@ -228,16 +228,19 @@ class ObjectDetectionClient {
     if (!cams.length) return;
 
     this._defaultBase = MODEL_BASE_IDS.includes(cfg.model) ? cfg.model : MODEL_BASE_IDS[0];
-    await this._loadModel(this._defaultBase);
 
     // Cameras can override the default model (see objectDetection.cameras[].model
-    // in Settings) — preload any distinct ones now so the first poll never
-    // blocks mid-detection on a cold download.
-    const overrides = [...new Set(cams
-      .map((c) => c.model)
-      .filter((m) => MODEL_BASE_IDS.includes(m) && m !== this._defaultBase))];
-    await Promise.all(overrides.map((base) => this._loadModel(base).catch((err) =>
-      console.error(`[ObjectDetection] Preload of override model "${base}" failed: ${err.message}`))));
+    // in Settings) — preload every base actually in use now so the first poll
+    // never blocks mid-detection on a cold download. The default is only
+    // loaded if some camera falls back to it: each coco-ssd base costs
+    // ~175-195 MB RSS on the pure-JS CPU backend, so loading a default that
+    // every camera overrides is a large chunk of the server's memory for nothing.
+    const inUse = new Set(cams.map((c) => (MODEL_BASE_IDS.includes(c.model) ? c.model : this._defaultBase)));
+    if (!inUse.has(this._defaultBase)) {
+      this._modelStatus = { base: this._defaultBase, loading: false, loaded: false, error: null, unused: true };
+    }
+    await Promise.all([...inUse].map((base) => this._loadModel(base).catch((err) =>
+      console.error(`[ObjectDetection] Preload of model "${base}" failed: ${err.message}`))));
 
     if (cfg.petVerification !== false) {
       console.log('[ObjectDetection] Loading MobileNet (pet breed verification)…');
@@ -301,7 +304,9 @@ class ObjectDetectionClient {
   // a cold download.
   _modelFor(base) {
     const b = MODEL_BASE_IDS.includes(base) ? base : this._defaultBase;
-    return this._models.get(b) || this._models.get(this._defaultBase);
+    // Last resort when that base failed to load: any model that did — the
+    // default may never have been loaded (see start()).
+    return this._models.get(b) || this._models.get(this._defaultBase) || this._models.values().next().value;
   }
 
   // Settings-page "download / switch model" action — callable independently

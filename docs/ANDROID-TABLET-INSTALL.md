@@ -107,7 +107,7 @@ cd ~/lsh
 pm2 restart lsh
 ```
 
-Then open `http://<tablet-ip>:3000/setup.html` from any device on the LAN
+Then open `http://<tablet-ip>:3000/react/` from any device on the LAN
 (the install script prints the tablet's IP at the end) to create the first
 admin user — same first-run flow as any other LSH install.
 

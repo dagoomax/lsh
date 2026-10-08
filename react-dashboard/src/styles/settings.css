@@ -356,3 +356,21 @@ select.stg-input { cursor: pointer; }
   .stg-sidebar { width: 100%; max-height: 40vh; border-right: none; border-bottom: 1px solid var(--border); }
   .stg-content { padding: 20px 16px 40px; }
 }
+
+/* Integration Modules (ModulesSection) */
+.stg-mod-filter { width: 100%; margin-bottom: 12px; }
+.stg-mod-list { display: flex; flex-direction: column; gap: 8px; }
+.stg-mod-row {
+  background: var(--white-04); border-radius: 12px; padding: 12px 14px;
+  display: flex; gap: 12px; align-items: center;
+}
+.stg-mod-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.stg-mod-name { font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.stg-mod-meta { font-size: 12px; overflow-wrap: anywhere; }
+.stg-mod-chip {
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+  background: var(--white-04); color: var(--text3);
+}
+.stg-mod-chip.ok   { color: var(--green);  background: color-mix(in srgb, var(--green) 14%, transparent); }
+.stg-mod-chip.warn { color: var(--orange); background: color-mix(in srgb, var(--orange) 14%, transparent); }
+.stg-mod-chip.cfg  { color: var(--accent); background: var(--accent-dim); }

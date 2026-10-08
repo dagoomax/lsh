@@ -45,8 +45,7 @@ class LGThinQClient {
   async start() {
     const hasTokens = !!(this._loadTokens()?.access_token);
     if (!hasTokens) {
-      // configured but not logged in — show the badge as disconnected
-      platformStatus.set('lgthinq', false);
+      // not logged in yet — no platform-bar badge until there's an account
       console.log('[LGThinQ] No tokens — log in via Settings → LG ThinQ to connect');
       return;
     }

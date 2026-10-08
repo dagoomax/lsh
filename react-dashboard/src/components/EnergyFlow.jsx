@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { SunIcon, PylonIcon, BatteryCellIcon, BoltIcon, HomeIcon, GWagenIcon } from './Icons'
+import { SunIcon, PylonIcon, BatteryCellIcon, BoltIcon, HomeIcon, GWagenIcon, CoinIcon } from './Icons'
 import GWagenEmbed from './GWagenEmbed'
 import { gt } from '../i18n'
 import { useHistoryPoints, smoothPath, fetchHistory } from '../historyChart'
@@ -540,42 +540,61 @@ function useHourlyProduction(key) {
   return out
 }
 
-function useTariffHourly() {
-  const [hourly, setHourly] = useState(null)
+function useTariffHourly(enabled) {
+  const [tariff, setTariff] = useState(null)
   useEffect(() => {
+    if (!enabled) return undefined
     let alive = true
     const load = () => fetch('/api/tauron-tariff/hourly', { credentials: 'same-origin' })
       .then(r => r.ok ? r.json() : { data: [] })
-      .then(j => { if (alive) setHourly(j?.data || []) })
-      .catch(() => { if (alive) setHourly([]) })
+      .then(j => { if (alive) setTariff({ hours: j?.data || [], currency: j?.data?.[0]?.currency || 'PLN' }) })
+      .catch(() => { if (alive) setTariff({ hours: [], currency: 'PLN' }) })
     load()
     const iv = setInterval(load, 10 * 60_000)
     return () => { alive = false; clearInterval(iv) }
-  }, [])
-  return hourly
+  }, [enabled])
+  return tariff
+}
+
+export function fmtMoney(v, currency) {
+  if (v == null || isNaN(v)) return '—'
+  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v) }
+  catch { return `${Number(v).toFixed(2)} ${currency}` }
+}
+
+// Today's PV output valued at the dynamic tariff, hour by hour — shared by the
+// Solar earnings card in the top strip and the Solar Gain chart, so both show
+// the same figure from one fetch. `price` is already in the display currency
+// chosen in Settings (the server converts from PLN); older servers only sent
+// pricePlnKwh, hence the fallback. null = still loading; hours: [] = the
+// integration is on but hasn't synced any prices yet.
+function useSolarEarnings(solarKey, enabled) {
+  const production = useHourlyProduction(enabled ? solarKey : null)
+  const tariff = useTariffHourly(enabled)
+  if (!enabled || production == null || tariff == null) return null
+  if (!tariff.hours.length) return { bars: [], total: null, currency: tariff.currency }
+  const priceByHour = new Map(tariff.hours.map(h => [h.hour, h.price ?? h.pricePlnKwh]))
+  const bars = production.map(p => ({ hour: p.hour, kwh: p.kwh, gain: p.kwh * (priceByHour.get(p.hour) ?? 0) }))
+  return { bars, total: bars.reduce((sum, b) => sum + b.gain, 0), currency: tariff.currency }
 }
 
 // Same card shell/proportions as DailyProductionChart (viewBox, padding,
-// bar-chart layout) so it reads as the same "kind" of chart, per-hour PLN
+// bar-chart layout) so it reads as the same "kind" of chart, per-hour money
 // gain instead of per-day kWh. Renders nothing until the TAURON tariff
 // integration is actually enabled and has synced (energy.tariff is only
 // non-null once its currentPrice sensor exists).
-function SolarGainChart({ solarKey, currentPrice }) {
-  const production = useHourlyProduction(solarKey)
-  const hourly = useTariffHourly()
+function SolarGainChart({ earnings, currentPrice }) {
   const width = 640, height = 130, barGap = 4, padTop = 6, padBottom = 22
 
-  if (hourly != null && !hourly.length) return null // integration enabled but no price data synced yet — nothing useful to show
+  if (earnings != null && !earnings.bars.length) return null // integration enabled but no price data synced yet — nothing useful to show
 
-  if (production == null || hourly == null) {
+  if (earnings == null) {
     return <div className="detail-card eflow-bg" style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', height: height + padBottom }}>
       <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--white-10)', borderTopColor: 'var(--green)', animation: 'eflow-spin 0.9s linear infinite' }} />
     </div>
   }
 
-  const priceByHour = new Map(hourly.map(h => [h.hour, h.pricePlnKwh]))
-  const bars = production.map(p => ({ hour: p.hour, gain: p.kwh * (priceByHour.get(p.hour) ?? 0) }))
-  const totalGain = bars.reduce((sum, b) => sum + b.gain, 0)
+  const { bars, total, currency } = earnings
   const max = Math.max(0.01, ...bars.map(b => b.gain))
   const barW = (width - barGap * Math.max(0, bars.length - 1)) / Math.max(1, bars.length)
   const nowHour = new Date().getHours()
@@ -587,7 +606,7 @@ function SolarGainChart({ solarKey, currentPrice }) {
           {gt('e_solar_gain', 'Solar Gain Today')}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text3)' }}>
-          {currentPrice != null ? `${gt('e_current_price', 'Current price')}: ${Number(currentPrice).toFixed(2)} PLN/kWh` : ''}
+          {currentPrice != null ? `${gt('e_current_price', 'Current price')}: ${Number(currentPrice).toFixed(2)} ${currency}/kWh` : ''}
         </div>
       </div>
       <svg viewBox={`0 0 ${width} ${height + padBottom}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
@@ -598,7 +617,9 @@ function SolarGainChart({ solarKey, currentPrice }) {
           return (
             <g key={i}>
               <rect x={x} y={height - h} width={barW} height={Math.max(1, h)} rx={2}
-                fill="var(--green)" opacity={isNow ? 1 : 0.55} />
+                fill="var(--green)" opacity={isNow ? 1 : 0.55}>
+                <title>{`${String(b.hour).padStart(2, '0')}:00 · ${b.kwh.toFixed(2)} kWh · ${fmtMoney(b.gain, currency)}`}</title>
+              </rect>
               {b.hour % 3 === 0 && (
                 <text x={x + barW / 2} y={height + 15} textAnchor="middle" fontSize="9" fill="var(--text3)">
                   {String(b.hour).padStart(2, '0')}
@@ -609,7 +630,7 @@ function SolarGainChart({ solarKey, currentPrice }) {
         })}
       </svg>
       <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, textAlign: 'right' }}>
-        {gt('r_today', 'Today')}: {totalGain.toFixed(2)} PLN
+        {gt('r_today', 'Today')}: {fmtMoney(total, currency)}
       </div>
     </div>
   )
@@ -662,19 +683,43 @@ function DetailRow({ label, value, color }) {
   )
 }
 
-function DetailCard({ icon, title, children }) {
+// `collapseId`: makes the card collapsible from its header, with the
+// open/closed choice remembered per browser under that id.
+function DetailCard({ icon, title, summary, summaryColor = 'var(--text2)', collapseId, children }) {
+  const storeKey = collapseId && `lsh.detailCollapsed.${collapseId}`
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return !!storeKey && localStorage.getItem(storeKey) === '1' } catch { return false }
+  })
+  const toggle = () => setCollapsed(c => {
+    try { localStorage.setItem(storeKey, c ? '0' : '1') } catch {}
+    return !c
+  })
   return (
     <div className="detail-card eflow-bg">
-      <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text3)', marginBottom:8 }}>
+      <div
+        onClick={collapseId ? toggle : undefined}
+        role={collapseId ? 'button' : undefined}
+        aria-expanded={collapseId ? !collapsed : undefined}
+        style={{ display:'flex', alignItems:'center', gap:6, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text3)',
+          marginBottom: collapsed ? 0 : 8, cursor: collapseId ? 'pointer' : undefined, userSelect: collapseId ? 'none' : undefined }}>
         {icon}{title}
+        {collapseId && (
+          <span style={{ marginLeft:'auto', display:'inline-flex', alignItems:'center', gap:8 }}>
+            {collapsed && summary && <span style={{ textTransform:'none', letterSpacing:0, fontWeight:600, color:summaryColor, fontVariantNumeric:'tabular-nums' }}>{summary}</span>}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition:'transform 0.2s ease' }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </span>
+        )}
       </div>
-      {children}
+      {!collapsed && children}
     </div>
   )
 }
 
 // ── Full-size energy flow popup ──────────────────────────────────────────────
-function EnergyFlowModal({ open, onClose, diagramProps, ratios }) {
+function EnergyFlowModal({ open, onClose, diagramProps, ratios, earnings }) {
   useEffect(() => {
     if (!open) return
     const esc = e => { if (e.key === 'Escape') onClose() }
@@ -704,6 +749,7 @@ function EnergyFlowModal({ open, onClose, diagramProps, ratios }) {
             </div>
             <FlowDiagram {...diagramProps} large narrow={isMobile} />
             {ratios}
+            {earnings}
           </motion.div>
         </motion.div>
       )}
@@ -739,6 +785,12 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
   }, [])
   const modelFor = (deviceKey) => evVisual?.devices?.[deviceKey] || evVisual?.default || {}
   const [flowOpen, setFlowOpen] = useState(false)
+  const solarEnergyKey = dailyEnergyKey(energySources?.solar || 'victron', energy)
+  const tariff = energy?.tariff
+  const earnings = useSolarEarnings(solarEnergyKey, !!tariff)
+  // What the PV output is worth right now at the live dynamic price.
+  const solarValuePerHour = tariff?.currentPrice != null && s?.power != null
+    ? (Math.max(0, s.power) / 1000) * tariff.currentPrice : null
 
   const num = v => (v == null || isNaN(v)) ? 0 : Number(v)
   const sum3 = o => o == null ? null : num(o.power) + num(o.powerL2) + num(o.powerL3)
@@ -789,9 +841,23 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
     </div>
   ) : null
 
+  // Earnings live only in the full-size popup, not on the dashboard card.
+  const earningsSection = tariff ? (
+    <div style={{ display:'flex', flexWrap:'wrap', gap:10, marginTop:14 }}>
+      <div style={{ flex:'1 1 220px', display:'flex' }}>
+        <ECard icon={<CoinIcon color="var(--green)" size={22}/>} label={gt('e_solar_earned','Earned today')}
+          value={earnings?.total != null ? fmtMoney(earnings.total, earnings.currency) : '—'} color="var(--green)"
+          sub={`${Number(tariff.currentPrice).toFixed(2)} ${tariff.currency}/kWh · ${fmtMoney(solarValuePerHour, tariff.currency)}/h`} />
+      </div>
+      <div style={{ flex:'3 1 320px', minWidth:0 }}>
+        <SolarGainChart earnings={earnings} currentPrice={tariff.currentPrice} />
+      </div>
+    </div>
+  ) : null
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-      <EnergyFlowModal open={flowOpen} onClose={() => setFlowOpen(false)} diagramProps={diagramProps} ratios={ratios} />
+      <EnergyFlowModal open={flowOpen} onClose={() => setFlowOpen(false)} diagramProps={diagramProps} ratios={ratios} earnings={earningsSection} />
 
       {/* ── Top 4-card strip ── */}
       <div className="energy-strip" style={{ display:'flex', gap:10 }}>
@@ -826,7 +892,7 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
 
       {/* ── EV showcase: one card per vehicle (up to 10), each with its own
           3D model + live stats/controls side by side ── */}
-      {evList.map((dev, evIdx) => {
+      {evList.map((dev) => {
         const model = modelFor(dev.key)
         const power = Number(dev.readings?.power?.value) || 0
         const energyKwh = dev.readings?.energy?.value
@@ -840,19 +906,6 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
             <div style={{ flex:'1 1 220px', minWidth:200, maxWidth:320 }}>
               <GWagenEmbed height={190} modelId={model.modelId} modelName={model.modelName} />
             </div>
-            {/* Solar-gain chart — a whole-house metric (not per-vehicle), so
-                it only shows once, next to the first vehicle's model, even
-                when several EVs are registered. Renders nothing unless the
-                TAURON tariff integration is enabled (energy.tariff is null
-                otherwise). */}
-            {evIdx === 0 && energy?.tariff && (
-              <div style={{ flex:'1 1 220px', minWidth:200, maxWidth:320 }}>
-                <SolarGainChart
-                  solarKey={dailyEnergyKey(energySources?.solar || 'victron', energy)}
-                  currentPrice={energy.tariff.currentPrice}
-                />
-              </div>
-            )}
             <div style={{ flex:'1 1 220px', minWidth:220, display:'flex', flexDirection:'column', gap:2 }}>
               <div style={{ marginBottom:6 }}>
                 <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text3)' }}>
@@ -903,7 +956,8 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
         alignItems:'start',
         gap:10,
       }}>
-        <DetailCard icon={<BatteryCellIcon color="var(--text3)" size={13}/>} title={gt('t_battery','Battery')}>
+        <DetailCard icon={<BatteryCellIcon color="var(--text3)" size={13}/>} title={gt('t_battery','Battery')}
+          collapseId="battery" summary={`${battPct}% · ${fmtW(battW)}`} summaryColor={battColor}>
           <DetailRow label={gt('r_soc','SoC')}     value={`${battPct}%`}    color={battColor} />
           <DetailRow label={gt('r_power','Power')}   value={fmtW(battW)}      color={battColor} />
           <DetailRow label={gt('r_voltage','Voltage')} value={fmtV(b?.voltage)} />
@@ -915,7 +969,8 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
           {b?.dischargedEnergy != null && <DetailRow label={gt('r_total_discharged','Total discharged')} value={`${Number(b.dischargedEnergy).toFixed(1)} kWh`} color="var(--text2)" />}
         </DetailCard>
 
-        <DetailCard icon={<SunIcon color="var(--text3)" size={13}/>} title={gt('t_solar','Solar MPPT')}>
+        <DetailCard icon={<SunIcon color="var(--text3)" size={13}/>} title={gt('t_solar','Solar MPPT')}
+          collapseId="solar" summary={`${fmtW(s?.power)} · ${(s?.dailyYield??0).toFixed(2)} kWh`} summaryColor="var(--orange)">
           <DetailRow label={gt('r_power','Power')}   value={fmtW(s?.power)}   color="var(--orange)" />
           <DetailRow label={gt('r_today','Today')}   value={`${(s?.dailyYield??0).toFixed(2)} kWh`} color="var(--orange)" />
           {s?.current != null && <DetailRow label={gt('r_current','Current')} value={fmtA(s.current)} />}
@@ -929,7 +984,8 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
             value={selfConsumptionPct != null ? `${selfConsumptionPct}%` : '—'} color="var(--text2)" />
         </DetailCard>
 
-        <DetailCard icon={<PylonIcon color="var(--text3)" size={13}/>} title={gt('t_grid','Grid')}>
+        <DetailCard icon={<PylonIcon color="var(--text3)" size={13}/>} title={gt('t_grid','Grid')}
+          collapseId="grid" summary={fmtW(gridTotal)} summaryColor={gridColor}>
           <DetailRow label={gt('r_total','Total')}     value={fmtW(gridTotal)}  color={gridColor} />
           <DetailRow label={gt('r_l1','L1 Power')}  value={fmtW(g?.power)}   color={gridColor} />
           <DetailRow label={gt('r_l2','L2 Power')}  value={fmtW(g?.powerL2)} color={gridColor} />
@@ -942,7 +998,8 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
             value={gridDependencyPct != null ? `${gridDependencyPct}%` : '—'} color="var(--text2)" />
         </DetailCard>
 
-        <DetailCard icon={<HomeIcon color="var(--text3)" size={13}/>} title={gt('t_loads','AC Loads')}>
+        <DetailCard icon={<HomeIcon color="var(--text3)" size={13}/>} title={gt('t_loads','AC Loads')}
+          collapseId="loads" summary={fmtW(loadTotal)} summaryColor="var(--accent-lt)">
           <DetailRow label={gt('r_total','Total')}    value={fmtW(loadTotal)}  color="var(--accent-lt)" />
           <DetailRow label={gt('r_l1','L1 Power')} value={fmtW(l?.power)}   />
           <DetailRow label={gt('r_l2','L2 Power')} value={fmtW(l?.powerL2)} />

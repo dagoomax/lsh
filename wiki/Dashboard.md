@@ -51,10 +51,10 @@ The dashboard ships as a Progressive Web App. When installed from the home scree
 | URL | Description |
 |---|---|
 | `/` | Live dashboard — energy flow, battery, solar, grid, relays, device cards, cameras |
-| `/settings.html` | All integration settings, test buttons, HomeKit QR, backup/restore |
-| `/logs.html` | Per-category log viewer with auto-refresh and download |
-| `/mqtt.html` | Real-time MQTT topic explorer with message history |
-| `/login.html` | Sign-in page |
-| `/setup.html` | First-run admin account creation |
+| `/react/settings` | All integration settings, test buttons, HomeKit QR, backup/restore |
+| `/react/logs` | Per-category log viewer with auto-refresh and download |
+| `/react/mqtt` | Real-time MQTT topic explorer with message history |
+| `/react/` | Sign-in page |
+| `/react/` | First-run admin account creation |
 
 ---

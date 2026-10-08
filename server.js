@@ -26,6 +26,7 @@ const RelayController   = require('./src/relay-controller');
 const SensorRegistry    = require('./src/sensor-registry');
 const createApiRoutes   = require('./src/api-routes');
 const setupWebSocket    = require('./src/websocket');
+const INTEGRATIONS      = require('./src/integrations');
 
 function tryRequire(mod, hint) {
   try { return require(mod); }
@@ -34,6 +35,10 @@ function tryRequire(mod, hint) {
 
 async function main() {
   const config          = loadConfig();
+  // Fetch any configured integration whose files/npm deps aren't on disk yet
+  // (a fresh install ships core only — see src/module-manager.js). Must run
+  // before the tryRequire calls below so they find what it just installed.
+  await require('./src/module-manager').ensureConfigured(config);
   const store           = new DataStore();
   // restore saved sensor data + history, save every 5 min and on shutdown;
   // persists to MongoDB when config.mongo.uri is set, else gzipped JSON in persist/
@@ -234,6 +239,13 @@ async function main() {
   // Aurora (the React dashboard) is now the primary dashboard — the classic
   // home page is replaced. Send the root (and the old index) to /react/.
   app.get(['/', '/index.html'], (req, res) => res.redirect('/react/'));
+  // The classic pages are gone (React is the only frontend) — keep old
+  // bookmarks and home-screen shortcuts working.
+  const LEGACY_PAGES = {
+    '/settings.html': '/react/settings', '/logs.html': '/react/logs', '/mqtt.html': '/react/mqtt',
+    '/flows.html': '/react/flows', '/login.html': '/react/', '/setup.html': '/react/',
+  };
+  app.get(Object.keys(LEGACY_PAGES), (req, res) => res.redirect(301, LEGACY_PAGES[req.path]));
 
   app.use(auth.middleware(isSecure));
   // Furniture-picture uploads for the home plan arrive as base64 JSON and
@@ -264,8 +276,8 @@ async function main() {
     }
   });
   // User-authored CSS (Settings → Interface → Custom CSS), referenced by a
-  // real <link> tag in both dashboards' <head> — public/unauthenticated so
-  // it applies on login/setup pages too, and loads before first paint
+  // real <link> tag in the dashboard's <head> — public/unauthenticated so
+  // it applies on the sign-in screen too, and loads before first paint
   // instead of flashing unstyled then restyled. Deliberately outside /api/:
   // auth.js's middleware never exempts /api/* paths (dynamic data there must
   // stay gated even when a path looks like a static asset), so a path like
@@ -283,11 +295,8 @@ async function main() {
     res.set('Cache-Control', 'no-cache');
     res.send(customCss);
   });
-  // Classic pages (Flows, Settings, Logs, MQTT, index, login, setup): same
-  // Safari staleness risk as the React shell above — the HTML references
-  // versioned CSS/JS via ?v=N, so if Safari caches the HTML itself, a bumped
-  // version number never takes effect for that browser. The referenced
-  // assets keep their own (versioned, safely cacheable) headers.
+  // public/: assets shared with the React app (logo, floor-plan SVGs) and the
+  // Swagger UI page's files (/api-docs above).
   app.use(express.static(path.join(__dirname, 'public'), {
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.html')) res.setHeader('Cache-Control', NO_STORE);
@@ -521,16 +530,16 @@ async function main() {
     }
   }
 
-  // Start Viessmann Vitodens client if configured. `vicare` was a separate,
-  // older client (different API domain, inline user/password auth) that has
-  // been merged into this one — `config.vicare.clientId` is still accepted
-  // here as a legacy alias (see vitodens-client.js).
-  if (config.vitodens?.clientId || config.vicare?.clientId) {
-    const VitodensClient = tryRequire('./src/vitodens-client');
-    if (VitodensClient) {
-      const vitodens = new VitodensClient(config, store, sensorRegistry);
-      vitodens.start().catch((err) => console.error(`[Vitodens] Start failed: ${err.message}`));
-    }
+  // Integrations whose whole wiring is construct-and-start — listed in
+  // src/integrations.js. Anything needing more (extra constructor args,
+  // setIo, a reference held here) stays written out inline above/below.
+  for (const it of INTEGRATIONS) {
+    if (!it.when(config)) continue;
+    const Client = tryRequire(`./src/${it.file}`, it.hint);
+    if (!Client) continue;
+    const client = new Client(config, store, sensorRegistry);
+    if (it.expose) apiClients[it.expose] = client;
+    client.start().catch((err) => console.error(`[${it.label}] Start failed: ${err.message}`));
   }
 
   // Start the Matter bridge if enabled — exposes LSH devices to Apple Home /
@@ -554,25 +563,7 @@ async function main() {
     }
   }
 
-  // Start Solar Accelerator Connect client if configured (local SA Connect
-  // gateway — Deye-family hybrid inverters)
-  if (config.solaraccelerator?.host) {
-    const SolarAcceleratorClient = tryRequire('./src/solaraccelerator-client');
-    if (SolarAcceleratorClient) {
-      const solarAccelerator = new SolarAcceleratorClient(config, store, sensorRegistry);
-      solarAccelerator.start().catch((err) => console.error(`[SolarAccelerator] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Sofar Solar inverter client if configured (K-TLX series via its
-  // local LSW-3/Solarman WiFi dongle — no cloud, no API key)
-  if (config.sofar?.host) {
-    const SofarClient = tryRequire('./src/sofar-client');
-    if (SofarClient) {
-      const sofar = new SofarClient(config, store, sensorRegistry);
-      sofar.start().catch((err) => console.error(`[Sofar] Start failed: ${err.message}`));
-    }
-  }
 
   // Start Tauron dynamic-tariff tracker if enabled — a public, no-auth PSE
   // (Polish grid operator) price index that TAURON's G14dynamic tariff
@@ -587,15 +578,6 @@ async function main() {
     }
   }
 
-  // Start Dyson client if enabled (device list/credentials come from
-  // persist/dyson-tokens.json, produced by scripts/dyson-auth.js)
-  if (config.dyson?.enabled) {
-    const DysonClient = tryRequire('./src/dyson-client');
-    if (DysonClient) {
-      const dyson = new DysonClient(config, store, sensorRegistry);
-      dyson.start().catch((err) => console.error(`[Dyson] Start failed: ${err.message}`));
-    }
-  }
 
   // Start Google Calendar client if configured (OAuth connect happens later,
   // from Settings — the client itself just needs clientId/clientSecret to
@@ -618,115 +600,17 @@ async function main() {
     }
   }
 
-  // Start Dirigera (IKEA) client if configured
-  if (config.dirigera?.host && config.dirigera?.token) {
-    const DirigeraClient = tryRequire('./src/dirigera-client');
-    if (DirigeraClient) {
-      const dirigera = new DirigeraClient(config, store, sensorRegistry);
-      dirigera.start().catch((err) => console.error(`[Dirigera] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Tradfri (IKEA) client if configured
-  if (config.tradfri?.host) {
-    const TradfriClient = tryRequire('./src/tradfri-client', 'npm install node-tradfri-client');
-    if (TradfriClient) {
-      const tradfri = new TradfriClient(config, store, sensorRegistry);
-      tradfri.start().catch((err) => console.error(`[Tradfri] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start ESPHome client if devices are configured
-  if (config.esphome?.devices?.length) {
-    const ESPHomeClient = tryRequire('./src/esphome-client');
-    if (ESPHomeClient) {
-      const esphome = new ESPHomeClient(config, store, sensorRegistry);
-      esphome.start().catch((err) => console.error(`[ESPHome] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Shelly client if devices are configured
-  if (config.shelly?.devices?.length) {
-    const ShellyClient = tryRequire('./src/shelly-client');
-    if (ShellyClient) {
-      const shelly = new ShellyClient(config, store, sensorRegistry);
-      shelly.start().catch((err) => console.error(`[Shelly] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start go-eCharger client if devices are configured (local API, no cloud)
-  if (config.goecharger?.devices?.length) {
-    const GoEChargerClient = tryRequire('./src/goecharger-client');
-    if (GoEChargerClient) {
-      const goecharger = new GoEChargerClient(config, store, sensorRegistry);
-      goecharger.start().catch((err) => console.error(`[go-eCharger] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Wallbox client if configured
-  if (config.wallbox?.email && config.wallbox?.password) {
-    const WallboxClient = tryRequire('./src/wallbox-client');
-    if (WallboxClient) {
-      const wallbox = new WallboxClient(config, store, sensorRegistry);
-      wallbox.start().catch((err) => console.error(`[Wallbox] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Easee client if configured
-  if (config.easee?.username && config.easee?.password) {
-    const EaseeClient = tryRequire('./src/easee-client');
-    if (EaseeClient) {
-      const easee = new EaseeClient(config, store, sensorRegistry);
-      easee.start().catch((err) => console.error(`[Easee] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Zaptec client if configured
-  if (config.zaptec?.username && config.zaptec?.password) {
-    const ZaptecClient = tryRequire('./src/zaptec-client');
-    if (ZaptecClient) {
-      const zaptec = new ZaptecClient(config, store, sensorRegistry);
-      zaptec.start().catch((err) => console.error(`[Zaptec] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start OCPP 1.6 central system if enabled (generic EV charger listener —
-  // any brand speaking standard OCPP 1.6-J connects here)
-  if (config.ocpp?.enabled) {
-    const OcppServer = tryRequire('./src/ocpp-server');
-    if (OcppServer) {
-      const ocpp = new OcppServer(config, store, sensorRegistry);
-      ocpp.start().catch((err) => console.error(`[OCPP] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Dreame client if configured
-  if (config.dreame?.devices?.length) {
-    const DreameClient = tryRequire('./src/dreame-client');
-    if (DreameClient) {
-      const dreame = new DreameClient(config, store, sensorRegistry);
-      dreame.start().catch((err) => console.error(`[Dreame] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start MC6 thermostat client if configured
-  if (config.mc6?.broker && config.mc6?.devices?.length) {
-    const MC6Client = tryRequire('./src/mc6-client');
-    if (MC6Client) {
-      const mc6 = new MC6Client(config, store, sensorRegistry);
-      mc6.start().catch((err) => console.error(`[MC6] Start failed: ${err.message}`));
-      apiClients.mc6 = mc6; // expose for /api/mc6/* timer & schedule routes
-    }
-  }
 
-  // Start Roborock client if configured (miio protocol: host + token)
-  if (config.roborock?.devices?.length) {
-    const RoborockClient = tryRequire('./src/roborock-client');
-    if (RoborockClient) {
-      const roborock = new RoborockClient(config, store, sensorRegistry);
-      roborock.start().catch((err) => console.error(`[Roborock] Start failed: ${err.message}`));
-    }
-  }
 
   // Start Roborock cloud client if configured (Roborock-app devices, e.g. Q Revo)
   if (config.roborock?.cloud?.email) {
@@ -738,15 +622,6 @@ async function main() {
     }
   }
 
-  // Kärcher Home Robots (RCV5/RCV3/RCF5) — cloud-only, see src/karcher-client.js
-  if (config.karcher?.email) {
-    const KarcherClient = tryRequire('./src/karcher-client');
-    if (KarcherClient) {
-      const karcher = new KarcherClient(config, store, sensorRegistry);
-      apiClients.karcher = karcher; // expose for /api/karcher/* (map) and /api/cameras
-      karcher.start().catch((err) => console.error(`[Karcher] Start failed: ${err.message}`));
-    }
-  }
 
   // Start BroadLink IR/RF client if configured
   if (config.broadlink?.devices?.length) {
@@ -758,42 +633,9 @@ async function main() {
     }
   }
 
-  // Start Waveshare Modbus TCP client if configured
-  if (config.waveshare?.devices?.length) {
-    const WaveshareClient = tryRequire('./src/waveshare-modbus-client');
-    if (WaveshareClient) {
-      const waveshare = new WaveshareClient(config, store, sensorRegistry);
-      waveshare.start().catch((err) => console.error(`[Waveshare] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Tedee Bridge client if configured — local REST API, no cloud
-  if (config.tedee?.devices?.length) {
-    const TedeeClient = tryRequire('./src/tedee-client');
-    if (TedeeClient) {
-      const tedee = new TedeeClient(config, store, sensorRegistry);
-      tedee.start().catch((err) => console.error(`[Tedee] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Home Connect client if configured — Bosch/Siemens/Gaggenau/Neff
-  // (OAuth device flow via scripts/homeconnect-auth.js; tokens persisted + auto-refreshed)
-  if (config.homeConnect) {
-    const HomeConnectClient = tryRequire('./src/homeconnect-client');
-    if (HomeConnectClient) {
-      const homeConnect = new HomeConnectClient(config, store, sensorRegistry);
-      homeConnect.start().catch((err) => console.error(`[HomeConnect] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Grenton client if configured (GATE HTTP module + LSH listener script)
-  if (config.grenton?.host && config.grenton?.devices?.length) {
-    const GrentonClient = tryRequire('./src/grenton-client');
-    if (GrentonClient) {
-      const grenton = new GrentonClient(config, store, sensorRegistry);
-      grenton.start().catch((err) => console.error(`[Grenton] Start failed: ${err.message}`));
-    }
-  }
 
   // Start Ampio client if configured (MQTT broker on the M-SERV)
   if (config.ampio?.host && config.ampio?.devices?.length) {
@@ -804,14 +646,6 @@ async function main() {
     }
   }
 
-  // Start Philips Hue client if configured (local bridge, CLIP v1 REST)
-  if (config.hue?.host && config.hue?.username) {
-    const HueClient = tryRequire('./src/hue-client');
-    if (HueClient) {
-      const hue = new HueClient(config, store, sensorRegistry);
-      hue.start().catch((err) => console.error(`[Hue] Start failed: ${err.message}`));
-    }
-  }
 
   // Start Aqara client if configured (gateway LAN protocol, UDP 9898)
   if (config.aqara?.gateways?.length) {
@@ -822,24 +656,7 @@ async function main() {
     }
   }
 
-  // Start Miele client if configured (OAuth password grant, or one-off
-  // scripts/miele-auth.js; tokens persisted + auto-refreshed)
-  if (config.miele) {
-    const MieleClient = tryRequire('./src/miele-client');
-    if (MieleClient) {
-      const miele = new MieleClient(config, store, sensorRegistry);
-      miele.start().catch((err) => console.error(`[Miele] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start LG ThinQ client if configured (token-based — no credentials needed)
-  if (config.lgthinq) {
-    const LGThinQClient = tryRequire('./src/lgthinq-client');
-    if (LGThinQClient) {
-      const lgthinq = new LGThinQClient(config, store, sensorRegistry);
-      lgthinq.start().catch((err) => console.error(`[LGThinQ] Start failed: ${err.message}`));
-    }
-  }
 
   // Start Somfy client if configured (cloud: email+password; local: host + token or email/password)
   if (
@@ -875,59 +692,11 @@ async function main() {
     }
   }
 
-  // Start Denon AVR client if configured
-  if (config.denon?.host) {
-    const DenonClient = tryRequire('./src/denon-client');
-    if (DenonClient) {
-      const denon = new DenonClient(config, store, sensorRegistry);
-      denon.start().catch((err) => console.error(`[Denon] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Bang & Olufsen speaker client if configured
-  if (config.beosound?.host) {
-    const BeosoundClient = tryRequire('./src/beosound-client');
-    if (BeosoundClient) {
-      const beosound = new BeosoundClient(config, store, sensorRegistry);
-      beosound.start().catch((err) => console.error(`[Beosound] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Sony Bravia (Android TV / Google TV) client if configured
-  if (config.sony?.host) {
-    const SonyClient = tryRequire('./src/sony-client');
-    if (SonyClient) {
-      const sony = new SonyClient(config, store, sensorRegistry);
-      sony.start().catch((err) => console.error(`[Sony] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Android TV / Google TV client if configured (any brand — TCL, Sharp, ...)
-  if (config.googletv?.host) {
-    const GoogleTvClient = tryRequire('./src/googletv-client');
-    if (GoogleTvClient) {
-      const googletv = new GoogleTvClient(config, store, sensorRegistry);
-      googletv.start().catch((err) => console.error(`[GoogleTv] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start VENTS / Blauberg ventilation client if configured
-  if (config.vents?.host) {
-    const VentsClient = tryRequire('./src/vents-client');
-    if (VentsClient) {
-      const vents = new VentsClient(config, store, sensorRegistry);
-      vents.start().catch((err) => console.error(`[VENTS] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Worx Landroid mower client if configured
-  if (config.landroid?.email && config.landroid?.password) {
-    const LandroidClient = tryRequire('./src/landroid-client');
-    if (LandroidClient) {
-      const landroid = new LandroidClient(config, store, sensorRegistry);
-      landroid.start().catch((err) => console.error(`[Landroid] Start failed: ${err.message}`));
-    }
-  }
 
   // Start Sonos client if configured or auto-discovery enabled
   if (config.sonos) {
@@ -939,60 +708,12 @@ async function main() {
     }
   }
 
-  // Start Google Home / Nest (Cast v2) client if configured
-  if (config.googlehome?.devices?.length) {
-    const GoogleHomeClient = tryRequire('./src/googlehome-client');
-    if (GoogleHomeClient) {
-      const googlehome = new GoogleHomeClient(config, store, sensorRegistry);
-      googlehome.start().catch((err) => console.error(`[GoogleHome] Start failed: ${err.message}`));
-    }
-  }
-
-  // Start Bayrol Pool Manager client if configured
-  if (config.bayrol?.username && config.bayrol?.password) {
-    const BayrolClient = tryRequire('./src/bayrol-client');
-    if (BayrolClient) {
-      const bayrol = new BayrolClient(config, store, sensorRegistry);
-      bayrol.start().catch((err) => console.error(`[Bayrol] Start failed: ${err.message}`));
-    }
-  }
-
-  // Start Airly air quality client if configured
-  if (config.airly?.apiKey) {
-    const AirlyClient = tryRequire('./src/airly-client');
-    if (AirlyClient) {
-      const airly = new AirlyClient(config, store, sensorRegistry);
-      airly.start().catch((err) => console.error(`[Airly] Start failed: ${err.message}`));
-    }
-  }
-
-  // Start SmartTub client if configured
-  if (config.smarttub?.email && config.smarttub?.password) {
-    const SmartTubClient = tryRequire('./src/smarttub-client');
-    if (SmartTubClient) {
-      const smarttub = new SmartTubClient(config, store, sensorRegistry);
-      smarttub.start().catch((err) => console.error(`[SmartTub] Start failed: ${err.message}`));
-    }
-  }
-
-  // Start Thermomix / Cookidoo client if configured
-  if (config.thermomix?.email && config.thermomix?.password) {
-    const ThermomixClient = tryRequire('./src/thermomix-client');
-    if (ThermomixClient) {
-      const thermomix = new ThermomixClient(config, store, sensorRegistry);
-      thermomix.start().catch((err) => console.error(`[Thermomix] Start failed: ${err.message}`));
-    }
-  }
 
 
-  // Start WLED client if configured
-  if (config.wled?.devices?.length) {
-    const WledClient = tryRequire('./src/wled-client');
-    if (WledClient) {
-      const wled = new WledClient(config, store, sensorRegistry);
-      wled.start().catch((err) => console.error(`[WLED] Start failed: ${err.message}`));
-    }
-  }
+
+
+
+
 
   // Start SmartBob MQTT client if configured
   if (config.smartbob?.entities?.length) {
@@ -1003,14 +724,6 @@ async function main() {
     }
   }
 
-  // Start Suppla client if configured
-  if (config.suppla?.token) {
-    const SuplaClient = tryRequire('./src/suppla-client');
-    if (SuplaClient) {
-      const suppla = new SuplaClient(config, store, sensorRegistry);
-      suppla.start().catch((err) => console.error(`[Suppla] Start failed: ${err.message}`));
-    }
-  }
 
   // Start Arduino MQTT client if configured
   if (config.arduino?.devices?.length) {
@@ -1021,33 +734,8 @@ async function main() {
     }
   }
 
-  // Start Z-Way / RaZberry client if configured
-  if (config.zway?.host) {
-    const ZWayClient = tryRequire('./src/zway-client');
-    if (ZWayClient) {
-      const zway = new ZWayClient(config, store, sensorRegistry);
-      zway.start().catch((err) => console.error(`[Z-Way] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Z-Wave JS client if configured (Z-Wave JS Server / Z-Wave JS UI —
-  // distinct from the Z-Way/RaZberry REST integration above)
-  if (config.zwaveJs?.host) {
-    const ZwaveJsClient = tryRequire('./src/zwave-js-client');
-    if (ZwaveJsClient) {
-      const zwaveJs = new ZwaveJsClient(config, store, sensorRegistry);
-      zwaveJs.start().catch((err) => console.error(`[Z-Wave JS] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start MiCasaVerde / Vera client if configured
-  if (config.vera?.host) {
-    const VeraClient = tryRequire('./src/vera-client');
-    if (VeraClient) {
-      const vera = new VeraClient(config, store, sensorRegistry);
-      vera.start().catch((err) => console.error(`[Vera] Start failed: ${err.message}`));
-    }
-  }
 
   // Start Wiren Board client if configured
   if (config.wirenboard?.host) {
@@ -1058,23 +746,7 @@ async function main() {
     }
   }
 
-  // Start KNX client if configured
-  if (config.knx?.host) {
-    const KNXClient = tryRequire('./src/knx-client', 'npm install knx');
-    if (KNXClient) {
-      const knxClient = new KNXClient(config, store, sensorRegistry);
-      knxClient.start().catch((err) => console.error(`[KNX] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Fibaro Home Center client if configured
-  if (config.fibaro?.host) {
-    const FibaroClient = tryRequire('./src/fibaro-client');
-    if (FibaroClient) {
-      const fibaro = new FibaroClient(config, store, sensorRegistry);
-      fibaro.start().catch((err) => console.error(`[Fibaro] Start failed: ${err.message}`));
-    }
-  }
 
   // Push LSH values out to Fibaro global variables if configured
   if (config.fibaroOut?.host && config.fibaroOut?.mappings?.length) {
@@ -1085,32 +757,8 @@ async function main() {
     }
   }
 
-  // Start CAN bus client if configured
-  if (config.can?.transport || config.can?.interface || config.can?.serialPort) {
-    const CanClient = tryRequire('./src/can-client');
-    if (CanClient) {
-      const can = new CanClient(config, store, sensorRegistry);
-      can.start().catch((err) => console.error(`[CAN] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start generic Modbus TCP/RTU client if configured
-  if (config.modbus?.devices?.length) {
-    const ModbusClient = tryRequire('./src/modbus-client');
-    if (ModbusClient) {
-      const modbus = new ModbusClient(config, store, sensorRegistry);
-      modbus.start().catch((err) => console.error(`[Modbus] Start failed: ${err.message}`));
-    }
-  }
 
-  // Start Domatiq CAN bus bridge if configured (domatiq-loxone-bridge ESP32 gateway)
-  if (config.domatiq?.host) {
-    const DomatiqClient = tryRequire('./src/domatiq-client');
-    if (DomatiqClient) {
-      const domatiq = new DomatiqClient(config, store, sensorRegistry);
-      domatiq.start().catch((err) => console.error(`[Domatiq] Start failed: ${err.message}`));
-    }
-  }
 
   // Push LSH values out to the Domatiq CAN bus if configured
   if (config.domatiqOut?.host && config.domatiqOut?.mappings?.length) {
@@ -1121,14 +769,6 @@ async function main() {
     }
   }
 
-  // Start Homey client if configured
-  if (config.homey?.token && (config.homey?.host || config.homey?.homeyId)) {
-    const HomeyClient = tryRequire('./src/homey-client');
-    if (HomeyClient) {
-      const homey = new HomeyClient(config, store, sensorRegistry);
-      homey.start().catch((err) => console.error(`[Homey] Start failed: ${err.message}`));
-    }
-  }
 
   // Start Loxone client if configured
   let loxoneClient = null;
@@ -1155,7 +795,7 @@ async function main() {
   mainServer.listen(mainPort, () => {
     console.log(`[Server] ${protocol}://localhost:${mainPort}`);
     if (!auth.hasUsers()) {
-      console.log('[Server] No users configured — visit /setup.html to create your admin account');
+      console.log('[Server] No users configured — open the dashboard to create your admin account');
     }
   });
 }

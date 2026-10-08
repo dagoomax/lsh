@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "LSH — Lightweight Smart Home API",
-    "version": "1.12.0",
-    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` — 312 endpoints.",
+    "version": "1.32.0",
+    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` + `src/routes/*.js` — 321 endpoints.",
     "license": {
       "name": "Repository",
       "url": "https://github.com/dagoomax/lsh"
@@ -102,7 +102,7 @@
     },
     {
       "name": "Sonos: URL playback + TTS announcements",
-      "description": "22 endpoints"
+      "description": "23 endpoints"
     },
     {
       "name": "Hardware simulators (scripts/*-simulator.js)",
@@ -170,7 +170,7 @@
     },
     {
       "name": "HomeKit QR",
-      "description": "1 endpoint"
+      "description": "2 endpoints"
     },
     {
       "name": "Matter bridge setup (pairing code / QR)",
@@ -193,6 +193,10 @@
       "description": "2 endpoints"
     },
     {
+      "name": "Integration modules (src/module-manager.js)",
+      "description": "2 endpoints"
+    },
+    {
       "name": "Settings",
       "description": "3 endpoints"
     },
@@ -210,7 +214,7 @@
     },
     {
       "name": "Roborock",
-      "description": "14 endpoints"
+      "description": "15 endpoints"
     },
     {
       "name": "Somfy covers (casablanca TaHoma) — token/Loxone-friendly per-cover API",
@@ -258,7 +262,7 @@
     },
     {
       "name": "Loxone",
-      "description": "26 endpoints"
+      "description": "27 endpoints"
     },
     {
       "name": "Waveshare Modbus TCP",
@@ -267,6 +271,10 @@
     {
       "name": "Tedee Bridge",
       "description": "2 endpoints"
+    },
+    {
+      "name": "Yale doorbell cameras",
+      "description": "3 endpoints"
     },
     {
       "name": "BroadLink IR/RF",
@@ -4640,6 +4648,47 @@
         }
       }
     },
+    "/yale-camera/{deviceId}/snapshot": {
+      "get": {
+        "tags": [
+          "Sonos: URL playback + TTS announcements"
+        ],
+        "summary": "GET /yale-camera/:deviceId/snapshot",
+        "operationId": "get_yale_camera_deviceId_snapshot",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/smartthings-camera/image-proxy": {
       "get": {
         "tags": [
@@ -7441,6 +7490,47 @@
         }
       }
     },
+    "/homekit/reset-pairing": {
+      "post": {
+        "tags": [
+          "HomeKit QR"
+        ],
+        "summary": "POST /homekit/reset-pairing",
+        "operationId": "post_homekit_reset_pairing",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
     "/matter/bridge/setup": {
       "get": {
         "tags": [
@@ -7937,6 +8027,88 @@
         ],
         "summary": "POST /settings/terminal",
         "operationId": "post_settings_terminal",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/modules": {
+      "get": {
+        "tags": [
+          "Integration modules (src/module-manager.js)"
+        ],
+        "summary": "GET /modules",
+        "operationId": "get_modules",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/modules/{id}/install": {
+      "post": {
+        "tags": [
+          "Integration modules (src/module-manager.js)"
+        ],
+        "summary": "POST /modules/:id/install",
+        "operationId": "post_modules_id_install",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -9067,6 +9239,47 @@
         "parameters": [
           {
             "name": "duid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/karcher/{sn}/map.png": {
+      "get": {
+        "tags": [
+          "Roborock"
+        ],
+        "summary": "GET /karcher/:sn/map.png",
+        "operationId": "get_karcher_sn_map_png",
+        "parameters": [
+          {
+            "name": "sn",
             "in": "path",
             "required": true,
             "schema": {
@@ -10521,6 +10734,47 @@
         }
       }
     },
+    "/settings/googlehome": {
+      "post": {
+        "tags": [
+          "Loxone"
+        ],
+        "summary": "POST /settings/googlehome",
+        "operationId": "post_settings_googlehome",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings/sonos": {
       "post": {
         "tags": [
@@ -11174,6 +11428,129 @@
         ],
         "summary": "POST /settings/tedee",
         "operationId": "post_settings_tedee",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/test-yale": {
+      "post": {
+        "tags": [
+          "Yale doorbell cameras"
+        ],
+        "summary": "POST /settings/test-yale",
+        "operationId": "post_settings_test_yale",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/verify-yale": {
+      "post": {
+        "tags": [
+          "Yale doorbell cameras"
+        ],
+        "summary": "POST /settings/verify-yale",
+        "operationId": "post_settings_verify_yale",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/yale": {
+      "post": {
+        "tags": [
+          "Yale doorbell cameras"
+        ],
+        "summary": "POST /settings/yale",
+        "operationId": "post_settings_yale",
         "responses": {
           "200": {
             "description": "Success",

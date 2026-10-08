@@ -1,4 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { weatherText } from '../weatherConditions'
+import { getLang } from '../i18n'
 import { io } from 'socket.io-client'
 
 // Auth: /react is served same-origin as /api, so requests carry the
@@ -8,11 +10,19 @@ import { io } from 'socket.io-client'
 // out-of-scope pages in a separate browser context whose session cookie the
 // standalone webapp never receives).
 let notifyAuthRequired = null
+let notifySetupRequired = null
 
 async function apiFetch(path) {
   try {
     const r = await fetch(path, { credentials: 'same-origin' })
     if (r.status === 401) { notifyAuthRequired?.(); return null }
+    // First run (no users yet): auth.js answers every /api call with 503
+    // { setupRequired: true } — show the in-app SetupScreen.
+    if (r.status === 503) {
+      const j = await r.json().catch(() => null)
+      if (j?.setupRequired) notifySetupRequired?.()
+      return null
+    }
     const j = await r.json(); return j.success ? j.data : null
   } catch { return null }
 }
@@ -26,16 +36,24 @@ export function useLSH() {
   const [platforms, setPlatforms] = useState({})
   const [roomsMeta, setRoomsMeta] = useState({})
   const [authRequired, setAuthRequired] = useState(false)
+  const [setupRequired, setSetupRequired] = useState(false)
   const [scenes, setScenes] = useState([])
 
   useEffect(() => {
     notifyAuthRequired = () => setAuthRequired(true)
-    return () => { notifyAuthRequired = null }
+    notifySetupRequired = () => setSetupRequired(true)
+    return () => { notifyAuthRequired = null; notifySetupRequired = null }
   }, [])
 
   // After the in-place sign-in: full reload (stays inside the PWA scope) so
   // the socket re-handshakes with the fresh session cookie.
-  const onLogin = useCallback(() => { window.location.reload() }, [])
+  // `?next=` is set by the server when a non-dashboard page (e.g. /api-docs)
+  // bounced an unauthenticated visitor here — go back there afterwards.
+  const onLogin = useCallback(() => {
+    const next = new URLSearchParams(window.location.search).get('next')
+    if (next && next.startsWith('/') && !next.startsWith('//')) window.location.href = next
+    else window.location.reload()
+  }, [])
 
   const liveRef = useRef(false) // socket connected → device list stays fresh via events
 
@@ -57,6 +75,7 @@ export function useLSH() {
       loads:     status.acLoads,
       solaredge: status.solaredge,
       relays:    status.relays,
+      tariff:    status.tariff,
     })
     if (conn)  setConn(conn)
     if (devs)  setDevices(devs)
@@ -120,5 +139,17 @@ export function useLSH() {
     await fetch(`/api/automation/scenes/${id}/run`, { method: 'POST', credentials: 'same-origin' })
   }, [])
 
-  return { energy, devices, connection, connected, lastUpdate, platforms, roomsMeta, toggleRelay, authRequired, onLogin, scenes, runScene }
+  // OpenWeather's condition text arrives in English — show it in this
+  // browser's language. `raw` keeps the English original for code that
+  // pattern-matches it (weather icons). Recomputed when the language
+  // changes (App re-renders on lsh-lang-changed, so getLang() moves).
+  const lang = getLang()
+  const localizedDevices = useMemo(() => devices.map((d) => {
+    const cond = d.type === 'openweather' && d.readings?.condition
+    if (!cond || typeof cond.value !== 'string') return d
+    const raw = cond.raw ?? cond.value
+    return { ...d, readings: { ...d.readings, condition: { ...cond, raw, value: weatherText(raw, lang) } } }
+  }), [devices, lang])
+
+  return { energy, devices: localizedDevices, connection, connected, lastUpdate, platforms, roomsMeta, toggleRelay, authRequired, setupRequired, onLogin, scenes, runScene }
 }

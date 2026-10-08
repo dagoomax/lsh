@@ -18,6 +18,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const platformStatus = require('./platform-status');
 
 const OAUTH_FILE = path.join(__dirname, '..', 'persist', 'google-calendar-oauth.json');
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -127,6 +128,7 @@ class GoogleCalendarClient {
   }
 
   async _poll() {
+    if (!this.isConnected()) return;
     try {
       const token = await this.getToken();
       const calendarId = encodeURIComponent(this.config.calendarId || 'primary');
@@ -137,8 +139,10 @@ class GoogleCalendarClient {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
       this._events = (data.items || []).map((ev) => this._normalize(ev)).filter(Boolean);
+      platformStatus.set('google-calendar', true);
     } catch (err) {
       console.error(`[GoogleCalendar] Poll failed: ${err.message}`);
+      platformStatus.set('google-calendar', false);
     }
   }
 
@@ -147,7 +151,12 @@ class GoogleCalendarClient {
   }
 
   async start() {
-    if (this.isConnected()) await this._poll();
+    // Badge only once the account is connected (OAuth done) — client
+    // id/secret alone isn't a working setup.
+    if (this.isConnected()) {
+      platformStatus.set('google-calendar', false);
+      await this._poll();
+    }
     this._pollTimer = setInterval(() => this._poll(), POLL_MS);
   }
 

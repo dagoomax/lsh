@@ -115,7 +115,7 @@ Point Loxone Config's import (or a periodic fetch, if you're scripting the impor
 
 `icon` (an emoji) and `color` customize the tile itself. All three verified live — registering with the correct sensor shape (`type:'range'`/`sensorType:'switch'`/`raw:true` respectively) and icon/color, confirmed via `GET /api/devices`.
 
-Wire any computation into it — an `http` node scraping a price, a `condition`/`extract` chain, an aggregate from a `sync` fan-out — and the result becomes a first-class dashboard tile with no code change needed. The vanilla Settings → Flows editor (`public/flows.js`) has a **Kind** dropdown plus **Icon**/**Color** fields on the Store node for building these visually.
+Wire any computation into it — an `http` node scraping a price, a `condition`/`extract` chain, an aggregate from a `sync` fan-out — and the result becomes a first-class dashboard tile with no code change needed. The Flows editor (`/react/flows`, `react-dashboard/src/components/pages/`) has a **Kind** dropdown plus **Icon**/**Color** fields on the Store node for building these visually.
 
 **Example — all three kinds, driven by real triggers** (verified live against this repo's own running instance: Solar Power tracked real Victron PV output, AC Power tracked a real AuxAir unit's power state including a live on→off change mid-test, System Status held its literal value):
 
