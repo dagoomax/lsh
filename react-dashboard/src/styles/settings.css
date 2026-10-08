@@ -374,3 +374,9 @@ select.stg-input { cursor: pointer; }
 .stg-mod-chip.ok   { color: var(--green);  background: color-mix(in srgb, var(--green) 14%, transparent); }
 .stg-mod-chip.warn { color: var(--orange); background: color-mix(in srgb, var(--orange) 14%, transparent); }
 .stg-mod-chip.cfg  { color: var(--accent); background: var(--accent-dim); }
+
+/* Victron Bluetooth scan results (VictronBleSection) */
+.stg-ble-scan { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 12px; }
+.stg-ble-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--white-04); }
+.stg-ble-name { font-weight: 600; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.stg-ble-chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent-dim); color: var(--accent); }

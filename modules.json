@@ -1092,7 +1092,8 @@
       "when": "(config.victronBle?.devices?.length)",
       "files": [
         "src/victron-ble-client.js",
-        "src/victron-ble.js"
+        "src/victron-ble.js",
+        "src/victron-models.json"
       ],
       "deps": {
         "dbus-next": "^0.10.2"

@@ -24,6 +24,34 @@ export default function VictronBleSection({ config, reload }) {
   const [feedDashboard, setFeedDashboard] = useState(cfg.feedDashboard !== false)
   const [status, setStatus] = useState(null)
   const save = useSettingsSave('/api/settings/victron-ble')
+  const [scan, setScan] = useState({ busy: false, results: null, error: null, needsModule: false, showAll: false })
+
+  const runScan = async () => {
+    setScan((x) => ({ ...x, busy: true, error: null, needsModule: false }))
+    try {
+      const r = await fetch('/api/victron-ble/scan', {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ seconds: 10 }),
+      })
+      const j = await r.json()
+      if (!j.success) return setScan((x) => ({ ...x, busy: false, error: j.error, needsModule: !!j.needsModule }))
+      setScan((x) => ({ ...x, busy: false, results: j.data }))
+    } catch (e) {
+      setScan((x) => ({ ...x, busy: false, error: e.message }))
+    }
+  }
+
+  const installModule = async () => {
+    setScan((x) => ({ ...x, busy: true, error: 'Installing the Victron Bluetooth module…' }))
+    const r = await fetch('/api/modules/victron-ble/install', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then((x) => x.json()).catch((e) => ({ success: false, error: e.message }))
+    if (!r.success) return setScan((x) => ({ ...x, busy: false, error: r.error }))
+    runScan()
+  }
+
+  const addFromScan = (d) => {
+    if (devices.some((x) => String(x.mac || '').toUpperCase() === d.mac)) return
+    setDevices([...devices, { name: d.victron?.model || d.name || d.mac, mac: d.mac, bindkey: '' }])
+  }
 
   useEffect(() => {
     const load = () => fetch('/api/victron-ble/status', { credentials: 'include' })
@@ -49,6 +77,18 @@ export default function VictronBleSection({ config, reload }) {
             </span>
           )
         }}/>
+      <div className="stg-actions" style={{ marginTop: 4 }}>
+        <Button variant="secondary" busy={scan.busy} onClick={runScan}>📡 Scan for Bluetooth devices</Button>
+        {scan.needsModule && <Button variant="primary" busy={scan.busy} onClick={installModule}>Install module</Button>}
+        {scan.results && (
+          <label className="stg-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input type="checkbox" checked={scan.showAll} onChange={(e) => setScan((x) => ({ ...x, showAll: e.target.checked }))}/>
+            show non-Victron devices
+          </label>
+        )}
+      </div>
+      {scan.error && <div className={`stg-banner ${scan.busy ? 'ok' : 'err'}`}>{scan.busy ? '' : '✗ '}{scan.error}</div>}
+      {scan.results && <ScanResults results={scan.results} showAll={scan.showAll} devices={devices} onAdd={addFromScan}/>}
       <Field label="Bluetooth adapter" value={adapter} onChange={setAdapter} placeholder="hci0"/>
       <Toggle label="Feed the Energy dashboard" checked={feedDashboard} onChange={setFeedDashboard}
         hint="battery SOC/voltage/current, solar power and yield"/>
@@ -61,5 +101,38 @@ export default function VictronBleSection({ config, reload }) {
         <ResultBanner result={save.result}/>
       </div>
     </SettingsCard>
+  )
+}
+
+function ScanResults({ results, showAll, devices, onAdd }) {
+  const configured = new Set(devices.map((d) => String(d.mac || '').toUpperCase()))
+  const victron = results.filter((d) => d.victron)
+  const shown = showAll ? results : victron
+  return (
+    <div className="stg-ble-scan">
+      <div className="stg-hint">
+        {results.length} Bluetooth device{results.length === 1 ? '' : 's'} in range · {victron.length} Victron
+        {!victron.length && ' — make sure Instant readout is enabled and VictronConnect is disconnected'}
+      </div>
+      {shown.map((d) => (
+        <div key={d.mac} className="stg-ble-row">
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="stg-ble-name">
+              {d.victron ? (d.victron.model || 'Victron device') : (d.name || 'Unnamed device')}
+              {d.victron?.kindLabel && <span className="stg-ble-chip">{d.victron.kindLabel}</span>}
+            </div>
+            <div className="stg-hint">
+              {d.mac} · {d.rssi} dBm{d.name && d.victron ? ` · ${d.name}` : ''}
+              {d.victron?.keyStartsWith && ` · key starts with ${d.victron.keyStartsWith}`}
+              {d.victron?.note && ` · ${d.victron.note}`}
+              {!d.victron && d.manufacturers.length > 0 && ` · mfr ${d.manufacturers.join(', ')}`}
+            </div>
+          </div>
+          {d.victron && (configured.has(d.mac)
+            ? <span className="stg-hint">added</span>
+            : <Button variant="secondary" onClick={() => onAdd(d)}>+ Add</Button>)}
+        </div>
+      ))}
+    </div>
   )
 }

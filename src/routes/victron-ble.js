@@ -13,6 +13,27 @@ module.exports = function register(router, ctx) {
     res.json({ success: true, data: c ? c.getStatus() : null });
   });
 
+  // Live BLE scan from this host (lists nearby devices, Victron first). Lives
+  // in the victron-ble module, so it needs that module (+ dbus-next) on disk —
+  // the UI offers to install it when it isn't.
+  router.post('/victron-ble/scan', requireAdmin, async (req, res) => {
+    let scan;
+    try {
+      ({ scan } = require('../victron-ble-client'));
+      require.resolve('dbus-next');
+    } catch {
+      return res.status(409).json({ success: false, needsModule: true, error: 'The Victron Bluetooth module is not installed on this LSH host' });
+    }
+    try {
+      const adapter = readConfigFile().victronBle?.adapter || 'hci0';
+      const data = await scan({ adapter, seconds: req.body?.seconds });
+      res.json({ success: true, data });
+    } catch (err) {
+      const hint = /AccessDenied|not allowed/i.test(err.message) ? ' — add the LSH user to the `bluetooth` group and restart LSH' : '';
+      res.status(500).json({ success: false, error: err.message + hint });
+    }
+  });
+
   router.post('/settings/victron-ble', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const prev = current.victronBle || {};

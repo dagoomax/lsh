@@ -1,7 +1,11 @@
 'use strict';
 
 const platformStatus = require('./platform-status');
-const { parseAdvertisement, sensorsFor, normalizeMac, KINDS, VICTRON_MANUFACTURER_ID } = require('./victron-ble');
+const { parseAdvertisement, sensorsFor, normalizeMac, KINDS, VICTRON_MANUFACTURER_ID, RECORDS } = require('./victron-ble');
+// Product id (hex, 4 digits) → model name; from the public-domain
+// keshavdv/victron-ble MODEL_ID_MAPPING.
+const MODELS = require('./victron-models.json');
+const modelName = (pid) => MODELS[pid.toString(16).padStart(4, '0')] || null;
 
 // Victron devices over Bluetooth, read directly by the LSH host — meant for
 // the Arduino UNO Q (its Linux side has Bluetooth on board). Listens to BlueZ
@@ -83,7 +87,7 @@ class VictronBleClient {
     return {
       adapter: this._adapterPath,
       devices: [...this._byMac.values()].map((d) => ({
-        name: d.name, mac: d.mac, kind: d.kind, lastSeen: d.lastAt || null, error: d.warned,
+        name: d.name, mac: d.mac, kind: d.kind, model: d.model || null, lastSeen: d.lastAt || null, error: d.warned,
       })),
     };
   }
@@ -185,7 +189,8 @@ class VictronBleClient {
     const newPaths = Object.keys(r.values).map((t) => (t === 'ALARM_ACTIVE' ? 'alarm_active' : t.toLowerCase()))
       .filter((p) => !dev.sensorPaths.has(p));
     if (dev.kind !== r.kind || newPaths.length) {
-      if (!dev.kind) console.log(`[VictronBLE] ${dev.name}: ${KINDS[r.kind]?.label || r.kind} (product 0x${r.productId.toString(16)})`);
+      if (!dev.kind) console.log(`[VictronBLE] ${dev.name}: ${modelName(r.productId) || KINDS[r.kind]?.label || r.kind} (product 0x${r.productId.toString(16)})`);
+      dev.model = modelName(r.productId);
       dev.kind = r.kind;
       const key = `victronble/${dev.id}`;
       const sensors = sensorsFor(r.values).filter((s) => !dev.sensorPaths.has(s.path));
@@ -259,4 +264,57 @@ class VictronBleClient {
   }
 }
 
+// ── One-off scan (Settings → Victron Bluetooth → Scan) ──────────────────────
+// Runs BlueZ discovery for `seconds` and lists the LE devices seen, Victron
+// ones identified from the unencrypted part of their advertisement (record
+// type + product id — no key needed). Independent of a running client: BlueZ
+// discovery sessions are per D-Bus connection, so this doesn't disturb it.
+async function scan({ adapter = 'hci0', seconds = 10 } = {}) {
+  if (process.platform !== 'linux') throw new Error('Bluetooth scanning needs Linux + BlueZ (e.g. the Arduino UNO Q)');
+  const dbus = require('dbus-next');
+  const { Variant } = dbus;
+  const bus = dbus.systemBus();
+  const adapterPath = `/org/bluez/${adapter}`;
+  try {
+    const adapterObj = await bus.getProxyObject('org.bluez', adapterPath);
+    const ad = adapterObj.getInterface('org.bluez.Adapter1');
+    const props = adapterObj.getInterface('org.freedesktop.DBus.Properties');
+    if (!(await props.Get('org.bluez.Adapter1', 'Powered')).value) await props.Set('org.bluez.Adapter1', 'Powered', new Variant('b', true));
+    await ad.SetDiscoveryFilter({ Transport: new Variant('s', 'le') });
+    try { await ad.StartDiscovery(); } catch (err) { if (!/InProgress/i.test(err.type || err.message || '')) throw err; }
+    await new Promise((r) => setTimeout(r, Math.min(Math.max(Number(seconds) || 10, 3), 30) * 1000));
+    const om = (await bus.getProxyObject('org.bluez', '/')).getInterface('org.freedesktop.DBus.ObjectManager');
+    const objects = await om.GetManagedObjects();
+    await ad.StopDiscovery().catch(() => {});
+    const out = [];
+    for (const [path, ifaces] of Object.entries(objects)) {
+      const d = ifaces['org.bluez.Device1'];
+      if (!d || !path.startsWith(adapterPath + '/')) continue;
+      if (d.RSSI === undefined) continue; // cached from an earlier session, not seen now
+      const mfr = d.ManufacturerData?.value || {};
+      const vic = mfr[VICTRON_MANUFACTURER_ID] ?? mfr[String(VICTRON_MANUFACTURER_ID)];
+      const bytes = vic ? Buffer.from(vic.value ?? vic) : null;
+      let victron = null;
+      if (bytes && bytes.length >= 8 && bytes[0] === 0x10) {
+        const pid = bytes.readUInt16LE(2);
+        const kind = RECORDS[bytes[4]]?.[0] || null;
+        victron = { productId: `0x${pid.toString(16).padStart(4, '0')}`, model: modelName(pid), kind, kindLabel: KINDS[kind]?.label || null, keyStartsWith: bytes[7].toString(16).padStart(2, '0') };
+      } else if (bytes) {
+        victron = { productId: null, model: null, kind: null, kindLabel: null, note: 'Victron device without Instant Readout enabled' };
+      }
+      out.push({
+        mac: normalizeMac(d.Address?.value),
+        name: d.Name?.value || d.Alias?.value || null,
+        rssi: d.RSSI.value,
+        manufacturers: Object.keys(mfr).map((k) => `0x${Number(k).toString(16).padStart(4, '0')}`),
+        victron,
+      });
+    }
+    return out.sort((a, b) => (!!b.victron - !!a.victron) || b.rssi - a.rssi);
+  } finally {
+    bus.disconnect();
+  }
+}
+
 module.exports = VictronBleClient;
+module.exports.scan = scan;
