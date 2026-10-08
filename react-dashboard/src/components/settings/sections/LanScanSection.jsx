@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SettingsCard, Button } from '../primitives'
 import LanTopology from '../LanTopology'
+import LanDevices, { TagChips } from '../LanDevices'
 
 // Settings → System → LAN scan — what's on this LSH host's local network
 // (tool module lsh-lan, installed from here on first use). Click a host for
@@ -18,7 +19,8 @@ export default function LanScanSection() {
   const [data, setData] = useState(null)
   const [open, setOpen] = useState(null)
   const [filter, setFilter] = useState('')
-  const [view, setView] = useState('list') // 'list' | 'topology'
+  const [view, setView] = useState('list') // 'list' | 'topology' | 'devices'
+  const [devicesKey, setDevicesKey] = useState(0)
 
   const post = (url, body) => fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
     .then((r) => r.json()).catch((e) => ({ success: false, error: e.message }))
@@ -29,6 +31,7 @@ export default function LanScanSection() {
     setBusy(false)
     if (!j.success) { setError(j.error); setNeedsModule(!!j.needsModule); return }
     setData(j.data)
+    setDevicesKey((k) => k + 1)
   }
 
   const install = async () => {
@@ -48,17 +51,23 @@ export default function LanScanSection() {
       <div className="stg-actions" style={{ marginTop: 0 }}>
         <Button variant="secondary" busy={busy} onClick={run}>🛰 {data ? 'Scan again' : 'Scan network'}</Button>
         {needsModule && <Button variant="primary" busy={busy} onClick={install}>Install module</Button>}
-        {data && (
-          <div className="lan-viewtoggle">
-            {['list', 'topology'].map((v) => (
-              <button key={v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>{v === 'list' ? 'List' : 'Topology'}</button>
-            ))}
-          </div>
-        )}
+        <div className="lan-viewtoggle">
+          {['list', 'topology', 'devices'].map((v) => (
+            <button key={v} className={view === v ? 'active' : ''} disabled={v !== 'devices' && !data}
+              onClick={() => setView(v)}>{{ list: 'List', topology: 'Topology', devices: 'Saved devices' }[v]}</button>
+          ))}
+        </div>
         {data && view === 'list' && <input className="stg-input" style={{ maxWidth: 260 }} placeholder="Filter…" value={filter} onChange={(e) => setFilter(e.target.value)}/>}
       </div>
       {busy && !error && <div className="stg-hint" style={{ marginTop: 6 }}>Scanning {data ? '' : 'the network '}— ARP, TCP, mDNS, UPnP…</div>}
       {error && <div className={`stg-banner ${busy ? 'ok' : 'err'}`} style={{ marginTop: 6 }}>{busy ? '' : '✗ '}{error}</div>}
+      {view === 'devices' && (
+        <>
+          {data?.newDevices > 0 && <div className="stg-banner ok" style={{ marginTop: 6 }}>{data.newDevices} new device{data.newDevices === 1 ? '' : 's'} since the last scan</div>}
+          <LanDevices refreshKey={devicesKey} onInspect={(ip) => { setOpen(ip); setView(data ? 'list' : 'devices') }}/>
+          {open && !data && <LanDeepDive key={open} ip={open} post={post}/>}
+        </>
+      )}
       {data && view === 'topology' && (
         <>
           <LanTopology data={data} selected={open} onSelect={(ip) => setOpen(open === ip ? null : ip)}
@@ -70,6 +79,8 @@ export default function LanScanSection() {
           <div className="stg-hint">
             {data.hosts.length} device{data.hosts.length === 1 ? '' : 's'} on {data.networks.map((n) => `${n.cidr} (${n.iface})`).join(', ')} · {Math.round(data.durationMs / 1000)} s
             {' · '}{data.hosts.filter((h) => h.id?.integration).length} with an LSH integration
+            {data.newDevices > 0 && <> · <b className="lan-new-count" onClick={() => setView('devices')}>{data.newDevices} new</b></>}
+            {data.baseline && ' · first scan saved as the baseline'}
           </div>
           {hosts.map((h) => (
             <div key={h.ip}>
@@ -81,6 +92,9 @@ export default function LanScanSection() {
                     {h.self && <span className="stg-ble-chip">this host</span>}
                     {h.id?.label && h.name !== h.id.label && <span className="stg-ble-chip">{h.id.label}</span>}
                     {h.id?.integration && <span className="stg-ble-chip lan-int">LSH: {h.id.integration}</span>}
+                    {h.saved?.label && h.saved.label !== h.name && <span className="stg-ble-chip">“{h.saved.label}”</span>}
+                    <TagChips tags={h.saved?.tags}/>
+                    {h.saved?.monitored && <span title="Monitored">🔔</span>}
                   </div>
                   <div className="stg-hint">
                     {h.ip}{h.mac ? ` · ${h.mac}` : ''}{h.vendor ? ` · ${h.vendor}` : ''}{h.latency ? ` · ${h.latency} ms` : ''}

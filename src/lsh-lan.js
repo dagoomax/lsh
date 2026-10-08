@@ -199,8 +199,10 @@ async function mdnsDiscover(seconds = 4) {
     if (!ip) continue
     const e = entry(ip)
     e.hostname = e.hostname || target.replace(/\.local\.?$/, '')
-    const type = instance.split('.').slice(1, 3).join('.')
-    e.services.push({ type, name: cleanInstance(instance.split('._')[0]), port, txt: txts.get(instance) || {} })
+    // "<name>.<_service>._tcp.local" — the name itself may contain dots
+    const m = /^(.*)\.(_[^.]+\._(?:tcp|udp))\.local\.?$/.exec(instance)
+    const type = m ? m[2] : instance.split('.').slice(1, 3).join('.')
+    e.services.push({ type, name: cleanInstance(m ? m[1] : instance.split('._')[0]), port, txt: txts.get(instance) || {} })
   }
   for (const [host, ip] of hostIp) { const e = entry(ip); e.hostname = e.hostname || host.replace(/\.local\.?$/, '') }
   return byIp
@@ -483,4 +485,10 @@ function pickHeaders(h) {
   return out
 }
 
-module.exports = { scan, inspect, localNetworks, identify, vendorOf, cleanInstance, defaultGateway, PORT_NAMES }
+module.exports = {
+  scan, inspect, localNetworks, identify, vendorOf, cleanInstance, defaultGateway, PORT_NAMES,
+  // used by lsh-lan-monitor.js
+  _tcpProbe: tcpProbe, _arpTable: arpTable, _arpPoke: (ip) => arpSweep([ip]),
+  // saved devices (bundled with this module)
+  inventory: require('./lsh-lan-inventory'),
+}

@@ -265,6 +265,22 @@
       ],
       "deps": {}
     },
+    "lsh-lan-monitor": {
+      "entry": "src/lsh-lan-monitor.js",
+      "configKeys": [
+        "lshLan"
+      ],
+      "when": "(config.lshLan?.enabled)",
+      "files": [
+        "src/lsh-lan-inventory.js",
+        "src/lsh-lan-monitor.js",
+        "src/lsh-lan.js"
+      ],
+      "deps": {
+        "oui-data": "^2.1.35",
+        "multicast-dns": "^7.2.5"
+      }
+    },
     "tuya-ipc-watchdog": {
       "entry": "src/tuya-ipc-watchdog.js",
       "configKeys": [
@@ -1107,6 +1123,7 @@
       "when": null,
       "tool": true,
       "files": [
+        "src/lsh-lan-inventory.js",
         "src/lsh-lan.js"
       ],
       "deps": {

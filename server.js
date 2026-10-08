@@ -364,6 +364,13 @@ async function main() {
   const AutomationEngine = tryRequire('./src/automation-engine');
   if (AutomationEngine) automation = new AutomationEngine(store, sensorRegistry, relayController, config);
 
+  // LAN device monitor (Settings → System → LAN scan → Devices): presence of
+  // monitored devices + optional scheduled scans that tag new devices.
+  if (config.lshLan?.enabled) {
+    const lanMonitorMod = tryRequire('./src/lsh-lan-monitor');
+    if (lanMonitorMod) lanMonitorMod.getMonitor({ config, store, sensorRegistry, automation }).start();
+  }
+
   // Daily check of the Tuya cloud login behind tuya-ipc-terminal (Tuya cameras)
   if (config.tuyaIpc) {
     const TuyaIpcWatchdog = tryRequire('./src/tuya-ipc-watchdog');
