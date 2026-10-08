@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button } from './primitives'
+import BleDeepDive from './BleDeepDive'
 
 // Bluetooth LE scan of the LSH host (POST /api/lsh-ble/scan — lives in the
 // lsh-ble module, so it offers to install that module when it's missing).
@@ -21,6 +22,7 @@ export default function BleScanner({ victronOnly = false, configuredMacs = new S
   const [error, setError] = useState(null)
   const [needsModule, setNeedsModule] = useState(false)
   const [showAll, setShowAll] = useState(!victronOnly)
+  const [open, setOpen] = useState(null) // MAC of the device being inspected
 
   const run = async () => {
     setBusy(true); setError(null); setNeedsModule(false)
@@ -69,7 +71,8 @@ export default function BleScanner({ victronOnly = false, configuredMacs = new S
             {victronOnly && !victron.length && ' — make sure Instant readout is enabled and VictronConnect is disconnected'}
           </div>
           {shown.map((d) => (
-            <div key={d.mac} className="stg-ble-row">
+            <div key={d.mac}>
+            <div className={`stg-ble-row${open === d.mac ? ' open' : ''}`} onClick={() => setOpen(open === d.mac ? null : d.mac)} title="Deep dive">
               <span className="stg-ble-rssi" title={`${d.rssi} dBm`}>{bars(d.rssi)}</span>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="stg-ble-name">
@@ -85,7 +88,10 @@ export default function BleScanner({ victronOnly = false, configuredMacs = new S
               </div>
               {d.victron && onAdd && (configuredMacs.has(d.mac)
                 ? <span className="stg-hint">added</span>
-                : <Button variant="secondary" onClick={() => onAdd(d)}>+ Add</Button>)}
+                : <span onClick={(e) => e.stopPropagation()}><Button variant="secondary" onClick={() => onAdd(d)}>+ Add</Button></span>)}
+              <span className="stg-ble-caret">{open === d.mac ? '▾' : '▸'}</span>
+            </div>
+            {open === d.mac && <BleDeepDive mac={d.mac}/>}
             </div>
           ))}
         </div>

@@ -320,3 +320,5 @@ async function scan({ adapter = 'hci0', seconds = 10 } = {}) {
 
 module.exports = LshBleClient;
 module.exports.scan = scan;
+// Deep dive on one device (Settings → Bluetooth scan → click a device)
+module.exports.inspect = require('./lsh-ble-inspect').inspect;

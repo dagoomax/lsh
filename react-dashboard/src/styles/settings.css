@@ -381,3 +381,17 @@ select.stg-input { cursor: pointer; }
 .stg-ble-name { font-weight: 600; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .stg-ble-chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent-dim); color: var(--accent); }
 .stg-ble-rssi { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--green); letter-spacing: -1px; flex-shrink: 0; }
+.stg-ble-row { cursor: pointer; transition: background 0.15s; }
+.stg-ble-row:hover, .stg-ble-row.open { background: var(--white-08); }
+.stg-ble-caret { color: var(--text3); font-size: 12px; flex-shrink: 0; }
+.ble-dd { margin: 4px 0 10px 18px; padding: 12px 14px; border-left: 2px solid var(--accent-dim); display: flex; flex-direction: column; gap: 12px; }
+.ble-dd-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 4px; }
+.ble-dd-kv { display: grid; grid-template-columns: 130px 1fr; gap: 10px; font-size: 13px; padding: 2px 0; overflow-wrap: anywhere; }
+.ble-dd-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; overflow-wrap: anywhere; }
+.ble-dd-decoded { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--white-04); }
+.ble-dd-fmt { font-weight: 700; font-size: 12.5px; color: var(--accent); margin-bottom: 2px; }
+.ble-dd-svc { margin-top: 6px; }
+.ble-dd-svc-name { font-weight: 600; font-size: 13px; }
+.ble-dd-char { margin: 3px 0 3px 14px; font-size: 12.5px; }
+.ble-dd-val { margin-left: 14px; }
+@media (max-width: 720px) { .ble-dd-kv { grid-template-columns: 1fr; gap: 0; } .ble-dd { margin-left: 4px; } }

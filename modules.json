@@ -1092,6 +1092,7 @@
       "when": "(config.lshBle?.devices?.length)",
       "files": [
         "src/lsh-ble-client.js",
+        "src/lsh-ble-inspect.js",
         "src/lsh-ble-models.json",
         "src/lsh-ble.js"
       ],

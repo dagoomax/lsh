@@ -34,6 +34,28 @@ module.exports = function register(router, ctx) {
     }
   });
 
+  // Deep dive on one device: watch its advertisements for a few seconds,
+  // decode what's decodable, optionally connect and read GATT (read-only).
+  router.post('/lsh-ble/inspect', requireAdmin, async (req, res) => {
+    let inspect;
+    try {
+      ({ inspect } = require('../lsh-ble-client'));
+      require.resolve('dbus-next');
+    } catch {
+      return res.status(409).json({ success: false, needsModule: true, error: 'The LSH BLE module is not installed on this LSH host' });
+    }
+    const cfg = readConfigFile().lshBle || {};
+    const mac = String(req.body?.mac || '').trim().toUpperCase();
+    // If this MAC is a configured Victron device, decrypt its readings too.
+    const victronKey = (cfg.devices || []).find((d) => String(d.mac).toUpperCase() === mac)?.bindkey || null;
+    try {
+      const data = await inspect({ adapter: cfg.adapter || 'hci0', mac, seconds: req.body?.seconds, gatt: !!req.body?.gatt, victronKey });
+      res.json({ success: true, data });
+    } catch (err) {
+      res.status(/Invalid MAC/.test(err.message) ? 400 : 500).json({ success: false, error: err.message });
+    }
+  });
+
   router.post('/settings/lsh-ble', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const prev = current.lshBle || {};

@@ -167,3 +167,26 @@ test('client: decoded adverts become an LSH device and feed the energy dashboard
   assert.equal(bad.handleAdvertisement('AA:BB:CC:DD:EE:09', Buffer.from('100289a302b040af925d09a4d89aa0128bdef48c6298a9', 'hex')), false);
   assert.match(bad.getStatus().devices[0].error, /bindkey mismatch/);
 });
+
+test('inspect decoders: iBeacon, Eddystone-URL, RuuviTag, Victron header, address kinds', () => {
+  const { decodeManufacturer, decodeServiceData, addressKind } = require('../src/lsh-ble-inspect');
+  const ib = decodeManufacturer(0x004c, Buffer.from('0215' + 'e2c56db5dffb48d2b060d0f5a71096e0' + '0001' + '0002' + 'c5', 'hex'))[0];
+  assert.equal(ib.format, 'iBeacon');
+  assert.equal(ib.fields.UUID, 'e2c56db5-dffb-48d2-b060-d0f5a71096e0');
+  assert.equal(ib.fields.Major, 1);
+  assert.equal(ib.fields['Measured power'], '-59 dBm @ 1 m');
+  const url = decodeServiceData('0000feaa-0000-1000-8000-00805f9b34fb', Buffer.from('10ee03676f6f676c6507', 'hex'))[0];
+  assert.equal(url.fields.URL, 'https://google.com');
+  // Ruuvi RAWv2 reference vector (docs.ruuvi.com dataformat 5, "valid data")
+  const ru = decodeManufacturer(0x0499, Buffer.from('0512FC5394C37C0004FFFC040CAC364200CDCBB8334C884F', 'hex'))[0];
+  assert.equal(ru.fields.Temperature, '24.30 °C');
+  assert.equal(ru.fields.Humidity, '53.49 %');
+  assert.equal(ru.fields.Pressure, '1000.44 hPa');
+  assert.equal(ru.fields.Battery, '2.977 V');
+  assert.equal(ru.fields['TX power'], '4 dBm');
+  const vic = decodeManufacturer(0x02e1, Buffer.from('100289a302b040af925d09a4d89aa0128bdef48c6298a9', 'hex'), 'aff4d0995b7d1e176c0c33ecb9e70dcd')[0];
+  assert.equal(vic.fields.Model, 'SmartShunt 500A/50mV');
+  assert.equal(vic.fields['state of charge'], 50);
+  assert.equal(addressKind('C1:00:00:00:00:00'), 'static random');
+  assert.match(addressKind('5E:00:00:00:00:00'), /resolvable/);
+});
