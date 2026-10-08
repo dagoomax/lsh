@@ -204,3 +204,14 @@ test('lsh-lan: identify() and private-MAC vendor detection', () => {
   assert.equal(vendorOf(null), null);
   assert.ok(Array.isArray(localNetworks()));
 });
+
+test('lsh-lan: Bonjour instance names are cleaned up', () => {
+  const { cleanInstance, identify } = require('../src/lsh-lan');
+  assert.equal(cleanInstance('7035606331A2\\064Salon Apple TV'), 'Salon Apple TV');
+  assert.equal(cleanInstance('70-35-60-63.1 Kuchnia'), 'Kuchnia');
+  assert.equal(cleanInstance('\\197\\129azienka'), 'Łazienka');
+  assert.equal(cleanInstance('70-35-60-63.1 Łazienka Bartek'), 'Łazienka Bartek');
+  const base = { ports: [], mdns: null, ssdp: null, http: {}, vendor: null };
+  assert.equal(identify({ ...base, ports: [8123], mdns: { services: [{ type: '_hap._tcp', name: 'Dom' }] } }).kind, 'homeassistant');
+  assert.equal(identify({ ...base, mdns: { hostname: 'Miele-001', services: [{ type: '_mieleathome._tcp', name: 'Miele G7360' }] } }).integration, 'miele');
+});

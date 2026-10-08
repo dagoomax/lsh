@@ -58,7 +58,8 @@ function vendorOf(mac) {
   if (!mac) return null
   const first = parseInt(mac.slice(0, 2), 16)
   if (first & 0x02) return 'Private / randomised MAC'
-  if (!OUI) { try { OUI = require('oui-data') } catch { OUI = {} } }
+  // Not cached on failure: the module may be installed while LSH runs.
+  if (!OUI) { try { OUI = require('oui-data') } catch { return null } }
   const v = OUI[mac.replace(/[:-]/g, '').slice(0, 6).toUpperCase()]
   return v ? v.split('\n')[0].trim() : null
 }
@@ -176,10 +177,23 @@ async function mdnsDiscover(seconds = 4) {
     const e = entry(ip)
     e.hostname = e.hostname || target.replace(/\.local\.?$/, '')
     const type = instance.split('.').slice(1, 3).join('.')
-    e.services.push({ type, name: instance.split('._')[0].replace(/\\032/g, ' '), port, txt: txts.get(instance) || {} })
+    e.services.push({ type, name: cleanInstance(instance.split('._')[0]), port, txt: txts.get(instance) || {} })
   }
   for (const [host, ip] of hostIp) { const e = entry(ip); e.hostname = e.hostname || host.replace(/\.local\.?$/, '') }
   return byIp
+}
+
+// DNS-SD instance name: decode \DDD escapes; AirPlay/RAOP prefixes the
+// device MAC ("7035606331A2@Kitchen") — keep just the name.
+function cleanInstance(name) {
+  const str = String(name)
+  // \DDD escapes are UTF-8 bytes; names without escapes are already decoded.
+  const decoded = /\\\d{3}/.test(str)
+    ? Buffer.from(str.replace(/\\(\d{3})/g, (_, d) => String.fromCharCode(Number(d))), 'latin1').toString('utf8')
+    : str
+  return decoded.replace(/^[0-9A-F]{12}@/i, '') // RAOP: MAC@Name
+    .replace(/^\d{2}-\d{2}-\d{2}-\d{2}\.\d+\s+/, '') // _sleep-proxy: "70-35-60-63.1 Name"
+
 }
 
 // ── SSDP / UPnP ─────────────────────────────────────────────────────────────
@@ -274,9 +288,13 @@ function identify(h) {
   if (svc('_googlecast') || has(8009)) return { kind: 'cast', label: 'Google Cast device', integration: 'googlehome' }
   if (svc('_androidtvremote2') || has(6466)) return { kind: 'androidtv', label: 'Android / Google TV', integration: 'googletv' }
   if (svc('_airplay') || svc('_raop')) return { kind: 'airplay', label: 'AirPlay device', integration: 'airplay' }
+  if (has(8123) || svc('_home-assistant') || /home assistant/.test(title)) return { kind: 'homeassistant', label: 'Home Assistant', integration: null }
+  const names = `${h.mdns?.services?.map((x) => x.name).join(' ') || ''} ${h.mdns?.hostname || ''} ${h.ssdp?.description?.manufacturer || ''}`.toLowerCase()
+  if (/miele/.test(names) || /miele/.test(vendor)) return { kind: 'appliance', label: 'Miele appliance', integration: 'miele' }
+  if (/tado/.test(names)) return { kind: 'climate', label: 'tado bridge', integration: null }
+  if (/sensibo/.test(names)) return { kind: 'climate', label: 'Sensibo AC controller', integration: null }
   if (svc('_hap')) return { kind: 'homekit', label: 'HomeKit accessory', integration: null }
   if (svc('_matter') || has(5540)) return { kind: 'matter', label: 'Matter device', integration: 'matter' }
-  if (has(8123) || /home assistant/.test(title)) return { kind: 'homeassistant', label: 'Home Assistant', integration: null }
   if (has(1880) && /node-red/.test(title)) return { kind: 'nodered', label: 'Node-RED', integration: null }
   if (has(1883)) return { kind: 'mqtt', label: 'MQTT broker', integration: 'mqtt' }
   if (has(3671)) return { kind: 'knx', label: 'KNX IP gateway', integration: 'knx' }
@@ -335,11 +353,19 @@ async function scan({ timeout = 600 } = {}) {
     h.http = await httpFingerprint(ip, ports)
     h.id = identify(h)
     h.name = h.http?.shelly?.name || h.http?.hue?.name || h.http?.sonos?.room || h.ssdp?.description?.friendlyName
-      || h.mdns?.services?.[0]?.name || h.mdns?.hostname || h.hostname || h.id.label || null
+      || bestServiceName(h.mdns) || h.mdns?.hostname || h.hostname || h.id.label || null
     return h
   })
   hosts.sort((a, b) => ipToInt(a.ip) - ipToInt(b.ip))
   return { networks: nets.map(({ iface, address, cidr }) => ({ iface, address, cidr })), scannedHosts: targets.length, durationMs: Date.now() - t0, hosts }
+}
+
+// The most descriptive Bonjour instance name: a device's own services before
+// generic ones (sleep proxy, device-info, workstation).
+function bestServiceName(m) {
+  const svcs = m?.services || []
+  const generic = /^_(sleep-proxy|device-info|workstation|companion-link|rdlink|http)\./
+  return (svcs.find((x) => !generic.test(x.type)) || svcs[0])?.name || null
 }
 
 // ── Deep dive ───────────────────────────────────────────────────────────────
@@ -426,4 +452,4 @@ function pickHeaders(h) {
   return out
 }
 
-module.exports = { scan, inspect, localNetworks, identify, vendorOf, PORT_NAMES }
+module.exports = { scan, inspect, localNetworks, identify, vendorOf, cleanInstance, PORT_NAMES }
