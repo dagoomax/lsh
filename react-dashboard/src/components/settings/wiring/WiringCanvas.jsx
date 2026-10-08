@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PART_PORTS, WIRE_COLORS } from './devices.js'
 import { usesPE, netKind } from './sim.js'
 
@@ -113,11 +113,31 @@ function railX(L, other, i, points) {
   return p.x < (p.box.x0 + p.box.x1) / 2 ? p.box.x0 - 10 - (i % 4) * 5 : p.box.x1 + 10 + (i % 4) * 5
 }
 
-export default function WiringCanvas({ device, scenario, wires, extras = [], highlight, sim, powered, switches, onPress, onRelease, onToggle, pending, onPort, onWireClick, interactive, shutterPos, draft, onCanvasPoint, onPointerMove, onExtraMove, onExtraRemove, draftColor }) {
+export default function WiringCanvas({ device, scenario, wires, extras = [], highlight, sim, powered, switches, onPress, onRelease, onToggle, pending, onPort, onWireClick, interactive, shutterPos, draft, onCanvasPoint, onPointerMove, onExtraMove, onExtraRemove, draftColor, zoomable }) {
   const base = useMemo(() => layout(device, scenario), [device, scenario])
   const L = useMemo(() => ({ ...base, wagos: Object.fromEntries(extras.filter((e) => e.kind === 'wago').map((e) => [e.id, wagoGeo(e)])) }), [base, extras])
   const svgRef = useRef(null)
   const drag = useRef(null)
+  const pan = useRef(null)
+  const FULL = { x: 0, y: 0, w: W, h: H }
+  const [vb, setVb] = useState(FULL)
+  useEffect(() => { if (!zoomable) setVb(FULL) }, [zoomable])
+  const zoom = (f, cx, cy) => setVb((v) => {
+    const w = Math.min(W * 1.2, Math.max(W / 6, v.w * f)), h = w * (H / W)
+    let px = v.x + v.w / 2, py = v.y + v.h / 2
+    if (cx != null) {
+      const svg = svgRef.current, pt = svg.createSVGPoint(); pt.x = cx; pt.y = cy
+      const p = pt.matrixTransform(svg.getScreenCTM().inverse()); px = p.x; py = p.y
+    }
+    return { x: px - (px - v.x) * (w / v.w), y: py - (py - v.y) * (h / v.h), w, h }
+  })
+  useEffect(() => {
+    if (!zoomable) return
+    const el = svgRef.current
+    const onWheel = (e) => { e.preventDefault(); zoom(e.deltaY > 0 ? 1.12 : 1 / 1.12, e.clientX, e.clientY) }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [zoomable])
   const toSvg = (e) => {
     const svg = svgRef.current
     const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY
@@ -144,14 +164,33 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], hig
   )
 
   return (
-    <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className={`wr-svg${draft ? ' drawing' : ''}`} role="img" aria-label="Wiring diagram"
+    <>
+    {zoomable && (
+      <div className="lan-zoom wr-zoom">
+        <button onClick={() => zoom(1 / 1.3)} title="Zoom in">+</button>
+        <button onClick={() => zoom(1.3)} title="Zoom out">−</button>
+        <button onClick={() => setVb(FULL)} title="Fit">⟲</button>
+      </div>
+    )}
+    <svg ref={svgRef} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} preserveAspectRatio="xMidYMid meet" className={`wr-svg${draft ? ' drawing' : ''}${zoomable ? ' zoomable' : ''}`} role="img" aria-label="Wiring diagram"
       onPointerMove={(e) => {
         if (drag.current) { const [x, y] = toSvg(e); onExtraMove?.(drag.current, x, y); return }
+        if (pan.current) {
+          const svg = svgRef.current, r = svg.getBoundingClientRect()
+          const scale = Math.min(r.width / pan.current.vb.w, r.height / pan.current.vb.h)
+          setVb({ ...pan.current.vb, x: pan.current.vb.x - (e.clientX - pan.current.x) / scale, y: pan.current.vb.y - (e.clientY - pan.current.y) / scale })
+          return
+        }
         if (draft) onPointerMove?.(toSvg(e))
       }}
-      onPointerUp={() => { drag.current = null }}
+      onPointerDown={(e) => {
+        if (zoomable && !draft && e.button === 0 && !e.target.closest('.wr-port, .wr-wire.clickable, .wr-key, .wr-wago, .wr-rail-hit')) pan.current = { x: e.clientX, y: e.clientY, vb }
+      }}
+      onPointerUp={() => { drag.current = null; pan.current = null }}
+      onPointerLeave={() => { drag.current = null; pan.current = null }}
       onContextMenu={(e) => { if (draft) { e.preventDefault(); onCanvasPoint?.(null) } }}>
-      {interactive && <rect x="0" y="0" width={W} height={H} fill="transparent" onClick={(e) => draft && onCanvasPoint?.(toSvg(e))}/>}
+      {(interactive || zoomable) && <rect x={-W} y={-H} width={W * 3} height={H * 3} fill="transparent" className={zoomable && !draft ? 'wr-pan' : undefined}
+        onClick={(e) => draft && onCanvasPoint?.(toSvg(e))}/>}
       <defs>
         <radialGradient id="wr-glow"><stop offset="0" stopColor="#ffe9a8" stopOpacity="0.95"/><stop offset="0.5" stopColor="#ffd60a" stopOpacity="0.55"/><stop offset="1" stopColor="#ffd60a" stopOpacity="0"/></radialGradient>
       </defs>
@@ -296,7 +335,7 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], hig
                 <line x1={x} x2={x} y1={y} y2={g.y0}/>
               </g>
             ))}
-            <text x={w.x} y={g.y0 + g.height - 6} className="wr-wago-label">{w.label ? `${w.label} · ` : ''}{w.model?.replace('WAGO ', '') || `${w.poles}-way`}</text>
+            <text x={w.x} y={g.y0 + g.height - 6} className="wr-wago-label">{w.label ? `${(w.label.match(/\(([A-Z]+)\)/) || [])[1] || w.label} · ` : ''}{w.model?.replace('WAGO ', '') || `${w.poles}-way`}</text>
             {interactive && onExtraRemove && <g className="wr-wago-x" onClick={(e) => { e.stopPropagation(); onExtraRemove(w.id) }}><circle cx={g.x0 + g.width} cy={g.y0} r="8"/><text x={g.x0 + g.width} y={g.y0 + 4}>×</text></g>}
           </g>
         )
@@ -309,5 +348,6 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], hig
       {interactive && device.terminals.map((t) => <Port key={t.id} id={`dev:${t.id}`} x={L.terms[t.id].x} y={L.terms[t.id].y - 14}/>)}
       {interactive && scenario.parts.flatMap((p) => (PART_PORTS[p.kind] || []).map((q) => <Port key={`${p.id}:${q}`} id={`${p.id}:${q}`} x={L.parts[p.id].ports[q][0]} y={L.parts[p.id].ports[q][1]}/>))}
     </svg>
+    </>
   )
 }

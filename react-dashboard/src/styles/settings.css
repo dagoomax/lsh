@@ -802,3 +802,24 @@ select.stg-input { cursor: pointer; }
 .wr-check input:checked + span { color: var(--text3); text-decoration: line-through; }
 .wr-wire-casing { fill: none; stroke: rgba(255,255,255,0.28); stroke-width: 5.5; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
 [data-theme="light"] .wr-wire-casing { stroke: rgba(0,0,0,0.12); }
+/* Wiring emulator — enlarged popup */
+.wr-canvas { position: relative; }
+.wr-expand { top: 10px; right: 10px; }
+.wr-placeholder { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px; margin-top: 10px; border-radius: 14px; background: var(--white-04); color: var(--text2); }
+.wr-popup { width: 98vw; height: 96vh; }
+.wr-popup-body { flex: 1; min-height: 0; padding: 12px; overflow: hidden; }
+.wr-stage.big { height: 100%; margin: 0; grid-template-columns: minmax(0, 1fr) 380px; }
+.wr-stage.big .wr-canvas { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.wr-stage.big .wr-svg { flex: 1; min-height: 0; height: 100%; }
+.wr-stage.big .wr-side { display: flex; flex-direction: column; overflow-y: auto; min-height: 0; }
+.wr-svg.zoomable .wr-pan { cursor: grab; }
+.wr-svg.zoomable .wr-pan:active { cursor: grabbing; }
+.wr-zoom { top: 12px; right: 12px; }
+@media (max-width: 900px) {
+  .wr-stage.big { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1.4fr) minmax(0, 1fr); }
+}
+.wr-popup-tools { padding: 0 14px; }
+.wr-popup-tools .lan-toolbar { margin: 8px 0 0; }
+.wr-svg.zoomable { cursor: grab; }
+.wr-svg.zoomable.drawing { cursor: crosshair; }
+.wr-zoom { left: 12px; right: auto; top: 110px; }

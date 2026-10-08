@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { SettingsCard, Button } from '../primitives'
 import { DEVICES, CONNECTORS, WIRE_COLORS, toolsFor } from '../wiring/devices.js'
 import { simulate, initialState, check, steps, portName, wallBoxPlan } from '../wiring/sim.js'
@@ -42,6 +43,7 @@ export default function WiringSection() {
   const [draft, setDraft] = useState(null) // { from, points, cursor }
   const [color, setColor] = useState('auto')
   const [checked, setChecked] = useState({})
+  const [big, setBig] = useState(false)
 
   const plan = useMemo(() => { const p = wallBoxPlan(device, scenario); return { ...p, parts: placeConnectors(p.parts) } }, [device, scenario])
   const stepList = useMemo(() => steps(device, scenario, realBox ? plan : null), [device, scenario, realBox, plan])
@@ -56,10 +58,19 @@ export default function WiringSection() {
     setStep(mode === 'assist' ? (realBox ? plan.wires : scenario.wires).length - 1 : 0); setUserWires([]); setUserParts([]); setDraft(null); setPending(null); setPower(false); setSwitches({}); setSim(null); setTripped(null); setResult(null); setShutterPos(50)
   }, [devId, scnId, mode, realBox])
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') setDraft(null) }
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      setDraft((d) => { if (!d) setBig(false); return null })
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+  useEffect(() => {
+    if (!big) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [big])
 
   // Run the circuit
   useEffect(() => {
@@ -114,6 +125,21 @@ export default function WiringSection() {
   const findings = sim?.findings || []
   const manualUrl = `/api/manuals/${device.manual}/pdf`
 
+  const toolbar = (
+<div className="lan-toolbar">
+        <div className="lan-filters" style={{ margin: 0 }}>
+          {device.scenarios.map((s) => <button key={s.id} className={`lan-filter${s.id === scenario.id ? ' active' : ''}`} onClick={() => setScnId(s.id)}>{s.title}</button>)}
+        </div>
+        <label className="emu-inline" title="Incoming cable has one L, one N and one PE conductor — splits need connectors">
+          <input type="checkbox" checked={realBox} onChange={(e) => setRealBox(e.target.checked)}/> Real wall box (connectors)
+        </label>
+        <div className="lan-viewtoggle" style={{ marginLeft: 'auto' }}>
+          <button className={mode === 'assist' ? 'active' : ''} onClick={() => setMode('assist')}>📖 Assistant</button>
+          <button className={mode === 'practice' ? 'active' : ''} onClick={() => setMode('practice')}>🧪 Practice</button>
+        </div>
+      </div>
+  )
+
   return (
     <SettingsCard title="Wiring emulator"
       desc="Wiring assistant and circuit emulator for Z-Wave in-wall modules, built from the manufacturers' installation manuals. Follow the diagram wire by wire, or wire it yourself and test it: switch the power on, use the wall switch, and see what lights up — or what trips. Practice only: always follow the manual and local regulations, and leave mains work to a qualified electrician.">
@@ -126,22 +152,14 @@ export default function WiringSection() {
         ))}
       </div>
 
-      <div className="lan-toolbar">
-        <div className="lan-filters" style={{ margin: 0 }}>
-          {device.scenarios.map((s) => <button key={s.id} className={`lan-filter${s.id === scenario.id ? ' active' : ''}`} onClick={() => setScnId(s.id)}>{s.title}</button>)}
-        </div>
-        <label className="emu-inline" title="Incoming cable has one L, one N and one PE conductor — splits need connectors">
-          <input type="checkbox" checked={realBox} onChange={(e) => setRealBox(e.target.checked)}/> Real wall box (connectors)
-        </label>
-        <div className="lan-viewtoggle" style={{ marginLeft: 'auto' }}>
-          <button className={mode === 'assist' ? 'active' : ''} onClick={() => setMode('assist')}>📖 Assistant</button>
-          <button className={mode === 'practice' ? 'active' : ''} onClick={() => setMode('practice')}>🧪 Practice</button>
-        </div>
-      </div>
-
-      <div className="wr-stage">
+      {!big && toolbar}
+      {big && <div className="wr-placeholder"><span>The emulator is open in a large window.</span><Button onClick={() => setBig(false)}>Bring it back</Button></div>}
+      {(() => {
+        const stage = (
+      <div className={`wr-stage${big ? ' big' : ''}`}>
         <div className="wr-canvas">
-          <WiringCanvas device={device} scenario={scenario} wires={wires} highlight={mode === 'assist' && !power ? step : null}
+          {!big && <button className="lan-expand wr-expand" onClick={() => setBig(true)} title="Enlarge">⤢</button>}
+          <WiringCanvas zoomable={big} device={device} scenario={scenario} wires={wires} highlight={mode === 'assist' && !power ? step : null}
             sim={sim} powered={power} switches={switches} interactive={mode === 'practice'} pending={draft?.from || pending}
             extras={extras} draft={draft} draftColor={color} onCanvasPoint={onCanvasPoint} onPointerMove={(pt) => setDraft((d) => (d ? { ...d, cursor: pt } : d))}
             onExtraMove={(id, x, y) => setUserParts((ps) => ps.map((p) => (p.id === id ? { ...p, x, y } : p)))} onExtraRemove={removeConnector}
@@ -255,6 +273,23 @@ export default function WiringSection() {
           </div>
         </aside>
       </div>
+        )
+        if (!big) return stage
+        return createPortal(
+          <div className="lan-popup-backdrop" onClick={() => setBig(false)}>
+            <div className="lan-popup wr-popup" onClick={(e) => e.stopPropagation()}>
+              <div className="lan-popup-head">
+                <b>{device.manufacturer} {device.name} · {scenario.title}</b>
+                <span className="stg-hint">{mode === 'practice' ? 'Practice' : 'Assistant'}{realBox ? ' · real wall box' : ''} · scroll to zoom, drag the background to pan · Esc closes</span>
+                <button className="lan-popup-close" onClick={() => setBig(false)} title="Close (Esc)">✕</button>
+              </div>
+              <div className="wr-popup-tools">{toolbar}</div>
+              <div className="wr-popup-body">{stage}</div>
+            </div>
+          </div>,
+          document.body,
+        )
+      })()}
     </SettingsCard>
   )
 }
