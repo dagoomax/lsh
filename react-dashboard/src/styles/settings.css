@@ -690,3 +690,87 @@ select.stg-input { cursor: pointer; }
 .emu-reg .emu-src-hint { flex-basis: 100%; margin: -2px 0 0 2px; }
 .emu-src { display: inline-flex; gap: 4px; }
 .emu-x-label { color: var(--text3); font-size: 12px; }
+
+/* Wiring emulator (WiringSection.jsx, wiring/WiringCanvas.jsx) */
+.wr-devices { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.wr-dev { display: flex; gap: 10px; align-items: center; text-align: left; border: none; font: inherit; color: var(--text); padding: 10px; border-radius: 12px; background: var(--white-04); cursor: pointer; transition: background 0.15s, box-shadow 0.15s; }
+.wr-dev:hover { background: var(--white-08); }
+.wr-dev.active { background: color-mix(in srgb, var(--g) 16%, transparent); box-shadow: inset 0 0 0 1.5px var(--g); }
+.wr-dev-icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; flex-shrink: 0; background: color-mix(in srgb, var(--g) 22%, transparent); }
+.wr-dev b { display: block; font-size: 13.5px; } .wr-dev small { color: var(--text2); font-size: 11.5px; }
+.wr-stage { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; margin-top: 10px; }
+@media (max-width: 1100px) { .wr-stage { grid-template-columns: 1fr; } }
+.wr-canvas { position: relative; border-radius: 16px; overflow: hidden; background: radial-gradient(circle at 50% 30%, color-mix(in srgb, #0a84ff 8%, transparent), transparent 70%), var(--white-04); --wire-idle: #6e6e73; --wire-draft: #8e8e93; }
+[data-theme="light"] .wr-canvas { --wire-idle: #48484a; --wire-draft: #3a3a3c; }
+.wr-svg { width: 100%; height: auto; display: block; user-select: none; touch-action: manipulation; }
+.wr-svg text { font-family: -apple-system, system-ui, sans-serif; }
+.wr-rail-label { font-size: 13px; font-weight: 800; fill: var(--text2); }
+.wr-rail-hit { fill: transparent; cursor: crosshair; }
+.wr-rail-hit:hover { fill: color-mix(in srgb, #0a84ff 12%, transparent); }
+.wr-wire-line { fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; transition: stroke 0.25s; }
+.wr-wire-hit { fill: none; stroke: transparent; stroke-width: 14; }
+.wr-wire.clickable { cursor: pointer; }
+.wr-wire.clickable:hover .wr-wire-line { stroke: var(--red) !important; stroke-dasharray: 6 4; }
+.wr-wire.hl .wr-wire-line { stroke-width: 5; filter: drop-shadow(0 0 6px #ffd60a); }
+.wr-wire-flow { fill: none; stroke: #ffe08a; stroke-width: 2; stroke-dasharray: 2 14; animation: wr-flow 0.8s linear infinite; opacity: 0.9; pointer-events: none; }
+@keyframes wr-flow { to { stroke-dashoffset: -32; } }
+.wr-part line { stroke: var(--wire-draft); stroke-width: 2; }
+.wr-part-label { font-size: 12px; fill: var(--text2); text-anchor: middle; font-weight: 600; }
+.wr-port-label { font-size: 10px; fill: var(--text3); font-weight: 700; }
+.wr-switch { fill: var(--card); stroke: var(--text3); stroke-width: 1.5; }
+.wr-key rect { fill: var(--white-08); stroke: var(--text3); stroke-width: 1; cursor: pointer; transition: fill 0.12s; }
+.wr-key text { font-size: 13px; text-anchor: middle; fill: var(--text2); font-weight: 800; pointer-events: none; }
+.wr-key:hover rect { fill: color-mix(in srgb, #0a84ff 18%, transparent); }
+.wr-key.on rect { fill: color-mix(in srgb, #30d158 35%, transparent); stroke: #30d158; }
+.wr-lamp { fill: var(--white-08); stroke: var(--text3); stroke-width: 2; transition: fill 0.25s; }
+.wr-lamp.on { fill: #ffd60a; stroke: #ffb800; }
+.wr-lamp-x { stroke: var(--text3); stroke-width: 2; }
+.wr-motor-body { fill: var(--card); stroke: var(--text3); stroke-width: 2; }
+.wr-motor-m { font-size: 26px; font-weight: 300; text-anchor: middle; fill: var(--text2); }
+.wr-motor-dir { font-size: 16px; text-anchor: middle; fill: #30d158; font-weight: 800; animation: lan-ping 0.8s infinite; }
+.wr-motor-dir.bad { fill: var(--red); }
+.wr-motor.run-up .wr-motor-body, .wr-motor.run-down .wr-motor-body { stroke: #30d158; filter: drop-shadow(0 0 8px color-mix(in srgb, #30d158 60%, transparent)); }
+.wr-motor.run-both .wr-motor-body { stroke: var(--red); }
+.wr-blind-track { fill: var(--white-08); }
+.wr-blind { fill: url(#wr-glow); fill: color-mix(in srgb, #64d2ff 55%, transparent); transition: height 0.12s linear; }
+.wr-device-body { fill: var(--card); stroke: color-mix(in srgb, var(--brand) 60%, var(--text3)); stroke-width: 2; }
+.wr-screw-box { fill: var(--white-04); stroke: var(--text3); stroke-width: 1; }
+.wr-screw { fill: var(--white-20); stroke: var(--text3); }
+.wr-screw-x { stroke: var(--text2); stroke-width: 1.4; }
+.wr-term-label { font-size: 13px; font-weight: 800; text-anchor: middle; fill: var(--text); }
+.wr-term-label.role-L { fill: #b5651d; } .wr-term-label.role-N { fill: #2f80ed; } .wr-term-label.role-sx { fill: #ff9f0a; }
+.wr-device-name { font-size: 15px; font-weight: 800; text-anchor: middle; fill: var(--text); }
+.wr-device-model { font-size: 12px; text-anchor: middle; fill: var(--text2); }
+.wr-led { fill: var(--white-20); } .wr-led.on { fill: #30d158; filter: drop-shadow(0 0 5px #30d158); }
+.wr-port circle { fill: var(--card); stroke: #0a84ff; stroke-width: 2; }
+.wr-port.clickable { cursor: crosshair; }
+.wr-port.clickable:hover circle { fill: #0a84ff; }
+.wr-port.pending circle { fill: #ffd60a; stroke: #ffd60a; animation: lan-ping 0.7s infinite; }
+.wr-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; border-top: 0.5px solid var(--sep); }
+.wr-power { border: none; font: inherit; font-weight: 800; padding: 8px 14px; border-radius: 10px; cursor: pointer; background: var(--white-08); color: var(--text2); }
+.wr-power.on { background: #30d158; color: #fff; box-shadow: 0 0 14px color-mix(in srgb, #30d158 50%, transparent); }
+.wr-zw { border: none; font: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 10px; border-radius: 9px; cursor: pointer; background: color-mix(in srgb, #0a84ff 14%, transparent); color: var(--text); }
+.wr-zw.on { background: color-mix(in srgb, #ffd60a 30%, transparent); }
+.wr-level { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text2); }
+.wr-trip { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 20px;
+  background: color-mix(in srgb, #ff453a 22%, rgba(0,0,0,0.55)); backdrop-filter: blur(3px); cursor: pointer; animation: wr-trip 0.5s; }
+.wr-trip b { font-size: 26px; color: #fff; } .wr-trip span { color: #fff; max-width: 520px; } .wr-trip small { color: rgba(255,255,255,0.75); }
+@keyframes wr-trip { 0% { background: rgba(255,255,255,0.9); } 100% {} }
+.wr-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.wr-panel { padding: 12px; border-radius: 14px; background: var(--white-04); }
+.wr-steps { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.wr-steps li { cursor: pointer; color: var(--text2); padding: 3px 4px; border-radius: 6px; }
+.wr-steps li.done { color: var(--text); }
+.wr-steps li.cur { color: var(--text); background: color-mix(in srgb, #ffd60a 18%, transparent); font-weight: 600; }
+.wr-steps li small { display: block; font-weight: 400; color: var(--text2); margin-top: 2px; }
+.wr-result { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.wr-f { font-size: 12.5px; padding: 6px 8px; border-radius: 8px; background: var(--white-04); margin-top: 4px; }
+.wr-f.danger { background: color-mix(in srgb, var(--red) 16%, transparent); color: var(--text); }
+.wr-f.warn { background: color-mix(in srgb, var(--orange) 14%, transparent); }
+.wr-rules { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--text2); display: flex; flex-direction: column; gap: 4px; }
+.wr-terms { margin-top: 8px; font-size: 12px; color: var(--text2); display: flex; flex-direction: column; gap: 3px; }
+.wr-terms b { display: inline-block; min-width: 30px; color: var(--text); }
+.wr-terms b.role-L { color: #b5651d; } .wr-terms b.role-N { color: #2f80ed; } .wr-terms b.role-sx { color: #ff9f0a; }
+.wr-stage { grid-template-columns: 1fr; }
+.wr-side { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; align-items: start; }
+.wr-canvas { align-self: start; }

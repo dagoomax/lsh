@@ -56,6 +56,7 @@ import CanScanSection from './sections/CanScanSection'
 import ModbusScanSection from './sections/ModbusScanSection'
 import ModbusEmuSection from './sections/ModbusEmuSection'
 import ManualsSection from './sections/ManualsSection'
+import WiringSection from './sections/WiringSection'
 import BleScanSection from './sections/BleScanSection'
 import LanScanSection from './sections/LanScanSection'
 
@@ -118,6 +119,7 @@ const SECTION_COMPONENTS = {
   'modbus-scan': ModbusScanSection,
   'modbus-emu': ModbusEmuSection,
   manuals: ManualsSection,
+  wiring: WiringSection,
 }
 
 export default function SettingsPage({ onClose, onOpenCssEditor }) {

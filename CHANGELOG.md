@@ -7,6 +7,7 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 ### Added
+- **Wiring emulator** (Settings → System): wiring assistant + circuit emulator built from the manufacturers' manuals for FIBARO FGS-213/223, FGD-212, FGR-223 and Shelly Qubino Wave 1PM/2PM (14 diagrams). Step-by-step assistant; practice mode with a wiring checker and live simulation — switches, Z-Wave commands, dimming, blind travel, and short circuits / wrong terminals flagged.
 - **Device manuals on demand** (Settings → System → Device manuals): Z-Wave module manuals kept in the private `dagoomax/lsh-manuals` repo, downloaded only when opened (GitHub API + read-only token), SHA-256 verified and cached in `persist/manuals/`.
 - **Modbus device emulator** (module `modbus-emulator`, config key `modbusEmu`): LSH answers Modbus TCP / RTU (RS-485 slave) register queries with live LSH values or constants — typed registers (u16/i16/u32/i32/f32/string/bool, word order, scale), coils, FC 0x2B device ID, optional writable registers forwarded to LSH devices, SDM630/SDM120 templates. Settings → Controllers & Buses → Modbus emulator with a live register view; applied without restart.
 - **Modbus scan** (tool module `lsh-modbus`, dep `serialport` for RTU): Settings → System → Modbus scan — read-only Modbus TCP LAN sweep (port 502) and RS-485 RTU unit-ID scan; identifies SunSpec inverters, Victron GX, Eastron-style meters, Huawei SUN2000 and FC 0x2B device IDs; register explorer with u16/i16/hex/ASCII/u32/float32 views. `scripts/modbus-simulator.js` for testing.

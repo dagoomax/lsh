@@ -1,0 +1,230 @@
+import { useMemo } from 'react'
+import { PART_PORTS } from './devices.js'
+import { usesPE, netKind } from './sim.js'
+
+// SVG schematic: mains rails on top, parts in the middle, the module at the
+// bottom. Wires are routed orthogonally; colours follow what each wire
+// carries when powered (live / neutral / earth / switch supply).
+
+const W = 960, H = 600
+const RAIL = { L: 36, N: 62, PE: 88 }
+const PART_Y = 228
+const TERM_Y = 446
+const COLORS = { live: '#b5651d', neutral: '#2f80ed', pe: '#9acd32', sx: '#ff9f0a', idle: 'var(--wire-idle)', draft: 'var(--wire-draft)' }
+
+export function layout(device, scenario) {
+  const n = device.terminals.length
+  const terms = {}
+  device.terminals.forEach((t, j) => { terms[t.id] = { x: 330 + (j - (n - 1) / 2) * 62, y: TERM_Y } })
+  const xs = Object.values(terms).map((p) => p.x)
+  const devBox = { x0: Math.min(...xs) - 46, x1: Math.max(...xs) + 46, y0: TERM_Y - 14, y1: H - 18 }
+  const parts = {}
+  const k = scenario.parts.length
+  scenario.parts.forEach((p, i) => {
+    const cx = 210 + (i + 0.5) * (680 / k)
+    const geo = { cx, cy: PART_Y, kind: p.kind, ports: {} }
+    if (p.kind === 'switch') { geo.box = { x0: cx - 32, x1: cx + 32, y0: 176, y1: 254 }; geo.ports = { com: [cx - 14, 270], o1: [cx + 14, 270] } }
+    if (p.kind === 'switch2') { geo.box = { x0: cx - 42, x1: cx + 42, y0: 176, y1: 254 }; geo.ports = { com: [cx - 24, 270], o1: [cx, 270], o2: [cx + 24, 270] } }
+    if (p.kind === 'lamp') { geo.box = { x0: cx - 32, x1: cx + 32, y0: 190, y1: 262 }; geo.ports = { b: [cx, 172], a: [cx, 280] } }
+    if (p.kind === 'motor') { geo.box = { x0: cx - 44, x1: cx + 44, y0: 186, y1: 278 }; geo.ports = { n: [cx - 14, 172], pe: [cx + 22, 172], up: [cx - 22, 292], down: [cx + 22, 292] } }
+    if (p.kind === 'motorDriver') { geo.box = { x0: cx - 56, x1: cx + 56, y0: 186, y1: 272 }; geo.ports = { l: [cx - 34, 172], n: [cx - 10, 172], pe: [cx + 34, 172], up: [cx - 16, 288], down: [cx + 16, 288] } }
+    parts[p.id] = geo
+  })
+  return { terms, devBox, parts, pe: usesPE(scenario) }
+}
+
+function pos(L, port) {
+  if (port === 'L' || port === 'N' || port === 'PE') return { rail: true, y: RAIL[port] }
+  const [owner, q] = port.split(':')
+  if (owner === 'dev') return { term: true, x: L.terms[q].x, y: L.terms[q].y - 14 }
+  const g = L.parts[owner]
+  const [x, y] = g.ports[q]
+  return { x, y, top: y < g.cy, bottom: y > g.cy, box: g.box }
+}
+
+const blocked = (L, x) => Object.values(L.parts).some((g) => x > g.box.x0 - 6 && x < g.box.x1 + 6)
+
+// Orthogonal route between two ports; i = wire index (spreads lanes)
+function route(L, a, b, i) {
+  let pa = pos(L, a), pb = pos(L, b)
+  const lane = 312 + (i % 12) * 9
+  if (pa.rail && pb.rail) return `M ${24 + i * 4} ${pa.y} V ${pb.y}`
+  if (pb.rail) [pa, pb] = [pb, pa]
+  if (pa.rail) {
+    const p = pb
+    if (p.top) return `M ${p.x} ${p.y} V ${pa.y}`
+    if (p.term) {
+      if (!blocked(L, p.x)) return `M ${p.x} ${p.y} V ${pa.y}`
+      const riser = 56 + (i % 10) * 8
+      return `M ${p.x} ${p.y} V ${lane} H ${riser} V ${pa.y}`
+    }
+    // bottom port of a part: go round the part's side
+    const side = p.x < (p.box.x0 + p.box.x1) / 2 ? p.box.x0 - 10 - (i % 4) * 5 : p.box.x1 + 10 + (i % 4) * 5
+    return `M ${p.x} ${p.y} V ${p.y + 10 + (i % 3) * 4} H ${side} V ${pa.y}`
+  }
+  if (pa.term && pb.term) { const y = pa.y - 12 - (i % 4) * 6; return `M ${pa.x} ${pa.y} V ${y} H ${pb.x} V ${pb.y}` }
+  if (pb.term) [pa, pb] = [pb, pa]
+  if (pa.term) {
+    if (pb.bottom) return `M ${pa.x} ${pa.y} V ${lane} H ${pb.x} V ${pb.y}`
+    const side = pb.box.x1 + 12 + (i % 3) * 5
+    return `M ${pa.x} ${pa.y} V ${lane} H ${side} V ${pb.y - 12} H ${pb.x} V ${pb.y}`
+  }
+  // part ↔ part
+  if (pa.bottom && pb.bottom) { const y = Math.max(pa.y, pb.y) + 14 + (i % 3) * 5; return `M ${pa.x} ${pa.y} V ${y} H ${pb.x} V ${pb.y}` }
+  const y = Math.min(pa.y, pb.y) - 14 - (i % 3) * 5
+  return `M ${pa.x} ${pa.y} V ${y} H ${pb.x} V ${pb.y}`
+}
+
+function railX(L, other, i) {
+  const p = pos(L, other)
+  if (p.rail) return 24 + i * 4
+  if (p.top) return p.x
+  if (p.term) return blocked(L, p.x) ? 56 + (i % 10) * 8 : p.x
+  return p.x < (p.box.x0 + p.box.x1) / 2 ? p.box.x0 - 10 - (i % 4) * 5 : p.box.x1 + 10 + (i % 4) * 5
+}
+
+export default function WiringCanvas({ device, scenario, wires, highlight, sim, powered, switches, onPress, onRelease, onToggle, pending, onPort, onWireClick, interactive, shutterPos }) {
+  const L = useMemo(() => layout(device, scenario), [device, scenario])
+  const momentary = (scenario.inputMode || 'momentary') === 'momentary'
+  const colorOf = (a, b) => {
+    if (powered && sim?.nets) {
+      const k = netKind(sim, device, a) !== 'idle' ? netKind(sim, device, a) : netKind(sim, device, b)
+      return COLORS[k]
+    }
+    for (const r of ['L', 'N', 'PE']) if (a === r || b === r) return COLORS[{ L: 'live', N: 'neutral', PE: 'pe' }[r]]
+    return COLORS.draft
+  }
+  const live = (a) => powered && sim?.nets && netKind(sim, device, a) === 'live'
+
+  const Port = ({ id, x, y }) => (
+    <g className={`wr-port${pending === id ? ' pending' : ''}${interactive ? ' clickable' : ''}`} onClick={interactive ? () => onPort(id) : undefined}>
+      <circle cx={x} cy={y} r={interactive ? 7 : 4}/>
+      <title>{id}</title>
+    </g>
+  )
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="wr-svg" role="img" aria-label="Wiring diagram">
+      <defs>
+        <radialGradient id="wr-glow"><stop offset="0" stopColor="#ffe9a8" stopOpacity="0.95"/><stop offset="0.5" stopColor="#ffd60a" stopOpacity="0.55"/><stop offset="1" stopColor="#ffd60a" stopOpacity="0"/></radialGradient>
+      </defs>
+      {/* rails */}
+      {['L', 'N', ...(L.pe ? ['PE'] : [])].map((r) => (
+        <g key={r} className="wr-rail">
+          <line x1="20" x2={W - 20} y1={RAIL[r]} y2={RAIL[r]} stroke={COLORS[{ L: 'live', N: 'neutral', PE: 'pe' }[r]]} strokeWidth="4" strokeDasharray={r === 'PE' ? '10 6' : undefined}/>
+          <text x={W - 16} y={RAIL[r] + 4} textAnchor="end" className="wr-rail-label">{r}</text>
+          {interactive && <rect x="20" y={RAIL[r] - 9} width={W - 70} height="18" className="wr-rail-hit" onClick={() => onPort(r)}/>}
+        </g>
+      ))}
+
+      {/* wires */}
+      {wires.map(([a, b], i) => {
+        const d = route(L, a, b, i)
+        const hl = highlight === i
+        return (
+          <g key={`${a}-${b}-${i}`} className={`wr-wire${hl ? ' hl' : ''}${interactive ? ' clickable' : ''}`} onClick={interactive ? () => onWireClick(i) : undefined}>
+            <path d={d} className="wr-wire-hit"/>
+            <path d={d} stroke={colorOf(a, b)} className="wr-wire-line"/>
+            {(live(a) || live(b)) && <path d={d} className="wr-wire-flow"/>}
+            {['L', 'N', 'PE'].includes(a) && <circle cx={railX(L, b, i)} cy={RAIL[a]} r="4.5" fill={colorOf(a, b)}/>}
+            {['L', 'N', 'PE'].includes(b) && <circle cx={railX(L, a, i)} cy={RAIL[b]} r="4.5" fill={colorOf(a, b)}/>}
+          </g>
+        )
+      })}
+
+      {/* parts */}
+      {scenario.parts.map((p) => {
+        const g = L.parts[p.id]
+        const s = switches[p.id] || []
+        if (p.kind === 'lamp') {
+          const lvl = sim?.lamps?.[p.id] || 0
+          return (
+            <g key={p.id} className="wr-part">
+              {lvl > 0 && <circle cx={g.cx} cy={g.cy - 4} r={34 + 30 * lvl} fill="url(#wr-glow)" opacity={0.35 + 0.65 * lvl}/>}
+              <circle cx={g.cx} cy={g.cy - 4} r="28" className={`wr-lamp${lvl > 0 ? ' on' : ''}`} style={lvl > 0 ? { fillOpacity: 0.25 + 0.75 * lvl } : undefined}/>
+              <path d={`M ${g.cx - 18} ${g.cy - 22} L ${g.cx + 18} ${g.cy + 14} M ${g.cx + 18} ${g.cy - 22} L ${g.cx - 18} ${g.cy + 14}`} className="wr-lamp-x"/>
+              <line x1={g.cx} x2={g.cx} y1={g.ports.b[1]} y2={g.cy - 32}/><line x1={g.cx} x2={g.cx} y1={g.cy + 24} y2={g.ports.a[1]}/>
+              <text x={g.cx + 38} y={g.cy} className="wr-part-label" textAnchor="start" style={{ textAnchor: 'start' }}>{p.label}{lvl > 0 && lvl < 1 ? ` · ${Math.round(lvl * 100)}%` : ''}</text>
+            </g>
+          )
+        }
+        if (p.kind === 'switch' || p.kind === 'switch2') {
+          const keys = p.kind === 'switch2' ? 2 : 1
+          const kw = (g.box.x1 - g.box.x0 - 12) / keys
+          return (
+            <g key={p.id} className="wr-part">
+              <rect x={g.box.x0} y={g.box.y0} width={g.box.x1 - g.box.x0} height={g.box.y1 - g.box.y0} rx="12" className="wr-switch"/>
+              {[...Array(keys)].map((_, k) => {
+                const on = !!s[k]
+                const handlers = momentary
+                  ? { onPointerDown: (e) => { e.preventDefault(); onPress(p.id, k) }, onPointerUp: () => onRelease(p.id, k), onPointerLeave: () => s[k] && onRelease(p.id, k) }
+                  : { onClick: () => onToggle(p.id, k) }
+                return (
+                  <g key={k} className={`wr-key${on ? ' on' : ''}`} {...handlers}>
+                    <rect x={g.box.x0 + 6 + k * kw} y={g.box.y0 + 6} width={kw - (keys > 1 ? 2 : 0)} height={g.box.y1 - g.box.y0 - 12} rx="8"/>
+                    <text x={g.box.x0 + 6 + k * kw + kw / 2} y={(g.box.y0 + g.box.y1) / 2 + 5}>{p.keys?.[k] || (momentary ? (on ? '●' : '○') : on ? 'I' : 'O')}</text>
+                  </g>
+                )
+              })}
+              {Object.entries(g.ports).map(([q, [x, y]]) => <line key={q} x1={x} x2={x} y1={g.box.y1} y2={y}/>)}
+              <text x={g.cx} y={g.box.y0 - 8} className="wr-part-label">{p.label}</text>
+            </g>
+          )
+        }
+        if (p.kind === 'motor' || p.kind === 'motorDriver') {
+          const dir = sim?.motors?.[p.id]
+          const box = g.box
+          return (
+            <g key={p.id} className={`wr-part wr-motor${dir ? ` run-${dir}` : ''}`}>
+              {p.kind === 'motor'
+                ? <circle cx={g.cx} cy={g.cy + 4} r="38" className="wr-motor-body"/>
+                : <rect x={box.x0} y={box.y0} width={box.x1 - box.x0} height={box.y1 - box.y0} rx="10" className="wr-motor-body"/>}
+              <text x={g.cx} y={g.cy + 14} className="wr-motor-m">M</text>
+              {dir && dir !== 'both' && <text x={g.cx + (p.kind === 'motor' ? 0 : 0)} y={g.cy - 14} className="wr-motor-dir">{dir === 'up' ? '▲' : '▼'}</text>}
+              {dir === 'both' && <text x={g.cx} y={g.cy - 14} className="wr-motor-dir bad">⚠</text>}
+              {Object.entries(g.ports).map(([q, [x, y]]) => (
+                <g key={q}>
+                  <line x1={x} x2={x} y1={y} y2={y < g.cy ? box.y0 + 6 : box.y1 - 6}/>
+                  <text x={x + 5} y={y < g.cy ? y + 12 : y - 4} className="wr-port-label">{{ up: '↑', down: '↓', n: 'N', pe: 'PE', l: 'L' }[q]}</text>
+                </g>
+              ))}
+              {shutterPos != null && (
+                <g>
+                  <rect x={box.x1 + 14} y={box.y0} width="12" height={box.y1 - box.y0} rx="3" className="wr-blind-track"/>
+                  <rect x={box.x1 + 14} y={box.y0} width="12" height={(box.y1 - box.y0) * (1 - shutterPos / 100)} rx="3" className="wr-blind"/>
+                </g>
+              )}
+              <text x={g.cx} y={box.y1 + 30} className="wr-part-label">{p.label}</text>
+            </g>
+          )
+        }
+        return null
+      })}
+
+      {/* the module */}
+      <g className="wr-device">
+        <path d={`M ${L.devBox.x0} ${L.devBox.y0} H ${L.devBox.x1} V ${L.devBox.y1 - 30} Q ${L.devBox.x1} ${L.devBox.y1} ${L.devBox.x1 - 30} ${L.devBox.y1} H ${L.devBox.x0 + 30} Q ${L.devBox.x0} ${L.devBox.y1} ${L.devBox.x0} ${L.devBox.y1 - 30} Z`} className="wr-device-body" style={{ '--brand': device.color }}/>
+        <rect x={L.devBox.x0} y={L.devBox.y0} width={L.devBox.x1 - L.devBox.x0} height="5" fill={device.color}/>
+        {device.terminals.map((t) => {
+          const p = L.terms[t.id]
+          return (
+            <g key={t.id}>
+              <rect x={p.x - 20} y={p.y - 6} width="40" height="30" rx="4" className="wr-screw-box"/>
+              <circle cx={p.x} cy={p.y + 9} r="8" className="wr-screw"/>
+              <path d={`M ${p.x - 5} ${p.y + 4} L ${p.x + 5} ${p.y + 14} M ${p.x + 5} ${p.y + 4} L ${p.x - 5} ${p.y + 14}`} className="wr-screw-x"/>
+              <text x={p.x} y={p.y + 42} className={`wr-term-label role-${t.role}`}>{t.label}</text>
+              <title>{t.desc}</title>
+            </g>
+          )
+        })}
+        <text x={(L.devBox.x0 + L.devBox.x1) / 2} y={L.devBox.y1 - 52} className="wr-device-name">{device.manufacturer} {device.name}</text>
+        <text x={(L.devBox.x0 + L.devBox.x1) / 2} y={L.devBox.y1 - 34} className="wr-device-model">{device.model}</text>
+        <circle cx={L.devBox.x0 + 26} cy={L.devBox.y1 - 40} r="6" className={`wr-led${powered && sim?.powered ? ' on' : ''}`}/>
+      </g>
+
+      {/* ports on top */}
+      {interactive && device.terminals.map((t) => <Port key={t.id} id={`dev:${t.id}`} x={L.terms[t.id].x} y={L.terms[t.id].y - 14}/>)}
+      {interactive && scenario.parts.flatMap((p) => (PART_PORTS[p.kind] || []).map((q) => <Port key={`${p.id}:${q}`} id={`${p.id}:${q}`} x={L.parts[p.id].ports[q][0]} y={L.parts[p.id].ports[q][1]}/>))}
+    </svg>
+  )
+}
