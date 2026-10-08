@@ -128,6 +128,7 @@ class GoogleCalendarClient {
   }
 
   async _poll() {
+    if (!this.isConnected()) return;
     try {
       const token = await this.getToken();
       const calendarId = encodeURIComponent(this.config.calendarId || 'primary');
@@ -150,8 +151,12 @@ class GoogleCalendarClient {
   }
 
   async start() {
-    platformStatus.set('google-calendar', false);
-    if (this.isConnected()) await this._poll();
+    // Badge only once the account is connected (OAuth done) — client
+    // id/secret alone isn't a working setup.
+    if (this.isConnected()) {
+      platformStatus.set('google-calendar', false);
+      await this._poll();
+    }
     this._pollTimer = setInterval(() => this._poll(), POLL_MS);
   }
 

@@ -49,7 +49,7 @@ class HomeConnectClient {
       this._tokens = { refresh_token: cfg.refreshToken };
     }
     if (!this._tokens?.refresh_token) {
-      platformStatus.set('homeconnect', false);
+      // not authorized yet — no platform-bar badge until there's an account
       console.log('[HomeConnect] No tokens — run `node scripts/homeconnect-auth.js` to log in');
       return;
     }
@@ -102,6 +102,9 @@ class HomeConnectClient {
       + (cfg.clientId ? `&client_id=${encodeURIComponent(cfg.clientId)}` : '');
     const res = await this._req('POST', '/security/oauth/token', body,
       { 'Content-Type': 'application/x-www-form-urlencoded' }, false);
+    if (!res?.access_token) {
+      throw new Error('token refresh returned no access token — the login has expired or was revoked; run `node scripts/homeconnect-auth.js` again');
+    }
     this._tokens = {
       ...this._tokens,
       access_token:  res.access_token,

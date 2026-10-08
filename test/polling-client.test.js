@@ -69,3 +69,13 @@ test('polling-client: stopPolling stops the schedule', async () => {
   await sleep(50);
   assert.equal(c.calls, n);
 });
+
+test('platform-status: getVisible hides platforms that never connected, keeps ones that dropped', () => {
+  platformStatus.set('v-never', false);
+  platformStatus.set('v-dropped', true);
+  platformStatus.set('v-dropped', false);
+  const visible = platformStatus.getVisible();
+  assert.equal('v-never' in visible, false);
+  assert.equal(visible['v-dropped'], false);
+  assert.equal(platformStatus.getAll()['v-never'], false, 'getAll still reports everything');
+});
