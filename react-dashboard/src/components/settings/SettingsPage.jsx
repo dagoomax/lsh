@@ -50,7 +50,7 @@ import ReolinkSection from './sections/ReolinkSection'
 import CamerasSection from './sections/CamerasSection'
 import BackupRestoreSection from './sections/BackupRestoreSection'
 import ModulesSection from './sections/ModulesSection'
-import VictronBleSection from './sections/VictronBleSection'
+import LshBleSection from './sections/LshBleSection'
 
 // Section id → component, for the handful ported so far (see sectionRegistry
 // for the full 57-section map). Anything not listed here renders a stub
@@ -103,7 +103,7 @@ const SECTION_COMPONENTS = {
   manualcams: CamerasSection,
   backup: BackupRestoreSection,
   modules: ModulesSection,
-  'victron-ble': VictronBleSection,
+  'lsh-ble': LshBleSection,
 }
 
 export default function SettingsPage({ onClose, onOpenCssEditor }) {

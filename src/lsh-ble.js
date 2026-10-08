@@ -11,7 +11,7 @@
 // record layouts from victron_ble.h, value scaling and "not available"
 // sentinels from sensor/victron_sensor.h, text tables from
 // text_sensor/victron_text_sensor.cpp. Pure functions — the Bluetooth side
-// is victron-ble-client.js.
+// is lsh-ble-client.js.
 //
 // Advertisement = Victron manufacturer data (company id 0x02E1), after the
 // company id:

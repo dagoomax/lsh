@@ -16,20 +16,20 @@ const ago = (t) => {
 }
 
 // Victron devices read over Bluetooth by the LSH host itself (Arduino UNO Q) —
-// src/victron-ble-client.js, decoder ported from esphome-victron_ble.
-export default function VictronBleSection({ config, reload }) {
-  const cfg = config.victronBle || {}
+// src/lsh-ble-client.js, decoder ported from esphome-victron_ble.
+export default function LshBleSection({ config, reload }) {
+  const cfg = config.lshBle || {}
   const [devices, setDevices] = useState(cfg.devices || [])
   const [adapter, setAdapter] = useState(cfg.adapter || 'hci0')
   const [feedDashboard, setFeedDashboard] = useState(cfg.feedDashboard !== false)
   const [status, setStatus] = useState(null)
-  const save = useSettingsSave('/api/settings/victron-ble')
+  const save = useSettingsSave('/api/settings/lsh-ble')
   const [scan, setScan] = useState({ busy: false, results: null, error: null, needsModule: false, showAll: false })
 
   const runScan = async () => {
     setScan((x) => ({ ...x, busy: true, error: null, needsModule: false }))
     try {
-      const r = await fetch('/api/victron-ble/scan', {
+      const r = await fetch('/api/lsh-ble/scan', {
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ seconds: 10 }),
       })
       const j = await r.json()
@@ -41,8 +41,8 @@ export default function VictronBleSection({ config, reload }) {
   }
 
   const installModule = async () => {
-    setScan((x) => ({ ...x, busy: true, error: 'Installing the Victron Bluetooth module…' }))
-    const r = await fetch('/api/modules/victron-ble/install', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    setScan((x) => ({ ...x, busy: true, error: 'Installing the LSH BLE module…' }))
+    const r = await fetch('/api/modules/lsh-ble/install', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
       .then((x) => x.json()).catch((e) => ({ success: false, error: e.message }))
     if (!r.success) return setScan((x) => ({ ...x, busy: false, error: r.error }))
     runScan()
@@ -54,7 +54,7 @@ export default function VictronBleSection({ config, reload }) {
   }
 
   useEffect(() => {
-    const load = () => fetch('/api/victron-ble/status', { credentials: 'include' })
+    const load = () => fetch('/api/lsh-ble/status', { credentials: 'include' })
       .then((r) => r.json()).then((j) => setStatus(j.data)).catch(() => {})
     load()
     const t = setInterval(load, 5000)
@@ -64,8 +64,8 @@ export default function VictronBleSection({ config, reload }) {
   const live = new Map((status?.devices || []).map((d) => [d.mac, d]))
 
   return (
-    <SettingsCard title="Victron Bluetooth" badge={{ label: gt('common.optional', 'Optional') }}
-      desc="Reads SmartShunt, SmartSolar, Orion, MultiPlus and other Victron devices directly over Bluetooth (Instant Readout) — no GX device or ESP32 needed. Runs on an LSH host with Bluetooth and BlueZ, such as the Arduino UNO Q. Readings also feed the Energy dashboard unless a GX device (MQTT/VRM) is connected. Get each device's encryption key in VictronConnect: Settings → Product info → Instant readout via Bluetooth → Show.">
+    <SettingsCard title="LSH BLE" badge={{ label: gt('common.optional', 'Optional') }}
+      desc="Bluetooth (BLE) on the LSH host. Reads SmartShunt, SmartSolar, Orion, MultiPlus and other Victron devices directly over Bluetooth (Instant Readout) — no GX device or ESP32 needed. Runs on an LSH host with Bluetooth and BlueZ, such as the Arduino UNO Q. Readings also feed the Energy dashboard unless a GX device (MQTT/VRM) is connected. Get each device's encryption key in VictronConnect: Settings → Product info → Instant readout via Bluetooth → Show.">
       <ListEditor rows={devices} onChange={setDevices} fields={FIELDS} addLabel={gt('common.add_device', '+ Add Device')}
         renderExtra={(row) => {
           const d = live.get(String(row.mac || '').toUpperCase())

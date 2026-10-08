@@ -2,7 +2,7 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { parseAdvertisement, readFields, RECORDS, toValues } = require('../src/victron-ble');
+const { parseAdvertisement, readFields, RECORDS, toValues } = require('../src/lsh-ble');
 
 // Real captured advertisements + keys + expected readings from the
 // keshavdv/victron-ble Python library's test suite (independent of the
@@ -136,10 +136,10 @@ test('rejects a wrong key and malformed input without throwing', () => {
 test('client: decoded adverts become an LSH device and feed the energy dashboard', () => {
   const DataStore = require('../src/data-store');
   const SensorRegistry = require('../src/sensor-registry');
-  const VictronBleClient = require('../src/victron-ble-client');
+  const LshBleClient = require('../src/lsh-ble-client');
   const store = new DataStore();
   const registry = new SensorRegistry(store, 'en');
-  const client = new VictronBleClient({ victronBle: { devices: [
+  const client = new LshBleClient({ lshBle: { devices: [
     { name: 'Shunt', mac: 'aa:bb:cc:dd:ee:01', bindkey: 'aff4d0995b7d1e176c0c33ecb9e70dcd' },
     { name: 'MPPT', mac: 'AA:BB:CC:DD:EE:02', bindkey: 'adeccb947395801a4dd45a2eaa44bf17' },
   ] } }, store, registry);
@@ -148,12 +148,12 @@ test('client: decoded adverts become an LSH device and feed the energy dashboard
   assert.equal(client.handleAdvertisement('AA:BB:CC:DD:EE:01', Buffer.from('100289a302b040af925d09a4d89aa0128bdef48c6298a9', 'hex')), false, 'same counter = same reading, skipped');
   assert.equal(client.handleAdvertisement('AA:BB:CC:DD:EE:02', Buffer.from('100242a0016207adceb37b605d7e0ee21b24df5c', 'hex')), true);
 
-  const shunt = registry.getDevices().find((d) => d.key === 'victronble/shunt');
+  const shunt = registry.getDevices().find((d) => d.key === 'lshble/shunt');
   assert.ok(shunt, 'device registered on first advert');
   assert.ok(shunt.sensors.some((s) => s.path === 'state_of_charge'));
-  assert.equal(store.get('victronble/shunt/state_of_charge'), 50);
-  assert.equal(store.get('victronble/mppt/pv_power'), 19);
-  assert.equal(store.get('victronble/mppt/device_state_text'), 'Absorption');
+  assert.equal(store.get('lshble/shunt/state_of_charge'), 50);
+  assert.equal(store.get('lshble/mppt/pv_power'), 19);
+  assert.equal(store.get('lshble/mppt/device_state_text'), 'Absorption');
 
   // Energy dashboard keys (no GX source writing them)
   assert.equal(store.get('system/0/Dc/Battery/Soc'), 50);
@@ -163,7 +163,7 @@ test('client: decoded adverts become an LSH device and feed the energy dashboard
 
   // Unknown MAC and wrong key are ignored, not thrown
   assert.equal(client.handleAdvertisement('11:22:33:44:55:66', Buffer.alloc(20)), false);
-  const bad = new VictronBleClient({ victronBle: { devices: [{ name: 'X', mac: 'AA:BB:CC:DD:EE:09', bindkey: '00'.repeat(16) }] } }, store, registry);
+  const bad = new LshBleClient({ lshBle: { devices: [{ name: 'X', mac: 'AA:BB:CC:DD:EE:09', bindkey: '00'.repeat(16) }] } }, store, registry);
   assert.equal(bad.handleAdvertisement('AA:BB:CC:DD:EE:09', Buffer.from('100289a302b040af925d09a4d89aa0128bdef48c6298a9', 'hex')), false);
   assert.match(bad.getStatus().devices[0].error, /bindkey mismatch/);
 });

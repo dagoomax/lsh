@@ -13038,13 +13038,13 @@
         }
       }
     },
-    "/victron-ble/status": {
+    "/lsh-ble/status": {
       "get": {
         "tags": [
           "HTTPS / TLS settings"
         ],
-        "summary": "GET /victron-ble/status",
-        "operationId": "get_victron_ble_status",
+        "summary": "GET /lsh-ble/status",
+        "operationId": "get_lsh_ble_status",
         "responses": {
           "200": {
             "description": "Success",
@@ -13069,13 +13069,13 @@
         }
       }
     },
-    "/victron-ble/scan": {
+    "/lsh-ble/scan": {
       "post": {
         "tags": [
           "HTTPS / TLS settings"
         ],
-        "summary": "POST /victron-ble/scan",
-        "operationId": "post_victron_ble_scan",
+        "summary": "POST /lsh-ble/scan",
+        "operationId": "post_lsh_ble_scan",
         "responses": {
           "200": {
             "description": "Success",
@@ -13110,13 +13110,13 @@
         }
       }
     },
-    "/settings/victron-ble": {
+    "/settings/lsh-ble": {
       "post": {
         "tags": [
           "HTTPS / TLS settings"
         ],
-        "summary": "POST /settings/victron-ble",
-        "operationId": "post_settings_victron_ble",
+        "summary": "POST /settings/lsh-ble",
+        "operationId": "post_settings_lsh_ble",
         "responses": {
           "200": {
             "description": "Success",

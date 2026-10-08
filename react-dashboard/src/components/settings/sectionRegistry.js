@@ -16,7 +16,7 @@ export const CATEGORIES = [
   { id: 'energy', label: 'Energy', sections: [
     { id: 'connection', title: 'MQTT & VRM Connection', ported: true },
     { id: 'energy-extra', title: 'MongoDB & SolarEdge', ported: true },
-    { id: 'victron-ble', title: 'Victron Bluetooth', ported: true, keywords: ['ble', 'smartshunt', 'smartsolar', 'instant readout', 'arduino'] },
+    { id: 'lsh-ble', title: 'LSH BLE', ported: true, keywords: ['ble', 'smartshunt', 'smartsolar', 'instant readout', 'arduino'] },
     { id: 'tariff', title: 'Electricity Tariff', ported: true },
   ] },
   { id: 'smarthome', label: 'Smart Home', sections: [

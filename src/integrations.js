@@ -93,5 +93,5 @@ module.exports = [
   { file: 'domatiq-client', label: 'Domatiq', when: (config) => config.domatiq?.host },
   { file: 'homey-client', label: 'Homey', when: (config) => config.homey?.token && (config.homey?.host || config.homey?.homeyId) },
   // Victron devices over Bluetooth, read by the LSH host itself (Arduino UNO Q)
-  { file: 'victron-ble-client', label: 'VictronBLE', expose: 'victronBle', when: (config) => config.victronBle?.devices?.length },
+  { file: 'lsh-ble-client', label: 'LSH BLE', expose: 'lshBle', when: (config) => config.lshBle?.devices?.length },
 ];

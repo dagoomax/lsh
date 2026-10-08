@@ -1,19 +1,19 @@
 'use strict';
 
 const platformStatus = require('./platform-status');
-const { parseAdvertisement, sensorsFor, normalizeMac, KINDS, VICTRON_MANUFACTURER_ID, RECORDS } = require('./victron-ble');
+const { parseAdvertisement, sensorsFor, normalizeMac, KINDS, VICTRON_MANUFACTURER_ID, RECORDS } = require('./lsh-ble');
 // Product id (hex, 4 digits) → model name; from the public-domain
 // keshavdv/victron-ble MODEL_ID_MAPPING.
-const MODELS = require('./victron-models.json');
+const MODELS = require('./lsh-ble-models.json');
 const modelName = (pid) => MODELS[pid.toString(16).padStart(4, '0')] || null;
 
 // Victron devices over Bluetooth, read directly by the LSH host — meant for
 // the Arduino UNO Q (its Linux side has Bluetooth on board). Listens to BlueZ
 // over D-Bus (dbus-next, pure JS — nothing to compile on the board) for the
 // "Instant Readout" advertisements each configured device broadcasts, and
-// decodes them with victron-ble.js (ported from esphome-victron_ble).
+// decodes them with lsh-ble.js (ported from esphome-victron_ble).
 //
-// Each device becomes an LSH device (victronble/<id>/...), registered on its
+// Each device becomes an LSH device (lshble/<id>/...), registered on its
 // first decoded advertisement — the record type says what it is, so config
 // only needs name + MAC + bindkey. Readings also fill the Victron system keys
 // the energy dashboard reads (system/0/Dc/Battery/Soc, Dc/Pv/Power, …) unless
@@ -21,7 +21,7 @@ const modelName = (pid) => MODELS[pid.toString(16).padStart(4, '0')] || null;
 //
 // Requirements on the host: bluetoothd running, and the LSH user allowed to
 // talk to org.bluez on the system bus (on Debian: member of the `bluetooth`
-// group). Decoding is covered by test/victron-ble.test.js against real
+// group). Decoding is covered by test/lsh-ble.test.js against real
 // captured advertisements; the D-Bus side needs real hardware to verify.
 
 const STALE_MS = 5 * 60 * 1000;          // no advert from any device this long → disconnected, restart discovery
@@ -36,9 +36,9 @@ const AC_SOURCES = ['ve_bus', 'multi_rs', 'inverter_rs'];
 const slug = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
   .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'device';
 
-class VictronBleClient {
+class LshBleClient {
   constructor(config, store, sensorRegistry) {
-    this._cfg = config.victronBle || {};
+    this._cfg = config.lshBle || {};
     this._store = store;
     this._registry = sensorRegistry;
     this._adapterPath = `/org/bluez/${this._cfg.adapter || 'hci0'}`;
@@ -63,16 +63,16 @@ class VictronBleClient {
   async start() {
     if (!this._byMac.size) return;
     if (process.platform !== 'linux') {
-      console.warn('[VictronBLE] Needs Linux + BlueZ (e.g. the Arduino UNO Q) — not starting on this host');
+      console.warn('[LSH BLE] Needs Linux + BlueZ (e.g. the Arduino UNO Q) — not starting on this host');
       return;
     }
-    platformStatus.set('victron-ble', false);
+    platformStatus.set('lsh-ble', false);
     let dbus;
-    try { dbus = require('dbus-next'); } catch { console.error('[VictronBLE] dbus-next not installed — run: npm install dbus-next'); return; }
+    try { dbus = require('dbus-next'); } catch { console.error('[LSH BLE] dbus-next not installed — run: npm install dbus-next'); return; }
     this._dbus = dbus;
     this._watchdog = setInterval(() => this._checkStale(), WATCHDOG_MS);
     this._watchdog.unref?.();
-    await this._connectBus().catch((err) => console.error(`[VictronBLE] ${err.message}`));
+    await this._connectBus().catch((err) => console.error(`[LSH BLE] ${err.message}`));
   }
 
   stop() {
@@ -80,7 +80,7 @@ class VictronBleClient {
     clearInterval(this._watchdog);
     try { this._adapter?.StopDiscovery().catch(() => {}); } catch {}
     try { this._bus?.disconnect(); } catch {}
-    platformStatus.set('victron-ble', false);
+    platformStatus.set('lsh-ble', false);
   }
 
   getStatus() {
@@ -97,7 +97,7 @@ class VictronBleClient {
   async _connectBus() {
     const { Variant } = this._dbus;
     this._bus = this._dbus.systemBus();
-    this._bus.on('error', (err) => console.error(`[VictronBLE] D-Bus: ${err.message}`));
+    this._bus.on('error', (err) => console.error(`[LSH BLE] D-Bus: ${err.message}`));
 
     const root = await this._bus.getProxyObject('org.bluez', '/');
     const om = root.getInterface('org.freedesktop.DBus.ObjectManager');
@@ -122,7 +122,7 @@ class VictronBleClient {
 
     const objects = await om.GetManagedObjects();
     for (const [path, ifaces] of Object.entries(objects)) this._onObject(path, ifaces['org.bluez.Device1']);
-    console.log(`[VictronBLE] Scanning on ${this._adapterPath} for ${this._byMac.size} device(s)`);
+    console.log(`[LSH BLE] Scanning on ${this._adapterPath} for ${this._byMac.size} device(s)`);
   }
 
   async _startDiscovery() {
@@ -147,14 +147,14 @@ class VictronBleClient {
       });
     } catch (err) {
       this._watched.delete(path);
-      console.error(`[VictronBLE] Watching ${mac} failed: ${err.message}`);
+      console.error(`[LSH BLE] Watching ${mac} failed: ${err.message}`);
     }
   }
 
   async _checkStale() {
     const last = Math.max(0, ...[...this._byMac.values()].map((d) => d.lastAt));
     if (last && Date.now() - last < STALE_MS) return;
-    platformStatus.set('victron-ble', false);
+    platformStatus.set('lsh-ble', false);
     if (this._adapter && !this._stopped) await this._startDiscovery().catch(() => {});
   }
 
@@ -177,22 +177,22 @@ class VictronBleClient {
     if (data.length >= 7 && dev.lastCounter === data.readUInt16LE(5)) return false; // same reading re-reported
     const r = parseAdvertisement(data, dev.bindkey);
     if (r.error) {
-      if (dev.warned !== r.error) console.warn(`[VictronBLE] ${dev.name} (${dev.mac}): ${r.error}`);
+      if (dev.warned !== r.error) console.warn(`[LSH BLE] ${dev.name} (${dev.mac}): ${r.error}`);
       dev.warned = r.error;
       return false;
     }
     dev.warned = null;
     dev.lastCounter = r.counter;
     dev.lastAt = Date.now();
-    platformStatus.set('victron-ble', true);
+    platformStatus.set('lsh-ble', true);
 
     const newPaths = Object.keys(r.values).map((t) => (t === 'ALARM_ACTIVE' ? 'alarm_active' : t.toLowerCase()))
       .filter((p) => !dev.sensorPaths.has(p));
     if (dev.kind !== r.kind || newPaths.length) {
-      if (!dev.kind) console.log(`[VictronBLE] ${dev.name}: ${modelName(r.productId) || KINDS[r.kind]?.label || r.kind} (product 0x${r.productId.toString(16)})`);
+      if (!dev.kind) console.log(`[LSH BLE] ${dev.name}: ${modelName(r.productId) || KINDS[r.kind]?.label || r.kind} (product 0x${r.productId.toString(16)})`);
       dev.model = modelName(r.productId);
       dev.kind = r.kind;
-      const key = `victronble/${dev.id}`;
+      const key = `lshble/${dev.id}`;
       const sensors = sensorsFor(r.values).filter((s) => !dev.sensorPaths.has(s.path));
       sensors.forEach((s) => dev.sensorPaths.add(s.path));
       // registerDevice() ignores a key it already has — sensors that only
@@ -202,14 +202,14 @@ class VictronBleClient {
       if (existing) existing.sensors.push(...sensors);
       else {
         this._registry.registerDevice({
-          key, label: dev.name, type: 'victronble', icon: KINDS[r.kind]?.icon || '🔋', homekit: [], sensors,
+          key, label: dev.name, type: 'lshble', icon: KINDS[r.kind]?.icon || '🔋', homekit: [], sensors,
         });
       }
     }
     for (const [type, value] of Object.entries(r.values)) {
       if (value == null) continue;
       const path = type === 'ALARM_ACTIVE' ? 'alarm_active' : type.toLowerCase();
-      this._store.update(`victronble/${dev.id}/${path}`, value);
+      this._store.update(`lshble/${dev.id}/${path}`, value);
     }
     dev.values = r.values;
     this._feedDashboard();
@@ -264,7 +264,7 @@ class VictronBleClient {
   }
 }
 
-// ── One-off scan (Settings → Victron Bluetooth → Scan) ──────────────────────
+// ── One-off scan (Settings → LSH BLE → Scan) ──────────────────────
 // Runs BlueZ discovery for `seconds` and lists the LE devices seen, Victron
 // ones identified from the unencrypted part of their advertisement (record
 // type + product id — no key needed). Independent of a running client: BlueZ
@@ -316,5 +316,5 @@ async function scan({ adapter = 'hci0', seconds = 10 } = {}) {
   }
 }
 
-module.exports = VictronBleClient;
+module.exports = LshBleClient;
 module.exports.scan = scan;
