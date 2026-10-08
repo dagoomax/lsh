@@ -78,6 +78,7 @@ export const CATEGORIES = [
     { id: 'homeplan', title: 'Home Plan', ported: true },
     { id: 'security-auth', title: 'Security & Authentication', ported: true },
     { id: 'backup', title: 'Backup & Restore', ported: true },
+    { id: 'ble-scan', title: 'Bluetooth scan', ported: true, keywords: ['ble', 'bluetooth', 'scan', 'bluez', 'devices nearby'] },
     { id: 'modules', title: 'Integration Modules', ported: true, keywords: ['install', 'github', 'plugins', 'update'] },
   ] },
 ]

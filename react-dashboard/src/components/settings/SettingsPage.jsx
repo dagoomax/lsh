@@ -51,6 +51,7 @@ import CamerasSection from './sections/CamerasSection'
 import BackupRestoreSection from './sections/BackupRestoreSection'
 import ModulesSection from './sections/ModulesSection'
 import LshBleSection from './sections/LshBleSection'
+import BleScanSection from './sections/BleScanSection'
 
 // Section id → component, for the handful ported so far (see sectionRegistry
 // for the full 57-section map). Anything not listed here renders a stub
@@ -104,6 +105,7 @@ const SECTION_COMPONENTS = {
   backup: BackupRestoreSection,
   modules: ModulesSection,
   'lsh-ble': LshBleSection,
+  'ble-scan': BleScanSection,
 }
 
 export default function SettingsPage({ onClose, onOpenCssEditor }) {
