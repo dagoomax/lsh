@@ -202,7 +202,13 @@ export const DEVICES = [
       { id: 'NO2', label: 'NO2', role: 'out', desc: 'Relay 2 normally-open contact' },
       { id: 'C2', label: 'C2', role: 'com', desc: 'Relay 2 common — potential-free' },
       { id: 'NC2', label: 'NC2', role: 'out', desc: 'Relay 2 normally-closed contact (closed while the relay is off)' },
+      // Interface connector (item 6), 5 pins; the sheet's DS18B20 example uses pins 1, 4 and 5
+      { id: 'X1', label: '3V3', role: 'v33', desc: 'Interface connector pin 1 — sensor supply, 3.3 V (red wire in the sheet’s example)' },
+      { id: 'X4', label: 'DQ', role: 'data', desc: 'Interface connector pin 4 — 1-Wire data (blue wire in the sheet’s example)' },
+      { id: 'X5', label: 'GND', role: 'dcminus', desc: 'Interface connector pin 5 — ground (black wire in the sheet’s example)' },
     ],
+    bridges: [['X5', 'G']],
+    oneWire: { vdd: 'X1', dq: 'X4', gnd: 'X5' },
     power: { dc: { plus: 'P', minus: 'G' } },
     inputs: { IN1: 'GND', IN2: 'GND' },
     channels: [
@@ -228,6 +234,7 @@ export const DEVICES = [
       'Two relays driving one blind motor must be configured as a blind pair on the controller so both directions are never on together.',
       'Check the pin order of each relay connector on the device label (NO, COM + NO, COM, NC).',
       'Settings reset: hold the reset button for 10 s to enter configuration mode.',
+      'DS18B20 sensors share one 1-Wire bus in parallel (each has its own 64-bit address): supply, data and ground to interface pins 1, 4 and 5. The interface is 3.3 V logic — never 24 V or 230 V on it.',
     ],
     tools: [
       { id: 'torque', text: 'Torque screwdriver 0.2–0.4 Nm (the controller’s terminals)' },
@@ -244,6 +251,10 @@ export const DEVICES = [
         shutter: { up: { com: 'C1', no: 'NO1' }, down: { com: 'C2', no: 'NO2' }, inUp: 'IN1', inDown: 'IN2' },
         parts: [{ id: 'psu1', kind: 'psu', label: '24 V DC supply' }, { id: 'sw1', kind: 'switch2', label: 'Up / down buttons', keys: ['▲', '▼'] }, { id: 'cb1', kind: 'breaker', label: 'B6' }, { id: 'm1', kind: 'motor', label: 'Blind motor' }],
         wires: [['L', 'psu1:l'], ['N', 'psu1:n'], ['psu1:plus', 'dev:P'], ['psu1:minus', 'dev:G'], ['psu1:minus', 'sw1:com'], ['sw1:o1', 'dev:IN1'], ['sw1:o2', 'dev:IN2'], ['L', 'cb1:in'], ['cb1:out', 'dev:C1'], ['cb1:out', 'dev:C2'], ['dev:NO1', 'm1:up'], ['dev:NO2', 'm1:down'], ['m1:n', 'N'], ['m1:pe', 'PE']] },
+      { id: 'ds18b20', title: 'Two DS18B20 temperature sensors (1-Wire)', inputMode: 'momentary', terminals: ['P', 'G', 'X1', 'X4', 'X5'],
+        parts: [{ id: 'psu1', kind: 'psu', label: '24 V DC supply' }, { id: 'ds1', kind: 'ds18b20', label: 'DS18B20 #1', temp: 21.5 }, { id: 'ds2', kind: 'ds18b20', label: 'DS18B20 #2', temp: 4 }],
+        wires: [['L', 'psu1:l'], ['N', 'psu1:n'], ['psu1:plus', 'dev:P'], ['psu1:minus', 'dev:G'],
+          ['dev:X1', 'ds1:vdd', { color: 'red' }], ['dev:X1', 'ds2:vdd', { color: 'red' }], ['dev:X4', 'ds1:dq', { color: 'blue' }], ['dev:X4', 'ds2:dq', { color: 'blue' }], ['dev:X5', 'ds1:gnd', { color: 'black' }], ['dev:X5', 'ds2:gnd', { color: 'black' }]] },
       { id: 'contactor', title: 'Load over 2500 W through a contactor', inputMode: 'momentary', terminals: ['P', 'G', 'IN1', 'C1', 'NO1'],
         parts: [{ id: 'psu1', kind: 'psu', label: '24 V DC supply' }, { id: 'sw1', kind: 'switch', label: 'Push-button' }, { id: 'cb1', kind: 'breaker', label: 'B10' }, { id: 'km1', kind: 'contactor', label: 'Contactor 25 A' }, { id: 'cb2', kind: 'breaker', label: 'B25' }, { id: 'load1', kind: 'load', label: 'Heater 3 kW' }],
         wires: [['L', 'psu1:l'], ['N', 'psu1:n'], ['psu1:plus', 'dev:P'], ['psu1:minus', 'dev:G'], ['psu1:minus', 'sw1:com'], ['sw1:o1', 'dev:IN1'], ['L', 'cb1:in'], ['cb1:out', 'dev:C1'], ['dev:NO1', 'km1:a1'], ['km1:a2', 'N'], ['L', 'cb2:in'], ['cb2:out', 'km1:l1'], ['km1:t1', 'load1:a'], ['load1:b', 'N']] },
@@ -261,6 +272,7 @@ export const PART_PORTS = {
   psu: ['l', 'n', 'plus', 'minus'],
   contactor: ['a1', 'a2', 'l1', 't1'],
   load: ['a', 'b'],
+  ds18b20: ['vdd', 'dq', 'gnd'],
 }
 
 // Ports of any part, including connectors (p1…pN, all joined inside)

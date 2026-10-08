@@ -240,7 +240,30 @@ export function simulate(device, scenario, wires, switches, state, extras = [], 
     if (up && down) e1.findings.push({ level: 'danger', text: t('{p}: both directions energised at once — this damages the motor.', { p: t(p.label) }) })
     if (net('pe') !== uf.find('PE')) e1.findings.push({ level: 'warn', text: t('{p}: protective earth (PE) not connected.', { p: t(p.label) }) })
   }
-  const out = { short: null, powered: e1.powered, twoWire: e1.twoWire, inputs: e1.inputs, state: st, lamps, motors, contactors, findings: e1.findings, nets: uf, L, N, PE: usesPE(scenario) ? uf.find('PE') : null, DCP: dcAfter.plus, DCM: dcAfter.minus, psu: dcAfter.on }
+  // 1-Wire sensors (DS18B20): online when supply, data and ground reach the controller's bus
+  const sensors = {}
+  const ow = device.oneWire
+  if (ow) {
+    const f = (x) => uf.find(x)
+    const V = f(`dev:${ow.vdd}`), D = f(`dev:${ow.dq}`), G = f(`dev:${ow.gnd}`)
+    const high = [L, N, dcAfter.plus].filter(Boolean)
+    for (const [term, net] of [[ow.vdd, V], [ow.dq, D], [ow.gnd, G]]) {
+      if (term !== ow.gnd && high.includes(net)) e1.findings.push({ level: 'danger', text: t('{v} on interface pin {t} — the 3.3 V interface would be destroyed.', { v: net === dcAfter.plus ? '24 V' : '230 V', t: labelOf(device, term) }) })
+    }
+    const busDown = D === V || D === G
+    const parts = scenario.parts.filter((p) => p.kind === 'ds18b20')
+    if (busDown && parts.length) e1.findings.push({ level: 'warn', text: t('1-Wire data is shorted to supply or ground — no sensor can be read.') })
+    for (const p of parts) {
+      const vdd = f(`${p.id}:vdd`), dq = f(`${p.id}:dq`), gnd = f(`${p.id}:gnd`)
+      const reversed = vdd === G && gnd === V && V !== G
+      if (reversed && e1.powered) e1.findings.push({ level: 'danger', text: t('{p} is wired the wrong way round (supply and ground swapped) — it overheats and is destroyed.', { p: t(p.label) }) })
+      const online = e1.powered && !busDown && vdd === V && gnd === G && dq === D
+      if (e1.powered && !online && !reversed && dq === D && vdd === G && gnd === G) e1.findings.push({ level: 'info', text: t('{p}: parasite power (supply tied to ground) — this example uses the 3-wire connection instead.', { p: t(p.label) }) })
+      sensors[p.id] = { online }
+    }
+  }
+
+  const out = { short: null, powered: e1.powered, sensors, twoWire: e1.twoWire, inputs: e1.inputs, state: st, lamps, motors, contactors, findings: e1.findings, nets: uf, L, N, PE: usesPE(scenario) ? uf.find('PE') : null, DCP: dcAfter.plus, DCM: dcAfter.minus, psu: dcAfter.on }
   // Wire colours vs what the wire carries
   for (const [a, b, meta] of wires) {
     if (!meta?.color || meta.color === 'auto') continue
@@ -250,7 +273,7 @@ export function simulate(device, scenario, wires, switches, state, extras = [], 
     else if (k === 'pe' && meta.color !== 'gnye') out.findings.push({ level: 'warn', text: t('Earth should be green-yellow ({w}).', { w: what }) })
     else if (k === 'neutral' && meta.color !== 'blue') out.findings.push({ level: 'warn', text: t('Neutral should be blue ({w}).', { w: what }) })
     else if (meta.color === 'blue' && k === 'live') out.findings.push({ level: 'warn', text: t('Blue is for neutral, but {w} carries live.', { w: what }) })
-    else if (meta.color === 'red' && k !== 'dcplus') out.findings.push({ level: 'warn', text: t('Red is used here for +24 V DC, but {w} isn’t +24 V.', { w: what }) })
+    else if (meta.color === 'red' && k !== 'dcplus' && k !== 'v33') out.findings.push({ level: 'warn', text: t('Red is used here for supplies (+24 V, sensor 3.3 V), but {w} isn’t a supply.', { w: what }) })
   }
   return out
 }
@@ -305,6 +328,8 @@ export function netKind(sim, device, port) {
   if (sim.PE && n === sim.PE) return 'pe'
   if (sim.DCP && n === sim.DCP) return 'dcplus'
   if (sim.DCM && n === sim.DCM) return 'dcminus'
+  const v33 = device.terminals.find((x) => x.role === 'v33')
+  if (v33 && sim.powered && n === sim.nets.find(`dev:${v33.id}`)) return 'v33'
   const sx = device.terminals.find((x) => x.role === 'sx')
   if (sx && sim.powered && n === sim.nets.find(`dev:${sx.id}`)) return 'sx'
   return 'idle'
@@ -360,7 +385,7 @@ export function portName(device, scenario, port, extras = []) {
   if (owner === 'dev') return t('terminal {t}', { t: labelOf(device, q) })
   const part = [...scenario.parts, ...extras].find((p) => p.id === owner)
   if (part?.kind === 'wago') return part.label ? t('{label} connector ({model}) port {n}', { label: t(part.label), model: part.model || `${part.poles}`, n: q.slice(1) }) : t('connector ({model}) port {n}', { model: part.model || `${part.poles}`, n: q.slice(1) })
-  const names = { in: t('in'), out: t('out'), a1: 'A1', a2: 'A2', l1: t('contact 1 (L1)'), t1: t('contact 2 (T1)'), plus: '+24 V', minus: '0 V', com: t('common'), o1: part?.keys?.[0] ? t('{k} contact', { k: part.keys[0] }) : t('contact 1'), o2: part?.keys?.[1] ? t('{k} contact', { k: part.keys[1] }) : t('contact 2'), a: t('terminal 1'), b: t('terminal 2'), up: t('up wire'), down: t('down wire'), n: t('neutral'), pe: t('earth'), l: t('live') }
+  const names = { vdd: t('supply (red)'), dq: t('data (DQ)'), gnd: t('ground'), in: t('in'), out: t('out'), a1: 'A1', a2: 'A2', l1: t('contact 1 (L1)'), t1: t('contact 2 (T1)'), plus: '+24 V', minus: '0 V', com: t('common'), o1: part?.keys?.[0] ? t('{k} contact', { k: part.keys[0] }) : t('contact 1'), o2: part?.keys?.[1] ? t('{k} contact', { k: part.keys[1] }) : t('contact 2'), a: t('terminal 1'), b: t('terminal 2'), up: t('up wire'), down: t('down wire'), n: t('neutral'), pe: t('earth'), l: t('live') }
   return t('{part}: {port}', { part: t(part?.label) || owner, port: part?.kind === 'switch' && q === 'o1' ? t('contact') : names[q] || q })
 }
 

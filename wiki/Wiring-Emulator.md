@@ -16,9 +16,9 @@ A wiring assistant and circuit emulator for Z-Wave in-wall modules. Diagrams, te
 | FIBARO Roller Shutter 3 (FGR-223) | standard blind motor · blind with built-in driver |
 | Shelly Qubino Wave 1PM | toggle switch · push-button |
 | Shelly Qubino Wave 2PM | two toggle switches · two push-buttons |
-| SmartBob SM-LITE-1616R (DIN-rail controller, 16 in / 16 relays) | push-button + light (input logic 1 and 2) · roller blind on two relays · load over 2500 W through a contactor |
+| SmartBob SM-LITE-1616R (DIN-rail controller, 16 in / 16 relays) | push-button + light (input logic 1 and 2) · roller blind on two relays · load over 2500 W through a contactor · two DS18B20 temperature sensors on 1-Wire |
 
-The SmartBob diagrams come from its installation sheet. Unlike the in-wall modules it has a separate 24 V DC side (supply, inputs switched to 0 V or +24 V) and **potential-free** relay contacts (COM / NO / NC) that you feed from your own breakers. The emulator models the 24 V supply, DIN breakers and a contactor for this, flags 230 V on the 24 V side, DC shorts and reversed polarity, and shows only the terminals each diagram uses. Remote control buttons are labelled LAN instead of Z-Wave.
+The SmartBob diagrams come from its installation sheet. Unlike the in-wall modules it has a separate 24 V DC side (supply, inputs switched to 0 V or +24 V) and **potential-free** relay contacts (COM / NO / NC) that you feed from your own breakers. The emulator models the 24 V supply, DIN breakers and a contactor for this, flags 230 V on the 24 V side, DC shorts and reversed polarity, and shows only the terminals each diagram uses. Remote control buttons are labelled LAN instead of Z-Wave. DS18B20 sensors sit in parallel on the 1-Wire bus (interface connector pins 1 supply / 4 data / 5 ground, as in the sheet's example — pin names are read from that drawing); each reads a temperature you set with a slider when it is correctly on the bus, and reversed sensors, a shorted data line and 24 V / 230 V on the 3.3 V interface are flagged.
 
 ## Modes
 

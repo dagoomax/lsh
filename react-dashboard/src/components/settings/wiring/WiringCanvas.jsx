@@ -12,7 +12,7 @@ const RAIL = { L: 36, N: 62, PE: 88 }
 const PART_Y = 228
 const TERM_Y = 446
 const WIRE_CSS = Object.fromEntries(WIRE_COLORS.filter((c) => c.css).map((c) => [c.id, c.id === 'gnye' ? '#9acd32' : c.css]))
-const COLORS = { live: '#b5651d', neutral: '#2f80ed', pe: '#9acd32', sx: '#ff9f0a', dcplus: '#ff3b30', dcminus: 'var(--wire-dcminus)', idle: 'var(--wire-idle)', draft: 'var(--wire-draft)' }
+const COLORS = { live: '#b5651d', neutral: '#2f80ed', pe: '#9acd32', sx: '#ff9f0a', dcplus: '#ff3b30', dcminus: 'var(--wire-dcminus)', v33: '#ff6482', idle: 'var(--wire-idle)', draft: 'var(--wire-draft)' }
 
 // The terminals a diagram shows (controllers have dozens; a diagram lists the ones it uses)
 export const shownTerminals = (device, scenario) => (scenario.terminals ? device.terminals.filter((x) => scenario.terminals.includes(x.id)) : device.terminals)
@@ -36,6 +36,7 @@ export function layout(device, scenario) {
     if (p.kind === 'breaker') { geo.box = { x0: cx - 18, x1: cx + 18, y0: 180, y1: 276 }; geo.ports = { in: [cx, 166], out: [cx, 290] } }
     if (p.kind === 'psu') { geo.box = { x0: cx - 40, x1: cx + 40, y0: 184, y1: 272 }; geo.ports = { l: [cx - 20, 170], n: [cx + 20, 170], plus: [cx - 20, 288], minus: [cx + 20, 288] } }
     if (p.kind === 'contactor') { geo.box = { x0: cx - 40, x1: cx + 40, y0: 180, y1: 276 }; geo.ports = { l1: [cx - 20, 166], t1: [cx - 20, 290], a1: [cx + 10, 290], a2: [cx + 28, 290] } }
+    if (p.kind === 'ds18b20') { geo.box = { x0: cx - 34, x1: cx + 34, y0: 196, y1: 250 }; geo.ports = { vdd: [cx - 16, 284], dq: [cx, 284], gnd: [cx + 16, 284] } }
     if (p.kind === 'load') { geo.box = { x0: cx - 32, x1: cx + 32, y0: 194, y1: 262 }; geo.ports = { b: [cx, 174], a: [cx, 280] } }
     if (p.kind === 'motorDriver') { geo.box = { x0: cx - 56, x1: cx + 56, y0: 186, y1: 272 }; geo.ports = { l: [cx - 34, 172], n: [cx - 10, 172], pe: [cx + 34, 172], up: [cx - 16, 288], down: [cx + 16, 288] } }
     parts[p.id] = geo
@@ -122,7 +123,7 @@ function railX(L, other, i, points) {
   return p.x < (p.box.x0 + p.box.x1) / 2 ? p.box.x0 - 10 - (i % 4) * 5 : p.box.x1 + 10 + (i % 4) * 5
 }
 
-export default function WiringCanvas({ device, scenario, wires, extras = [], highlight, sim, powered, switches, onPress, onRelease, onToggle, pending, onPort, onWireClick, interactive, shutterPos, draft, onCanvasPoint, onPointerMove, onExtraMove, onExtraRemove, draftColor, zoomable }) {
+export default function WiringCanvas({ device, scenario, wires, extras = [], temps = {}, highlight, sim, powered, switches, onPress, onRelease, onToggle, pending, onPort, onWireClick, interactive, shutterPos, draft, onCanvasPoint, onPointerMove, onExtraMove, onExtraRemove, draftColor, zoomable }) {
   const base = useMemo(() => layout(device, scenario), [device, scenario])
   const L = useMemo(() => ({ ...base, wagos: Object.fromEntries(extras.filter((e) => e.kind === 'wago').map((e) => [e.id, wagoGeo(e)])) }), [base, extras])
   const svgRef = useRef(null)
@@ -277,6 +278,23 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], hig
               })}
               {Object.entries(g.ports).map(([q, [x, y]]) => <line key={q} x1={x} x2={x} y1={g.box.y1} y2={y}/>)}
               <text x={g.cx} y={g.box.y0 - 8} className="wr-part-label">{t(p.label)}</text>
+            </g>
+          )
+        }
+        if (p.kind === 'ds18b20') {
+          const b = g.box
+          const online = !!sim?.sensors?.[p.id]?.online
+          const temp = temps[p.id] ?? p.temp ?? 20
+          return (
+            <g key={p.id} className={`wr-part wr-ds${online ? ' on' : ''}`}>
+              {Object.entries(g.ports).map(([q, [x, y]]) => <line key={q} x1={x} x2={x} y1={y} y2={b.y1}/>)}
+              <path d={`M ${g.cx - 16} ${b.y1} V ${b.y1 - 6} M ${g.cx} ${b.y1} V ${b.y1 - 6} M ${g.cx + 16} ${b.y1} V ${b.y1 - 6}`} className="wr-ds-leads"/>
+              <rect x={g.cx - 13} y={b.y0} width="26" height={b.y1 - b.y0 - 6} rx="13" className="wr-ds-probe"/>
+              <text x={g.cx} y={b.y0 + 30} className="wr-ds-chip">DS18B20</text>
+              <rect x={g.cx + 20} y={b.y0 + 4} width="58" height="22" rx="6" className="wr-ds-read"/>
+              <text x={g.cx + 49} y={b.y0 + 19} className="wr-ds-temp">{online ? `${temp.toFixed(1)} °C` : '— °C'}</text>
+              <text x={g.cx - 16} y={b.y1 + 26} className="wr-din-pin">V</text><text x={g.cx} y={b.y1 + 26} className="wr-din-pin">DQ</text><text x={g.cx + 16} y={b.y1 + 26} className="wr-din-pin">G</text>
+              <text x={g.cx} y={b.y0 - 8} className="wr-part-label">{t(p.label)}</text>
             </g>
           )
         }

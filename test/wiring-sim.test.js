@@ -204,3 +204,23 @@ test('SmartBob SM-LITE-1616R: 24 V inputs, potential-free relays, blind pair, co
   const ncWires = [...sc('light').wires, ['cb1:out', 'dev:C2'], ['dev:NC2', 'N']]
   assert.match(sim.simulate(d, sc('light'), ncWires, {}, sim.initialState(d)).short, /Short circuit/)
 })
+
+test('SmartBob 1-Wire: DS18B20 sensors on the bus, reversed sensor, high voltage on the interface', async () => {
+  const { sim, dev } = await load()
+  const d = dev('smartbob-sm-lite-1616r'), s = d.scenarios.find((x) => x.id === 'ds18b20')
+  const run = (w) => sim.simulate(d, s, w, {}, sim.initialState(d, s))
+  assert.deepEqual(run(s.wires).sensors, { ds1: { online: true }, ds2: { online: true } })
+  // one sensor's data wire missing → that sensor offline, the other still reads
+  assert.deepEqual(run(s.wires.filter(([a, b]) => b !== 'ds2:dq')).sensors, { ds1: { online: true }, ds2: { online: false } })
+  // supply/ground swapped on #2 → danger, offline
+  const rev = s.wires.map(([a, b, m]) => [a === 'dev:X1' && b === 'ds2:vdd' ? 'dev:X5' : a === 'dev:X5' && b === 'ds2:gnd' ? 'dev:X1' : a, b, m])
+  const r = run(rev)
+  assert.equal(r.sensors.ds2.online, false)
+  assert.ok(r.findings.some((f) => /wrong way round/.test(f.text)))
+  // data shorted to ground → whole bus down
+  assert.deepEqual(run([...s.wires, ['dev:X4', 'dev:G']]).sensors, { ds1: { online: false }, ds2: { online: false } })
+  // 24 V on the data pin
+  assert.ok(run([...s.wires, ['psu1:plus', 'dev:X4']]).findings.some((f) => /24 V on interface pin/.test(f.text)))
+  // controller off → no readings
+  assert.equal(run(s.wires.filter(([a]) => a !== 'psu1:plus')).sensors.ds1.online, false)
+})

@@ -860,3 +860,14 @@ select.stg-input { cursor: pointer; }
 .wr-term-label.role-dcplus { fill: #ff3b30; } .wr-terms b.role-dcplus { color: #ff3b30; }
 .wr-term-label.role-com { fill: var(--text); }
 .wr-swatch.sw-red { background: #ff3b30; }
+/* Wiring emulator — DS18B20 temperature probe */
+.wr-ds-probe { fill: #3a3a3c; stroke: #1c1c1e; stroke-width: 1; }
+.wr-ds.on .wr-ds-probe { fill: #48484a; stroke: #5ac8fa; stroke-width: 1.5; filter: drop-shadow(0 0 5px color-mix(in srgb, #5ac8fa 60%, transparent)); }
+.wr-ds-chip { font-size: 6px; font-weight: 800; fill: #c7c7cc; text-anchor: middle; writing-mode: vertical-rl; letter-spacing: 0.5px; }
+.wr-ds-leads { stroke: #8e8e93; stroke-width: 2; }
+.wr-ds line { stroke: var(--wire-draft); stroke-width: 2; }
+.wr-ds-read { fill: var(--white-08); stroke: var(--sep); }
+.wr-ds.on .wr-ds-read { fill: color-mix(in srgb, #5ac8fa 18%, transparent); stroke: #5ac8fa; }
+.wr-ds-temp { font-size: 12px; font-weight: 800; text-anchor: middle; fill: var(--text3); font-variant-numeric: tabular-nums; }
+.wr-ds.on .wr-ds-temp { fill: var(--text); }
+.wr-term-label.role-v33 { fill: #ff6482; } .wr-term-label.role-data { fill: #5ac8fa; } .wr-terms b.role-v33 { color: #ff6482; } .wr-terms b.role-data { color: #5ac8fa; }

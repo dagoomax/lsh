@@ -48,6 +48,7 @@ export default function WiringSection() {
   const [checked, setChecked] = useState({})
   const [big, setBig] = useState(false)
   const [info, setInfo] = useState(false)
+  const [temps, setTemps] = useState({})
 
   useEffect(() => { if (device.enclosure === 'din') setRealBox(false) }, [devId])
   const plan = useMemo(() => { const p = wallBoxPlan(device, scenario); return { ...p, parts: placeConnectors(p.parts) } }, [device, scenario])
@@ -167,7 +168,7 @@ export default function WiringSection() {
       <div className={`wr-stage${big ? ' big' : ''}`}>
         <div className="wr-canvas">
           {!big && <button className="lan-expand wr-expand" onClick={() => setBig(true)} title={t('Enlarge')}>⤢</button>}
-          <WiringCanvas zoomable={big} device={device} scenario={scenario} wires={wires} highlight={mode === 'assist' && !power ? step : null}
+          <WiringCanvas zoomable={big} temps={temps} device={device} scenario={scenario} wires={wires} highlight={mode === 'assist' && !power ? step : null}
             sim={sim} powered={power} switches={switches} interactive={mode === 'practice'} pending={draft?.from || pending}
             extras={extras} draft={draft} draftColor={color} onCanvasPoint={onCanvasPoint} onPointerMove={(pt) => setDraft((d) => (d ? { ...d, cursor: pt } : d))}
             onExtraMove={(id, x, y) => setUserParts((ps) => ps.map((p) => (p.id === id ? { ...p, x, y } : p)))} onExtraRemove={removeConnector}
@@ -196,7 +197,7 @@ export default function WiringSection() {
           )}
           <div className="wr-controls">
             <button className={`wr-power${power ? ' on' : ''}`} onClick={() => { setTripped(null); setPower(!power) }}>{power ? `⏻ ${t('Power on')}` : `⏻ ${t('Power off')}`}</button>
-            {power && sim?.powered && channelsOf(device, scenario).map((c) => (
+            {power && sim?.powered && channelsOf(device, scenario).filter((c) => !scenario.terminals || scenario.terminals.includes(c.com ?? c.out)).map((c) => (
               <button key={c.id} className={`wr-zw${stateRef.current.channels[c.id] ? ' on' : ''}`} onClick={() => remote((s) => ({ ...s, channels: { ...s.channels, [c.id]: !s.channels[c.id] } }))}>
                 {remoteName} · {t(c.label)}: {stateRef.current.channels[c.id] ? t('ON') : t('OFF')}
               </button>
@@ -206,6 +207,9 @@ export default function WiringSection() {
             )}
             {power && sim?.powered && shutterOf(device, scenario) && ['up', null, 'down'].map((d) => (
               <button key={String(d)} className="wr-zw" onClick={() => remote((s) => ({ ...s, shutter: { dir: d } }))}>{remoteName} {d === 'up' ? '▲' : d === 'down' ? '▼' : '■'}</button>
+            ))}
+            {power && sim?.powered && scenario.parts.filter((p) => p.kind === 'ds18b20').map((p) => (
+              <label key={p.id} className="wr-level">{t(p.label)} <input type="range" min="-20" max="60" step="0.5" value={temps[p.id] ?? p.temp ?? 20} onChange={(e) => setTemps((x) => ({ ...x, [p.id]: Number(e.target.value) }))}/> {(temps[p.id] ?? p.temp ?? 20).toFixed(1)} °C{sim?.sensors?.[p.id]?.online ? '' : ` · ${t('offline')}`}</label>
             ))}
             {power && sim && !sim.powered && <span className="stg-hint">{t('Module has no power.')}</span>}
             {power && sim?.twoWire && <span className="lan-kind">{t('2-wire mode')}</span>}
