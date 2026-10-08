@@ -97,8 +97,12 @@ module.exports = function register(router, ctx) {
   router.delete('/lsh-lan/devices/:key', requireAdmin, (req, res) => {
     const lan = load(res);
     if (!lan) return;
-    lan.inventory.remove(req.params.key);
-    res.json({ success: true });
+    try {
+      lan.inventory.remove(req.params.key);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(409).json({ success: false, error: err.message });
+    }
   });
 
   // Mark known: clears "new" / "ip-changed" (all devices, or body.keys)

@@ -6,7 +6,7 @@ import { Button, Toggle, Field } from './primitives'
 // custom names, notes and monitoring. Server: src/lsh-lan-inventory.js +
 // src/lsh-lan-monitor.js.
 
-const SYSTEM = { new: 'tag-new', 'ip-changed': 'tag-warn', offline: 'tag-bad' }
+const SYSTEM = { new: 'tag-new', 'ip-changed': 'tag-warn', offline: 'tag-bad', permanent: 'tag-perm' }
 const ago = (iso) => {
   if (!iso) return 'never'
   const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000)
@@ -49,10 +49,11 @@ export default function LanDevices({ onInspect, refreshKey }) {
     new: devices.filter((d) => d.tags.includes('new')).length,
     'ip-changed': devices.filter((d) => d.tags.includes('ip-changed')).length,
     monitored: devices.filter((d) => d.monitored).length,
+    permanent: devices.filter((d) => d.permanent).length,
     offline: devices.filter((d) => d.tags.includes('offline')).length,
   }
   const usedTags = [...new Set(devices.flatMap((d) => d.tags))].filter((t) => !SYSTEM[t]).sort()
-  const filters = ['all', 'new', 'ip-changed', 'monitored', 'offline', ...usedTags]
+  const filters = ['all', 'new', 'ip-changed', 'monitored', 'permanent', 'offline', ...usedTags]
   const shown = devices.filter((d) => {
     if (filter === 'monitored' && !d.monitored) return false
     if (filter !== 'all' && filter !== 'monitored' && !d.tags.includes(filter)) return false
@@ -91,8 +92,8 @@ export default function LanDevices({ onInspect, refreshKey }) {
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="stg-ble-name">
                       {d.label || d.name || d.ip}
-                      {d.monitored && <span title="Monitored">🔔</span>}
-                      <TagChips tags={d.tags} onRemove={(t) => patch(d.key, { tags: d.tags.filter((x) => x !== t && x !== 'offline') })}/>
+                      {d.monitored && <span title={d.permanent ? 'Permanent — always monitored' : 'Monitored'}>{d.permanent ? '📌' : '🔔'}</span>}
+                      <TagChips tags={d.tags} onRemove={(t) => patch(d.key, t === 'permanent' ? { permanent: false } : { tags: d.tags.filter((x) => x !== t && x !== 'offline') })}/>
                     </div>
                     <div className="stg-hint">
                       {d.ip}{d.mac ? ` · ${d.mac}` : ''}{d.vendor ? ` · ${d.vendor}` : ''}{d.kindLabel ? ` · ${d.kindLabel}` : ''}
@@ -117,13 +118,14 @@ export default function LanDevices({ onInspect, refreshKey }) {
 
 function DeviceEditor({ d, suggestions, onSave, onDelete, onInspect }) {
   const [label, setLabel] = useState(d.label || '')
-  const [tags, setTags] = useState(d.tags.filter((t) => t !== 'offline'))
+  const [tags, setTags] = useState(d.tags.filter((t) => t !== 'offline' && t !== 'permanent'))
   const [tagInput, setTagInput] = useState('')
   const [notes, setNotes] = useState(d.notes || '')
   const [monitored, setMonitored] = useState(!!d.monitored)
+  const [permanent, setPermanent] = useState(!!d.permanent)
   const addTag = (t) => {
     const v = String(t).trim().toLowerCase()
-    if (v && !tags.includes(v)) setTags([...tags, v])
+    if (v === 'permanent') { setPermanent(true); setMonitored(true) } else if (v && !tags.includes(v)) setTags([...tags, v])
     setTagInput('')
   }
   return (
@@ -145,17 +147,20 @@ function DeviceEditor({ d, suggestions, onSave, onDelete, onInspect }) {
         </div>
       </div>
       <Field label="Notes" type="textarea" value={notes} onChange={setNotes} placeholder="Where it is, who owns it…"/>
-      <Toggle label="Monitor this device" checked={monitored} onChange={setMonitored}
-        hint="online/offline + latency, shown as an LSH device (lan/…) for Flows and automations"/>
+      <Toggle label="Permanent device" checked={permanent} onChange={(v) => { setPermanent(v); if (v) setMonitored(true) }}
+        hint="always monitored, always on the dashboard, offline = critical alert, can't be forgotten"/>
+      <Toggle label="Monitor this device" checked={monitored || permanent} onChange={(v) => !permanent && setMonitored(v)}
+        hint={permanent ? 'on — permanent devices are always monitored' : 'online/offline + latency, shown as an LSH device (lan/…) for Flows and automations'}/>
       <div className="stg-hint">
         First seen {new Date(d.firstSeen).toLocaleString()} · last seen {new Date(d.lastSeen).toLocaleString()}
         {d.ipHistory?.length > 1 && ` · IPs: ${d.ipHistory.join(', ')}`}
         {d.integration && ` · LSH integration: ${d.integration}`}
       </div>
       <div className="stg-actions">
-        <Button variant="primary" onClick={() => onSave({ label, tags: tagInput ? [...tags, tagInput] : tags, notes, monitored })}>Save</Button>
+        <Button variant="primary" onClick={() => onSave({ label, tags: tagInput ? [...tags, tagInput] : tags, notes, monitored: monitored || permanent, permanent })}>Save</Button>
         <Button variant="secondary" onClick={onInspect}>Deep dive</Button>
-        <Button variant="danger" onClick={() => { if (window.confirm(`Forget ${d.label || d.name || d.ip}?`)) onDelete() }}>Forget</Button>
+        <Button variant="danger" disabled={d.permanent} title={d.permanent ? 'Permanent — remove the permanent tag first' : undefined}
+          onClick={() => { if (window.confirm(`Forget ${d.label || d.name || d.ip}?`)) onDelete() }}>Forget</Button>
       </div>
     </div>
   )

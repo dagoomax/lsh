@@ -467,3 +467,4 @@ select.stg-input { cursor: pointer; }
 .lan-settings-row > * { flex: 1; min-width: 180px; }
 .lan-new-count { color: var(--orange); cursor: pointer; }
 .lan-viewtoggle button:disabled { opacity: 0.4; cursor: default; }
+.lan-tag.tag-perm { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }

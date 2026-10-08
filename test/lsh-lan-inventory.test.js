@@ -44,6 +44,20 @@ test('saved LAN devices: baseline, new, ip-changed, mark known, user tags, monit
   const listed = inv.list((k) => (k === 'AA:00:00:00:00:03' ? { online: false } : null));
   assert.ok(listed.find((d) => d.key === 'AA:00:00:00:00:03').tags.includes('offline'));
 
+  // Permanent: tag ⇄ flag, implies monitoring, can't be forgotten
+  inv.update('AA:00:00:00:00:01', { tags: ['permanent', 'infra'] });
+  let p = inv.get('AA:00:00:00:00:01');
+  assert.equal(p.permanent, true);
+  assert.equal(p.monitored, true);
+  assert.deepEqual(p.tags, ['permanent', 'infra']);
+  assert.throws(() => inv.remove('AA:00:00:00:00:01'), /permanent/);
+  inv.update('AA:00:00:00:00:01', { monitored: false });
+  assert.equal(inv.get('AA:00:00:00:00:01').monitored, true, 'permanent keeps monitoring on');
+  inv.update('AA:00:00:00:00:01', { permanent: false });
+  p = inv.get('AA:00:00:00:00:01');
+  assert.equal(p.permanent, false);
+  assert.deepEqual(p.tags, ['infra']);
+
   // Persisted to disk
   inv._reset();
   assert.equal(inv.get('AA:00:00:00:00:03').label, 'Kids tablet');

@@ -8,6 +8,8 @@
 //   new         first seen after the baseline scan — until marked known
 //   ip-changed  same MAC turned up at a different IP — until marked known
 //   offline     monitored and currently not responding (computed)
+//   permanent   user-set: always monitored, can't be forgotten, offline is a
+//               critical alert, always on the dashboard (lan/<id>)
 // Any other tag is the user's own (trusted, guest, iot, kids, …).
 
 const fs = require('fs');
@@ -15,7 +17,7 @@ const path = require('path');
 
 const FILE = process.env.LSH_LAN_DEVICES_FILE || path.join(__dirname, '..', 'persist', 'lan-devices.json');
 const SYSTEM_TAGS = ['new', 'ip-changed', 'offline'];
-const SUGGESTED_TAGS = ['trusted', 'guest', 'iot', 'kids', 'infra', 'work', 'unknown', 'block'];
+const SUGGESTED_TAGS = ['permanent', 'trusted', 'guest', 'iot', 'kids', 'infra', 'work', 'unknown', 'block'];
 
 let db = null;
 
@@ -107,6 +109,14 @@ function update(key, patch) {
     dev.tags = cleanTags(patch.tags).filter((t) => t !== 'offline');
   }
   if (patch.monitored !== undefined) dev.monitored = !!patch.monitored;
+  if (patch.permanent !== undefined) {
+    dev.permanent = !!patch.permanent;
+  } else if (patch.tags !== undefined) {
+    dev.permanent = dev.tags.includes('permanent');
+  }
+  // "permanent" is both a flag and a tag; it always implies monitoring.
+  dev.tags = dev.tags.filter((t) => t !== 'permanent');
+  if (dev.permanent) { dev.tags.unshift('permanent'); dev.monitored = true; }
   save();
   return dev;
 }
@@ -123,6 +133,7 @@ function setIp(key, ip) {
 
 function remove(key) {
   const d = load();
+  if (d.devices[key]?.permanent) throw new Error('This device is permanent — remove the permanent tag first');
   delete d.devices[key];
   save();
 }

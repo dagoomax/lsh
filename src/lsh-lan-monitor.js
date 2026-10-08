@@ -55,6 +55,8 @@ class LanMonitor {
       this.scanTimer = setInterval(() => this.backgroundScan().catch((e) => console.error(`[LAN] Background scan failed: ${e.message}`)), Math.max(5, scanMin) * 60000);
       this.scanTimer.unref?.();
     }
+    // Permanent devices are on the dashboard from boot, before their first check.
+    for (const dev of inventory.monitored().filter((d) => d.permanent)) this._register(dev);
     console.log(`[LAN] Monitor started — ${inventory.monitored().length} device(s), check every ${every / 1000}s${scanMin ? `, scan every ${scanMin} min` : ''}`);
   }
 
@@ -132,7 +134,9 @@ class LanMonitor {
       st.fails = (prev.fails || 0) + 1;
       if (st.fails >= FAILS_FOR_OFFLINE && prev.online !== false) {
         st.online = false; st.lastChange = Date.now(); st.latency = null;
-        if (prev.online === true && this.cfg.notifyOffline !== false) this.notify('warning', `${dev.label || dev.name || ip} went offline (${ip})`);
+        if (prev.online === true && (this.cfg.notifyOffline !== false || dev.permanent)) {
+          this.notify(dev.permanent ? 'critical' : 'warning', `${dev.permanent ? 'Permanent device ' : ''}${dev.label || dev.name || ip} went offline (${ip})`);
+        }
       }
     }
     this.status.set(dev.key, st);
