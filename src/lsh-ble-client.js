@@ -304,7 +304,9 @@ async function scan({ adapter = 'hci0', seconds = 10 } = {}) {
       }
       out.push({
         mac: normalizeMac(d.Address?.value),
-        name: d.Name?.value || d.Alias?.value || null,
+        // BlueZ's Alias falls back to the MAC ("AA-BB-…") when a device has
+        // no name — that's not a name.
+        name: d.Name?.value || (d.Alias?.value && !/^([0-9A-F]{2}-){5}[0-9A-F]{2}$/i.test(d.Alias.value) ? d.Alias.value : null),
         rssi: d.RSSI.value,
         manufacturers: Object.keys(mfr).map((k) => `0x${Number(k).toString(16).padStart(4, '0')}`),
         victron,
