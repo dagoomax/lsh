@@ -479,8 +479,8 @@ select.stg-input { cursor: pointer; }
 .lan-icon-preview .lan-icon-img { width: 40px; height: 40px; }
 
 /* ── LAN scan: hero, radar, tiles, animated map ─────────────────────────── */
-.lan-hero, .lan-topo, .lan-popup { --lan: #0a84ff; }
-[data-theme="light"] .lan-hero, [data-theme="light"] .lan-topo, [data-theme="light"] .lan-popup { --lan: #007aff; }
+.lan-hero, .lan-topo, .lan-popup, .lan-grid { --lan: #0a84ff; }
+[data-theme="light"] .lan-hero, [data-theme="light"] .lan-topo, [data-theme="light"] .lan-popup, [data-theme="light"] .lan-grid { --lan: #007aff; }
 .lan-hero { position: relative; display: flex; gap: 22px; align-items: center; padding: 18px; border-radius: 18px; overflow: hidden;
   background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--lan) 22%, transparent), transparent 55%),
               radial-gradient(90% 120% at 100% 100%, color-mix(in srgb, #bf5af2 16%, transparent), transparent 60%), var(--white-04); }
@@ -635,3 +635,26 @@ select.stg-input { cursor: pointer; }
 .can-bytes i.empty { background: none; }
 @media (max-width: 640px) { .can-wave { width: 100%; height: 100px; } }
 @media (prefers-reduced-motion: reduce) { .can-wave-track { animation: none !important; } }
+
+/* Modbus scan (ModbusScanSection.jsx) — shares the LAN scan look */
+.mb-grid { flex-shrink: 0; width: 220px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 10px; border-radius: 16px;
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--lan) 20%, transparent), transparent 75%), var(--white-04);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lan) 30%, transparent); }
+.mb-grid i { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; text-align: center; padding: 3px 0; border-radius: 4px;
+  background: var(--white-04); color: var(--text3); animation: mb-blink 3.6s infinite; }
+.mb-grid.scanning i { animation-duration: 0.9s; }
+@keyframes mb-blink { 0%, 86%, 100% { background: var(--white-04); color: var(--text3); box-shadow: none; }
+  90% { background: color-mix(in srgb, var(--lan) 55%, transparent); color: #fff; box-shadow: 0 0 10px color-mix(in srgb, var(--lan) 60%, transparent); } }
+.mb-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin: 10px 0; }
+.mb-form label { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 160px; }
+.mb-form label.narrow { flex: 0 0 110px; min-width: 90px; }
+.mb-form label span { font-size: 11.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; }
+.mb-form.tight { margin: 0 0 10px; }
+.mb-table-wrap { overflow-x: auto; }
+.mb-table { border-collapse: collapse; width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-variant-numeric: tabular-nums; }
+.mb-table th { text-align: right; font-weight: 700; color: var(--text3); font-size: 10.5px; text-transform: uppercase; padding: 4px 8px; border-bottom: 0.5px solid var(--sep); }
+.mb-table td { text-align: right; padding: 3px 8px; border-bottom: 0.5px solid var(--sep); white-space: nowrap; }
+.mb-table td:first-child, .mb-table th:first-child { text-align: left; color: var(--lan); font-weight: 700; }
+.mb-table tr:hover td { background: var(--white-04); }
+@media (max-width: 640px) { .mb-grid { width: 100%; grid-template-columns: repeat(8, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .mb-grid i { animation: none !important; } }

@@ -417,6 +417,15 @@ Settings → System → CAN bus scan listens to a CAN bus **without transmitting
 
 Sources: **SocketCAN** interfaces via `candump` (`sudo apt install can-utils`; the interface must be up — `sudo ip link set can0 up type can bitrate 250000 listen-only on`) and **SLCAN** USB adapters (CANable, USBtin) via `serialport`, opened listen-only. On the **Arduino VENTUNO Q** the STM32H5 runs Arduino's CANnectivity firmware (gs_usb, USB `1209:ca01`), so its three CAN-FD ports appear as `can0`–`can2` and are labelled "VENTUNO Q CAN-FD 1–3". Decoders are tested against frames built from the specs (`test/lsh-can-scan.test.js`), not against a live bus yet.
 
+### Modbus scan (tool module `lsh-modbus`)
+
+Settings → System → Modbus scan finds Modbus devices **read-only** (function codes 1–4 and 0x2B only):
+
+- **Modbus TCP** — sweeps this host's /24 for port 502 (or scans the hosts you enter) and probes unit IDs (default 1, 2, 3, 100, 126, 247, 255, 0; any list/range such as `1-10,100`).
+- **Modbus RTU** — RS-485 through a USB adapter (`serialport`), any baud / parity, unit IDs 1–247 (about a minute for a full sweep).
+
+A unit counts as present when it answers at all (data or a Modbus exception other than the gateway "no device" ones). Identification: FC 0x2B device identification, **SunSpec** (manufacturer, model, serial, model list), **Victron GX** (unit 100: serial + battery V/A/W/SOC), **Eastron SDM-style** energy meters (float32 input registers) and **Huawei SUN2000**. Each device opens a register explorer (holding/input registers, coils, discrete inputs) showing u16 / i16 / hex / ASCII / u32 / float32. `node scripts/modbus-simulator.js [port]` serves a SunSpec inverter, a meter, a Victron GX and an exception-only unit for testing.
+
 ### `solaredge`
 
 ```json

@@ -9,4 +9,6 @@ module.exports = [
   { id: 'lsh-lan', entry: 'src/lsh-lan.js' },
   // Settings → System → CAN bus scan (SocketCAN via candump, SLCAN via serialport)
   { id: 'lsh-can', entry: 'src/lsh-can-scan.js' },
+  // Settings → System → Modbus scan (Modbus TCP sweep, RTU via serialport)
+  { id: 'lsh-modbus', entry: 'src/lsh-modbus-scan.js' },
 ];

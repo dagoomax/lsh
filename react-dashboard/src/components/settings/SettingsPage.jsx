@@ -53,6 +53,7 @@ import BackupRestoreSection from './sections/BackupRestoreSection'
 import ModulesSection from './sections/ModulesSection'
 import LshBleSection from './sections/LshBleSection'
 import CanScanSection from './sections/CanScanSection'
+import ModbusScanSection from './sections/ModbusScanSection'
 import BleScanSection from './sections/BleScanSection'
 import LanScanSection from './sections/LanScanSection'
 
@@ -112,6 +113,7 @@ const SECTION_COMPONENTS = {
   'ble-scan': BleScanSection,
   'lan-scan': LanScanSection,
   'can-scan': CanScanSection,
+  'modbus-scan': ModbusScanSection,
 }
 
 export default function SettingsPage({ onClose, onOpenCssEditor }) {

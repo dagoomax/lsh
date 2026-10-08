@@ -74,6 +74,7 @@
     "src/routes/lsh-ble.js",
     "src/routes/lsh-can.js",
     "src/routes/lsh-lan.js",
+    "src/routes/lsh-modbus.js",
     "src/routes/matter.js",
     "src/routes/mc6.js",
     "src/routes/mcp-server.js",
@@ -1158,6 +1159,18 @@
       "tool": true,
       "files": [
         "src/lsh-can-scan.js"
+      ],
+      "deps": {
+        "serialport": "^13.0.0"
+      }
+    },
+    "lsh-modbus": {
+      "entry": "src/lsh-modbus-scan.js",
+      "configKeys": [],
+      "when": null,
+      "tool": true,
+      "files": [
+        "src/lsh-modbus-scan.js"
       ],
       "deps": {
         "serialport": "^13.0.0"

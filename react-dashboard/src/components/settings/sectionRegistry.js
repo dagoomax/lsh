@@ -82,6 +82,7 @@ export const CATEGORIES = [
     { id: 'lan-scan', title: 'LAN scan', ported: true, keywords: ['network', 'lan', 'scan', 'ip', 'devices', 'ports', 'mdns', 'bonjour', 'upnp', 'discover'] },
     { id: 'ble-scan', title: 'Bluetooth scan', ported: true, keywords: ['ble', 'bluetooth', 'scan', 'bluez', 'devices nearby'] },
     { id: 'can-scan', title: 'CAN bus scan', ported: true, keywords: ['can', 'canbus', 'can-fd', 'nmea 2000', 'n2k', 've.can', 'j1939', 'canopen', 'bms', 'pylontech', 'ventuno', 'socketcan', 'candump'] },
+    { id: 'modbus-scan', title: 'Modbus scan', ported: true, keywords: ['modbus', 'rtu', 'rs485', 'rs-485', 'tcp', '502', 'sunspec', 'energy meter', 'eastron', 'sdm', 'inverter', 'registers'] },
     { id: 'modules', title: 'Integration Modules', ported: true, keywords: ['install', 'github', 'plugins', 'update'] },
   ] },
 ]
