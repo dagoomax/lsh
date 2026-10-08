@@ -16,6 +16,9 @@ A wiring assistant and circuit emulator for Z-Wave in-wall modules. Diagrams, te
 | FIBARO Roller Shutter 3 (FGR-223) | standard blind motor · blind with built-in driver |
 | Shelly Qubino Wave 1PM | toggle switch · push-button |
 | Shelly Qubino Wave 2PM | two toggle switches · two push-buttons |
+| SmartBob SM-LITE-1616R (DIN-rail controller, 16 in / 16 relays) | push-button + light (input logic 1 and 2) · roller blind on two relays · load over 2500 W through a contactor |
+
+The SmartBob diagrams come from its installation sheet. Unlike the in-wall modules it has a separate 24 V DC side (supply, inputs switched to 0 V or +24 V) and **potential-free** relay contacts (COM / NO / NC) that you feed from your own breakers. The emulator models the 24 V supply, DIN breakers and a contactor for this, flags 230 V on the 24 V side, DC shorts and reversed polarity, and shows only the terminals each diagram uses. Remote control buttons are labelled LAN instead of Z-Wave.
 
 ## Modes
 
@@ -35,6 +38,6 @@ It is a simplified practice tool — no currents, cable lengths or load limits. 
 ## Adding a device
 
 1. Put the manual in the manuals repo (`index.json` entry with SHA-256).
-2. Add a device to `wiring/devices.js`: terminals (with `role`: `L`, `N`, `in`, `out`, `sx`), `bridges`, `power`, `inputs`, `channels` or `shutter`, `specs`, `rules`, and one `scenario` per manual diagram (parts + wires).
+2. Add a device to `wiring/devices.js`: terminals (with `role`: `L`, `N`, `in`, `out`, `sx`, `com`, `dcplus`, `dcminus`), `bridges`, `power` (`{ L, N }` or `{ dc: { plus, minus } }`), `inputs` (reference `L`, `Sx`, `GND` or `V+`), `channels` (`out`, or potential-free `com` / `no` / `nc`) or `shutter` (also per scenario), `specs`, `rules`, and one `scenario` per manual diagram (parts + wires).
 3. Add every new phrase to the phrase book (`wiring/i18n-dict*.js`, 6 languages).
 4. `npm test` — every diagram must pass its own check, power up without danger findings, have a working wall-box plan, and every phrase must be translated.

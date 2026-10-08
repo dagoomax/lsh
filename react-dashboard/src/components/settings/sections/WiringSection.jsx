@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { SettingsCard, Button } from '../primitives'
 import { DEVICES, CONNECTORS, WIRE_COLORS, toolsFor } from '../wiring/devices.js'
-import { simulate, initialState, check, steps, portName, wallBoxPlan } from '../wiring/sim.js'
+import { simulate, initialState, check, steps, portName, wallBoxPlan, shutterOf, channelsOf } from '../wiring/sim.js'
 import WiringCanvas, { wagoGeo } from '../wiring/WiringCanvas.jsx'
 import { t } from '../wiring/i18n.js'
 import WiringInfo from '../wiring/WiringInfo.jsx'
@@ -49,6 +49,7 @@ export default function WiringSection() {
   const [big, setBig] = useState(false)
   const [info, setInfo] = useState(false)
 
+  useEffect(() => { if (device.enclosure === 'din') setRealBox(false) }, [devId])
   const plan = useMemo(() => { const p = wallBoxPlan(device, scenario); return { ...p, parts: placeConnectors(p.parts) } }, [device, scenario])
   const lang = getLang()
   const stepList = useMemo(() => steps(device, scenario, realBox ? plan : null), [device, scenario, realBox, plan, lang])
@@ -59,7 +60,7 @@ export default function WiringSection() {
   // Reset when the device or diagram changes
   useEffect(() => { setScnId(device.scenarios[0].id) }, [devId])
   useEffect(() => {
-    stateRef.current = initialState(device)
+    stateRef.current = initialState(device, scenario)
     setStep(mode === 'assist' ? (realBox ? plan.wires : scenario.wires).length - 1 : 0); setUserWires([]); setUserParts([]); setDraft(null); setPending(null); setPower(false); setSwitches({}); setSim(null); setTripped(null); setResult(null); setShutterPos(50)
   }, [devId, scnId, mode, realBox])
   useEffect(() => {
@@ -93,7 +94,7 @@ export default function WiringSection() {
     const iv = setInterval(() => setShutterPos((p) => Math.max(0, Math.min(100, p + (motorDir === 'up' ? 4 : -4)))), 120)
     return () => clearInterval(iv)
   }, [motorDir])
-  // Limit switches: stop the module at the end of travel
+  // Limit switches: stop the module at the end of travel (works for scenario-defined blinds too)
   useEffect(() => {
     const dir = stateRef.current.shutter?.dir
     if (dir && ((dir === 'up' && shutterPos >= 100) || (dir === 'down' && shutterPos <= 0))) {
@@ -128,6 +129,7 @@ export default function WiringSection() {
   }
 
   const findings = sim?.findings || []
+  const remoteName = device.protocol || 'Z-Wave'
   const manualUrl = `/api/manuals/${device.manual}/pdf`
 
   const toolbar = (
@@ -135,9 +137,9 @@ export default function WiringSection() {
         <div className="lan-filters" style={{ margin: 0 }}>
           {device.scenarios.map((s) => <button key={s.id} className={`lan-filter${s.id === scenario.id ? ' active' : ''}`} onClick={() => setScnId(s.id)}>{t(s.title)}</button>)}
         </div>
-        <label className="emu-inline" title={t('Incoming cable has one L, one N and one PE conductor — splits need connectors')}>
+        {device.enclosure !== 'din' && <label className="emu-inline" title={t('Incoming cable has one L, one N and one PE conductor — splits need connectors')}>
           <input type="checkbox" checked={realBox} onChange={(e) => setRealBox(e.target.checked)}/> {t('Real wall box (connectors)')}
-        </label>
+        </label>}
         <button className="wr-info-btn" onClick={() => setInfo(true)} title={t('How the wiring emulator works')}>ℹ {t('Info')}</button>
         <div className="lan-viewtoggle" style={{ marginLeft: 'auto' }}>
           <button className={mode === 'assist' ? 'active' : ''} onClick={() => setMode('assist')}>📖 {t('Assistant')}</button>
@@ -152,7 +154,7 @@ export default function WiringSection() {
       <div className="wr-devices">
         {DEVICES.map((d) => (
           <button key={d.id} className={`wr-dev${d.id === devId ? ' active' : ''}`} style={{ '--g': d.color }} onClick={() => setDevId(d.id)}>
-            <span className="wr-dev-icon">{{ relay: '🔌', dimmer: '💡', shutter: '🪟' }[d.kind]}</span>
+            <span className="wr-dev-icon">{{ relay: '🔌', dimmer: '💡', shutter: '🪟', controller: '🎛' }[d.kind]}</span>
             <span><b>{d.name}</b><small>{d.manufacturer} {d.model}</small></span>
           </button>
         ))}
@@ -171,7 +173,7 @@ export default function WiringSection() {
             onExtraMove={(id, x, y) => setUserParts((ps) => ps.map((p) => (p.id === id ? { ...p, x, y } : p)))} onExtraRemove={removeConnector}
             onPress={(id, k) => setKey(id, k, true)} onRelease={(id, k) => setKey(id, k, false)} onToggle={(id, k) => setKey(id, k, !(switches[id] || [])[k])}
             onPort={onPort} onWireClick={(i) => { setUserWires((w) => w.filter((_, j) => j !== i)); setResult(null) }}
-            shutterPos={device.kind === 'shutter' ? shutterPos : null}/>
+            shutterPos={shutterOf(device, scenario) ? shutterPos : null}/>
           {tripped && (
             <div className="wr-trip" onClick={() => setTripped(null)}>
               <b>⚡ {t('Breaker tripped')}</b><span>{tripped}</span><small>{t('Fix the wiring, then switch the power on again.')}</small>
@@ -194,16 +196,16 @@ export default function WiringSection() {
           )}
           <div className="wr-controls">
             <button className={`wr-power${power ? ' on' : ''}`} onClick={() => { setTripped(null); setPower(!power) }}>{power ? `⏻ ${t('Power on')}` : `⏻ ${t('Power off')}`}</button>
-            {power && sim?.powered && (device.channels || []).map((c) => (
+            {power && sim?.powered && channelsOf(device, scenario).map((c) => (
               <button key={c.id} className={`wr-zw${stateRef.current.channels[c.id] ? ' on' : ''}`} onClick={() => remote((s) => ({ ...s, channels: { ...s.channels, [c.id]: !s.channels[c.id] } }))}>
-                Z-Wave · {t(c.label)}: {stateRef.current.channels[c.id] ? t('ON') : t('OFF')}
+                {remoteName} · {t(c.label)}: {stateRef.current.channels[c.id] ? t('ON') : t('OFF')}
               </button>
             ))}
             {power && sim?.powered && device.kind === 'dimmer' && (
               <label className="wr-level">{t('Level')} <input type="range" min="1" max="100" value={stateRef.current.level} onChange={(e) => remote((s) => ({ ...s, level: Number(e.target.value) }))}/> {stateRef.current.level}%</label>
             )}
-            {power && sim?.powered && device.shutter && ['up', null, 'down'].map((d) => (
-              <button key={String(d)} className="wr-zw" onClick={() => remote((s) => ({ ...s, shutter: { dir: d } }))}>Z-Wave {d === 'up' ? '▲' : d === 'down' ? '▼' : '■'}</button>
+            {power && sim?.powered && shutterOf(device, scenario) && ['up', null, 'down'].map((d) => (
+              <button key={String(d)} className="wr-zw" onClick={() => remote((s) => ({ ...s, shutter: { dir: d } }))}>{remoteName} {d === 'up' ? '▲' : d === 'down' ? '▼' : '■'}</button>
             ))}
             {power && sim && !sim.powered && <span className="stg-hint">{t('Module has no power.')}</span>}
             {power && sim?.twoWire && <span className="lan-kind">{t('2-wire mode')}</span>}

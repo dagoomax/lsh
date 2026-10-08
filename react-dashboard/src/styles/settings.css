@@ -839,3 +839,24 @@ select.stg-input { cursor: pointer; }
 .wr-info-devs a { text-decoration: none; }
 .wr-info-warn { padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--orange) 12%, transparent); }
 .wr-info-warn p { color: var(--text2); }
+/* Wiring emulator — DIN parts (breaker, 24 V supply, contactor) and heater load */
+.wr-canvas { --wire-dcminus: #3a3a3c; }
+[data-theme="light"] .wr-canvas { --wire-dcminus: #1c1c1e; }
+.wr-din-body { fill: #e8e8ea; stroke: #8e8e93; stroke-width: 1.2; }
+.wr-din line { stroke: var(--wire-draft); stroke-width: 2; }
+.wr-din-lever { fill: #3a3a3c; }
+.wr-din.wr-breaker.on .wr-din-lever { fill: #1c1c1e; }
+.wr-din-text { font-size: 11px; font-weight: 800; text-anchor: middle; fill: #1c1c1e; }
+.wr-din-text.big { font-size: 13px; }
+.wr-din-pin { font-size: 9px; font-weight: 700; text-anchor: middle; fill: #48484a; }
+.wr-din-pin.plus { fill: #ff3b30; }
+.wr-coil { fill: none; stroke: #48484a; stroke-width: 1.5; }
+.wr-contactor.on .wr-coil { fill: color-mix(in srgb, #30d158 35%, transparent); stroke: #30d158; }
+.wr-contact { fill: none; stroke: #1c1c1e; stroke-width: 2; }
+.wr-load .wr-din-body { fill: var(--white-08); stroke: var(--text3); }
+.wr-heat { fill: none; stroke: var(--text3); stroke-width: 2; }
+.wr-load.on .wr-din-body { fill: color-mix(in srgb, #ff453a 30%, transparent); stroke: #ff453a; filter: drop-shadow(0 0 8px color-mix(in srgb, #ff453a 60%, transparent)); }
+.wr-load.on .wr-heat { stroke: #ff453a; }
+.wr-term-label.role-dcplus { fill: #ff3b30; } .wr-terms b.role-dcplus { color: #ff3b30; }
+.wr-term-label.role-com { fill: var(--text); }
+.wr-swatch.sw-red { background: #ff3b30; }

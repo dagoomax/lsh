@@ -6,8 +6,8 @@ import { useSettingsSave } from '../../../hooks/useSettingsSave'
 // GitHub repo, downloaded only when opened and then cached on this host
 // (src/manuals.js).
 
-const KIND = { relay: '🔌', dimmer: '💡', shutter: '🪟' }
-const COLOR = { FIBARO: '#0a84ff', Qubino: '#30d158', Shelly: '#ff375f' }
+const KIND = { relay: '🔌', dimmer: '💡', shutter: '🪟', controller: '🎛' }
+const COLOR = { FIBARO: '#0a84ff', Qubino: '#30d158', Shelly: '#ff375f', SmartBob: '#7c8cff' }
 const kb = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.round(b / 1024)} kB`)
 
 export default function ManualsSection() {
@@ -74,7 +74,7 @@ export default function ManualsSection() {
                   <div className="lan-tile-icon"><span>{KIND[m.kind] || '📄'}</span></div>
                   <div className="lan-tile-text">
                     <div className="lan-tile-name">{m.title}</div>
-                    <div className="lan-tile-sub">{m.model} · {m.pages} pages · {kb(m.bytes)} · {m.language.toUpperCase()}</div>
+                    <div className="lan-tile-sub">{m.model} · {m.format && m.format !== 'pdf' ? m.format.toUpperCase() : `${m.pages} pages`} · {kb(m.bytes)} · {m.language.toUpperCase()}</div>
                   </div>
                   <span className={`lan-kind`}>{busy === m.id ? 'downloading…' : m.cached ? '✓ on host' : 'on demand'}</span>
                 </div>
@@ -82,7 +82,7 @@ export default function ManualsSection() {
                   <Button variant="primary" busy={busy === m.id} onClick={() => open(m)}>Open</Button>
                   <Button onClick={() => open(m, true)}>Download</Button>
                   {m.cached && <Button onClick={() => removeLocal(m)}>Remove local copy</Button>}
-                  <a className="lan-port" href={m.productPage} target="_blank" rel="noopener noreferrer">Z-Wave Alliance page ↗</a>
+                  {m.productPage && <a className="lan-port" href={m.productPage} target="_blank" rel="noopener noreferrer">Z-Wave Alliance page ↗</a>}
                 </div>
               </div>
             ))}

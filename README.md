@@ -462,7 +462,7 @@ The token needs only **Contents: read-only** on that repository (fine-grained to
 
 ### Wiring emulator (Settings → System)
 
-A wiring assistant and circuit emulator for Z-Wave in-wall modules, converted from the manufacturers' installation manuals (manuals themselves: see `manuals`). Devices: FIBARO Single Switch 2 (FGS-213), Double Switch 2 (FGS-223), Dimmer 2 (FGD-212, 2- and 3-wire), Roller Shutter 3 (FGR-223, standard and built-in-driver blinds), Shelly Qubino Wave 1PM and 2PM — 14 diagrams in all.
+A wiring assistant and circuit emulator for Z-Wave in-wall modules, converted from the manufacturers' installation manuals (manuals themselves: see `manuals`). Devices: FIBARO Single Switch 2 (FGS-213), Double Switch 2 (FGS-223), Dimmer 2 (FGD-212, 2- and 3-wire), Roller Shutter 3 (FGR-223, standard and built-in-driver blinds), Shelly Qubino Wave 1PM and 2PM, and the SmartBob SM-LITE-1616R DIN-rail controller (24 V inputs, potential-free relays, blind pair, contactor for loads over 2500 W) — 18 diagrams in all.
 
 - **Assistant** — the manual's diagram drawn wire by wire with what each terminal is for, plus the device's limits (load, fuse, wall box, cable length) and rules.
 - **Practice** — wire it yourself by clicking connection points, then *Check wiring* (lists missing and wrong connections) and switch the power on: wall switches and Z-Wave commands drive the module, lamps light (dimmed in 2-wire or 3-wire mode), blind motors run to their limits, and mistakes show up — a short trips the breaker; live on N, Sx on live/neutral, an output wired to neutral, a missing neutral or earth are reported.

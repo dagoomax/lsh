@@ -1,8 +1,11 @@
 // Circuit simulation for the wiring emulator — pure functions, no React.
 // Model: every port is a node; wires, closed switch contacts, internal device
-// bridges and closed relay/dimmer outputs are zero-ohm links merged into
-// nets (union-find). Loads (lamps, motor windings) sit between nets. Mains L
-// and N (and PE) are the sources. Tested in test/wiring-sim.test.js.
+// bridges, breakers, connectors, closed relay/dimmer outputs and contactor
+// contacts are zero-ohm links merged into nets (union-find). Loads (lamps,
+// heaters, motor windings, contactor coils) sit between nets. Mains L / N /
+// PE are the sources, plus the + / − of any powered 24 V DC supply.
+// Relay outputs are either tied to the module's live terminal (`out`) or
+// potential-free contacts (`com` / `no` / `nc`). Tested in test/wiring-sim.test.js.
 
 import { portsOf, connectorFor, CONNECTORS } from './devices.js'
 import { t } from './i18n.js'
@@ -35,17 +38,22 @@ const joinConnectors = (uf, extras) => {
 
 export const usesPE = (scenario) => scenario.parts.some((p) => p.kind === 'motor' || p.kind === 'motorDriver')
 
+// A scenario can program a controller differently (e.g. two relays as a blind)
+export const shutterOf = (device, scenario) => scenario?.shutter || device.shutter || null
+export const channelsOf = (device, scenario) => (scenario?.shutter ? [] : device.channels || [])
+const LOADS = new Set(['lamp', 'load'])
+
 // Initial device state for a scenario
-export function initialState(device) {
+export function initialState(device, scenario) {
   return {
     channels: Object.fromEntries((device.channels || []).map((c) => [c.id, false])),
     level: 100,
-    shutter: device.shutter ? { dir: null } : null,
+    shutter: shutterOf(device, scenario) ? { dir: null } : null,
     prevInputs: {},
   }
 }
 
-function buildNets(device, scenario, wires, switches, state, powered, extras = []) {
+function buildNets(device, scenario, wires, switches, state, powered, extras = [], contactors = {}) {
   const uf = new UF()
   for (const port of allPorts(device, scenario, extras)) uf.find(port)
   for (const [a, b] of wires) uf.union(a, b)
@@ -59,23 +67,46 @@ function buildNets(device, scenario, wires, switches, state, powered, extras = [
       if (s[1]) uf.union(`${p.id}:com`, `${p.id}:o2`)
     }
   }
-  // Closed outputs connect to the device's live terminal
-  if (powered) {
-    const live = `dev:${device.power.L}`
-    for (const c of device.channels || []) if (state.channels[c.id]) uf.union(`dev:${c.out}`, live)
-    if (device.shutter && state.shutter?.dir) uf.union(`dev:${state.shutter.dir === 'up' ? device.shutter.up : device.shutter.down}`, live)
+  for (const p of scenario.parts) {
+    if (p.kind === 'breaker') uf.union(`${p.id}:in`, `${p.id}:out`)
+    if (p.kind === 'contactor' && contactors[p.id]) uf.union(`${p.id}:l1`, `${p.id}:t1`)
   }
+  // Relay outputs: tied to the live terminal, or potential-free COM–NO / COM–NC
+  const live = device.power.L ? `dev:${device.power.L}` : null
+  const close = (o, on) => {
+    if (typeof o === 'string') { if (on && powered && live) uf.union(`dev:${o}`, live); return }
+    if (on && powered) uf.union(`dev:${o.com}`, `dev:${o.no}`)
+    else if (o.nc) uf.union(`dev:${o.com}`, `dev:${o.nc}`)
+  }
+  for (const c of channelsOf(device, scenario)) close(c.out ?? c, !!state.channels[c.id])
+  const sh = shutterOf(device, scenario)
+  if (sh) { close(sh.up, state.shutter?.dir === 'up'); close(sh.down, state.shutter?.dir === 'down') }
   return uf
 }
 
 // Lamps/windings between two nets: is there a load from netA to netB?
 function loadsBetween(scenario, uf, a, b) {
   for (const p of scenario.parts) {
-    if (p.kind !== 'lamp') continue
+    if (!LOADS.has(p.kind)) continue
     const x = uf.find(`${p.id}:a`), y = uf.find(`${p.id}:b`)
     if ((x === a && y === b) || (x === b && y === a)) return true
   }
   return false
+}
+
+// 24 V DC supplies: powered when their L/N inputs see mains. Returns the
+// + / − nets of the first powered one and any DC-side short.
+function dcSources(scenario, uf) {
+  const L = uf.find('L'), N = uf.find('N')
+  for (const p of scenario.parts.filter((x) => x.kind === 'psu')) {
+    const l = uf.find(`${p.id}:l`), n = uf.find(`${p.id}:n`)
+    if (!((l === L && n === N) || (l === N && n === L))) continue
+    const plus = uf.find(`${p.id}:plus`), minus = uf.find(`${p.id}:minus`)
+    if (plus === minus) return { short: t('24 V DC supply shorted (+ connected to −) — the supply shuts down.') }
+    if ([plus, minus].some((x) => x === L || x === N)) return { short: t('Mains (230 V) is connected to the 24 V DC side — the supply and everything on it would be destroyed.') }
+    return { plus, minus, on: p.id }
+  }
+  return {}
 }
 
 function evaluate(device, scenario, wires, switches, state, extras) {
@@ -91,19 +122,29 @@ function evaluate(device, scenario, wires, switches, state, extras) {
   }
   shortCheck()
   if (short) return { short, powered: false, findings }
+  const dc = dcSources(scenario, uf)
+  if (dc.short) return { short: dc.short, powered: false, findings }
 
-  const devL = uf.find(`dev:${device.power.L}`), devN = uf.find(`dev:${device.power.N}`)
-  const liveOk = devL === L()
-  let neutralOk = devN === N()
-  let twoWire = false
-  if (liveOk && !neutralOk && device.power.twoWire) {
-    // 2-wire dimmer: supplied through the load from its output
-    if (loadsBetween(scenario, uf, uf.find(`dev:${device.power.twoWire.out}`), N())) { neutralOk = true; twoWire = true }
+  let powered, twoWire = false
+  if (device.power.dc) {
+    const plus = uf.find(`dev:${device.power.dc.plus}`), minus = uf.find(`dev:${device.power.dc.minus}`)
+    if ([plus, minus].some((n) => n === L() || n === N())) findings.push({ level: 'danger', text: t('230 V on the controller’s 24 V supply terminals — it would be destroyed.') })
+    if (dc.plus && plus === dc.minus && minus === dc.plus) findings.push({ level: 'danger', text: t('24 V supply polarity reversed on {p} / {m}.', { p: labelOf(device, device.power.dc.plus), m: labelOf(device, device.power.dc.minus) }) })
+    powered = !!dc.plus && plus === dc.plus && minus === dc.minus
+    if (!powered) findings.push({ level: 'info', text: t('No 24 V DC on {p} / {m} — the controller is off.', { p: labelOf(device, device.power.dc.plus), m: labelOf(device, device.power.dc.minus) }) })
+  } else {
+    const devL = uf.find(`dev:${device.power.L}`), devN = uf.find(`dev:${device.power.N}`)
+    const liveOk = devL === L()
+    let neutralOk = devN === N()
+    if (liveOk && !neutralOk && device.power.twoWire) {
+      // 2-wire dimmer: supplied through the load from its output
+      if (loadsBetween(scenario, uf, uf.find(`dev:${device.power.twoWire.out}`), N())) { neutralOk = true; twoWire = true }
+    }
+    if (devN === L()) findings.push({ level: 'danger', text: t('Live is on the module’s {t} terminal — it would be damaged.', { t: labelOf(device, device.power.N) }) })
+    if (!liveOk) findings.push({ level: 'info', text: t('No live on terminal {t} — the module is off.', { t: labelOf(device, device.power.L) }) })
+    else if (!neutralOk) findings.push({ level: 'info', text: device.power.twoWire ? t('No neutral on N and no load on the output — the module can’t power up.') : t('No neutral on N — the module is off (it needs a neutral).') })
+    powered = liveOk && neutralOk
   }
-  if (devN === L()) findings.push({ level: 'danger', text: t('Live is on the module’s {t} terminal — it would be damaged.', { t: labelOf(device, device.power.N) }) })
-  if (!liveOk) findings.push({ level: 'info', text: t('No live on terminal {t} — the module is off.', { t: labelOf(device, device.power.L) }) })
-  else if (!neutralOk) findings.push({ level: 'info', text: device.power.twoWire ? t('No neutral on N and no load on the output — the module can’t power up.') : t('No neutral on N — the module is off (it needs a neutral).') })
-  const powered = liveOk && neutralOk
 
   // Switch-supply terminal (Sx) checks
   const sxTerm = device.terminals.find((x) => x.role === 'sx')
@@ -112,23 +153,28 @@ function evaluate(device, scenario, wires, switches, state, extras) {
     if (sx === L()) findings.push({ level: 'danger', text: t('Sx is connected to live — Sx is the switch supply output, not an input.') })
     if (sx === N() && !twoWire) findings.push({ level: 'danger', text: t('Sx is connected to neutral — the switch supply would be shorted.') })
   }
-  for (const c of device.channels || []) {
+  for (const c of channelsOf(device, scenario).filter((x) => x.out)) {
     if (uf.find(`dev:${c.out}`) === L()) findings.push({ level: 'warn', text: t('{t} is fed from live directly — the load would bypass the module.', { t: labelOf(device, c.out) }) })
     if (uf.find(`dev:${c.out}`) === N()) findings.push({ level: 'danger', text: t('{t} is connected to neutral — switching it on shorts live to neutral.', { t: labelOf(device, c.out) }) })
   }
-  if (device.shutter) {
-    for (const o of [device.shutter.up, device.shutter.down]) if (uf.find(`dev:${o}`) === N()) findings.push({ level: 'danger', text: t('{t} is connected to neutral — driving the motor shorts live to neutral.', { t: o }) })
+  const sh = shutterOf(device, scenario)
+  if (sh && typeof sh.up === 'string') {
+    for (const o of [sh.up, sh.down]) if (uf.find(`dev:${o}`) === N()) findings.push({ level: 'danger', text: t('{t} is connected to neutral — driving the motor shorts live to neutral.', { t: o }) })
   }
 
   // Inputs
   const inputs = {}
-  for (const [term, ref] of Object.entries(device.inputs || {})) {
+  for (const [term, devRef] of Object.entries(device.inputs || {})) {
+    const ref = scenario.inputRef || devRef
     const net = uf.find(`dev:${term}`)
     if (ref === 'Sx') inputs[term] = powered && sxTerm && net === uf.find(`dev:${sxTerm.id}`) && net !== N()
+    else if (ref === 'GND') inputs[term] = powered && net === dc.minus
+    else if (ref === 'V+') inputs[term] = powered && net === dc.plus
     else inputs[term] = powered && net === L()
     if (net === N() && ref === 'L') findings.push({ level: 'warn', text: t('Input {t} is on neutral — the switch must switch live.', { t: labelOf(device, term) }) })
+    if ((ref === 'GND' || ref === 'V+') && (net === L() || net === N())) findings.push({ level: 'danger', text: t('230 V on 24 V input {t} — it would destroy the input.', { t: labelOf(device, term) }) })
   }
-  return { short: null, powered, twoWire, inputs, findings, uf }
+  return { short: null, powered, twoWire, inputs, findings, uf, dc }
 }
 
 // Device logic: inputs (edges) → new state
@@ -136,12 +182,13 @@ export function stepDevice(device, scenario, state, inputs) {
   const prev = state.prevInputs || {}
   const next = { ...state, channels: { ...state.channels }, shutter: state.shutter ? { ...state.shutter } : null, prevInputs: { ...inputs } }
   const mode = scenario.inputMode || 'momentary'
-  for (const c of device.channels || []) {
+  for (const c of channelsOf(device, scenario)) {
     const now = !!inputs[c.in], was = !!prev[c.in]
     if (mode === 'momentary' ? now && !was : now !== was) next.channels[c.id] = !next.channels[c.id]
   }
-  if (device.shutter) {
-    const { inUp, inDown } = device.shutter
+  const sh = shutterOf(device, scenario)
+  if (sh && next.shutter) {
+    const { inUp, inDown } = sh
     const up = !!inputs[inUp], down = !!inputs[inDown]
     if (mode === 'momentary') {
       if (up && !prev[inUp]) next.shutter.dir = next.shutter.dir ? null : 'up'
@@ -159,14 +206,26 @@ export function simulate(device, scenario, wires, switches, state, extras = [], 
   e1.findings.push(...conductorFindings(device, scenario, wires, extras, opts))
   if (e1.short) return { short: e1.short, powered: false, state, lamps: {}, motors: {}, findings: e1.findings, nets: null }
   const st = e1.powered ? stepDevice(device, scenario, state, e1.inputs) : { ...state, prevInputs: {} }
-  const uf = buildNets(device, scenario, wires, switches, st, e1.powered, extras)
+  // Contactors pull in when their coil sees L and N; iterate until stable
+  let contactors = {}, uf
+  for (let i = 0; i < 4; i++) {
+    uf = buildNets(device, scenario, wires, switches, st, e1.powered, extras, contactors)
+    const next = {}
+    for (const p of scenario.parts.filter((x) => x.kind === 'contactor')) {
+      const a = uf.find(`${p.id}:a1`), b = uf.find(`${p.id}:a2`), l = uf.find('L'), n = uf.find('N')
+      next[p.id] = (a === l && b === n) || (a === n && b === l)
+    }
+    if (JSON.stringify(next) === JSON.stringify(contactors)) break
+    contactors = next
+  }
   const L = uf.find('L'), N = uf.find('N')
-  if (L === N) {
-    return { short: t('Short circuit when the output switched on — check what the output is connected to.'), powered: false, state: { ...st, channels: Object.fromEntries(Object.keys(st.channels).map((k) => [k, false])), shutter: st.shutter ? { dir: null } : null }, lamps: {}, motors: {}, findings: e1.findings, nets: null }
+  const dcAfter = dcSources(scenario, uf)
+  if (L === N || dcAfter.short) {
+    return { short: dcAfter.short || t('Short circuit when the output switched on — check what the output is connected to.'), powered: false, state: { ...st, channels: Object.fromEntries(Object.keys(st.channels).map((k) => [k, false])), shutter: st.shutter ? { dir: null } : null }, lamps: {}, motors: {}, findings: e1.findings, nets: null }
   }
   const lamps = {}
-  const dimmed = (device.channels || []).filter((c) => c.dimmer && st.channels[c.id]).map((c) => uf.find(`dev:${c.out}`))
-  for (const p of scenario.parts.filter((x) => x.kind === 'lamp')) {
+  const dimmed = channelsOf(device, scenario).filter((c) => c.dimmer && st.channels[c.id]).map((c) => uf.find(`dev:${c.out}`))
+  for (const p of scenario.parts.filter((x) => LOADS.has(x.kind))) {
     const a = uf.find(`${p.id}:a`), b = uf.find(`${p.id}:b`)
     const lit = (a === L && b === N) || (a === N && b === L)
     lamps[p.id] = lit ? (dimmed.includes(a) || dimmed.includes(b) ? st.level / 100 : 1) : 0
@@ -181,7 +240,7 @@ export function simulate(device, scenario, wires, switches, state, extras = [], 
     if (up && down) e1.findings.push({ level: 'danger', text: t('{p}: both directions energised at once — this damages the motor.', { p: t(p.label) }) })
     if (net('pe') !== uf.find('PE')) e1.findings.push({ level: 'warn', text: t('{p}: protective earth (PE) not connected.', { p: t(p.label) }) })
   }
-  const out = { short: null, powered: e1.powered, twoWire: e1.twoWire, inputs: e1.inputs, state: st, lamps, motors, findings: e1.findings, nets: uf, L, N, PE: usesPE(scenario) ? uf.find('PE') : null }
+  const out = { short: null, powered: e1.powered, twoWire: e1.twoWire, inputs: e1.inputs, state: st, lamps, motors, contactors, findings: e1.findings, nets: uf, L, N, PE: usesPE(scenario) ? uf.find('PE') : null, DCP: dcAfter.plus, DCM: dcAfter.minus, psu: dcAfter.on }
   // Wire colours vs what the wire carries
   for (const [a, b, meta] of wires) {
     if (!meta?.color || meta.color === 'auto') continue
@@ -190,7 +249,8 @@ export function simulate(device, scenario, wires, switches, state, extras = [], 
     if (meta.color === 'gnye' && k !== 'pe') out.findings.push({ level: 'danger', text: t('Green-yellow is reserved for protective earth — {w} isn’t earth.', { w: what }) })
     else if (k === 'pe' && meta.color !== 'gnye') out.findings.push({ level: 'warn', text: t('Earth should be green-yellow ({w}).', { w: what }) })
     else if (k === 'neutral' && meta.color !== 'blue') out.findings.push({ level: 'warn', text: t('Neutral should be blue ({w}).', { w: what }) })
-    else if (meta.color === 'blue' && k !== 'neutral') out.findings.push({ level: 'warn', text: k === 'live' ? t('Blue is for neutral, but {w} carries live.', { w: what }) : t('Blue is for neutral, but {w} carries a switched or control signal.', { w: what }) })
+    else if (meta.color === 'blue' && k === 'live') out.findings.push({ level: 'warn', text: t('Blue is for neutral, but {w} carries live.', { w: what }) })
+    else if (meta.color === 'red' && k !== 'dcplus') out.findings.push({ level: 'warn', text: t('Red is used here for +24 V DC, but {w} isn’t +24 V.', { w: what }) })
   }
   return out
 }
@@ -243,6 +303,8 @@ export function netKind(sim, device, port) {
   if (n === sim.L) return 'live'
   if (n === sim.N) return 'neutral'
   if (sim.PE && n === sim.PE) return 'pe'
+  if (sim.DCP && n === sim.DCP) return 'dcplus'
+  if (sim.DCM && n === sim.DCM) return 'dcminus'
   const sx = device.terminals.find((x) => x.role === 'sx')
   if (sx && sim.powered && n === sim.nets.find(`dev:${sx.id}`)) return 'sx'
   return 'idle'
@@ -298,7 +360,7 @@ export function portName(device, scenario, port, extras = []) {
   if (owner === 'dev') return t('terminal {t}', { t: labelOf(device, q) })
   const part = [...scenario.parts, ...extras].find((p) => p.id === owner)
   if (part?.kind === 'wago') return part.label ? t('{label} connector ({model}) port {n}', { label: t(part.label), model: part.model || `${part.poles}`, n: q.slice(1) }) : t('connector ({model}) port {n}', { model: part.model || `${part.poles}`, n: q.slice(1) })
-  const names = { com: t('common'), o1: part?.keys?.[0] ? t('{k} contact', { k: part.keys[0] }) : t('contact 1'), o2: part?.keys?.[1] ? t('{k} contact', { k: part.keys[1] }) : t('contact 2'), a: t('terminal 1'), b: t('terminal 2'), up: t('up wire'), down: t('down wire'), n: t('neutral'), pe: t('earth'), l: t('live') }
+  const names = { in: t('in'), out: t('out'), a1: 'A1', a2: 'A2', l1: t('contact 1 (L1)'), t1: t('contact 2 (T1)'), plus: '+24 V', minus: '0 V', com: t('common'), o1: part?.keys?.[0] ? t('{k} contact', { k: part.keys[0] }) : t('contact 1'), o2: part?.keys?.[1] ? t('{k} contact', { k: part.keys[1] }) : t('contact 2'), a: t('terminal 1'), b: t('terminal 2'), up: t('up wire'), down: t('down wire'), n: t('neutral'), pe: t('earth'), l: t('live') }
   return t('{part}: {port}', { part: t(part?.label) || owner, port: part?.kind === 'switch' && q === 'o1' ? t('contact') : names[q] || q })
 }
 

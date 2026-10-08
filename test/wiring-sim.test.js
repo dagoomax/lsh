@@ -20,8 +20,9 @@ test('every manual diagram is a valid, self-consistent wiring', async () => {
     for (const s of d.scenarios) {
       const ports = new Set(sim.allPorts(d, s))
       for (const [a, b] of s.wires) assert.ok(ports.has(a) && ports.has(b), `${d.id}/${s.id}: unknown port in ${a}–${b}`)
+      for (const [a, b] of s.wires) for (const p of [a, b]) if (p.startsWith('dev:') && s.terminals) assert.ok(s.terminals.includes(p.slice(4)), `${d.id}/${s.id}: ${p} not shown in this diagram`)
       assert.ok(sim.check(d, s, s.wires).ok, `${d.id}/${s.id}: reference fails its own check`)
-      const r = sim.simulate(d, s, s.wires, {}, sim.initialState(d))
+      const r = sim.simulate(d, s, s.wires, {}, sim.initialState(d, s))
       assert.equal(r.short, null, `${d.id}/${s.id}: ${r.short}`)
       assert.equal(r.powered, true, `${d.id}/${s.id}: not powered — ${JSON.stringify(r.findings)}`)
       assert.deepEqual(r.findings.filter((f) => f.level === 'danger'), [], `${d.id}/${s.id}`)
@@ -99,7 +100,7 @@ test('dangerous wiring: short circuit, live on N, output to neutral', async () =
 
 test('wall-box plan: connectors where one mains conductor feeds several wires', async () => {
   const { sim, DEVICES, dev } = await load()
-  for (const d of DEVICES) {
+  for (const d of DEVICES.filter((x) => x.enclosure !== 'din')) {
     for (const s of d.scenarios) {
       const plan = sim.wallBoxPlan(d, s)
       // electrically identical to the manual's diagram…
@@ -144,7 +145,7 @@ test('translations: every phrase the emulator shows has all languages and matchi
   }
   for (const d of DEVICES) {
     for (const s of d.scenarios) { used.add(s.title); s.parts.forEach((p) => used.add(p.label)) }
-    d.terminals.forEach((x) => used.add(x.desc)); d.rules.forEach((r) => used.add(r)); (d.channels || []).forEach((c) => used.add(c.label))
+    d.terminals.forEach((x) => used.add(x.desc)); d.rules.forEach((r) => used.add(r)); (d.channels || []).forEach((c) => used.add(c.label)); (d.tools || []).forEach((x) => used.add(x.text))
     for (const [k, v] of d.specs) { used.add(k); if (/[a-z]{2}/i.test(v)) used.add(v) }
   }
   CONNECTORS.forEach((c) => { used.add(c.spec); if (c.note) used.add(c.note) })
@@ -168,4 +169,38 @@ test('translations: findings and steps follow the dashboard language', async () 
     LANG = 'de'
     assert.match(sim.steps(d, s)[0].text, /^Verbinde Netz-Außenleiter \(L\) mit Klemme L$/)
   } finally { LANG = 'en' }
+})
+
+test('SmartBob SM-LITE-1616R: 24 V inputs, potential-free relays, blind pair, contactor', async () => {
+  const { sim, dev } = await load()
+  const d = dev('smartbob-sm-lite-1616r')
+  const sc = (id) => d.scenarios.find((x) => x.id === id)
+  const press = (s, sw, held) => { let st = sim.initialState(d, s); st = sim.simulate(d, s, s.wires, {}, st).state; return sim.simulate(d, s, s.wires, { sw1: held }, st) }
+  // Option 1: button to 0 V lights the lamp; the same button to +24 V does nothing
+  assert.equal(press(sc('light'), 'sw1', [true]).lamps.lamp1, 1)
+  const wrongRef = sc('light').wires.map(([a, b]) => (a === 'psu1:minus' && b === 'sw1:com' ? ['psu1:plus', 'sw1:com'] : [a, b]))
+  let st = sim.initialState(d, sc('light'))
+  st = sim.simulate(d, sc('light'), wrongRef, {}, st).state
+  assert.equal(sim.simulate(d, sc('light'), wrongRef, { sw1: [true] }, st).lamps.lamp1, 0)
+  // Option 2 diagram: +24 V is the active level
+  assert.equal(press(sc('light-opt2'), 'sw1', [true]).lamps.lamp1, 1)
+  // Relay contacts are potential-free: without a feed on COM nothing lights
+  const noFeed = sc('light').wires.filter(([a, b]) => !(a === 'cb1:out' && b === 'dev:C1'))
+  st = sim.initialState(d, sc('light')); st = sim.simulate(d, sc('light'), noFeed, {}, st).state
+  assert.equal(sim.simulate(d, sc('light'), noFeed, { sw1: [true] }, st).lamps.lamp1, 0)
+  // Blind pair: up, then down, never both
+  assert.equal(press(sc('blind'), 'sw1', [true, false]).motors.m1, 'up')
+  // Contactor pulls in and switches the heater
+  const r = press(sc('contactor'), 'sw1', [true])
+  assert.equal(r.contactors.km1, true); assert.equal(r.lamps.load1, 1)
+  // Dangers: 230 V on an input, DC short, reversed supply
+  const mainsIn = [...sc('light').wires, ['L', 'dev:IN1']]
+  assert.ok(sim.simulate(d, sc('light'), mainsIn, {}, sim.initialState(d)).findings.some((f) => /230 V on 24 V input/.test(f.text)))
+  assert.match(sim.simulate(d, sc('light'), [...sc('light').wires, ['psu1:plus', 'psu1:minus']], {}, sim.initialState(d)).short, /24 V DC supply shorted/)
+  const reversed = sc('light').wires.map(([a, b]) => [a === 'psu1:plus' ? 'psu1:minus' : a === 'psu1:minus' ? 'psu1:plus' : a, b]).filter(([a, b]) => !(b === 'sw1:com'))
+  const rr = sim.simulate(d, sc('light'), reversed, {}, sim.initialState(d))
+  assert.equal(rr.powered, false); assert.ok(rr.findings.some((f) => /polarity reversed/.test(f.text)))
+  // NC contact is closed while relay 2 is off
+  const ncWires = [...sc('light').wires, ['cb1:out', 'dev:C2'], ['dev:NC2', 'N']]
+  assert.match(sim.simulate(d, sc('light'), ncWires, {}, sim.initialState(d)).short, /Short circuit/)
 })

@@ -189,6 +189,66 @@ export const DEVICES = [
         wires: [['L', 'dev:L'], ['L', 'sw1:com'], ['L', 'sw2:com'], ['sw1:o1', 'dev:SW1'], ['sw2:o1', 'dev:SW2'], ['dev:O1', 'lamp1:a'], ['dev:O2', 'lamp2:a'], ['lamp1:b', 'N'], ['lamp2:b', 'N'], ['N', 'dev:N']] },
     ],
   },
+  {
+    id: 'smartbob-sm-lite-1616r', manual: 'smartbob-sm-lite-1616r', manufacturer: 'SmartBob', model: 'SM-LITE-1616R', name: 'SM-LITE-1616R controller', kind: 'controller', color: '#7c8cff', enclosure: 'din', protocol: 'LAN',
+    // 16 inputs / 16 relays on a DIN rail; diagrams show only the terminals they use.
+    terminals: [
+      { id: 'P', label: '+24V', role: 'dcplus', desc: '24 V DC supply + (12 W)' },
+      { id: 'G', label: '0V', role: 'dcminus', desc: '24 V DC supply − (0 V)' },
+      { id: 'IN1', label: 'IN1', role: 'in', desc: 'Input 1 — logic option 1 (default): 0 V = active, 24 V = inactive' },
+      { id: 'IN2', label: 'IN2', role: 'in', desc: 'Input 2 — same logic as the other inputs' },
+      { id: 'NO1', label: 'NO1', role: 'out', desc: 'Relay 1 normally-open contact' },
+      { id: 'C1', label: 'C1', role: 'com', desc: 'Relay 1 common — potential-free, feed it from its own breaker' },
+      { id: 'NO2', label: 'NO2', role: 'out', desc: 'Relay 2 normally-open contact' },
+      { id: 'C2', label: 'C2', role: 'com', desc: 'Relay 2 common — potential-free' },
+      { id: 'NC2', label: 'NC2', role: 'out', desc: 'Relay 2 normally-closed contact (closed while the relay is off)' },
+    ],
+    power: { dc: { plus: 'P', minus: 'G' } },
+    inputs: { IN1: 'GND', IN2: 'GND' },
+    channels: [
+      { id: 'r1', com: 'C1', no: 'NO1', in: 'IN1', label: 'Relay 1' },
+      { id: 'r2', com: 'C2', no: 'NO2', nc: 'NC2', in: 'IN2', label: 'Relay 2' },
+    ],
+    specs: [
+      ['Supply', '24 V DC, 12 W'],
+      ['Outputs', '16 potential-free relays (8 connectors: NO, COM + NO, COM, NC)'],
+      ['Inputs', '16, selectable logic — option 1 (default): 0 V = active; option 2: 24 V = active'],
+      ['Special inputs', '2 — control (0 / 24 V) or voltage measurement (0–26 V DC)'],
+      ['Interfaces', 'Ethernet, Wi-Fi, I²C, 1-Wire (e.g. DS18B20), RS485'],
+      ['Direct switching', 'Breaker max. B10; loads > 2500 W through an external contactor'],
+      ['Outputs, power, inputs', 'Torque 0.4 Nm, strip 7–8 mm'],
+      ['Special inputs, interfaces', 'Torque 0.2 Nm, strip 5–6 mm'],
+    ],
+    rules: [
+      'Isolate all circuits (230 V and the 24 V supply) before wiring.',
+      'Relay outputs are potential-free: feed each COM from a breaker sized for its load — B10 at most for direct switching.',
+      'Loads above 2500 W: switch an external contactor with the relay and run the load through the contactor (own breaker, e.g. B25).',
+      'Never connect 230 V to the inputs, the 24 V terminals or the interfaces.',
+      'Input logic option 1 (default): a button or sensor switches the input to 0 V. Option 2: it switches the input to +24 V — set this on the controller.',
+      'Two relays driving one blind motor must be configured as a blind pair on the controller so both directions are never on together.',
+      'Check the pin order of each relay connector on the device label (NO, COM + NO, COM, NC).',
+      'Settings reset: hold the reset button for 10 s to enter configuration mode.',
+    ],
+    tools: [
+      { id: 'torque', text: 'Torque screwdriver 0.2–0.4 Nm (the controller’s terminals)' },
+      { id: 'din', text: 'DIN rail, distribution blocks for L / N / PE and for +24 V / 0 V' },
+    ],
+    scenarios: [
+      { id: 'light', title: 'Push-button and light (input option 1)', inputMode: 'momentary', terminals: ['P', 'G', 'IN1', 'C1', 'NO1'],
+        parts: [{ id: 'psu1', kind: 'psu', label: '24 V DC supply' }, { id: 'sw1', kind: 'switch', label: 'Push-button' }, { id: 'cb1', kind: 'breaker', label: 'B10' }, { id: 'lamp1', kind: 'lamp', label: 'Light' }],
+        wires: [['L', 'psu1:l'], ['N', 'psu1:n'], ['psu1:plus', 'dev:P'], ['psu1:minus', 'dev:G'], ['psu1:minus', 'sw1:com'], ['sw1:o1', 'dev:IN1'], ['L', 'cb1:in'], ['cb1:out', 'dev:C1'], ['dev:NO1', 'lamp1:a'], ['lamp1:b', 'N']] },
+      { id: 'light-opt2', title: 'Push-button to +24 V (input option 2)', inputMode: 'momentary', inputRef: 'V+', terminals: ['P', 'G', 'IN1', 'C1', 'NO1'],
+        parts: [{ id: 'psu1', kind: 'psu', label: '24 V DC supply' }, { id: 'sw1', kind: 'switch', label: 'Push-button' }, { id: 'cb1', kind: 'breaker', label: 'B10' }, { id: 'lamp1', kind: 'lamp', label: 'Light' }],
+        wires: [['L', 'psu1:l'], ['N', 'psu1:n'], ['psu1:plus', 'dev:P'], ['psu1:minus', 'dev:G'], ['psu1:plus', 'sw1:com'], ['sw1:o1', 'dev:IN1'], ['L', 'cb1:in'], ['cb1:out', 'dev:C1'], ['dev:NO1', 'lamp1:a'], ['lamp1:b', 'N']] },
+      { id: 'blind', title: 'Roller blind on two relays', inputMode: 'momentary', terminals: ['P', 'G', 'IN1', 'IN2', 'C1', 'NO1', 'C2', 'NO2'],
+        shutter: { up: { com: 'C1', no: 'NO1' }, down: { com: 'C2', no: 'NO2' }, inUp: 'IN1', inDown: 'IN2' },
+        parts: [{ id: 'psu1', kind: 'psu', label: '24 V DC supply' }, { id: 'sw1', kind: 'switch2', label: 'Up / down buttons', keys: ['▲', '▼'] }, { id: 'cb1', kind: 'breaker', label: 'B6' }, { id: 'm1', kind: 'motor', label: 'Blind motor' }],
+        wires: [['L', 'psu1:l'], ['N', 'psu1:n'], ['psu1:plus', 'dev:P'], ['psu1:minus', 'dev:G'], ['psu1:minus', 'sw1:com'], ['sw1:o1', 'dev:IN1'], ['sw1:o2', 'dev:IN2'], ['L', 'cb1:in'], ['cb1:out', 'dev:C1'], ['cb1:out', 'dev:C2'], ['dev:NO1', 'm1:up'], ['dev:NO2', 'm1:down'], ['m1:n', 'N'], ['m1:pe', 'PE']] },
+      { id: 'contactor', title: 'Load over 2500 W through a contactor', inputMode: 'momentary', terminals: ['P', 'G', 'IN1', 'C1', 'NO1'],
+        parts: [{ id: 'psu1', kind: 'psu', label: '24 V DC supply' }, { id: 'sw1', kind: 'switch', label: 'Push-button' }, { id: 'cb1', kind: 'breaker', label: 'B10' }, { id: 'km1', kind: 'contactor', label: 'Contactor 25 A' }, { id: 'cb2', kind: 'breaker', label: 'B25' }, { id: 'load1', kind: 'load', label: 'Heater 3 kW' }],
+        wires: [['L', 'psu1:l'], ['N', 'psu1:n'], ['psu1:plus', 'dev:P'], ['psu1:minus', 'dev:G'], ['psu1:minus', 'sw1:com'], ['sw1:o1', 'dev:IN1'], ['L', 'cb1:in'], ['cb1:out', 'dev:C1'], ['dev:NO1', 'km1:a1'], ['km1:a2', 'N'], ['L', 'cb2:in'], ['cb2:out', 'km1:l1'], ['km1:t1', 'load1:a'], ['load1:b', 'N']] },
+    ],
+  },
 ]
 
 export const PART_PORTS = {
@@ -197,6 +257,10 @@ export const PART_PORTS = {
   lamp: ['a', 'b'],
   motor: ['up', 'down', 'n', 'pe'],
   motorDriver: ['l', 'n', 'up', 'down', 'pe'],
+  breaker: ['in', 'out'],
+  psu: ['l', 'n', 'plus', 'minus'],
+  contactor: ['a1', 'a2', 'l1', 't1'],
+  load: ['a', 'b'],
 }
 
 // Ports of any part, including connectors (p1…pN, all joined inside)
@@ -221,6 +285,7 @@ export const WIRE_COLORS = [
   { id: 'black', label: 'Black (L / switched)', css: '#1c1c1e' },
   { id: 'grey', label: 'Grey (L / switched)', css: '#8e8e93' },
   { id: 'blue', label: 'Blue (N)', css: '#2f80ed' },
+  { id: 'red', label: 'Red (+24 V DC)', css: '#ff3b30' },
   { id: 'gnye', label: 'Green-yellow (PE)', css: 'repeating-linear-gradient' },
 ]
 
@@ -236,11 +301,13 @@ export function toolsFor(device, scenario, plan) {
     { id: 'ferrules', text: t('Wire-end ferrules + crimper, if any conductor is stranded') },
     { id: 'box', text: t('Deep wall box (≥ 60 mm) or a box extension, so the module and connectors fit behind the switch') },
   ]
+  for (const x of device.tools || []) tools.push({ id: x.id, text: t(x.text) })
   if (device.kind === 'shutter') tools.push({ id: 'pe', text: t('Earth (PE) connection for the motor — a connector or terminal for green-yellow') })
   const wagos = new Map()
   for (const p of plan?.parts || []) if (p.kind === 'wago') wagos.set(p.model, (wagos.get(p.model) || 0) + 1)
   const materials = [
     { id: 'module', text: `${device.manufacturer} ${device.name} (${device.model})` },
+    ...scenario.parts.filter((p) => ['psu', 'breaker', 'contactor'].includes(p.kind)).map((p) => ({ id: p.id, text: t(p.label) })),
     ...[...wagos.entries()].map(([model, n]) => ({ id: model, text: t('{n}× {model} connector (or equivalent)', { n, model }) })),
     { id: 'wire', text: t('Short pieces of 1.5 mm² wire in the right colours (brown/black/grey for line and switched line, blue for neutral) — as the circuit’s cable, per local rules') },
   ]

@@ -11,6 +11,8 @@ const LEGEND = [
   { swatch: '#2f80ed', text: 'Neutral (N) — blue' },
   { swatch: '#9acd32', dashed: true, text: 'Protective earth (PE) — green-yellow' },
   { swatch: '#ff9f0a', text: 'Switch supply from the dimmer’s Sx terminal — orange' },
+  { swatch: '#ff3b30', text: '+24 V DC (controller side) — red' },
+  { swatch: '#3a3a3c', text: '0 V DC — black' },
   { swatch: '#8e8e93', text: 'Not live right now (switched wire with the switch open, or power off)' },
 ]
 

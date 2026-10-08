@@ -75,8 +75,9 @@ async function index(config, { refresh = false } = {}) {
   }
 }
 
-// Cached file name: <id>.pdf (ids are [a-z0-9-] in the index)
-const cachePath = (m) => path.join(DIR, `${m.id}.pdf`);
+// Cached file name: <id><extension of the file in the repo> (ids are [a-z0-9-])
+const extOf = (m) => (path.extname(m.file || '').toLowerCase().match(/^\.(pdf|png|jpg|jpeg|webp)$/) ? path.extname(m.file).toLowerCase() : '.pdf');
+const cachePath = (m) => path.join(DIR, `${m.id}${extOf(m)}`);
 const safeId = (id) => /^[a-z0-9][a-z0-9-]{0,80}$/.test(String(id || ''));
 
 function isCached(m) {
@@ -123,7 +124,14 @@ async function get(config, id) {
 
 function remove(id) {
   if (!safeId(id)) return false;
-  try { fs.unlinkSync(path.join(DIR, `${id}.pdf`)); return true } catch { return false }
+  let removed = false;
+  for (const ext of ['.pdf', '.png', '.jpg', '.jpeg', '.webp']) {
+    try { fs.unlinkSync(path.join(DIR, `${id}${ext}`)); removed = true } catch {}
+  }
+  return removed;
 }
 
-module.exports = { list, get, remove, index, settings, DIR };
+const MIME = { '.pdf': 'application/pdf', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
+const mimeOf = (m) => MIME[extOf(m)];
+
+module.exports = { list, get, remove, index, settings, mimeOf, DIR };

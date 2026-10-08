@@ -18,7 +18,7 @@ module.exports = function register(router, ctx) {
   router.get('/manuals/:id/pdf', async (req, res) => {
     try {
       const { path: p, manual } = await manuals.get(readConfigFile(), req.params.id);
-      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Type', manuals.mimeOf(manual));
       res.setHeader('Content-Disposition', `${req.query.download ? 'attachment' : 'inline'}; filename="${manual.file.split('/').pop()}"`);
       res.setHeader('Cache-Control', 'private, max-age=86400');
       res.sendFile(p);
