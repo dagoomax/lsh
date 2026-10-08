@@ -5,6 +5,7 @@ import { DEVICES, CONNECTORS, WIRE_COLORS, toolsFor } from '../wiring/devices.js
 import { simulate, initialState, check, steps, portName, wallBoxPlan } from '../wiring/sim.js'
 import WiringCanvas, { wagoGeo } from '../wiring/WiringCanvas.jsx'
 import { t } from '../wiring/i18n.js'
+import WiringInfo from '../wiring/WiringInfo.jsx'
 import { getLang } from '../../../i18n'
 
 const NONE = []
@@ -46,6 +47,7 @@ export default function WiringSection() {
   const [color, setColor] = useState('auto')
   const [checked, setChecked] = useState({})
   const [big, setBig] = useState(false)
+  const [info, setInfo] = useState(false)
 
   const plan = useMemo(() => { const p = wallBoxPlan(device, scenario); return { ...p, parts: placeConnectors(p.parts) } }, [device, scenario])
   const lang = getLang()
@@ -136,6 +138,7 @@ export default function WiringSection() {
         <label className="emu-inline" title={t('Incoming cable has one L, one N and one PE conductor — splits need connectors')}>
           <input type="checkbox" checked={realBox} onChange={(e) => setRealBox(e.target.checked)}/> {t('Real wall box (connectors)')}
         </label>
+        <button className="wr-info-btn" onClick={() => setInfo(true)} title={t('How the wiring emulator works')}>ℹ {t('Info')}</button>
         <div className="lan-viewtoggle" style={{ marginLeft: 'auto' }}>
           <button className={mode === 'assist' ? 'active' : ''} onClick={() => setMode('assist')}>📖 {t('Assistant')}</button>
           <button className={mode === 'practice' ? 'active' : ''} onClick={() => setMode('practice')}>🧪 {t('Practice')}</button>
@@ -293,6 +296,7 @@ export default function WiringSection() {
           document.body,
         )
       })()}
+      {info && <WiringInfo onClose={() => setInfo(false)}/>}
     </SettingsCard>
   )
 }

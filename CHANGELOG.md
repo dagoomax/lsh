@@ -7,6 +7,7 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 ### Added
+- **Wiring emulator info** — ℹ Info dialog (modes, colour/symbol legend, controls, what's checked, data sources, safety note) in all 7 languages; wiki page `Wiring-Emulator`.
 - **Wiring emulator in 7 languages** — UI, step-by-step instructions, findings, terminal descriptions, specs, rules, tools and connectors follow the dashboard language (EN, PL, DE, FR, ES, IT, UK); a test checks every phrase has all languages with matching placeholders.
 - **Wiring emulator: enlarge** — full-screen popup with zoom (wheel / buttons) and pan, all controls and drawing available inside.
 - **Wiring emulator: drawn wires, connectors, tools** — draw wires with bends and conductor colours (colour mismatches flagged); WAGO-style 1:1/2/3/4/5-way connectors (draggable, one conductor per port); real-wall-box mode with an automatic connector plan; tools & materials checklist per device.

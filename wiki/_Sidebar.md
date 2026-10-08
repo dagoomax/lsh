@@ -5,6 +5,7 @@
 - [Quick Start](Quick-Start)
 - [Overview](Overview)
 - [Dashboard](Dashboard)
+- [Wiring Emulator](Wiring-Emulator)
 
 **Configure**
 - [Configuration](Configuration)

@@ -1,6 +1,7 @@
 // Wiring emulator phrase book: English text → [pl, de, fr, es, it, uk].
 // Placeholders ({t}, {p}, {n}…) must stay as they are.
 import { T2 } from './i18n-dict-2.js'
+import { T3 } from './i18n-dict-3.js'
 
 const LANGS = ['pl', 'de', 'fr', 'es', 'it', 'uk']
 
@@ -258,6 +259,7 @@ const T1 = {
     'Spezzoni di filo da 1,5 mm² nei colori giusti (marrone/nero/grigio per fase e ritorno, blu per il neutro) — come il cavo del circuito, secondo le norme locali',
     'Короткі відрізки проводу 1,5 мм² правильних кольорів (коричневий/чорний/сірий — фаза й комутована фаза, синій — нейтраль) — як кабель кола, згідно з місцевими правилами'],
   ...T2,
+  ...T3,
 }
 
 export const WR = Object.fromEntries(LANGS.map((l, i) => [l, Object.fromEntries(Object.entries(T1).map(([k, v]) => [k, v[i]]))]))
