@@ -190,3 +190,17 @@ test('inspect decoders: iBeacon, Eddystone-URL, RuuviTag, Victron header, addres
   assert.equal(addressKind('C1:00:00:00:00:00'), 'static random');
   assert.match(addressKind('5E:00:00:00:00:00'), /resolvable/);
 });
+
+test('lsh-lan: identify() and private-MAC vendor detection', () => {
+  const { identify, vendorOf, localNetworks } = require('../src/lsh-lan');
+  const base = { ports: [], mdns: null, ssdp: null, http: {}, vendor: null };
+  assert.equal(identify({ ...base, http: { shelly: { model: 'SNSW-001P16EU' } } }).integration, 'shelly');
+  assert.equal(identify({ ...base, ports: [6053] }).kind, 'esphome');
+  assert.equal(identify({ ...base, mdns: { services: [{ type: '_googlecast._tcp' }] } }).integration, 'googlehome');
+  assert.equal(identify({ ...base, ports: [1883] }).integration, 'mqtt');
+  assert.equal(identify({ ...base, http: { web: { server: 'Loxone 14.5', title: '' } }, ports: [80] }).kind, 'loxone');
+  assert.equal(identify(base).kind, 'unknown');
+  assert.equal(vendorOf('DA:A1:19:00:00:01'), 'Private / randomised MAC');
+  assert.equal(vendorOf(null), null);
+  assert.ok(Array.isArray(localNetworks()));
+});

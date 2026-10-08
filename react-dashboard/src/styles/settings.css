@@ -395,3 +395,4 @@ select.stg-input { cursor: pointer; }
 .ble-dd-char { margin: 3px 0 3px 14px; font-size: 12.5px; }
 .ble-dd-val { margin-left: 14px; }
 @media (max-width: 720px) { .ble-dd-kv { grid-template-columns: 1fr; gap: 0; } .ble-dd { margin-left: 4px; } }
+.stg-ble-chip.lan-int { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }

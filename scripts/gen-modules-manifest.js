@@ -114,6 +114,11 @@ for (const it of require(path.join(ROOT, 'src', 'integrations.js'))) {
   integrations.push({ id: it.file.replace(/-client$/, ''), entry: `src/${it.file}.js`, configKeys: keys, guard });
 }
 
+// …plus tool modules (src/tool-modules.js) — on-demand only, so no `when`.
+for (const t of require(path.join(ROOT, 'src', 'tool-modules.js'))) {
+  integrations.push({ id: t.id, entry: t.entry, configKeys: [], guard: 'false', tool: true });
+}
+
 // Unguarded, or on-by-default (`config.x !== false`) → always loaded → core.
 const isCore = (x) => !x.guard || /^\(config\.[\w?.]+ !==? false\)$/.test(x.guard);
 const coreEntries = [path.join(ROOT, 'server.js'), path.join(ROOT, 'config.js'),
@@ -135,7 +140,8 @@ for (const it of integrations.filter((x) => !isCore(x))) {
   modules[it.id] = {
     entry: it.entry,
     configKeys: it.configKeys,
-    when: it.guard, // JS expression over `config` — src/module-manager.js evaluates it
+    when: it.tool ? null : it.guard, // JS expression over `config` — src/module-manager.js evaluates it
+    ...(it.tool ? { tool: true } : {}),
     files: [...files].map((f) => path.relative(ROOT, f)).sort(),
     deps,
   };

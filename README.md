@@ -405,6 +405,12 @@ Used as automatic fallback when local MQTT is unreachable. Alternatively set `ap
 - Settings → Energy → **LSH BLE** edits this section and shows each device's last reading time or decode error (e.g. a wrong key).
 - The decoder (`src/lsh-ble.js`) is ported from [esphome-victron_ble](https://github.com/Fabian-Schmidt/esphome-victron_ble) by Fabian Schmidt and is licensed **GPL-3.0-or-later** like the original.
 
+### LAN scan (tool module `lsh-lan`)
+
+Settings → System → **LAN scan** finds what's on the LSH host's local network: IP, MAC + vendor (IEEE OUI via `oui-data`), names from reverse DNS, Bonjour/mDNS (`multicast-dns`) and UPnP/SSDP, open ports, HTTP fingerprints (Shelly, Hue, Sonos, Loxone, ESPHome, Home Assistant, Node-RED, …) and the LSH integration that would connect each device. Click a device for a deep dive: ~120 common ports, banners, HTTP headers, TLS certificates, mDNS TXT records, UPnP description, latency.
+
+No configuration. It's a *tool module* (listed in `src/tool-modules.js`): never started at boot and not auto-installed — the page's **Install module** button fetches it and its two npm packages the first time. Scans only the host's own IPv4 LAN(s) (narrowed to /24; Docker, VPN and Tailscale interfaces are skipped), using TCP connects and an ARP sweep — no root needed.
+
 ### `solaredge`
 
 ```json

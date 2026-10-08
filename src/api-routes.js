@@ -88,6 +88,7 @@ const ROUTE_GROUPS = [
   require('./routes/mqtt-explorer'),
   require('./routes/https'),
   require('./routes/lsh-ble'),
+  require('./routes/lsh-lan'),
 ];
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {

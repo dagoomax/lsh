@@ -71,6 +71,7 @@
     "src/routes/loxone-xml.js",
     "src/routes/loxone.js",
     "src/routes/lsh-ble.js",
+    "src/routes/lsh-lan.js",
     "src/routes/matter.js",
     "src/routes/mc6.js",
     "src/routes/mcp-server.js",
@@ -1098,6 +1099,19 @@
       ],
       "deps": {
         "dbus-next": "^0.10.2"
+      }
+    },
+    "lsh-lan": {
+      "entry": "src/lsh-lan.js",
+      "configKeys": [],
+      "when": null,
+      "tool": true,
+      "files": [
+        "src/lsh-lan.js"
+      ],
+      "deps": {
+        "oui-data": "^2.1.35",
+        "multicast-dns": "^7.2.5"
       }
     }
   }
