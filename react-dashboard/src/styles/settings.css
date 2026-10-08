@@ -586,3 +586,18 @@ select.stg-input { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .lan-radar-sweep, .lan-edge-trunk, .lan-edge-self, .lan-blip, .lan-pop, .lan-tile, .lan-stat, .lan-mix i { animation: none !important; }
 }
+
+/* Bluetooth scan (BleScanner.jsx) — shares the LAN scan look */
+.ble-hero .lan-blip { width: 8px; height: 8px; margin: -4px 0 0 -4px; }
+.ble-core { color: #fff; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--lan); box-shadow: 0 0 18px var(--lan); }
+.ble-core svg { display: block; }
+.lan-stat.ble-blue b { color: #0a84ff; }
+.ble-signal { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.ble-signal b { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text2); }
+.ble-signal b small { font-size: 9.5px; font-weight: 600; margin-left: 1px; opacity: 0.7; }
+.ble-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; }
+.ble-bars i { width: 4px; border-radius: 2px; background: var(--white-20); }
+.ble-bars i:nth-child(1) { height: 25%; } .ble-bars i:nth-child(2) { height: 50%; } .ble-bars i:nth-child(3) { height: 75%; } .ble-bars i:nth-child(4) { height: 100%; }
+.ble-signal.s4 .ble-bars i.on, .ble-signal.s3 .ble-bars i.on { background: var(--green); box-shadow: 0 0 6px color-mix(in srgb, var(--green) 60%, transparent); }
+.ble-signal.s2 .ble-bars i.on { background: var(--orange); }
+.ble-signal.s1 .ble-bars i.on { background: var(--red); }
