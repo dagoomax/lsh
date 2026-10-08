@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 // APs) shown on their own ring next to the gateway. Radial tree layout in
 // plain SVG — no graph library.
 
-const GROUPS = [
+export const GROUPS = [
   { id: 'infra', label: 'Network', color: '#64d2ff', kinds: ['network'] },
   { id: 'apple', label: 'Apple & AirPlay', color: '#bf5af2', kinds: ['apple', 'airplay'] },
   { id: 'homekit', label: 'HomeKit / Matter', color: '#ff9f0a', kinds: ['homekit', 'matter'] },
@@ -19,7 +19,7 @@ const GROUPS = [
   { id: 'printers', label: 'Printers', color: '#8e8e93', kinds: ['printer'] },
   { id: 'other', label: 'Other', color: '#636366', kinds: [] },
 ]
-const groupOf = (h) => GROUPS.find((g) => g.kinds.includes(h.id?.kind)) || GROUPS[GROUPS.length - 1]
+export const groupOf = (h) => GROUPS.find((g) => g.kinds.includes(h.id?.kind)) || GROUPS[GROUPS.length - 1]
 const short = (s, n = 18) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s)
 
 export default function LanTopology({ data, onSelect, selected, renderDetails, icons }) {
@@ -128,28 +128,70 @@ function Graph({ graph, data, selected, onSelect, interactive }) {
       )}
       <svg ref={svgRef} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="lan-topo-svg" role="img" aria-label="Network topology"
         onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}>
+        <defs>
+          <radialGradient id="lan-bg" r="0.5">
+            <stop offset="0" style={{ stopColor: 'var(--lan)', stopOpacity: 0.22 }}/>
+            <stop offset="0.45" style={{ stopColor: 'var(--lan)', stopOpacity: 0.06 }}/>
+            <stop offset="1" style={{ stopColor: 'var(--lan)', stopOpacity: 0 }}/>
+          </radialGradient>
+          <linearGradient id="lan-sweep" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" style={{ stopColor: 'var(--lan)', stopOpacity: 0 }}/>
+            <stop offset="1" style={{ stopColor: 'var(--lan)', stopOpacity: 0.28 }}/>
+          </linearGradient>
+          {GROUPS.map((g) => (
+            <radialGradient key={g.id} id={`lan-grad-${g.id}`} cx="0.35" cy="0.3" r="0.8">
+              <stop offset="0" stopColor="#fff" stopOpacity="0.55"/>
+              <stop offset="0.35" stopColor={g.color}/>
+              <stop offset="1" stopColor={g.color} stopOpacity="0.75"/>
+            </radialGradient>
+          ))}
+          <filter id="lan-glow" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="5" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <circle r={graph.R2 + 90} fill="url(#lan-bg)"/>
+        {[graph.R1, graph.R2].map((r) => <circle key={r} r={r} className="lan-orbit"/>)}
+        <g className="lan-sweep-g">
+          <path d={`M0 0 L${graph.R2 + 70} 0 A${graph.R2 + 70} ${graph.R2 + 70} 0 0 0 ${Math.cos(-0.7) * (graph.R2 + 70)} ${Math.sin(-0.7) * (graph.R2 + 70)} Z`} fill="url(#lan-sweep)"/>
+          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="10s" repeatCount="indefinite"/>
+        </g>
         {edges.map((e, i) => (
-          <line key={i} x1={e.a.x} y1={e.a.y} x2={e.b.x} y2={e.b.y} className={`lan-edge lan-edge-${e.type}`} stroke={e.color}/>
+          <path key={i} d={e.d} className={`lan-edge lan-edge-${e.type}`} stroke={e.color} fill="none"/>
         ))}
-        {nodes.map((n) => (
+        {edges.filter((e) => e.type !== 'leaf' || e.packet).map((e, i) => (
+          <circle key={`p${i}`} r={e.type === 'leaf' ? 2 : 3} fill={e.color} className="lan-packet">
+            <animateMotion dur={`${e.type === 'leaf' ? 2.2 : 1.8}s`} begin={`${(i * 0.37) % 2}s`} repeatCount="indefinite" path={e.d}/>
+          </circle>
+        ))}
+        {nodes.map((n, i) => (
           <g key={n.key} transform={`translate(${n.x},${n.y})`}
             className={`lan-node lan-node-${n.type}${selected && n.host?.ip === selected ? ' sel' : ''}`}
             onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(null)}
             onClick={() => click(n)} style={{ cursor: n.host ? 'pointer' : 'default' }}>
-            {n.integration && <circle r={n.r + 4} className="lan-int-ring"/>}
-            <circle r={n.r} fill={n.fill} stroke={n.stroke} strokeWidth={n.type === 'group' ? 2 : 1.5}/>
-            {n.icon && <text className="lan-icon" fontSize={n.r * 1.05} dy="0.36em">{n.icon}</text>}
-            {n.img && (
-              <>
-                <clipPath id={`clip-${n.key.replace(/[^a-z0-9]/gi, '')}`}><circle r={n.r - 2}/></clipPath>
-                <image href={n.img} x={-(n.r - 3)} y={-(n.r - 3)} width={(n.r - 3) * 2} height={(n.r - 3) * 2}
-                  clipPath={n.imgBrand ? undefined : `url(#clip-${n.key.replace(/[^a-z0-9]/gi, '')})`} preserveAspectRatio="xMidYMid meet" style={{ pointerEvents: 'none' }}/>
-              </>
-            )}
-            {n.label && (
-              <text className={`lan-label lan-label-${n.type}`} y={n.labelY ?? n.r + 12}
-                textAnchor={n.anchor || 'middle'} x={n.labelX || 0}>{zoomed && n.host?.ip && n.type === 'host' ? `${n.label} · ${n.host.ip}` : n.label}</text>
-            )}
+            <g className="lan-pop" style={{ animationDelay: `${Math.min(i, 60) * 18}ms` }}>
+              {n.type === 'root' && [0, 1].map((k) => (
+                <circle key={k} r={n.r} className="lan-pulse">
+                  <animate attributeName="r" values={`${n.r};${n.r * 3.2}`} dur="3s" begin={`${k * 1.5}s`} repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.55;0" dur="3s" begin={`${k * 1.5}s`} repeatCount="indefinite"/>
+                </circle>
+              ))}
+              {n.integration && <circle r={n.r + 4} className="lan-int-ring"/>}
+              <circle r={n.r} fill={n.gid ? `url(#lan-grad-${n.gid})` : n.fill} stroke={n.stroke} strokeWidth={n.type === 'group' ? 2 : 1.5}
+                className="lan-node-disc" filter={n.type === 'root' || n.type === 'self' ? 'url(#lan-glow)' : undefined}/>
+              {n.icon && <text className="lan-icon" fontSize={n.r * 1.05} dy="0.36em">{n.icon}</text>}
+              {n.img && (
+                <>
+                  <clipPath id={`clip-${n.key.replace(/[^a-z0-9]/gi, '')}`}><circle r={n.r - 2}/></clipPath>
+                  <image href={n.img} x={-(n.r - 3)} y={-(n.r - 3)} width={(n.r - 3) * 2} height={(n.r - 3) * 2}
+                    clipPath={n.imgBrand ? undefined : `url(#clip-${n.key.replace(/[^a-z0-9]/gi, '')})`} preserveAspectRatio="xMidYMid meet" style={{ pointerEvents: 'none' }}/>
+                </>
+              )}
+              {n.label && (
+                <text className={`lan-label lan-label-${n.type}`} y={n.labelY ?? n.r + 12}
+                  textAnchor={n.anchor || 'middle'} x={n.labelX || 0}>{zoomed && n.host?.ip && n.type === 'host' ? `${n.label} · ${n.host.ip}` : n.label}</text>
+              )}
+            </g>
           </g>
         ))}
       </svg>
@@ -231,15 +273,22 @@ function layout(data, icons) {
         const x = Math.cos(a) * R2, y = Math.sin(a) * R2
         const right = Math.cos(a) >= 0
         const icon = icons?.get(h.ip) || h.saved?.icon
-        const n = { key: `h-${h.ip}`, type: 'host', host: h, x, y, r: icon ? 13 : 9, fill: g.color, stroke: 'var(--bg)',
+        const n = { key: `h-${h.ip}`, type: 'host', host: h, gid: g.id, x, y, r: icon ? 13 : 9, fill: g.color, stroke: 'var(--bg)',
           img: icon?.file ? `/api/lsh-lan/icons/${encodeURIComponent(icon.file)}` : null, imgBrand: icon?.source === 'vendor',
           label: short(h.saved?.label || h.name || h.ip), labelX: right ? (icon ? 17 : 13) : (icon ? -17 : -13), labelY: 4, anchor: right ? 'start' : 'end',
           integration: !!h.id?.integration }
         nodes.push(n)
-        edges.push({ a: gn, b: n, type: 'leaf', color: g.color })
+        edges.push({ a: gn, b: n, type: 'leaf', color: g.color, packet: !!h.id?.integration })
       })
     }
     angle += span
   }
-  return { nodes, edges, size }
+  // Edge geometry: trunks straight, leaves curve out of their group node.
+  for (const e of edges) {
+    if (e.type === 'leaf') {
+      const k = 1.45
+      e.d = `M${e.a.x} ${e.a.y} Q${e.a.x * k} ${e.a.y * k} ${e.b.x} ${e.b.y}`
+    } else e.d = `M${e.a.x} ${e.a.y} L${e.b.x} ${e.b.y}`
+  }
+  return { nodes, edges, size, R1, R2 }
 }

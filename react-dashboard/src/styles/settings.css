@@ -477,3 +477,112 @@ select.stg-input { cursor: pointer; }
 .lan-icon-edit .stg-input { width: 240px; padding: 6px 10px; font-size: 13px; }
 .lan-icon-preview { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
 .lan-icon-preview .lan-icon-img { width: 40px; height: 40px; }
+
+/* ── LAN scan: hero, radar, tiles, animated map ─────────────────────────── */
+.lan-hero, .lan-topo, .lan-popup { --lan: #0a84ff; }
+[data-theme="light"] .lan-hero, [data-theme="light"] .lan-topo, [data-theme="light"] .lan-popup { --lan: #007aff; }
+.lan-hero { position: relative; display: flex; gap: 22px; align-items: center; padding: 18px; border-radius: 18px; overflow: hidden;
+  background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--lan) 22%, transparent), transparent 55%),
+              radial-gradient(90% 120% at 100% 100%, color-mix(in srgb, #bf5af2 16%, transparent), transparent 60%), var(--white-04); }
+.lan-hero-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.lan-hero-title { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; overflow-wrap: anywhere; }
+.lan-hero-sub { font-size: 13px; color: var(--text2); }
+.lan-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.lan-scan-btn { border: none; font: inherit; font-size: 14px; font-weight: 700; color: #fff; padding: 10px 18px; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(135deg, var(--lan), #5e5ce6); box-shadow: 0 6px 20px color-mix(in srgb, var(--lan) 40%, transparent); transition: transform 0.15s, box-shadow 0.15s; }
+.lan-scan-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 26px color-mix(in srgb, var(--lan) 50%, transparent); }
+.lan-scan-btn:disabled { opacity: 0.7; cursor: progress; }
+.lan-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.lan-stat { padding: 10px 12px; border-radius: 12px; background: var(--white-04); display: flex; flex-direction: column; gap: 2px; animation: lan-rise 0.5s both; }
+.lan-stat b { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.lan-stat b small { font-size: 12px; font-weight: 600; color: var(--text2); margin-left: 2px; }
+.lan-stat span { font-size: 11.5px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.lan-stat.green b { color: var(--green); }
+.lan-stat.orange b { color: var(--orange); }
+.lan-stat:nth-child(2) { animation-delay: 60ms; } .lan-stat:nth-child(3) { animation-delay: 120ms; } .lan-stat:nth-child(4) { animation-delay: 180ms; }
+.lan-mix { display: flex; height: 6px; border-radius: 99px; overflow: hidden; gap: 2px; }
+.lan-mix i { display: block; min-width: 4px; animation: lan-grow 0.8s cubic-bezier(.2,.8,.2,1) both; transform-origin: left; }
+.lan-progress { height: 6px; border-radius: 99px; background: var(--white-08); overflow: hidden; }
+.lan-progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--lan), #5e5ce6, #bf5af2); transition: width 0.5s; }
+.lan-dots i { display: inline-block; width: 5px; height: 5px; margin-left: 4px; border-radius: 50%; background: currentColor; animation: lan-dot 1.2s infinite; }
+.lan-dots i:nth-child(2) { animation-delay: 0.2s; } .lan-dots i:nth-child(3) { animation-delay: 0.4s; }
+
+.lan-radar { position: relative; flex-shrink: 0; width: 168px; height: 168px; border-radius: 50%; overflow: hidden;
+  background: repeating-radial-gradient(circle, transparent 0 27px, color-mix(in srgb, var(--lan) 30%, transparent) 27px 28px),
+              radial-gradient(circle, color-mix(in srgb, var(--lan) 18%, transparent), transparent 70%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lan) 35%, transparent), 0 0 40px color-mix(in srgb, var(--lan) 20%, transparent); }
+.lan-radar::before, .lan-radar::after { content: ''; position: absolute; background: color-mix(in srgb, var(--lan) 25%, transparent); }
+.lan-radar::before { left: 50%; top: 0; bottom: 0; width: 1px; } .lan-radar::after { top: 50%; left: 0; right: 0; height: 1px; }
+.lan-radar-sweep { position: absolute; inset: 0; border-radius: 50%; animation: lan-spin 4s linear infinite;
+  background: conic-gradient(from 0deg, transparent 0 290deg, color-mix(in srgb, var(--lan) 55%, transparent) 360deg); }
+.lan-radar.scanning .lan-radar-sweep { animation-duration: 1.3s; }
+.lan-radar-core { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 22px; z-index: 1; filter: drop-shadow(0 0 8px var(--lan)); }
+.lan-blip { position: absolute; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; box-shadow: 0 0 8px currentColor; animation: lan-blip 0.6s both, lan-ping 3.5s 0.6s infinite; }
+.lan-blip.self { width: 10px; height: 10px; margin: -5px 0 0 -5px; outline: 2px solid #ffcc00; }
+
+.lan-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 14px 0 4px; }
+.lan-search { flex: 1; min-width: 180px; max-width: 360px; }
+.lan-filter { display: inline-flex; align-items: center; gap: 6px; }
+.lan-filter-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--g); display: inline-block; }
+.lan-filter.active[style] { background: color-mix(in srgb, var(--g) 22%, transparent); color: var(--text); box-shadow: inset 0 0 0 1px var(--g); }
+
+.lan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin: 8px 0 12px; }
+.lan-tile { position: relative; border-radius: 14px; padding: 12px; background: var(--white-04); overflow: hidden; animation: lan-rise 0.45s both;
+  transition: transform 0.18s, background 0.18s, box-shadow 0.18s; }
+.lan-tile::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--g); opacity: 0.85; }
+.lan-tile:hover { background: var(--white-08); transform: translateY(-2px); box-shadow: 0 8px 22px color-mix(in srgb, var(--g) 18%, transparent); }
+.lan-tile.open { grid-column: 1 / -1; background: var(--white-08); transform: none; }
+.lan-tile.self { box-shadow: inset 0 0 0 1px color-mix(in srgb, #ffcc00 50%, transparent); }
+.lan-tile-main { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.lan-tile-icon { position: relative; width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center; font-size: 22px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--g) 38%, transparent), color-mix(in srgb, var(--g) 14%, transparent)); }
+.lan-tile-icon .lan-icon-img.brand { filter: none; }
+.lan-tile-badge { position: absolute; right: -4px; bottom: -4px; width: 17px; height: 17px; border-radius: 50%; background: var(--green); color: #fff; font-size: 10px; font-style: normal; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--card); }
+.lan-tile-text { flex: 1; min-width: 0; }
+.lan-tile-name { font-weight: 700; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lan-tile-sub { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.lan-lat { flex-shrink: 0; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; padding: 3px 8px; border-radius: 99px; background: var(--white-08); }
+.lan-lat small { font-size: 10px; font-weight: 600; margin-left: 1px; opacity: 0.7; }
+.lan-lat.good { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
+.lan-lat.ok { color: var(--orange); background: color-mix(in srgb, var(--orange) 14%, transparent); }
+.lan-lat.slow { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
+.lan-tile-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; align-items: center; }
+.lan-tile-chips:empty { display: none; }
+.lan-kind { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: color-mix(in srgb, var(--g) 18%, transparent); color: var(--text); }
+.lan-port { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; padding: 2px 6px; border-radius: 6px; background: var(--white-08); color: var(--text2); }
+.lan-tile .ble-dd { margin: 12px 0 0; border-left-color: var(--g); animation: lan-rise 0.35s both; }
+
+/* map */
+.lan-topo { background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--lan) 10%, transparent), transparent 70%), var(--white-04); }
+.lan-popup-graph { background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--lan) 9%, transparent), transparent 70%); }
+.lan-orbit { fill: none; stroke: color-mix(in srgb, var(--lan) 30%, transparent); stroke-width: 1; stroke-dasharray: 2 6; }
+.lan-edge { stroke-opacity: 0.4; stroke-width: 1.3; }
+.lan-edge-trunk { stroke-width: 2.6; stroke-opacity: 0.75; stroke-dasharray: 10 6; animation: lan-flow 1.4s linear infinite; }
+.lan-edge-self { animation: lan-flow 1s linear infinite; }
+.lan-packet { filter: drop-shadow(0 0 4px currentColor); opacity: 0.95; }
+.lan-pulse { fill: none; stroke: #64d2ff; stroke-width: 1.5; }
+.lan-pop { transform-box: fill-box; transform-origin: center; animation: lan-pop 0.5s cubic-bezier(.3,1.6,.5,1) both; }
+.lan-node-host .lan-node-disc, .lan-node-root .lan-node-disc { transition: filter 0.15s; }
+.lan-node-host:hover .lan-node-disc, .lan-node.sel .lan-node-disc { filter: url(#lan-glow); }
+.lan-int-ring { filter: drop-shadow(0 0 3px var(--green)); }
+.lan-tip { backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); background: color-mix(in srgb, var(--card, #1c1c1e) 82%, transparent); border: 0.5px solid var(--sep); }
+
+@keyframes lan-spin { to { transform: rotate(360deg); } }
+@keyframes lan-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes lan-pop { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: scale(1); } }
+@keyframes lan-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes lan-blip { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes lan-ping { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@keyframes lan-dot { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+@keyframes lan-flow { to { stroke-dashoffset: -32; } }
+
+@media (max-width: 640px) {
+  .lan-hero { flex-direction: column; align-items: stretch; padding: 14px; }
+  .lan-radar { width: 132px; height: 132px; align-self: center; }
+  .lan-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lan-grid { grid-template-columns: 1fr; }
+  .lan-hero-title { font-size: 19px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lan-radar-sweep, .lan-edge-trunk, .lan-edge-self, .lan-blip, .lan-pop, .lan-tile, .lan-stat, .lan-mix i { animation: none !important; }
+}
