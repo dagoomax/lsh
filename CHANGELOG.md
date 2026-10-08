@@ -7,6 +7,7 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 ### Added
+- **Wiring emulator: real module photo** — for the SmartBob SM-LITE-1616R, the product photo (from SmartBob's docs, kept in the private manuals repo) with used connectors outlined and a zoom lens that follows the current step / clicked terminal (relay block, inputs, 24 V power, interface connector).
 - **Wiring emulator: DS18B20 on the SmartBob** — two temperature sensors in parallel on the 1-Wire interface (pins 1 / 4 / 5 per the installation sheet), live readings with sliders; reversed sensor, shorted data line and 24 V / 230 V on the 3.3 V interface flagged. Remote buttons only for relays a diagram uses.
 - **Wiring emulator: SmartBob SM-LITE-1616R** — DIN-rail controller from its installation sheet: 24 V DC supply, inputs with selectable logic (0 V or +24 V active), potential-free relay contacts (COM/NO/NC) fed from DIN breakers, roller blind on two relays, contactor for loads over 2500 W. New parts (24 V supply, MCB, contactor, heater load), 230 V-on-24 V / DC short / polarity checks, red +24 V wires; the sheet is in the manuals repo (manuals now also serve images).
 - **Wiring emulator info** — ℹ Info dialog (modes, colour/symbol legend, controls, what's checked, data sources, safety note) in all 7 languages; wiki page `Wiring-Emulator`.

@@ -6,6 +6,7 @@ import { simulate, initialState, check, steps, portName, wallBoxPlan, shutterOf,
 import WiringCanvas, { wagoGeo } from '../wiring/WiringCanvas.jsx'
 import { t } from '../wiring/i18n.js'
 import WiringInfo from '../wiring/WiringInfo.jsx'
+import ModulePhoto from '../wiring/ModulePhoto.jsx'
 import { getLang } from '../../../i18n'
 
 const NONE = []
@@ -49,6 +50,7 @@ export default function WiringSection() {
   const [big, setBig] = useState(false)
   const [info, setInfo] = useState(false)
   const [temps, setTemps] = useState({})
+  const [lastTerm, setLastTerm] = useState(null)
 
   useEffect(() => { if (device.enclosure === 'din') setRealBox(false) }, [devId])
   const plan = useMemo(() => { const p = wallBoxPlan(device, scenario); return { ...p, parts: placeConnectors(p.parts) } }, [device, scenario])
@@ -109,6 +111,7 @@ export default function WiringSection() {
   // Drawing: click a point to start, click empty space to bend, click the target to finish
   const onPort = (p) => {
     if (mode !== 'practice') return
+    if (p.startsWith('dev:')) setLastTerm(p.slice(4))
     if (!draft) return setDraft({ from: p, points: [], cursor: null })
     if (draft.from === p) return setDraft(null)
     const exists = userWires.some(([a, b]) => (a === draft.from && b === p) || (a === p && b === draft.from))
@@ -131,6 +134,8 @@ export default function WiringSection() {
 
   const findings = sim?.findings || []
   const remoteName = device.protocol || 'Z-Wave'
+  const stepWire = mode === 'assist' ? (realBox ? plan.wires : scenario.wires)[step] : null
+  const focusTerm = (stepWire && [stepWire[0], stepWire[1]].find((x) => x.startsWith('dev:'))?.slice(4)) || (mode === 'practice' ? lastTerm : null)
   const manualUrl = `/api/manuals/${device.manual}/pdf`
 
   const toolbar = (
@@ -217,6 +222,7 @@ export default function WiringSection() {
         </div>
 
         <aside className="wr-side">
+          {device.photo && <ModulePhoto key={device.id + scenario.id} device={device} scenario={scenario} focus={focusTerm}/>}
           {mode === 'assist' ? (
             <div className="wr-panel">
               <div className="ble-dd-title">{t('Step {n} of {total}', { n: Math.min(step + 1, stepList.length), total: stepList.length })}</div>

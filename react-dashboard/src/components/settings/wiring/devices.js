@@ -209,6 +209,18 @@ export const DEVICES = [
     ],
     bridges: [['X5', 'G']],
     oneWire: { vdd: 'X1', dq: 'X4', gnd: 'X5' },
+    // Real photo (SmartBob docs wiki), served from the private manuals repo.
+    // Boxes are pixel rectangles on the 1024×672 photo.
+    photo: {
+      manual: 'smartbob-sm-lite-1616r-photo', w: 1024, h: 672, credit: 'Photo: SmartBob',
+      regions: {
+        relays: { box: [22, 238, 118, 302], label: 'Relay outputs (green 5-pin block: NO, COM + NO, COM, NC)', note: 'Which block carries which relays is printed on the device.' },
+        inputs: { box: [278, 140, 390, 235], label: 'Inputs (green 8-pin blocks along the top)' },
+        power: { box: [428, 262, 478, 322], label: '24 V DC power (orange 2-pin block)' },
+        iface: { box: [538, 368, 612, 420], label: 'Interface connector (black 5-pin: 1-Wire, I²C, RS485)' },
+      },
+      terminals: { P: 'power', G: 'power', IN1: 'inputs', IN2: 'inputs', C1: 'relays', NO1: 'relays', C2: 'relays', NO2: 'relays', NC2: 'relays', X1: 'iface', X4: 'iface', X5: 'iface' },
+    },
     power: { dc: { plus: 'P', minus: 'G' } },
     inputs: { IN1: 'GND', IN2: 'GND' },
     channels: [

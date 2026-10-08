@@ -39,7 +39,7 @@ export default function ManualsSection() {
   const removeLocal = async (m) => { await fetch(`/api/manuals/${m.id}`, { method: 'DELETE', credentials: 'include' }); load() }
 
   const q = filter.trim().toLowerCase()
-  const list = (data?.manuals || []).filter((m) => !q || [m.title, m.model, m.manufacturer, m.kind].some((x) => String(x).toLowerCase().includes(q)))
+  const list = (data?.manuals || []).filter((m) => m.role !== 'photo').filter((m) => !q || [m.title, m.model, m.manufacturer, m.kind].some((x) => String(x).toLowerCase().includes(q)))
   const cached = (data?.manuals || []).filter((m) => m.cached)
 
   return (

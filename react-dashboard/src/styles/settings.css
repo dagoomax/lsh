@@ -871,3 +871,22 @@ select.stg-input { cursor: pointer; }
 .wr-ds-temp { font-size: 12px; font-weight: 800; text-anchor: middle; fill: var(--text3); font-variant-numeric: tabular-nums; }
 .wr-ds.on .wr-ds-temp { fill: var(--text); }
 .wr-term-label.role-v33 { fill: #ff6482; } .wr-term-label.role-data { fill: #5ac8fa; } .wr-terms b.role-v33 { color: #ff6482; } .wr-terms b.role-data { color: #5ac8fa; }
+/* Wiring emulator — real module photo with zoom lens */
+.wr-photo { display: flex; flex-direction: column; gap: 8px; }
+.wr-photo-lens { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; background: #f2f2f2; box-shadow: inset 0 0 0 1px var(--sep); }
+.wr-photo-lens img { position: absolute; left: 50%; top: 50%; max-width: none; transition: width 0.35s ease, transform 0.35s ease; user-select: none; pointer-events: none; }
+.wr-photo-ring { position: absolute; left: 10%; right: 10%; top: 14%; bottom: 14%; border: 2.5px solid #ffd60a; border-radius: 12px; box-shadow: 0 0 0 999px rgba(0,0,0,0.18), 0 0 14px rgba(255,214,10,0.7); pointer-events: none; animation: lan-ping 1.6s infinite; }
+.wr-photo-tag { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 6px 9px; border-radius: 9px; background: rgba(0,0,0,0.72); color: #fff; font-size: 12px; display: flex; flex-direction: column; gap: 2px; backdrop-filter: blur(6px); }
+.wr-photo-tag span { color: rgba(255,255,255,0.8); font-size: 11.5px; }
+.wr-photo-overview { position: relative; width: 100%; border-radius: 10px; overflow: hidden; background: #f2f2f2; }
+.wr-photo-overview img { display: block; width: 100%; height: auto; user-select: none; }
+.wr-photo-overview svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wr-photo-box rect { fill: rgba(10,132,255,0.12); stroke: #0a84ff; stroke-width: 3; cursor: zoom-in; }
+.wr-photo-box:hover rect { fill: rgba(10,132,255,0.25); }
+.wr-photo-box.active rect { fill: rgba(255,214,10,0.22); stroke: #ffd60a; stroke-width: 4; }
+.wr-photo-note { font-size: 11.5px; }
+.wr-photo-credit { opacity: 0.7; white-space: nowrap; }
+.wr-photo-lens { aspect-ratio: 16 / 10; }
+.wr-photo-ring { left: 50%; top: 50%; right: auto; bottom: auto; transform: translate(-50%, -50%); }
+.wr-photo-tag { position: static; background: color-mix(in srgb, #ffd60a 14%, transparent); color: var(--text); border: 1px solid color-mix(in srgb, #ffd60a 45%, transparent); backdrop-filter: none; }
+.wr-photo-tag span { color: var(--text2); }

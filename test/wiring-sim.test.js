@@ -138,14 +138,14 @@ test('translations: every phrase the emulator shows has all languages and matchi
   const fs = require('fs')
   const dir = require('path').join(__dirname, '../react-dashboard/src/components/settings/')
   const used = new Set()
-  for (const f of ['wiring/sim.js', 'wiring/devices.js', 'wiring/WiringCanvas.jsx', 'wiring/WiringInfo.jsx', 'sections/WiringSection.jsx']) {
+  for (const f of ['wiring/sim.js', 'wiring/devices.js', 'wiring/WiringCanvas.jsx', 'wiring/WiringInfo.jsx', 'wiring/ModulePhoto.jsx', 'sections/WiringSection.jsx']) {
     const src = fs.readFileSync(dir + f, 'utf8')
     for (const m of src.matchAll(/\bt\('((?:[^'\\]|\\.)*)'/g)) used.add(m[1])
     if (f.endsWith('WiringInfo.jsx')) for (const m of src.matchAll(/text: '((?:[^'\\]|\\.)*)'/g)) used.add(m[1])
   }
   for (const d of DEVICES) {
     for (const s of d.scenarios) { used.add(s.title); s.parts.forEach((p) => used.add(p.label)) }
-    d.terminals.forEach((x) => used.add(x.desc)); d.rules.forEach((r) => used.add(r)); (d.channels || []).forEach((c) => used.add(c.label)); (d.tools || []).forEach((x) => used.add(x.text))
+    d.terminals.forEach((x) => used.add(x.desc)); d.rules.forEach((r) => used.add(r)); (d.channels || []).forEach((c) => used.add(c.label)); (d.tools || []).forEach((x) => used.add(x.text)); Object.values(d.photo?.regions || {}).forEach((r) => { used.add(r.label); if (r.note) used.add(r.note) })
     for (const [k, v] of d.specs) { used.add(k); if (/[a-z]{2}/i.test(v)) used.add(v) }
   }
   CONNECTORS.forEach((c) => { used.add(c.spec); if (c.note) used.add(c.note) })
@@ -223,4 +223,11 @@ test('SmartBob 1-Wire: DS18B20 sensors on the bus, reversed sensor, high voltage
   assert.ok(run([...s.wires, ['psu1:plus', 'dev:X4']]).findings.some((f) => /24 V on interface pin/.test(f.text)))
   // controller off → no readings
   assert.equal(run(s.wires.filter(([a]) => a !== 'psu1:plus')).sensors.ds1.online, false)
+})
+
+test('SmartBob photo: every diagram terminal maps to a connector on the photo', async () => {
+  const { dev } = await load()
+  const d = dev('smartbob-sm-lite-1616r')
+  for (const s of d.scenarios) for (const id of s.terminals) assert.ok(d.photo.regions[d.photo.terminals[id]], `${s.id}: ${id} has no photo region`)
+  for (const r of Object.values(d.photo.regions)) { const [a, b, c, e] = r.box; assert.ok(a < c && b < e && c <= d.photo.w && e <= d.photo.h) }
 })
