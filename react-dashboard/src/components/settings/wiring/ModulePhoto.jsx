@@ -15,6 +15,8 @@ export default function ModulePhoto({ device, scenario, focus }) {
 
   // Bundled with the dashboard; a photo kept only in the manuals repo loads on demand instead
   const src = photo.src ? `${import.meta.env.BASE_URL}${photo.src}` : `/api/manuals/${photo.manual}/pdf`
+  const productSrc = photo.product ? `${import.meta.env.BASE_URL}${photo.product}` : null
+  const regionLabel = (r) => (r.term ? t('Terminal {t}', { t: device.terminals.find((x) => x.id === r.term)?.label || r.term }) : t(r.label))
   const used = [...new Set((scenario.terminals || device.terminals.map((x) => x.id)).map((id) => photo.terminals[id]).filter(Boolean))]
   const focusRegion = photo.terminals[focus] || picked || used[0]
   const region = photo.regions[focusRegion]
@@ -30,20 +32,22 @@ export default function ModulePhoto({ device, scenario, focus }) {
   return (
     <div className="wr-panel wr-photo">
       <div className="ble-dd-title">{t('Real module')} · {device.model}</div>
+      {productSrc && <img className="wr-photo-product" src={productSrc} alt={`${device.manufacturer} ${device.model}`} draggable="false"/>}
       {failed ? (
         <div className="stg-hint">{t('The photo is loaded from the manuals repository — add the GitHub token in Settings → Device manuals.')}</div>
       ) : (
         <>
-          <div className="wr-photo-lens">
+          <div className={`wr-photo-lens${photo.view === 'drawing' ? ' drawing' : ''}`}>
             <img src={src} alt="" draggable="false" onError={() => setFailed(true)}
               style={{ width: `${scale * 100}%`, transform: `translate(${-cx * 100}%, ${-cy * 100}%)` }}/>
             <div className="wr-photo-ring" style={{ width: `${ringW + 6}%`, height: `${ringH + 10}%` }}/>
           </div>
           <div className="wr-photo-tag">
-            <b>{t(region.label)}</b>
+            <b>{regionLabel(region)}</b>
             {focusTerm && <span>→ <b>{focusTerm.label}</b> {t(focusTerm.desc)}</span>}
           </div>
-          <div className="wr-photo-overview">
+          {photo.view === 'drawing' && <div className="stg-hint wr-photo-note">{t('Terminal view from the manual')}</div>}
+          <div className={`wr-photo-overview${photo.view === 'drawing' ? ' drawing' : ''}`}>
             <img src={src} alt={`${device.manufacturer} ${device.model}`} onError={() => setFailed(true)} draggable="false"/>
             <svg viewBox={`0 0 ${photo.w} ${photo.h}`} preserveAspectRatio="none">
               {used.map((k) => {
@@ -51,7 +55,7 @@ export default function ModulePhoto({ device, scenario, focus }) {
                 return (
                   <g key={k} className={`wr-photo-box${k === focusRegion ? ' active' : ''}`} onClick={() => setPicked(k)}>
                     <rect x={a} y={b} width={c - a} height={d - b} rx="6"/>
-                    <title>{t(photo.regions[k].label)}</title>
+                    <title>{regionLabel(photo.regions[k])}</title>
                   </g>
                 )
               })}

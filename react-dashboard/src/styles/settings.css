@@ -890,3 +890,5 @@ select.stg-input { cursor: pointer; }
 .wr-photo-ring { left: 50%; top: 50%; right: auto; bottom: auto; transform: translate(-50%, -50%); }
 .wr-photo-tag { position: static; background: color-mix(in srgb, #ffd60a 14%, transparent); color: var(--text); border: 1px solid color-mix(in srgb, #ffd60a 45%, transparent); backdrop-filter: none; }
 .wr-photo-tag span { color: var(--text2); }
+.wr-photo-product { width: 100%; max-height: 190px; object-fit: contain; border-radius: 10px; background: #fff; }
+.wr-photo-lens.drawing, .wr-photo-overview.drawing { background: #fff; }

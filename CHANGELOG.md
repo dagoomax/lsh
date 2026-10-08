@@ -7,6 +7,7 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 ### Added
+- **Wiring emulator: photos for FIBARO and Shelly** — Shelly Wave 1PM/2PM product renders with per-terminal zoom; FIBARO FGS-213/223, FGD-212, FGR-223 product photos plus the manual's terminal view with per-terminal zoom. Every device now has the real-module panel.
 - **Manuals: deploy-key access** — a read-only SSH deploy key per host (`persist/manuals-deploy-key`) instead of a token; manuals are fetched over git from a blobless clone, still one file at a time.
 - **Wiring emulator: real module photo** — for the SmartBob SM-LITE-1616R, the product photo (SmartBob's, bundled with the dashboard — works without the manuals token) with used connectors outlined and a zoom lens that follows the current step / clicked terminal (relay block, inputs, 24 V power, interface connector).
 - **Wiring emulator: DS18B20 on the SmartBob** — two temperature sensors in parallel on the 1-Wire interface (pins 1 / 4 / 5 per the installation sheet), live readings with sliders; reversed sensor, shorted data line and 24 V / 230 V on the 3.3 V interface flagged. Remote buttons only for relays a diagram uses.

@@ -20,6 +20,16 @@ A wiring assistant and circuit emulator for Z-Wave in-wall modules. Diagrams, te
 
 The SmartBob diagrams come from its installation sheet. Unlike the in-wall modules it has a separate 24 V DC side (supply, inputs switched to 0 V or +24 V) and **potential-free** relay contacts (COM / NO / NC) that you feed from your own breakers. The emulator models the 24 V supply, DIN breakers and a contactor for this, flags 230 V on the 24 V side, DC shorts and reversed polarity, and shows only the terminals each diagram uses. Remote control buttons are labelled LAN instead of Z-Wave. A **Real module** panel shows SmartBob's product photo (bundled with the dashboard, `react-dashboard/public/wiring/`) with the connectors the diagram uses outlined, and a zoom lens on the connector of the current step or the terminal you last clicked. DS18B20 sensors sit in parallel on the 1-Wire bus (interface connector pins 1 supply / 4 data / 5 ground, as in the sheet's example — pin names are read from that drawing); each reads a temperature you set with a slider when it is correctly on the bus, and reversed sensors, a shorted data line and 24 V / 230 V on the 3.3 V interface are flagged.
 
+## Real module view
+
+Every device has a **Real module** panel next to the steps: a zoom lens on the exact terminal (or connector) of the current step — or the terminal you last clicked — over an overview with the diagram's terminals outlined.
+
+- **Shelly Qubino Wave 1PM / 2PM** — the product render, zoomed onto the printed terminal (O · SW · L · N, N · O1 · L · O2 · SW1 · SW2).
+- **FIBARO FGS-213 / FGS-223 / FGD-212 / FGR-223** — the product photo (the terminals are on the back), plus the terminal view from the module's manual for the zoom.
+- **SmartBob SM-LITE-1616R** — the product photo, zoomed onto the connector block (relays, inputs, 24 V, interface).
+
+Images are bundled with the dashboard (`react-dashboard/public/wiring/`, ~0.5 MB in total; the owner has the rights to them); terminal boxes live in each device's `photo` entry and a test checks every terminal a diagram uses has one.
+
 ## Modes
 
 - **Assistant** — the manual's diagram, wire by wire, with what each terminal is for, the device's limits and rules, and a tools & materials checklist.

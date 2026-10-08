@@ -9,3 +9,5 @@ export const T6 = {
   '24 V DC power (orange 2-pin block)': ['Zasilanie 24 V DC (pomarańczowe złącze 2-pinowe)', '24-V-DC-Versorgung (orangefarbener 2-poliger Stecker)', 'Alimentation 24 V CC (bornier orange 2 broches)', 'Alimentación 24 V CC (bloque naranja de 2 pines)', 'Alimentazione 24 V CC (morsettiera arancione a 2 pin)', 'Живлення 24 В DC (помаранчевий 2-контактний роз’єм)'],
   'Interface connector (black 5-pin: 1-Wire, I²C, RS485)': ['Złącze interfejsów (czarne 5-pinowe: 1-Wire, I²C, RS485)', 'Schnittstellenstecker (schwarz, 5-polig: 1-Wire, I²C, RS485)', 'Connecteur d’interfaces (noir 5 broches : 1-Wire, I²C, RS485)', 'Conector de interfaces (negro de 5 pines: 1-Wire, I²C, RS485)', 'Connettore interfacce (nero a 5 pin: 1-Wire, I²C, RS485)', 'Роз’єм інтерфейсів (чорний 5-контактний: 1-Wire, I²C, RS485)'],
 }
+T6['Terminal {t}'] = ['Zacisk {t}', 'Klemme {t}', 'Borne {t}', 'Borne {t}', 'Morsetto {t}', 'Клема {t}']
+T6['Terminal view from the manual'] = ['Widok zacisków z instrukcji', 'Klemmenansicht aus der Anleitung', 'Vue des bornes tirée de la notice', 'Vista de bornes del manual', 'Vista dei morsetti dal manuale', 'Вигляд клем з інструкції']

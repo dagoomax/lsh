@@ -32,6 +32,13 @@ export const DEVICES = [
       'The switch on S1 is the main one; the second key on S2 doesn’t switch the output (it can trigger scenes).',
       'Keep the antenna away from metal and don’t shorten it.',
     ],
+    // Product photo + the module's terminal view from its manual (zoomable)
+    photo: {
+      src: 'wiring/fibaro-fgs213-terminals.png', w: 848, h: 624, view: 'drawing', credit: 'Photo and terminal drawing: FIBARO',
+      product: 'wiring/fibaro-fgs213.jpg',
+      regions: { S1: { box: [167, 34, 250, 266], term: 'S1' }, S2: { box: [250, 34, 333, 266], term: 'S2' }, L1: { box: [333, 34, 416, 266], term: 'L1' }, L2: { box: [416, 34, 499, 266], term: 'L2' }, Q: { box: [499, 34, 582, 266], term: 'Q' }, N: { box: [582, 34, 666, 266], term: 'N' } },
+      terminals: { S1: 'S1', S2: 'S2', L1: 'L1', L2: 'L2', Q: 'Q', N: 'N' },
+    },
     scenarios: [
       { id: 'single', title: 'One switch, one light', inputMode: 'momentary',
         parts: [{ id: 'sw1', kind: 'switch', label: 'Wall switch' }, { id: 'lamp1', kind: 'lamp', label: 'Light' }],
@@ -60,6 +67,13 @@ export const DEVICES = [
       'Resistive loads only; mind the per-channel and total current.',
       'S1 switches Q1 and S2 switches Q2. The switch is fed straight from the live line.',
     ],
+    // Product photo + the module's terminal view from its manual (zoomable)
+    photo: {
+      src: 'wiring/fibaro-fgs223-terminals.png', w: 848, h: 624, view: 'drawing', credit: 'Photo and terminal drawing: FIBARO',
+      product: 'wiring/fibaro-fgs223.jpg',
+      regions: { S1: { box: [166, 9, 250, 241], term: 'S1' }, S2: { box: [250, 9, 332, 241], term: 'S2' }, Q2: { box: [332, 9, 415, 241], term: 'Q2' }, L: { box: [415, 9, 498, 241], term: 'L' }, Q1: { box: [498, 9, 582, 241], term: 'Q1' }, N: { box: [582, 9, 665, 241], term: 'N' } },
+      terminals: { S1: 'S1', S2: 'S2', Q2: 'Q2', L: 'L', Q1: 'Q1', N: 'N' },
+    },
     scenarios: [
       { id: 'single', title: 'One switch, one light', inputMode: 'momentary',
         parts: [{ id: 'sw1', kind: 'switch', label: 'Wall switch' }, { id: 'lamp1', kind: 'lamp', label: 'Light (Q1)' }],
@@ -90,6 +104,13 @@ export const DEVICES = [
       'Don’t mix light source types on one dimmer, and connect at most one transformer.',
       'After power-up the dimmer calibrates for about 30 s; the light may blink.',
     ],
+    // Product photo + the module's terminal view from its manual (zoomable)
+    photo: {
+      src: 'wiring/fibaro-fgd212-terminals.png', w: 816, h: 704, view: 'drawing', credit: 'Photo and terminal drawing: FIBARO',
+      product: 'wiring/fibaro-fgd212.jpg',
+      regions: { L: { box: [131, 73, 214, 304], term: 'L' }, S1: { box: [214, 73, 297, 304], term: 'S1' }, S2: { box: [297, 73, 381, 304], term: 'S2' }, Sx: { box: [381, 73, 464, 304], term: 'Sx' }, N: { box: [464, 73, 547, 304], term: 'N' }, OUT: { box: [547, 73, 632, 304], term: 'OUT' } },
+      terminals: { L: 'L', S1: 'S1', S2: 'S2', Sx: 'Sx', N: 'N', OUT: 'OUT' },
+    },
     scenarios: [
       { id: '3wire', title: '3-wire (with neutral), one switch', inputMode: 'momentary',
         parts: [{ id: 'sw1', kind: 'switch', label: 'Wall switch' }, { id: 'lamp1', kind: 'lamp', label: 'Light' }],
@@ -125,6 +146,13 @@ export const DEVICES = [
       'Q1 drives one direction and Q2 the other; the module never energises both. If up/down are swapped after wiring, swap Q1 and Q2 (or calibrate).',
       'Connect the motor’s protective earth (PE).',
     ],
+    // Product photo + the module's terminal view from its manual (zoomable)
+    photo: {
+      src: 'wiring/fibaro-fgr223-terminals.png', w: 848, h: 640, view: 'drawing', credit: 'Photo and terminal drawing: FIBARO',
+      product: 'wiring/fibaro-fgr223.jpg',
+      regions: { S1: { box: [172, 4, 255, 236], term: 'S1' }, S2: { box: [255, 4, 338, 236], term: 'S2' }, Q2: { box: [338, 4, 421, 236], term: 'Q2' }, L: { box: [421, 4, 505, 236], term: 'L' }, Q1: { box: [505, 4, 588, 236], term: 'Q1' }, N: { box: [588, 4, 672, 236], term: 'N' } },
+      terminals: { S1: 'S1', S2: 'S2', Q2: 'Q2', L: 'L', Q1: 'Q1', N: 'N' },
+    },
     scenarios: [
       { id: 'standard', title: 'Standard blind motor', inputMode: 'momentary',
         parts: [{ id: 'sw1', kind: 'switch2', label: 'Up / down switch', keys: ['▲', '▼'] }, { id: 'm1', kind: 'motor', label: 'Blind motor' }],
@@ -152,6 +180,12 @@ export const DEVICES = [
       'Switch input type (toggle switch or push-button) is set in the device settings — match it to the switch you install.',
       'Don’t shorten the antenna.',
     ],
+    // Product render: the terminal block with its printed labels (zoomable per terminal)
+    photo: {
+      src: 'wiring/shelly-wave-1pm.jpg', w: 1600, h: 900, credit: 'Photo: Shelly',
+      regions: { O: { box: [392, 388, 452, 560], term: 'O' }, SW: { box: [454, 388, 512, 560], term: 'SW' }, L: { box: [514, 388, 693, 560], term: 'L' }, N: { box: [694, 388, 818, 560], term: 'N' } },
+      terminals: { O: 'O', SW: 'SW', L: 'L', N: 'N' },
+    },
     scenarios: [
       { id: 'switch', title: 'Toggle switch, one light', inputMode: 'toggle',
         parts: [{ id: 'sw1', kind: 'switch', label: 'Toggle switch' }, { id: 'lamp1', kind: 'lamp', label: 'Light' }],
@@ -180,6 +214,12 @@ export const DEVICES = [
       'Mind the per-channel and total current.',
       'Set the input type (toggle switch or push-button) in the device settings to match the switches.',
     ],
+    // Product render: the terminal block with its printed labels (zoomable per terminal)
+    photo: {
+      src: 'wiring/shelly-wave-2pm.jpg', w: 1600, h: 900, credit: 'Photo: Shelly',
+      regions: { N: { box: [416, 376, 478, 552], term: 'N' }, O1: { box: [478, 376, 534, 552], term: 'O1' }, L: { box: [534, 376, 658, 552], term: 'L' }, O2: { box: [658, 376, 720, 552], term: 'O2' }, SW1: { box: [720, 376, 780, 552], term: 'SW1' }, SW2: { box: [780, 376, 844, 552], term: 'SW2' } },
+      terminals: { N: 'N', O1: 'O1', L: 'L', O2: 'O2', SW1: 'SW1', SW2: 'SW2' },
+    },
     scenarios: [
       { id: 'switches', title: 'Two toggle switches, two lights', inputMode: 'toggle',
         parts: [{ id: 'sw1', kind: 'switch', label: 'Switch 1' }, { id: 'sw2', kind: 'switch', label: 'Switch 2' }, { id: 'lamp1', kind: 'lamp', label: 'Light 1 (O1)' }, { id: 'lamp2', kind: 'lamp', label: 'Light 2 (O2)' }],

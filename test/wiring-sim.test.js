@@ -145,7 +145,7 @@ test('translations: every phrase the emulator shows has all languages and matchi
   }
   for (const d of DEVICES) {
     for (const s of d.scenarios) { used.add(s.title); s.parts.forEach((p) => used.add(p.label)) }
-    d.terminals.forEach((x) => used.add(x.desc)); d.rules.forEach((r) => used.add(r)); (d.channels || []).forEach((c) => used.add(c.label)); (d.tools || []).forEach((x) => used.add(x.text)); Object.values(d.photo?.regions || {}).forEach((r) => { used.add(r.label); if (r.note) used.add(r.note) })
+    d.terminals.forEach((x) => used.add(x.desc)); d.rules.forEach((r) => used.add(r)); (d.channels || []).forEach((c) => used.add(c.label)); (d.tools || []).forEach((x) => used.add(x.text)); Object.values(d.photo?.regions || {}).forEach((r) => { if (r.label) used.add(r.label); if (r.note) used.add(r.note) })
     for (const [k, v] of d.specs) { used.add(k); if (/[a-z]{2}/i.test(v)) used.add(v) }
   }
   CONNECTORS.forEach((c) => { used.add(c.spec); if (c.note) used.add(c.note) })
@@ -225,9 +225,13 @@ test('SmartBob 1-Wire: DS18B20 sensors on the bus, reversed sensor, high voltage
   assert.equal(run(s.wires.filter(([a]) => a !== 'psu1:plus')).sensors.ds1.online, false)
 })
 
-test('SmartBob photo: every diagram terminal maps to a connector on the photo', async () => {
-  const { dev } = await load()
-  const d = dev('smartbob-sm-lite-1616r')
-  for (const s of d.scenarios) for (const id of s.terminals) assert.ok(d.photo.regions[d.photo.terminals[id]], `${s.id}: ${id} has no photo region`)
-  for (const r of Object.values(d.photo.regions)) { const [a, b, c, e] = r.box; assert.ok(a < c && b < e && c <= d.photo.w && e <= d.photo.h) }
+test('photos: every device has one, and every terminal a diagram uses maps to a region on it', async () => {
+  const { DEVICES } = await load()
+  const fs = require('fs'), path = require('path')
+  for (const d of DEVICES) {
+    assert.ok(d.photo, `${d.id}: no photo`)
+    for (const f of [d.photo.src, d.photo.product].filter(Boolean)) assert.ok(fs.existsSync(path.join(__dirname, '../react-dashboard/public', f)), `${d.id}: ${f} missing`)
+    for (const s of d.scenarios) for (const id of s.terminals || d.terminals.map((x) => x.id)) assert.ok(d.photo.regions[d.photo.terminals[id]], `${d.id}/${s.id}: ${id} has no photo region`)
+    for (const r of Object.values(d.photo.regions)) { const [a, b, c, e] = r.box; assert.ok(a < c && b < e && c <= d.photo.w && e <= d.photo.h, `${d.id}: bad box`) }
+  }
 })
