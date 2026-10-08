@@ -3,8 +3,9 @@ import { t } from './i18n.js'
 
 // Real photo of the module with the connectors a diagram uses outlined, and a
 // zoom lens on the one being wired right now (the current assistant step, or
-// the terminal you last clicked). The photo comes from the private manuals
-// repository on demand (/api/manuals/<id>/pdf), like the manuals themselves.
+// the terminal you last clicked). Photos are bundled with the dashboard
+// (`photo.src`) or, for ones kept in the private manuals repo, loaded on demand
+// (`photo.manual` → /api/manuals/<id>/pdf).
 
 export default function ModulePhoto({ device, scenario, focus }) {
   const photo = device.photo
@@ -12,7 +13,8 @@ export default function ModulePhoto({ device, scenario, focus }) {
   const [failed, setFailed] = useState(false)
   if (!photo) return null
 
-  const src = `/api/manuals/${photo.manual}/pdf`
+  // Bundled with the dashboard; a photo kept only in the manuals repo loads on demand instead
+  const src = photo.src ? `${import.meta.env.BASE_URL}${photo.src}` : `/api/manuals/${photo.manual}/pdf`
   const used = [...new Set((scenario.terminals || device.terminals.map((x) => x.id)).map((id) => photo.terminals[id]).filter(Boolean))]
   const focusRegion = photo.terminals[focus] || picked || used[0]
   const region = photo.regions[focusRegion]

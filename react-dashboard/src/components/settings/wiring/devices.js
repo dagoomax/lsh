@@ -209,10 +209,10 @@ export const DEVICES = [
     ],
     bridges: [['X5', 'G']],
     oneWire: { vdd: 'X1', dq: 'X4', gnd: 'X5' },
-    // Real photo (SmartBob docs wiki), served from the private manuals repo.
+    // Real photo (SmartBob), bundled with the dashboard (react-dashboard/public/wiring/).
     // Boxes are pixel rectangles on the 1024×672 photo.
     photo: {
-      manual: 'smartbob-sm-lite-1616r-photo', w: 1024, h: 672, credit: 'Photo: SmartBob',
+      src: 'wiring/smartbob-sm-lite-1616r.jpg', w: 1024, h: 672, credit: 'Photo: SmartBob',
       regions: {
         relays: { box: [22, 238, 118, 302], label: 'Relay outputs (green 5-pin block: NO, COM + NO, COM, NC)', note: 'Which block carries which relays is printed on the device.' },
         inputs: { box: [278, 140, 390, 235], label: 'Inputs (green 8-pin blocks along the top)' },
