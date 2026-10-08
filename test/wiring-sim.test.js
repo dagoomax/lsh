@@ -3,7 +3,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
-// The wiring emulator's engine is an ES module in the React app.
+// The wiring emulator's engine is an ES module in the React app. Its texts
+// follow the dashboard language (localStorage 'lsh-lang'); tests pin it.
+let LANG = 'en'
+Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => LANG, setItem: () => {} } })
 const load = async () => {
   const sim = await import('../react-dashboard/src/components/settings/wiring/sim.js')
   const { DEVICES } = await import('../react-dashboard/src/components/settings/wiring/devices.js')
@@ -125,4 +128,42 @@ test('connectors: user-placed WAGO joins wires; one conductor per port; colours 
   assert.ok(r.findings.some((f) => /Neutral should be blue/.test(f.text)))
   const doubled = [...wires, ['u1:p3', 'dev:L']]
   assert.ok(sim.conductorFindings(d, s, doubled, wg).some((f) => /one conductor per connector port/.test(f.text)))
+})
+
+test('translations: every phrase the emulator shows has all languages and matching placeholders', async () => {
+  const { DEVICES } = await load()
+  const { PHRASES } = await import('../react-dashboard/src/components/settings/wiring/i18n-dict.js')
+  const { CONNECTORS, WIRE_COLORS } = await import('../react-dashboard/src/components/settings/wiring/devices.js')
+  const fs = require('fs')
+  const dir = require('path').join(__dirname, '../react-dashboard/src/components/settings/')
+  const used = new Set()
+  for (const f of ['wiring/sim.js', 'wiring/devices.js', 'wiring/WiringCanvas.jsx', 'sections/WiringSection.jsx']) {
+    for (const m of fs.readFileSync(dir + f, 'utf8').matchAll(/\bt\('((?:[^'\\]|\\.)*)'/g)) used.add(m[1])
+  }
+  for (const d of DEVICES) {
+    for (const s of d.scenarios) { used.add(s.title); s.parts.forEach((p) => used.add(p.label)) }
+    d.terminals.forEach((x) => used.add(x.desc)); d.rules.forEach((r) => used.add(r)); (d.channels || []).forEach((c) => used.add(c.label))
+    for (const [k, v] of d.specs) { used.add(k); if (/[a-z]{2}/i.test(v)) used.add(v) }
+  }
+  CONNECTORS.forEach((c) => { used.add(c.spec); if (c.note) used.add(c.note) })
+  WIRE_COLORS.forEach((c) => used.add(c.label))
+  const ph = (s) => (s.match(/\{\w+\}/g) || []).sort().join()
+  const missing = [...used].filter((k) => !PHRASES[k])
+  assert.deepEqual(missing, [], 'phrases without translations')
+  for (const [k, v] of Object.entries(PHRASES)) {
+    assert.equal(v.length, 6, `${k}: needs pl, de, fr, es, it, uk`)
+    v.forEach((s, i) => assert.equal(ph(s), ph(k), `${k} [${i}]: placeholders differ`))
+  }
+})
+
+test('translations: findings and steps follow the dashboard language', async () => {
+  const { sim, dev } = await load()
+  const d = dev('fibaro-fgs213'), s = d.scenarios[0]
+  try {
+    LANG = 'pl'
+    assert.match(sim.simulate(d, s, [['L', 'N']], {}, sim.initialState(d)).short, /^Zwarcie/)
+    assert.match(sim.steps(d, s)[0].text, /^Połącz: faza sieci \(L\) ↔ zacisk L$/)
+    LANG = 'de'
+    assert.match(sim.steps(d, s)[0].text, /^Verbinde Netz-Außenleiter \(L\) mit Klemme L$/)
+  } finally { LANG = 'en' }
 })

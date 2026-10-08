@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PART_PORTS, WIRE_COLORS } from './devices.js'
 import { usesPE, netKind } from './sim.js'
+import { t } from './i18n.js'
 
 // SVG schematic: mains rails on top, parts in the middle, the module at the
 // bottom. Wires are routed orthogonally; colours follow what each wire
@@ -167,9 +168,9 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], hig
     <>
     {zoomable && (
       <div className="lan-zoom wr-zoom">
-        <button onClick={() => zoom(1 / 1.3)} title="Zoom in">+</button>
-        <button onClick={() => zoom(1.3)} title="Zoom out">−</button>
-        <button onClick={() => setVb(FULL)} title="Fit">⟲</button>
+        <button onClick={() => zoom(1 / 1.3)} title={t('Zoom in')}>+</button>
+        <button onClick={() => zoom(1.3)} title={t('Zoom out')}>−</button>
+        <button onClick={() => setVb(FULL)} title={t('Fit')}>⟲</button>
       </div>
     )}
     <svg ref={svgRef} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} preserveAspectRatio="xMidYMid meet" className={`wr-svg${draft ? ' drawing' : ''}${zoomable ? ' zoomable' : ''}`} role="img" aria-label="Wiring diagram"
@@ -244,7 +245,7 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], hig
               <circle cx={g.cx} cy={g.cy - 4} r="28" className={`wr-lamp${lvl > 0 ? ' on' : ''}`} style={lvl > 0 ? { fillOpacity: 0.25 + 0.75 * lvl } : undefined}/>
               <path d={`M ${g.cx - 18} ${g.cy - 22} L ${g.cx + 18} ${g.cy + 14} M ${g.cx + 18} ${g.cy - 22} L ${g.cx - 18} ${g.cy + 14}`} className="wr-lamp-x"/>
               <line x1={g.cx} x2={g.cx} y1={g.ports.b[1]} y2={g.cy - 32}/><line x1={g.cx} x2={g.cx} y1={g.cy + 24} y2={g.ports.a[1]}/>
-              <text x={g.cx + 38} y={g.cy} className="wr-part-label" textAnchor="start" style={{ textAnchor: 'start' }}>{p.label}{lvl > 0 && lvl < 1 ? ` · ${Math.round(lvl * 100)}%` : ''}</text>
+              <text x={g.cx + 38} y={g.cy} className="wr-part-label" textAnchor="start" style={{ textAnchor: 'start' }}>{t(p.label)}{lvl > 0 && lvl < 1 ? ` · ${Math.round(lvl * 100)}%` : ''}</text>
             </g>
           )
         }
@@ -267,7 +268,7 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], hig
                 )
               })}
               {Object.entries(g.ports).map(([q, [x, y]]) => <line key={q} x1={x} x2={x} y1={g.box.y1} y2={y}/>)}
-              <text x={g.cx} y={g.box.y0 - 8} className="wr-part-label">{p.label}</text>
+              <text x={g.cx} y={g.box.y0 - 8} className="wr-part-label">{t(p.label)}</text>
             </g>
           )
         }
@@ -294,7 +295,7 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], hig
                   <rect x={box.x1 + 14} y={box.y0} width="12" height={(box.y1 - box.y0) * (1 - shutterPos / 100)} rx="3" className="wr-blind"/>
                 </g>
               )}
-              <text x={g.cx} y={box.y1 + 30} className="wr-part-label">{p.label}</text>
+              <text x={g.cx} y={box.y1 + 30} className="wr-part-label">{t(p.label)}</text>
             </g>
           )
         }
@@ -305,15 +306,15 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], hig
       <g className="wr-device">
         <path d={`M ${L.devBox.x0} ${L.devBox.y0} H ${L.devBox.x1} V ${L.devBox.y1 - 30} Q ${L.devBox.x1} ${L.devBox.y1} ${L.devBox.x1 - 30} ${L.devBox.y1} H ${L.devBox.x0 + 30} Q ${L.devBox.x0} ${L.devBox.y1} ${L.devBox.x0} ${L.devBox.y1 - 30} Z`} className="wr-device-body" style={{ '--brand': device.color }}/>
         <rect x={L.devBox.x0} y={L.devBox.y0} width={L.devBox.x1 - L.devBox.x0} height="5" fill={device.color}/>
-        {device.terminals.map((t) => {
-          const p = L.terms[t.id]
+        {device.terminals.map((term) => {
+          const p = L.terms[term.id]
           return (
-            <g key={t.id}>
+            <g key={term.id}>
               <rect x={p.x - 20} y={p.y - 6} width="40" height="30" rx="4" className="wr-screw-box"/>
               <circle cx={p.x} cy={p.y + 9} r="8" className="wr-screw"/>
               <path d={`M ${p.x - 5} ${p.y + 4} L ${p.x + 5} ${p.y + 14} M ${p.x + 5} ${p.y + 4} L ${p.x - 5} ${p.y + 14}`} className="wr-screw-x"/>
-              <text x={p.x} y={p.y + 42} className={`wr-term-label role-${t.role}`}>{t.label}</text>
-              <title>{t.desc}</title>
+              <text x={p.x} y={p.y + 42} className={`wr-term-label role-${term.role}`}>{term.label}</text>
+              <title>{t(term.desc)}</title>
             </g>
           )
         })}
@@ -335,7 +336,7 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], hig
                 <line x1={x} x2={x} y1={y} y2={g.y0}/>
               </g>
             ))}
-            <text x={w.x} y={g.y0 + g.height - 6} className="wr-wago-label">{w.label ? `${(w.label.match(/\(([A-Z]+)\)/) || [])[1] || w.label} · ` : ''}{w.model?.replace('WAGO ', '') || `${w.poles}-way`}</text>
+            <text x={w.x} y={g.y0 + g.height - 6} className="wr-wago-label">{w.label ? `${(w.label.match(/\(([A-Z]+)\)/) || [])[1] || t(w.label)} · ` : ''}{w.model?.replace('WAGO ', '') || `${w.poles}-way`}</text>
             {interactive && onExtraRemove && <g className="wr-wago-x" onClick={(e) => { e.stopPropagation(); onExtraRemove(w.id) }}><circle cx={g.x0 + g.width} cy={g.y0} r="8"/><text x={g.x0 + g.width} y={g.y0 + 4}>×</text></g>}
           </g>
         )
@@ -345,7 +346,7 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], hig
       {extras.filter((e) => e.kind === 'wago').flatMap((w) => Object.entries(L.wagos[w.id].ports).map(([q, [x, y]]) => interactive
         ? <Port key={`${w.id}:${q}`} id={`${w.id}:${q}`} x={x} y={y}/>
         : <circle key={`${w.id}:${q}`} cx={x} cy={y} r="3" className="wr-wago-dot"/>))}
-      {interactive && device.terminals.map((t) => <Port key={t.id} id={`dev:${t.id}`} x={L.terms[t.id].x} y={L.terms[t.id].y - 14}/>)}
+      {interactive && device.terminals.map((term) => <Port key={term.id} id={`dev:${term.id}`} x={L.terms[term.id].x} y={L.terms[term.id].y - 14}/>)}
       {interactive && scenario.parts.flatMap((p) => (PART_PORTS[p.kind] || []).map((q) => <Port key={`${p.id}:${q}`} id={`${p.id}:${q}`} x={L.parts[p.id].ports[q][0]} y={L.parts[p.id].ports[q][1]}/>))}
     </svg>
     </>

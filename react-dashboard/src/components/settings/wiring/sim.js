@@ -5,6 +5,7 @@
 // and N (and PE) are the sources. Tested in test/wiring-sim.test.js.
 
 import { portsOf, connectorFor, CONNECTORS } from './devices.js'
+import { t } from './i18n.js'
 
 class UF {
   constructor() { this.p = new Map() }
@@ -85,8 +86,8 @@ function evaluate(device, scenario, wires, switches, state, extras) {
   const findings = []
   let short = null
   const shortCheck = () => {
-    if (uf.find('L') === uf.find('N')) short = 'Short circuit: live is connected straight to neutral — the breaker trips.'
-    else if (pe && uf.find('L') === uf.find('PE')) short = 'Earth fault: live is connected to protective earth — the RCD trips.'
+    if (uf.find('L') === uf.find('N')) short = t('Short circuit: live is connected straight to neutral — the breaker trips.')
+    else if (pe && uf.find('L') === uf.find('PE')) short = t('Earth fault: live is connected to protective earth — the RCD trips.')
   }
   shortCheck()
   if (short) return { short, powered: false, findings }
@@ -99,24 +100,24 @@ function evaluate(device, scenario, wires, switches, state, extras) {
     // 2-wire dimmer: supplied through the load from its output
     if (loadsBetween(scenario, uf, uf.find(`dev:${device.power.twoWire.out}`), N())) { neutralOk = true; twoWire = true }
   }
-  if (devN === L()) findings.push({ level: 'danger', text: `Live is on the module's ${labelOf(device, device.power.N)} terminal — it would be damaged.` })
-  if (!liveOk) findings.push({ level: 'info', text: `No live on terminal ${labelOf(device, device.power.L)} — the module is off.` })
-  else if (!neutralOk) findings.push({ level: 'info', text: device.power.twoWire ? 'No neutral on N and no load on the output — the module can’t power up.' : 'No neutral on N — the module is off (it needs a neutral).' })
+  if (devN === L()) findings.push({ level: 'danger', text: t('Live is on the module’s {t} terminal — it would be damaged.', { t: labelOf(device, device.power.N) }) })
+  if (!liveOk) findings.push({ level: 'info', text: t('No live on terminal {t} — the module is off.', { t: labelOf(device, device.power.L) }) })
+  else if (!neutralOk) findings.push({ level: 'info', text: device.power.twoWire ? t('No neutral on N and no load on the output — the module can’t power up.') : t('No neutral on N — the module is off (it needs a neutral).') })
   const powered = liveOk && neutralOk
 
   // Switch-supply terminal (Sx) checks
-  const sxTerm = device.terminals.find((t) => t.role === 'sx')
+  const sxTerm = device.terminals.find((x) => x.role === 'sx')
   if (sxTerm) {
     const sx = uf.find(`dev:${sxTerm.id}`)
-    if (sx === L()) findings.push({ level: 'danger', text: 'Sx is connected to live — Sx is the switch supply output, not an input.' })
-    if (sx === N() && !twoWire) findings.push({ level: 'danger', text: 'Sx is connected to neutral — the switch supply would be shorted.' })
+    if (sx === L()) findings.push({ level: 'danger', text: t('Sx is connected to live — Sx is the switch supply output, not an input.') })
+    if (sx === N() && !twoWire) findings.push({ level: 'danger', text: t('Sx is connected to neutral — the switch supply would be shorted.') })
   }
   for (const c of device.channels || []) {
-    if (uf.find(`dev:${c.out}`) === L()) findings.push({ level: 'warn', text: `${labelOf(device, c.out)} is fed from live directly — the load would bypass the module.` })
-    if (uf.find(`dev:${c.out}`) === N()) findings.push({ level: 'danger', text: `${labelOf(device, c.out)} is connected to neutral — switching it on shorts live to neutral.` })
+    if (uf.find(`dev:${c.out}`) === L()) findings.push({ level: 'warn', text: t('{t} is fed from live directly — the load would bypass the module.', { t: labelOf(device, c.out) }) })
+    if (uf.find(`dev:${c.out}`) === N()) findings.push({ level: 'danger', text: t('{t} is connected to neutral — switching it on shorts live to neutral.', { t: labelOf(device, c.out) }) })
   }
   if (device.shutter) {
-    for (const o of [device.shutter.up, device.shutter.down]) if (uf.find(`dev:${o}`) === N()) findings.push({ level: 'danger', text: `${o} is connected to neutral — driving the motor shorts live to neutral.` })
+    for (const o of [device.shutter.up, device.shutter.down]) if (uf.find(`dev:${o}`) === N()) findings.push({ level: 'danger', text: t('{t} is connected to neutral — driving the motor shorts live to neutral.', { t: o }) })
   }
 
   // Inputs
@@ -125,7 +126,7 @@ function evaluate(device, scenario, wires, switches, state, extras) {
     const net = uf.find(`dev:${term}`)
     if (ref === 'Sx') inputs[term] = powered && sxTerm && net === uf.find(`dev:${sxTerm.id}`) && net !== N()
     else inputs[term] = powered && net === L()
-    if (net === N() && ref === 'L') findings.push({ level: 'warn', text: `Input ${labelOf(device, term)} is on neutral — the switch must switch live.` })
+    if (net === N() && ref === 'L') findings.push({ level: 'warn', text: t('Input {t} is on neutral — the switch must switch live.', { t: labelOf(device, term) }) })
   }
   return { short: null, powered, twoWire, inputs, findings, uf }
 }
@@ -161,7 +162,7 @@ export function simulate(device, scenario, wires, switches, state, extras = [], 
   const uf = buildNets(device, scenario, wires, switches, st, e1.powered, extras)
   const L = uf.find('L'), N = uf.find('N')
   if (L === N) {
-    return { short: 'Short circuit when the output switched on — check what the output is connected to.', powered: false, state: { ...st, channels: Object.fromEntries(Object.keys(st.channels).map((k) => [k, false])), shutter: st.shutter ? { dir: null } : null }, lamps: {}, motors: {}, findings: e1.findings, nets: null }
+    return { short: t('Short circuit when the output switched on — check what the output is connected to.'), powered: false, state: { ...st, channels: Object.fromEntries(Object.keys(st.channels).map((k) => [k, false])), shutter: st.shutter ? { dir: null } : null }, lamps: {}, motors: {}, findings: e1.findings, nets: null }
   }
   const lamps = {}
   const dimmed = (device.channels || []).filter((c) => c.dimmer && st.channels[c.id]).map((c) => uf.find(`dev:${c.out}`))
@@ -177,8 +178,8 @@ export function simulate(device, scenario, wires, switches, state, extras = [], 
     if (p.kind === 'motor') { up = net('up') === L && net('n') === N; down = net('down') === L && net('n') === N }
     else { const ok = net('l') === L && net('n') === N; up = ok && net('up') === L; down = ok && net('down') === L }
     motors[p.id] = up && down ? 'both' : up ? 'up' : down ? 'down' : null
-    if (up && down) e1.findings.push({ level: 'danger', text: `${p.label}: both directions energised at once — this damages the motor.` })
-    if (net('pe') !== uf.find('PE')) e1.findings.push({ level: 'warn', text: `${p.label}: protective earth (PE) not connected.` })
+    if (up && down) e1.findings.push({ level: 'danger', text: t('{p}: both directions energised at once — this damages the motor.', { p: t(p.label) }) })
+    if (net('pe') !== uf.find('PE')) e1.findings.push({ level: 'warn', text: t('{p}: protective earth (PE) not connected.', { p: t(p.label) }) })
   }
   const out = { short: null, powered: e1.powered, twoWire: e1.twoWire, inputs: e1.inputs, state: st, lamps, motors, findings: e1.findings, nets: uf, L, N, PE: usesPE(scenario) ? uf.find('PE') : null }
   // Wire colours vs what the wire carries
@@ -186,10 +187,10 @@ export function simulate(device, scenario, wires, switches, state, extras = [], 
     if (!meta?.color || meta.color === 'auto') continue
     const k = netKind(out, device, a) !== 'idle' ? netKind(out, device, a) : netKind(out, device, b)
     const what = `${portName(device, scenario, a, extras)} – ${portName(device, scenario, b, extras)}`
-    if (meta.color === 'gnye' && k !== 'pe') out.findings.push({ level: 'danger', text: `Green-yellow is reserved for protective earth — ${what} isn’t earth.` })
-    else if (k === 'pe' && meta.color !== 'gnye') out.findings.push({ level: 'warn', text: `Earth should be green-yellow (${what}).` })
-    else if (k === 'neutral' && meta.color !== 'blue') out.findings.push({ level: 'warn', text: `Neutral should be blue (${what}).` })
-    else if (meta.color === 'blue' && k !== 'neutral') out.findings.push({ level: 'warn', text: `Blue is for neutral, but ${what} carries ${k === 'live' ? 'live' : 'a switched/control signal'}.` })
+    if (meta.color === 'gnye' && k !== 'pe') out.findings.push({ level: 'danger', text: t('Green-yellow is reserved for protective earth — {w} isn’t earth.', { w: what }) })
+    else if (k === 'pe' && meta.color !== 'gnye') out.findings.push({ level: 'warn', text: t('Earth should be green-yellow ({w}).', { w: what }) })
+    else if (k === 'neutral' && meta.color !== 'blue') out.findings.push({ level: 'warn', text: t('Neutral should be blue ({w}).', { w: what }) })
+    else if (meta.color === 'blue' && k !== 'neutral') out.findings.push({ level: 'warn', text: k === 'live' ? t('Blue is for neutral, but {w} carries live.', { w: what }) : t('Blue is for neutral, but {w} carries a switched or control signal.', { w: what }) })
   }
   return out
 }
@@ -202,10 +203,10 @@ export function conductorFindings(device, scenario, wires, extras = [], { realBo
   for (const [a, b] of wires) for (const p of [a, b]) count.set(p, (count.get(p) || 0) + 1)
   const f = []
   for (const [p, n] of count) {
-    if (p.startsWith('dev:') && n > 2) f.push({ level: 'warn', text: `${portName(device, scenario, p, extras)} has ${n} conductors — join them in a connector and run one wire to the terminal.` })
+    if (p.startsWith('dev:') && n > 2) f.push({ level: 'warn', text: t('{p} has {n} conductors — join them in a connector and run one wire to the terminal.', { p: portName(device, scenario, p, extras), n }) })
     const owner = extras.find((x) => p.startsWith(`${x.id}:`))
-    if (owner?.kind === 'wago' && n > 1) f.push({ level: 'danger', text: `${portName(device, scenario, p, extras)}: one conductor per connector port.` })
-    if (realBox && ['L', 'N', 'PE'].includes(p) && n > 1) f.push({ level: 'warn', text: `Wall box: the incoming ${p} is one conductor but ${n} wires use it — join them in a ${connectorFor(n + 1).model} (${n + 1}-way).` })
+    if (owner?.kind === 'wago' && n > 1) f.push({ level: 'danger', text: t('{p}: one conductor per connector port.', { p: portName(device, scenario, p, extras) }) })
+    if (realBox && ['L', 'N', 'PE'].includes(p) && n > 1) f.push({ level: 'warn', text: t('Wall box: the incoming {r} is one conductor but {n} wires use it — join them in a {m} ({k}-way).', { r: p, n, m: connectorFor(n + 1).model, k: n + 1 }) })
   }
   return f
 }
@@ -242,7 +243,7 @@ export function netKind(sim, device, port) {
   if (n === sim.L) return 'live'
   if (n === sim.N) return 'neutral'
   if (sim.PE && n === sim.PE) return 'pe'
-  const sx = device.terminals.find((t) => t.role === 'sx')
+  const sx = device.terminals.find((x) => x.role === 'sx')
   if (sx && sim.powered && n === sim.nets.find(`dev:${sx.id}`)) return 'sx'
   return 'idle'
 }
@@ -285,20 +286,20 @@ export function check(device, scenario, wires, extras = []) {
 }
 
 export function labelOf(device, terminalId) {
-  return device.terminals.find((t) => t.id === terminalId)?.label || terminalId
+  return device.terminals.find((x) => x.id === terminalId)?.label || terminalId
 }
 
 // Human name for a port
 export function portName(device, scenario, port, extras = []) {
-  if (port === 'L') return 'mains live (L)'
-  if (port === 'N') return 'mains neutral (N)'
-  if (port === 'PE') return 'protective earth (PE)'
+  if (port === 'L') return t('mains live (L)')
+  if (port === 'N') return t('mains neutral (N)')
+  if (port === 'PE') return t('protective earth (PE)')
   const [owner, q] = port.split(':')
-  if (owner === 'dev') return `terminal ${labelOf(device, q)}`
+  if (owner === 'dev') return t('terminal {t}', { t: labelOf(device, q) })
   const part = [...scenario.parts, ...extras].find((p) => p.id === owner)
-  if (part?.kind === 'wago') return `${part.label ? `${part.label} ` : ''}connector (${part.model || `${part.poles}-way`}) port ${q.slice(1)}`
-  const names = { com: 'common', o1: part?.keys?.[0] ? `${part.keys[0]} contact` : 'contact 1', o2: part?.keys?.[1] ? `${part.keys[1]} contact` : 'contact 2', a: 'terminal 1', b: 'terminal 2', up: 'up wire', down: 'down wire', n: 'neutral', pe: 'earth', l: 'live' }
-  return `${part?.label || owner} ${part?.kind === 'switch' && q === 'o1' ? 'contact' : names[q] || q}`
+  if (part?.kind === 'wago') return part.label ? t('{label} connector ({model}) port {n}', { label: t(part.label), model: part.model || `${part.poles}`, n: q.slice(1) }) : t('connector ({model}) port {n}', { model: part.model || `${part.poles}`, n: q.slice(1) })
+  const names = { com: t('common'), o1: part?.keys?.[0] ? t('{k} contact', { k: part.keys[0] }) : t('contact 1'), o2: part?.keys?.[1] ? t('{k} contact', { k: part.keys[1] }) : t('contact 2'), a: t('terminal 1'), b: t('terminal 2'), up: t('up wire'), down: t('down wire'), n: t('neutral'), pe: t('earth'), l: t('live') }
+  return t('{part}: {port}', { part: t(part?.label) || owner, port: part?.kind === 'switch' && q === 'o1' ? t('contact') : names[q] || q })
 }
 
 // Step-by-step instructions from a scenario
@@ -306,9 +307,9 @@ export function steps(device, scenario, plan) {
   const wires = plan ? plan.wires : scenario.wires
   const extras = plan ? plan.parts : []
   return wires.map(([a, b]) => {
-    const t = [a, b].find((p) => p.startsWith('dev:'))
-    const role = t ? device.terminals.find((x) => `dev:${x.id}` === t)?.desc : null
+    const term = [a, b].find((p) => p.startsWith('dev:'))
+    const role = term ? device.terminals.find((x) => `dev:${x.id}` === term)?.desc : null
     const conn = extras.find((x) => [a, b].some((p) => p.startsWith(`${x.id}:`)))
-    return { wire: [a, b], text: `Connect ${portName(device, scenario, a, extras)} to ${portName(device, scenario, b, extras)}`, hint: role || (conn ? CONNECTORS.find((c) => c.model === conn.model)?.spec : null) }
+    return { wire: [a, b], text: t('Connect {a} to {b}', { a: portName(device, scenario, a, extras), b: portName(device, scenario, b, extras) }), hint: role ? t(role) : conn ? t(CONNECTORS.find((c) => c.model === conn.model)?.spec) : null }
   })
 }
