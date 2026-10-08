@@ -89,6 +89,7 @@ const ROUTE_GROUPS = [
   require('./routes/https'),
   require('./routes/lsh-ble'),
   require('./routes/lsh-lan'),
+  require('./routes/lsh-can'),
   require('./routes/dsc'),
 ];
 

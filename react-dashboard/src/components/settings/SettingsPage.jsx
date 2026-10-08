@@ -52,6 +52,7 @@ import CamerasSection from './sections/CamerasSection'
 import BackupRestoreSection from './sections/BackupRestoreSection'
 import ModulesSection from './sections/ModulesSection'
 import LshBleSection from './sections/LshBleSection'
+import CanScanSection from './sections/CanScanSection'
 import BleScanSection from './sections/BleScanSection'
 import LanScanSection from './sections/LanScanSection'
 
@@ -110,6 +111,7 @@ const SECTION_COMPONENTS = {
   'lsh-ble': LshBleSection,
   'ble-scan': BleScanSection,
   'lan-scan': LanScanSection,
+  'can-scan': CanScanSection,
 }
 
 export default function SettingsPage({ onClose, onOpenCssEditor }) {

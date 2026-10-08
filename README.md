@@ -411,6 +411,12 @@ Settings → System → **LAN scan** finds what's on the LSH host's local networ
 
 No configuration. It's a *tool module* (listed in `src/tool-modules.js`): never started at boot and not auto-installed — the page's **Install module** button fetches it and its two npm packages the first time. Scans only the host's own IPv4 LAN(s) (narrowed to /24; Docker, VPN and Tailscale interfaces are skipped), using TCP connects and an ARP sweep — no root needed.
 
+### CAN bus scan (tool module `lsh-can`)
+
+Settings → System → CAN bus scan listens to a CAN bus **without transmitting** and lists every frame ID (rate, length, changing bytes, last payloads), guesses the protocol — NMEA 2000 / Victron VE.Can, SAE J1939, CANopen, or the battery "CAN-bus BMS" protocol (Pylontech-style, 0x351/0x355/0x356) — and decodes what it recognises (battery voltage/current/SOC, position, heading, engine speed…). NMEA 2000 address claims name the manufacturer of each node.
+
+Sources: **SocketCAN** interfaces via `candump` (`sudo apt install can-utils`; the interface must be up — `sudo ip link set can0 up type can bitrate 250000 listen-only on`) and **SLCAN** USB adapters (CANable, USBtin) via `serialport`, opened listen-only. On the **Arduino VENTUNO Q** the STM32H5 runs Arduino's CANnectivity firmware (gs_usb, USB `1209:ca01`), so its three CAN-FD ports appear as `can0`–`can2` and are labelled "VENTUNO Q CAN-FD 1–3". Decoders are tested against frames built from the specs (`test/lsh-can-scan.test.js`), not against a live bus yet.
+
 ### `solaredge`
 
 ```json

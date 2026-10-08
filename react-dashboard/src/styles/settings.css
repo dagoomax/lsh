@@ -601,3 +601,37 @@ select.stg-input { cursor: pointer; }
 .ble-signal.s4 .ble-bars i.on, .ble-signal.s3 .ble-bars i.on { background: var(--green); box-shadow: 0 0 6px color-mix(in srgb, var(--green) 60%, transparent); }
 .ble-signal.s2 .ble-bars i.on { background: var(--orange); }
 .ble-signal.s1 .ble-bars i.on { background: var(--red); }
+
+/* CAN bus scan (CanScanSection.jsx) — shares the LAN scan look */
+.can-wave { position: relative; flex-shrink: 0; width: 220px; height: 120px; border-radius: 16px; overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--g, var(--lan)) 22%, transparent), transparent 75%), var(--white-04);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--g, var(--lan)) 30%, transparent); }
+.can-wave::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 23px, var(--white-08) 23px 24px), repeating-linear-gradient(0deg, transparent 0 23px, var(--white-08) 23px 24px); }
+.can-wave svg { position: absolute; inset: 22px 0; width: 200%; height: calc(100% - 44px); }
+.can-wave-track { animation: can-scroll 6s linear infinite; }
+.can-wave.scanning .can-wave-track { animation-duration: 1.2s; }
+.can-h, .can-l { fill: none; stroke-width: 2.2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.can-h { stroke: #ffd60a; filter: drop-shadow(0 0 4px #ffd60a); }
+.can-l { stroke: #30d158; filter: drop-shadow(0 0 4px #30d158); }
+.can-wave-label { position: absolute; left: 8px; font-size: 9.5px; font-weight: 800; letter-spacing: 0.06em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.can-wave-label.h { top: 6px; color: #ffd60a; } .can-wave-label.l { bottom: 6px; color: #30d158; }
+@keyframes can-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.can-sources { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; align-items: center; }
+.can-src { display: inline-flex; align-items: center; gap: 8px; border: none; font: inherit; color: var(--text); text-align: left; padding: 8px 12px; border-radius: 12px; background: var(--white-04); cursor: pointer; transition: background 0.15s, box-shadow 0.15s; max-width: 100%; }
+.can-src b { font-size: 13.5px; }
+.can-src span { font-size: 11.5px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.can-src.active { background: color-mix(in srgb, #0a84ff 16%, transparent); box-shadow: inset 0 0 0 1.5px #0a84ff; }
+.can-select { width: auto; padding: 7px 10px; font-size: 13px; }
+.can-hints { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--orange) 9%, transparent); }
+.can-hints code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; padding: 1px 5px; border-radius: 5px; background: var(--white-08); overflow-wrap: anywhere; }
+.can-values { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 12px 0; }
+.can-value b { font-size: 22px; }
+.can-value em { font-style: normal; font-size: 10.5px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.can-id { font-size: 10.5px !important; font-weight: 800; letter-spacing: 0.04em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+.can-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; color: var(--g); }
+.can-bytes { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+.can-bytes i { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; padding: 2px 5px; border-radius: 5px; background: var(--white-08); color: var(--text2); }
+.can-bytes i.chg { background: color-mix(in srgb, #ffd60a 22%, transparent); color: var(--text); box-shadow: 0 0 6px color-mix(in srgb, #ffd60a 35%, transparent); }
+.can-bytes i.empty { background: none; }
+@media (max-width: 640px) { .can-wave { width: 100%; height: 100px; } }
+@media (prefers-reduced-motion: reduce) { .can-wave-track { animation: none !important; } }

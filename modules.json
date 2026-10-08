@@ -72,6 +72,7 @@
     "src/routes/loxone-xml.js",
     "src/routes/loxone.js",
     "src/routes/lsh-ble.js",
+    "src/routes/lsh-can.js",
     "src/routes/lsh-lan.js",
     "src/routes/matter.js",
     "src/routes/mc6.js",
@@ -1067,7 +1068,9 @@
       "files": [
         "src/can-client.js"
       ],
-      "deps": {}
+      "deps": {
+        "serialport": "^13.0.0"
+      }
     },
     "modbus": {
       "entry": "src/modbus-client.js",
@@ -1078,7 +1081,9 @@
       "files": [
         "src/modbus-client.js"
       ],
-      "deps": {}
+      "deps": {
+        "serialport": "^13.0.0"
+      }
     },
     "domatiq": {
       "entry": "src/domatiq-client.js",
@@ -1144,6 +1149,18 @@
       "deps": {
         "oui-data": "^2.1.35",
         "multicast-dns": "^7.2.5"
+      }
+    },
+    "lsh-can": {
+      "entry": "src/lsh-can-scan.js",
+      "configKeys": [],
+      "when": null,
+      "tool": true,
+      "files": [
+        "src/lsh-can-scan.js"
+      ],
+      "deps": {
+        "serialport": "^13.0.0"
       }
     }
   }
