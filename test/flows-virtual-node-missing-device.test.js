@@ -2,46 +2,35 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
 
-// public/flows.js is a browser-only script built around live DOM helpers
-// (selectDynamic, refreshNode, etc.) with no module boundary to import
-// against, so this is a structural regression test on the source rather
-// than a behavioral one against a real DOM.
-function virtualNodeBlock() {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'flows.js'), 'utf8');
-  const start = src.indexOf('virtual: {');
-  const end = src.indexOf('relay: {', start); // next node-type entry
-  assert.ok(start !== -1 && end !== -1 && end > start, 'could not locate the virtual node-type block in flows.js');
-  return src.slice(start, end);
-}
+// Round 1 fix (6d565bf) — a Virtual node whose configured deviceKey no longer
+// matched any known device used to get silently reassigned to an arbitrary
+// other device on save, wiring the flow to the wrong physical device with no
+// warning. The editor's node catalogue (flowTypes.js, pure data + functions)
+// is tested behaviorally here.
+const load = () => import(pathToFileURL(path.join(__dirname, '..', 'react-dashboard', 'src', 'components', 'pages', 'flowTypes.js')).href);
+const ctx = {
+  scenes: [], pagingRooms: [],
+  virtualDevices: [
+    { key: 'virtual/a', label: 'A', valueType: 'boolean' },
+    { key: 'virtual/b', label: 'B', valueType: 'text' },
+  ],
+};
 
-test("flows.js: a virtual node whose device was deleted elsewhere is flagged, not silently rewired", () => {
-  // Round 1 fix (6d565bf) — a Virtual node whose configured deviceKey no
-  // longer matched any known device used to get silently reassigned to an
-  // arbitrary other device on save, which could wire a flow's automation to
-  // the wrong physical device with no warning.
-  const block = virtualNodeBlock();
-
-  assert.match(block, /\(not found\)/, 'a missing device must be visibly flagged in the UI');
-  assert.match(
-    block,
-    /const missing = !VIRTUAL_DEVICES\.some/,
-    'missing-device detection must still exist'
-  );
+test('flows: a virtual node whose device was deleted elsewhere keeps its key and is flagged', async () => {
+  const { TYPES, withDefaults } = await load();
+  const node = { type: 'virtual', config: { deviceKey: 'virtual/gone', value: 'x' } };
+  const cfg = withDefaults(node, ctx);
+  assert.equal(cfg.deviceKey, 'virtual/gone', 'a stale deviceKey must never be replaced by another device');
+  const fields = TYPES.virtual.fields(cfg, ctx);
+  const picker = fields.find((f) => f.key === 'deviceKey');
+  assert.match(picker.options[0][1], /not found/, 'the missing device must be visibly flagged');
 });
 
-test('flows.js: the auto-default only fires for an empty deviceKey, never as a fallback for a stale one', () => {
-  const block = virtualNodeBlock();
-
-  // The only place a device gets auto-assigned must be gated on "no
-  // deviceKey configured yet" — reusing that same assignment as a fallback
-  // for "deviceKey configured but not found" is exactly the regression this
-  // fix closed.
-  assert.match(
-    block,
-    /if \(!n\.config\.deviceKey\) n\.config\.deviceKey = VIRTUAL_DEVICES\[0\]\.key;/,
-    'auto-defaulting must be conditioned on an empty deviceKey'
-  );
+test('flows: the auto-default only fires for an empty deviceKey', async () => {
+  const { withDefaults } = await load();
+  assert.equal(withDefaults({ type: 'virtual', config: {} }, ctx).deviceKey, 'virtual/a');
+  assert.equal(withDefaults({ type: 'virtual', config: { deviceKey: 'virtual/b' } }, ctx).deviceKey, 'virtual/b');
 });

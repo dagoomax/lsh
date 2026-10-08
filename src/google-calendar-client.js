@@ -18,6 +18,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const platformStatus = require('./platform-status');
 
 const OAUTH_FILE = path.join(__dirname, '..', 'persist', 'google-calendar-oauth.json');
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -137,8 +138,10 @@ class GoogleCalendarClient {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
       this._events = (data.items || []).map((ev) => this._normalize(ev)).filter(Boolean);
+      platformStatus.set('google-calendar', true);
     } catch (err) {
       console.error(`[GoogleCalendar] Poll failed: ${err.message}`);
+      platformStatus.set('google-calendar', false);
     }
   }
 
@@ -147,6 +150,7 @@ class GoogleCalendarClient {
   }
 
   async start() {
+    platformStatus.set('google-calendar', false);
     if (this.isConnected()) await this._poll();
     this._pollTimer = setInterval(() => this._poll(), POLL_MS);
   }

@@ -1,4 +1,5 @@
 const EventEmitter = require('events');
+const platformStatus = require('./platform-status');
 
 // KNX 2-byte float decode (DPT9)
 function decodeDPT9(b0, b1) {
@@ -82,6 +83,7 @@ class KNXClient extends EventEmitter {
     }
 
     const deviceKey = `knx/${cfg.host}`;
+    platformStatus.set('knx', false);
 
     this._conn = knxLib.Connection({
       ipAddr:     cfg.host,
@@ -89,6 +91,7 @@ class KNXClient extends EventEmitter {
       handlers: {
         connected: () => {
           console.log(`[KNX] Connected to ${cfg.host}:${cfg.port || 3671}`);
+          platformStatus.set('knx', true);
           this._registerDevice(deviceKey, gas);
           gas.forEach(ga => {
             if (ga.readable !== false) {
@@ -106,11 +109,23 @@ class KNXClient extends EventEmitter {
           this._store.update(`${deviceKey}/${ga.address}`, value);
         },
 
+        disconnected: () => {
+          console.warn(`[KNX] Disconnected from ${cfg.host}`);
+          platformStatus.set('knx', false);
+        },
+
         error: (err) => {
           console.error(`[KNX] ${err}`);
+          platformStatus.set('knx', false);
         },
       },
     });
+  }
+
+  stop() {
+    try { this._conn?.Disconnect(); } catch {}
+    this._conn = null;
+    platformStatus.set('knx', false);
   }
 
   _registerDevice(deviceKey, gas) {

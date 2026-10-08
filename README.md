@@ -211,7 +211,7 @@ cp config.example.json config.json   # edit with your credentials
 node server.js                        # or: npm start
 ```
 
-Open `http://localhost:3001` in your browser. On first run you will be redirected to `/setup.html` to create an admin account.
+Open `http://localhost:3001` in your browser. On first run you will be redirected to `/react/` to create an admin account.
 
 > **Tip:** Every setting is available in the **Settings** page inside the UI. You rarely need to edit `config.json` by hand after initial setup.
 
@@ -1472,8 +1472,8 @@ Connects to a **MiCasaVerde / Vera** controller (Vera Lite/Plus/Edge/Secure, or 
 }
 ```
 
-- `hideMqtt` / `hideLogs` — remove those links from the classic dashboard's top navigation.
-- `customCss` — free-form CSS applied to **both** the classic dashboard and Aurora (React), via `GET /custom.css` (public, outside `/api/` — see the route's comment in `server.js` for why) referenced as a real `<link rel="stylesheet">` in each `<head>` (not fetched-and-injected with JS, so it applies before first paint — no flash of unstyled content). Since it's just another stylesheet in the cascade, overriding the app's own styles may need `!important`. Edit it from Settings → Interface — no restart needed, it's read fresh on every request. In the React dashboard that field is a small built-in editor (line numbers, Tab-inserts-spaces, live preview before saving, "Reset to defaults") with a **Themes** row (load a built-in or previously-saved `.css` file, or "Save as theme…" to write the current box to one — `GET/POST/DELETE /api/settings/css-themes/...`, built-ins in `react-dashboard/public/css-themes/`, saved ones in `persist/css-themes/`) and **Quick controls** below it — a picker/slider row (accent color, font, popup size, tile size) plus toggle chips for the rest (flat tiles, AMOLED black, unified category color, popup shape/title, …) — that write a generated, clearly-marked CSS block into the same text instead of a separate config field, so it stays visible and hand-editable — `react-dashboard/src/components/settings/CssEditor.jsx` / `cssQuickControls.js`); see [`docs/custom-css.md`](docs/custom-css.md) for the underlying CSS each control writes, if you want to hand-edit or copy it elsewhere.
+- `hideMqtt` / `hideLogs` — legacy keys from the removed classic dashboard; no effect.
+- `customCss` — free-form CSS applied to the dashboard (Aurora / React), via `GET /custom.css` (public, outside `/api/` — see the route's comment in `server.js` for why) referenced as a real `<link rel="stylesheet">` in its `<head>` (not fetched-and-injected with JS, so it applies before first paint — no flash of unstyled content). Since it's just another stylesheet in the cascade, overriding the app's own styles may need `!important`. Edit it from Settings → Interface — no restart needed, it's read fresh on every request. In the React dashboard that field is a small built-in editor (line numbers, Tab-inserts-spaces, live preview before saving, "Reset to defaults") with a **Themes** row (load a built-in or previously-saved `.css` file, or "Save as theme…" to write the current box to one — `GET/POST/DELETE /api/settings/css-themes/...`, built-ins in `react-dashboard/public/css-themes/`, saved ones in `persist/css-themes/`) and **Quick controls** below it — a picker/slider row (accent color, font, popup size, tile size) plus toggle chips for the rest (flat tiles, AMOLED black, unified category color, popup shape/title, …) — that write a generated, clearly-marked CSS block into the same text instead of a separate config field, so it stays visible and hand-editable — `react-dashboard/src/components/settings/CssEditor.jsx` / `cssQuickControls.js`); see [`docs/custom-css.md`](docs/custom-css.md) for the underlying CSS each control writes, if you want to hand-edit or copy it elsewhere.
 
 ### `claudeCode`
 
@@ -2496,11 +2496,11 @@ If `hap-nodejs` is missing the bridge is silently skipped and a warning is logge
 | URL | Description |
 |---|---|
 | `/` | Live dashboard — energy flow, battery, solar, grid, relays, device cards, cameras |
-| `/settings.html` | All integration settings, test buttons, HomeKit QR, backup/restore |
-| `/logs.html` | Per-category log viewer with auto-refresh and download |
-| `/mqtt.html` | Real-time MQTT topic explorer with message history |
-| `/login.html` | Sign-in page |
-| `/setup.html` | First-run admin account creation |
+| `/react/settings` | All integration settings, test buttons, HomeKit QR, backup/restore |
+| `/react/logs` | Per-category log viewer with auto-refresh and download |
+| `/react/mqtt` | Real-time MQTT topic explorer with message history |
+| `/react/` | Sign-in page |
+| `/react/` | First-run admin account creation |
 
 ---
 
@@ -2629,7 +2629,7 @@ Full authentication system: user accounts, JWT session cookies, and static API b
 - **Sessions** — JWT in an `httpOnly` cookie (`lsh-session`), 7-day TTL, auto-signed with a secret persisted in `config.json`
 - **API tokens** — random 32-byte hex strings stored in `persist/api-tokens.json`; sent as `Authorization: Bearer <token>` header
 
-**Public paths** (no auth required): `/login.html`, `/setup.html`, `/login.js`, `/setup.js`, `/theme.js`, `/common.js`, `/i18n.js`, `/i18n/*.json`, all `.css`, `.svg`, `.ico`, `/api/auth/login`, `/api/auth/setup`
+**Public paths** (no auth required): `/react/`, `/react/`, `/login.js`, `/setup.js`, `/theme.js`, `/common.js`, `/i18n.js`, `/i18n/*.json`, all `.css`, `.svg`, `.ico`, `/api/auth/login`, `/api/auth/setup`
 
 ---
 
@@ -3288,7 +3288,7 @@ GET       /api/automation/notifications  DELETE /api/automation/notifications
 
 ### User Accounts
 
-- Create the admin account on first run at `/setup.html`
+- Create the admin account on first run at `/react/`
 - Additional users (admin or viewer role) can be added in **Settings → Security → Users**
 - Passwords are bcrypt-hashed with 12 salt rounds and stored in `persist/users.json`
 - Sessions use JWT cookies (`lsh-session`, 7-day TTL, `httpOnly`, `sameSite: strict`)

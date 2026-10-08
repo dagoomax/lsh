@@ -10,7 +10,7 @@
 //             require at top level (transitively), plus any tryRequire'd
 //             integration that server.js loads unconditionally.
 //   module  = each `tryRequire('./src/x')` guarded by `if (config.…)` in
-//             server.js. Its files are the entry plus every local file it
+//             server.js, and each entry in src/integrations.js. Its files are the entry plus every local file it
 //             requires (top-level or lazy) that isn't core; its npm deps are
 //             the bare requires in those files, minus core's.
 //   package.json's dependencies are rewritten to core's deps only — module
@@ -41,7 +41,10 @@ function parseRequires(file) {
   const out = { local: [], bare: [] };
   for (const line of src.split('\n')) {
     if (/^\s*\/\//.test(line)) continue;
-    const topLevel = !/^\s/.test(line);
+    // Column 0, or a bare `require('x'),` element of a top-level list
+    // (api-routes.js ROUTE_GROUPS) — lazy requires inside functions are
+    // always assignments/calls, never a bare list element.
+    const topLevel = !/^\s/.test(line) || /^\s+require\('[^']+'\),?\s*$/.test(line);
     for (const m of line.matchAll(/(tryRequire|require|import)\('([^']+)'/g)) {
       if (m[1] === 'tryRequire') continue; // optional — handled as modules
       const spec = m[2];
@@ -101,6 +104,15 @@ serverSrc.forEach((line, i) => {
   const keys = guard ? [...new Set([...guard.matchAll(/config\.(\w+)/g)].map((g) => g[1]))] : [];
   integrations.push({ id: m[1].replace(/-client$/, ''), entry: `src/${m[1]}.js`, configKeys: keys, guard });
 });
+
+// …plus the table-driven ones server.js starts in a loop (src/integrations.js).
+// Their `when` is a `(config) => expr` arrow — its body is the condition.
+for (const it of require(path.join(ROOT, 'src', 'integrations.js'))) {
+  const body = it.when.toString().replace(/^\(?\s*config\s*\)?\s*=>\s*/, '');
+  const guard = `(${body})`;
+  const keys = [...new Set([...guard.matchAll(/config\.(\w+)/g)].map((g) => g[1]))];
+  integrations.push({ id: it.file.replace(/-client$/, ''), entry: `src/${it.file}.js`, configKeys: keys, guard });
+}
 
 // Unguarded, or on-by-default (`config.x !== false`) → always loaded → core.
 const isCore = (x) => !x.guard || /^\(config\.[\w?.]+ !==? false\)$/.test(x.guard);

@@ -201,21 +201,34 @@ class DataStore extends EventEmitter {
     if (!loaded) this.loadPersisted();
 
     this._persistTimer = setInterval(() => this._persistAll(), PERSIST_INTERVAL);
-    // pm2 stop/restart sends SIGINT — save before anyone calls process.exit.
-    // Registered first (store is created before HomeKit), synchronous, no exit
-    // here: HAP or pm2's kill timeout finishes the shutdown. The gzip write is
-    // synchronous and guaranteed; the Mongo flush is best-effort (may be cut
-    // short by the kill timeout, but the 5-min interval already covered it).
-    const save = () => {
-      const size = this.persistSync();
-      if (size) console.log(`[Store] Saved on shutdown (${(size / 1024).toFixed(0)} kB)`);
-      if (this._db) {
-        this.persistMongo().catch(() => {});
-        this._flushHistoryQueue().catch(() => {});
-      }
+    // pm2 stop/restart sends SIGINT; docker, systemd and plain `kill` send
+    // SIGTERM. Registering a listener turns off Node's default exit-on-signal,
+    // so we have to exit ourselves once saved — nothing else does (hap-nodejs
+    // installs no signal handlers). A second signal while saving forces it.
+    let stopping = false;
+    const onSignal = (sig) => {
+      if (stopping) process.exit(1);
+      stopping = true;
+      console.log(`[Store] ${sig} received — saving before exit`);
+      this.saveForShutdown().finally(() => process.exit(0));
     };
-    process.once('SIGINT', save);
-    process.once('SIGTERM', save);
+    process.on('SIGINT', onSignal);
+    process.on('SIGTERM', onSignal);
+  }
+
+  // Final save before the process goes away (signal handler above, and
+  // POST /api/admin/restart). The gzip write is synchronous and guaranteed;
+  // the Mongo flush is best-effort and capped so an unreachable Mongo can't
+  // hold shutdown open — well under pm2's kill_timeout (5 s).
+  async saveForShutdown(mongoTimeoutMs = 3000) {
+    const size = this.persistSync();
+    if (size) console.log(`[Store] Saved on shutdown (${(size / 1024).toFixed(0)} kB)`);
+    if (this._db) {
+      await Promise.race([
+        Promise.allSettled([this.persistMongo(), this._flushHistoryQueue()]),
+        new Promise((r) => setTimeout(r, mongoTimeoutMs).unref()),
+      ]);
+    }
   }
 
   update(key, value) {
@@ -436,11 +449,19 @@ class DataStore extends EventEmitter {
       // Energy tab's electricity-cost reading and solar-gain chart. Fixed
       // key (unlike solaraccelerator above) since this tracks a public price
       // index, not a per-install gateway.
-      tariff: v('tauron-tariff/pl/currentPrice') != null ? {
-        currentPrice: v('tauron-tariff/pl/currentPrice'),
-        currentPriceRce: v('tauron-tariff/pl/currentPriceRce'),
-        currency: 'PLN',
-      } : null,
+      // `currentPrice` is in `currency` (the display currency chosen in
+      // Settings, converted from PLN at NBP's daily rate); the raw PLN figure
+      // stays available as `currentPricePln`.
+      tariff: v('tauron-tariff/pl/currentPrice') != null ? (() => {
+        const currency = v('tauron-tariff/pl/currency') || 'PLN';
+        const local = v('tauron-tariff/pl/currentPriceLocal');
+        return {
+          currentPrice: currency !== 'PLN' && local != null ? local : v('tauron-tariff/pl/currentPrice'),
+          currentPricePln: v('tauron-tariff/pl/currentPrice'),
+          currentPriceRce: v('tauron-tariff/pl/currentPriceRce'),
+          currency: currency !== 'PLN' && local != null ? currency : 'PLN',
+        };
+      })() : null,
     };
   }
 }

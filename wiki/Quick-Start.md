@@ -12,7 +12,7 @@ cp config.example.json config.json   # edit with your credentials
 node server.js                        # or: npm start
 ```
 
-Open `http://localhost:3001` in your browser. On first run you will be redirected to `/setup.html` to create an admin account.
+Open `http://localhost:3001` in your browser. On first run you will be redirected to `/react/` to create an admin account.
 
 > **Tip:** Every setting is available in the **Settings** page inside the UI. You rarely need to edit `config.json` by hand after initial setup.
 

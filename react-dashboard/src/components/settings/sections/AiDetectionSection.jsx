@@ -27,6 +27,7 @@ function statusText(data) {
   if (data.loading) return `Downloading ${data.base}…`
   if (data.error) return `✗ ${data.base}: ${data.error}`
   if (data.loaded) return `✓ ${data.base} loaded`
+  if (data.unused) return `${data.base} — not loaded (every camera uses its own model)`
   return 'Not running — add a camera below, save, then restart LSH'
 }
 

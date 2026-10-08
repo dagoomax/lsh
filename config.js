@@ -4,17 +4,28 @@ const { generateSetupID } = require('./src/homekit-uri');
 
 function loadConfig() {
   let fileConfig = {};
+  let fromBackup = false;
   const configPath = path.join(__dirname, 'config.json');
 
   if (fs.existsSync(configPath)) {
-    fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    try {
+      fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch (err) {
+      // A hand-edit typo shouldn't leave the hub dead — start from the last
+      // good copy (written on every Settings save) and say so loudly.
+      const backup = `${configPath}.bak`;
+      if (!fs.existsSync(backup)) throw new Error(`config.json is not valid JSON (${err.message}) and there is no config.json.bak to fall back to`);
+      fileConfig = JSON.parse(fs.readFileSync(backup, 'utf8'));
+      fromBackup = true;
+      console.error(`[Config] config.json is not valid JSON (${err.message}) — started from config.json.bak instead. Fix config.json; the next Settings save will overwrite it.`);
+    }
   }
 
   // Generate and persist a setupID if one doesn't exist yet
-  if (!fileConfig.homekit?.setupID) {
+  if (!fileConfig.homekit?.setupID && !fromBackup) {
     if (!fileConfig.homekit) fileConfig.homekit = {};
     fileConfig.homekit.setupID = generateSetupID();
-    fs.writeFileSync(configPath, JSON.stringify(fileConfig, null, 2), 'utf8');
+    require('./src/config-file-cache').writeConfigFile(fileConfig, configPath);
     console.log(`[Config] Generated HomeKit setupID: ${fileConfig.homekit.setupID}`);
   }
 

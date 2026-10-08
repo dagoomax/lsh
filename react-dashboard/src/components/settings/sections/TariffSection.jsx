@@ -11,6 +11,11 @@ const WINDOW_FIELDS = [
   { key: 'end', label: 'End (HH:MM)', default: '00:00' },
 ]
 
+// NBP table A currencies — the client converts the PLN-only PSE price at
+// NBP's daily mid rate, so only codes NBP publishes can be offered here.
+const CURRENCIES = ['PLN', 'EUR', 'USD', 'GBP', 'CHF', 'CZK', 'SEK', 'NOK', 'DKK', 'HUF', 'UAH', 'RON', 'CAD', 'AUD', 'JPY', 'CNY']
+  .map(c => ({ value: c, label: c }))
+
 export default function TariffSection({ config }) {
   const [currency, setCurrency] = useState(config?.tariff?.currency || '£')
   const [windows, setWindows] = useState(config?.tariff?.windows || [])
@@ -44,6 +49,7 @@ function TauronTariffCard({ tauronTariff }) {
   const [enabled, setEnabled] = useState(!!tauronTariff?.enabled)
   const [markupPlnKwh, setMarkupPlnKwh] = useState(tauronTariff?.markupPlnKwh ?? 0)
   const [vatRate, setVatRate] = useState(tauronTariff?.vatRate ?? 0.23)
+  const [currency, setCurrency] = useState(tauronTariff?.currency || 'PLN')
   const test = useSettingsSave('/api/settings/test-tauron-tariff')
   const save = useSettingsSave('/api/settings/tauron-tariff')
 
@@ -51,6 +57,7 @@ function TauronTariffCard({ tauronTariff }) {
     setEnabled(!!tauronTariff?.enabled)
     setMarkupPlnKwh(tauronTariff?.markupPlnKwh ?? 0)
     setVatRate(tauronTariff?.vatRate ?? 0.23)
+    setCurrency(tauronTariff?.currency || 'PLN')
   }, [tauronTariff])
 
   return (
@@ -59,9 +66,10 @@ function TauronTariffCard({ tauronTariff }) {
       <Toggle label={gt('common.enabled', 'Enabled')} checked={enabled} onChange={setEnabled}/>
       <Field label="Markup" hint="(PLN/kWh, added to the raw market price — your supplier's margin)" type="number" value={markupPlnKwh} onChange={setMarkupPlnKwh} placeholder="0" min={0}/>
       <Field label="VAT rate" hint="(e.g. 0.23 for 23%)" type="number" value={vatRate} onChange={setVatRate} placeholder="0.23" min={0} max={1}/>
+      <Field label="Display currency" hint="(price and solar earnings on the Energy tab — converted from PLN at the NBP daily rate)" type="select" value={currency} onChange={setCurrency} options={CURRENCIES}/>
       <div className="stg-actions">
         <Button variant="secondary" busy={test.busy} onClick={() => test.save({})}>{gt('common.test', 'Test Connection')}</Button>
-        <Button variant="primary" busy={save.busy} onClick={() => save.save({ enabled, markupPlnKwh, vatRate })}>{gt('common.save', 'Save')}</Button>
+        <Button variant="primary" busy={save.busy} onClick={() => save.save({ enabled, markupPlnKwh, vatRate, currency })}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={test.result || save.result}/>
       </div>
     </SettingsCard>

@@ -204,8 +204,7 @@ function NotPortedNotice({ section }) {
   return (
     <div className="stg-stub">
       <h2>{section?.title}</h2>
-      <p>{gt('stg_stub_desc', "This section hasn't been rebuilt in the new Settings yet — it still works exactly as before in the classic page.")}</p>
-      <a className="stg-btn stg-btn-primary" href="/settings.html">{gt('stg_open_classic', 'Open classic Settings')} →</a>
+      <p>{gt('stg_stub_desc_v2', "This section isn't available in this version.")}</p>
     </div>
   )
 }

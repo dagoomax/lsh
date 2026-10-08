@@ -6,21 +6,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const OpenWeatherClient = require('../src/openweather-client');
 
-test('openweather-client: retry interval is armed before the first poll resolves', () => {
-  // Round 1 fix (6d565bf) — a failed initial poll (transient network blip at
-  // boot) used to leave the client with no interval at all, since setInterval
-  // was only called after the first poll succeeded. Regression-tested
-  // structurally: this is an ordering guarantee inside start(), and the real
-  // poll interval has a hard 60s floor, which makes a true timed test slow
-  // and flaky for no extra confidence over asserting the ordering itself.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'openweather-client.js'), 'utf8');
-  const startBody = src.slice(src.indexOf('async start()'), src.indexOf('stop() {'));
-  const setIntervalIdx = startBody.indexOf('this._timer = setInterval');
-  const firstPollIdx = startBody.indexOf('await this._poll(true)');
-
-  assert.ok(setIntervalIdx !== -1, 'start() must arm the retry interval');
-  assert.ok(firstPollIdx !== -1, 'start() must run an initial poll');
-  assert.ok(setIntervalIdx < firstPollIdx, 'the interval must be armed before the initial poll runs, not after');
+// The "a failed first poll must not stop polling" guarantee (round 1 fix,
+// 6d565bf) now lives in PollingClient — tested behaviorally in
+// test/polling-client.test.js.
+test('openweather-client: is a PollingClient', () => {
+  const PollingClient = require('../src/polling-client');
+  assert.ok(new OpenWeatherClient({}, {}, {}) instanceof PollingClient);
 });
 
 test('openweather-client: a poll already in flight is not started twice', async () => {

@@ -481,6 +481,16 @@ export function BoltIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function CoinIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round">
+      <ellipse cx="12" cy="7" rx="7" ry="3"/>
+      <path d="M5 7v5c0 1.66 3.13 3 7 3s7-1.34 7-3V7"/>
+      <path d="M5 12v5c0 1.66 3.13 3 7 3s7-1.34 7-3v-5"/>
+    </svg>
+  )
+}
+
 export function CarIcon({ color = 'currentColor', size = 24 }) {
   return (
     <svg {...s(color, size)}>

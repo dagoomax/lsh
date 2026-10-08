@@ -1,5 +1,5 @@
 'use strict';
-// Generate public/openapi.json from src/api-routes.js — a faithful OpenAPI 3.0
+// Generate public/openapi.json from src/api-routes.js + src/routes/*.js — a faithful OpenAPI 3.0
 // description of the live LSH REST API. Re-run after adding/removing routes:
 //   node scripts/gen-openapi.js
 const fs = require('fs');
@@ -9,7 +9,13 @@ const ROUTES = path.join(__dirname, '..', 'src', 'api-routes.js');
 const OUT = path.join(__dirname, '..', 'public', 'openapi.json');
 const pkg = require('../package.json');
 
-const src = fs.readFileSync(ROUTES, 'utf8').split('\n');
+// api-routes.js registers src/routes/*.js in its ROUTE_GROUPS order — read
+// them in that same order (each starts with its `// ── Section ──` header).
+const mainSrc = fs.readFileSync(ROUTES, 'utf8');
+const groupFiles = [...mainSrc.matchAll(/require\('\.\/routes\/([\w-]+)'\)/g)]
+  .map((m) => m[1]).filter((n) => n !== 'helpers')
+  .map((n) => path.join(path.dirname(ROUTES), 'routes', `${n}.js`));
+const src = [mainSrc, ...groupFiles.map((f) => fs.readFileSync(f, 'utf8'))].join('\n').split('\n');
 
 const sectionRe = /^\s*\/\/\s*[─-]+\s*(.+?)\s*[─-]+\s*$/;
 const routeRe   = /router\.(get|post|put|delete|patch)\(\s*['"]([^'"]+)['"]/;
@@ -89,7 +95,7 @@ const spec = {
       '**Envelope:** JSON endpoints reply `{ "success": true, "data": … }` or ' +
       '`{ "success": false, "error": "…" }`. Binary endpoints (snapshots, XML, logs) return ' +
       'their native content type.\n\n' +
-      `Generated from \`src/api-routes.js\` — ${items.length} endpoints.`,
+      `Generated from \`src/api-routes.js\` + \`src/routes/*.js\` — ${items.length} endpoints.`,
     license: { name: 'Repository', url: 'https://github.com/dagoomax/lsh' },
   },
   servers: [

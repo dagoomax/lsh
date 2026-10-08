@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { LANGUAGES, getLang, setLang, gt } from '../i18n'
 import { MonitorIcon, BroadcastIcon, LockIcon, SunIcon, MoonIcon } from './Icons'
 
+// Every entry is an in-app view (App.jsx VIEWS); href is the view's own URL
+// so ctrl/cmd/middle-click still opens it in a new tab.
 const NAV = [
-  { label: 'Dashboard', href: '/react/',        active: true },
-  { label: 'Settings',  href: '/settings.html', special: 'settings' },
-  { label: 'Logs',      href: '/logs.html',     active: false },
-  { label: 'MQTT',      href: '/mqtt.html',     active: false },
-  { label: 'Flows',     href: '/flows.html',    active: false },
+  { label: 'Dashboard', view: 'dashboard', href: '/react/' },
+  { label: 'Settings',  view: 'settings',  href: '/react/settings' },
+  { label: 'Logs',      view: 'logs',      href: '/react/logs' },
+  { label: 'MQTT',      view: 'mqtt',      href: '/react/mqtt' },
+  { label: 'Flows',     view: 'flows',     href: '/react/flows' },
 ]
 
 // 44×44 is the WCAG/mobile minimum comfortable touch target — these sit in a
@@ -18,7 +20,7 @@ const iconBtnStyle = {
   cursor: 'pointer',
 }
 
-export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, onOpenCssEditor, onOpenClaudeCode, onOpenTerminal, pagingRoomCount, pagingMessageCount, onTogglePaging }) {
+export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, onOpenCssEditor, onOpenClaudeCode, onOpenTerminal, onOpenView, pagingRoomCount, pagingMessageCount, onTogglePaging }) {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
   })
@@ -91,14 +93,16 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
 
       {/* Nav (center) — styled in global.css to match vanilla */}
       <nav className="header-nav-react">
-        {NAV.map(({ label, href, active, special }) => (
-          <a key={label} href={href} className={active ? 'active' : undefined}
-            onClick={special === 'settings' ? (e) => {
-              // Plain left-click opens the in-app Settings view; ctrl/cmd/shift-click
-              // or middle-click still opens /settings.html in a new tab as normal.
+        {NAV.map(({ label, view, href }) => (
+          <a key={label} href={href} className={view === 'dashboard' ? 'active' : undefined}
+            onClick={(e) => {
+              // Plain left-click switches view in place; modified/middle
+              // clicks open the view's URL in a new tab as normal.
               if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
-              e.preventDefault(); onOpenSettings?.()
-            } : undefined}>
+              e.preventDefault()
+              if (view === 'settings') onOpenSettings?.()
+              else onOpenView?.(view)
+            }}>
             {gt('nav_' + label.toLowerCase(), label)}
           </a>
         ))}

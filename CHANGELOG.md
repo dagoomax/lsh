@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 
 ---
 
+## [1.32.0] — 2026-10-08
+
+### Changed
+- **React is the only frontend.** Flows editor, MQTT explorer, Logs and first-run setup are now React views with their own URLs (`/react/flows`, `/react/mqtt`, `/react/logs`, `/react/settings`); sign-in and setup happen in-app. The classic `public/` pages are removed — their old URLs (`/settings.html`, `/flows.html`, `/login.html`, …) 301 to the new views.
+- **`api-routes.js` split** into `src/routes/*.js` (one file per area, registered in the original order — route table verified identical).
+- **`server.js` integration table** — 46 construct-and-start integrations moved into `src/integrations.js` (1,160 → ~800 lines).
+- **`PollingClient` base class** (`src/polling-client.js`): schedule survives failures, no overlapping polls, exponential backoff, automatic platform status. OpenWeather migrated.
+- Platform bar shows every platform that reports status (previously only 20 hard-coded ones).
+
+### Fixed
+- **Shutdown:** a single SIGTERM/SIGINT now saves the store and exits (it used to save and keep running, needing `kill -9`). `POST /api/admin/restart` saves before exiting instead of dropping up to 5 min of data.
+- **`config.json` writes are atomic** (temp file + rename) and keep `config.json.bak`; startup falls back to the backup if `config.json` is invalid JSON.
+- `persist/users.json` / `api-tokens.json` are owner-only (were world-readable); API token check is constant-time.
+- KNX and Google Calendar report platform status.
+
+---
+
 ## [1.31.0] — 2026-10-07
 
 ### Added

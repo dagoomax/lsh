@@ -35,7 +35,7 @@ In the React dashboard this field is now a small built-in editor
 inserts spaces instead of leaving the field, and a "Live preview on this
 page" toggle that applies the CSS instantly (before you hit Save) so you can
 see the effect while you tweak it. The classic dashboard
-(`public/settings.html`) still uses a plain textarea — paste any of the
+(`public/react/settings`) still uses a plain textarea — paste any of the
 snippets below there too, it's the same stylesheet either way.
 
 Above the text box, **Quick controls** (`cssQuickControls.js`) cover every

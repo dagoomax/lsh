@@ -8,7 +8,7 @@
 //     section is set but whose files/deps are missing
 //   - Settings → Modules: install(id) / update(id) via /api/modules
 //
-// Files come from the git tag matching package.json's version (e.g. v1.31.0), so
+// Files come from the git tag matching package.json's version (e.g. v1.32.0), so
 // modules stay in step with the core they were released with; if that tag
 // doesn't exist yet, main.
 //

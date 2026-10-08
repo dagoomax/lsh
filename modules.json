@@ -16,6 +16,7 @@
     "src/homekit-bridge.js",
     "src/homekit-camera.js",
     "src/homekit-uri.js",
+    "src/integrations.js",
     "src/kenik-client.js",
     "src/logger.js",
     "src/loxone-xml.js",
@@ -28,6 +29,90 @@
     "src/private-events.js",
     "src/relay-controller.js",
     "src/reolink-client.js",
+    "src/routes/agenda.js",
+    "src/routes/airly.js",
+    "src/routes/airplay.js",
+    "src/routes/arduino.js",
+    "src/routes/auth.js",
+    "src/routes/automation.js",
+    "src/routes/axis.js",
+    "src/routes/backup.js",
+    "src/routes/bayrol.js",
+    "src/routes/broadlink.js",
+    "src/routes/camera-ir.js",
+    "src/routes/camera-patrol.js",
+    "src/routes/camera-ptz-presets.js",
+    "src/routes/camera-ptz.js",
+    "src/routes/camera-siren.js",
+    "src/routes/cameras.js",
+    "src/routes/claude-code.js",
+    "src/routes/css-themes.js",
+    "src/routes/device-customization.js",
+    "src/routes/devices.js",
+    "src/routes/domatiq.js",
+    "src/routes/dreame.js",
+    "src/routes/dyson.js",
+    "src/routes/esphome.js",
+    "src/routes/ev-charging.js",
+    "src/routes/ffmpeg-rtsp.js",
+    "src/routes/fibaro.js",
+    "src/routes/google-calendar.js",
+    "src/routes/grenton.js",
+    "src/routes/helpers.js",
+    "src/routes/history.js",
+    "src/routes/home-plan.js",
+    "src/routes/homekit.js",
+    "src/routes/homey.js",
+    "src/routes/https.js",
+    "src/routes/knx.js",
+    "src/routes/lgthinq.js",
+    "src/routes/lock-pin.js",
+    "src/routes/logs.js",
+    "src/routes/loxone-xml.js",
+    "src/routes/loxone.js",
+    "src/routes/matter.js",
+    "src/routes/mc6.js",
+    "src/routes/mcp-server.js",
+    "src/routes/missed-calls.js",
+    "src/routes/mobotix.js",
+    "src/routes/modules.js",
+    "src/routes/mongodb.js",
+    "src/routes/mqtt-explorer.js",
+    "src/routes/object-detection.js",
+    "src/routes/openweather.js",
+    "src/routes/paging.js",
+    "src/routes/plan-decor.js",
+    "src/routes/plan-model.js",
+    "src/routes/private-events.js",
+    "src/routes/reolink.js",
+    "src/routes/roborock.js",
+    "src/routes/satel-settings.js",
+    "src/routes/satel-zones.js",
+    "src/routes/settings.js",
+    "src/routes/simulators.js",
+    "src/routes/sip.js",
+    "src/routes/smartbob.js",
+    "src/routes/smartthings.js",
+    "src/routes/sofar.js",
+    "src/routes/solaraccelerator.js",
+    "src/routes/solaredge.js",
+    "src/routes/somfy-covers.js",
+    "src/routes/somfy.js",
+    "src/routes/sonos.js",
+    "src/routes/suppla.js",
+    "src/routes/tariff.js",
+    "src/routes/tauron-tariff.js",
+    "src/routes/tedee.js",
+    "src/routes/terminal.js",
+    "src/routes/thermomix.js",
+    "src/routes/ui-preferences.js",
+    "src/routes/unifi-protect.js",
+    "src/routes/vitodens.js",
+    "src/routes/vrm.js",
+    "src/routes/waveshare.js",
+    "src/routes/webrtc-whep.js",
+    "src/routes/wled.js",
+    "src/routes/yale.js",
     "src/rtsp-backchannel.js",
     "src/sensor-registry.js",
     "src/server-i18n.js",
@@ -151,7 +236,8 @@
       ],
       "when": "(config.openweather?.apiKey)",
       "files": [
-        "src/openweather-client.js"
+        "src/openweather-client.js",
+        "src/polling-client.js"
       ],
       "deps": {}
     },
@@ -238,18 +324,6 @@
         "@tensorflow-models/mobilenet": "^2.1.1"
       }
     },
-    "vitodens": {
-      "entry": "src/vitodens-client.js",
-      "configKeys": [
-        "vitodens",
-        "vicare"
-      ],
-      "when": "(config.vitodens?.clientId || config.vicare?.clientId)",
-      "files": [
-        "src/vitodens-client.js"
-      ],
-      "deps": {}
-    },
     "matter-bridge": {
       "entry": "src/matter-bridge.js",
       "configKeys": [
@@ -281,28 +355,6 @@
         "@matter/nodejs": "^0.17.9"
       }
     },
-    "solaraccelerator": {
-      "entry": "src/solaraccelerator-client.js",
-      "configKeys": [
-        "solaraccelerator"
-      ],
-      "when": "(config.solaraccelerator?.host)",
-      "files": [
-        "src/solaraccelerator-client.js"
-      ],
-      "deps": {}
-    },
-    "sofar": {
-      "entry": "src/sofar-client.js",
-      "configKeys": [
-        "sofar"
-      ],
-      "when": "(config.sofar?.host)",
-      "files": [
-        "src/sofar-client.js"
-      ],
-      "deps": {}
-    },
     "tauron-tariff": {
       "entry": "src/tauron-tariff-client.js",
       "configKeys": [
@@ -311,17 +363,6 @@
       "when": "(config.tauronTariff?.enabled)",
       "files": [
         "src/tauron-tariff-client.js"
-      ],
-      "deps": {}
-    },
-    "dyson": {
-      "entry": "src/dyson-client.js",
-      "configKeys": [
-        "dyson"
-      ],
-      "when": "(config.dyson?.enabled)",
-      "files": [
-        "src/dyson-client.js"
       ],
       "deps": {}
     },
@@ -344,6 +385,209 @@
       "when": "(config.boneio)",
       "files": [
         "src/boneio-client.js"
+      ],
+      "deps": {}
+    },
+    "roborock-cloud": {
+      "entry": "src/roborock-cloud-client.js",
+      "configKeys": [
+        "roborock"
+      ],
+      "when": "(config.roborock?.cloud?.email)",
+      "files": [
+        "src/roborock-cloud-client.js",
+        "src/roborock-map.js"
+      ],
+      "deps": {}
+    },
+    "broadlink": {
+      "entry": "src/broadlink-client.js",
+      "configKeys": [
+        "broadlink"
+      ],
+      "when": "(config.broadlink?.devices?.length)",
+      "files": [
+        "src/broadlink-client.js"
+      ],
+      "deps": {}
+    },
+    "ampio": {
+      "entry": "src/ampio-client.js",
+      "configKeys": [
+        "ampio"
+      ],
+      "when": "(config.ampio?.host && config.ampio?.devices?.length)",
+      "files": [
+        "src/ampio-client.js"
+      ],
+      "deps": {}
+    },
+    "aqara": {
+      "entry": "src/aqara-client.js",
+      "configKeys": [
+        "aqara"
+      ],
+      "when": "(config.aqara?.gateways?.length)",
+      "files": [
+        "src/aqara-client.js"
+      ],
+      "deps": {}
+    },
+    "somfy": {
+      "entry": "src/somfy-client.js",
+      "configKeys": [
+        "somfy"
+      ],
+      "when": "( (config.somfy?.mode === 'cloud' && config.somfy?.email && config.somfy?.password) || (config.somfy?.host && (config.somfy?.token || (config.somfy?.email && config.somfy?.password))) )",
+      "files": [
+        "src/somfy-client.js"
+      ],
+      "deps": {}
+    },
+    "loxone-out": {
+      "entry": "src/loxone-out-client.js",
+      "configKeys": [
+        "loxoneOut"
+      ],
+      "when": "(config.loxoneOut?.host && config.loxoneOut?.mappings?.length)",
+      "files": [
+        "src/loxone-out-client.js"
+      ],
+      "deps": {}
+    },
+    "auxair": {
+      "entry": "src/auxair-client.js",
+      "configKeys": [
+        "auxair"
+      ],
+      "when": "(config.auxair) && !(!config.auxair.email || !config.auxair.password)",
+      "files": [
+        "src/auxair-client.js"
+      ],
+      "deps": {}
+    },
+    "sonos": {
+      "entry": "src/sonos-client.js",
+      "configKeys": [
+        "sonos"
+      ],
+      "when": "(config.sonos)",
+      "files": [
+        "src/sonos-client.js"
+      ],
+      "deps": {}
+    },
+    "smartbob": {
+      "entry": "src/smartbob-client.js",
+      "configKeys": [
+        "smartbob"
+      ],
+      "when": "(config.smartbob?.entities?.length)",
+      "files": [
+        "src/smartbob-client.js"
+      ],
+      "deps": {}
+    },
+    "arduino": {
+      "entry": "src/arduino-client.js",
+      "configKeys": [
+        "arduino"
+      ],
+      "when": "(config.arduino?.devices?.length)",
+      "files": [
+        "src/arduino-client.js"
+      ],
+      "deps": {}
+    },
+    "wirenboard": {
+      "entry": "src/wirenboard-client.js",
+      "configKeys": [
+        "wirenboard"
+      ],
+      "when": "(config.wirenboard?.host)",
+      "files": [
+        "src/wirenboard-client.js"
+      ],
+      "deps": {}
+    },
+    "fibaro-out": {
+      "entry": "src/fibaro-out-client.js",
+      "configKeys": [
+        "fibaroOut"
+      ],
+      "when": "(config.fibaroOut?.host && config.fibaroOut?.mappings?.length)",
+      "files": [
+        "src/fibaro-out-client.js"
+      ],
+      "deps": {}
+    },
+    "domatiq-out": {
+      "entry": "src/domatiq-out-client.js",
+      "configKeys": [
+        "domatiqOut"
+      ],
+      "when": "(config.domatiqOut?.host && config.domatiqOut?.mappings?.length)",
+      "files": [
+        "src/domatiq-out-client.js",
+        "src/domatiq-packet.js"
+      ],
+      "deps": {}
+    },
+    "loxone": {
+      "entry": "src/loxone-client.js",
+      "configKeys": [
+        "loxone"
+      ],
+      "when": "(config.loxone?.host)",
+      "files": [
+        "src/loxone-client.js"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
+    },
+    "vitodens": {
+      "entry": "src/vitodens-client.js",
+      "configKeys": [
+        "vitodens",
+        "vicare"
+      ],
+      "when": "(config.vitodens?.clientId || config.vicare?.clientId)",
+      "files": [
+        "src/vitodens-client.js"
+      ],
+      "deps": {}
+    },
+    "solaraccelerator": {
+      "entry": "src/solaraccelerator-client.js",
+      "configKeys": [
+        "solaraccelerator"
+      ],
+      "when": "(config.solaraccelerator?.host)",
+      "files": [
+        "src/solaraccelerator-client.js"
+      ],
+      "deps": {}
+    },
+    "sofar": {
+      "entry": "src/sofar-client.js",
+      "configKeys": [
+        "sofar"
+      ],
+      "when": "(config.sofar?.host)",
+      "files": [
+        "src/sofar-client.js"
+      ],
+      "deps": {}
+    },
+    "dyson": {
+      "entry": "src/dyson-client.js",
+      "configKeys": [
+        "dyson"
+      ],
+      "when": "(config.dyson?.enabled)",
+      "files": [
+        "src/dyson-client.js"
       ],
       "deps": {}
     },
@@ -483,18 +727,6 @@
       ],
       "deps": {}
     },
-    "roborock-cloud": {
-      "entry": "src/roborock-cloud-client.js",
-      "configKeys": [
-        "roborock"
-      ],
-      "when": "(config.roborock?.cloud?.email)",
-      "files": [
-        "src/roborock-cloud-client.js",
-        "src/roborock-map.js"
-      ],
-      "deps": {}
-    },
     "karcher": {
       "entry": "src/karcher-client.js",
       "configKeys": [
@@ -503,17 +735,6 @@
       "when": "(config.karcher?.email)",
       "files": [
         "src/karcher-client.js"
-      ],
-      "deps": {}
-    },
-    "broadlink": {
-      "entry": "src/broadlink-client.js",
-      "configKeys": [
-        "broadlink"
-      ],
-      "when": "(config.broadlink?.devices?.length)",
-      "files": [
-        "src/broadlink-client.js"
       ],
       "deps": {}
     },
@@ -561,17 +782,6 @@
       ],
       "deps": {}
     },
-    "ampio": {
-      "entry": "src/ampio-client.js",
-      "configKeys": [
-        "ampio"
-      ],
-      "when": "(config.ampio?.host && config.ampio?.devices?.length)",
-      "files": [
-        "src/ampio-client.js"
-      ],
-      "deps": {}
-    },
     "hue": {
       "entry": "src/hue-client.js",
       "configKeys": [
@@ -580,17 +790,6 @@
       "when": "(config.hue?.host && config.hue?.username)",
       "files": [
         "src/hue-client.js"
-      ],
-      "deps": {}
-    },
-    "aqara": {
-      "entry": "src/aqara-client.js",
-      "configKeys": [
-        "aqara"
-      ],
-      "when": "(config.aqara?.gateways?.length)",
-      "files": [
-        "src/aqara-client.js"
       ],
       "deps": {}
     },
@@ -613,39 +812,6 @@
       "when": "(config.lgthinq)",
       "files": [
         "src/lgthinq-client.js"
-      ],
-      "deps": {}
-    },
-    "somfy": {
-      "entry": "src/somfy-client.js",
-      "configKeys": [
-        "somfy"
-      ],
-      "when": "( (config.somfy?.mode === 'cloud' && config.somfy?.email && config.somfy?.password) || (config.somfy?.host && (config.somfy?.token || (config.somfy?.email && config.somfy?.password))) )",
-      "files": [
-        "src/somfy-client.js"
-      ],
-      "deps": {}
-    },
-    "loxone-out": {
-      "entry": "src/loxone-out-client.js",
-      "configKeys": [
-        "loxoneOut"
-      ],
-      "when": "(config.loxoneOut?.host && config.loxoneOut?.mappings?.length)",
-      "files": [
-        "src/loxone-out-client.js"
-      ],
-      "deps": {}
-    },
-    "auxair": {
-      "entry": "src/auxair-client.js",
-      "configKeys": [
-        "auxair"
-      ],
-      "when": "(config.auxair) && !(!config.auxair.email || !config.auxair.password)",
-      "files": [
-        "src/auxair-client.js"
       ],
       "deps": {}
     },
@@ -717,17 +883,6 @@
       ],
       "deps": {}
     },
-    "sonos": {
-      "entry": "src/sonos-client.js",
-      "configKeys": [
-        "sonos"
-      ],
-      "when": "(config.sonos)",
-      "files": [
-        "src/sonos-client.js"
-      ],
-      "deps": {}
-    },
     "googlehome": {
       "entry": "src/googlehome-client.js",
       "configKeys": [
@@ -796,17 +951,6 @@
       ],
       "deps": {}
     },
-    "smartbob": {
-      "entry": "src/smartbob-client.js",
-      "configKeys": [
-        "smartbob"
-      ],
-      "when": "(config.smartbob?.entities?.length)",
-      "files": [
-        "src/smartbob-client.js"
-      ],
-      "deps": {}
-    },
     "suppla": {
       "entry": "src/suppla-client.js",
       "configKeys": [
@@ -815,17 +959,6 @@
       "when": "(config.suppla?.token)",
       "files": [
         "src/suppla-client.js"
-      ],
-      "deps": {}
-    },
-    "arduino": {
-      "entry": "src/arduino-client.js",
-      "configKeys": [
-        "arduino"
-      ],
-      "when": "(config.arduino?.devices?.length)",
-      "files": [
-        "src/arduino-client.js"
       ],
       "deps": {}
     },
@@ -864,17 +997,6 @@
       ],
       "deps": {}
     },
-    "wirenboard": {
-      "entry": "src/wirenboard-client.js",
-      "configKeys": [
-        "wirenboard"
-      ],
-      "when": "(config.wirenboard?.host)",
-      "files": [
-        "src/wirenboard-client.js"
-      ],
-      "deps": {}
-    },
     "knx": {
       "entry": "src/knx-client.js",
       "configKeys": [
@@ -896,17 +1018,6 @@
       "when": "(config.fibaro?.host)",
       "files": [
         "src/fibaro-client.js"
-      ],
-      "deps": {}
-    },
-    "fibaro-out": {
-      "entry": "src/fibaro-out-client.js",
-      "configKeys": [
-        "fibaroOut"
-      ],
-      "when": "(config.fibaroOut?.host && config.fibaroOut?.mappings?.length)",
-      "files": [
-        "src/fibaro-out-client.js"
       ],
       "deps": {}
     },
@@ -944,18 +1055,6 @@
       ],
       "deps": {}
     },
-    "domatiq-out": {
-      "entry": "src/domatiq-out-client.js",
-      "configKeys": [
-        "domatiqOut"
-      ],
-      "when": "(config.domatiqOut?.host && config.domatiqOut?.mappings?.length)",
-      "files": [
-        "src/domatiq-out-client.js",
-        "src/domatiq-packet.js"
-      ],
-      "deps": {}
-    },
     "homey": {
       "entry": "src/homey-client.js",
       "configKeys": [
@@ -966,19 +1065,6 @@
         "src/homey-client.js"
       ],
       "deps": {}
-    },
-    "loxone": {
-      "entry": "src/loxone-client.js",
-      "configKeys": [
-        "loxone"
-      ],
-      "when": "(config.loxone?.host)",
-      "files": [
-        "src/loxone-client.js"
-      ],
-      "deps": {
-        "ws": "^7.5.11"
-      }
     }
   }
 }

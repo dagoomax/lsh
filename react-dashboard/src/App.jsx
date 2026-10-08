@@ -14,17 +14,40 @@ import SettingsPage          from './components/settings/SettingsPage'
 import WallDashboard         from './components/WallDashboard'
 import CssEditorPage         from './components/CssEditorPage'
 import ClaudeCodePage        from './components/ClaudeCodePage'
+import SetupScreen           from './components/SetupScreen'
 const TerminalPage = lazy(() => import('./components/TerminalPage'))
+const LogsPage  = lazy(() => import('./components/pages/LogsPage'))
+const MqttPage  = lazy(() => import('./components/pages/MqttPage'))
+const FlowsPage = lazy(() => import('./components/pages/FlowsPage'))
+
+// Full-screen views, each with its own URL under /react/ (the server serves
+// index.html for every /react/* path) so they can be bookmarked and the
+// browser back button works.
+const VIEWS = ['dashboard', 'settings', 'wall', 'css-editor', 'claude-code', 'terminal', 'logs', 'mqtt', 'flows']
+const viewFromPath = () => {
+  const seg = window.location.pathname.replace(/^\/react\/?/, '').split('/')[0]
+  return VIEWS.includes(seg) ? seg : 'dashboard'
+}
 
 // Single unified view: the "Rooms & Categories" device browser with the
 // Energy flow + relays rendered as the top section (see DeviceList). No more
 // split screen between devices and energy.
 export default function App() {
-  const { energy, devices, connection, connected, platforms, roomsMeta, toggleRelay, authRequired, onLogin, scenes, runScene } = useLSH()
+  const { energy, devices, connection, connected, platforms, roomsMeta, toggleRelay, authRequired, setupRequired, onLogin, scenes, runScene } = useLSH()
   const [locked, setLocked] = useState(() => localStorage.getItem('lsh-locked') === '1')
   const lock   = () => { localStorage.setItem('lsh-locked', '1'); setLocked(true) }
   const unlock = () => { localStorage.setItem('lsh-locked', '0'); setLocked(false) }
-  const [view, setView] = useState('dashboard') // 'dashboard' | 'settings' | 'wall' | 'css-editor' | 'claude-code' | 'terminal'
+  const [view, setViewState] = useState(viewFromPath)
+  const setView = (v) => {
+    setViewState(v)
+    const path = v === 'dashboard' ? '/react/' : `/react/${v}`
+    if (window.location.pathname !== path) window.history.pushState({}, '', path)
+  }
+  useEffect(() => {
+    const onPop = () => setViewState(viewFromPath())
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
   const paging = usePaging()
   const [pagingOpen, setPagingOpen] = useState(false)
 
@@ -35,6 +58,10 @@ export default function App() {
     window.addEventListener('lsh-lang-changed', bump)
     return () => window.removeEventListener('lsh-lang-changed', bump)
   }, [])
+
+  if (setupRequired) {
+    return <SetupScreen onDone={() => window.location.reload()}/>
+  }
 
   if (authRequired) {
     return <LoginScreen onLogin={onLogin}/>
@@ -78,6 +105,17 @@ export default function App() {
     )
   }
 
+  const ToolPage = { logs: LogsPage, mqtt: MqttPage, flows: FlowsPage }[view]
+  if (ToolPage) {
+    return (
+      <div style={{ height:'100%', background:'var(--bg)', overflow:'hidden' }}>
+        <Suspense fallback={<div style={{ padding: 24, color: 'var(--text3)' }}>Loading…</div>}>
+          <ToolPage onClose={() => setView('dashboard')}/>
+        </Suspense>
+      </div>
+    )
+  }
+
   if (view === 'wall') {
     return <WallDashboard devices={devices} energy={energy} roomsMeta={roomsMeta} onClose={() => setView('dashboard')}/>
   }
@@ -89,6 +127,7 @@ export default function App() {
       <PagingPanel {...paging} open={pagingOpen} setOpen={setPagingOpen} anchorTop />
       <Header connection={connection} connected={connected} onLock={lock} onOpenSettings={() => setView('settings')} onOpenWall={() => setView('wall')}
         onOpenCssEditor={() => setView('css-editor')} onOpenClaudeCode={() => setView('claude-code')} onOpenTerminal={() => setView('terminal')}
+        onOpenView={setView}
         pagingRoomCount={paging.rooms.length} pagingMessageCount={paging.messages.length} onTogglePaging={() => setPagingOpen(o => !o)} />
 
       <div style={{ flex:1, paddingTop:56, overflow:'hidden', display:'flex', flexDirection:'column' }}>
