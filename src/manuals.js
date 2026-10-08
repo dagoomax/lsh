@@ -6,14 +6,20 @@
 // SHA-256 in the index and cached in persist/manuals/ (override with
 // LSH_MANUALS_DIR) — after that it's served locally, offline too.
 //
-// config.manuals = { repo = 'dagoomax/lsh-manuals', ref = 'main', githubToken }
-// The token (fine-grained, Contents: read-only on that repo) falls back to
-// config.modules.githubToken / GITHUB_TOKEN.
+// Access, either of:
+//   • a read-only deploy key (SSH) — persist/manuals-deploy-key, or
+//     config.manuals.sshKey. Files come over git: a blobless bare clone in
+//     persist/manuals/.repo; each file's blob is fetched only when read.
+//   • a token: config.manuals.githubToken (fine-grained, Contents: read-only
+//     on that repo), falling back to config.modules.githubToken / GITHUB_TOKEN.
+//
+// config.manuals = { repo = 'dagoomax/lsh-manuals', ref = 'main', githubToken, sshKey }
 
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const crypto = require('crypto');
+const { execFile } = require('child_process');
 
 const DIR = process.env.LSH_MANUALS_DIR || path.join(__dirname, '..', 'persist', 'manuals');
 const INDEX_TTL_MS = 60 * 60 * 1000;
@@ -21,13 +27,57 @@ const TIMEOUT_MS = 60 * 1000;
 
 let indexCache = null; // { at, data }
 
+const DEFAULT_KEY = process.env.LSH_MANUALS_KEY || path.join(__dirname, '..', 'persist', 'manuals-deploy-key');
+
 function settings(config) {
   const m = config.manuals || {};
+  const sshKey = m.sshKey || (fs.existsSync(DEFAULT_KEY) ? DEFAULT_KEY : null);
   return {
     repo: m.repo || 'dagoomax/lsh-manuals',
     ref: m.ref || 'main',
     token: m.githubToken || config.modules?.githubToken || process.env.GITHUB_TOKEN || null,
+    sshKey,
   };
+}
+
+// ── git over SSH (deploy key) ──────────────────────────────────────────────
+const gitDir = () => path.join(DIR, '.repo');
+
+function git(args, key, { buffer = false } = {}) {
+  return new Promise((resolve, reject) => {
+    const env = { ...process.env, GIT_TERMINAL_PROMPT: '0',
+      GIT_SSH_COMMAND: `ssh -i "${key}" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20` };
+    execFile('git', args, { env, timeout: TIMEOUT_MS, maxBuffer: 128 * 1024 * 1024, encoding: buffer ? 'buffer' : 'utf8' }, (err, stdout, stderr) => {
+      if (!err) return resolve(stdout);
+      const msg = String(stderr || err.message);
+      const e = new Error(/Permission denied|publickey|Repository not found|not appear to be a git/.test(msg)
+        ? 'The deploy key isn’t accepted for the manuals repository — re-register it (see Settings → Device manuals).'
+        : `git: ${msg.trim().split('\n').pop()}`);
+      e.auth = /Permission denied|publickey|Repository not found/.test(msg);
+      reject(e);
+    });
+  });
+}
+
+let fetchedAt = 0;
+async function gitRaw(repo, ref, file, key, { refresh = false } = {}) {
+  const dir = gitDir();
+  const url = `git@github.com:${repo}.git`;
+  if (!fs.existsSync(path.join(dir, 'HEAD'))) {
+    fs.mkdirSync(DIR, { recursive: true });
+    await git(['clone', '--bare', '--filter=blob:none', '--depth', '1', '--branch', ref, url, dir], key);
+    fetchedAt = Date.now();
+  } else if (refresh || Date.now() - fetchedAt > INDEX_TTL_MS) {
+    await git(['--git-dir', dir, 'fetch', '--depth', '1', '--filter=blob:none', 'origin', `+refs/heads/${ref}:refs/heads/${ref}`], key);
+    fetchedAt = Date.now();
+  }
+  // The blob is fetched from GitHub here, on first read
+  return git(['--git-dir', dir, 'show', `refs/heads/${ref}:${file}`], key, { buffer: true });
+}
+
+// One file from the repo, over whichever access is configured
+function fetchFile(s, file, opts) {
+  return s.sshKey ? gitRaw(s.repo, s.ref, file, s.sshKey, opts) : githubRaw(s.repo, s.ref, file, s.token);
 }
 
 function githubRaw(repo, ref, file, token) {
@@ -60,7 +110,7 @@ async function index(config, { refresh = false } = {}) {
   if (!refresh && indexCache && Date.now() - indexCache.at < INDEX_TTL_MS) return indexCache.data;
   const s = settings(config);
   try {
-    const data = JSON.parse((await githubRaw(s.repo, s.ref, 'index.json', s.token)).toString('utf8'));
+    const data = JSON.parse((await fetchFile(s, 'index.json', { refresh })).toString('utf8'));
     if (!Array.isArray(data.manuals)) throw new Error('index.json has no manuals list');
     fs.mkdirSync(DIR, { recursive: true });
     fs.writeFileSync(indexFile(), JSON.stringify(data));
@@ -88,7 +138,8 @@ async function list(config, opts) {
   const data = await index(config, opts);
   return {
     repo: settings(config).repo,
-    tokenConfigured: !!settings(config).token,
+    tokenConfigured: !!(settings(config).token || settings(config).sshKey),
+    access: settings(config).sshKey ? 'deploy-key' : settings(config).token ? 'token' : null,
     stale: data.stale || null,
     updated: data.updated || null,
     manuals: data.manuals.filter((m) => safeId(m.id)).map((m) => ({ ...m, cached: isCached(m) })),
@@ -108,7 +159,7 @@ async function get(config, id) {
   if (inflight.has(id)) return inflight.get(id);
   const job = (async () => {
     const s = settings(config);
-    const body = await githubRaw(s.repo, s.ref, m.file, s.token);
+    const body = await fetchFile(s, m.file);
     const sha = crypto.createHash('sha256').update(body).digest('hex');
     if (m.sha256 && sha !== m.sha256) throw new Error(`Checksum mismatch for ${m.file} — not saved`);
     fs.mkdirSync(DIR, { recursive: true });

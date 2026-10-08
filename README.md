@@ -458,7 +458,7 @@ Settings → System → Device manuals lists installation manuals for Z-Wave mod
 "manuals": { "githubToken": "github_pat_…", "repo": "dagoomax/lsh-manuals" }
 ```
 
-The token needs only **Contents: read-only** on that repository (fine-grained token); `modules.githubToken` / `GITHUB_TOKEN` are used as fallbacks.
+Access is either a **read-only deploy key** — `persist/manuals-deploy-key` (or `manuals.sshKey`), registered on the repo with `gh repo deploy-key add persist/manuals-deploy-key.pub -R dagoomax/lsh-manuals`; files then come over git (blobless clone, each file fetched when first opened) — or a fine-grained token with **Contents: read-only** on that repository (`modules.githubToken` / `GITHUB_TOKEN` as fallbacks).
 
 ### Wiring emulator (Settings → System)
 

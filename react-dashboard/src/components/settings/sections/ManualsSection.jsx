@@ -59,6 +59,7 @@ export default function ManualsSection() {
       )}
       {error && !needsToken && <div className="stg-banner err">✗ {error}</div>}
       {data?.stale && <div className="stg-hint">Offline copy of the list — {data.stale}</div>}
+      {data?.access && <div className="stg-hint">Access on this host: {data.access === 'deploy-key' ? 'read-only deploy key (SSH)' : 'GitHub token'}</div>}
 
       {data && (
         <>
