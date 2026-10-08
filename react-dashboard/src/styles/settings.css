@@ -774,3 +774,31 @@ select.stg-input { cursor: pointer; }
 .wr-stage { grid-template-columns: 1fr; }
 .wr-side { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; align-items: start; }
 .wr-canvas { align-self: start; }
+.wr-svg.drawing { cursor: crosshair; }
+.wr-wire-draft { fill: none; stroke-width: 3; stroke-dasharray: 8 5; pointer-events: none; opacity: 0.9; }
+.wr-bend { fill: #ffd60a; pointer-events: none; }
+.wr-wire-gnye { fill: none; stroke: #2e8b57; stroke-width: 3; stroke-dasharray: 6 6; pointer-events: none; }
+.wr-wago-body { fill: #e8e8ea; stroke: #8e8e93; stroke-width: 1.2; }
+[data-theme="dark"] .wr-wago-body, :root:not([data-theme="light"]) .wr-wago-body { fill: #d9d9de; }
+.wr-wago-lever { fill: #ff9500; stroke: #c76a00; stroke-width: 1; }
+.wr-wago line { stroke: #8e8e93; stroke-width: 2; }
+.wr-wago-label { font-size: 10px; font-weight: 700; text-anchor: middle; fill: #3a3a3c; pointer-events: none; }
+.wr-wago.movable { cursor: grab; }
+.wr-wago.movable:active { cursor: grabbing; }
+.wr-wago-x circle { fill: var(--red); } .wr-wago-x text { font-size: 12px; fill: #fff; text-anchor: middle; font-weight: 800; pointer-events: none; }
+.wr-wago-x { cursor: pointer; opacity: 0; transition: opacity 0.15s; } .wr-wago:hover .wr-wago-x { opacity: 1; }
+.wr-wago-dot { fill: #c76a00; }
+.wr-palette { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; border-top: 0.5px solid var(--sep); }
+.wr-pal-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text3); }
+.wr-swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--sep); cursor: pointer; font: inherit; font-size: 9px; font-weight: 800; color: var(--text2); background: var(--white-08); padding: 0; }
+.wr-swatch.active { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px #0a84ff; }
+.wr-swatch.sw-brown { background: #8b4513; } .wr-swatch.sw-black { background: #1c1c1e; } .wr-swatch.sw-grey { background: #8e8e93; } .wr-swatch.sw-blue { background: #2f80ed; }
+.wr-swatch.sw-gnye { background: repeating-linear-gradient(45deg, #9acd32 0 5px, #2e8b57 5px 10px); }
+.wr-conn { display: inline-flex; flex-direction: column; align-items: center; gap: 0; border: none; font: inherit; cursor: pointer; padding: 3px 8px; border-radius: 8px; background: color-mix(in srgb, #ff9500 18%, transparent); color: var(--text); }
+.wr-conn b { font-size: 14px; line-height: 1.1; } .wr-conn small { font-size: 9.5px; color: var(--text2); }
+.wr-conn:hover { background: color-mix(in srgb, #ff9500 32%, transparent); }
+.wr-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; padding: 3px 0; cursor: pointer; color: var(--text); }
+.wr-check input { margin-top: 2px; flex-shrink: 0; }
+.wr-check input:checked + span { color: var(--text3); text-decoration: line-through; }
+.wr-wire-casing { fill: none; stroke: rgba(255,255,255,0.28); stroke-width: 5.5; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+[data-theme="light"] .wr-wire-casing { stroke: rgba(0,0,0,0.12); }

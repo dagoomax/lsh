@@ -467,6 +467,10 @@ A wiring assistant and circuit emulator for Z-Wave in-wall modules, converted fr
 - **Assistant** — the manual's diagram drawn wire by wire with what each terminal is for, plus the device's limits (load, fuse, wall box, cable length) and rules.
 - **Practice** — wire it yourself by clicking connection points, then *Check wiring* (lists missing and wrong connections) and switch the power on: wall switches and Z-Wave commands drive the module, lamps light (dimmed in 2-wire or 3-wire mode), blind motors run to their limits, and mistakes show up — a short trips the breaker; live on N, Sx on live/neutral, an output wired to neutral, a missing neutral or earth are reported.
 
+- **Drawing** — in practice mode wires are drawn: click a point, click empty space for each bend (grid-snapped, right angles), click the end point; pick the conductor colour (brown / black / grey / blue / green-yellow) and the emulator warns when it doesn’t match what the wire carries.
+- **Connectors** — WAGO-style connectors from the palette: 221-2411 inline (1:1), 221-412 (2), 221-413 (3), 2273-204 (4, push-in, solid only), 221-415 (5) — or equivalents. Drag them anywhere; one conductor per port, all ports joined. **Real wall box** mode treats the incoming cable as one L / N / PE conductor each, so the assistant puts the right connector wherever a conductor feeds more than one wire, and warns when you don’t.
+- **Tools & materials** — checklist of what you need to mount the module (voltage tester, lock-out, VDE screwdrivers, stripper, ferrules, deep box…) and the materials for the real-box build, including connector counts.
+
 The diagram data and circuit engine are in `react-dashboard/src/components/settings/wiring/` (`devices.js`, `sim.js`); `test/wiring-sim.test.js` checks every diagram and the failure cases. It's a practice tool — always follow the manual and local regulations, and leave mains work to a qualified electrician.
 
 ### `solaredge`

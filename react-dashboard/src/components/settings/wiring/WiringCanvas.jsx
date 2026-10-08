@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { PART_PORTS } from './devices.js'
+import { useMemo, useRef } from 'react'
+import { PART_PORTS, WIRE_COLORS } from './devices.js'
 import { usesPE, netKind } from './sim.js'
 
 // SVG schematic: mains rails on top, parts in the middle, the module at the
@@ -10,6 +10,7 @@ const W = 960, H = 600
 const RAIL = { L: 36, N: 62, PE: 88 }
 const PART_Y = 228
 const TERM_Y = 446
+const WIRE_CSS = Object.fromEntries(WIRE_COLORS.filter((c) => c.css).map((c) => [c.id, c.id === 'gnye' ? '#9acd32' : c.css]))
 const COLORS = { live: '#b5651d', neutral: '#2f80ed', pe: '#9acd32', sx: '#ff9f0a', idle: 'var(--wire-idle)', draft: 'var(--wire-draft)' }
 
 export function layout(device, scenario) {
@@ -33,10 +34,20 @@ export function layout(device, scenario) {
   return { terms, devBox, parts, pe: usesPE(scenario) }
 }
 
+// Connector geometry: body centred on (x, y), ports along the top edge
+export function wagoGeo(w) {
+  const width = 26 * w.poles + 14
+  const x0 = w.x - width / 2, y0 = w.y - 17
+  const ports = {}
+  for (let i = 0; i < w.poles; i++) ports[`p${i + 1}`] = [x0 + 20 + 26 * i, y0 - 8]
+  return { x0, y0, width, height: 34, ports }
+}
+
 function pos(L, port) {
   if (port === 'L' || port === 'N' || port === 'PE') return { rail: true, y: RAIL[port] }
   const [owner, q] = port.split(':')
   if (owner === 'dev') return { term: true, x: L.terms[q].x, y: L.terms[q].y - 14 }
+  if (L.wagos?.[owner]) { const [x, y] = L.wagos[owner].ports[q]; return { wago: true, x, y } }
   const g = L.parts[owner]
   const [x, y] = g.ports[q]
   return { x, y, top: y < g.cy, bottom: y > g.cy, box: g.box }
@@ -45,9 +56,26 @@ function pos(L, port) {
 const blocked = (L, x) => Object.values(L.parts).some((g) => x > g.box.x0 - 6 && x < g.box.x1 + 6)
 
 // Orthogonal route between two ports; i = wire index (spreads lanes)
-function route(L, a, b, i) {
+function route(L, a, b, i, points) {
   let pa = pos(L, a), pb = pos(L, b)
+  if (points?.length) {
+    // Hand-drawn: orthogonal elbows through the user's bend points
+    const first = points[0], last = points[points.length - 1]
+    const sx = pa.rail ? first[0] : pa.x, sy = pa.y
+    let d = `M ${sx} ${sy}`
+    for (const [x, y] of points) d += ` V ${y} H ${x}`
+    const ex = pb.rail ? last[0] : pb.x
+    return `${d} H ${ex} V ${pb.y}`
+  }
   const lane = 312 + (i % 12) * 9
+  if (pa.wago || pb.wago) {
+    if (!pa.wago) [pa, pb] = [pb, pa]
+    const up = pa.y - 12 - (i % 5) * 4
+    if (pb.rail) return `M ${pa.x} ${pa.y} V ${pb.y}`
+    if (pb.wago) return `M ${pa.x} ${pa.y} V ${Math.min(up, pb.y - 12)} H ${pb.x} V ${pb.y}`
+    if (pb.top) return `M ${pa.x} ${pa.y} V ${up} H ${pb.box.x1 + 12 + (i % 3) * 5} V ${pb.y - 12} H ${pb.x} V ${pb.y}`
+    return `M ${pa.x} ${pa.y} V ${Math.min(up, pb.y + 26 + (i % 4) * 5)} H ${pb.x} V ${pb.y}`
+  }
   if (pa.rail && pb.rail) return `M ${24 + i * 4} ${pa.y} V ${pb.y}`
   if (pb.rail) [pa, pb] = [pb, pa]
   if (pa.rail) {
@@ -75,18 +103,30 @@ function route(L, a, b, i) {
   return `M ${pa.x} ${pa.y} V ${y} H ${pb.x} V ${pb.y}`
 }
 
-function railX(L, other, i) {
+function railX(L, other, i, points) {
+  if (points?.length) return null
   const p = pos(L, other)
   if (p.rail) return 24 + i * 4
+  if (p.wago) return p.x
   if (p.top) return p.x
   if (p.term) return blocked(L, p.x) ? 56 + (i % 10) * 8 : p.x
   return p.x < (p.box.x0 + p.box.x1) / 2 ? p.box.x0 - 10 - (i % 4) * 5 : p.box.x1 + 10 + (i % 4) * 5
 }
 
-export default function WiringCanvas({ device, scenario, wires, highlight, sim, powered, switches, onPress, onRelease, onToggle, pending, onPort, onWireClick, interactive, shutterPos }) {
-  const L = useMemo(() => layout(device, scenario), [device, scenario])
+export default function WiringCanvas({ device, scenario, wires, extras = [], highlight, sim, powered, switches, onPress, onRelease, onToggle, pending, onPort, onWireClick, interactive, shutterPos, draft, onCanvasPoint, onPointerMove, onExtraMove, onExtraRemove, draftColor }) {
+  const base = useMemo(() => layout(device, scenario), [device, scenario])
+  const L = useMemo(() => ({ ...base, wagos: Object.fromEntries(extras.filter((e) => e.kind === 'wago').map((e) => [e.id, wagoGeo(e)])) }), [base, extras])
+  const svgRef = useRef(null)
+  const drag = useRef(null)
+  const toSvg = (e) => {
+    const svg = svgRef.current
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse())
+    return [Math.round(p.x / 10) * 10, Math.round(p.y / 10) * 10]
+  }
   const momentary = (scenario.inputMode || 'momentary') === 'momentary'
-  const colorOf = (a, b) => {
+  const colorOf = (a, b, meta) => {
+    if (meta?.color && WIRE_CSS[meta.color]) return WIRE_CSS[meta.color]
     if (powered && sim?.nets) {
       const k = netKind(sim, device, a) !== 'idle' ? netKind(sim, device, a) : netKind(sim, device, b)
       return COLORS[k]
@@ -97,14 +137,21 @@ export default function WiringCanvas({ device, scenario, wires, highlight, sim, 
   const live = (a) => powered && sim?.nets && netKind(sim, device, a) === 'live'
 
   const Port = ({ id, x, y }) => (
-    <g className={`wr-port${pending === id ? ' pending' : ''}${interactive ? ' clickable' : ''}`} onClick={interactive ? () => onPort(id) : undefined}>
+    <g className={`wr-port${pending === id ? ' pending' : ''}${interactive ? ' clickable' : ''}`} onClick={interactive ? (e) => { e.stopPropagation(); onPort(id) } : undefined}>
       <circle cx={x} cy={y} r={interactive ? 7 : 4}/>
       <title>{id}</title>
     </g>
   )
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="wr-svg" role="img" aria-label="Wiring diagram">
+    <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className={`wr-svg${draft ? ' drawing' : ''}`} role="img" aria-label="Wiring diagram"
+      onPointerMove={(e) => {
+        if (drag.current) { const [x, y] = toSvg(e); onExtraMove?.(drag.current, x, y); return }
+        if (draft) onPointerMove?.(toSvg(e))
+      }}
+      onPointerUp={() => { drag.current = null }}
+      onContextMenu={(e) => { if (draft) { e.preventDefault(); onCanvasPoint?.(null) } }}>
+      {interactive && <rect x="0" y="0" width={W} height={H} fill="transparent" onClick={(e) => draft && onCanvasPoint?.(toSvg(e))}/>}
       <defs>
         <radialGradient id="wr-glow"><stop offset="0" stopColor="#ffe9a8" stopOpacity="0.95"/><stop offset="0.5" stopColor="#ffd60a" stopOpacity="0.55"/><stop offset="1" stopColor="#ffd60a" stopOpacity="0"/></radialGradient>
       </defs>
@@ -113,24 +160,38 @@ export default function WiringCanvas({ device, scenario, wires, highlight, sim, 
         <g key={r} className="wr-rail">
           <line x1="20" x2={W - 20} y1={RAIL[r]} y2={RAIL[r]} stroke={COLORS[{ L: 'live', N: 'neutral', PE: 'pe' }[r]]} strokeWidth="4" strokeDasharray={r === 'PE' ? '10 6' : undefined}/>
           <text x={W - 16} y={RAIL[r] + 4} textAnchor="end" className="wr-rail-label">{r}</text>
-          {interactive && <rect x="20" y={RAIL[r] - 9} width={W - 70} height="18" className="wr-rail-hit" onClick={() => onPort(r)}/>}
+          {interactive && <rect x="20" y={RAIL[r] - 9} width={W - 70} height="18" className="wr-rail-hit" onClick={(e) => { e.stopPropagation(); onPort(r, toSvg(e)) }}/>}
         </g>
       ))}
 
       {/* wires */}
-      {wires.map(([a, b], i) => {
-        const d = route(L, a, b, i)
+      {wires.map(([a, b, meta], i) => {
+        const d = route(L, a, b, i, meta?.points)
         const hl = highlight === i
+        const c = colorOf(a, b, meta)
+        const ra = railX(L, b, i, meta?.points) ?? meta?.points?.[0]?.[0]
+        const rb = railX(L, a, i, meta?.points) ?? meta?.points?.[meta.points.length - 1]?.[0]
         return (
-          <g key={`${a}-${b}-${i}`} className={`wr-wire${hl ? ' hl' : ''}${interactive ? ' clickable' : ''}`} onClick={interactive ? () => onWireClick(i) : undefined}>
+          <g key={`${a}-${b}-${i}`} className={`wr-wire${hl ? ' hl' : ''}${interactive && !draft ? ' clickable' : ''}`} onClick={interactive && !draft ? (e) => { e.stopPropagation(); onWireClick(i) } : undefined}>
             <path d={d} className="wr-wire-hit"/>
-            <path d={d} stroke={colorOf(a, b)} className="wr-wire-line"/>
+            <path d={d} className="wr-wire-casing"/>
+            <path d={d} stroke={c} className="wr-wire-line"/>
+            {meta?.color === 'gnye' && <path d={d} className="wr-wire-gnye"/>}
             {(live(a) || live(b)) && <path d={d} className="wr-wire-flow"/>}
-            {['L', 'N', 'PE'].includes(a) && <circle cx={railX(L, b, i)} cy={RAIL[a]} r="4.5" fill={colorOf(a, b)}/>}
-            {['L', 'N', 'PE'].includes(b) && <circle cx={railX(L, a, i)} cy={RAIL[b]} r="4.5" fill={colorOf(a, b)}/>}
+            {['L', 'N', 'PE'].includes(a) && <circle cx={ra} cy={RAIL[a]} r="4.5" fill={c}/>}
+            {['L', 'N', 'PE'].includes(b) && <circle cx={rb} cy={RAIL[b]} r="4.5" fill={c}/>}
           </g>
         )
       })}
+      {draft && (() => {
+        const start = pos(L, draft.from)
+        const pts = [...draft.points, ...(draft.cursor ? [draft.cursor] : [])]
+        const sx = start.rail ? (pts[0]?.[0] ?? 40) : start.x
+        let d = `M ${sx} ${start.y}`
+        for (const [x, y] of pts) d += ` V ${y} H ${x}`
+        return <path d={d} className="wr-wire-draft" stroke={WIRE_CSS[draftColor] || '#ffd60a'}/>
+      })()}
+      {draft?.points.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="3.5" className="wr-bend"/>)}
 
       {/* parts */}
       {scenario.parts.map((p) => {
@@ -222,7 +283,29 @@ export default function WiringCanvas({ device, scenario, wires, highlight, sim, 
         <circle cx={L.devBox.x0 + 26} cy={L.devBox.y1 - 40} r="6" className={`wr-led${powered && sim?.powered ? ' on' : ''}`}/>
       </g>
 
+      {/* connectors */}
+      {extras.filter((e) => e.kind === 'wago').map((w) => {
+        const g = L.wagos[w.id]
+        return (
+          <g key={w.id} className={`wr-wago${interactive ? ' movable' : ''}`}
+            onPointerDown={interactive ? (e) => { e.stopPropagation(); drag.current = w.id } : undefined}>
+            <rect x={g.x0} y={g.y0} width={g.width} height={g.height} rx="6" className="wr-wago-body"/>
+            {Object.entries(g.ports).map(([q, [x, y]]) => (
+              <g key={q}>
+                <rect x={x - 9} y={g.y0 + 4} width="18" height="12" rx="3" className="wr-wago-lever"/>
+                <line x1={x} x2={x} y1={y} y2={g.y0}/>
+              </g>
+            ))}
+            <text x={w.x} y={g.y0 + g.height - 6} className="wr-wago-label">{w.label ? `${w.label} · ` : ''}{w.model?.replace('WAGO ', '') || `${w.poles}-way`}</text>
+            {interactive && onExtraRemove && <g className="wr-wago-x" onClick={(e) => { e.stopPropagation(); onExtraRemove(w.id) }}><circle cx={g.x0 + g.width} cy={g.y0} r="8"/><text x={g.x0 + g.width} y={g.y0 + 4}>×</text></g>}
+          </g>
+        )
+      })}
+
       {/* ports on top */}
+      {extras.filter((e) => e.kind === 'wago').flatMap((w) => Object.entries(L.wagos[w.id].ports).map(([q, [x, y]]) => interactive
+        ? <Port key={`${w.id}:${q}`} id={`${w.id}:${q}`} x={x} y={y}/>
+        : <circle key={`${w.id}:${q}`} cx={x} cy={y} r="3" className="wr-wago-dot"/>))}
       {interactive && device.terminals.map((t) => <Port key={t.id} id={`dev:${t.id}`} x={L.terms[t.id].x} y={L.terms[t.id].y - 14}/>)}
       {interactive && scenario.parts.flatMap((p) => (PART_PORTS[p.kind] || []).map((q) => <Port key={`${p.id}:${q}`} id={`${p.id}:${q}`} x={L.parts[p.id].ports[q][0]} y={L.parts[p.id].ports[q][1]}/>))}
     </svg>

@@ -93,3 +93,36 @@ test('dangerous wiring: short circuit, live on N, output to neutral', async () =
   assert.equal(c.ok, false)
   assert.ok(c.missing.length >= 1)
 })
+
+test('wall-box plan: connectors where one mains conductor feeds several wires', async () => {
+  const { sim, DEVICES, dev } = await load()
+  for (const d of DEVICES) {
+    for (const s of d.scenarios) {
+      const plan = sim.wallBoxPlan(d, s)
+      // electrically identical to the manual's diagram…
+      assert.ok(sim.check(d, s, plan.wires, plan.parts).ok, `${d.id}/${s.id}`)
+      const r = sim.simulate(d, s, plan.wires, {}, sim.initialState(d), plan.parts, { realBox: true })
+      assert.equal(r.powered, true, `${d.id}/${s.id}`)
+      // …and nothing left that a real box can't do
+      assert.deepEqual(r.findings.filter((f) => f.level !== 'info' && !/earth \(PE\) not connected/.test(f.text)), [], `${d.id}/${s.id}: ${JSON.stringify(r.findings)}`)
+    }
+  }
+  const p = sim.wallBoxPlan(dev('fibaro-fgs223'), dev('fibaro-fgs223').scenarios.find((x) => x.id === 'double'))
+  const live = p.parts.find((x) => x.label === 'Live (L)'), neu = p.parts.find((x) => x.label === 'Neutral (N)')
+  assert.equal(live.model, 'WAGO 221-413') // incoming L + module L + switch
+  assert.equal(neu.model, 'WAGO 2273-204') // incoming N + module N + 2 lamps
+})
+
+test('connectors: user-placed WAGO joins wires; one conductor per port; colours checked', async () => {
+  const { sim, dev } = await load()
+  const d = dev('shelly-wave-1pm'), s = d.scenarios[0]
+  const wg = [{ id: 'u1', kind: 'wago', poles: 3, model: 'WAGO 221-413', label: 'L' }]
+  const wires = [['L', 'u1:p1', { color: 'brown' }], ['u1:p2', 'dev:L', { color: 'brown' }], ['u1:p3', 'sw1:com', { color: 'brown' }],
+    ['sw1:o1', 'dev:SW', { color: 'black' }], ['dev:O', 'lamp1:a', { color: 'black' }], ['lamp1:b', 'N', { color: 'brown' }], ['N', 'dev:N', { color: 'blue' }]]
+  assert.ok(sim.check(d, s, wires, wg).ok)
+  const r = sim.simulate(d, s, wires, { sw1: [true] }, sim.initialState(d), wg)
+  assert.equal(r.lamps.lamp1, 1)
+  assert.ok(r.findings.some((f) => /Neutral should be blue/.test(f.text)))
+  const doubled = [...wires, ['u1:p3', 'dev:L']]
+  assert.ok(sim.conductorFindings(d, s, doubled, wg).some((f) => /one conductor per connector port/.test(f.text)))
+})

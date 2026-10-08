@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { SettingsCard, Button } from '../primitives'
-import { DEVICES } from '../wiring/devices.js'
-import { simulate, initialState, check, steps, portName } from '../wiring/sim.js'
-import WiringCanvas from '../wiring/WiringCanvas.jsx'
+import { DEVICES, CONNECTORS, WIRE_COLORS, toolsFor } from '../wiring/devices.js'
+import { simulate, initialState, check, steps, portName, wallBoxPlan } from '../wiring/sim.js'
+import WiringCanvas, { wagoGeo } from '../wiring/WiringCanvas.jsx'
+
+const NONE = []
+
+// Place connectors side by side in the free area right of the module
+function placeConnectors(parts, startX = 545, y = 372) {
+  let x = startX
+  return parts.map((p) => { const w = wagoGeo({ ...p, x: 0, y: 0 }).width; const out = { ...p, x: x + w / 2, y }; x += w + 14; return out })
+}
 
 // Settings → System → Wiring emulator — wiring assistant + circuit emulator
 // for Z-Wave in-wall modules, built from the manufacturers' manuals
@@ -29,25 +37,38 @@ export default function WiringSection() {
   const [shutterPos, setShutterPos] = useState(50)
   const stateRef = useRef(initialState(device))
   const [tick, setTick] = useState(0)
+  const [realBox, setRealBox] = useState(false)
+  const [userParts, setUserParts] = useState([])
+  const [draft, setDraft] = useState(null) // { from, points, cursor }
+  const [color, setColor] = useState('auto')
+  const [checked, setChecked] = useState({})
 
-  const stepList = useMemo(() => steps(device, scenario), [device, scenario])
-  const wires = useMemo(() => (mode === 'assist' ? scenario.wires.slice(0, step + 1) : userWires), [mode, scenario, step, userWires])
+  const plan = useMemo(() => { const p = wallBoxPlan(device, scenario); return { ...p, parts: placeConnectors(p.parts) } }, [device, scenario])
+  const stepList = useMemo(() => steps(device, scenario, realBox ? plan : null), [device, scenario, realBox, plan])
+  const wires = useMemo(() => (mode === 'assist' ? (realBox ? plan.wires : scenario.wires).slice(0, step + 1) : userWires), [mode, scenario, step, userWires, realBox, plan])
+  const extras = mode === 'assist' ? (realBox ? plan.parts : NONE) : userParts
+  const kit = useMemo(() => toolsFor(device, scenario, plan), [device, scenario, plan])
 
   // Reset when the device or diagram changes
   useEffect(() => { setScnId(device.scenarios[0].id) }, [devId])
   useEffect(() => {
     stateRef.current = initialState(device)
-    setStep(mode === 'assist' ? scenario.wires.length - 1 : 0); setUserWires([]); setPending(null); setPower(false); setSwitches({}); setSim(null); setTripped(null); setResult(null); setShutterPos(50)
-  }, [devId, scnId, mode])
+    setStep(mode === 'assist' ? (realBox ? plan.wires : scenario.wires).length - 1 : 0); setUserWires([]); setUserParts([]); setDraft(null); setPending(null); setPower(false); setSwitches({}); setSim(null); setTripped(null); setResult(null); setShutterPos(50)
+  }, [devId, scnId, mode, realBox])
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setDraft(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // Run the circuit
   useEffect(() => {
     if (!power) { setSim(null); stateRef.current = { ...stateRef.current, prevInputs: {} }; return }
-    const r = simulate(device, scenario, wires, switches, stateRef.current)
+    const r = simulate(device, scenario, wires, switches, stateRef.current, extras, { realBox })
     stateRef.current = r.state
     if (r.short) { setTripped(r.short); setPower(false); setSim(null); return }
     setSim(r)
-  }, [power, wires, switches, tick, device, scenario])
+  }, [power, wires, switches, tick, device, scenario, extras, realBox])
 
   // Blind travel
   const motorDir = sim && Object.values(sim.motors || {})[0]
@@ -67,13 +88,27 @@ export default function WiringSection() {
   const setKey = (id, k, v) => setSwitches((s) => { const a = [...(s[id] || [])]; a[k] = v; return { ...s, [id]: a } })
   const remote = (fn) => { stateRef.current = fn(stateRef.current); setTick((t) => t + 1) }
 
+  // Drawing: click a point to start, click empty space to bend, click the target to finish
   const onPort = (p) => {
     if (mode !== 'practice') return
-    if (!pending) return setPending(p)
-    if (pending === p) return setPending(null)
-    const exists = userWires.some(([a, b]) => (a === pending && b === p) || (a === p && b === pending))
-    if (!exists) setUserWires((w) => [...w, [pending, p]])
-    setPending(null); setResult(null)
+    if (!draft) return setDraft({ from: p, points: [], cursor: null })
+    if (draft.from === p) return setDraft(null)
+    const exists = userWires.some(([a, b]) => (a === draft.from && b === p) || (a === p && b === draft.from))
+    if (!exists) setUserWires((w) => [...w, [draft.from, p, { points: draft.points, color }]])
+    setDraft(null); setResult(null)
+  }
+  const onCanvasPoint = (pt) => {
+    if (!draft) return
+    if (!pt) return setDraft(null)
+    setDraft((d) => ({ ...d, points: [...d.points, pt] }))
+  }
+  const addConnector = (c) => {
+    const n = userParts.length
+    setUserParts((ps) => [...ps, { id: `u${Date.now().toString(36)}`, kind: 'wago', poles: c.poles, model: c.model, label: '', x: 560 + (n % 3) * 130, y: 360 + Math.floor(n / 3) * 4 }])
+  }
+  const removeConnector = (id) => {
+    setUserParts((ps) => ps.filter((p) => p.id !== id))
+    setUserWires((ws) => ws.filter(([a, b]) => !a.startsWith(`${id}:`) && !b.startsWith(`${id}:`)))
   }
 
   const findings = sim?.findings || []
@@ -95,6 +130,9 @@ export default function WiringSection() {
         <div className="lan-filters" style={{ margin: 0 }}>
           {device.scenarios.map((s) => <button key={s.id} className={`lan-filter${s.id === scenario.id ? ' active' : ''}`} onClick={() => setScnId(s.id)}>{s.title}</button>)}
         </div>
+        <label className="emu-inline" title="Incoming cable has one L, one N and one PE conductor — splits need connectors">
+          <input type="checkbox" checked={realBox} onChange={(e) => setRealBox(e.target.checked)}/> Real wall box (connectors)
+        </label>
         <div className="lan-viewtoggle" style={{ marginLeft: 'auto' }}>
           <button className={mode === 'assist' ? 'active' : ''} onClick={() => setMode('assist')}>📖 Assistant</button>
           <button className={mode === 'practice' ? 'active' : ''} onClick={() => setMode('practice')}>🧪 Practice</button>
@@ -104,13 +142,30 @@ export default function WiringSection() {
       <div className="wr-stage">
         <div className="wr-canvas">
           <WiringCanvas device={device} scenario={scenario} wires={wires} highlight={mode === 'assist' && !power ? step : null}
-            sim={sim} powered={power} switches={switches} interactive={mode === 'practice'} pending={pending}
+            sim={sim} powered={power} switches={switches} interactive={mode === 'practice'} pending={draft?.from || pending}
+            extras={extras} draft={draft} draftColor={color} onCanvasPoint={onCanvasPoint} onPointerMove={(pt) => setDraft((d) => (d ? { ...d, cursor: pt } : d))}
+            onExtraMove={(id, x, y) => setUserParts((ps) => ps.map((p) => (p.id === id ? { ...p, x, y } : p)))} onExtraRemove={removeConnector}
             onPress={(id, k) => setKey(id, k, true)} onRelease={(id, k) => setKey(id, k, false)} onToggle={(id, k) => setKey(id, k, !(switches[id] || [])[k])}
             onPort={onPort} onWireClick={(i) => { setUserWires((w) => w.filter((_, j) => j !== i)); setResult(null) }}
             shutterPos={device.kind === 'shutter' ? shutterPos : null}/>
           {tripped && (
             <div className="wr-trip" onClick={() => setTripped(null)}>
               <b>⚡ Breaker tripped</b><span>{tripped}</span><small>Fix the wiring, then switch the power on again.</small>
+            </div>
+          )}
+          {mode === 'practice' && (
+            <div className="wr-palette">
+              <span className="wr-pal-title">Wire</span>
+              {WIRE_COLORS.map((c) => (
+                <button key={c.id} className={`wr-swatch sw-${c.id}${color === c.id ? ' active' : ''}`} title={c.label} onClick={() => setColor(c.id)}>{c.id === 'auto' ? 'auto' : ''}</button>
+              ))}
+              <span className="wr-pal-title" style={{ marginLeft: 10 }}>Connector</span>
+              {CONNECTORS.map((c) => (
+                <button key={c.model} className="wr-conn" title={`${c.model} — ${c.spec}${c.note ? `. ${c.note}` : ''}`} onClick={() => addConnector(c)}>
+                  <b>{c.model === 'WAGO 221-2411' ? '1' : c.poles}</b><small>{c.model.replace('WAGO ', '')}</small>
+                </button>
+              ))}
+              {draft && <span className="stg-hint">Drawing from {portName(device, scenario, draft.from, extras)} · click to bend · click the target · Esc / right-click cancels</span>}
             </div>
           )}
           <div className="wr-controls">
@@ -152,18 +207,18 @@ export default function WiringSection() {
           ) : (
             <div className="wr-panel">
               <div className="ble-dd-title">Your wiring · {userWires.length} wire{userWires.length === 1 ? '' : 's'}</div>
-              <div className="stg-hint">{pending ? <>From <b>{portName(device, scenario, pending)}</b> — click where it goes (or the same point to cancel).</> : 'Click a connection point, then another, to run a wire. Click a rail (L / N / PE) to connect to mains. Click a wire to remove it.'}</div>
+              <div className="stg-hint">{draft ? <>From <b>{portName(device, scenario, draft.from, extras)}</b> — click empty space to add bends, then the point where it ends.</> : 'Click a connection point to start a wire, click empty space to route it, click the end point to finish. Rails (L / N / PE) are mains. Click a wire to remove it. Add connectors from the palette and drag them where you like.'}</div>
               <div className="stg-actions" style={{ marginTop: 8 }}>
-                <Button variant="primary" onClick={() => setResult(check(device, scenario, userWires))}>✓ Check wiring</Button>
-                <Button onClick={() => { setUserWires(scenario.wires.map((w) => [...w])); setResult(null) }}>Show solution</Button>
-                <Button onClick={() => { setUserWires([]); setResult(null); setPower(false) }}>Clear</Button>
+                <Button variant="primary" onClick={() => setResult(check(device, scenario, userWires, userParts))}>✓ Check wiring</Button>
+                <Button onClick={() => { const src = realBox ? plan : { parts: [], wires: scenario.wires }; setUserParts(src.parts.map((p) => ({ ...p }))); setUserWires(src.wires.map((w) => [...w])); setResult(null) }}>Show solution</Button>
+                <Button onClick={() => { setUserWires([]); setUserParts([]); setResult(null); setPower(false) }}>Clear</Button>
               </div>
               {result && (result.ok
                 ? <div className="stg-banner ok" style={{ marginTop: 8 }}>✓ Matches the manual’s diagram. Switch the power on to test it.</div>
                 : (
                   <div className="wr-result">
-                    {result.missing.map(([a, b], i) => <div key={`m${i}`} className="wr-f warn">＋ Connect {portName(device, scenario, a)} to {portName(device, scenario, b)}</div>)}
-                    {result.extra.map(([a, b], i) => <div key={`e${i}`} className="wr-f danger">✕ {portName(device, scenario, a)} must not be connected to {portName(device, scenario, b)}</div>)}
+                    {result.missing.map(([a, b], i) => <div key={`m${i}`} className="wr-f warn">＋ Connect {portName(device, scenario, a, userParts)} to {portName(device, scenario, b, userParts)}</div>)}
+                    {result.extra.map(([a, b], i) => <div key={`e${i}`} className="wr-f danger">✕ {portName(device, scenario, a, userParts)} must not be connected to {portName(device, scenario, b, userParts)}</div>)}
                   </div>
                 ))}
             </div>
@@ -175,6 +230,17 @@ export default function WiringSection() {
               {findings.map((f, i) => <div key={i} className={`wr-f ${f.level}`}>{f.level === 'danger' ? '⚠ ' : f.level === 'warn' ? '△ ' : 'ℹ '}{f.text}</div>)}
             </div>
           )}
+
+          <div className="wr-panel">
+            <div className="ble-dd-title">Tools to mount it</div>
+            {kit.tools.map((t) => (
+              <label key={t.id} className="wr-check"><input type="checkbox" checked={!!checked[t.id]} onChange={(e) => setChecked({ ...checked, [t.id]: e.target.checked })}/><span>{t.text}</span></label>
+            ))}
+            <div className="ble-dd-title" style={{ marginTop: 10 }}>Materials (as built in a real wall box)</div>
+            {kit.materials.map((m) => (
+              <label key={m.id} className="wr-check"><input type="checkbox" checked={!!checked[`m-${m.id}`]} onChange={(e) => setChecked({ ...checked, [`m-${m.id}`]: e.target.checked })}/><span>{m.text}</span></label>
+            ))}
+          </div>
 
           <div className="wr-panel">
             <div className="ble-dd-title">{device.manufacturer} {device.model} — essentials</div>

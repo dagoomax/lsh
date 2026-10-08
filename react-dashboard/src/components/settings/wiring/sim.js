@@ -4,7 +4,7 @@
 // nets (union-find). Loads (lamps, motor windings) sit between nets. Mains L
 // and N (and PE) are the sources. Tested in test/wiring-sim.test.js.
 
-import { PART_PORTS } from './devices.js'
+import { portsOf, connectorFor, CONNECTORS } from './devices.js'
 
 class UF {
   constructor() { this.p = new Map() }
@@ -19,12 +19,17 @@ class UF {
 }
 
 // Every port of a scenario (for checking and for the UI)
-export function allPorts(device, scenario) {
+// extras: parts added by the user or the wall-box plan (connectors)
+export function allPorts(device, scenario, extras = []) {
   const ports = ['L', 'N']
   if (usesPE(scenario)) ports.push('PE')
   for (const t of device.terminals) ports.push(`dev:${t.id}`)
-  for (const p of scenario.parts) for (const q of PART_PORTS[p.kind] || []) ports.push(`${p.id}:${q}`)
+  for (const p of [...scenario.parts, ...extras]) for (const q of portsOf(p)) ports.push(`${p.id}:${q}`)
   return ports
+}
+
+const joinConnectors = (uf, extras) => {
+  for (const p of extras) if (p.kind === 'wago') for (let i = 2; i <= p.poles; i++) uf.union(`${p.id}:p1`, `${p.id}:p${i}`)
 }
 
 export const usesPE = (scenario) => scenario.parts.some((p) => p.kind === 'motor' || p.kind === 'motorDriver')
@@ -39,10 +44,11 @@ export function initialState(device) {
   }
 }
 
-function buildNets(device, scenario, wires, switches, state, powered) {
+function buildNets(device, scenario, wires, switches, state, powered, extras = []) {
   const uf = new UF()
-  for (const port of allPorts(device, scenario)) uf.find(port)
+  for (const port of allPorts(device, scenario, extras)) uf.find(port)
   for (const [a, b] of wires) uf.union(a, b)
+  joinConnectors(uf, extras)
   for (const [a, b] of device.bridges || []) uf.union(`dev:${a}`, `dev:${b}`)
   for (const p of scenario.parts) {
     const s = switches[p.id] || []
@@ -71,9 +77,9 @@ function loadsBetween(scenario, uf, a, b) {
   return false
 }
 
-function evaluate(device, scenario, wires, switches, state) {
+function evaluate(device, scenario, wires, switches, state, extras) {
   // Pass 1 — is the module powered? (outputs open)
-  let uf = buildNets(device, scenario, wires, switches, state, false)
+  let uf = buildNets(device, scenario, wires, switches, state, false, extras)
   const L = () => uf.find('L'), N = () => uf.find('N')
   const pe = usesPE(scenario)
   const findings = []
@@ -147,11 +153,12 @@ export function stepDevice(device, scenario, state, inputs) {
 }
 
 // Full simulation for one moment: returns what lights, moves, trips.
-export function simulate(device, scenario, wires, switches, state) {
-  const e1 = evaluate(device, scenario, wires, switches, state)
+export function simulate(device, scenario, wires, switches, state, extras = [], opts = {}) {
+  const e1 = evaluate(device, scenario, wires, switches, state, extras)
+  e1.findings.push(...conductorFindings(device, scenario, wires, extras, opts))
   if (e1.short) return { short: e1.short, powered: false, state, lamps: {}, motors: {}, findings: e1.findings, nets: null }
   const st = e1.powered ? stepDevice(device, scenario, state, e1.inputs) : { ...state, prevInputs: {} }
-  const uf = buildNets(device, scenario, wires, switches, st, e1.powered)
+  const uf = buildNets(device, scenario, wires, switches, st, e1.powered, extras)
   const L = uf.find('L'), N = uf.find('N')
   if (L === N) {
     return { short: 'Short circuit when the output switched on — check what the output is connected to.', powered: false, state: { ...st, channels: Object.fromEntries(Object.keys(st.channels).map((k) => [k, false])), shutter: st.shutter ? { dir: null } : null }, lamps: {}, motors: {}, findings: e1.findings, nets: null }
@@ -173,7 +180,59 @@ export function simulate(device, scenario, wires, switches, state) {
     if (up && down) e1.findings.push({ level: 'danger', text: `${p.label}: both directions energised at once — this damages the motor.` })
     if (net('pe') !== uf.find('PE')) e1.findings.push({ level: 'warn', text: `${p.label}: protective earth (PE) not connected.` })
   }
-  return { short: null, powered: e1.powered, twoWire: e1.twoWire, inputs: e1.inputs, state: st, lamps, motors, findings: e1.findings, nets: uf, L, N, PE: usesPE(scenario) ? uf.find('PE') : null }
+  const out = { short: null, powered: e1.powered, twoWire: e1.twoWire, inputs: e1.inputs, state: st, lamps, motors, findings: e1.findings, nets: uf, L, N, PE: usesPE(scenario) ? uf.find('PE') : null }
+  // Wire colours vs what the wire carries
+  for (const [a, b, meta] of wires) {
+    if (!meta?.color || meta.color === 'auto') continue
+    const k = netKind(out, device, a) !== 'idle' ? netKind(out, device, a) : netKind(out, device, b)
+    const what = `${portName(device, scenario, a, extras)} – ${portName(device, scenario, b, extras)}`
+    if (meta.color === 'gnye' && k !== 'pe') out.findings.push({ level: 'danger', text: `Green-yellow is reserved for protective earth — ${what} isn’t earth.` })
+    else if (k === 'pe' && meta.color !== 'gnye') out.findings.push({ level: 'warn', text: `Earth should be green-yellow (${what}).` })
+    else if (k === 'neutral' && meta.color !== 'blue') out.findings.push({ level: 'warn', text: `Neutral should be blue (${what}).` })
+    else if (meta.color === 'blue' && k !== 'neutral') out.findings.push({ level: 'warn', text: `Blue is for neutral, but ${what} carries ${k === 'live' ? 'live' : 'a switched/control signal'}.` })
+  }
+  return out
+}
+
+// Conductors per terminal: a module screw terminal takes at most two, a
+// connector port exactly one; in a real wall box the incoming cable has one
+// L, one N and one PE conductor.
+export function conductorFindings(device, scenario, wires, extras = [], { realBox } = {}) {
+  const count = new Map()
+  for (const [a, b] of wires) for (const p of [a, b]) count.set(p, (count.get(p) || 0) + 1)
+  const f = []
+  for (const [p, n] of count) {
+    if (p.startsWith('dev:') && n > 2) f.push({ level: 'warn', text: `${portName(device, scenario, p, extras)} has ${n} conductors — join them in a connector and run one wire to the terminal.` })
+    const owner = extras.find((x) => p.startsWith(`${x.id}:`))
+    if (owner?.kind === 'wago' && n > 1) f.push({ level: 'danger', text: `${portName(device, scenario, p, extras)}: one conductor per connector port.` })
+    if (realBox && ['L', 'N', 'PE'].includes(p) && n > 1) f.push({ level: 'warn', text: `Wall box: the incoming ${p} is one conductor but ${n} wires use it — join them in a ${connectorFor(n + 1).model} (${n + 1}-way).` })
+  }
+  return f
+}
+
+// The reference wiring as it's done in a real wall box: wherever a mains
+// conductor (or a module terminal) feeds more than it can take, put a
+// connector there. Returns { parts, wires } to use instead of the
+// scenario's wires.
+export function wallBoxPlan(device, scenario) {
+  const deg = new Map()
+  for (const [a, b] of scenario.wires) for (const p of [a, b]) deg.set(p, (deg.get(p) || 0) + 1)
+  const parts = [], wires = []
+  const hub = new Map() // port → connector id
+  const NAMES = { L: 'Live (L)', N: 'Neutral (N)', PE: 'Earth (PE)' }
+  for (const [p, n] of deg) {
+    if (!((['L', 'N', 'PE'].includes(p) && n > 1) || (p.startsWith('dev:') && n > 2))) continue
+    const c = connectorFor(n + 1)
+    const id = `wg${parts.length + 1}`
+    parts.push({ id, kind: 'wago', poles: c.poles, model: c.model, label: NAMES[p] || portName(device, scenario, p) })
+    hub.set(p, { id, next: 2 })
+    wires.push([p, `${id}:p1`])
+  }
+  for (const [a, b] of scenario.wires) {
+    const ends = [a, b].map((p) => { const h = hub.get(p); return h ? `${h.id}:p${h.next++}` : p })
+    wires.push(ends)
+  }
+  return { parts, wires }
 }
 
 // What kind of net a port is on, for wire colours: live / neutral / pe / sx / idle
@@ -191,12 +250,14 @@ export function netKind(sim, device, port) {
 // ── Checker: compare a wiring against the reference scenario ──────────────
 // Connectivity is compared with switches open and the module off, so it's
 // about the wires, not the state.
-export function check(device, scenario, wires) {
-  const ports = allPorts(device, scenario)
+export function check(device, scenario, wires, extras = []) {
+  const ports = allPorts(device, scenario) // compared on the diagram's own ports
   const ref = new UF(), got = new UF()
-  for (const p of ports) { ref.find(p); got.find(p) }
+  for (const p of ports) ref.find(p)
+  for (const p of allPorts(device, scenario, extras)) got.find(p)
   for (const [a, b] of scenario.wires) ref.union(a, b)
   for (const [a, b] of wires) got.union(a, b)
+  joinConnectors(got, extras)
   for (const [a, b] of device.bridges || []) { ref.union(`dev:${a}`, `dev:${b}`); got.union(`dev:${a}`, `dev:${b}`) }
   const missing = [], extra = []
   const groups = (uf) => {
@@ -228,22 +289,26 @@ export function labelOf(device, terminalId) {
 }
 
 // Human name for a port
-export function portName(device, scenario, port) {
+export function portName(device, scenario, port, extras = []) {
   if (port === 'L') return 'mains live (L)'
   if (port === 'N') return 'mains neutral (N)'
   if (port === 'PE') return 'protective earth (PE)'
   const [owner, q] = port.split(':')
   if (owner === 'dev') return `terminal ${labelOf(device, q)}`
-  const part = scenario.parts.find((p) => p.id === owner)
+  const part = [...scenario.parts, ...extras].find((p) => p.id === owner)
+  if (part?.kind === 'wago') return `${part.label ? `${part.label} ` : ''}connector (${part.model || `${part.poles}-way`}) port ${q.slice(1)}`
   const names = { com: 'common', o1: part?.keys?.[0] ? `${part.keys[0]} contact` : 'contact 1', o2: part?.keys?.[1] ? `${part.keys[1]} contact` : 'contact 2', a: 'terminal 1', b: 'terminal 2', up: 'up wire', down: 'down wire', n: 'neutral', pe: 'earth', l: 'live' }
   return `${part?.label || owner} ${part?.kind === 'switch' && q === 'o1' ? 'contact' : names[q] || q}`
 }
 
 // Step-by-step instructions from a scenario
-export function steps(device, scenario) {
-  return scenario.wires.map(([a, b]) => {
+export function steps(device, scenario, plan) {
+  const wires = plan ? plan.wires : scenario.wires
+  const extras = plan ? plan.parts : []
+  return wires.map(([a, b]) => {
     const t = [a, b].find((p) => p.startsWith('dev:'))
     const role = t ? device.terminals.find((x) => `dev:${x.id}` === t)?.desc : null
-    return { wire: [a, b], text: `Connect ${portName(device, scenario, a)} to ${portName(device, scenario, b)}`, hint: role || null }
+    const conn = extras.find((x) => [a, b].some((p) => p.startsWith(`${x.id}:`)))
+    return { wire: [a, b], text: `Connect ${portName(device, scenario, a, extras)} to ${portName(device, scenario, b, extras)}`, hint: role || (conn ? CONNECTORS.find((c) => c.model === conn.model)?.spec : null) }
   })
 }

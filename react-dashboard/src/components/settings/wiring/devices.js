@@ -196,3 +196,51 @@ export const PART_PORTS = {
   motor: ['up', 'down', 'n', 'pe'],
   motorDriver: ['l', 'n', 'up', 'down', 'pe'],
 }
+
+// Ports of any part, including connectors (p1…pN, all joined inside)
+export const portsOf = (part) => (part.kind === 'wago' ? [...Array(part.poles)].map((_, i) => `p${i + 1}`) : PART_PORTS[part.kind] || [])
+
+// Lever / push-in connectors. Every port takes one conductor; all ports of a
+// connector are joined. "or equivalent" — any certified lever connector of the
+// same size works.
+export const CONNECTORS = [
+  { poles: 2, model: 'WAGO 221-2411', name: '1:1 inline splice', spec: '0.2–4 mm² · lever', note: 'Joins one conductor to one other in line (extends a wire).' },
+  { poles: 2, model: 'WAGO 221-412', name: '2-way', spec: '0.2–4 mm² · lever' },
+  { poles: 3, model: 'WAGO 221-413', name: '3-way', spec: '0.2–4 mm² · lever' },
+  { poles: 4, model: 'WAGO 2273-204', name: '4-way', spec: 'solid 0.5–2.5 mm² · push-in', note: 'Push-in: solid conductors only.' },
+  { poles: 5, model: 'WAGO 221-415', name: '5-way', spec: '0.2–4 mm² · lever' },
+]
+export const connectorFor = (n) => CONNECTORS.find((c) => c.poles >= n && c.model !== 'WAGO 221-2411') || CONNECTORS[CONNECTORS.length - 1]
+
+// Wire colours (EU, IEC 60446): brown/black/grey = line, blue = neutral, green-yellow = earth
+export const WIRE_COLORS = [
+  { id: 'auto', label: 'Auto', css: null },
+  { id: 'brown', label: 'Brown (L)', css: '#8b4513' },
+  { id: 'black', label: 'Black (L / switched)', css: '#1c1c1e' },
+  { id: 'grey', label: 'Grey (L / switched)', css: '#8e8e93' },
+  { id: 'blue', label: 'Blue (N)', css: '#2f80ed' },
+  { id: 'gnye', label: 'Green-yellow (PE)', css: 'repeating-linear-gradient' },
+]
+
+// Tools and materials for mounting an in-wall module
+export function toolsFor(device, scenario, plan) {
+  const tools = [
+    { id: 'tester', text: 'Two-pole voltage tester (and a non-contact tester) — prove the circuit is dead before touching it' },
+    { id: 'lockout', text: 'Breaker lock-out or tape + a “do not switch on” tag' },
+    { id: 'screwdriver', text: 'Insulated (VDE 1000 V) flat screwdrivers, 2.5 mm and 3.5 mm, for the module’s terminal screws' },
+    { id: 'stripper', text: 'Wire stripper and side cutters (strip only as much as the terminal or connector strip gauge shows)' },
+    { id: 'pliers', text: 'Insulated pliers' },
+    { id: 'multimeter', text: 'Multimeter — continuity and checking the load before connecting' },
+    { id: 'ferrules', text: 'Wire-end ferrules + crimper, if any conductor is stranded' },
+    { id: 'box', text: 'Deep wall box (≥ 60 mm) or a box extension, so the module and connectors fit behind the switch' },
+  ]
+  if (device.kind === 'shutter') tools.push({ id: 'pe', text: 'Earth (PE) connection for the motor — a connector or terminal for green-yellow' })
+  const wagos = new Map()
+  for (const p of plan?.parts || []) if (p.kind === 'wago') wagos.set(p.model, (wagos.get(p.model) || 0) + 1)
+  const materials = [
+    { id: 'module', text: `${device.manufacturer} ${device.name} (${device.model})` },
+    ...[...wagos.entries()].map(([model, n]) => ({ id: model, text: `${n}× ${model} connector${n > 1 ? 's' : ''} (or equivalent)` })),
+    { id: 'wire', text: 'Short pieces of 1.5 mm² wire in the right colours (brown/black/grey for line and switched line, blue for neutral) — as the circuit’s cable, per local rules' },
+  ]
+  return { tools, materials }
+}
