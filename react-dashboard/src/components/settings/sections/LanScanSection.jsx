@@ -61,8 +61,8 @@ export default function LanScanSection() {
       {error && <div className={`stg-banner ${busy ? 'ok' : 'err'}`} style={{ marginTop: 6 }}>{busy ? '' : '✗ '}{error}</div>}
       {data && view === 'topology' && (
         <>
-          <LanTopology data={data} selected={open} onSelect={(ip) => setOpen(open === ip ? null : ip)}/>
-          {open && <LanDeepDive key={open} ip={open} post={post}/>}
+          <LanTopology data={data} selected={open} onSelect={(ip) => setOpen(open === ip ? null : ip)}
+            renderDetails={(ip) => <LanDeepDive key={ip} ip={ip} post={post}/>}/>
         </>
       )}
       {data && view === 'list' && (

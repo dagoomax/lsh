@@ -420,6 +420,24 @@ select.stg-input { cursor: pointer; }
 .lan-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .lan-legend i.ring { background: none; border: 2px solid var(--green); width: 8px; height: 8px; }
 .lan-expand { position: absolute; top: 10px; right: 10px; z-index: 2; width: 34px; height: 34px; border-radius: 9px; border: none; background: var(--white-08); color: var(--text); font-size: 16px; cursor: pointer; }
-.lan-expand:hover { background: var(--white-12, var(--white-08)); }
-.lan-topo.expanded { position: fixed; inset: 0; z-index: 1000; margin: 0; border-radius: 0; background: var(--bg); display: flex; flex-direction: column; }
-.lan-topo.expanded .lan-topo-svg { flex: 1; max-height: none; height: 100%; min-height: 0; }
+.lan-open-large { padding: 0 14px 12px; }
+.lan-open-large button { border: none; background: var(--accent-dim); color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 9px; cursor: pointer; }
+.lan-graph { position: relative; }
+.lan-graph.interactive { height: 100%; }
+.lan-graph.interactive .lan-topo-svg { height: 100%; max-height: none; cursor: grab; user-select: none; }
+.lan-graph.interactive .lan-topo-svg:active { cursor: grabbing; }
+.lan-zoom { position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; flex-direction: column; gap: 4px; }
+.lan-zoom button { width: 34px; height: 34px; border-radius: 9px; border: none; background: var(--white-08); color: var(--text); font-size: 18px; cursor: pointer; }
+.lan-popup-backdrop { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; }
+.lan-popup { width: 96vw; height: 94vh; background: var(--bg); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; }
+.lan-popup-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--sep); }
+.lan-popup-head .stg-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lan-popup-close { width: 32px; height: 32px; border-radius: 9px; border: none; background: var(--white-08); color: var(--text); cursor: pointer; flex-shrink: 0; }
+.lan-popup-close.side { position: sticky; top: 0; float: right; z-index: 1; }
+.lan-popup-body { flex: 1; min-height: 0; display: flex; }
+.lan-popup-graph { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lan-popup-graph .lan-graph { flex: 1; min-height: 0; }
+.lan-popup-side { width: min(440px, 40vw); overflow-y: auto; border-left: 0.5px solid var(--sep); padding: 12px; }
+.lan-popup-side .ble-dd { margin-left: 0; }
+.lan-popup .lan-label { font-size: 12.5px; }
+@media (max-width: 760px) { .lan-popup-body { flex-direction: column; } .lan-popup-side { width: auto; max-height: 45%; border-left: none; border-top: 0.5px solid var(--sep); } }
