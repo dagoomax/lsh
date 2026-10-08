@@ -84,6 +84,7 @@ export const CATEGORIES = [
     { id: 'ble-scan', title: 'Bluetooth scan', ported: true, keywords: ['ble', 'bluetooth', 'scan', 'bluez', 'devices nearby'] },
     { id: 'can-scan', title: 'CAN bus scan', ported: true, keywords: ['can', 'canbus', 'can-fd', 'nmea 2000', 'n2k', 've.can', 'j1939', 'canopen', 'bms', 'pylontech', 'ventuno', 'socketcan', 'candump'] },
     { id: 'modbus-scan', title: 'Modbus scan', ported: true, keywords: ['modbus', 'rtu', 'rs485', 'rs-485', 'tcp', '502', 'sunspec', 'energy meter', 'eastron', 'sdm', 'inverter', 'registers'] },
+    { id: 'manuals', title: 'Device manuals', ported: true, keywords: ['manual', 'manuals', 'pdf', 'wiring', 'fibaro', 'shelly', 'qubino', 'z-wave', 'installation'] },
     { id: 'modules', title: 'Integration Modules', ported: true, keywords: ['install', 'github', 'plugins', 'update'] },
   ] },
 ]

@@ -26,6 +26,7 @@ module.exports = function register(router, ctx) {
     if (safe.smartthings?.webhookSecret) safe.smartthings.webhookSecret = '••••••••';
     if (safe.satel?.armCode) safe.satel.armCode = '••••••••';
     for (const k of ['type2Key', 'type1Code', 'userCode']) if (safe.dsc?.[k]) safe.dsc[k] = '••••••••';
+    if (safe.manuals?.githubToken) safe.manuals.githubToken = '••••••••';
     if (safe.unifi?.password) safe.unifi.password = '••••••••';
     if (safe.unifi?.apiKey) safe.unifi.apiKey = '••••••••';
     if (safe.googleCalendar?.clientSecret) safe.googleCalendar.clientSecret = '••••••••';

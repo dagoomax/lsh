@@ -450,6 +450,16 @@ LSH answers Modbus queries like a real device, so a PLC, SCADA system, Loxone, a
 - **Writes** (FC 5/6/15/16) are refused unless the register is `writable`; a write is stored, published as `modbus-emu/<id>/<table>/<address>` (usable in flows) and, with `command`, sent to that LSH device sensor (value ÷ scale).
 - **Templates:** Eastron SDM630 and SDM120 meter maps (input registers, float32) — e.g. to present a meter that LSH reads from elsewhere to an inverter's export limiter. Check the inverter's expectations before relying on that for export control.
 
+### `manuals` — device manuals (on demand)
+
+Settings → System → Device manuals lists installation manuals for Z-Wave modules (FIBARO, Qubino, Shelly Qubino). The PDFs live in a **private** GitHub repository (`dagoomax/lsh-manuals`, with an `index.json` of model, source and SHA-256) — not in this repo and not on the host. A manual is downloaded only when opened, verified against its checksum and cached in `persist/manuals/` for offline use ("Remove local copy" deletes it).
+
+```json
+"manuals": { "githubToken": "github_pat_…", "repo": "dagoomax/lsh-manuals" }
+```
+
+The token needs only **Contents: read-only** on that repository (fine-grained token); `modules.githubToken` / `GITHUB_TOKEN` are used as fallbacks.
+
 ### `solaredge`
 
 ```json
