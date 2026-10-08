@@ -1,0 +1,665 @@
+{
+ "crc_123456789": 10673,
+ "transcripts": [
+  {
+   "encryption_type": 2,
+   "integration_id": "123456789012",
+   "type2_key": "000102030405060708090a0b0c0d0e0f",
+   "type1_access_code": "12345678",
+   "random_calls": [
+    "05101b26313c47525d68737e89949faa",
+    "2a35404b56616c77828d98a3aeb9c4cf"
+   ],
+   "steps": [
+    {
+     "note": "OpenSession",
+     "in": "3132333435363738393031327e150100060a01020001056103010400040000000267297f",
+     "out": [
+      "3132333435363738393031327e080101050201006c867f"
+     ],
+     "events": []
+    },
+    {
+     "note": "SimpleAck -> echo",
+     "in": "3132333435363738393031327e040200763e7f",
+     "out": [
+      "3132333435363738393031327e150202060a020200010561030104000400000002064f7f"
+     ],
+     "events": []
+    },
+    {
+     "note": "CommandResponse -> ack",
+     "in": "3132333435363738393031327e080300050201004d977f",
+     "out": [
+      "3132333435363738393031327e040203465d7f"
+     ],
+     "events": []
+    },
+    {
+     "note": "RequestAccess",
+     "in": "3132333435363738393031327e180400060e021005101b26313c47525d68737d0189949faa8a417f",
+     "out": [
+      "3132333435363738393031327eecef00855a2ded2a17c23a858e4bbe2d7f"
+     ],
+     "events": []
+    },
+    {
+     "note": "SimpleAck -> our RequestAccess",
+     "in": "3132333435363738393031327e040500efa97f",
+     "out": [
+      "3132333435363738393031327e47423fc1333a853e42f7e2f157191a525718095cc0b6d8843b2187fc50935dab7f"
+     ],
+     "events": []
+    },
+    {
+     "note": "CommandResponse -> Connected",
+     "in": "3132333435363738393031327e7a2a90abe68344870e7d029750b3d2ecad7f",
+     "out": [
+      "3132333435363738393031327ec2fecb85a95eb2512ff2f0f732c0e6f27f"
+     ],
+     "events": [
+      {
+       "type": "connected",
+       "session_id": "123456789012",
+       "encryption_type": 2,
+       "fw": [
+        5,
+        61
+       ]
+      }
+     ]
+    },
+    {
+     "note": "ModuleZoneStatus",
+     "in": "3132333435363738393031327eb44518582e47b4ea9565d732d0f2a26b7f",
+     "out": [
+      "3132333435363738393031327efd0aee9a11ca6120c002e0de23192cc07f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 2065,
+       "decoded": {
+        "_type": "ModuleZoneStatus",
+        "zone_start": 1,
+        "zone_count": 4,
+        "status_size_in_bytes": 1,
+        "zone_status_bytes": "00018122"
+       }
+      }
+     ]
+    },
+    {
+     "note": "ModulePartitionStatus",
+     "in": "3132333435363738393031327e784915967a67818a91bac097618a8aad7f",
+     "out": [
+      "3132333435363738393031327ea6df210c2e8461bee7af94448773a8ec7f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 2066,
+       "decoded": {
+        "_type": "ModulePartitionStatus",
+        "partition": 1,
+        "partition_status": "050200"
+       }
+      }
+     ]
+    },
+    {
+     "note": "LifestyleZone",
+     "in": "3132333435363738393031327eb605c105b07d01fd9d6cb93504de6a81117f",
+     "out": [
+      "3132333435363738393031327e09b672031442021cd5334f0b476c428b7f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 528,
+       "decoded": {
+        "_type": "NotificationLifestyleZoneStatus",
+        "zone_number": 3,
+        "status": 1
+       }
+      }
+     ]
+    },
+    {
+     "note": "ArmDisarm",
+     "in": "3132333435363738393031327e23b973f20de1b50988913b4018a37b9d7f",
+     "out": [
+      "3132333435363738393031327ed3bc3530282bc671d74fb1c80516285a7f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 562,
+       "decoded": {
+        "_type": "NotificationArmDisarm",
+        "partition": 1,
+        "arm_mode": 2,
+        "method": 1,
+        "user_id": 40
+       }
+      }
+     ]
+    },
+    {
+     "note": "ExitDelay",
+     "in": "3132333435363738393031327eead9b362ba498d8077b7ec7d0282376f377f",
+     "out": [
+      "3132333435363738393031327e984bc74b9a8c2976b1c2e5ea881aa5307f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 560,
+       "decoded": {
+        "_type": "NotificationExitDelay",
+        "partition": 1,
+        "delay_flags": 128,
+        "duration_in_seconds": 60
+       }
+      }
+     ]
+    },
+    {
+     "note": "Ready",
+     "in": "3132333435363738393031327e4a8be3329f363ed7c2349dcf9edd62907f",
+     "out": [
+      "3132333435363738393031327eee532b1e355e320f9d0f154c50a1d4937f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 569,
+       "decoded": {
+        "_type": "NotificationPartitionReadyStatus",
+        "partition_number": 2,
+        "status": 1
+       }
+      }
+     ]
+    },
+    {
+     "note": "Labels",
+     "in": "3132333435363738393031327efff9045bf4b9de27122acf645fb97c84fbe1264b15524bdaf70799a40c5d707349aaa5d1733cbd8d3c514b2783d05f253d60b79c950367edd6e732de568396e521d2d6ee160d44abbdfd9fefd6865b0b7f",
+     "out": [
+      "3132333435363738393031327e6371ab6bd412bcef049dd15b447069017f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 1905,
+       "decoded": {
+        "_type": "NotificationLabelText",
+        "collection": 209,
+        "start": 1,
+        "end": 3,
+        "labels": [
+         "Front door",
+         "Salon PIR",
+         "Garaż"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "note": "Capabilities",
+     "in": "3132333435363738393031327e7b89d8c5116c95a20a244cd92b95134f6ad50d135fe7bf2b47acc91c140e9cd07f",
+     "out": [
+      "3132333435363738393031327e21b1e0f9a9c97c59e3de1a774d0f05e97f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 1555,
+       "decoded": {
+        "_type": "ConnectionSystemCapabilities",
+        "max_zones": 32,
+        "max_users": 95,
+        "max_partitions": 8,
+        "max_fobs": 32,
+        "max_prox_tags": 95,
+        "max_outputs": 10
+       }
+      }
+     ]
+    },
+    {
+     "note": "Multi",
+     "in": "3132333435363738393031327e4f24edc79c04f1db73a38399871127473bd4537d02e24be120a17d02d12e2c9d93607f",
+     "out": [
+      "3132333435363738393031327e94cc972245ac0cc5f5bd38efa8d094e37f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 1571,
+       "decoded": {
+        "_type": "MultipleMessagePacket",
+        "messages": [
+         {
+          "_type": "NotificationLifestyleZoneStatus",
+          "zone_number": 1,
+          "status": 1
+         },
+         {
+          "_type": "NotificationPartitionReadyStatus",
+          "partition_number": 1,
+          "status": 8
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "note": "Trouble",
+     "in": "3132333435363738393031327eab137404ea36035c3a33440177d0dd807f",
+     "out": [
+      "3132333435363738393031327e811d68c7b3497955aaf86d4438759e5f7f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 575,
+       "decoded": {
+        "_type": "NotificationPartitionTroubleStatus",
+        "partition": 1,
+        "value": 1
+       }
+      }
+     ]
+    },
+    {
+     "note": "DateTime",
+     "in": "3132333435363738393031327e658f8e509faa1761f6c4660d92c9fc4c7f",
+     "out": [
+      "3132333435363738393031327e5522d70518b956beedfb675bf993abd47f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 544,
+       "decoded": {
+        "_type": "NotificationDateTimeBroadcast",
+        "date_time": "2026-10-08T12:34:56"
+       }
+      }
+     ]
+    }
+   ],
+   "sends": [
+    {
+     "note": "Poll",
+     "out": "3132333435363738393031327ec0efff1cd029cd6eedf901a9b8ef01487f"
+    },
+    {
+     "note": "ReqCapabilities",
+     "out": "3132333435363738393031327e1a7802b39a8f8e47324b2d67b8b2f7eb9e15c7174cc4a6a5fd6edd57022db0717f"
+    },
+    {
+     "note": "ReqZones",
+     "out": "3132333435363738393031327e5ffa67648f4e10009948f64b9f813b7d027f"
+    },
+    {
+     "note": "ReqPartition",
+     "out": "3132333435363738393031327e6c5fcbef8dce56b06ba2c654d5fa38037f"
+    },
+    {
+     "note": "ReqLabels",
+     "out": "3132333435363738393031327e4f93282e88a7b7ca34524fdfa1e136e0af8f9383a1bed2a59973dd32f2ea420c7f"
+    },
+    {
+     "note": "ArmAway",
+     "out": "3132333435363738393031327e1e5bbdcdb7845f4914a347a95524ab597f"
+    },
+    {
+     "note": "Disarm",
+     "out": "3132333435363738393031327ebe61a72699e2b9aed27cb644cbd00c0c7f"
+    },
+    {
+     "note": "Bypass",
+     "out": "3132333435363738393031327e8651231bb69bd3778d34155585ecb31c7f"
+    },
+    {
+     "note": "End",
+     "out": "3132333435363738393031327e6ddc5eb07551cf3c483a35bfb30dcec27f"
+    }
+   ]
+  },
+  {
+   "encryption_type": 1,
+   "integration_id": "123456789012",
+   "type2_key": "000102030405060708090a0b0c0d0e0f",
+   "type1_access_code": "12345678",
+   "random_calls": [
+    "05101b26313c47525d68737e89949faab5c0cbd6e1ecf7020d18232e39444f5a",
+    "2a35404b56616c77828d98a3aeb9c4cfdae5f0fb06111c27323d48535e69747f"
+   ],
+   "steps": [
+    {
+     "note": "OpenSession",
+     "in": "3132333435363738393031327e150100060a010200010561030104000400000001574a7f",
+     "out": [
+      "3132333435363738393031327e080101050201006c867f"
+     ],
+     "events": []
+    },
+    {
+     "note": "SimpleAck -> echo",
+     "in": "3132333435363738393031327e040200763e7f",
+     "out": [
+      "3132333435363738393031327e150202060a020200010561030104000400000001362c7f"
+     ],
+     "events": []
+    },
+    {
+     "note": "CommandResponse -> ack",
+     "in": "3132333435363738393031327e080300050201004d977f",
+     "out": [
+      "3132333435363738393031327e040203465d7f"
+     ],
+     "events": []
+    },
+    {
+     "note": "RequestAccess",
+     "in": "3132333435363738393031327e380400060e0230051b31475d73899fb5cbe1f70d23394f33c8b20429990ccf059de59de7d1d0c584022d3f105eba6cc7cf14489c0984fba92a7f",
+     "out": [
+      "3132333435363738393031327ef4979b9bf9398bccae2b7967d6941d3f7f"
+     ],
+     "events": []
+    },
+    {
+     "note": "SimpleAck -> our RequestAccess",
+     "in": "3132333435363738393031327e040500efa97f",
+     "out": [
+      "3132333435363738393031327e8d2d3fc7a6bc25bb2ede9d4d6c3966cd65914769e3b95d86b1de91c501fd67f2e4481f76d0ad76310872e5763f23f8cc2cb7d4155ed9a65726f865d44140fd5d7f"
+     ],
+     "events": []
+    },
+    {
+     "note": "CommandResponse -> Connected",
+     "in": "3132333435363738393031327e572c840ab17637b5e0f92806f65d119f7f",
+     "out": [
+      "3132333435363738393031327efdfb055b4aa6fde46e196edbd641908a7f"
+     ],
+     "events": [
+      {
+       "type": "connected",
+       "session_id": "123456789012",
+       "encryption_type": 1,
+       "fw": [
+        5,
+        61
+       ]
+      }
+     ]
+    },
+    {
+     "note": "ModuleZoneStatus",
+     "in": "3132333435363738393031327e0a140bbbd2aefb75afb5ec361dffdfd17f",
+     "out": [
+      "3132333435363738393031327e431b425cec12e01580852b27f96dae2c7f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 2065,
+       "decoded": {
+        "_type": "ModuleZoneStatus",
+        "zone_start": 1,
+        "zone_count": 4,
+        "status_size_in_bytes": 1,
+        "zone_status_bytes": "00018122"
+       }
+      }
+     ]
+    },
+    {
+     "note": "ModulePartitionStatus",
+     "in": "3132333435363738393031327ed7b653f2db2e38685fddce95f5cdbb1d7f",
+     "out": [
+      "3132333435363738393031327eac82e34a9fbe2961ef07769ff619807d007f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 2066,
+       "decoded": {
+        "_type": "ModulePartitionStatus",
+        "partition": 1,
+        "partition_status": "050200"
+       }
+      }
+     ]
+    },
+    {
+     "note": "LifestyleZone",
+     "in": "3132333435363738393031327e37b5475e877b89219710764c8859d0fe7f",
+     "out": [
+      "3132333435363738393031327e35a1735b8e3273f34e6842b4e0101e677f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 528,
+       "decoded": {
+        "_type": "NotificationLifestyleZoneStatus",
+        "zone_number": 3,
+        "status": 1
+       }
+      }
+     ]
+    },
+    {
+     "note": "ArmDisarm",
+     "in": "3132333435363738393031327e469f3be3f9a3d4a33533a389a4fda3d87f",
+     "out": [
+      "3132333435363738393031327e395738fbbd2b61a5a7ac3367c0eb85647f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 562,
+       "decoded": {
+        "_type": "NotificationArmDisarm",
+        "partition": 1,
+        "arm_mode": 2,
+        "method": 1,
+        "user_id": 40
+       }
+      }
+     ]
+    },
+    {
+     "note": "ExitDelay",
+     "in": "3132333435363738393031327efb70f02d55fe10f8faf1afcf584e76ff7f",
+     "out": [
+      "3132333435363738393031327e857216b8f445ba22f880f7e35a165f2b7f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 560,
+       "decoded": {
+        "_type": "NotificationExitDelay",
+        "partition": 1,
+        "delay_flags": 128,
+        "duration_in_seconds": 60
+       }
+      }
+     ]
+    },
+    {
+     "note": "Ready",
+     "in": "3132333435363738393031327edf73de56a5377a7873da2609a36a4a957f",
+     "out": [
+      "3132333435363738393031327e42efd769405bbe5eb6a345d58720b8a57f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 569,
+       "decoded": {
+        "_type": "NotificationPartitionReadyStatus",
+        "partition_number": 2,
+        "status": 1
+       }
+      }
+     ]
+    },
+    {
+     "note": "Labels",
+     "in": "3132333435363738393031327ed3610f01494dd0b37a8696fe389f78df01f119f197d6b79a36f1ce05855171507027c8e9cd4f3ae39e5ef772a671a94ffbce3fe18348d8e79f05bace6aae0e57ae95e138513e5648586811eda463fef47f",
+     "out": [
+      "3132333435363738393031327e9337370db4ccadd91cb44cf1bf6df40f7f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 1905,
+       "decoded": {
+        "_type": "NotificationLabelText",
+        "collection": 209,
+        "start": 1,
+        "end": 3,
+        "labels": [
+         "Front door",
+         "Salon PIR",
+         "Garaż"
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "note": "Capabilities",
+     "in": "3132333435363738393031327ed703c131e7b4b70af7911ef6ab80c1a492228aacb2ea3ef34dd8e0d9fa25c1cb7f",
+     "out": [
+      "3132333435363738393031327e9f68130d30ab65b53feb2f520ad1d72f7f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 1555,
+       "decoded": {
+        "_type": "ConnectionSystemCapabilities",
+        "max_zones": 32,
+        "max_users": 95,
+        "max_partitions": 8,
+        "max_fobs": 32,
+        "max_prox_tags": 95,
+        "max_outputs": 10
+       }
+      }
+     ]
+    },
+    {
+     "note": "Multi",
+     "in": "3132333435363738393031327e20ca7d006b5dd3bfa7a2e057a40fa4b75f36e94def9d5eb0590887abd8a53c91197f",
+     "out": [
+      "3132333435363738393031327ed9098b8301289b483446386a9a5721987f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 1571,
+       "decoded": {
+        "_type": "MultipleMessagePacket",
+        "messages": [
+         {
+          "_type": "NotificationLifestyleZoneStatus",
+          "zone_number": 1,
+          "status": 1
+         },
+         {
+          "_type": "NotificationPartitionReadyStatus",
+          "partition_number": 1,
+          "status": 8
+         }
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "note": "Trouble",
+     "in": "3132333435363738393031327e9107390f9a2070a06de78d2c3a7a8cbc7f",
+     "out": [
+      "3132333435363738393031327e3da64a4a50600ef6dd39e1f729747d00ca7f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 575,
+       "decoded": {
+        "_type": "NotificationPartitionTroubleStatus",
+        "partition": 1,
+        "value": 1
+       }
+      }
+     ]
+    },
+    {
+     "note": "DateTime",
+     "in": "3132333435363738393031327e2dda8329ebc83f614dc20fd69451c4767f",
+     "out": [
+      "3132333435363738393031327e97921b35de06d16f1bdb975873fa1b2c7f"
+     ],
+     "events": [
+      {
+       "type": "notification",
+       "command": 544,
+       "decoded": {
+        "_type": "NotificationDateTimeBroadcast",
+        "date_time": "2026-10-08T12:34:56"
+       }
+      }
+     ]
+    }
+   ],
+   "sends": [
+    {
+     "note": "Poll",
+     "out": "3132333435363738393031327e6c84c328ba8af59764030d5e6406e3687f"
+    },
+    {
+     "note": "ReqCapabilities",
+     "out": "3132333435363738393031327ed6bd07ec111e7d01f9de29ab23ec407212335f573251769117a1345b6b9d2588107f"
+    },
+    {
+     "note": "ReqZones",
+     "out": "3132333435363738393031327ea7fb891fb86a4af6e03623b7c79b920d7f"
+    },
+    {
+     "note": "ReqPartition",
+     "out": "3132333435363738393031327e938126d8af6e2364bf046188a37d02ee797f"
+    },
+    {
+     "note": "ReqLabels",
+     "out": "3132333435363738393031327e3385a586218f047b1405e93b907164ee9122abd1ddd132d8e76d80eed7a4ac047f"
+    },
+    {
+     "note": "ArmAway",
+     "out": "3132333435363738393031327eb2afb1128d32e200a6c4b7829728411b7f"
+    },
+    {
+     "note": "Disarm",
+     "out": "3132333435363738393031327e935dbf23f4d2960987a1a85b5aba2c877f"
+    },
+    {
+     "note": "Bypass",
+     "out": "3132333435363738393031327e6970ad56878a188c788290b8b9dfdadf7f"
+    },
+    {
+     "note": "End",
+     "out": "3132333435363738393031327e3942e6d9e21baeba23c6927014a1e9e67f"
+    }
+   ]
+  }
+ ]
+}

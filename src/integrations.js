@@ -94,4 +94,6 @@ module.exports = [
   { file: 'homey-client', label: 'Homey', when: (config) => config.homey?.token && (config.homey?.host || config.homey?.homeyId) },
   // Victron devices over Bluetooth, read by the LSH host itself (Arduino UNO Q)
   { file: 'lsh-ble-client', label: 'LSH BLE', expose: 'lshBle', when: (config) => config.lshBle?.devices?.length },
+  // DSC PowerSeries Neo via TL280 ITv2 — the panel dials in to LSH (TCP 3072)
+  { file: 'dsc-client', label: 'DSC', expose: 'dsc', when: (config) => config.dsc?.enabled && (config.dsc?.type2Key || config.dsc?.type1Code) },
 ];

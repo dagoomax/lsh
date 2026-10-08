@@ -51,6 +51,7 @@
     "src/routes/devices.js",
     "src/routes/domatiq.js",
     "src/routes/dreame.js",
+    "src/routes/dsc.js",
     "src/routes/dyson.js",
     "src/routes/esphome.js",
     "src/routes/ev-charging.js",
@@ -1117,6 +1118,18 @@
       "deps": {
         "dbus-next": "^0.10.2"
       }
+    },
+    "dsc": {
+      "entry": "src/dsc-client.js",
+      "configKeys": [
+        "dsc"
+      ],
+      "when": "(config.dsc?.enabled && (config.dsc?.type2Key || config.dsc?.type1Code))",
+      "files": [
+        "src/dsc-client.js",
+        "src/dsc-itv2.js"
+      ],
+      "deps": {}
     },
     "lsh-lan": {
       "entry": "src/lsh-lan.js",

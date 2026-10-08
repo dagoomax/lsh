@@ -64,6 +64,7 @@ export const CATEGORIES = [
   ] },
   { id: 'security', label: 'Security', sections: [
     { id: 'satel', title: 'Satel INTEGRA', ported: true },
+    { id: 'dsc', title: 'DSC PowerSeries Neo', ported: true, keywords: ['dsc', 'neo', 'tl280', 'itv2', 'alarm', 'alarm panel'] },
     { id: 'tedee', title: 'Tedee Smart Lock', ported: true },
   ] },
   { id: 'communication', label: 'Communication', sections: [

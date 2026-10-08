@@ -3961,6 +3961,32 @@ curl -H 'Authorization: Bearer lsh_xxxx...' \
 
 ---
 
+### DSC alarm (PowerSeries Neo)
+
+DSC Neo panels (HS2016/2032/2064/2128) through a **TL280 / TL2803G / 3G2080** communicator, using DSC's **ITv2** integration protocol (`src/dsc-client.js`, protocol in `src/dsc-itv2.js` — GPL-3.0-or-later port of [HA_DSC_Neo_ITv2](https://github.com/LawPaul/HA_DSC_Neo_ITv2), tested byte-for-byte against it). The panel **dials in** to LSH (TCP 3072), so LSH must be reachable from the communicator on the LAN. No npm dependencies.
+
+```json
+"dsc": {
+  "enabled": true,
+  "port": 3072,
+  "type2Key": "0123456789abcdef0123456789abcdef",
+  "userCode": "1234",
+  "zoneTypes": { "5": "contact", "9": "none" }
+}
+```
+
+| Key | |
+|---|---|
+| `type2Key` | 32 hex — must equal panel section [851][700]. Settings → Security → DSC can generate one |
+| `type1Code` + `integrationId` | Type 1 encryption instead: [851][423] (8 digits) and [851][422] (12 digits) |
+| `userCode` | keypad user code used to arm/disarm; omit for read-only |
+| `zoneTypes` | per zone `motion` / `contact` / `none` for HomeKit; default guessed from the zone label |
+| `allZones` | register every zone, not only named or active ones |
+
+Panel programming ([*][8] + installer code, section [851]): **[425]** bits 3, 4, 5 on · **[426]** bit 3 only · **[428]** LSH IP · **[429]** port in hex (`0C00` = 3072) · **[700]** the Type 2 key. Note the Integration ID from **[422]**.
+
+Devices: `dsc/panel` (connected, firmware, panel time), `dsc/partition/N` (armed toggle → arm away / disarm, mode, ready, alarm, trouble, exit/entry delay), `dsc/zone/N` (open, tamper, alarm, low battery, bypass toggle). Labels come from the panel. API: `GET /api/dsc/status`, `POST /api/dsc/partition/:n/arm` `{mode: away|stay|night|no-entry-delay}`, `POST /api/dsc/partition/:n/disarm`, `POST /api/dsc/zone/:n/bypass` `{bypass}`.
+
 ### Cameras
 
 | Method | Path | Description |
