@@ -31,6 +31,7 @@ const CHARACTERISTICS = {
   '2a19': 'Battery Level', '2a23': 'System ID', '2a24': 'Model Number', '2a25': 'Serial Number',
   '2a26': 'Firmware Revision', '2a27': 'Hardware Revision', '2a28': 'Software Revision', '2a29': 'Manufacturer Name',
   '2a37': 'Heart Rate Measurement', '2a6e': 'Temperature', '2a6f': 'Humidity', '2a6d': 'Pressure', '2a05': 'Service Changed',
+  '2b29': 'Client Supported Features', '2b2a': 'Database Hash', '2b3a': 'Server Supported Features', '2a50': 'PnP ID',
 }
 const STRING_CHARS = new Set(['2a00', '2a24', '2a25', '2a26', '2a27', '2a28', '2a29'])
 const APPLE_TYPES = {
