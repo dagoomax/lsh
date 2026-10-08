@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { SettingsCard, Button } from '../primitives'
+import LanTopology from '../LanTopology'
 
 // Settings → System → LAN scan — what's on this LSH host's local network
 // (tool module lsh-lan, installed from here on first use). Click a host for
@@ -17,6 +18,7 @@ export default function LanScanSection() {
   const [data, setData] = useState(null)
   const [open, setOpen] = useState(null)
   const [filter, setFilter] = useState('')
+  const [view, setView] = useState('list') // 'list' | 'topology'
 
   const post = (url, body) => fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
     .then((r) => r.json()).catch((e) => ({ success: false, error: e.message }))
@@ -46,11 +48,24 @@ export default function LanScanSection() {
       <div className="stg-actions" style={{ marginTop: 0 }}>
         <Button variant="secondary" busy={busy} onClick={run}>🛰 {data ? 'Scan again' : 'Scan network'}</Button>
         {needsModule && <Button variant="primary" busy={busy} onClick={install}>Install module</Button>}
-        {data && <input className="stg-input" style={{ maxWidth: 260 }} placeholder="Filter…" value={filter} onChange={(e) => setFilter(e.target.value)}/>}
+        {data && (
+          <div className="lan-viewtoggle">
+            {['list', 'topology'].map((v) => (
+              <button key={v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>{v === 'list' ? 'List' : 'Topology'}</button>
+            ))}
+          </div>
+        )}
+        {data && view === 'list' && <input className="stg-input" style={{ maxWidth: 260 }} placeholder="Filter…" value={filter} onChange={(e) => setFilter(e.target.value)}/>}
       </div>
       {busy && !error && <div className="stg-hint" style={{ marginTop: 6 }}>Scanning {data ? '' : 'the network '}— ARP, TCP, mDNS, UPnP…</div>}
       {error && <div className={`stg-banner ${busy ? 'ok' : 'err'}`} style={{ marginTop: 6 }}>{busy ? '' : '✗ '}{error}</div>}
-      {data && (
+      {data && view === 'topology' && (
+        <>
+          <LanTopology data={data} selected={open} onSelect={(ip) => setOpen(open === ip ? null : ip)}/>
+          {open && <LanDeepDive key={open} ip={open} post={post}/>}
+        </>
+      )}
+      {data && view === 'list' && (
         <div className="stg-ble-scan">
           <div className="stg-hint">
             {data.hosts.length} device{data.hosts.length === 1 ? '' : 's'} on {data.networks.map((n) => `${n.cidr} (${n.iface})`).join(', ')} · {Math.round(data.durationMs / 1000)} s

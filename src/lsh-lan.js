@@ -129,6 +129,29 @@ function arpTable() {
   })
 }
 
+// Default IPv4 gateway of this host.
+function defaultGateway() {
+  return new Promise((resolve) => {
+    if (process.platform === 'linux') {
+      try {
+        for (const line of fs.readFileSync('/proc/net/route', 'utf8').split('\n').slice(1)) {
+          const p = line.trim().split(/\s+/)
+          if (p[1] === '00000000' && p[2] && p[2] !== '00000000') {
+            const g = p[2].match(/../g).reverse().map((h) => parseInt(h, 16)).join('.') // little-endian hex
+            return resolve({ ip: g, iface: p[0] })
+          }
+        }
+      } catch {}
+      return resolve(null)
+    }
+    execFile(fs.existsSync('/sbin/route') ? '/sbin/route' : 'route', ['-n', 'get', 'default'], { timeout: 3000 }, (err, stdout) => {
+      const ip = (String(stdout || '').match(/gateway:\s*([\d.]+)/) || [])[1]
+      const iface = (String(stdout || '').match(/interface:\s*(\S+)/) || [])[1]
+      resolve(ip ? { ip, iface } : null)
+    })
+  })
+}
+
 async function arpSweep(targets) {
   const sock = dgram.createSocket('udp4')
   sock.on('error', () => {})
@@ -277,6 +300,7 @@ function identify(h) {
   const title = (h.http?.web?.title || '').toLowerCase()
   const vendor = (h.vendor || '').toLowerCase()
   const has = (p) => h.ports.includes(p)
+  if (h.gateway) return { kind: 'network', label: 'Router / gateway', integration: null }
   if (h.http?.shelly) return { kind: 'shelly', label: `Shelly ${h.http.shelly.model || ''}`.trim(), integration: 'shelly' }
   if (h.http?.hue) return { kind: 'hue', label: 'Philips Hue Bridge', integration: 'hue' }
   if (h.http?.sonos || svc('_sonos')) return { kind: 'sonos', label: `Sonos ${h.http?.sonos?.model || ''}`.trim(), integration: 'sonos' }
@@ -303,7 +327,10 @@ function identify(h) {
   if (svc('_ipp') || svc('_printer') || has(631) || has(9100)) return { kind: 'printer', label: 'Printer', integration: null }
   if (/victron|venus/.test(title) || /victron/.test(vendor)) return { kind: 'victron', label: 'Victron GX device', integration: 'mqtt' }
   if (/apple/.test(vendor) || has(62078)) return { kind: 'apple', label: 'Apple device', integration: null }
-  if (/router|gateway|openwrt|mikrotik|ubiquiti|unifi|fritz|tp-link|linksys|netgear/.test(`${title} ${vendor} ${server}`)) return { kind: 'network', label: 'Network equipment', integration: /unifi|ubiquiti/.test(`${title} ${vendor}`) ? 'unifi' : null }
+  const netNames = `${title} ${vendor} ${server} ${h.mdns?.hostname || ''} ${h.hostname || ''} ${h.ssdp?.description?.friendlyName || ''} ${h.ssdp?.description?.manufacturer || ''}`.toLowerCase()
+  if (h.gateway || /router|gateway|openwrt|mikrotik|ubiquiti|unifi|fritz|tp-link|tl-wr|linksys|velop|belkin|netgear|eero|deco|orbi|funbox|livebox|sagemcom|zyxel|asus rt|access point/.test(netNames)) {
+    return { kind: 'network', label: h.gateway ? 'Router / gateway' : 'Network equipment (router, mesh node, AP)', integration: /unifi|ubiquiti/.test(netNames) ? 'unifi' : null }
+  }
   if (h.http?.web) return { kind: 'web', label: h.http.web.title || 'Web server', integration: null }
   return { kind: 'unknown', label: null, integration: null }
 }
@@ -317,6 +344,7 @@ async function scan({ timeout = 600 } = {}) {
   const t0 = Date.now()
 
   // Discovery protocols run alongside the TCP sweep.
+  const gatewayP = defaultGateway()
   const mdnsP = mdnsDiscover(5)
   const ssdpP = ssdpDiscover(4)
 
@@ -334,7 +362,8 @@ async function scan({ timeout = 600 } = {}) {
       if (r.state !== 'timeout') { alive.set(ip, { latency: r.ms }); break }
     }
   })
-  const [mdns, ssdp] = await Promise.all([mdnsP, ssdpP])
+  const [mdns, ssdp, gateway] = await Promise.all([mdnsP, ssdpP, gatewayP])
+  if (gateway && targets.includes(gateway.ip) && !alive.has(gateway.ip)) alive.set(gateway.ip, { latency: null })
   for (const ip of [...mdns.keys(), ...ssdp.keys()]) if (targets.includes(ip) && !alive.has(ip)) alive.set(ip, { latency: null })
   const arp = await arpTable()
   for (const ip of arp.keys()) if (targets.includes(ip) && !alive.has(ip)) alive.set(ip, { latency: null })
@@ -346,7 +375,7 @@ async function scan({ timeout = 600 } = {}) {
     const rdns = await withTimeout(dns.reverse(ip).then((n) => n[0]).catch(() => null), 1500)
     const mac = arp.get(ip) || (selfIps.has(ip) ? nets.find((n) => n.address === ip)?.mac?.toUpperCase() : null) || null
     const h = {
-      ip, self: selfIps.has(ip), mac, vendor: vendorOf(mac), hostname: rdns,
+      ip, self: selfIps.has(ip), gateway: gateway?.ip === ip, mac, vendor: vendorOf(mac), hostname: rdns,
       latency: alive.get(ip).latency, ports,
       mdns: mdns.get(ip) || null, ssdp: ssdp.get(ip) || null,
     }
@@ -357,7 +386,7 @@ async function scan({ timeout = 600 } = {}) {
     return h
   })
   hosts.sort((a, b) => ipToInt(a.ip) - ipToInt(b.ip))
-  return { networks: nets.map(({ iface, address, cidr }) => ({ iface, address, cidr })), scannedHosts: targets.length, durationMs: Date.now() - t0, hosts }
+  return { networks: nets.map(({ iface, address, cidr }) => ({ iface, address, cidr })), gateway, scannedHosts: targets.length, durationMs: Date.now() - t0, hosts }
 }
 
 // The most descriptive Bonjour instance name: a device's own services before
@@ -452,4 +481,4 @@ function pickHeaders(h) {
   return out
 }
 
-module.exports = { scan, inspect, localNetworks, identify, vendorOf, cleanInstance, PORT_NAMES }
+module.exports = { scan, inspect, localNetworks, identify, vendorOf, cleanInstance, defaultGateway, PORT_NAMES }

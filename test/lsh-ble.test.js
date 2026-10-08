@@ -215,3 +215,11 @@ test('lsh-lan: Bonjour instance names are cleaned up', () => {
   assert.equal(identify({ ...base, ports: [8123], mdns: { services: [{ type: '_hap._tcp', name: 'Dom' }] } }).kind, 'homeassistant');
   assert.equal(identify({ ...base, mdns: { hostname: 'Miele-001', services: [{ type: '_mieleathome._tcp', name: 'Miele G7360' }] } }).integration, 'miele');
 });
+
+test('lsh-lan: routers and mesh nodes are network equipment', () => {
+  const { identify } = require('../src/lsh-lan');
+  const base = { ports: [80, 443], mdns: null, ssdp: null, http: {}, vendor: null };
+  assert.equal(identify({ ...base, gateway: true }).label, 'Router / gateway');
+  assert.equal(identify({ ...base, vendor: 'Belkin International Inc.', hostname: 'Linksys21610' }).kind, 'network');
+  assert.equal(identify({ ...base, hostname: 'tl-wr802n.home' }).kind, 'network');
+});
