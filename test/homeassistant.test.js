@@ -53,6 +53,29 @@ test('Home Assistant import: entities mirrored, live updates, control via call_s
     assert.equal(store.values['ha/sensor.outdoor_temperature/state'], 12.4);
     assert.equal(registry.devices.get('ha/binary_sensor.hall_motion').sensors[0].homekit, 'motion');
 
+    // Cameras: listed for /api/cameras, snapshot + MJPEG proxied with the token server-side
+    const cams = c.getCameras();
+    assert.equal(cams.length, 1);
+    assert.equal(cams[0].name, 'Front door camera');
+    assert.equal(cams[0].snapshotUrl, '/api/homeassistant/camera/camera.front_door/snapshot');
+    assert.ok(!JSON.stringify(cams).includes('sim-token'));
+    const proxied = (kind, entity = 'camera.front_door') => new Promise((resolve) => {
+      const chunks = [], req = new EventEmitter(), res = new EventEmitter();
+      Object.assign(res, { headers: {}, statusCode: 200, headersSent: false,
+        setHeader(k, v) { this.headers[k.toLowerCase()] = v; this.headersSent = true },
+        status(n) { this.statusCode = n; return this },
+        write(b) { chunks.push(b); if (kind === 'mjpeg' && Buffer.concat(chunks).toString('latin1').split('--frame').length > 2) { req.emit('close'); resolve({ res, body: Buffer.concat(chunks) }) } return true },
+        end(b) { if (b) chunks.push(b); resolve({ res, body: Buffer.concat(chunks) }) },
+        on() { return this }, once() { return this }, emit() { return true }, removeListener() { return this } });
+      c.proxyCamera(entity, kind, req, res);
+    });
+    const snap = await proxied('snapshot');
+    assert.equal(snap.res.headers['content-type'], 'image/jpeg');
+    assert.equal(snap.body[0], 0xff); assert.equal(snap.body[1], 0xd8);
+    const mj = await proxied('mjpeg');
+    assert.match(mj.res.headers['content-type'], /multipart\/x-mixed-replace/);
+    assert.equal((await proxied('snapshot', 'camera.nope')).res.statusCode, 404);
+
     // HA-side change arrives as an event
     sim.setState('binary_sensor.hall_motion', 'on');
     await until(() => store.values['ha/binary_sensor.hall_motion/state'] === 1);

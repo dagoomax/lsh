@@ -17,6 +17,13 @@ module.exports = function register(router, ctx) {
     res.json({ success: true, data: c ? c.getStatus() : null });
   });
 
+  // Camera proxy (snapshot / live MJPEG) — the HA token stays on the server
+  router.get('/homeassistant/camera/:entity/:kind(snapshot|mjpeg)', (req, res) => {
+    const c = clients.homeassistant;
+    if (!c) return res.status(404).end();
+    c.proxyCamera(req.params.entity, req.params.kind, req, res);
+  });
+
   // Every HA entity seen at the last sync (for choosing what to import)
   router.get('/homeassistant/entities', requireAdmin, (req, res) => {
     const c = clients.homeassistant;
@@ -44,7 +51,7 @@ module.exports = function register(router, ctx) {
       success: true,
       data: {
         url: h.url || '', token: h.token ? MASK : '',
-        import: { enabled: h.import?.enabled !== false, domains: h.import?.domains || [], entities: h.import?.entities || [] },
+        import: { enabled: h.import?.enabled !== false, cameras: h.import?.cameras !== false, domains: h.import?.domains || [], entities: h.import?.entities || [] },
         export: { enabled: !!ex.enabled, mqttUrl: ex.mqttUrl || '', username: ex.username || '', password: ex.password ? MASK : '',
           prefix: ex.prefix || 'homeassistant', base: ex.base || 'lsh', node: ex.node || 'lsh', types: ex.types || [] },
         defaultDomains: DEFAULT_DOMAINS,
@@ -74,7 +81,7 @@ module.exports = function register(router, ctx) {
 
     const homeassistant = {
       url: url || undefined, token: token || undefined,
-      import: { enabled: b.import?.enabled !== false, domains: list(b.import?.domains), entities: list(b.import?.entities) },
+      import: { enabled: b.import?.enabled !== false, cameras: b.import?.cameras !== false, domains: list(b.import?.domains), entities: list(b.import?.entities) },
       export: {
         enabled: !!ex.enabled, mqttUrl: String(ex.mqttUrl || '').trim() || undefined,
         username: String(ex.username || '').trim() || undefined, password: keep(ex.password, prev.export?.password) || undefined,

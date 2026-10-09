@@ -44,6 +44,7 @@ class HomeAssistantClient {
     this.msgId = 1;
     this.pending = new Map();
     this.entities = new Map(); // entity_id → last HA state object (imported ones)
+    this.cameras = new Map();  // entity_id → HA state object (camera.*)
     this.available = [];       // every HA entity seen (for the settings picker)
     this.status = { import: { connected: false, entities: 0, error: null, version: null }, export: { connected: false, published: 0, error: null } };
     this.stopped = false;
@@ -137,6 +138,7 @@ class HomeAssistantClient {
     } else if (m.type === 'event' && m.event?.event_type === 'state_changed') {
       const ns = m.event.data?.new_state;
       if (ns && this.entities.has(ns.entity_id)) this._applyState(ns);
+      else if (ns && this.cameras.has(ns.entity_id)) this.cameras.set(ns.entity_id, ns);
     }
   }
 
@@ -152,8 +154,11 @@ class HomeAssistantClient {
     this.available = states
       .filter((s) => !ownExports.has(s.entity_id))
       .map((s) => ({ entity_id: s.entity_id, name: s.attributes?.friendly_name || s.entity_id, domain: s.entity_id.split('.')[0], state: s.state, unit: s.attributes?.unit_of_measurement || '' }));
+    const camerasOn = this.cfg.import?.cameras !== false;
+    this.cameras.clear();
     for (const s of states) {
       const domain = s.entity_id.split('.')[0];
+      if (domain === 'camera') { if (camerasOn) this.cameras.set(s.entity_id, s); continue }
       if (ownExports.has(s.entity_id) || !domains.includes(domain)) continue;
       if (wanted && !wanted.has(s.entity_id)) continue;
       if (!this.entities.has(s.entity_id)) this._registerEntity(s);
@@ -163,7 +168,8 @@ class HomeAssistantClient {
     this.status.import.connected = true;
     this.status.import.entities = this.entities.size;
     this._updatePlatform();
-    console.log(`[HomeAssistant] Connected (HA ${this.status.import.version || '?'}) — ${this.entities.size} entities imported${ownExports.size ? `, ${ownExports.size} LSH exports skipped` : ''}`);
+    this.status.import.cameras = this.cameras.size;
+    console.log(`[HomeAssistant] Connected (HA ${this.status.import.version || '?'}) — ${this.entities.size} entities, ${this.cameras.size} cameras imported${ownExports.size ? `, ${ownExports.size} LSH exports skipped` : ''}`);
   }
 
   _registerEntity(s) {
@@ -350,6 +356,43 @@ class HomeAssistantClient {
     const n = this.exported.size;
     this.exported.clear();
     return n;
+  }
+
+  // ── Cameras ───────────────────────────────────────────────────────────────
+  // HA camera entities for /api/cameras. Snapshot and MJPEG go through LSH's
+  // proxy (the HA token never reaches the browser): HA's /api/camera_proxy
+  // (one JPEG) and /api/camera_proxy_stream (multipart MJPEG).
+  getCameras() {
+    return [...this.cameras.values()].map((s) => {
+      const id = encodeURIComponent(s.entity_id);
+      return {
+        name: s.attributes?.friendly_name || s.entity_id,
+        url: '',
+        snapshotUrl: `/api/homeassistant/camera/${id}/snapshot`,
+        mjpegUrl: s.state === 'unavailable' ? '' : `/api/homeassistant/camera/${id}/mjpeg`,
+        webrtcUrl: '',
+        _homeassistant: true,
+        _entityId: s.entity_id,
+      };
+    });
+  }
+
+  // Pipe HA's camera proxy to an Express response. kind: 'snapshot' | 'mjpeg'
+  proxyCamera(entityId, kind, req, res) {
+    if (!this.cameras.has(entityId)) return res.status(404).end();
+    const base = new URL(String(this.cfg.url).replace(/\/+$/, ''));
+    const lib = base.protocol === 'https:' ? require('https') : require('http');
+    const path = `${base.pathname.replace(/\/$/, '')}/api/${kind === 'mjpeg' ? 'camera_proxy_stream' : 'camera_proxy'}/${encodeURIComponent(entityId)}`;
+    const up = lib.get({ host: base.hostname, port: base.port || undefined, path, headers: { Authorization: `Bearer ${this.cfg.token}` }, timeout: 15000 }, (r) => {
+      if (r.statusCode !== 200) { r.resume(); return res.status(502).end() }
+      res.setHeader('Content-Type', r.headers['content-type'] || 'image/jpeg');
+      res.setHeader('Cache-Control', 'no-cache');
+      if (kind === 'mjpeg') up.setTimeout(0);
+      r.pipe(res);
+    });
+    up.on('timeout', () => up.destroy(new Error('timeout')));
+    up.on('error', () => { if (!res.headersSent) res.status(502).end(); else res.end() });
+    req.on('close', () => up.destroy());
   }
 
   // Entities HA has (for the settings picker)

@@ -4029,7 +4029,7 @@ curl -H 'Authorization: Bearer lsh_xxxx...' \
 
 Both ways (`src/homeassistant-client.js`, dep `ws`, installed on demand):
 
-- **Import** — Home Assistant entities become LSH devices `ha/<entity_id>` via HA's WebSocket API: `light` (on/off + brightness), `switch`, `fan`, `input_boolean`, `cover` (position), `climate` (current/target temperature, mode), `lock`, `sensor`, `binary_sensor` (HomeKit motion/contact by `device_class`). Live through `state_changed` events; commands go out as `call_service`.
+- **Import** — Home Assistant entities become LSH devices `ha/<entity_id>` via HA's WebSocket API: `light` (on/off + brightness), `switch`, `fan`, `input_boolean`, `cover` (position), `climate` (current/target temperature, mode), `lock`, `sensor`, `binary_sensor` (HomeKit motion/contact by `device_class`). Live through `state_changed` events; commands go out as `call_service`. **Cameras** (`camera.*`) are added to Cameras with snapshot + live MJPEG proxied through LSH (`GET /api/homeassistant/camera/:entity/snapshot|mjpeg`, HA's `camera_proxy` / `camera_proxy_stream`; the token stays server-side) — `import.cameras: false` turns that off. HA has no RTSP source to hand out, so these cameras aren't offered to HomeKit / the RTSP proxy.
 - **Export** — LSH devices appear in HA through **MQTT Discovery** on a broker HA's MQTT integration uses: toggles → `switch`, ranges → `number`, on/off readings → `binary_sensor`, everything else → `sensor`, one HA device per LSH device. Retained configs at `<prefix>/<component>/<node>/<object>/config`, state `<base>/<object>/state`, commands `<base>/<object>/set`, availability `<base>/<node>/status` (LWT). Republished when HA sends `online` on `<prefix>/status`.
 
 No loops: entities whose `unique_id` starts with `<node>_` (LSH's exports) are never imported, and `homeassistant`-type devices are never exported.
@@ -4038,7 +4038,7 @@ No loops: entities whose `unique_id` starts with `<node>_` (LSH's exports) are n
 "homeassistant": {
   "url": "http://homeassistant.local:8123",
   "token": "<long-lived access token>",
-  "import": { "enabled": true, "domains": [], "entities": [] },
+  "import": { "enabled": true, "cameras": true, "domains": [], "entities": [] },
   "export": { "enabled": true, "mqttUrl": "mqtt://192.168.1.10:1883", "username": "", "password": "",
               "prefix": "homeassistant", "base": "lsh", "node": "lsh", "types": [] }
 }

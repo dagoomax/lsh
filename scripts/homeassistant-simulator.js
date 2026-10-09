@@ -24,6 +24,7 @@ function initialStates() {
     e('lock.front_door', 'locked', { friendly_name: 'Front door' }),
     e('sensor.outdoor_temperature', '12.4', { friendly_name: 'Outdoor temperature', unit_of_measurement: '°C', device_class: 'temperature' }),
     e('binary_sensor.hall_motion', 'off', { friendly_name: 'Hall motion', device_class: 'motion' }),
+    e('camera.front_door', 'idle', { friendly_name: 'Front door camera', supported_features: 2, entity_picture: '/api/camera_proxy/camera.front_door?token=x' }),
     // An entity LSH itself exported over MQTT Discovery — must not be imported back
     e('switch.lsh_shelly_1_relay0', 'on', { friendly_name: 'Shelly relay (from LSH)' }),
   ];
@@ -39,7 +40,20 @@ function startSimulator({ port = 8123, token = 'sim-token', haVersion = '2026.10
   const calls = [];
   const subscribers = new Set();
 
+  // 1×1 JPEG
+  const JPEG = Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==', 'base64');
   const server = http.createServer((req, res) => {
+    const cam = req.url.match(/^\/api\/camera_proxy(_stream)?\/([^?]+)/);
+    if (cam) {
+      if (req.headers.authorization !== `Bearer ${token}`) { res.writeHead(401); return res.end() }
+      if (!states.has(decodeURIComponent(cam[2])) || !cam[2].startsWith('camera.')) { res.writeHead(404); return res.end() }
+      if (!cam[1]) { res.writeHead(200, { 'Content-Type': 'image/jpeg' }); return res.end(JPEG) }
+      res.writeHead(200, { 'Content-Type': 'multipart/x-mixed-replace;boundary=frame' });
+      const frame = () => res.write(Buffer.concat([Buffer.from(`--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${JPEG.length}\r\n\r\n`), JPEG, Buffer.from('\r\n')]));
+      frame();
+      const t = setInterval(frame, 200);
+      return req.on('close', () => clearInterval(t));
+    }
     if (req.url === '/api/' && req.headers.authorization === `Bearer ${token}`) { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end('{"message":"API running."}') }
     res.writeHead(401); res.end();
   });

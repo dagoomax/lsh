@@ -68,6 +68,8 @@ export default function HomeAssistantSection({ reload }) {
       <Toggle label="Import entities" checked={s.import.enabled} onChange={set('import', 'enabled')}/>
       {s.import.enabled && (
         <>
+          <Toggle label="Import cameras" checked={s.import.cameras} onChange={set('import', 'cameras')}
+            hint="HA camera entities appear in Cameras — snapshot and live MJPEG through LSH, the HA token stays on the server"/>
           <div className="stg-hint" style={{ margin: '6px 0' }}>Domains</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
             {s.defaultDomains.map((d) => (
@@ -127,7 +129,7 @@ export default function HomeAssistantSection({ reload }) {
         <>
           <p className="stg-hint">
             Import: {imp?.connected
-              ? <span style={{ color: 'var(--green)' }}>✓ connected to Home Assistant {imp.version} · {imp.entities} entities</span>
+              ? <span style={{ color: 'var(--green)' }}>✓ connected to Home Assistant {imp.version} · {imp.entities} entities{imp.cameras ? ` · ${imp.cameras} cameras` : ''}</span>
               : <span>not connected{imp?.error ? <span style={{ color: 'var(--red)' }}> — {imp.error}</span> : ''}</span>}
           </p>
           <p className="stg-hint">
