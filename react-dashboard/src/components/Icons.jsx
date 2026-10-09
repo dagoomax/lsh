@@ -697,6 +697,7 @@ const TYPE_MAP = {
   battery:      BatteryIcon,
   solarcharger: SolarPanelIcon,
   smartthings:  HomeIcon,
+  homeassistant: HomeIcon,
   fibaro:       FibaroIcon,
   bayrol:       PoolIcon,
   somfy:        ShutterIcon,

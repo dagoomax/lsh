@@ -4025,6 +4025,34 @@ curl -H 'Authorization: Bearer lsh_xxxx...' \
 
 ---
 
+### Home Assistant
+
+Both ways (`src/homeassistant-client.js`, dep `ws`, installed on demand):
+
+- **Import** — Home Assistant entities become LSH devices `ha/<entity_id>` via HA's WebSocket API: `light` (on/off + brightness), `switch`, `fan`, `input_boolean`, `cover` (position), `climate` (current/target temperature, mode), `lock`, `sensor`, `binary_sensor` (HomeKit motion/contact by `device_class`). Live through `state_changed` events; commands go out as `call_service`.
+- **Export** — LSH devices appear in HA through **MQTT Discovery** on a broker HA's MQTT integration uses: toggles → `switch`, ranges → `number`, on/off readings → `binary_sensor`, everything else → `sensor`, one HA device per LSH device. Retained configs at `<prefix>/<component>/<node>/<object>/config`, state `<base>/<object>/state`, commands `<base>/<object>/set`, availability `<base>/<node>/status` (LWT). Republished when HA sends `online` on `<prefix>/status`.
+
+No loops: entities whose `unique_id` starts with `<node>_` (LSH's exports) are never imported, and `homeassistant`-type devices are never exported.
+
+```json
+"homeassistant": {
+  "url": "http://homeassistant.local:8123",
+  "token": "<long-lived access token>",
+  "import": { "enabled": true, "domains": [], "entities": [] },
+  "export": { "enabled": true, "mqttUrl": "mqtt://192.168.1.10:1883", "username": "", "password": "",
+              "prefix": "homeassistant", "base": "lsh", "node": "lsh", "types": [] }
+}
+```
+
+| Key | |
+|---|---|
+| `token` | HA → your profile → Security → Long-lived access tokens |
+| `import.domains` / `import.entities` | empty = the default domains / every entity in them |
+| `export.types` | LSH device types to export (e.g. `["shelly","victron"]`); empty = all |
+| `export.node` | prefix of every `unique_id` — change it when two LSH hubs publish to one HA |
+
+Settings → Smart Home → Home Assistant edits all of this and applies it without a restart. API: `GET /api/homeassistant/status`, `GET /api/homeassistant/entities`, `GET /api/homeassistant/export-plan`, `POST /api/homeassistant/unpublish` (removes LSH's entities from HA). Test without HA: `node scripts/homeassistant-simulator.js 8123 sim-token`.
+
 ### DSC alarm (PowerSeries Neo)
 
 DSC Neo panels (HS2016/2032/2064/2128) through a **TL280 / TL2803G / 3G2080** communicator, using DSC's **ITv2** integration protocol (`src/dsc-client.js`, protocol in `src/dsc-itv2.js` — GPL-3.0-or-later port of [HA_DSC_Neo_ITv2](https://github.com/LawPaul/HA_DSC_Neo_ITv2), tested byte-for-byte against it). The panel **dials in** to LSH (TCP 3072), so LSH must be reachable from the communicator on the LAN. No npm dependencies.

@@ -20,6 +20,7 @@ export const CATEGORIES = [
     { id: 'tariff', title: 'Electricity Tariff', ported: true },
   ] },
   { id: 'smarthome', label: 'Smart Home', sections: [
+    { id: 'homeassistant', title: 'Home Assistant', ported: true, keywords: ['home assistant', 'hass', 'ha', 'mqtt discovery'] },
     { id: 'smartthings', title: 'Samsung SmartThings', ported: true },
     { id: 'smarthome-extra', title: 'Homey, Somfy, Landroid, Suppla, Fibaro', ported: true },
     { id: 'roborock', title: 'Roborock', ported: true },

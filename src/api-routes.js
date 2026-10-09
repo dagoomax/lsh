@@ -94,6 +94,7 @@ const ROUTE_GROUPS = [
   require('./routes/modbus-emu'),
   require('./routes/manuals'),
   require('./routes/dsc'),
+  require('./routes/homeassistant'),
 ];
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {

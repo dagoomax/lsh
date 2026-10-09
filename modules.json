@@ -63,6 +63,7 @@
     "src/routes/helpers.js",
     "src/routes/history.js",
     "src/routes/home-plan.js",
+    "src/routes/homeassistant.js",
     "src/routes/homekit.js",
     "src/routes/homey.js",
     "src/routes/https.js",
@@ -1152,6 +1153,19 @@
         "src/dsc-itv2.js"
       ],
       "deps": {}
+    },
+    "homeassistant": {
+      "entry": "src/homeassistant-client.js",
+      "configKeys": [
+        "homeassistant"
+      ],
+      "when": "((config.homeassistant?.url && config.homeassistant?.token) || config.homeassistant?.export?.enabled)",
+      "files": [
+        "src/homeassistant-client.js"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
     },
     "lsh-lan": {
       "entry": "src/lsh-lan.js",
