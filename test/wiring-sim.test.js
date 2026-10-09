@@ -138,7 +138,7 @@ test('translations: every phrase the emulator shows has all languages and matchi
   const fs = require('fs')
   const dir = require('path').join(__dirname, '../react-dashboard/src/components/settings/')
   const used = new Set()
-  for (const f of ['wiring/sim.js', 'wiring/devices.js', 'wiring/WiringCanvas.jsx', 'wiring/WiringInfo.jsx', 'wiring/ModulePhoto.jsx', 'sections/WiringSection.jsx']) {
+  for (const f of ['wiring/sim.js', 'wiring/devices.js', 'wiring/WiringCanvas.jsx', 'wiring/WiringInfo.jsx', 'wiring/ModulePhoto.jsx', 'wiring/PairPanel.jsx', 'sections/WiringSection.jsx']) {
     const src = fs.readFileSync(dir + f, 'utf8')
     for (const m of src.matchAll(/\bt\('((?:[^'\\]|\\.)*)'/g)) used.add(m[1])
     if (f.endsWith('WiringInfo.jsx')) for (const m of src.matchAll(/text: '((?:[^'\\]|\\.)*)'/g)) used.add(m[1])

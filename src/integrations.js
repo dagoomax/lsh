@@ -33,7 +33,7 @@ module.exports = [
   // Start ESPHome client if devices are configured
   { file: 'esphome-client', label: 'ESPHome', when: (config) => config.esphome?.devices?.length },
   // Start Shelly client if devices are configured
-  { file: 'shelly-client', label: 'Shelly', when: (config) => config.shelly?.devices?.length },
+  { file: 'shelly-client', label: 'Shelly', expose: 'shelly', when: (config) => config.shelly?.devices?.length },
   // Start go-eCharger client if devices are configured (local API, no cloud)
   { file: 'goecharger-client', label: 'go-eCharger', when: (config) => config.goecharger?.devices?.length },
   { file: 'wallbox-client', label: 'Wallbox', when: (config) => config.wallbox?.email && config.wallbox?.password },
@@ -83,7 +83,7 @@ module.exports = [
   { file: 'zway-client', label: 'Z-Way', when: (config) => config.zway?.host },
   // Start Z-Wave JS client if configured (Z-Wave JS Server / Z-Wave JS UI —
   // distinct from the Z-Way/RaZberry REST integration above)
-  { file: 'zwave-js-client', label: 'Z-Wave JS', when: (config) => config.zwaveJs?.host },
+  { file: 'zwave-js-client', label: 'Z-Wave JS', expose: 'zwaveJs', when: (config) => config.zwaveJs?.host },
   { file: 'vera-client', label: 'Vera', when: (config) => config.vera?.host },
   { file: 'knx-client', label: 'KNX', hint: 'npm install knx', when: (config) => config.knx?.host },
   { file: 'fibaro-client', label: 'Fibaro', when: (config) => config.fibaro?.host },

@@ -53,6 +53,10 @@ class ZwaveJsClient {
     this._msgId    = 0;
     this._pending  = new Map(); // messageId → {resolve, reject}
     this._nodes    = new Map(); // nodeId → { key, valueMap: Map(valueKey → path) }
+    this.homeId    = null;
+    this.connected = false;
+    // Inclusion / exclusion in progress (wiring emulator → Pair & save)
+    this.pairing   = { phase: 'idle' };
   }
 
   async start() {
@@ -91,6 +95,8 @@ class ZwaveJsClient {
 
     ws.on('close', () => {
       platformStatus.set('zwaveJs', false);
+      this.connected = false;
+      if (!['idle', 'done', 'excluded', 'failed'].includes(this.pairing.phase)) this.pairing = { ...this.pairing, phase: 'failed', error: 'Connection to Z-Wave JS closed' };
       for (const { reject } of this._pending.values()) reject(new Error('Connection closed'));
       this._pending.clear();
       if (this._ws === ws) this._scheduleReconnect();
@@ -106,6 +112,9 @@ class ZwaveJsClient {
     // The very first push after connecting is a `{type:"version", ...}`
     // handshake — kick off discovery once we see it.
     if (msg.type === 'version') {
+      // Inclusion options need API schema ≥ 8; ask for the newest we know of
+      if (msg.maxSchemaVersion >= 8) await this._call('set_api_schema', { schemaVersion: Math.min(msg.maxSchemaVersion, 35) }).catch(() => {});
+      if (msg.homeId) this.homeId = msg.homeId;
       await this._call('start_listening').then((res) => this._onSnapshot(res?.state));
       return;
     }
@@ -119,7 +128,9 @@ class ZwaveJsClient {
     }
     if (msg.type === 'event' && msg.event?.source === 'node') {
       this._onNodeEvent(msg.event);
+      if (msg.event.event === 'interview completed') this._onInterviewed(msg.event.nodeId);
     }
+    if (msg.type === 'event' && msg.event?.source === 'controller') this._onControllerEvent(msg.event);
   }
 
   _call(command, args = {}) {
@@ -133,6 +144,8 @@ class ZwaveJsClient {
   // ── Discovery ───────────────────────────────────────────────────────────
 
   _onSnapshot(state) {
+    if (state?.controller?.homeId) this.homeId = state.controller.homeId;
+    this.connected = true;
     const nodes = state?.nodes || [];
     for (const node of nodes) this._registerNode(node);
     platformStatus.set('zwaveJs', true);
@@ -234,6 +247,89 @@ class ZwaveJsClient {
     }
   }
 
+  // ── Inclusion / exclusion ───────────────────────────────────────────────
+  // Used by the wiring emulator's "Pair & save". secure: S2/S0 as the device
+  // supports (zwave-js "Default" strategy) — S2 asks for the 5-digit PIN from
+  // the device's DSK label, which comes in through submitPin().
+
+  async startInclusion({ secure = true } = {}) {
+    if (!this.connected) throw new Error('Z-Wave JS is not connected');
+    this.pairing = { phase: 'including', secure, startedAt: Date.now() };
+    const ok = await this._call('controller.begin_inclusion', { options: { strategy: secure ? 0 : 2 } });
+    if (ok === false || ok?.success === false) { this.pairing = { phase: 'failed', error: 'The controller refused to start inclusion (busy?)' }; }
+    return this.pairing;
+  }
+
+  async startExclusion() {
+    if (!this.connected) throw new Error('Z-Wave JS is not connected');
+    this.pairing = { phase: 'excluding', startedAt: Date.now() };
+    await this._call('controller.begin_exclusion');
+    return this.pairing;
+  }
+
+  async stopPairing() {
+    const phase = this.pairing.phase;
+    if (phase === 'including' || phase === 'grant' || phase === 'dsk') await this._call('controller.stop_inclusion').catch(() => {});
+    if (phase === 'excluding') await this._call('controller.stop_exclusion').catch(() => {});
+    this.pairing = { phase: 'idle' };
+    return this.pairing;
+  }
+
+  async submitPin(pin) {
+    if (this.pairing.phase !== 'dsk') throw new Error('No PIN is being asked for');
+    if (!/^\d{5}$/.test(String(pin))) throw new Error('The PIN is the first 5 digits of the DSK on the device label');
+    this.pairing = { ...this.pairing, phase: 'including' };
+    await this._call('controller.validate_dsk_and_enter_pin', { pin: String(pin) });
+    return this.pairing;
+  }
+
+  getPairing() {
+    return { ...this.pairing, homeId: this.homeId };
+  }
+
+  _onControllerEvent(evt) {
+    const e = evt.event;
+    if (e === 'grant security classes') {
+      // Grant what the device asks for (it only asks for what it supports)
+      const req = evt.requested || {};
+      this.pairing = { ...this.pairing, phase: 'grant', requested: req.securityClasses };
+      this._call('controller.grant_security_classes', { inclusionGrant: { securityClasses: req.securityClasses || [], clientSideAuth: false } })
+        .then(() => { if (this.pairing.phase === 'grant') this.pairing = { ...this.pairing, phase: 'including' } })
+        .catch((err) => { this.pairing = { ...this.pairing, phase: 'failed', error: err.message } });
+    } else if (e === 'validate dsk and enter pin') {
+      this.pairing = { ...this.pairing, phase: 'dsk', dsk: evt.dsk };
+    } else if (e === 'node added') {
+      const n = evt.node || {};
+      this.pairing = { ...this.pairing, phase: 'interviewing', node: nodeInfo(n), lowSecurity: !!evt.result?.lowSecurity };
+      console.log(`[Z-Wave JS] Node ${n.nodeId} added — interviewing`);
+    } else if (e === 'inclusion failed') {
+      this.pairing = { ...this.pairing, phase: 'failed', error: 'Inclusion failed — reset the device (or exclude it first) and try again' };
+    } else if (e === 'inclusion stopped' || e === 'inclusion aborted') {
+      if (this.pairing.phase === 'including' || this.pairing.phase === 'grant' || this.pairing.phase === 'dsk') this.pairing = { ...this.pairing, phase: 'failed', error: 'Inclusion stopped before a device joined' };
+    } else if (e === 'node removed') {
+      const n = evt.node || {};
+      if (this.pairing.phase === 'excluding') this.pairing = { phase: 'excluded', node: nodeInfo(n) };
+      this._nodes.delete(n.nodeId);
+    } else if (e === 'exclusion failed') {
+      this.pairing = { phase: 'failed', error: 'Exclusion failed' };
+    } else if (e === 'exclusion stopped') {
+      if (this.pairing.phase === 'excluding') this.pairing = { phase: 'failed', error: 'Exclusion stopped before a device left' };
+    }
+  }
+
+  // Once the interview is done the node knows its values — register it
+  async _onInterviewed(nodeId) {
+    let node = null;
+    try { node = await this._call('node.get_state', { nodeId }) } catch {}
+    node = node?.state || node
+    if (node?.nodeId) {
+      this._registerNode(node);
+      if (this.pairing.node?.nodeId === nodeId) this.pairing = { ...this.pairing, phase: 'done', node: nodeInfo(node), deviceKey: `zwaveJs/node_${nodeId}` };
+    } else if (this.pairing.node?.nodeId === nodeId) {
+      this.pairing = { ...this.pairing, phase: 'done', deviceKey: `zwaveJs/node_${nodeId}` };
+    }
+  }
+
   _onNodeEvent(evt) {
     if (evt.event !== 'value updated' && evt.event !== 'value notification') return;
     const node = this._nodes.get(evt.nodeId);
@@ -266,6 +362,18 @@ class ZwaveJsClient {
       value,
     });
   }
+}
+
+// What identifies a node for real: its id in this network plus what it reports
+function nodeInfo(n) {
+  const hex = (v, w = 4) => (v == null ? null : `0x${Number(v).toString(16).padStart(w, '0')}`);
+  return {
+    nodeId: n.nodeId,
+    manufacturerId: hex(n.manufacturerId), productType: hex(n.productType), productId: hex(n.productId),
+    manufacturer: n.deviceConfig?.manufacturer || null, label: n.deviceConfig?.label || n.label || null,
+    description: n.deviceConfig?.description || null, firmware: n.firmwareVersion || null,
+    security: n.highestSecurityClass ?? null, dsk: n.dsk || null,
+  };
 }
 
 function valueKey(v) {

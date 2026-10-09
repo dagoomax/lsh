@@ -896,3 +896,22 @@ select.stg-input { cursor: pointer; }
 .wr-photo-tag span { color: var(--text2); }
 .wr-photo-product { width: 100%; max-height: 190px; object-fit: contain; border-radius: 10px; background: #fff; }
 .wr-photo-lens.drawing, .wr-photo-overview.drawing { background: #fff; }
+
+/* Wiring emulator — Pair & save */
+.wr-pair-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.wr-pair-tabs button { padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: inherit; cursor: pointer; font-size: 12px; }
+.wr-pair-tabs button.on { background: var(--green); border-color: var(--green); color: #fff; font-weight: 600; }
+.wr-pair-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+.wr-pair-row .stg-input { flex: 1; min-width: 120px; }
+.wr-pair-status { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--text) 6%, transparent); font-size: 13px; margin: 6px 0; }
+.wr-pair-status.done, .wr-pair-status.excluded { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+.wr-pair-status.failed { background: color-mix(in srgb, var(--red) 14%, transparent); color: var(--red); }
+.wr-pair-spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: wr-spin 0.8s linear infinite; flex: none; }
+@keyframes wr-spin { to { transform: rotate(360deg); } }
+.wr-pair-dsk { font-size: 12px; word-break: break-all; }
+.wr-pair-dsk b { color: var(--green); letter-spacing: 1px; }
+.wr-pair-found { display: grid; gap: 3px; font-size: 13px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); margin: 6px 0; }
+.wr-pair-found code, .wr-pair-link code { font-size: 12px; }
+.wr-pair-save { margin-top: 6px; }
+.wr-pair-link { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.wr-pair-opt { display: flex; gap: 8px; align-items: center; font-size: 13px; margin: 4px 0; cursor: pointer; }

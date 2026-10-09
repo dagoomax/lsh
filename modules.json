@@ -120,6 +120,7 @@
     "src/routes/vrm.js",
     "src/routes/waveshare.js",
     "src/routes/webrtc-whep.js",
+    "src/routes/wiring-pair.js",
     "src/routes/wled.js",
     "src/routes/yale.js",
     "src/rtsp-backchannel.js",
@@ -128,7 +129,8 @@
     "src/simulator-manager.js",
     "src/system-metrics-client.js",
     "src/vrm-client.js",
-    "src/websocket.js"
+    "src/websocket.js",
+    "src/wiring-links.js"
   ],
   "modules": {
     "satel": {

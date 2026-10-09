@@ -7,6 +7,7 @@ import WiringCanvas, { wagoGeo } from '../wiring/WiringCanvas.jsx'
 import { t } from '../wiring/i18n.js'
 import WiringInfo from '../wiring/WiringInfo.jsx'
 import ModulePhoto from '../wiring/ModulePhoto.jsx'
+import PairPanel from '../wiring/PairPanel.jsx'
 import { getLang } from '../../../i18n'
 
 const NONE = []
@@ -273,6 +274,8 @@ export default function WiringSection() {
               {findings.map((f, i) => <div key={i} className={`wr-f ${f.level}`}>{f.level === 'danger' ? '⚠ ' : f.level === 'warn' ? '△ ' : 'ℹ '}{f.text}</div>)}
             </div>
           )}
+
+          <PairPanel device={device} scenario={scenario}/>
 
           <div className="wr-panel">
             <div className="ble-dd-title">{t('Tools to mount it')}</div>

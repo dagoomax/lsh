@@ -55,3 +55,13 @@ It is a simplified practice tool — no currents, cable lengths or load limits. 
 2. Add a device to `wiring/devices.js`: terminals (with `role`: `L`, `N`, `in`, `out`, `sx`, `com`, `dcplus`, `dcminus`), `bridges`, `power` (`{ L, N }` or `{ dc: { plus, minus } }`), `inputs` (reference `L`, `Sx`, `GND` or `V+`), `channels` (`out`, or potential-free `com` / `no` / `nc`) or `shutter` (also per scenario), `specs`, `rules`, and one `scenario` per manual diagram (parts + wires).
 3. Add every new phrase to the phrase book (`wiring/i18n-dict*.js`, 6 languages).
 4. `npm test` — every diagram must pass its own check, power up without danger findings, have a working wall-box plan, and every phrase must be translated.
+
+## Pair & save
+
+When the module is wired, the **Pair & save** panel pairs it with the real network and stores which physical device it is:
+
+- **Z-Wave network** (Z-Wave modules) — through **Z-Wave JS** (`config.zwaveJs`). *Include* starts inclusion (S2 by default; untick for insecure), you press the module's button, LSH grants the security classes it asks for, and you type the **PIN** — the first 5 digits of the DSK on the module's label. When the interview finishes the node id, the manufacturer / product ids it reports and the real id `zwave:<homeId>:<nodeId>` are shown. *Exclude* removes a module (needed before re-pairing one that was in another network).
+- **Wi-Fi / LAN** (SmartBob, GA thermostat, …) — connect it to Wi-Fi with its own app first, then *Find* it by IP. Shelly devices are recognised (model, MAC, firmware) and can be added to LSH's Shelly integration straight away; anything else is identified by its MAC from the host's ARP table. Real id: `mac:<MAC>` (or `host:<ip>` if the MAC can't be read).
+- **Already in LSH** — paired with another gateway (Fibaro HC, Homey, Home Assistant, SmartThings…)? Pick the device LSH has for it; its device key is the real id.
+
+*Save with real id* writes the link (module, diagram, gateway, real id, LSH device, name, room) to `persist/wiring-links.json` and applies the name / room to the LSH device. Saving the same real device again replaces its link; removing a link leaves the device paired. API: `GET /api/wiring/gateways`, `POST /api/wiring/zwave/include|exclude|stop|pin`, `GET /api/wiring/zwave/status`, `POST /api/wiring/lan/probe`, `GET|POST /api/wiring/links`, `DELETE /api/wiring/links/:id`. Test without a stick: `node scripts/zwave-js-simulator.js 3000` (joining device's PIN 12345) with `"zwaveJs": { "host": "127.0.0.1", "port": 3000 }`.
