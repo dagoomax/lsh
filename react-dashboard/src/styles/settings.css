@@ -857,6 +857,10 @@ select.stg-input { cursor: pointer; }
 .wr-heat { fill: none; stroke: var(--text3); stroke-width: 2; }
 .wr-load.on .wr-din-body { fill: color-mix(in srgb, #ff453a 30%, transparent); stroke: #ff453a; filter: drop-shadow(0 0 8px color-mix(in srgb, #ff453a 60%, transparent)); }
 .wr-load.on .wr-heat { stroke: #ff453a; }
+.wr-ufh.on .wr-din-body { stroke: #ff9f0a; }
+.wr-actuator.on .wr-din-body { fill: color-mix(in srgb, #ff9f0a 28%, transparent); stroke: #ff9f0a; filter: drop-shadow(0 0 8px color-mix(in srgb, #ff9f0a 55%, transparent)); }
+.wr-thermo { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.wr-thermo .lan-kind.on { background: color-mix(in srgb, #ff9f0a 22%, transparent); color: #ff9f0a; }
 .wr-term-label.role-dcplus { fill: #ff3b30; } .wr-terms b.role-dcplus { color: #ff3b30; }
 .wr-term-label.role-com { fill: var(--text); }
 .wr-swatch.sw-red { background: #ff3b30; }

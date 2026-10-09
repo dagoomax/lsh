@@ -41,13 +41,15 @@ export const usesPE = (scenario) => scenario.parts.some((p) => p.kind === 'motor
 // A scenario can program a controller differently (e.g. two relays as a blind)
 export const shutterOf = (device, scenario) => scenario?.shutter || device.shutter || null
 export const channelsOf = (device, scenario) => (scenario?.shutter ? [] : device.channels || [])
-const LOADS = new Set(['lamp', 'load'])
+const LOADS = new Set(['lamp', 'load', 'actuator'])
 
 // Initial device state for a scenario
 export function initialState(device, scenario) {
   return {
     channels: Object.fromEntries((device.channels || []).map((c) => [c.id, false])),
     level: 100,
+    // Room thermostats: room temperature vs. setpoint drives the relay
+    room: scenario?.room ?? 19, setpoint: scenario?.setpoint ?? 21,
     shutter: shutterOf(device, scenario) ? { dir: null } : null,
     prevInputs: {},
   }
@@ -70,6 +72,14 @@ function buildNets(device, scenario, wires, switches, state, powered, extras = [
   for (const p of scenario.parts) {
     if (p.kind === 'breaker') uf.union(`${p.id}:in`, `${p.id}:out`)
     if (p.kind === 'contactor' && contactors[p.id]) uf.union(`${p.id}:l1`, `${p.id}:t1`)
+    // UFH wiring centre zone: the zone's N / L terminals are fed from the
+    // centre's own supply; its L1 (heat demand) drives that zone's actuator
+    // outputs, whose N terminals are the centre's neutral bar
+    if (p.kind === 'ufh') {
+      uf.union(`${p.id}:pl`, `${p.id}:l`)
+      for (const q of ['n', 'o1n', 'o2n']) uf.union(`${p.id}:pn`, `${p.id}:${q}`)
+      for (const q of ['o1l', 'o2l']) uf.union(`${p.id}:l1`, `${p.id}:${q}`)
+    }
   }
   // Relay outputs: tied to the live terminal, or potential-free COM–NO / COM–NC
   const live = device.power.L ? `dev:${device.power.L}` : null
@@ -78,7 +88,11 @@ function buildNets(device, scenario, wires, switches, state, powered, extras = [
     if (on && powered) uf.union(`dev:${o.com}`, `dev:${o.no}`)
     else if (o.nc) uf.union(`dev:${o.com}`, `dev:${o.nc}`)
   }
-  for (const c of channelsOf(device, scenario)) close(c.out ?? c, !!state.channels[c.id])
+  for (const c of channelsOf(device, scenario)) {
+    close(c.out ?? c, !!state.channels[c.id])
+    // Changeover output tied to live: NC is live while the relay is off
+    if (c.ncOut && !state.channels[c.id] && powered && live) uf.union(`dev:${c.ncOut}`, live)
+  }
   const sh = shutterOf(device, scenario)
   if (sh) { close(sh.up, state.shutter?.dir === 'up'); close(sh.down, state.shutter?.dir === 'down') }
   return uf
@@ -183,6 +197,13 @@ export function stepDevice(device, scenario, state, inputs) {
   const next = { ...state, channels: { ...state.channels }, shutter: state.shutter ? { ...state.shutter } : null, prevInputs: { ...inputs } }
   const mode = scenario.inputMode || 'momentary'
   for (const c of channelsOf(device, scenario)) {
+    if (c.thermostat) {
+      // Heat on below setpoint − 0.25 °C, off above setpoint + 0.25 °C
+      const on = next.channels[c.id]
+      if (!on && state.room <= state.setpoint - 0.25) next.channels[c.id] = true
+      else if (on && state.room >= state.setpoint + 0.25) next.channels[c.id] = false
+      continue
+    }
     const now = !!inputs[c.in], was = !!prev[c.in]
     if (mode === 'momentary' ? now && !was : now !== was) next.channels[c.id] = !next.channels[c.id]
   }
@@ -385,6 +406,10 @@ export function portName(device, scenario, port, extras = []) {
   if (owner === 'dev') return t('terminal {t}', { t: labelOf(device, q) })
   const part = [...scenario.parts, ...extras].find((p) => p.id === owner)
   if (part?.kind === 'wago') return part.label ? t('{label} connector ({model}) port {n}', { label: t(part.label), model: part.model || `${part.poles}`, n: q.slice(1) }) : t('connector ({model}) port {n}', { model: part.model || `${part.poles}`, n: q.slice(1) })
+  if (part?.kind === 'ufh') {
+    const u = { pl: t('supply L'), pn: t('supply N'), n: t('zone 1 input N'), l: t('zone 1 input L'), l1: t('zone 1 input L1 (heat demand)'), o1n: t('zone 1 output N (actuator 1)'), o1l: t('zone 1 output L1 (actuator 1)'), o2n: t('zone 1 output N (actuator 2)'), o2l: t('zone 1 output L1 (actuator 2)') }
+    return t('{part}: {port}', { part: t(part.label), port: u[q] || q })
+  }
   const names = { vdd: t('supply (red)'), dq: t('data (DQ)'), gnd: t('ground'), in: t('in'), out: t('out'), a1: 'A1', a2: 'A2', l1: t('contact 1 (L1)'), t1: t('contact 2 (T1)'), plus: '+24 V', minus: '0 V', com: t('common'), o1: part?.keys?.[0] ? t('{k} contact', { k: part.keys[0] }) : t('contact 1'), o2: part?.keys?.[1] ? t('{k} contact', { k: part.keys[1] }) : t('contact 2'), a: t('terminal 1'), b: t('terminal 2'), up: t('up wire'), down: t('down wire'), n: t('neutral'), pe: t('earth'), l: t('live') }
   return t('{part}: {port}', { part: t(part?.label) || owner, port: part?.kind === 'switch' && q === 'o1' ? t('contact') : names[q] || q })
 }

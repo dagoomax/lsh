@@ -8,7 +8,9 @@ import { t } from './i18n.js'
 //
 // Ports: mains 'L' | 'N' | 'PE' · device terminals 'dev:<id>' ·
 // parts '<part>:<port>' — switch: com, o1 · switch2: com, o1, o2 ·
-// lamp: a, b · motor: up, down, n, pe · motorDriver: l, n, up, down, pe
+// lamp: a, b · motor: up, down, n, pe · motorDriver: l, n, up, down, pe ·
+// actuator: a, b · ufh (wiring centre zone): pl, pn supply; n, l, l1 zone
+// input; o1l/o1n, o2l/o2n actuator outputs
 
 export const DEVICES = [
   {
@@ -312,6 +314,91 @@ export const DEVICES = [
         wires: [['L', 'psu1:l'], ['N', 'psu1:n'], ['psu1:plus', 'dev:P'], ['psu1:minus', 'dev:G'], ['psu1:minus', 'sw1:com'], ['sw1:o1', 'dev:IN1'], ['L', 'cb1:in'], ['cb1:out', 'dev:C1'], ['dev:NO1', 'km1:a1'], ['km1:a2', 'N'], ['L', 'cb2:in'], ['cb2:out', 'km1:l1'], ['km1:t1', 'load1:a'], ['load1:b', 'N']] },
     ],
   },
+  {
+    id: 'thermostat-ga1', manual: 'thermostat-ga-ufh-wiring', manufacturer: 'Thermostat', model: 'GA-1', name: 'GA-1 (water heating)', kind: 'thermostat', color: '#ff9f0a', protocol: 'Wi-Fi',
+    // From the thermostat's printed sheet (GA = water heating) and the wiring
+    // centre installation drawing: the thermostat takes L / N from zone 1's
+    // input and returns the switched live to that zone's L1.
+    terminals: [
+      { id: 'L', label: '1 L', role: 'L', desc: 'Terminal 1 — live supply in (100–240 V)' },
+      { id: 'N', label: '2 N', role: 'N', desc: 'Terminal 2 — neutral in' },
+      { id: 'N1', label: '3 N1', role: 'N', desc: 'Terminal 3 — neutral out, for the actuator' },
+      { id: 'L1', label: '4 L1', role: 'out', desc: 'Terminal 4 — switched live out: live while heating (max 3 A)' },
+      { id: 'RT6', label: '6 RT', role: 'sensor', desc: 'Terminal 6 — external / floor sensor (optional)' },
+      { id: 'RT7', label: '7 RT', role: 'sensor', desc: 'Terminal 7 — external / floor sensor (optional)' },
+    ],
+    bridges: [['N', 'N1']],
+    power: { L: 'L', N: 'N' },
+    channels: [{ id: 'heat', out: 'L1', thermostat: true, label: 'Heating' }],
+    // Terminal diagram from the printed sheet (photo supplied by the owner), kept
+    // in the private manuals repo and loaded on demand. Boxes: pixels on 710×345.
+    photo: {
+      manual: 'thermostat-ga-terminals', w: 710, h: 345, view: 'drawing', credit: 'Terminal diagram: the thermostat’s printed sheet',
+      regions: { L: { box: [78, 100, 106, 262], term: 'L' }, N: { box: [106, 100, 138, 262], term: 'N' }, N1: { box: [138, 110, 172, 262], term: 'N1' }, L1: { box: [172, 110, 206, 262], term: 'L1' }, RT6: { box: [238, 192, 332, 228], term: 'RT6' }, RT7: { box: [238, 228, 332, 264], term: 'RT7' } },
+      terminals: { L: 'L', N: 'N', N1: 'N1', L1: 'L1', RT6: 'RT6', RT7: 'RT7' },
+    },
+    specs: [['Supply', 'AC 100–240 V'], ['Output', '3 A, 230 V'], ['Use', 'GA = water heating (UFH actuators, valves)'], ['External sensor', 'RT terminals 6 / 7 (optional)']],
+    rules: [
+      'Isolate the circuit (and the wiring centre) before wiring.',
+      'Terminals 1 L and 2 N are the thermostat’s 100–240 V supply; never swap L and N.',
+      'The output is rated 3 A: switch thermoelectric actuators or a wiring centre input, not a pump, boiler or heating mat directly — use a contactor for bigger loads.',
+      'Wiring centre: take L and N for the thermostat from the zone’s input terminals and bring the switched output back to that zone’s L1 terminal.',
+      'Each zone output (N + L1 pair) drives one 230 V thermoelectric actuator; zone outputs are paralleled inside the wiring centre.',
+      'The RT terminals (6, 7) are only for the optional external / floor sensor — never connect mains to them.',
+    ],
+    tools: [
+      { id: 'flat', text: 'Small flat screwdriver (2.5 mm) for the thermostat’s terminal block' },
+      { id: 'box60', text: 'Standard 60 mm wall box behind the thermostat' },
+    ],
+    scenarios: [
+      { id: 'ufh', title: 'Wiring centre, zone 1 (two actuators)', room: 19, setpoint: 21, terminals: ['L', 'N', 'N1', 'L1'],
+        parts: [{ id: 'ufh1', kind: 'ufh', label: 'UFH wiring centre' }, { id: 'act1', kind: 'actuator', label: 'Actuator 1 (230 V, NC)' }, { id: 'act2', kind: 'actuator', label: 'Actuator 2 (230 V, NC)' }],
+        wires: [['L', 'ufh1:pl'], ['N', 'ufh1:pn'], ['ufh1:l', 'dev:L'], ['ufh1:n', 'dev:N'], ['dev:L1', 'ufh1:l1'], ['ufh1:o1l', 'act1:a'], ['ufh1:o1n', 'act1:b'], ['ufh1:o2l', 'act2:a'], ['ufh1:o2n', 'act2:b']] },
+      { id: 'direct', title: 'Actuator straight on the thermostat', room: 19, setpoint: 21, terminals: ['L', 'N', 'N1', 'L1'],
+        parts: [{ id: 'act1', kind: 'actuator', label: 'Actuator (230 V, NC)' }],
+        wires: [['L', 'dev:L'], ['N', 'dev:N'], ['dev:L1', 'act1:a'], ['dev:N1', 'act1:b']] },
+    ],
+  },
+  {
+    id: 'thermostat-ga2', manual: 'thermostat-ga-ufh-wiring', manufacturer: 'Thermostat', model: 'GA-2', name: 'GA-2 (water heating)', kind: 'thermostat', color: '#ff9f0a', protocol: 'Wi-Fi',
+    // GA-2: changeover output — NO is live while heating, NC while not
+    terminals: [
+      { id: 'L', label: '1 L', role: 'L', desc: 'Terminal 1 — live supply in (100–240 V)' },
+      { id: 'N', label: '2 N', role: 'N', desc: 'Terminal 2 — neutral in' },
+      { id: 'N1', label: '3 N1', role: 'N', desc: 'Terminal 3 — neutral out, for the actuator' },
+      { id: 'NO', label: '4 NO', role: 'out', desc: 'Terminal 4 — NO: live while heating (normally-closed actuators, wiring centre L1)' },
+      { id: 'NC', label: '5 NC', role: 'out', desc: 'Terminal 5 — NC: live while not heating (normally-open actuators / valves)' },
+    ],
+    bridges: [['N', 'N1']],
+    power: { L: 'L', N: 'N' },
+    channels: [{ id: 'heat', out: 'NO', ncOut: 'NC', thermostat: true, label: 'Heating' }],
+    photo: {
+      manual: 'thermostat-ga-terminals', w: 710, h: 345, view: 'drawing', credit: 'Terminal diagram: the thermostat’s printed sheet',
+      regions: { L: { box: [436, 100, 470, 262], term: 'L' }, N: { box: [470, 100, 503, 262], term: 'N' }, N1: { box: [503, 100, 536, 262], term: 'N1' }, NO: { box: [536, 118, 568, 262], term: 'NO' }, NC: { box: [568, 118, 601, 262], term: 'NC' } },
+      terminals: { L: 'L', N: 'N', N1: 'N1', NO: 'NO', NC: 'NC' },
+    },
+    specs: [['Supply', 'AC 100–240 V'], ['Output', '3 A, 230 V'], ['Use', 'GA = water heating (UFH actuators, valves)'], ['External sensor', 'RT terminals 6 / 7 (optional)']],
+    rules: [
+      'Isolate the circuit (and the wiring centre) before wiring.',
+      'Terminals 1 L and 2 N are the thermostat’s 100–240 V supply; never swap L and N.',
+      'The output is rated 3 A: switch thermoelectric actuators or a wiring centre input, not a pump, boiler or heating mat directly — use a contactor for bigger loads.',
+      'Wiring centre: take L and N for the thermostat from the zone’s input terminals and bring the switched output back to that zone’s L1 terminal.',
+      'Each zone output (N + L1 pair) drives one 230 V thermoelectric actuator; zone outputs are paralleled inside the wiring centre.',
+      'The RT terminals (6, 7) are only for the optional external / floor sensor — never connect mains to them.',
+    ],
+    tools: [
+      { id: 'flat', text: 'Small flat screwdriver (2.5 mm) for the thermostat’s terminal block' },
+      { id: 'box60', text: 'Standard 60 mm wall box behind the thermostat' },
+    ],
+    scenarios: [
+      { id: 'ufh', title: 'Wiring centre, zone 1 (two actuators)', room: 19, setpoint: 21, terminals: ['L', 'N', 'N1', 'NO', 'NC'],
+        parts: [{ id: 'ufh1', kind: 'ufh', label: 'UFH wiring centre' }, { id: 'act1', kind: 'actuator', label: 'Actuator 1 (230 V, NC)' }, { id: 'act2', kind: 'actuator', label: 'Actuator 2 (230 V, NC)' }],
+        wires: [['L', 'ufh1:pl'], ['N', 'ufh1:pn'], ['ufh1:l', 'dev:L'], ['ufh1:n', 'dev:N'], ['dev:NO', 'ufh1:l1'], ['ufh1:o1l', 'act1:a'], ['ufh1:o1n', 'act1:b'], ['ufh1:o2l', 'act2:a'], ['ufh1:o2n', 'act2:b']] },
+      { id: 'direct', title: 'Actuator straight on the thermostat', room: 19, setpoint: 21, terminals: ['L', 'N', 'N1', 'NO', 'NC'],
+        parts: [{ id: 'act1', kind: 'actuator', label: 'Actuator (230 V, NC)' }],
+        wires: [['L', 'dev:L'], ['N', 'dev:N'], ['dev:NO', 'act1:a'], ['dev:N1', 'act1:b']] },
+    ],
+  },
 ]
 
 export const PART_PORTS = {
@@ -325,6 +412,8 @@ export const PART_PORTS = {
   contactor: ['a1', 'a2', 'l1', 't1'],
   load: ['a', 'b'],
   ds18b20: ['vdd', 'dq', 'gnd'],
+  actuator: ['a', 'b'],
+  ufh: ['pl', 'pn', 'o1l', 'o1n', 'o2l', 'o2n', 'n', 'l', 'l1'],
 }
 
 // Ports of any part, including connectors (p1…pN, all joined inside)

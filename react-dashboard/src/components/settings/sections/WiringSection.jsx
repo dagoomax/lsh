@@ -202,7 +202,14 @@ export default function WiringSection() {
           )}
           <div className="wr-controls">
             <button className={`wr-power${power ? ' on' : ''}`} onClick={() => { setTripped(null); setPower(!power) }}>{power ? `⏻ ${t('Power on')}` : `⏻ ${t('Power off')}`}</button>
-            {power && sim?.powered && channelsOf(device, scenario).filter((c) => !scenario.terminals || scenario.terminals.includes(c.com ?? c.out)).map((c) => (
+            {power && sim?.powered && channelsOf(device, scenario).filter((c) => c.thermostat).map((c) => (
+              <span key={c.id} className="wr-thermo">
+                <label className="wr-level">{t('Room')} <input type="range" min="10" max="30" step="0.5" value={stateRef.current.room} onChange={(e) => remote((s) => ({ ...s, room: Number(e.target.value) }))}/> {stateRef.current.room.toFixed(1)} °C</label>
+                <label className="wr-level">{t('Setpoint')} <input type="range" min="5" max="30" step="0.5" value={stateRef.current.setpoint} onChange={(e) => remote((s) => ({ ...s, setpoint: Number(e.target.value) }))}/> {stateRef.current.setpoint.toFixed(1)} °C</label>
+                <span className={`lan-kind${stateRef.current.channels[c.id] ? ' on' : ''}`}>🔥 {t(c.label)}: {stateRef.current.channels[c.id] ? t('ON') : t('OFF')}</span>
+              </span>
+            ))}
+            {power && sim?.powered && channelsOf(device, scenario).filter((c) => !c.thermostat && (!scenario.terminals || scenario.terminals.includes(c.com ?? c.out))).map((c) => (
               <button key={c.id} className={`wr-zw${stateRef.current.channels[c.id] ? ' on' : ''}`} onClick={() => remote((s) => ({ ...s, channels: { ...s.channels, [c.id]: !s.channels[c.id] } }))}>
                 {remoteName} · {t(c.label)}: {stateRef.current.channels[c.id] ? t('ON') : t('OFF')}
               </button>
@@ -286,7 +293,7 @@ export default function WiringSection() {
               {device.terminals.map((x) => <div key={x.id}><b className={`role-${x.role}`}>{x.label}</b> {t(x.desc)}</div>)}
             </div>
             <div className="stg-actions" style={{ marginTop: 8 }}>
-              <a className="stg-btn stg-btn-secondary" href={manualUrl} target="_blank" rel="noopener noreferrer">📄 {t('Open the manual')}</a>
+              {device.manual && <a className="stg-btn stg-btn-secondary" href={manualUrl} target="_blank" rel="noopener noreferrer">📄 {t('Open the manual')}</a>}
             </div>
           </div>
         </aside>

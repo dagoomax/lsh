@@ -235,3 +235,35 @@ test('photos: every device has one, and every terminal a diagram uses maps to a 
     for (const r of Object.values(d.photo.regions)) { const [a, b, c, e] = r.box; assert.ok(a < c && b < e && c <= d.photo.w && e <= d.photo.h, `${d.id}: bad box`) }
   }
 })
+
+test('room thermostat GA-1 / GA-2 on a UFH wiring centre: setpoint drives the zone actuators', async () => {
+  const { sim, dev } = await load()
+  const d = dev('thermostat-ga1'), s = d.scenarios.find((x) => x.id === 'ufh')
+  let st = sim.initialState(d, s) // room 19 °C, setpoint 21 °C
+  let r = sim.simulate(d, s, s.wires, {}, st)
+  assert.equal(r.powered, true)
+  assert.equal(r.state.channels.heat, true, 'below setpoint → heat demand')
+  r = sim.simulate(d, s, s.wires, {}, r.state)
+  assert.equal(r.lamps.act1, 1); assert.equal(r.lamps.act2, 1)
+  // Warm room → relay drops, actuators close
+  r = sim.simulate(d, s, s.wires, {}, { ...r.state, room: 21.5 })
+  r = sim.simulate(d, s, s.wires, {}, r.state)
+  assert.equal(r.state.channels.heat, false)
+  assert.equal(r.lamps.act1, 0)
+  // Hysteresis: 21.1 °C keeps it off, 20.7 °C turns it back on
+  r = sim.simulate(d, s, s.wires, {}, { ...r.state, room: 21.1 }); assert.equal(r.state.channels.heat, false)
+  r = sim.simulate(d, s, s.wires, {}, { ...r.state, room: 20.7 }); assert.equal(r.state.channels.heat, true)
+  // Output wired to the zone's N instead of L1 → short when it switches on
+  const bad = s.wires.map(([a, b, m]) => (a === 'dev:L1' ? ['dev:L1', 'ufh1:n', m] : [a, b, m]))
+  assert.ok(sim.simulate(d, s, bad, {}, sim.initialState(d, s)).findings.some((f) => /connected to neutral/.test(f.text)))
+
+  // GA-2: NO live while heating, NC live while not
+  const d2 = dev('thermostat-ga2'), s2 = d2.scenarios.find((x) => x.id === 'direct')
+  const nc = [...s2.wires, ['dev:NC', 'act1:a']].filter(([a]) => a !== 'dev:NO')
+  let r2 = sim.simulate(d2, s2, nc, {}, { ...sim.initialState(d2, s2), room: 23 })
+  r2 = sim.simulate(d2, s2, nc, {}, r2.state)
+  assert.equal(r2.state.channels.heat, false); assert.equal(r2.lamps.act1, 1, 'NC live while not heating')
+  r2 = sim.simulate(d2, s2, nc, {}, { ...r2.state, room: 18 })
+  r2 = sim.simulate(d2, s2, nc, {}, r2.state)
+  assert.equal(r2.lamps.act1, 0)
+})

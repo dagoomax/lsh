@@ -37,6 +37,11 @@ export function layout(device, scenario) {
     if (p.kind === 'psu') { geo.box = { x0: cx - 40, x1: cx + 40, y0: 184, y1: 272 }; geo.ports = { l: [cx - 20, 170], n: [cx + 20, 170], plus: [cx - 20, 288], minus: [cx + 20, 288] } }
     if (p.kind === 'contactor') { geo.box = { x0: cx - 40, x1: cx + 40, y0: 180, y1: 276 }; geo.ports = { l1: [cx - 20, 166], t1: [cx - 20, 290], a1: [cx + 10, 290], a2: [cx + 28, 290] } }
     if (p.kind === 'ds18b20') { geo.box = { x0: cx - 34, x1: cx + 34, y0: 196, y1: 250 }; geo.ports = { vdd: [cx - 16, 284], dq: [cx, 284], gnd: [cx + 16, 284] } }
+    if (p.kind === 'actuator') { geo.box = { x0: cx - 36, x1: cx + 36, y0: 190, y1: 266 }; geo.ports = { b: [cx + 14, 174], a: [cx - 14, 174] } }
+    if (p.kind === 'ufh') {
+      geo.box = { x0: cx - 108, x1: cx + 108, y0: 178, y1: 278 }
+      geo.ports = { pl: [cx - 92, 162], pn: [cx - 70, 162], o1n: [cx - 18, 162], o1l: [cx + 4, 162], o2n: [cx + 44, 162], o2l: [cx + 66, 162], n: [cx - 26, 294], l: [cx, 294], l1: [cx + 26, 294] }
+    }
     if (p.kind === 'load') { geo.box = { x0: cx - 32, x1: cx + 32, y0: 194, y1: 262 }; geo.ports = { b: [cx, 174], a: [cx, 280] } }
     if (p.kind === 'motorDriver') { geo.box = { x0: cx - 56, x1: cx + 56, y0: 186, y1: 272 }; geo.ports = { l: [cx - 34, 172], n: [cx - 10, 172], pe: [cx + 34, 172], up: [cx - 16, 288], down: [cx + 16, 288] } }
     parts[p.id] = geo
@@ -295,6 +300,37 @@ export default function WiringCanvas({ device, scenario, wires, extras = [], tem
               <text x={g.cx + 49} y={b.y0 + 19} className="wr-ds-temp">{online ? `${temp.toFixed(1)} °C` : '— °C'}</text>
               <text x={g.cx - 16} y={b.y1 + 26} className="wr-din-pin">V</text><text x={g.cx} y={b.y1 + 26} className="wr-din-pin">DQ</text><text x={g.cx + 16} y={b.y1 + 26} className="wr-din-pin">G</text>
               <text x={g.cx} y={b.y0 - 8} className="wr-part-label">{t(p.label)}</text>
+            </g>
+          )
+        }
+        if (p.kind === 'ufh') {
+          const b = g.box
+          const demand = sim?.nets && sim.nets.find(`${p.id}:l1`) === sim.L
+          const pin = (q, txt) => <text key={q} x={g.ports[q][0]} y={g.ports[q][1] < g.cy ? b.y0 + 13 : b.y1 - 5} className="wr-din-pin">{txt}</text>
+          return (
+            <g key={p.id} className={`wr-part wr-din wr-ufh${demand ? ' on' : ''}`}>
+              {Object.entries(g.ports).map(([q, [x, y]]) => <line key={q} x1={x} x2={x} y1={y} y2={y < g.cy ? b.y0 : b.y1}/>)}
+              <rect x={b.x0} y={b.y0} width={b.x1 - b.x0} height={b.y1 - b.y0} rx="12" className="wr-din-body"/>
+              {pin('pl', 'L')}{pin('pn', 'N')}{pin('o1n', 'N')}{pin('o1l', 'L1')}{pin('o2n', 'N')}{pin('o2l', 'L1')}{pin('n', 'N')}{pin('l', 'L')}{pin('l1', 'L1')}
+              <text x={g.cx - 81} y={b.y0 + 28} className="wr-din-pin">230 V</text>
+              <text x={g.cx + 24} y={b.y0 + 28} className="wr-din-pin">{t('outputs')} 1</text>
+              <text x={g.cx} y={b.y1 - 20} className="wr-din-pin">{t('input')} 1</text>
+              <text x={g.cx} y={g.cy + 2} className="wr-din-text">{t('UFH wiring centre')}</text>
+              <circle cx={g.cx + 70} cy={b.y1 - 12} r="4" className={`wr-led${demand ? ' on' : ''}`}/>
+            </g>
+          )
+        }
+        if (p.kind === 'actuator') {
+          const b = g.box
+          const open = (sim?.lamps?.[p.id] || 0) > 0
+          return (
+            <g key={p.id} className={`wr-part wr-din wr-actuator${open ? ' on' : ''}`}>
+              {Object.entries(g.ports).map(([q, [x, y]]) => <line key={q} x1={x} x2={x} y1={y} y2={b.y0}/>)}
+              <rect x={b.x0} y={b.y0} width={b.x1 - b.x0} height={b.y1 - b.y0 - 22} rx="8" className="wr-din-body"/>
+              <path d={`M ${g.cx - 18} ${b.y1 - 16} h 36 M ${g.cx - 18} ${b.y1 - 4} h 36 M ${g.cx} ${b.y1 - 22} V ${open ? b.y1 - 22 : b.y1 - 10}`} className="wr-contact"/>
+              <text x={g.cx - 14} y={b.y0 + 13} className="wr-din-pin">L</text><text x={g.cx + 14} y={b.y0 + 13} className="wr-din-pin">N</text>
+              <text x={g.cx} y={b.y0 + 34} className="wr-din-pin">{open ? t('open') : t('closed')}</text>
+              <text x={g.cx} y={b.y1 + 16} className="wr-part-label">{t(p.label)}</text>
             </g>
           )
         }

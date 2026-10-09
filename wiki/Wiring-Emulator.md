@@ -16,7 +16,10 @@ A wiring assistant and circuit emulator for Z-Wave in-wall modules. Diagrams, te
 | FIBARO Roller Shutter 3 (FGR-223) | standard blind motor · blind with built-in driver |
 | Shelly Qubino Wave 1PM | toggle switch · push-button |
 | Shelly Qubino Wave 2PM | two toggle switches · two push-buttons |
+| Room thermostat GA-1 / GA-2 (water heating, 100–240 V, 3 A) | zone 1 of a 230 V underfloor-heating wiring centre with two actuators · actuator straight on the thermostat |
 | SmartBob SM-LITE-1616R (DIN-rail controller, 16 in / 16 relays) | push-button + light (input logic 1 and 2) · roller blind on two relays · load over 2500 W through a contactor · two DS18B20 temperature sensors on 1-Wire |
+
+The GA thermostat diagrams come from its printed sheet (GA-1: 1 L, 2 N in, 3 N1 / 4 L1 out, 6–7 RT sensor; GA-2: 4 NO live while heating, 5 NC live while not) and the wiring-centre drawing: the thermostat takes L and N from zone 1's input and returns the switched live to that zone's L1; the zone's N + L1 output pairs each drive a 230 V thermoelectric actuator. Instead of remote buttons there are **Room** and **Setpoint** sliders — the thermostat calls for heat below setpoint − 0.25 °C and stops above setpoint + 0.25 °C; actuators glow when open.
 
 The SmartBob diagrams come from its installation sheet. Unlike the in-wall modules it has a separate 24 V DC side (supply, inputs switched to 0 V or +24 V) and **potential-free** relay contacts (COM / NO / NC) that you feed from your own breakers. The emulator models the 24 V supply, DIN breakers and a contactor for this, flags 230 V on the 24 V side, DC shorts and reversed polarity, and shows only the terminals each diagram uses. Remote control buttons are labelled LAN instead of Z-Wave. A **Real module** panel shows SmartBob's product photo (bundled with the dashboard, `react-dashboard/public/wiring/`) with the connectors the diagram uses outlined, and a zoom lens on the connector of the current step or the terminal you last clicked. DS18B20 sensors sit in parallel on the 1-Wire bus (interface connector pins 1 supply / 4 data / 5 ground, as in the sheet's example — pin names are read from that drawing); each reads a temperature you set with a slider when it is correctly on the bus, and reversed sensors, a shorted data line and 24 V / 230 V on the 3.3 V interface are flagged.
 
@@ -26,6 +29,7 @@ Every device has a **Real module** panel next to the steps: a zoom lens on the e
 
 - **Shelly Qubino Wave 1PM / 2PM** — the product render, zoomed onto the printed terminal (O · SW · L · N, N · O1 · L · O2 · SW1 · SW2).
 - **FIBARO FGS-213 / FGS-223 / FGD-212 / FGR-223** — the product photo (the terminals are on the back), plus the terminal view from the module's manual for the zoom.
+- **Thermostat GA-1 / GA-2** — the terminal diagram from the printed sheet (owner's photo, private manuals repo, loaded on demand).
 - **SmartBob SM-LITE-1616R** — the product photo, zoomed onto the connector block (relays, inputs, 24 V, interface).
 
 Images are bundled with the dashboard (`react-dashboard/public/wiring/`, ~0.5 MB in total; the owner has the rights to them); terminal boxes live in each device's `photo` entry and a test checks every terminal a diagram uses has one.
