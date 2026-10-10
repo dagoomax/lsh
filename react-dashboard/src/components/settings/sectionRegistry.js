@@ -50,6 +50,7 @@ export const CATEGORIES = [
   { id: 'media', label: 'Media', sections: [
     { id: 'media-all', title: 'Denon, Sony Bravia, Sonos, Google Home', ported: true },
     { id: 'airplay', title: 'AirPlay Speakers', ported: true },
+    { id: 'spotify', title: 'Spotify', ported: true, keywords: ['spotify', 'music', 'playlist', 'playback'] },
   ] },
   { id: 'controllers', label: 'Controllers & Buses', sections: [
     { id: 'loxone', title: 'Loxone Miniserver & Outbound Push', ported: true },

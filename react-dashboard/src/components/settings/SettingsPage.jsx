@@ -38,6 +38,7 @@ import WaveshareSection from './sections/WaveshareSection'
 import SatelSection from './sections/SatelSection'
 import DscSection from './sections/DscSection'
 import HomeAssistantSection from './sections/HomeAssistantSection'
+import SpotifySection from './sections/SpotifySection'
 import TedeeSection from './sections/TedeeSection'
 import SipSection from './sections/SipSection'
 import PagingSection from './sections/PagingSection'
@@ -100,6 +101,7 @@ const SECTION_COMPONENTS = {
   satel: SatelSection,
   dsc: DscSection,
   homeassistant: HomeAssistantSection,
+  spotify: SpotifySection,
   tedee: TedeeSection,
   sip: SipSection,
   paging: PagingSection,

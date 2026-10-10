@@ -40,7 +40,7 @@ function recentFailures(ip, now) {
 
 // API paths that never require authentication (sign-in and first-run setup
 // happen in the React app — LoginScreen / SetupScreen)
-const PUBLIC_API  = ['/api/auth/login', '/api/auth/setup', '/api/webhooks/smartthings'];
+const PUBLIC_API  = ['/api/auth/login', '/api/auth/setup', '/api/webhooks/smartthings', '/api/spotify/oauth/callback'];
 
 function ensurePersist() {
   if (!fs.existsSync(PERSIST_DIR)) fs.mkdirSync(PERSIST_DIR, { recursive: true });

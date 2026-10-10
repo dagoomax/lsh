@@ -4025,6 +4025,20 @@ curl -H 'Authorization: Bearer lsh_xxxx...' \
 
 ---
 
+### Spotify
+
+Spotify Web API (`src/spotify-client.js`, no npm deps). Sign-in uses OAuth **PKCE**, so only a **Client ID** is needed:
+
+1. [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) → **Create app** (API: Web API).
+2. Add the **Redirect URI** that Settings → Media → Spotify shows. Spotify accepts only `https://…` or `http://127.0.0.1:<port>/…` (not `localhost`), so on a plain-http LAN address LSH suggests `http://127.0.0.1:<port>/api/spotify/oauth/callback`. If your browser isn't on the LSH host, that page won't load after you approve — copy its address and paste it into the settings page.
+3. Paste the Client ID, save, **Connect with Spotify**.
+
+```json
+"spotify": { "clientId": "0123456789abcdef0123456789abcdef", "defaultDevice": "Kitchen speaker", "pollInterval": 5 }
+```
+
+The refresh token is stored in `persist/spotify-oauth.json`. Device `spotify/player`: `playing` (toggle), `prev` / `next` (triggers), `volume`, `shuffle`, and labels `track`, `artist`, `album`, `device`, `repeat`. Play with nothing active goes to `defaultDevice`, else the first available device. API: `GET /api/spotify/status`, `/devices`, `/playlists`, `/search?q=`, `POST /api/spotify/play {"uri":"spotify:playlist:…"}`, `POST /api/spotify/transfer {"deviceId":…}`. Controlling playback needs **Spotify Premium**. Test without an account: `node scripts/spotify-simulator.js 8889` with `"apiBase": "http://127.0.0.1:8889/v1", "accountsBase": "http://127.0.0.1:8889"`.
+
 ### Home Assistant
 
 Both ways (`src/homeassistant-client.js`, dep `ws`, installed on demand):

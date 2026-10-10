@@ -1,4 +1,4 @@
-import{r as Ye,l as Yr,j as Y,T as jr}from"./index-DqBL_a5E.js";/**
+import{r as Ye,l as Yr,j as Y,T as jr}from"./index-BuWeo_NF.js";/**
  * Copyright (c) 2014-2024 The xterm.js authors. All rights reserved.
  * @license MIT
  *

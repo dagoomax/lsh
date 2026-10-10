@@ -108,6 +108,7 @@
     "src/routes/somfy-covers.js",
     "src/routes/somfy.js",
     "src/routes/sonos.js",
+    "src/routes/spotify.js",
     "src/routes/suppla.js",
     "src/routes/tariff.js",
     "src/routes/tauron-tariff.js",
@@ -1153,6 +1154,17 @@
       "files": [
         "src/dsc-client.js",
         "src/dsc-itv2.js"
+      ],
+      "deps": {}
+    },
+    "spotify": {
+      "entry": "src/spotify-client.js",
+      "configKeys": [
+        "spotify"
+      ],
+      "when": "(config.spotify?.clientId)",
+      "files": [
+        "src/spotify-client.js"
       ],
       "deps": {}
     },

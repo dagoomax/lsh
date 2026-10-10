@@ -98,6 +98,8 @@ module.exports = [
   // Modbus device emulator — LSH answers Modbus TCP/RTU register queries
   { file: 'modbus-emulator', label: 'ModbusEmu', expose: 'modbusEmu', when: (config) => config.modbusEmu?.enabled },
   { file: 'dsc-client', label: 'DSC', expose: 'dsc', when: (config) => config.dsc?.enabled && (config.dsc?.type2Key || config.dsc?.type1Code) },
+  // Spotify Web API — playback control (OAuth PKCE, only a Client ID needed)
+  { file: 'spotify-client', label: 'Spotify', expose: 'spotify', when: (config) => config.spotify?.clientId },
   // Home Assistant — imports HA entities (WebSocket API) and/or exports LSH devices (MQTT Discovery)
   { file: 'homeassistant-client', label: 'HomeAssistant', expose: 'homeassistant', when: (config) => (config.homeassistant?.url && config.homeassistant?.token) || config.homeassistant?.export?.enabled },
 ];

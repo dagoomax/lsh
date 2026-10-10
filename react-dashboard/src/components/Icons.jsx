@@ -703,6 +703,7 @@ const TYPE_MAP = {
   somfy:        ShutterIcon,
   auxair:       AirCondIcon,
   sonos:        SpeakerIcon,
+  spotify:      SpeakerIcon,
   denon:        DenonIcon,
   arduino:      ArduinoIcon,
   suppla:       SuplaIcon,

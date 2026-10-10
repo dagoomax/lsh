@@ -96,6 +96,7 @@ const ROUTE_GROUPS = [
   require('./routes/dsc'),
   require('./routes/homeassistant'),
   require('./routes/wiring-pair'),
+  require('./routes/spotify'),
 ];
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
