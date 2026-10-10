@@ -704,6 +704,7 @@ const TYPE_MAP = {
   auxair:       AirCondIcon,
   sonos:        SpeakerIcon,
   spotify:      SpeakerIcon,
+  applemusic:   SpeakerIcon,
   denon:        DenonIcon,
   arduino:      ArduinoIcon,
   suppla:       SuplaIcon,

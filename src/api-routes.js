@@ -97,6 +97,7 @@ const ROUTE_GROUPS = [
   require('./routes/homeassistant'),
   require('./routes/wiring-pair'),
   require('./routes/spotify'),
+  require('./routes/apple-music'),
 ];
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {

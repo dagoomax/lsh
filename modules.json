@@ -33,6 +33,7 @@
     "src/routes/agenda.js",
     "src/routes/airly.js",
     "src/routes/airplay.js",
+    "src/routes/apple-music.js",
     "src/routes/arduino.js",
     "src/routes/auth.js",
     "src/routes/automation.js",
@@ -1165,6 +1166,17 @@
       "when": "(config.spotify?.clientId)",
       "files": [
         "src/spotify-client.js"
+      ],
+      "deps": {}
+    },
+    "apple-music": {
+      "entry": "src/apple-music.js",
+      "configKeys": [
+        "appleMusic"
+      ],
+      "when": "(config.appleMusic?.teamId && config.appleMusic?.keyId && (config.appleMusic?.privateKey || config.appleMusic?.keyFile))",
+      "files": [
+        "src/apple-music.js"
       ],
       "deps": {}
     },

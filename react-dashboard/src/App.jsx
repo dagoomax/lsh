@@ -19,11 +19,12 @@ const TerminalPage = lazy(() => import('./components/TerminalPage'))
 const LogsPage  = lazy(() => import('./components/pages/LogsPage'))
 const MqttPage  = lazy(() => import('./components/pages/MqttPage'))
 const FlowsPage = lazy(() => import('./components/pages/FlowsPage'))
+const MusicPage = lazy(() => import('./components/pages/MusicPage'))
 
 // Full-screen views, each with its own URL under /react/ (the server serves
 // index.html for every /react/* path) so they can be bookmarked and the
 // browser back button works.
-const VIEWS = ['dashboard', 'settings', 'wall', 'css-editor', 'claude-code', 'terminal', 'logs', 'mqtt', 'flows']
+const VIEWS = ['dashboard', 'settings', 'wall', 'css-editor', 'claude-code', 'terminal', 'logs', 'mqtt', 'flows', 'music']
 const viewFromPath = () => {
   const seg = window.location.pathname.replace(/^\/react\/?/, '').split('/')[0]
   return VIEWS.includes(seg) ? seg : 'dashboard'
@@ -105,7 +106,7 @@ export default function App() {
     )
   }
 
-  const ToolPage = { logs: LogsPage, mqtt: MqttPage, flows: FlowsPage }[view]
+  const ToolPage = { logs: LogsPage, mqtt: MqttPage, flows: FlowsPage, music: MusicPage }[view]
   if (ToolPage) {
     return (
       <div style={{ height:'100%', background:'var(--bg)', overflow:'hidden' }}>

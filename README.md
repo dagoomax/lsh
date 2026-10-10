@@ -4025,6 +4025,18 @@ curl -H 'Authorization: Bearer lsh_xxxx...' \
 
 ---
 
+### Apple Music
+
+Apple has no API to control the Music app, iPhones or HomePods remotely, so Apple Music in LSH **plays in the browser**: the **Music** page (`/react/music`) runs Apple's MusicKit JS, signed in with the listener's Apple ID (full tracks need an Apple Music subscription; otherwise 30-second previews). LSH (`src/apple-music.js`) holds the MusicKit key and signs the developer token (ES256 JWT, 12 h, cached).
+
+Needs a paid Apple Developer membership: create a **Media ID** with MusicKit, then a **Key** with Media Services → download the `.p8`, note the Key ID and your Team ID. Paste them in Settings → Media → Apple Music (it checks the token against Apple).
+
+```json
+"appleMusic": { "teamId": "ABCDE12345", "keyId": "KEY1234567", "privateKey": "-----BEGIN PRIVATE KEY-----\n…", "storefront": "pl" }
+```
+
+(`keyFile` can point to the `.p8` instead of `privateKey`.) While a Music page is open somewhere it reports to LSH every 2 s and appears as the device `applemusic/player` — `playing`, `prev` / `next`, `volume`, labels `track`, `artist`, `album`, `device` — so dashboards and flows can control it (commands reach the page on its next report; the most recently active page wins). `POST /api/apple-music/play {"kind":"playlist","id":"pl.…"}` starts a song / album / playlist / station there. `GET /api/apple-music/status`.
+
 ### Spotify
 
 Spotify Web API (`src/spotify-client.js`, no npm deps). Sign-in uses OAuth **PKCE**, so only a **Client ID** is needed:

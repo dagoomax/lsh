@@ -70,3 +70,27 @@
   .mqtt-layout { flex-direction: column; }
   .mqtt-side { width: auto; max-width: none; max-height: 45%; border-right: none; border-bottom: 0.5px solid var(--sep); }
 }
+
+/* Music (Apple Music player) */
+.am-page { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.am-empty { text-align: center; padding: 60px 16px; }
+.am-np { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; padding: 18px; border-radius: 18px; border: 1px solid var(--border); background: linear-gradient(135deg, color-mix(in srgb, #fa2d48 10%, transparent), transparent 60%); }
+.am-np.playing { border-color: color-mix(in srgb, #fa2d48 60%, var(--border)); }
+.am-art { position: relative; width: 168px; height: 168px; border-radius: 12px; overflow: hidden; flex: none; display: grid; place-items: center; font-size: 56px; background: color-mix(in srgb, var(--text) 8%, transparent); box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+.am-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.am-meta { flex: 1; min-width: 240px; display: grid; gap: 6px; }
+.am-meta > b { font-size: 20px; }
+.am-time { display: flex; gap: 8px; align-items: center; font-size: 12px; opacity: .8; }
+.am-time input { flex: 1; accent-color: #fa2d48; }
+.am-ctrl { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.am-ctrl button { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: inherit; cursor: pointer; font-size: 17px; }
+.am-ctrl button.main { width: 54px; height: 54px; background: #fa2d48; border-color: #fa2d48; color: #fff; font-size: 22px; }
+.am-ctrl button:disabled { opacity: .45; cursor: default; }
+.am-vol { display: flex; gap: 6px; align-items: center; }
+.am-vol input { width: 140px; accent-color: #fa2d48; }
+.am-name { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.am-name input { max-width: 240px; padding: 4px 8px; }
+.am-search { display: flex; gap: 8px; margin: 18px 0 6px; }
+.am-search input { flex: 1; }
+.am-foot { margin-top: 24px; }
+.am-grid .sp-tile-art i { background: #fa2d48; }

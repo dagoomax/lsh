@@ -10,6 +10,7 @@ const NAV = [
   { label: 'Logs',      view: 'logs',      href: '/react/logs' },
   { label: 'MQTT',      view: 'mqtt',      href: '/react/mqtt' },
   { label: 'Flows',     view: 'flows',     href: '/react/flows' },
+  { label: 'Music',     view: 'music',     href: '/react/music', only: 'appleMusic' },
 ]
 
 // 44×44 is the WCAG/mobile minimum comfortable touch target — these sit in a
@@ -21,6 +22,12 @@ const iconBtnStyle = {
 }
 
 export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, onOpenCssEditor, onOpenClaudeCode, onOpenTerminal, onOpenView, pagingRoomCount, pagingMessageCount, onTogglePaging }) {
+  // Optional nav entries (only: <feature>) show once the server says the feature is set up
+  const [features, setFeatures] = useState({})
+  useEffect(() => {
+    fetch('/api/apple-music/status', { credentials: 'include' }).then((r) => r.json())
+      .then((j) => setFeatures((f) => ({ ...f, appleMusic: !!j?.data?.configured }))).catch(() => {})
+  }, [])
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('lsh-theme') || 'dark' } catch { return 'dark' }
   })
@@ -93,7 +100,7 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
 
       {/* Nav (center) — styled in global.css to match vanilla */}
       <nav className="header-nav-react">
-        {NAV.map(({ label, view, href }) => (
+        {NAV.filter((n) => !n.only || features[n.only]).map(({ label, view, href }) => (
           <a key={label} href={href} className={view === 'dashboard' ? 'active' : undefined}
             onClick={(e) => {
               // Plain left-click switches view in place; modified/middle
