@@ -66,6 +66,25 @@ module.exports = function register(router, ctx) {
     res.set('Content-Disposition', `attachment; filename="${base}.zip"`);
     res.send(zip);
   };
+  // Music player (Spotify / Apple Music source selector, src/music-player.js):
+  // its Virtual Output and Virtual HTTP Input in one ZIP, ready to import.
+  router.get('/loxone/music.zip', (req, res) => {
+    if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
+    const { buildInputsXml, buildOutputsXml } = require('../loxone-xml');
+    const devices = sensorRegistry.getDevices().filter((d) => d.key === 'music/player');
+    if (!devices.length) return res.status(404).json({ success: false, error: 'No music player — set up Spotify or Apple Music first' });
+    let embedToken = req.query.token;
+    if (!embedToken && req.query.tokenId && auth) embedToken = auth.getApiTokenValue(req.query.tokenId);
+    const opts = { host: req.query.host || req.get('host'), token: embedToken || 'YOUR_API_TOKEN', pollingMs: Math.max(1000, Number(req.query.polling) || 5000) };
+    const files = [
+      ...buildOutputsXml(devices, opts).map((data, i, a) => ({ name: `lsh-loxone-music-outputs${a.length > 1 ? `-${i + 1}` : ''}.xml`, data })),
+      ...buildInputsXml(devices, opts).map((data, i, a) => ({ name: `lsh-loxone-music-inputs${a.length > 1 ? `-${i + 1}` : ''}.xml`, data })),
+    ];
+    const { zipStore } = require('../zip');
+    res.set('Content-Type', 'application/zip');
+    res.set('Content-Disposition', 'attachment; filename="lsh-loxone-music.zip"');
+    res.send(zipStore(files));
+  });
   router.get('/loxone/inputs.xml',  loxoneXmlHandler('inputs'));
   router.get('/loxone/outputs.xml', loxoneXmlHandler('outputs'));
   // Friendly fixed alias for the SIP doorbell's one controllable action

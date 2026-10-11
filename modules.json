@@ -367,6 +367,19 @@
         "@tensorflow-models/mobilenet": "^2.1.1"
       }
     },
+    "music-player": {
+      "entry": "src/music-player.js",
+      "configKeys": [
+        "music",
+        "spotify",
+        "appleMusic"
+      ],
+      "when": "(config.music?.enabled !== false && (config.spotify?.clientId || config.appleMusic?.teamId))",
+      "files": [
+        "src/music-player.js"
+      ],
+      "deps": {}
+    },
     "matter-bridge": {
       "entry": "src/matter-bridge.js",
       "configKeys": [

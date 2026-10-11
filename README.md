@@ -4051,6 +4051,22 @@ Spotify Web API (`src/spotify-client.js`, no npm deps). Sign-in uses OAuth **PKC
 
 The refresh token is stored in `persist/spotify-oauth.json`. Device `spotify/player`: `playing` (toggle), `prev` / `next` (triggers), `volume`, `shuffle`, and labels `track`, `artist`, `album`, `device`, `repeat`. Play with nothing active goes to `defaultDevice`, else the first available device. API: `GET /api/spotify/status`, `/devices`, `/playlists`, `/search?q=`, `POST /api/spotify/play {"uri":"spotify:playlist:…"}`, `POST /api/spotify/transfer {"deviceId":…}`. Controlling playback needs **Spotify Premium**. Test without an account: `node scripts/spotify-simulator.js 8889` with `"apiBase": "http://127.0.0.1:8889/v1", "accountsBase": "http://127.0.0.1:8889"`.
 
+### Music player (Loxone)
+
+When Spotify or Apple Music is configured, LSH also registers `music/player` (`src/music-player.js`): one player in front of both, with a **source selector**, so Loxone needs a single set of virtual I/O whichever service plays.
+
+- `source` (0–2): `0` = stop, `1` = Spotify, `2` = Apple Music — wire a Loxone **Radio Buttons** block's output straight in. Switching while playing pauses the old source and starts the new one. `useSpotify` / `useAppleMusic` are pulse inputs for the same thing.
+- `playing`, `prev` / `next`, `volume` go to the selected source; `track`, `artist`, `album`, `device` mirror it (dashboard only — Loxone virtual inputs are numeric).
+- `spotifyReady` (signed in) / `appleMusicReady` (a Music page is open) — for status LEDs.
+
+**Loxone:** `GET /api/loxone/music.zip?token=<api-token>` (or `?tokenId=`, `?host=`) — a ZIP with the Virtual Output (`LSH Music`, commands) and the Virtual HTTP Input (`LSH Music (feedback)`: source, playing, volume, ready flags) to import into Loxone Config. Apple Music only plays while the Music page is open on some device.
+
+```json
+"music": { "name": "Music", "defaultSource": 1 }
+```
+
+(`"enabled": false` turns it off.) The selected source survives restarts.
+
 ### Home Assistant
 
 Both ways (`src/homeassistant-client.js`, dep `ws`, installed on demand):

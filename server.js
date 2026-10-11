@@ -549,6 +549,17 @@ async function main() {
     client.start().catch((err) => console.error(`[${it.label}] Start failed: ${err.message}`));
   }
 
+  // Music — one player (Loxone / dashboards) with a Spotify / Apple Music
+  // source selector. Needs the live apiClients map, so it's wired here.
+  if (config.music?.enabled !== false && (config.spotify?.clientId || config.appleMusic?.teamId)) {
+    const MusicPlayer = tryRequire('./src/music-player');
+    if (MusicPlayer) {
+      const music = new MusicPlayer(config, store, sensorRegistry, apiClients);
+      apiClients.music = music;
+      music.start().catch((err) => console.error(`[Music] Start failed: ${err.message}`));
+    }
+  }
+
   // Start the Matter bridge if enabled — exposes LSH devices to Apple Home /
   // Google Home / Alexa / SmartThings etc. as one bridged Matter node.
   if (config.matter?.bridge?.enabled) {

@@ -53,8 +53,9 @@ function isMomentary(s) {
 // polls a number; VirtualOutCmd substitutes <v> into a numeric/digital
 // command) — a free-text sensor has no honest representation in either
 // direction, so it's excluded rather than mapped onto a broken numeric control.
+// 'label' is free text too (track names, inputs, modes) — same reasoning.
 function isInputSensor(s) {
-  return !s.hidden && s.type !== 'color' && s.type !== 'trigger' && s.type !== 'text' && !isMomentary(s);
+  return !s.hidden && s.type !== 'color' && s.type !== 'trigger' && s.type !== 'text' && s.type !== 'label' && !isMomentary(s);
 }
 
 function isOutputSensor(s) {
@@ -104,7 +105,7 @@ function buildOutputsXml(devices, { host, token } = {}) {
   for (const device of devices) {
     for (const sensor of (device.sensors || []).filter(isOutputSensor)) {
       const title   = `${device.label} ${sensor.name || sensor.label || sensor.path}`;
-      const comment = `${device.key}/${sensor.path} [${sensor.type || 'toggle'}]`;
+      const comment = `${device.key}/${sensor.path} [${sensor.type || 'toggle'}]${sensor.hint ? ` ${sensor.hint}` : ''}`;
       const common  = `Comment="${xmlEsc(comment)}" Title="${xmlEsc(title)}" RepeatRate="0" Repeat="0"`;
 
       if (sensor.type === 'color') {
