@@ -25,8 +25,11 @@ export default function LoxoneXmlSection() {
     }).catch(err => setError(err.message))
   }, [])
 
-  const isInput = s => !s.hidden && s.type !== 'color' && s.type !== 'trigger'
-  const isOutput = s => !s.hidden && s.controllable && s.type !== 'color'
+  // Mirrors src/loxone-xml.js (text / label readings are never numeric)
+  const isMomentary = s => s.controllable && s.type === 'toggle' && s.writeOn && s.writeOn === s.writeOff
+  const isInput = s => !s.hidden && !['color', 'trigger', 'text', 'label'].includes(s.type) && !isMomentary(s)
+  const isOutput = s => !s.hidden && s.controllable && s.type !== 'text'
+  const music = devices.find(d => d.key === 'music/player')
 
   const byType = {}
   for (const d of devices) byType[d.type] = (byType[d.type] || 0) + 1
@@ -46,16 +49,16 @@ export default function LoxoneXmlSection() {
     setSelectedTypes(next)
   }
 
-  const download = (kind) => {
+  const download = (kind, file = `${kind}.xml`, filtered = true) => {
     if (!tokenId) { setError('Create an API token first (Security → API Tokens)'); return }
     const params = new URLSearchParams()
     params.set('tokenId', tokenId)
-    if (selectedTypes.size) params.set('type', [...selectedTypes].join(','))
-    if (namedOnly) params.set('named', '1')
+    if (filtered && selectedTypes.size) params.set('type', [...selectedTypes].join(','))
+    if (filtered && namedOnly) params.set('named', '1')
     if (host.trim()) params.set('host', host.trim())
     if (kind === 'inputs' && polling) params.set('polling', String(polling))
     setError('')
-    window.location.href = `/api/loxone/${kind}.xml?${params}`
+    window.location.href = `/api/loxone/${file}?${params}`
   }
 
   return (
@@ -82,6 +85,15 @@ export default function LoxoneXmlSection() {
         <Button variant="primary" onClick={() => download('outputs')}>⬇ outputs.xml ({outputCount})</Button>
         <Button variant="primary" onClick={() => download('inputs')}>⬇ inputs.xml ({inputCount})</Button>
       </div>
+      {music && (
+        <div className="stg-field">
+          <label>Music player <span className="stg-hint">(Spotify / Apple Music source selector — wire a Radio Buttons block to “Music Source”: 0 stop, 1 Spotify, 2 Apple Music)</span></label>
+          <div className="stg-actions">
+            <Button onClick={() => download('outputs', 'musicout.xml', false)}>⬇ Music outputs.xml ({(music.sensors || []).filter(isOutput).length})</Button>
+            <Button onClick={() => download('inputs', 'musicin.xml', false)}>⬇ Music inputs.xml ({(music.sensors || []).filter(isInput).length})</Button>
+          </div>
+        </div>
+      )}
       {error && <span className="stg-banner err">✗ {error}</span>}
     </SettingsCard>
   )

@@ -85,6 +85,15 @@ module.exports = function register(router, ctx) {
     res.set('Content-Disposition', 'attachment; filename="lsh-loxone-music.zip"');
     res.send(zipStore(files));
   });
+  // Same as the ZIP, one plain XML each (Loxone Config imports .xml only)
+  router.get('/loxone/musicout.xml', (req, res) => {
+    req.query.device = 'music/player'; delete req.query.type;
+    return loxoneXmlHandler('outputs')(req, res);
+  });
+  router.get('/loxone/musicin.xml', (req, res) => {
+    req.query.device = 'music/player'; delete req.query.type;
+    return loxoneXmlHandler('inputs')(req, res);
+  });
   router.get('/loxone/inputs.xml',  loxoneXmlHandler('inputs'));
   router.get('/loxone/outputs.xml', loxoneXmlHandler('outputs'));
   // Friendly fixed alias for the SIP doorbell's one controllable action

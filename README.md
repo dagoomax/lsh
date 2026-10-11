@@ -4059,7 +4059,7 @@ When Spotify or Apple Music is configured, LSH also registers `music/player` (`s
 - `playing`, `prev` / `next`, `volume` go to the selected source; `track`, `artist`, `album`, `device` mirror it (dashboard only — Loxone virtual inputs are numeric).
 - `spotifyReady` (signed in) / `appleMusicReady` (a Music page is open) — for status LEDs.
 
-**Loxone:** `GET /api/loxone/music.zip?token=<api-token>` (or `?tokenId=`, `?host=`) — a ZIP with the Virtual Output (`LSH Music`, commands) and the Virtual HTTP Input (`LSH Music (feedback)`: source, playing, volume, ready flags) to import into Loxone Config. Apple Music only plays while the Music page is open on some device.
+**Loxone:** Settings → Loxone XML Templates → **Music outputs.xml / Music inputs.xml**, or directly `GET /api/loxone/musicout.xml` and `/api/loxone/musicin.xml` (`?token=<api-token>` or `?tokenId=`, `?host=`, `?polling=`) — plain XML for Loxone Config's Virtual Output / Virtual HTTP Input template import. `GET /api/loxone/music.zip` bundles both: the Virtual Output (`LSH Music`, commands) and the Virtual HTTP Input (`LSH Music (feedback)`: source, playing, volume, ready flags) to import into Loxone Config. Apple Music only plays while the Music page is open on some device.
 
 ```json
 "music": { "name": "Music", "defaultSource": 1 }
