@@ -906,6 +906,73 @@ function addThermostatService(accessory, name, deviceKey, store, writeCapability
 }
 
 /**
+ * MC6 thermostat: Current/Target temperature = temperature/setpoint, Target
+ * state Off/Heat/Cool = onoff + mode (HomeKit can only switch on/off; the MC6
+ * mode itself is left as set on the device), plus relative humidity.
+ */
+function addMc6ThermostatService(accessory, name, deviceKey, store, writeCapability) {
+  const svc = accessory.addService(Service.Thermostat, name);
+  const C = Characteristic;
+  const tempPath = `${deviceKey}/temperature`;
+  const setPath  = `${deviceKey}/setpoint`;
+  const modePath = `${deviceKey}/mode`;
+  const onPath   = `${deviceKey}/onoff`;
+  const humPath  = `${deviceKey}/humidity`;
+
+  const hkState = () => {
+    if (!store.get(onPath)) return 0;
+    return store.get(modePath) === 'cool' ? 2 : 1;
+  };
+  const hkCurrent = () => {
+    if (!store.get(onPath)) return 0;
+    const t = store.get(tempPath), sp = store.get(setPath);
+    const mode = store.get(modePath);
+    if (mode === 'cool') return t > sp ? 2 : 0;
+    if (mode === 'heat') return t < sp ? 1 : 0;
+    return 0;
+  };
+
+  svc.getCharacteristic(C.CurrentHeatingCoolingState).onGet(hkCurrent);
+  svc.getCharacteristic(C.TargetHeatingCoolingState)
+    .setProps({ validValues: [0, 1, 2] })
+    .onGet(hkState)
+    .onSet(async (v) => {
+      if (!writeCapability) return;
+      await writeCapability('onoff', v === 0 ? 'off' : 'on', []);
+      store.update(onPath, v === 0 ? 0 : 1);
+    });
+  svc.getCharacteristic(C.CurrentTemperature)
+    .setProps({ minValue: -20, maxValue: 60 })
+    .onGet(() => clamp(store.get(tempPath) ?? 20, -20, 60));
+  svc.getCharacteristic(C.TargetTemperature)
+    .setProps({ minValue: 5, maxValue: 35, minStep: 0.5 })
+    .onGet(() => clamp(store.get(setPath) ?? 20, 5, 35))
+    .onSet(async (v) => {
+      if (writeCapability) await writeCapability('setpoint', 'settemp', [v]);
+    });
+  svc.getCharacteristic(C.TemperatureDisplayUnits).onGet(() => 0).onSet(() => {});
+  svc.getCharacteristic(C.CurrentRelativeHumidity)
+    .onGet(() => clamp(store.get(humPath) ?? 0, 0, 100));
+
+  store.on('change', ({ key, value }) => {
+    if (key === tempPath) {
+      svc.getCharacteristic(C.CurrentTemperature).updateValue(clamp(value, -20, 60));
+      svc.getCharacteristic(C.CurrentHeatingCoolingState).updateValue(hkCurrent());
+    }
+    if (key === setPath) {
+      svc.getCharacteristic(C.TargetTemperature).updateValue(clamp(value, 5, 35));
+      svc.getCharacteristic(C.CurrentHeatingCoolingState).updateValue(hkCurrent());
+    }
+    if (key === onPath || key === modePath) {
+      svc.getCharacteristic(C.TargetHeatingCoolingState).updateValue(hkState());
+      svc.getCharacteristic(C.CurrentHeatingCoolingState).updateValue(hkCurrent());
+    }
+    if (key === humPath) svc.getCharacteristic(C.CurrentRelativeHumidity).updateValue(clamp(value, 0, 100));
+  });
+  return svc;
+}
+
+/**
  * Adds a ContactSensor service.
  * 0 = contact detected (closed/normal), 1 = contact not detected (open/alarm)
  */
@@ -1210,6 +1277,12 @@ function buildDeviceAccessory(device, store) {
 
     if (hkType === 'vacuum-rw') {
       if (device._writeCapability) addVacuumServices(acc, device, store);
+    }
+
+    if (hkType === 'mc6-thermostat') {
+      if (device._writeCapability) {
+        addMc6ThermostatService(acc, device.label, device.key, store, device._writeCapability);
+      }
     }
 
     if (hkType === 'thermostat') {

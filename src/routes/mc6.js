@@ -12,14 +12,17 @@ module.exports = function register(router, ctx) {
   router.post('/settings/mc6', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { broker, port, username, password, devices } = req.body;
-    if (!broker) return res.status(400).json({ success: false, error: 'broker is required' });
     if (!Array.isArray(devices) || !devices.length)
       return res.status(400).json({ success: false, error: 'devices array is required' });
 
-    const sanitized = devices.map(d => ({
+    // Modbus TCP devices (host set) aren't edited by this form — keep them
+    // as they are in config so saving the MQTT list doesn't drop them.
+    const modbusDevices = (current.mc6?.devices || []).filter(d => d.host);
+    const sanitized = devices.filter(d => !d.host).map(d => ({
       name: (d.name || '').trim(),
       mac:  (d.mac  || '').replace(/[^A-Fa-f0-9]/g, '').toUpperCase(),
     })).filter(d => d.mac.length === 12);
+    if (sanitized.length && !broker) return res.status(400).json({ success: false, error: 'broker is required' });
 
     try {
       writeConfigFile({
@@ -29,7 +32,7 @@ module.exports = function register(router, ctx) {
           port:     port ? parseInt(port) : 1883,
           username: username || '',
           password: password || '',
-          devices:  sanitized,
+          devices:  [...sanitized, ...modbusDevices],
         },
       });
       res.json({ success: true, message: `${sanitized.length} MC6 device(s) saved. Restart to apply.` });
