@@ -47,7 +47,7 @@ Two independent paths:
 
 - Door station adopted in UniFi Protect on the console (UDM at `192.168.1.1`).
 - UniFi Talk subscription/app active on the console (for the call path).
-- LSH server running (this repo) — in this installation `192.168.1.229`,
+- LSH server running (this repo) — at `<lsh-host>` (its LAN address),
   HTTP port `3001`, HTTPS `3443`.
 - Loxone Miniserver reachable from the LSH server over HTTP.
 
@@ -236,7 +236,7 @@ Drag `VI_UnifiDoorbell` into a page and connect it to, for example:
 Point an **Intercom / Webpage** block's image URL at the LSH snapshot proxy:
 
 ```
-http://192.168.1.229:3001/api/unifi/snapshot/<cameraId>?token=YOUR_LSH_TOKEN
+http://<lsh-host>:3001/api/unifi/snapshot/<cameraId>?token=YOUR_LSH_TOKEN
 ```
 
 Create the API token in the LSH dashboard under *Settings → API Tokens* (or

@@ -31,6 +31,3 @@
 - **[Security & Authentication](Security)** — users, API tokens, roles
 - **[Remote Access & Security](Remote-Access-and-Security)** — Tailscale, proxies, SSH hardening
 
----
-
-*Reference production install: Raspberry Pi `casablanca` (LAN `192.168.1.229:3000`, Tailscale `100.86.235.13`).*

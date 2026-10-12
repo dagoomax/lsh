@@ -6,8 +6,8 @@ How to reach an LSH install from outside the LAN safely. LSH's own auth (JWT ses
 
 ## Deployment reality (reference install "casablanca")
 
-- Production runs on a **Raspberry Pi 5** (`casablanca`, Debian/RPi OS) at LAN `192.168.1.229`, serving LSH on **port 3000** (`~/lsh/server.js`), alongside Node-RED.
-- The Pi is on a **Tailscale** tailnet as `100.86.235.13` (`casablanca`). Other tailnet peers: `mac-mini-gumax`, phones, etc.
+- Production runs on a **Raspberry Pi 5** (`casablanca`, Debian/RPi OS) on the LAN, serving LSH on **port 3000** (`~/lsh/server.js`), alongside Node-RED.
+- The Pi is on a **Tailscale** tailnet as `casablanca`, alongside the owner's other devices (Mac, phones).
 - HomeKit advertises over mDNS, so on Docker the container needs host networking (Linux only).
 
 ## Recommended: Tailscale, no public ports
@@ -65,7 +65,7 @@ A local-only Caddy config (used on the dev Mac) that terminates TLS and proxies 
 {
     local_certs
 }
-https://localhost, https://lsh.local, https://192.168.1.56 {
+https://localhost, https://lsh.local, https://<lan-ip> {
     reverse_proxy 127.0.0.1:3001
     encode gzip
 }
