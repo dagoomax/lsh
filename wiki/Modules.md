@@ -2,7 +2,7 @@
 
 ‹ [Home](Home) · [Architecture](Architecture) ›
 
-Every JavaScript module in `src/` has a reference page below (70 modules). Pages are generated from source plus the README's module notes.
+Every JavaScript module in `src/` has a reference page below (77 modules). Pages are generated from source plus the README's module notes.
 
 ## Core
 
@@ -20,6 +20,7 @@ Every JavaScript module in `src/` has a reference page below (70 modules). Pages
 | Module | Lines | Config | Devices |
 |---|---|---|---|
 | [`api-routes.js`](Module-api-routes) | 2607 | `json` `relays` | — |
+| [`mcp-server.js`](Module-mcp-server) | 241 | `mcp` | — |
 | [`websocket.js`](Module-websocket) | 88 | — | — |
 
 ## Victron / MQTT
@@ -34,6 +35,7 @@ Every JavaScript module in `src/` has a reference page below (70 modules). Pages
 |---|---|---|---|
 | [`acme.js`](Module-acme) | 186 | — | — |
 | [`auth.js`](Module-auth) | 247 | `json` | — |
+| [`mcp-bots.js`](Module-mcp-bots) | 318 | `mcp` | — |
 
 ## Loxone
 
@@ -70,6 +72,7 @@ Every JavaScript module in `src/` has a reference page below (70 modules). Pages
 | Module | Lines | Config | Devices |
 |---|---|---|---|
 | [`ampio-client.js`](Module-ampio-client) | 191 | `ampio` | `ampio` |
+| [`apple-music.js`](Module-apple-music) | 177 | `appleMusic` | `applemusic` |
 | [`aqara-client.js`](Module-aqara-client) | 280 | `aqara` | `aqara` |
 | [`arduino-client.js`](Module-arduino-client) | 200 | `arduino` `mqtt` | — |
 | [`auxair-client.js`](Module-auxair-client) | 250 | `auxair` | — |
@@ -97,22 +100,26 @@ Every JavaScript module in `src/` has a reference page below (70 modules). Pages
 | [`mc6-client.js`](Module-mc6-client) | 127 | `mc` | — |
 | [`miele-client.js`](Module-miele-client) | 353 | `miele` | `miele` |
 | [`mqtt-client.js`](Module-mqtt-client) | 142 | `mqtt` | — |
+| [`music-player.js`](Module-music-player) | 135 | `music` | `music` |
 | [`ocpp-server.js`](Module-ocpp-server) | 267 | `ocpp` | — |
 | [`reolink-client.js`](Module-reolink-client) | 110 | `json` | — |
 | [`roborock-client.js`](Module-roborock-client) | 211 | `roborock` | — |
 | [`roborock-cloud-client.js`](Module-roborock-cloud-client) | 836 | `roborock` | `roborock` |
 | [`satel-client.js`](Module-satel-client) | 467 | `satel` | `satel` |
 | [`shelly-client.js`](Module-shelly-client) | 327 | `shelly` | — |
+| [`sinum-client.js`](Module-sinum-client) | 294 | `sinum` | `sinum` |
 | [`smartbob-client.js`](Module-smartbob-client) | 128 | `smartbob` | — |
 | [`smartthings-client.js`](Module-smartthings-client) | 318 | `smartthings` | `smartthings` |
 | [`smarttub-client.js`](Module-smarttub-client) | 275 | `smarttub` | — |
 | [`solaredge-client.js`](Module-solaredge-client) | 119 | `solaredge` | — |
 | [`somfy-client.js`](Module-somfy-client) | 431 | `somfy` | — |
 | [`sonos-client.js`](Module-sonos-client) | 300 | `sonos` | — |
+| [`spotify-client.js`](Module-spotify-client) | 291 | `spotify` | `spotify` |
 | [`suppla-client.js`](Module-suppla-client) | 291 | `suppla` | — |
 | [`tradfri-client.js`](Module-tradfri-client) | 226 | `tradfri` | — |
 | [`unifi-access-client.js`](Module-unifi-access-client) | 142 | `unifiAccess` | `unifiAccess` |
 | [`unifi-protect-client.js`](Module-unifi-protect-client) | 312 | `unifi` | `unifi` |
+| [`vclu-client.js`](Module-vclu-client) | 231 | `vclu` | `vclu` |
 | [`vents-client.js`](Module-vents-client) | 183 | `vents` | `vents` |
 | [`vrm-client.js`](Module-vrm-client) | 220 | `vrm` | — |
 | [`wallbox-client.js`](Module-wallbox-client) | 162 | `wallbox` | — |

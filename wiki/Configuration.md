@@ -41,6 +41,12 @@
 | `suppla` | No | Suppla smart-home — cloud or self-hosted REST API; discovers switches, dimmers, thermometers, shutters, gates |
 | `loxoneOut` | No | Loxone outbound push — forwards store values to Loxone Virtual Inputs in real time |
 | `fibaroOut` | No | Fibaro outbound push — forwards store values (e.g. Satel zones) to HC global variables in real time |
+| `sinum` | No | TECH Sterowniki Sinum central — thermostats, relays, dimmers, blinds, gates, sensors, scenes |
+| `vclu` | No | vCLU (Virtual CLU) via its MCP endpoint — exposed objects and scenes |
+| `spotify` | No | Spotify Web API playback control |
+| `appleMusic` | No | Apple Music (MusicKit) browser player relay |
+| `music` | No | Spotify / Apple Music source-selector player for Loxone |
+| `mcp` | No | MCP server for AI assistants — bots, OAuth 2.1 |
 | `ffmpegRtsp` | No | FFmpeg RTSP proxy — re-streams cameras for Loxone / RTSP clients |
 | `sip` | No | SIP softphone (WebSocket transport) |
 | `cameras` | No | Manual camera list (RTSP, snapshot, MJPEG, WebRTC) |
@@ -746,6 +752,54 @@ Connects to the **Suppla** cloud or a self-hosted Suppla server. All channels ar
 Channels are grouped by **physical device** (ioDevice) into a single dashboard card. The card label uses the device comment field if set, otherwise the device name.
 
 ---
+
+### `sinum`
+
+```json
+"sinum": { "host": "sinum.local", "token": "api-token-from-the-sinum-panel", "pollInterval": 10 }
+```
+
+**TECH Sterowniki Sinum** central (EH-01) over its local REST API — API token (recommended) or `username` + `password`. Every Sinum device becomes its own LSH device in its Sinum room (thermostats, relays, dimmers, blinds, gates, sensors) plus `sinum/scenes`. Optional `"buses": [...]` limits which buses are read. Settings → Smart Home → TECH Sinum. Details: [`sinum-client.js`](Module-sinum-client).
+
+### `vclu`
+
+```json
+"vclu": { "host": "192.168.1.20:8080", "token": "mcp-bot-token", "pollInterval": 5 }
+```
+
+**vCLU** (Virtual CLU) through its MCP endpoint, with a vCLU MCP bot token — every exposed vCLU object becomes an LSH device in its vCLU area, plus `vclu/scenes`; the bot's access profile in vCLU decides what LSH may see and control. Settings → Smart Home → vCLU. Details: [`vclu-client.js`](Module-vclu-client).
+
+### `spotify`
+
+```json
+"spotify": { "clientId": "0123456789abcdef0123456789abcdef", "defaultDevice": "Kitchen speaker", "pollInterval": 5 }
+```
+
+Spotify Web API with PKCE sign-in (Client ID only) → device `spotify/player`. Playback control needs Spotify Premium. Details: [`spotify-client.js`](Module-spotify-client).
+
+### `appleMusic`
+
+```json
+"appleMusic": { "teamId": "ABCDE12345", "keyId": "KEY1234567", "privateKey": "-----BEGIN PRIVATE KEY-----\n…", "storefront": "pl" }
+```
+
+MusicKit developer token for the dashboard's Music page (plays in the browser) → device `applemusic/player`. Details: [`apple-music.js`](Module-apple-music).
+
+### `music`
+
+```json
+"music": { "name": "Music", "defaultSource": 1 }
+```
+
+`music/player` — one player with a Spotify / Apple Music source selector for Loxone (`0` stop, `1` Spotify, `2` Apple Music). On automatically when Spotify or Apple Music is configured; `"enabled": false` turns it off. Details: [`music-player.js`](Module-music-player), [Export to Loxone](Export-to-Loxone).
+
+### `mcp`
+
+```json
+"mcp": { "enabled": false, "publicUrl": "https://lsh.example.ts.net", "allowApiTokens": false }
+```
+
+MCP server for AI assistants (Claude, Gemini, ChatGPT) with per-assistant **bots** and OAuth 2.1. `publicUrl` = the HTTPS address ChatGPT / claude.ai reach LSH at; `allowApiTokens` re-enables legacy API-token access (full admin, no limits). See [AI assistants (MCP)](AI-Assistants-MCP).
 
 ### `ffmpegRtsp`
 

@@ -24,6 +24,7 @@
 - **[Cameras & SIP Softphone](Cameras-and-SIP)** — camera streams and the door-phone
 - **[Loxone Integration](Loxone-Integration)** — two-way bridge, REST recipes, import templates
 - **[UniFi Door Station](UniFi-Door-Station)** — end-to-end doorbell → LSH → Loxone guide
+- **[AI assistants (MCP)](AI-Assistants-MCP)** — Claude, Gemini and ChatGPT with per-assistant bots, permissions and OAuth
 
 ## Security & deployment
 

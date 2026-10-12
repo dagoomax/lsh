@@ -114,6 +114,12 @@ The moment the mapped store key changes, LSH calls `http://<miniserver>/dev/sps/
 
 ---
 
+## Music player (Spotify / Apple Music)
+
+When Spotify or Apple Music is set up, LSH registers `music/player` — one player with a **source selector** ([details](Module-music-player)). Download its templates from Settings → Loxone XML Templates → **Music outputs.xml / Music inputs.xml** (or `GET /api/loxone/musicout.xml` and `/api/loxone/musicin.xml` with `?token=` and `?host=`; `/api/loxone/music.zip` has both) and import them like any other template. Wire a **Radio Buttons** block to the *Music Source* output: `0` = stop, `1` = Spotify, `2` = Apple Music. Track names stay on the LSH dashboard — Loxone virtual inputs are numeric only (text readings are left out of every `inputs.xml`).
+
+---
+
 ## Troubleshooting
 
 - **Nothing updates in Loxone Config's I/O Table** — check the Virtual HTTP Input's `Address` actually resolves from the Miniserver (it's a separate device on your network, not your browser) and that the token in the URL is still valid (`Settings → Security → API Tokens` in LSH).

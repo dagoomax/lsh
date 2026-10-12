@@ -20,6 +20,7 @@
 - [Cameras & SIP](Cameras-and-SIP)
 - [Loxone Integration](Loxone-Integration)
 - [Export to Loxone](Export-to-Loxone)
+- [AI assistants (MCP)](AI-Assistants-MCP)
 - [UniFi Door Station](UniFi-Door-Station)
 
 **Security & Deploy**

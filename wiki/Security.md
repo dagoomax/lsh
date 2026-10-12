@@ -21,6 +21,10 @@ Authorization: Bearer <token>
 
 Create tokens in **Settings → Security → API Tokens**. Tokens are stored as plain hex in `persist/api-tokens.json` — treat them like passwords.
 
+### MCP bots (AI assistants)
+
+AI assistants never get an API token: each one gets its own **MCP bot** — a credential valid only on `/api/mcp`, with read-only / control, room scope and locks / alarm / gates / doors blocked by default, rate-limited and audited; ChatGPT and claude.ai connect through OAuth 2.1 with admin approval. See **[AI assistants (MCP)](AI-Assistants-MCP)**.
+
 ### Role Permissions
 
 | Role | Dashboard | Settings | Relay control |
