@@ -100,6 +100,7 @@
     "src/routes/satel-zones.js",
     "src/routes/settings.js",
     "src/routes/simulators.js",
+    "src/routes/sinum.js",
     "src/routes/sip.js",
     "src/routes/smartbob.js",
     "src/routes/smartthings.js",
@@ -1168,6 +1169,18 @@
       "files": [
         "src/dsc-client.js",
         "src/dsc-itv2.js"
+      ],
+      "deps": {}
+    },
+    "sinum": {
+      "entry": "src/sinum-client.js",
+      "configKeys": [
+        "sinum"
+      ],
+      "when": "(config.sinum?.host && (config.sinum?.token || (config.sinum?.username && config.sinum?.password)))",
+      "files": [
+        "src/polling-client.js",
+        "src/sinum-client.js"
       ],
       "deps": {}
     },

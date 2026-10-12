@@ -706,6 +706,7 @@ const TYPE_MAP = {
   spotify:      SpeakerIcon,
   applemusic:   SpeakerIcon,
   music:        SpeakerIcon,
+  sinum:        ThermostatIcon,
   denon:        DenonIcon,
   arduino:      ArduinoIcon,
   suppla:       SuplaIcon,

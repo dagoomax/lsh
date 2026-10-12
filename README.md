@@ -1230,6 +1230,34 @@ Connects to a **Fibaro Home Center 2 or 3** via its local REST API. Discovers al
 
 **Supported device types:** binary switches, dimmers, roller shutters, temperature sensors, humidity sensors, light sensors, power meters, door/window sensors, motion sensors, smoke and flood sensors.
 
+### `sinum`
+
+```json
+"sinum": {
+  "host": "sinum.local",
+  "token": "api-token-from-the-sinum-panel",
+  "pollInterval": 10
+}
+```
+
+Connects to a **TECH Sterowniki Sinum** central (EH-01) through its local REST API ([apidocs.sinum.tech](https://apidocs.sinum.tech/)) — `src/sinum-client.js`, no npm deps. Sign in with an **API token** created in the Sinum web panel (recommended, never expires) or a local user's `username` + `password` (JWT, logged in again when it expires). Settings → Smart Home → **TECH Sinum** (Test Connection / Save).
+
+Each Sinum device becomes its own LSH device `sinum/<bus>-<id>` in its Sinum room, from the `virtual`, `wtp` (TECH Wireless), `sbus`, `slink`, `lora` and `modbus` buses (buses the hub doesn't have are skipped; limit with `"buses": [...]`):
+
+| Sinum type | LSH readings / controls | HomeKit |
+|---|---|---|
+| `thermostat`, `temperature_regulator` | `temperature`, `heatingSetpoint` (5–35 °C), `humidity`, mode, state | Thermostat |
+| `relay`, `relay_integrator` | `switch` | Switch |
+| `dimmer`, `rgb_controller`, `dimmer_rgb_*` | `switch`, `level` (0–100) | Lightbulb |
+| `blind_controller`, `blind_controller_integrator` | `level` (0–100 open), `windowShade` open/close, `stop` | Window covering |
+| `gate` / `wicket` | `state`, `open` / `close` / `stop` triggers / `unlock` | — |
+| temperature / humidity, motion, opening, flood, smoke, two-state input sensors | readings | Temperature, humidity, motion, contact, leak, smoke |
+| anything else | its numeric and on/off fields, read-only | — |
+
+Scenes appear as `sinum/scenes`, one trigger per scene (`POST /api/v1/scenes/<id>/activate`). Everything is in Loxone XML export (`?type=sinum`) and flows like any other device. Values are polled every `pollInterval` s; temperatures come from Sinum ×10 and are shown in °C.
+
+Not yet tested against a real hub — built from the Sinum API docs and tested against `node scripts/sinum-simulator.js 8890` (`"host": "127.0.0.1:8890", "token": "simtoken"`). Changing settings of a running hub needs an LSH restart.
+
 ### `fibaroOut`
 
 ```json

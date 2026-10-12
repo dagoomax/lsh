@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { HomeIcon, ShutterIcon, RelayIcon, ZWaveIcon } from '../../Icons'
+import { HomeIcon, ShutterIcon, RelayIcon, ZWaveIcon, ThermostatIcon } from '../../Icons'
 import { gt } from '../../../i18n'
 
 export default function SmartHomeSection({ config, reload }) {
@@ -12,6 +12,7 @@ export default function SmartHomeSection({ config, reload }) {
       <LandroidCard landroid={config.landroid} reload={reload}/>
       <SupplaCard suppla={config.suppla} reload={reload}/>
       <FibaroCard fibaro={config.fibaro} reload={reload}/>
+      <SinumCard sinum={config.sinum} reload={reload}/>
     </>
   )
 }
@@ -144,6 +145,39 @@ function FibaroCard({ fibaro, reload }) {
       <Field label={gt('s.fibaro_port', 'Port')} hint="(default 80)" type="number" value={port} onChange={setPort}/>
       <Field label={gt('s.fibaro_user', 'Username')} hint="(default: admin)" value={username} onChange={setUsername}/>
       <Field label={gt('s.fibaro_pass', 'Password')} type="password" value={password} onChange={setPassword}/>
+      <div className="stg-actions">
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>{gt('common.test', 'Test Connection')}</Button>
+        <Button variant="primary" busy={save.busy} onClick={() => save.save(payload()).then(reload)}>{gt('common.save', 'Save')}</Button>
+        <ResultBanner result={test.result || save.result}/>
+      </div>
+    </SettingsCard>
+  )
+}
+
+function SinumCard({ sinum, reload }) {
+  const [host, setHost] = useState(sinum?.host || '')
+  const [auth, setAuth] = useState(sinum?.username && !sinum?.token ? 'password' : 'token')
+  const [token, setToken] = useState(sinum?.token || '')
+  const [username, setUsername] = useState(sinum?.username || '')
+  const [password, setPassword] = useState(sinum?.password || '')
+  const [pollInterval, setPollInterval] = useState(sinum?.pollInterval ?? 10)
+  const test = useSettingsSave('/api/settings/test-sinum')
+  const save = useSettingsSave('/api/settings/sinum')
+  const payload = () => ({ host, pollInterval: Number(pollInterval), ...(auth === 'token' ? { token } : { username, password }) })
+
+  return (
+    <SettingsCard icon={ThermostatIcon} title="TECH Sinum" badge={{ label: gt('common.optional', 'Optional') }}
+      desc="TECH Sterowniki Sinum central (EH-01) over its local REST API — thermostats, relays, dimmers, blinds, gates, sensors and scenes, one LSH device per Sinum device (rooms kept).">
+      <Field label="Hub address" hint="(sinum.local or the hub's IP)" value={host} onChange={setHost} placeholder="sinum.local"/>
+      <Field label="Sign in with" type="select" value={auth} onChange={setAuth}
+        options={[{ value: 'token', label: 'API token (recommended — created in the Sinum web panel)' }, { value: 'password', label: 'Local user login + password' }]}/>
+      {auth === 'token'
+        ? <Field label="API token" type="password" value={token} onChange={setToken} autoComplete="off"/>
+        : <>
+            <Field label="Login" value={username} onChange={setUsername} autoComplete="off"/>
+            <Field label="Password" type="password" value={password} onChange={setPassword} autoComplete="off"/>
+          </>}
+      <Field label="Poll Interval" hint="(seconds, default 10)" type="number" value={pollInterval} onChange={setPollInterval} placeholder="10"/>
       <div className="stg-actions">
         <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>{gt('common.test', 'Test Connection')}</Button>
         <Button variant="primary" busy={save.busy} onClick={() => save.save(payload()).then(reload)}>{gt('common.save', 'Save')}</Button>

@@ -22,7 +22,7 @@ export const CATEGORIES = [
   { id: 'smarthome', label: 'Smart Home', sections: [
     { id: 'homeassistant', title: 'Home Assistant', ported: true, keywords: ['home assistant', 'hass', 'ha', 'mqtt discovery'] },
     { id: 'smartthings', title: 'Samsung SmartThings', ported: true },
-    { id: 'smarthome-extra', title: 'Homey, Somfy, Landroid, Suppla, Fibaro', ported: true },
+    { id: 'smarthome-extra', title: 'Homey, Somfy, Landroid, Suppla, Fibaro, Sinum', ported: true, keywords: ['sinum', 'tech', 'tech sterowniki', 'eh-01', 'thermostat'] },
     { id: 'roborock', title: 'Roborock', ported: true },
     { id: 'dreame', title: 'Dreame', ported: true },
     { id: 'karcher', title: 'Kärcher Home Robots', ported: true },

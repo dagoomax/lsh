@@ -37,6 +37,7 @@ module.exports = function register(router, ctx) {
     if (safe.aqara?.token) safe.aqara.token = '••••••••';
     if (safe.ampio?.password) safe.ampio.password = '••••••••';
     if (safe.smarttub?.password) safe.smarttub.password = '••••••••';
+    for (const k of ['token', 'password']) if (safe.sinum?.[k]) safe.sinum[k] = '••••••••';
     if (safe.zway?.password) safe.zway.password = '••••••••';
     if (safe.wirenboard?.password) safe.wirenboard.password = '••••••••';
     if (safe.kenik?.password) safe.kenik.password = '••••••••';
