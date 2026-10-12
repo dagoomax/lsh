@@ -25,6 +25,27 @@ HAOS to zamknięty, jednozadaniowy system operacyjny — nie daje dostępu do in
 6. Pierwsza instalacja **klonuje i buduje LSH z GitHuba** (kompilacja natywnych modułów Node.js) — to potrwa kilka minut, w zależności od wydajności hosta. Kolejne starty są już natychmiastowe.
 7. Po zbudowaniu kliknij **Uruchom**.
 
+## Home Assistant Green — skrót
+
+Home Assistant Green to `aarch64` (ARM 64-bit) — dodatek jest dla niego wspierany. Kroki są takie same jak wyżej, z kilkoma uwagami:
+
+1. **Dodanie repozytorium jednym kliknięciem** (otwórz na komputerze w tej samej sieci co Green):
+   ```
+   https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fdagoomax%2Flsh
+   ```
+   albo ręcznie: **Ustawienia → Dodatki → Sklep z dodatkami → ⋮ → Repozytoria** → `https://github.com/dagoomax/lsh`.
+2. ⋮ → **Sprawdź aktualizacje** (odświeża sklep) → **LSH** → **Zainstaluj**. Green buduje obraz sam (pobiera LSH z GitHuba i kompiluje zależności) — może to potrwać **kilkanaście minut**, nie przerywaj.
+3. Na stronie dodatku włącz **Uruchom przy starcie** i **Watchdog**, potem **Uruchom**. Postęp w zakładce **Dziennik** — LSH jest gotowy, gdy pojawi się linia `[Automation] Started`.
+4. Otwórz `http://<ip-green>:3000` (np. `http://homeassistant.local:3000`) → utwórz konto administratora → konfiguracja w **Ustawieniach** LSH.
+
+**Aktualizacje.** Dodatek pobiera kod LSH w chwili budowania obrazu, a Home Assistant przebudowuje go tylko przy zmianie wersji dodatku. Nowa wersja: ⋮ → **Sprawdź aktualizacje** → **Aktualizuj**. Najnowszy kod bez zmiany wersji: na stronie dodatku ⋮ → **Przebuduj**. Konfiguracja, użytkownicy, tokeny i parowanie HomeKit zostają (są w `/data`). Po przebudowaniu pierwszy start trwa dłużej — LSH dociąga pakiety skonfigurowanych integracji.
+
+**Połączenie z Home Assistant na tym samym Green.** W LSH: **Ustawienia → Home Assistant** → adres `http://127.0.0.1:8123` i długoterminowy token dostępu (Home Assistant → profil użytkownika → **Bezpieczeństwo → Tokeny długoterminowe**).
+
+**Porty.** 3000, 3443, 47128 i 8554 są zajęte bezpośrednio na Green — inny dodatek używający portu 3000 będzie kolidował.
+
+**Odtwarzacz muzyki i Loxone.** Po skonfigurowaniu Spotify lub Apple Music (**Ustawienia → Media**) pojawia się urządzenie `music/player` z wyborem źródła. Pliki do Loxone Config: **Ustawienia → Loxone XML Templates → Music outputs.xml / Music inputs.xml** — w polu adresu wpisz `<ip-green>:3000`, żeby Miniserver łączył się z Green. W Loxone podłącz blok **Radio Buttons** do wyjścia „Music Source”: 0 = stop, 1 = Spotify, 2 = Apple Music.
+
 ## Pierwsze uruchomienie
 
 1. Otwórz `http://<adres-ip-home-assistant>:3000` w przeglądarce.
