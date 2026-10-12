@@ -267,3 +267,25 @@ test('room thermostat GA-1 / GA-2 on a UFH wiring centre: setpoint drives the zo
   r2 = sim.simulate(d2, s2, nc, {}, r2.state)
   assert.equal(r2.lamps.act1, 0)
 })
+
+test('Qubino Flush 2 Relays / Flush Dimmer: toggle inputs, scene-only I2, neutral required', async () => {
+  const { sim, dev } = await load()
+  // Flush 2 Relays: two toggle switches, each follows its own output
+  const r = dev('qubino-zmnhbd'), rs = r.scenarios.find((x) => x.id === 'switches')
+  let st = sim.initialState(r, rs)
+  let out = sim.simulate(r, rs, rs.wires, { sw1: [true], sw2: [false] }, st)
+  assert.deepEqual([out.lamps.lamp1, out.lamps.lamp2], [1, 0])
+  out = sim.simulate(r, rs, rs.wires, { sw1: [false], sw2: [true] }, out.state)
+  assert.deepEqual([out.lamps.lamp1, out.lamps.lamp2], [0, 1])
+  // No neutral → the module is off
+  const noN = rs.wires.filter(([a, b]) => !(a === 'N' && b === 'dev:N'))
+  assert.equal(sim.simulate(r, rs, noN, { sw1: [true] }, sim.initialState(r, rs)).powered, false)
+
+  // Flush Dimmer: key 1 on I1 toggles the light, key 2 on I2 only sends scenes
+  const d = dev('qubino-zmnhdd'), ds = d.scenarios.find((x) => x.id === 'scenes')
+  st = sim.initialState(d, ds)
+  out = sim.simulate(d, ds, ds.wires, { sw1: [false, true] }, st)
+  assert.equal(out.lamps.lamp1, 0, 'I2 must not switch the light')
+  out = sim.simulate(d, ds, ds.wires, { sw1: [true, false] }, out.state)
+  assert.ok(out.lamps.lamp1 > 0, 'I1 press switches the light on')
+})

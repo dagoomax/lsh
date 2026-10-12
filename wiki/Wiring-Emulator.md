@@ -16,6 +16,8 @@ A wiring assistant and circuit emulator for Z-Wave in-wall modules. Diagrams, te
 | FIBARO Roller Shutter 3 (FGR-223) | standard blind motor · blind with built-in driver |
 | Shelly Qubino Wave 1PM | toggle switch · push-button |
 | Shelly Qubino Wave 2PM | two toggle switches · two push-buttons |
+| Qubino Flush 2 Relays (ZMNHBD) | two toggle switches, two lights · two push-buttons, two lights · one toggle switch, one light |
+| Qubino Flush Dimmer (ZMNHDD) | push-button · toggle switch · two-key switch (key 2 → scenes) |
 | Room thermostat GA-1 / GA-2 (water heating, 100–240 V, 3 A) | zone 1 of a 230 V underfloor-heating wiring centre with two actuators · actuator straight on the thermostat |
 | SmartBob SM-LITE-1616R (DIN-rail controller, 16 in / 16 relays) | push-button + light (input logic 1 and 2) · roller blind on two relays · load over 2500 W through a contactor · two DS18B20 temperature sensors on 1-Wire |
 
@@ -30,6 +32,7 @@ Every device has a **Real module** panel next to the steps: a zoom lens on the e
 - **Shelly Qubino Wave 1PM / 2PM** — the product render, zoomed onto the printed terminal (O · SW · L · N, N · O1 · L · O2 · SW1 · SW2).
 - **FIBARO FGS-213 / FGS-223 / FGD-212 / FGR-223** — the product photo (the terminals are on the back), plus the terminal view from the module's manual for the zoom.
 - **Thermostat GA-1 / GA-2** — the terminal diagram from the printed sheet (owner's photo, private manuals repo, loaded on demand).
+- **Qubino Flush 2 Relays / Flush Dimmer** — the terminal view from the module's manual (I1 · I2 · Q2 · Q1 · L · N, I1 · I2 · I3 · ⏦ · L · N); the temperature-sensor socket TS isn't part of the mains diagrams.
 - **SmartBob SM-LITE-1616R** — the product photo, zoomed onto the connector block (relays, inputs, 24 V, interface).
 
 Images are bundled with the dashboard (`react-dashboard/public/wiring/`, ~0.5 MB in total; the owner has the rights to them); terminal boxes live in each device's `photo` entry and a test checks every terminal a diagram uses has one.
