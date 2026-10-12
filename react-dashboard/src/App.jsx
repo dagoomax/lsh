@@ -132,7 +132,7 @@ export default function App() {
         pagingRoomCount={paging.rooms.length} pagingMessageCount={paging.messages.length} onTogglePaging={() => setPagingOpen(o => !o)} />
 
       <div style={{ flex:1, paddingTop:56, overflow:'hidden', display:'flex', flexDirection:'column' }}>
-        <PlatformBar platforms={platforms} />
+        <PlatformBar platforms={platforms} devices={devices} />
         <SceneStrip scenes={scenes} runScene={runScene} />
         {devices.length === 0 && !energy
           ? <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text3)', fontSize:13 }}>Loading…</div>

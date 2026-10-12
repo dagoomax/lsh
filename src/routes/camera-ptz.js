@@ -40,8 +40,23 @@ module.exports = function register(router, ctx) {
 
   // Manual `cameras` entries with an `onvif: { host, port, username, password }` section
   router.post('/camera/ptz/:idx', requireAdmin, ptzHandler((idx, op, speed) => {
-    const cam = (readConfigFile().cameras || [])[Number(idx)];
+    const cfg = readConfigFile();
+    const cam = (cfg.cameras || [])[Number(idx)];
+    // Tuya/Smart Life cameras without ONVIF: `tuyaPtz: { deviceId }` + config.tuyaCloud
+    if (cam?.tuyaPtz) return require('../tuya-cloud-ptz').ptz(cfg.tuyaCloud, cam.tuyaPtz, op);
     if (!cam?.onvif?.host) throw new Error('Camera has no ONVIF config');
     return require('../onvif-ptz').ptz(cam.onvif, op, speed);
   }));
+
+  // Real Tuya command spec for the camera (verifies ptz_control values)
+  router.get('/camera/ptz-info/:idx', requireAdmin, async (req, res) => {
+    try {
+      const cfg = readConfigFile();
+      const cam = (cfg.cameras || [])[Number(req.params.idx)];
+      if (!cam?.tuyaPtz) throw new Error('Camera has no tuyaPtz config');
+      res.json({ success: true, data: await require('../tuya-cloud-ptz').info(cfg.tuyaCloud, cam.tuyaPtz) });
+    } catch (err) {
+      res.status(502).json({ success: false, error: err.message });
+    }
+  });
 };

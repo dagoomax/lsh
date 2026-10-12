@@ -48,6 +48,7 @@ module.exports = function register(router, ctx) {
         presetUrl: `/api/camera/preset/${idx}`,
         irUrl:     `/api/camera/ir/${idx}`,
       } : {}),
+      ...(c.tuyaPtz ? { ptzUrl: `/api/camera/ptz/${idx}` } : {}),
       ...(c.url && !c.snapshotUrl && !c.mjpegUrl ? { snapshotUrl: `/api/camera/snapshot/${idx}` } : {}),
     }));
     res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...yaleCams, ...stCams, ...karcherCams, ...haCams] });
