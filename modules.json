@@ -119,6 +119,7 @@
     "src/routes/thermomix.js",
     "src/routes/ui-preferences.js",
     "src/routes/unifi-protect.js",
+    "src/routes/vclu.js",
     "src/routes/vitodens.js",
     "src/routes/vrm.js",
     "src/routes/waveshare.js",
@@ -1181,6 +1182,18 @@
       "files": [
         "src/polling-client.js",
         "src/sinum-client.js"
+      ],
+      "deps": {}
+    },
+    "vclu": {
+      "entry": "src/vclu-client.js",
+      "configKeys": [
+        "vclu"
+      ],
+      "when": "(config.vclu?.host && config.vclu?.token)",
+      "files": [
+        "src/polling-client.js",
+        "src/vclu-client.js"
       ],
       "deps": {}
     },

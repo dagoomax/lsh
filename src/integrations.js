@@ -100,6 +100,8 @@ module.exports = [
   { file: 'dsc-client', label: 'DSC', expose: 'dsc', when: (config) => config.dsc?.enabled && (config.dsc?.type2Key || config.dsc?.type1Code) },
   // TECH Sterowniki Sinum central — local REST API (token or login)
   { file: 'sinum-client', label: 'Sinum', expose: 'sinum', when: (config) => config.sinum?.host && (config.sinum?.token || (config.sinum?.username && config.sinum?.password)) },
+  // vCLU (Virtual CLU) — devices + scenes through its MCP endpoint (bot token)
+  { file: 'vclu-client', label: 'vCLU', expose: 'vclu', when: (config) => config.vclu?.host && config.vclu?.token },
   // Spotify Web API — playback control (OAuth PKCE, only a Client ID needed)
   { file: 'spotify-client', label: 'Spotify', expose: 'spotify', when: (config) => config.spotify?.clientId },
   // Apple Music — developer token for the dashboard's MusicKit player + player relay device

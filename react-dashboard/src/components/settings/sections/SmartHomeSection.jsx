@@ -13,6 +13,7 @@ export default function SmartHomeSection({ config, reload }) {
       <SupplaCard suppla={config.suppla} reload={reload}/>
       <FibaroCard fibaro={config.fibaro} reload={reload}/>
       <SinumCard sinum={config.sinum} reload={reload}/>
+      <VcluCard vclu={config.vclu} reload={reload}/>
     </>
   )
 }
@@ -178,6 +179,29 @@ function SinumCard({ sinum, reload }) {
             <Field label="Password" type="password" value={password} onChange={setPassword} autoComplete="off"/>
           </>}
       <Field label="Poll Interval" hint="(seconds, default 10)" type="number" value={pollInterval} onChange={setPollInterval} placeholder="10"/>
+      <div className="stg-actions">
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>{gt('common.test', 'Test Connection')}</Button>
+        <Button variant="primary" busy={save.busy} onClick={() => save.save(payload()).then(reload)}>{gt('common.save', 'Save')}</Button>
+        <ResultBanner result={test.result || save.result}/>
+      </div>
+    </SettingsCard>
+  )
+}
+
+function VcluCard({ vclu, reload }) {
+  const [host, setHost] = useState(vclu?.host || '')
+  const [token, setToken] = useState(vclu?.token || '')
+  const [pollInterval, setPollInterval] = useState(vclu?.pollInterval ?? 5)
+  const test = useSettingsSave('/api/settings/test-vclu')
+  const save = useSettingsSave('/api/settings/vclu')
+  const payload = () => ({ host, token, pollInterval: Number(pollInterval) })
+
+  return (
+    <SettingsCard icon={RelayIcon} title="vCLU" badge={{ label: gt('common.optional', 'Optional') }}
+      desc="Virtual CLU (Grenton CLU emulator, Lua automations, Satel) through its MCP endpoint — every exposed vCLU object becomes an LSH device in its area, plus scenes. What LSH may see and control follows the bot's access profile in vCLU.">
+      <Field label="vCLU address" hint="(host:port of the vCLU web UI)" value={host} onChange={setHost} placeholder="192.168.1.20:8080"/>
+      <Field label="MCP bot token" hint="(vCLU → MCP → add a bot, copy its token)" type="password" value={token} onChange={setToken} autoComplete="off"/>
+      <Field label="Poll Interval" hint="(seconds, default 5)" type="number" value={pollInterval} onChange={setPollInterval} placeholder="5"/>
       <div className="stg-actions">
         <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>{gt('common.test', 'Test Connection')}</Button>
         <Button variant="primary" busy={save.busy} onClick={() => save.save(payload()).then(reload)}>{gt('common.save', 'Save')}</Button>

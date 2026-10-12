@@ -707,6 +707,7 @@ const TYPE_MAP = {
   applemusic:   SpeakerIcon,
   music:        SpeakerIcon,
   sinum:        ThermostatIcon,
+  vclu:         RelayIcon,
   denon:        DenonIcon,
   arduino:      ArduinoIcon,
   suppla:       SuplaIcon,

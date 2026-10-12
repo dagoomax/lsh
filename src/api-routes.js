@@ -78,6 +78,7 @@ const ROUTE_GROUPS = [
   require('./routes/lgthinq'),
   require('./routes/fibaro'),
   require('./routes/sinum'),
+  require('./routes/vclu'),
   require('./routes/webrtc-whep'),
   require('./routes/smartbob'),
   require('./routes/arduino'),

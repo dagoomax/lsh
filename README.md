@@ -1258,6 +1258,33 @@ Scenes appear as `sinum/scenes`, one trigger per scene (`POST /api/v1/scenes/<id
 
 Not yet tested against a real hub — built from the Sinum API docs and tested against `node scripts/sinum-simulator.js 8890` (`"host": "127.0.0.1:8890", "token": "simtoken"`). Changing settings of a running hub needs an LSH restart.
 
+### `vclu`
+
+```json
+"vclu": {
+  "host": "192.168.1.20:8080",
+  "token": "mcp-bot-token",
+  "pollInterval": 5
+}
+```
+
+Connects to **[vCLU](https://github.com/Domktorymysli/vclu)** (Virtual CLU — Grenton CLU emulator with Lua automations, Satel, MQTT, HomeKit) — `src/vclu-client.js`, no npm deps. LSH uses vCLU's **MCP endpoint** (`POST /mcp`, JSON-RPC, the interface vCLU offers AI agents; its REST API is read-only): in the vCLU web UI open **MCP → Add bot**, give the bot an access profile, and paste its token. What LSH sees and may control is whatever that bot's profile allows — devices the bot may only read come in as read-only. Settings → Smart Home → **vCLU** (Test Connection / Save).
+
+Every exposed vCLU object becomes `vclu/<path>` (`:` in a path becomes `_`) in its vCLU **area**:
+
+| vCLU type | LSH readings / controls | HomeKit |
+|---|---|---|
+| `switch` | `switch` | Switch |
+| `light`, `dimmer` | `switch`, `level` (dimmer 0..1 shown as 0–100 %; `setBrightness` when the object has it) | Lightbulb |
+| `cover` | `level` 0–100, `windowShade` open/close, `stop` (when the object has a `stop` method) | Window covering |
+| `lock`, `garage_door`, `number`, `fan` | lock / open / value / speed | Lock (for `lock`) |
+| `temperature`, `humidity`, `illuminance`, `climate` | readings (`climate` = current temperature, read-only) | Temperature / humidity / light |
+| `motion`, `sensor`, `binary_sensor` | `state` | Motion (for `motion`) |
+
+vCLU scenes become `vclu/scenes`, one trigger each. Polled every `pollInterval` s (one `vclu_devices` call returns all states); a set is reflected immediately from vCLU's read-back. Everything is in the Loxone XML export (`?type=vclu`) and flows.
+
+Not yet tested against a real vCLU — built from vCLU's MCP tool definitions and tested against `node scripts/vclu-simulator.js 8891` (`"host": "127.0.0.1:8891", "token": "simbot"`). Changing settings of a running connection needs an LSH restart.
+
 ### `fibaroOut`
 
 ```json
