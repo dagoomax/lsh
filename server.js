@@ -403,7 +403,23 @@ async function main() {
   if (config.mcp?.enabled) {
     const mcpServer = tryRequire('./src/mcp-server', 'npm install @modelcontextprotocol/sdk zod');
     if (mcpServer) {
-      app.post('/api/mcp', (req, res) => mcpServer.handleRequest(req, res, store, sensorRegistry, automation));
+      // Minimal per-IP sliding-window rate limit — MCP requests can trigger
+      // expensive sensor/automation work, so cap volume to avoid resource
+      // exhaustion (CWE-770) without adding a new dependency.
+      const mcpRequestLog = new Map();
+      const mcpRateLimit = (req, res, next) => {
+        const now = Date.now();
+        const windowMs = 60 * 1000;
+        const maxRequests = 30;
+        const timestamps = (mcpRequestLog.get(req.ip) || []).filter((t) => now - t < windowMs);
+        if (timestamps.length >= maxRequests) {
+          return res.status(429).json({ success: false, error: 'Too many requests — please slow down' });
+        }
+        timestamps.push(now);
+        mcpRequestLog.set(req.ip, timestamps);
+        next();
+      };
+      app.post('/api/mcp', mcpRateLimit, (req, res) => mcpServer.handleRequest(req, res, store, sensorRegistry, automation));
       app.get('/api/mcp', (req, res) => res.status(405).json({ success: false, error: 'Method not allowed — MCP requests use POST (Streamable HTTP transport)' }));
       app.delete('/api/mcp', (req, res) => res.status(405).json({ success: false, error: 'Method not allowed' }));
       console.log('[MCP] Server mounted at /api/mcp');
