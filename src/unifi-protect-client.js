@@ -8,6 +8,10 @@ let WebSocketLib = null;
 try { WebSocketLib = require('ws'); } catch { /* handled in start() */ }
 
 const POLL_MS = 30_000;
+const WS_HEARTBEAT_MS = 180_000; // the console's proxy drops a WebSocket idle for 10 min
+const SMART_TYPES = ['person', 'vehicle', 'animal', 'package'];
+const SMART_RESET_MS = 60_000;   // clear a detection even if its "end" never arrives
+const SIREN_DURATIONS = [5, 10, 20, 30];
 
 /**
  * UniFi Protect client.
@@ -21,6 +25,18 @@ const POLL_MS = 30_000;
  *                   kept for consoles without an Integration API key. Rings are polled
  *                   every `ringPollInterval` seconds (the legacy camera object exposes
  *                   `lastRing`; the Integration API does not).
+ *
+ * Integration API extras (Protect 6.x public API, `/proxy/protect/integration/v1`):
+ *  - RTSPS live streams per camera (`/cameras/{id}/rtsps-stream`) — the camera
+ *    `url` HomeKit / the RTSP proxy use; created on the console when missing
+ *    unless `unifi.createStreams === false` (quality `unifi.streamQuality`, default high)
+ *  - `/subscribe/devices` WebSocket — sensor / light / siren / relay state live
+ *  - smart detections (`smartDetectZone` / `smartDetectLine` events) → per-camera
+ *    `person`, `vehicle`, `animal`, `package` sensors
+ *  - floodlights (`/lights`, on/off), sirens (`/sirens`, play / stop) and relay
+ *    outputs (`/relays`, on / off) as controllable devices; sirens and relays
+ *    are marked `sensitive` (MCP bots can't drive them unless allowed)
+ *  - `triggerAlarm(id)` — Alarm Manager webhook trigger (`/alarm-manager/webhook/{id}`)
  */
 class UnifiProtectClient extends EventEmitter {
   constructor(config, store, sensorRegistry) {
@@ -43,6 +59,11 @@ class UnifiProtectClient extends EventEmitter {
     this._motionState   = {}; // deviceId → last motion value
     this._ringResets    = {}; // doorbell cameraId → reset-to-0 timer
     this._seenEvents    = new Set(); // event ids already handled (integration mode)
+    this.devWs          = null;
+    this._devWsBackoff  = 5_000;
+    this._devWsReconnect = null;
+    this._smartResets   = {}; // `${cameraId}/${type}` → reset timer
+    this._extraDevices  = {}; // id → { kind: 'light'|'siren'|'relay', raw }
   }
 
   async start() {
@@ -58,7 +79,7 @@ class UnifiProtectClient extends EventEmitter {
     await this._discoverAll();
     platformStatus.set('unifi', true);
     this.pollTimer = setInterval(() => this._pollSensors().catch(() => {}), POLL_MS);
-    if (this.useIntegration) this._connectEvents();
+    if (this.useIntegration) { this._connectEvents(); this._connectDevices(); }
     console.log(`[UniFi Protect] Started (${this.useIntegration ? 'integration' : 'legacy'} API) — ${this._cameras.length} camera(s), ${this.devices.length} sensor(s)`);
   }
 
@@ -67,9 +88,11 @@ class UnifiProtectClient extends EventEmitter {
     clearInterval(this.pollTimer);
     clearInterval(this.ringTimer);
     clearTimeout(this._wsReconnect);
-    if (this.ws) { try { this.ws.close(); } catch {} this.ws = null; }
-    for (const t of Object.values(this._ringResets)) clearTimeout(t);
-    this._ringResets = {};
+    clearTimeout(this._devWsReconnect);
+    for (const w of [this.ws, this.devWs]) if (w) { clearInterval(w._lshPing); try { w.close(); } catch {} }
+    this.ws = null; this.devWs = null;
+    for (const t of [...Object.values(this._ringResets), ...Object.values(this._smartResets)]) clearTimeout(t);
+    this._ringResets = {}; this._smartResets = {};
   }
 
   getCameras() {
@@ -78,7 +101,8 @@ class UnifiProtectClient extends EventEmitter {
 
   proxySnapshot(cameraId, res) {
     const req = https.request({
-      hostname: this.cfg.host,
+      hostname: this._hostPort().split(':')[0],
+      port:     this._hostPort().split(':')[1] || 443,
       path:     `${this._base()}/cameras/${cameraId}/snapshot`,
       method:   'GET',
       headers:  this._headers(),
@@ -115,21 +139,37 @@ class UnifiProtectClient extends EventEmitter {
     await this._discoverSensors().catch(err =>
       console.error(`[UniFi Protect] Sensor discovery: ${err.message}`)
     );
+    if (this.useIntegration) {
+      for (const [kind, fn] of [['lights', () => this._discoverLights()], ['sirens', () => this._discoverSirens()], ['relays', () => this._discoverRelays()]]) {
+        // 404 = an older Protect without that endpoint — skip quietly
+        await fn().catch(err => { if (!/HTTP 404/.test(err.message)) console.error(`[UniFi Protect] ${kind} discovery: ${err.message}`); });
+      }
+    }
   }
 
   async _discoverCameras() {
     const cams = await this._get('/cameras');
+    const urls = {};
+    if (this.useIntegration) {
+      for (const cam of cams) urls[cam.id] = await this._streamUrl(cam.id).catch(err => {
+        console.warn(`[UniFi Protect] No RTSPS stream for "${cam.name || cam.id}": ${err.message}`);
+        return null;
+      });
+    }
     this._cameras = cams.map(cam => ({
       name:          cam.name || cam.id,
-      url:           null,
+      url:           urls[cam.id] || null,
       snapshotUrl:   `/api/unifi/snapshot/${cam.id}`,
       fetchSnapshot: () => this.fetchSnapshotBuffer(cam.id),
     }));
 
     // Integration API cameras carry no `featureFlags.isDoorbell`; `type` is the
     // model name ("G4 Doorbell Pro"), which both APIs expose.
-    const doorbells = cams.filter(c => c.featureFlags?.isDoorbell || /doorbell/i.test(c.type || ''));
+    const isDoorbell = c => c.featureFlags?.isDoorbell || /doorbell/i.test(c.type || '');
+    const doorbells = cams.filter(isDoorbell);
     for (const cam of doorbells) this._registerDoorbell(cam);
+    // Other cameras with smart detection get a device for its sensors
+    if (this.useIntegration) for (const cam of cams.filter(c => !isDoorbell(c) && this._smartTypes(c).length)) this._registerCamera(cam);
     if (doorbells.length > 0 && !this.useIntegration) {
       const seconds  = this.cfg.ringPollInterval || 3;
       this.ringTimer = setInterval(() => this._pollRings().catch(() => {}), seconds * 1000);
@@ -153,6 +193,7 @@ class UnifiProtectClient extends EventEmitter {
       sensors: [
         { path: 'doorbell', name: 'Doorbell', format: 'on-off', homekit: 'contact' },
         { path: 'motion',   name: 'Motion',   format: 'on-off', homekit: 'motion'  },
+        ...this._smartSensors(cam),
       ],
       homekit: ['contact', 'motion'],
     };
@@ -162,6 +203,48 @@ class UnifiProtectClient extends EventEmitter {
     this.store.update(`unifi/${cam.id}/doorbell`, 0);
     this._setMotion(cam.id, cam.isMotionDetected ? 1 : 0);
     console.log(`[UniFi Protect] Doorbell "${cam.name}" — store keys unifi/${cam.id}/doorbell, unifi/${cam.id}/motion`);
+  }
+
+  // A non-doorbell camera with smart detection: motion + one sensor per type
+  _registerCamera(cam) {
+    const device = {
+      key: `unifi/${cam.id}`, type: 'unifi', instance: cam.id, label: cam.name || cam.id, icon: '📷', color: 'blue',
+      sensors: [{ path: 'motion', name: 'Motion', format: 'on-off', homekit: 'motion' }, ...this._smartSensors(cam)],
+      homekit: ['motion'],
+    };
+    this.devices.push(device);
+    this.sensorRegistry.registerDevice(device);
+    this._setMotion(cam.id, cam.isMotionDetected ? 1 : 0);
+    for (const t of this._smartTypes(cam)) this.store.update(`unifi/${cam.id}/${t}`, 0);
+  }
+
+  _smartTypes(cam) {
+    const types = cam.featureFlags?.smartDetectTypes || [];
+    return SMART_TYPES.filter(t => types.includes(t));
+  }
+
+  _smartSensors(cam) {
+    const label = { person: 'Person', vehicle: 'Vehicle', animal: 'Animal', package: 'Package' };
+    return this._smartTypes(cam).map(t => ({ path: t, name: label[t], format: 'on-off', type: 'boolean' }));
+  }
+
+  _setSmart(cameraId, type, val) {
+    const k = `${cameraId}/${type}`;
+    clearTimeout(this._smartResets[k]);
+    this.store.update(`unifi/${k}`, val);
+    if (val) this._smartResets[k] = setTimeout(() => this.store.update(`unifi/${k}`, 0), SMART_RESET_MS);
+  }
+
+  // RTSPS URL of the camera's stream (created on the console when missing).
+  // Protect appends `?enableSrtp`; ffmpeg / go2rtc want plain RTSPS.
+  async _streamUrl(cameraId) {
+    const quality = this.cfg.streamQuality || 'high';
+    let streams = await this._get(`/cameras/${cameraId}/rtsps-stream`).catch(err => { if (err.status === 404) return {}; throw err; });
+    if (!streams?.[quality] && this.cfg.createStreams !== false) {
+      streams = await this._send('POST', `/cameras/${cameraId}/rtsps-stream`, { qualities: [quality] });
+    }
+    const url = streams?.[quality];
+    return typeof url === 'string' ? url.replace(/\?enableSrtp$/, '') : null;
   }
 
   _ring(id, name) {
@@ -187,7 +270,7 @@ class UnifiProtectClient extends EventEmitter {
       console.error('[UniFi Protect] "ws" module not available — rings will not be detected (run npm install)');
       return;
     }
-    const ws = new WebSocketLib(`wss://${this.cfg.host}${this._base()}/subscribe/events`, {
+    const ws = new WebSocketLib(`wss://${this._hostPort()}${this._base()}/subscribe/events`, {
       headers: { 'X-API-Key': this.cfg.apiKey },
       rejectUnauthorized: false,
     });
@@ -197,6 +280,7 @@ class UnifiProtectClient extends EventEmitter {
       this._wsBackoff = 5_000;
       platformStatus.set('unifi', true);
       console.log('[UniFi Protect] Event stream connected');
+      ws._lshPing = setInterval(() => { try { ws.ping(); } catch {} }, WS_HEARTBEAT_MS);
     });
     ws.on('message', raw => {
       let msg;
@@ -207,6 +291,7 @@ class UnifiProtectClient extends EventEmitter {
     });
     ws.on('error', err => console.error(`[UniFi Protect] Event stream: ${err.message}`));
     ws.on('close', () => {
+      clearInterval(ws._lshPing);
       if (this._stopped) return;
       platformStatus.set('unifi', false);
       console.warn(`[UniFi Protect] Event stream closed — reconnecting in ${this._wsBackoff / 1000} s`);
@@ -243,9 +328,133 @@ class UnifiProtectClient extends EventEmitter {
       case 'sensorAlarm':
         if (known) this.store.update(`${k}/alarm`, ev.end ? 0 : 1);
         break;
+      case 'smartDetectZone':
+      case 'smartDetectLine':
+        if (!known) return;
+        for (const t of ev.smartDetectTypes || []) if (SMART_TYPES.includes(t)) this._setSmart(ev.device, t, ev.end ? 0 : 1);
+        break;
       default:
-        break; // smart detections, alarm-hub, NFC… — not mapped to sensors yet
+        break; // audio detections, alarm-hub, NFC… — not mapped to sensors yet
     }
+  }
+
+  // ── Device state stream (integration mode) ───────────────
+
+  _connectDevices() {
+    if (!WebSocketLib) return;
+    const ws = new WebSocketLib(`wss://${this._hostPort()}${this._base()}/subscribe/devices`, {
+      headers: { 'X-API-Key': this.cfg.apiKey },
+      rejectUnauthorized: false,
+    });
+    this.devWs = ws;
+    ws.on('open', () => {
+      this._devWsBackoff = 5_000;
+      ws._lshPing = setInterval(() => { try { ws.ping(); } catch {} }, WS_HEARTBEAT_MS);
+      // Catch up on what changed while disconnected
+      this._pollSensors().catch(() => {});
+    });
+    ws.on('message', raw => {
+      let msg;
+      try { msg = JSON.parse(raw); } catch { return; }
+      try { this._handleDevice(msg); } catch (err) { console.error(`[UniFi Protect] Device update: ${err.message}`); }
+    });
+    ws.on('error', err => console.error(`[UniFi Protect] Device stream: ${err.message}`));
+    ws.on('close', () => {
+      clearInterval(ws._lshPing);
+      if (this._stopped) return;
+      clearTimeout(this._devWsReconnect);
+      this._devWsReconnect = setTimeout(() => this._connectDevices(), this._devWsBackoff);
+      this._devWsBackoff = Math.min(this._devWsBackoff * 2, 60_000);
+    });
+  }
+
+  /** `{ type: 'add'|'update'|'remove', item: { id, modelKey, …changed fields } }` — `id` may be a list (bulk). */
+  _handleDevice(msg) {
+    const item = msg?.item;
+    if (!item?.modelKey || msg.type === 'remove') return;
+    for (const id of Array.isArray(item.id) ? item.id : [item.id]) {
+      const it = { ...item, id };
+      if (it.modelKey === 'sensor') this._applySensor(it);
+      else if (it.modelKey === 'camera' && it.isMotionDetected !== undefined && this.devices.some(d => d.instance === id)) this._setMotion(id, it.isMotionDetected ? 1 : 0);
+      else if (this._extraDevices[id]) {
+        const e = this._extraDevices[id];
+        e.raw = { ...e.raw, ...it };
+        this._applyExtra(id);
+      }
+    }
+  }
+
+  // ── Lights, sirens, relays (integration mode) ────────────
+
+  async _discoverLights() {
+    for (const l of await this._get('/lights')) {
+      this._extraDevices[l.id] = { kind: 'light', raw: l };
+      this.sensorRegistry.registerDevice({
+        key: `unifi/${l.id}`, type: 'unifi', instance: l.id, label: l.name || 'Floodlight', icon: '💡', color: 'blue',
+        sensors: [
+          { path: 'switch', name: 'Light', format: 'on-off', type: 'toggle', controllable: true, writeOn: 'on', writeOff: 'off', capabilityId: 'switch' },
+          { path: 'motion', name: 'Motion', format: 'on-off', homekit: 'motion' },
+        ],
+        homekit: ['light-rw', 'motion'],
+        _writeCapability: (cap, cmd) => this._send('PATCH', `/lights/${l.id}`, { isLightForceEnabled: cmd === 'on' })
+          .then(r => { if (r && typeof r === 'object') { this._extraDevices[l.id].raw = { ...this._extraDevices[l.id].raw, ...r }; this._applyExtra(l.id); } }),
+      });
+      this._applyExtra(l.id);
+    }
+  }
+
+  async _discoverSirens() {
+    const duration = SIREN_DURATIONS.includes(Number(this.cfg.sirenDuration)) ? Number(this.cfg.sirenDuration) : 10;
+    for (const s of await this._get('/sirens')) {
+      this._extraDevices[s.id] = { kind: 'siren', raw: s };
+      this.sensorRegistry.registerDevice({
+        key: `unifi/${s.id}`, type: 'unifi', instance: s.id, label: s.name || 'Siren', icon: '🚨', color: 'red', sensitive: true,
+        sensors: [{ path: 'siren', name: 'Siren', format: 'on-off', type: 'toggle', controllable: true, writeOn: 'play', writeOff: 'stop', capabilityId: 'siren' }],
+        homekit: [],
+        _writeCapability: async (cap, cmd) => {
+          if (cmd === 'play') await this._send('POST', `/sirens/${s.id}/play`, { duration });
+          else await this._send('POST', `/sirens/${s.id}/stop`);
+          this.store.update(`unifi/${s.id}/siren`, cmd === 'play' ? 1 : 0);
+        },
+      });
+      this._applyExtra(s.id);
+    }
+  }
+
+  async _discoverRelays() {
+    for (const r of await this._get('/relays')) {
+      this._extraDevices[r.id] = { kind: 'relay', raw: r };
+      this.sensorRegistry.registerDevice({
+        key: `unifi/${r.id}`, type: 'unifi', instance: r.id, label: r.name || 'Relay', icon: '🔌', color: 'blue', sensitive: true,
+        sensors: (r.outputs || []).map(o => ({ path: `output${o.id}`, name: o.name || `Output ${o.id}`, format: 'on-off', type: 'toggle', controllable: true, writeOn: 'on', writeOff: 'off', capabilityId: String(o.id) })),
+        homekit: [],
+        _writeCapability: async (outputId, cmd) => {
+          await this._send('POST', `/relays/${r.id}/outputs/${encodeURIComponent(outputId)}/activate`, { state: cmd === 'on' ? 'on' : 'off' });
+          this.store.update(`unifi/${r.id}/output${outputId}`, cmd === 'on' ? 1 : 0);
+        },
+      });
+      this._applyExtra(r.id);
+    }
+  }
+
+  _applyExtra(id) {
+    const { kind, raw } = this._extraDevices[id];
+    const k = `unifi/${id}`;
+    if (kind === 'light') {
+      if (raw.isLightOn !== undefined) this.store.update(`${k}/switch`, raw.isLightOn ? 1 : 0);
+      if (raw.isPirMotionDetected !== undefined) this.store.update(`${k}/motion`, raw.isPirMotionDetected ? 1 : 0);
+    } else if (kind === 'siren') {
+      if (raw.sirenStatus) this.store.update(`${k}/siren`, raw.sirenStatus.isActive ? 1 : 0);
+    } else if (kind === 'relay') {
+      for (const o of raw.outputs || []) if (o.state) this.store.update(`${k}/output${o.id}`, o.state === 'on' ? 1 : 0);
+    }
+  }
+
+  /** Fire an Alarm Manager webhook trigger (Protect → Alarm Manager → trigger "Webhook"). */
+  async triggerAlarm(triggerId) {
+    if (!this.useIntegration) throw new Error('Alarm Manager webhooks need the Integration API (set an API key)');
+    if (!/^[A-Za-z0-9._~-]{1,128}$/.test(String(triggerId || ''))) throw new Error('Invalid trigger id');
+    await this._send('POST', `/alarm-manager/webhook/${encodeURIComponent(triggerId)}`);
   }
 
   _rememberEvent(id) {
@@ -287,7 +496,8 @@ class UnifiProtectClient extends EventEmitter {
   fetchSnapshotBuffer(cameraId) {
     return new Promise((resolve, reject) => {
       const req = https.request({
-        hostname: this.cfg.host,
+        hostname: this._hostPort().split(':')[0],
+        port:     this._hostPort().split(':')[1] || 443,
         path:     `${this._base()}/cameras/${cameraId}/snapshot`,
         method:   'GET',
         headers:  this._headers(),
@@ -367,16 +577,20 @@ class UnifiProtectClient extends EventEmitter {
       return;
     }
 
-    for (const s of sensors) {
-      const k = `unifi/${s.id}`;
-      if (s.isOpened              !== undefined) this.store.update(`${k}/contact`,     s.isOpened ? 1 : 0);
-      if (s.isMotionDetected      !== undefined) this._setMotion(s.id, s.isMotionDetected ? 1 : 0);
-      if (s.stats?.temperature?.value != null)   this.store.update(`${k}/temperature`, s.stats.temperature.value);
-      if (s.stats?.humidity?.value    != null)   this.store.update(`${k}/humidity`,    s.stats.humidity.value);
-      if (s.stats?.light?.value       != null)   this.store.update(`${k}/lux`,         s.stats.light.value);
-      if (this._battery(s)            != null)   this.store.update(`${k}/battery`,     this._battery(s));
-      if (s.alarmSettings)                       this.store.update(`${k}/alarm`,       s.alarmTriggeredAt ? 1 : 0);
-    }
+    for (const s of sensors) this._applySensor(s);
+  }
+
+  // Full sensor (poll) or the changed fields of one (device stream)
+  _applySensor(s) {
+    if (!this.devices.some(d => d.instance === s.id)) return;
+    const k = `unifi/${s.id}`;
+    if (s.isOpened              !== undefined) this.store.update(`${k}/contact`,     s.isOpened ? 1 : 0);
+    if (s.isMotionDetected      !== undefined) this._setMotion(s.id, s.isMotionDetected ? 1 : 0);
+    if (s.stats?.temperature?.value != null)   this.store.update(`${k}/temperature`, s.stats.temperature.value);
+    if (s.stats?.humidity?.value    != null)   this.store.update(`${k}/humidity`,    s.stats.humidity.value);
+    if (s.stats?.light?.value       != null)   this.store.update(`${k}/lux`,         s.stats.light.value);
+    if (this._battery(s)            != null)   this.store.update(`${k}/battery`,     this._battery(s));
+    if (s.alarmSettings)                       this.store.update(`${k}/alarm`,       s.alarmTriggeredAt ? 1 : 0);
   }
 
   _battery(s) {
@@ -385,6 +599,17 @@ class UnifiProtectClient extends EventEmitter {
   }
 
   // ── HTTP ─────────────────────────────────────────────────
+
+  // `host` may carry a port ("192.168.1.1:7443"); default 443
+  _hostPort() { return String(this.cfg.host || '').replace(/^https?:\/\//, '').replace(/\/+$/, '') }
+
+  /** JSON write (POST / PATCH) relative to the API base; resolves the parsed reply. */
+  async _send(method, path, body) {
+    const { status, data } = await this._request(method, this._base() + path, body === undefined ? undefined : JSON.stringify(body));
+    if (status === 401) { const e = new Error('Unauthorized'); e.status = 401; throw e; }
+    if (status < 200 || status >= 300) { const e = new Error(`HTTP ${status} for ${path}${data?.error ? ` — ${data.error}` : ''}`); e.status = status; throw e; }
+    return data;
+  }
 
   _base() {
     return this.useIntegration ? '/proxy/protect/integration/v1' : '/proxy/protect/api';
@@ -402,15 +627,17 @@ class UnifiProtectClient extends EventEmitter {
   async _get(path) {
     const { status, data } = await this._request('GET', this._base() + path);
     if (status === 401) { const e = new Error('Unauthorized'); e.status = 401; throw e; }
-    if (status !== 200) throw new Error(`HTTP ${status} for ${path}`);
+    if (status !== 200) { const e = new Error(`HTTP ${status} for ${path}`); e.status = status; throw e; }
     if (!Array.isArray(data) && typeof data !== 'object') throw new Error(`Unexpected response for ${path}`);
     return data;
   }
 
   _request(method, path, body) {
     return new Promise((resolve, reject) => {
+      const [hostname, port] = this._hostPort().split(':');
       const req = https.request({
-        hostname: this.cfg.host,
+        hostname,
+        port:     port || 443,
         path,
         method,
         headers:  this._headers(),

@@ -175,7 +175,7 @@ Speaks the Satel INTEGRA binary TCP protocol. Zone, output, and partition **name
 }
 ```
 
-`apiKey` takes precedence over `username`/`password` when set (UniFi Network 8+ API keys).
+`apiKey` (Protect → Settings → Control Plane → Integrations) takes precedence over `username`/`password`. With a key LSH also gets live RTSPS video for HomeKit, live device state, smart detections (person / vehicle / animal / package), floodlights, sirens, relays and Alarm Manager webhooks — optional `createStreams` (default true), `streamQuality` (default `high`), `sirenDuration` (5 / 10 / 20 / 30 s, default 10). Details: [`unifi-protect-client.js`](Module-unifi-protect-client).
 
 ### `unifiAccess`
 

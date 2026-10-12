@@ -5,7 +5,7 @@ const { writeConfigFile } = require('../config-file-cache');
 const { readConfigFile } = require('./helpers');
 
 module.exports = function register(router, ctx) {
-  const { requireAdmin } = ctx;
+  const { requireAdmin, unifiProtect } = ctx;
 
   // ── UniFi Protect ─────────────────────────────────────────
 
@@ -38,12 +38,21 @@ module.exports = function register(router, ctx) {
     }
   });
 
+  // Fire a Protect Alarm Manager webhook trigger (Alarm Manager → trigger
+  // "Webhook" → its id) — for flows / Loxone: POST /api/unifi/alarm/<id>
+  router.post('/unifi/alarm/:triggerId', requireAdmin, async (req, res) => {
+    if (!unifiProtect) return res.status(409).json({ success: false, error: 'UniFi Protect isn’t set up' });
+    try { await unifiProtect.triggerAlarm(req.params.triggerId); res.json({ success: true }); }
+    catch (err) { res.status(err.status === 404 ? 404 : 400).json({ success: false, error: err.message }); }
+  });
+
   router.post('/settings/unifi', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { host, username, password, apiKey } = req.body;
     const updated = {
       ...current,
       unifi: {
+        ...(current.unifi || {}), // keep createStreams / streamQuality / sirenDuration / ringPollInterval
         host:     host     || current.unifi?.host     || '',
         username: username || current.unifi?.username || '',
         password: (password && !password.includes('•')) ? password : (current.unifi?.password || ''),

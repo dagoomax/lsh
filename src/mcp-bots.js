@@ -46,7 +46,7 @@ const SENSITIVE_SUBTYPES = new Set(['gate', 'wicket', 'lock', 'garage_door', 'al
 const SENSITIVE_PATH = /^(lock|unlock|arm|disarm|alarm|door|opendoor|open_door|gate|garage|wicket|siren)/i;
 
 function isSensitiveDevice(d) {
-  return SENSITIVE_TYPES.has(d.type) || (d.homekit || []).some((h) => SENSITIVE_HK.includes(h))
+  return d.sensitive === true || SENSITIVE_TYPES.has(d.type) || (d.homekit || []).some((h) => SENSITIVE_HK.includes(h))
     || SENSITIVE_SUBTYPES.has(d.sinumType) || SENSITIVE_SUBTYPES.has(d.vcluType);
 }
 function isSensitiveSensor(d, s) { return isSensitiveDevice(d) || SENSITIVE_PATH.test(s.path || '') }
