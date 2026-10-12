@@ -28,19 +28,153 @@ export default function SecuritySection({ config }) {
   )
 }
 
+const MCP_CLIENTS = [
+  { value: 'claude', label: 'Claude (Claude Code / Claude Desktop / claude.ai)' },
+  { value: 'gemini', label: 'Gemini (Gemini CLI)' },
+  { value: 'chatgpt', label: 'ChatGPT (custom connector, OAuth)' },
+  { value: 'other', label: 'Other MCP client' },
+]
+
+// How to plug a bot into each client. Token clients get the header; ChatGPT
+// (and claude.ai in the browser) only do OAuth — they get the URL and sign in.
+function McpSetup({ client, url, token }) {
+  const t = token || '<bot token>'
+  const blocks = {
+    claude: [
+      ['Claude Code', `claude mcp add --transport http lsh ${url} --header "Authorization: Bearer ${t}"`],
+      ['Claude Desktop (claude_desktop_config.json)', JSON.stringify({ mcpServers: { lsh: { command: 'npx', args: ['-y', 'mcp-remote', url, '--header', 'Authorization:${LSH_AUTH}'], env: { LSH_AUTH: `Bearer ${t}` } } } }, null, 2)],
+      ['claude.ai (Settings → Connectors → Add custom connector)', `${url}\n→ sign in to LSH and pick this bot when asked (OAuth, needs HTTPS)`],
+    ],
+    gemini: [
+      ['Gemini CLI (~/.gemini/settings.json)', JSON.stringify({ mcpServers: { lsh: { httpUrl: url, headers: { Authorization: 'Bearer $LSH_MCP_TOKEN' } } } }, null, 2)],
+      ['then, in your shell', `export LSH_MCP_TOKEN=${t}`],
+    ],
+    chatgpt: [
+      ['ChatGPT (Developer mode) → add a custom connector', `MCP server URL: ${url}\nAuthentication: OAuth\n→ sign in to LSH and pick this bot when asked (needs HTTPS)`],
+    ],
+    other: [['Any MCP client (Streamable HTTP)', `URL: ${url}\nHeader: Authorization: Bearer ${t}\n(or OAuth 2.1 with PKCE — discovery at /.well-known/oauth-protected-resource)`]],
+  }
+  return (blocks[client] || blocks.other).map(([title, code]) => (
+    <div key={title} style={{ marginTop: 8 }}>
+      <div className="stg-hint" style={{ marginBottom: 4 }}>{title}</div>
+      <div className="stg-token-value-box" style={{ alignItems: 'flex-start' }}>
+        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: 12, flex: 1 }}><code>{code}</code></pre>
+        <Button variant="secondary" onClick={() => navigator.clipboard?.writeText(code)}>{gt('common.copy', 'Copy')}</Button>
+      </div>
+    </div>
+  ))
+}
+
 function McpCard({ mcp }) {
   const [enabled, setEnabled] = useState(!!mcp?.enabled)
+  const [publicUrl, setPublicUrl] = useState(mcp?.publicUrl || '')
+  const [allowApiTokens, setAllowApiTokens] = useState(mcp?.allowApiTokens === true)
+  const [bots, setBots] = useState(null)
+  const [rooms, setRooms] = useState([])
+  const [audit, setAudit] = useState(null)
+  const [form, setForm] = useState({ name: '', client: 'claude', access: 'read', sensitive: false, rooms: [] })
+  const [revealed, setRevealed] = useState(null) // { bot, token }
   const save = useSettingsSave('/api/settings/mcp')
+  const act = useSettingsSave('/api/mcp-bots')
+
+  const base = (publicUrl || window.location.origin).replace(/\/+$/, '')
+  const url = `${base}/api/mcp`
+  const load = () => fetch('/api/mcp-bots', { credentials: 'include' }).then(r => r.json()).then(d => setBots(d.success ? d.data.bots : [])).catch(() => setBots([]))
+  useEffect(() => {
+    load()
+    fetch('/api/devices', { credentials: 'include' }).then(r => r.json())
+      .then(d => setRooms([...new Set((d.data || []).map(x => x.room).filter(Boolean))].sort())).catch(() => {})
+  }, [])
+
+  const create = () => {
+    if (!form.name.trim()) return
+    act.save(form).then(r => { setRevealed(r.data); setForm({ ...form, name: '' }); load() }).catch(() => {})
+  }
+  const call = (path, method = 'POST', body) => act.save(body, { endpoint: `/api/mcp-bots/${path}`, method })
+  const rotate = (b) => window.confirm(`New token for “${b.name}”? The old one stops working at once.`) && call(`${b.id}/rotate`).then(r => { setRevealed(r.data); load() }).catch(() => {})
+  const remove = (b) => window.confirm(`Remove “${b.name}”? Its token and every connector signed in as it stop working.`) && call(b.id, 'DELETE').then(load).catch(() => {})
+  const toggle = (b) => call(b.id, 'PUT', { enabled: b.enabled === false }).then(load).catch(() => {})
+  const revokeOAuth = (b) => window.confirm(`Sign out every OAuth connector (ChatGPT / claude.ai) using “${b.name}”?`) && call(`${b.id}/revoke-oauth`).then(load).catch(() => {})
+  const showAudit = () => fetch('/api/mcp-bots/audit?limit=50', { credentials: 'include' }).then(r => r.json()).then(d => setAudit(d.data || []))
+  const insecure = !base.startsWith('https://') && !/\/\/(localhost|127\.0\.0\.1)/.test(base)
 
   return (
-    <SettingsCard icon={RouterIcon} title="MCP Server" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Exposes devices/sensors as MCP tools so an external Claude (Desktop, Claude Code, claude.ai) can query and control the house. Mounted at <code>POST /api/mcp</code>, protected by an API Token above:<br/>
-        <code>claude mcp add --transport http lsh https://your-lsh-host/api/mcp --header "Authorization: Bearer &lt;token&gt;"</code></>}>
+    <SettingsCard icon={RouterIcon} title="MCP Server & AI bots" badge={{ label: gt('common.optional', 'Optional') }}
+      desc={<>Lets AI assistants (Claude, Gemini, ChatGPT) read and control the house through MCP at <code>POST /api/mcp</code>. Each assistant gets its own <b>bot</b>: a separate credential that works only for MCP, with its own permissions — read only or control, limited to chosen rooms, and locks / alarm / gates / doors blocked unless you allow them. Every call is rate-limited and logged.</>}>
       <Toggle label="Enable MCP server" checked={enabled} onChange={setEnabled}/>
+      <Field label="Public HTTPS address" hint="(for ChatGPT / claude.ai — the https:// URL those services reach LSH at; leave empty for this address)" value={publicUrl} onChange={setPublicUrl} placeholder="https://lsh.example.ts.net"/>
+      <Toggle label="Also accept plain API tokens (legacy, full admin access)" hint="Off = only bots can use MCP. Turn on only for an old setup that still uses an API token." checked={allowApiTokens} onChange={setAllowApiTokens}/>
       <div className="stg-actions">
-        <Button variant="primary" busy={save.busy} onClick={() => save.save({ enabled })}>{gt('common.save', 'Save')}</Button>
+        <Button variant="primary" busy={save.busy} onClick={() => save.save({ enabled, publicUrl, allowApiTokens })}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>
       </div>
+      {insecure && <div className="stg-banner err" style={{ marginTop: 8 }}>⚠ This address is plain http. Tokens would travel unencrypted outside your LAN, and ChatGPT / claude.ai need HTTPS — set up HTTPS (or Tailscale) and fill in the public address.</div>}
+
+      <div className="stg-field" style={{ marginTop: 16 }}>
+        <label>Bots</label>
+        <div className="stg-token-list">
+          {bots == null && <span className="stg-token-empty">Loading…</span>}
+          {bots?.length === 0 && <span className="stg-token-empty">No bots yet — create one per assistant below</span>}
+          {bots?.map(b => (
+            <div className="stg-token-row" key={b.id} style={{ flexWrap: 'wrap', gap: 6, opacity: b.enabled === false ? 0.55 : 1 }}>
+              <span className="stg-token-name" style={{ flex: '1 1 200px' }}>
+                <b>{b.name}</b> · {MCP_CLIENTS.find(c => c.value === b.client)?.label.split(' (')[0] || b.client} · {b.access === 'control' ? 'control' : 'read only'}
+                {b.sensitive ? ' · locks/alarm allowed' : ''}{b.rooms?.length ? ` · ${b.rooms.join(', ')}` : ' · all rooms'}
+                <span className="stg-hint"> — {b.tokenHint}{b.oauthGrants ? ` · ${b.oauthGrants} OAuth sign-in(s)` : ''} · last used {b.lastUsedAt ? new Date(b.lastUsedAt).toLocaleString() : 'never'}</span>
+              </span>
+              <Button variant="secondary" onClick={() => toggle(b)}>{b.enabled === false ? 'Enable' : 'Disable'}</Button>
+              <Button variant="secondary" onClick={() => rotate(b)}>New token</Button>
+              {b.oauthGrants > 0 && <Button variant="secondary" onClick={() => revokeOAuth(b)}>Sign out OAuth</Button>}
+              <button className="stg-token-delete" title="Remove bot" onClick={() => remove(b)}>✕</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Field label="New bot name" value={form.name} onChange={v => setForm({ ...form, name: v })} placeholder="e.g. Claude — kitchen & living room"/>
+      <Field label="Assistant" type="select" value={form.client} onChange={v => setForm({ ...form, client: v })} options={MCP_CLIENTS}/>
+      <Field label="Permissions" type="select" value={form.access} onChange={v => setForm({ ...form, access: v })}
+        options={[{ value: 'read', label: 'Read only — see devices and history, change nothing' }, { value: 'control', label: 'Control — may switch devices and run scenes' }]}/>
+      {form.access === 'control' && <Toggle label="Allow locks, alarm, gates and doors" hint="Off (recommended): those stay read-only for this bot, and scenes that touch them are refused." checked={form.sensitive} onChange={v => setForm({ ...form, sensitive: v })}/>}
+      <div className="stg-field">
+        <label>Rooms <span className="stg-hint">(none checked = all rooms)</span></label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px' }}>
+          {rooms.length === 0 && <span className="stg-hint">No rooms assigned to devices yet</span>}
+          {rooms.map(r => (
+            <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, cursor: 'pointer' }}>
+              <input type="checkbox" className="stg-checkbox" checked={form.rooms.includes(r)}
+                onChange={() => setForm({ ...form, rooms: form.rooms.includes(r) ? form.rooms.filter(x => x !== r) : [...form.rooms, r] })}/>{r}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="stg-actions">
+        <Button variant="secondary" busy={act.busy} onClick={create}>Create bot</Button>
+        <Button variant="secondary" onClick={showAudit}>Show recent bot activity</Button>
+        <ResultBanner result={act.result}/>
+      </div>
+
+      {revealed && (
+        <div className="stg-token-reveal">
+          <span className="stg-hint">Token for <b>{revealed.bot.name}</b> — copy it now, it will <strong>not</strong> be shown again. Treat it like a password: anyone with it can do what this bot can.</span>
+          <McpSetup client={revealed.bot.client} url={url} token={revealed.token}/>
+          <div className="stg-actions"><Button variant="secondary" onClick={() => setRevealed(null)}>Done</Button></div>
+        </div>
+      )}
+
+      {audit && (
+        <div className="stg-field" style={{ marginTop: 12 }}>
+          <label>Recent bot activity <span className="stg-hint">(since the last restart)</span></label>
+          <div style={{ maxHeight: 260, overflow: 'auto', fontSize: 12, fontFamily: 'ui-monospace, monospace' }}>
+            {audit.length === 0 && <span className="stg-hint">Nothing yet</span>}
+            {audit.map((e, i) => (
+              <div key={i} style={{ color: e.ok ? 'inherit' : 'var(--danger, #d33)' }}>
+                {new Date(e.at).toLocaleTimeString()} · {e.bot} · {e.tool} {e.args && Object.keys(e.args).length ? JSON.stringify(e.args) : ''} {e.ok ? '✓' : `✗ ${e.error || ''}`}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </SettingsCard>
   )
 }

@@ -81,7 +81,7 @@ export const CATEGORIES = [
     { id: 'homekit', title: 'HomeKit', ported: true },
     { id: 'matter', title: 'Matter & Thread', ported: true },
     { id: 'homeplan', title: 'Home Plan', ported: true },
-    { id: 'security-auth', title: 'Security & Authentication', ported: true },
+    { id: 'security-auth', title: 'Security & Authentication', ported: true, keywords: ['mcp', 'bot', 'bots', 'ai', 'claude', 'gemini', 'chatgpt', 'openai', 'oauth', 'token'] },
     { id: 'backup', title: 'Backup & Restore', ported: true },
     { id: 'lan-scan', title: 'LAN scan', ported: true, keywords: ['network', 'lan', 'scan', 'ip', 'devices', 'ports', 'mdns', 'bonjour', 'upnp', 'discover'] },
     { id: 'ble-scan', title: 'Bluetooth scan', ported: true, keywords: ['ble', 'bluetooth', 'scan', 'bluez', 'devices nearby'] },

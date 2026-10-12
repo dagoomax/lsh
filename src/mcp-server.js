@@ -11,28 +11,64 @@ const platformStatus = require('./platform-status');
  * data the dashboard shows and drive the same sendCommand() path the REST
  * API and HomeKit bridge use, no separate integration layer.
  *
- * Mounted at POST /api/mcp (see server.js), behind the same auth middleware
- * as the rest of /api/* — connect with an LSH API bearer token
- * (Settings → Security → API Tokens).
+ * Mounted at POST /api/mcp (see server.js). Auth is done here, not by the
+ * /api middleware: a bearer MCP bot token (lshb_…) or an OAuth access token
+ * (lsha_…) — see src/mcp-bots.js. Each call is checked against the bot's
+ * policy (read-only / control, rooms / devices, sensitive devices), rate
+ * limited and audited. Plain LSH API tokens (admin for the whole REST API)
+ * only work here when config.mcp.allowApiTokens is true.
  *
  * Stateless Streamable HTTP: a fresh McpServer + transport per request, so
  * there's no session state to keep in sync with a Node process that may be
  * restarted (pm2) independently of any given client.
  */
-function buildServer(store, sensorRegistry, automation) {
-  const server = new McpServer({ name: 'lsh', version: '1.0.0' });
+// Every device command a scene would send, including nested scenes
+function sceneDeviceActions(automation, scene, seen = new Set()) {
+  if (!scene || seen.has(scene.id)) return [];
+  seen.add(scene.id);
+  const out = [];
+  for (const a of scene.actions || []) {
+    if (a.type === 'device') out.push(a);
+    else if (a.type === 'scene') out.push(...sceneDeviceActions(automation, automation.scenes.find((s) => s.id === a.sceneId), seen));
+  }
+  return out;
+}
 
-  server.registerTool(
+// bot = the authenticated MCP bot (src/mcp-bots.js), or null for a legacy
+// full-access caller (an LSH API token with config.mcp.allowApiTokens)
+function buildServer(store, sensorRegistry, automation, bot = null, bots = null, ip = null) {
+  const server = new McpServer({ name: 'lsh', version: '1.0.0' });
+  const text = (v) => ({ content: [{ type: 'text', text: typeof v === 'string' ? v : JSON.stringify(v, null, 2) }] });
+  const fail = (msg) => ({ content: [{ type: 'text', text: msg }], isError: true });
+  const device = (key) => sensorRegistry.getDevices().find((d) => d.key === key);
+  const visible = (d) => !bot || bots.canSee(bot, d);
+  const view = (r) => (bot ? bots.viewDevice(bot, r) : r);
+  // Rate limit + audit around every tool
+  const tool = (name, def, fn) => server.registerTool(name, def, async (args) => {
+    if (bot) {
+      try { bots.hit(bot) } catch (err) { bots.audit({ botId: bot.id, bot: bot.name, ip, tool: name, args, ok: false, error: err.message }); return fail(err.message) }
+    }
+    let res;
+    try { res = await fn(args || {}) } catch (err) { res = fail(err.message) }
+    if (bot) {
+      const writeish = name === 'send_command' || name === 'run_scene';
+      bots.audit({ botId: bot.id, bot: bot.name, ip, tool: name, args, ok: !res.isError, ...(res.isError ? { error: res.content?.[0]?.text } : {}) });
+      if (writeish || res.isError) console.log(`[MCP] ${bot.name}: ${name} ${JSON.stringify(args)} → ${res.isError ? `denied/failed: ${res.content?.[0]?.text}` : 'ok'}`);
+    }
+    return res;
+  });
+
+  tool(
     'list_devices',
     {
       title: 'List devices',
       description: 'List every device LSH knows about (Victron, Loxone, KNX, Shelly, HomeKit-exposed platforms, …), each with its current sensor readings.',
       inputSchema: {},
     },
-    async () => ({ content: [{ type: 'text', text: JSON.stringify(sensorRegistry.getAllReadings(), null, 2) }] }),
+    async () => text(sensorRegistry.getAllReadings().filter((r) => r && visible(r)).map(view)),
   );
 
-  server.registerTool(
+  tool(
     'get_device',
     {
       title: 'Get device',
@@ -41,12 +77,12 @@ function buildServer(store, sensorRegistry, automation) {
     },
     async ({ deviceKey }) => {
       const data = sensorRegistry.getDeviceReadings(deviceKey);
-      if (!data) return { content: [{ type: 'text', text: `Device not found: ${deviceKey}` }], isError: true };
-      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+      if (!data || !visible(data)) return fail(`Device not found: ${deviceKey}`);
+      return text(view(data));
     },
   );
 
-  server.registerTool(
+  if (!bot || bot.access === 'control') tool(
     'send_command',
     {
       title: 'Send device command',
@@ -58,16 +94,16 @@ function buildServer(store, sensorRegistry, automation) {
       },
     },
     async ({ deviceKey, sensor, value }) => {
-      try {
-        await sensorRegistry.sendCommand(deviceKey, sensor, value);
-        return { content: [{ type: 'text', text: 'OK' }] };
-      } catch (err) {
-        return { content: [{ type: 'text', text: err.message }], isError: true };
+      if (bot) {
+        const denied = bots.writeDenied(bot, device(deviceKey), sensor);
+        if (denied) return fail(denied);
       }
+      await sensorRegistry.sendCommand(deviceKey, sensor, value);
+      return text('OK');
     },
   );
 
-  server.registerTool(
+  tool(
     'get_history',
     {
       title: 'Get sensor history',
@@ -78,43 +114,45 @@ function buildServer(store, sensorRegistry, automation) {
       },
     },
     async ({ key, hours }) => {
+      // Only history of devices the bot can see
+      if (bot && !sensorRegistry.getDevices().some((d) => key.startsWith(`${d.key}/`) && visible(d))) return fail(`Not found: ${key}`);
       const points = (!hours || hours <= 6) ? store.getHistory(key) : await store.getHistoryRange(key, hours);
-      return { content: [{ type: 'text', text: JSON.stringify(points, null, 2) }] };
+      return text(points);
     },
   );
 
-  server.registerTool(
+  tool(
     'list_rooms',
     {
       title: 'List rooms',
       description: 'List configured room names and icons, for grouping devices by location.',
       inputSchema: {},
     },
-    async () => ({ content: [{ type: 'text', text: JSON.stringify(sensorRegistry.getRoomMeta(), null, 2) }] }),
+    async () => text(sensorRegistry.getRoomMeta()),
   );
 
-  server.registerTool(
+  tool(
     'list_platform_status',
     {
       title: 'List platform status',
       description: 'Health of each configured integration platform (Victron, Loxone, Shelly, …) — true if currently connected, as shown in the dashboard\'s platform bar.',
       inputSchema: {},
     },
-    async () => ({ content: [{ type: 'text', text: JSON.stringify(platformStatus.getAll(), null, 2) }] }),
+    async () => text(platformStatus.getAll()),
   );
 
   if (automation) {
-    server.registerTool(
+    tool(
       'list_scenes',
       {
         title: 'List scenes',
         description: 'List configured automation scenes (id, name, actions) that can be run with run_scene.',
         inputSchema: {},
       },
-      async () => ({ content: [{ type: 'text', text: JSON.stringify(automation.scenes, null, 2) }] }),
+      async () => text(automation.scenes.map((sc) => ({ id: sc.id, name: sc.name, icon: sc.icon, enabled: sc.enabled }))),
     );
 
-    server.registerTool(
+    if (!bot || bot.access === 'control') tool(
       'run_scene',
       {
         title: 'Run scene',
@@ -122,12 +160,17 @@ function buildServer(store, sensorRegistry, automation) {
         inputSchema: { sceneId: z.string().describe('Scene id, as returned by list_scenes') },
       },
       async ({ sceneId }) => {
-        try {
-          const scene = await automation.runScene(sceneId);
-          return { content: [{ type: 'text', text: `Ran scene: ${scene.name}` }] };
-        } catch (err) {
-          return { content: [{ type: 'text', text: err.message }], isError: true };
+        if (bot) {
+          // A scene may only do what the bot could do itself
+          const scene = automation.scenes.find((sc) => sc.id === sceneId);
+          if (!scene) return fail('Scene not found');
+          for (const a of sceneDeviceActions(automation, scene)) {
+            const denied = bots.writeDenied(bot, device(a.deviceKey), a.sensor);
+            if (denied) return fail(`Scene "${scene.name}" controls ${a.deviceKey} / ${a.sensor}: ${denied}`);
+          }
         }
+        const scene = await automation.runScene(sceneId);
+        return text(`Ran scene: ${scene.name}`);
       },
     );
   }
@@ -135,9 +178,54 @@ function buildServer(store, sensorRegistry, automation) {
   return server;
 }
 
-async function handleRequest(req, res, store, sensorRegistry, automation) {
+// Bearer value from the request (header only — never query strings)
+function bearer(req) {
+  const h = req.headers.authorization || '';
+  return h.startsWith('Bearer ') ? h.slice(7).trim() : '';
+}
+
+// Browsers send Origin; MCP clients (CLI apps, ChatGPT / claude.ai servers)
+// don't. A foreign Origin is a web page trying to reach the house → refuse
+// (DNS-rebinding / cross-site protection, as the MCP spec asks).
+function originAllowed(req, cfg) {
+  const o = req.headers.origin;
+  if (!o) return true;
   try {
-    const server    = buildServer(store, sensorRegistry, automation);
+    const u = new URL(o);
+    if (u.host === req.get('host')) return true;
+    return (cfg.allowedOrigins || []).includes(u.origin);
+  } catch { return false }
+}
+
+function resourceMetadataUrl(req, cfg) {
+  const base = cfg.publicUrl ? String(cfg.publicUrl).replace(/\/+$/, '') : `${req.protocol}://${req.get('host')}`;
+  return `${base}/.well-known/oauth-protected-resource`;
+}
+
+async function handleRequest(req, res, store, sensorRegistry, automation, { bots, auth, mcpConfig = {} } = {}) {
+  const ip = req.ip || req.socket?.remoteAddress || '';
+  const deny = (status, message) => {
+    if (status === 401) res.set('WWW-Authenticate', `Bearer realm="lsh-mcp", resource_metadata="${resourceMetadataUrl(req, mcpConfig)}"`);
+    res.status(status).json({ jsonrpc: '2.0', error: { code: -32001, message }, id: null });
+  };
+  if (!originAllowed(req, mcpConfig)) return deny(403, 'Origin not allowed');
+  if (bots?.isBlocked(ip)) return deny(429, 'Too many failed sign-ins — try again later');
+
+  const token = bearer(req);
+  let bot = token ? bots?.verify(token) : null;
+  if (!bot) {
+    const legacy = token && mcpConfig.allowApiTokens === true && auth?.verifyApiToken(token);
+    if (!legacy) {
+      if (token) bots?.recordFailure(ip);
+      return deny(401, token ? 'Invalid or revoked MCP credentials' : 'MCP needs a bot token — create one in LSH Settings → Security → MCP bots');
+    }
+    bot = null; // legacy full access
+  } else {
+    bots.touch(bot, ip);
+  }
+
+  try {
+    const server    = buildServer(store, sensorRegistry, automation, bot, bots, ip);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on('close', () => { transport.close(); server.close(); });
     await server.connect(transport);
@@ -150,4 +238,4 @@ async function handleRequest(req, res, store, sensorRegistry, automation) {
   }
 }
 
-module.exports = { handleRequest };
+module.exports = { handleRequest, buildServer };

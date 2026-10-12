@@ -27,6 +27,8 @@ const SensorRegistry    = require('./src/sensor-registry');
 const createApiRoutes   = require('./src/api-routes');
 const setupWebSocket    = require('./src/websocket');
 const INTEGRATIONS      = require('./src/integrations');
+const McpBots           = require('./src/mcp-bots');
+const mountMcpOAuth     = require('./src/routes/mcp-oauth');
 
 function tryRequire(mod, hint) {
   try { return require(mod); }
@@ -392,23 +394,27 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient };
-  app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient, mcpBots: new McpBots() };
 
   // MCP server — exposes devices/sensors as tools for an external Claude
   // (Desktop, Claude Code, claude.ai) to query/control. Opt-in: it's a
   // control-plane endpoint, so it only mounts when explicitly enabled.
-  // Auth reuses the same /api/* middleware (Bearer API token) as everything
-  // else — no separate credential to manage.
+  // Callers are MCP bots (one credential + policy per AI client), never the
+  // /api session — see src/mcp-bots.js.
   if (config.mcp?.enabled) {
     const mcpServer = tryRequire('./src/mcp-server', 'npm install @modelcontextprotocol/sdk zod');
     if (mcpServer) {
-      app.post('/api/mcp', (req, res) => mcpServer.handleRequest(req, res, store, sensorRegistry, automation));
+      // Bot / OAuth credentials and per-bot policy: src/mcp-bots.js; OAuth
+      // endpoints for ChatGPT / claude.ai connectors: src/routes/mcp-oauth.js
+      mountMcpOAuth(app, { bots: apiClients.mcpBots, mcpConfig: config.mcp });
+      app.post('/api/mcp', (req, res) => mcpServer.handleRequest(req, res, store, sensorRegistry, automation, { bots: apiClients.mcpBots, auth, mcpConfig: config.mcp }));
       app.get('/api/mcp', (req, res) => res.status(405).json({ success: false, error: 'Method not allowed — MCP requests use POST (Streamable HTTP transport)' }));
       app.delete('/api/mcp', (req, res) => res.status(405).json({ success: false, error: 'Method not allowed' }));
       console.log('[MCP] Server mounted at /api/mcp');
     }
   }
+
+  app.use('/api', createApiRoutes(store, relayController, sensorRegistry, connectionMgr, apiClients));
 
   // ── Build HTTP/HTTPS server ───────────────────────────────────────────────
   let mainServer;

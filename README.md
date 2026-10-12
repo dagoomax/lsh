@@ -3450,23 +3450,43 @@ Authorization: Bearer <token>
 
 Create tokens in **Settings → Security → API Tokens**. Tokens are stored as plain hex in `persist/api-tokens.json` — treat them like passwords.
 
-### MCP Server
+### MCP Server & AI bots
 
 ```json
 "mcp": {
-  "enabled": false
+  "enabled": false,
+  "publicUrl": "https://lsh.example.ts.net",
+  "allowApiTokens": false
 }
 ```
 
-Exposes devices/sensors as [MCP](https://modelcontextprotocol.io) tools — `list_devices`, `get_device`, `send_command`, `get_history`, `list_rooms`, `list_platform_status`, `list_scenes`, `run_scene` — so an external Claude (Desktop, Claude Code, claude.ai) can query and control the house directly, reading the same data the dashboard shows and driving the same `sendCommand()` path the REST API and HomeKit bridge use. Off by default (it's a control-plane endpoint); enable with `mcp.enabled: true`.
+Exposes devices/sensors as [MCP](https://modelcontextprotocol.io) tools — `list_devices`, `get_device`, `send_command`, `get_history`, `list_rooms`, `list_platform_status`, `list_scenes`, `run_scene` — so AI assistants (Claude, Gemini, ChatGPT, …) can query and control the house, through the same `sendCommand()` path the REST API and HomeKit bridge use. Off by default (it's a control-plane endpoint); enable with `mcp.enabled: true`. Mounted at `POST /api/mcp` (Streamable HTTP, stateless).
 
-Mounted at `POST /api/mcp` (Streamable HTTP transport, stateless — no session to keep alive across a pm2 restart). Protected by the same `/api/*` auth middleware as everything else — no separate credential, use an **API Token** (above):
+**Bots.** Every assistant gets its own **MCP bot** (Settings → Security → *MCP Server & AI bots*; `src/mcp-bots.js`), never an LSH API token — an API token is admin for the whole REST API, a bot credential works only on `/api/mcp` and only within the bot's policy:
+
+- **Read only** (no write tools offered at all) or **Control**.
+- **Rooms** — limit it to some rooms (devices outside them don't exist for the bot, history included).
+- **Sensitive devices** — locks, alarm panels (Satel, DSC), gates / garage / doors / wickets and the doorbell stay read-only unless *Allow locks, alarm, gates and doors* is on; a scene that would touch one is refused (nested scenes included).
+- 120 tool calls per minute per bot; 20 bad credentials from one IP lock it out for 10 minutes; Origin headers from other sites are refused (DNS-rebinding protection).
+- Every call is audited (*Show recent bot activity*; writes and refusals also go to the log). Disable, rotate the token or remove a bot at any time.
+
+Bot tokens (`lshb_…`, 256-bit) are shown once and stored only as SHA-256 hashes in `persist/mcp-bots.json` (0600). Plain API tokens are refused on `/api/mcp` unless `mcp.allowApiTokens: true` (legacy setups only).
+
+**Connecting.** The settings page shows the exact snippet for each assistant when you create its bot:
 
 ```bash
-claude mcp add --transport http lsh https://your-lsh-host/api/mcp --header "Authorization: Bearer <token>"
+# Claude Code
+claude mcp add --transport http lsh https://your-lsh-host/api/mcp --header "Authorization: Bearer lshb_…"
 ```
 
-Requires `npm install @modelcontextprotocol/sdk zod` (bundled in `package.json`'s normal dependencies, so a stock `npm install` already covers it).
+```json
+// Gemini CLI — ~/.gemini/settings.json (token from $LSH_MCP_TOKEN)
+{ "mcpServers": { "lsh": { "httpUrl": "https://your-lsh-host/api/mcp", "headers": { "Authorization": "Bearer $LSH_MCP_TOKEN" } } } }
+```
+
+Claude Desktop uses the same header through `npx mcp-remote`. **ChatGPT** custom connectors (and claude.ai connectors) can't send a static token — they use **OAuth 2.1** (`src/routes/mcp-oauth.js`): add the connector with the URL `https://…/api/mcp` and OAuth; the client discovers LSH's endpoints from the 401 (`/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`), registers itself, and sends you to LSH, where a signed-in **admin** picks the bot it will act as and approves. Authorization code + PKCE (S256 only), exact redirect-URI match, single-use 10-minute codes, 1-hour access tokens and 30-day refresh tokens rotated on every use, all bound to the bot — disabling or removing the bot (or *Sign out OAuth*) cuts the connector off. OAuth needs **HTTPS** (refused over plain http except on localhost): reach LSH over https (Tailscale Funnel, a reverse proxy, or LSH's own TLS) and set `mcp.publicUrl` to that address.
+
+Requires `@modelcontextprotocol/sdk` and `zod` (installed on demand with the MCP module).
 
 ### Role Permissions
 

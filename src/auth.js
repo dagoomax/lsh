@@ -324,6 +324,12 @@ const auth = {
       // Login/setup API endpoints are always public
       if (PUBLIC_API.some(a => p.startsWith(a))) return next();
 
+      // MCP authenticates its own callers (bot / OAuth tokens, src/mcp-server.js)
+      // and the OAuth token endpoints authenticate by code + PKCE / refresh
+      // token (src/routes/mcp-oauth.js) — /oauth/authorize is NOT listed: it
+      // needs a signed-in admin, so it falls through to the checks below.
+      if (p === '/api/mcp' || p === '/oauth/token' || p === '/oauth/register' || p === '/oauth/revoke') return next();
+
       // First-run guard: no users yet → force setup
       if (!auth.hasUsers()) {
         if (p.startsWith('/api/')) {
