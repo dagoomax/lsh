@@ -6,8 +6,8 @@ import { useSettingsSave } from '../../../hooks/useSettingsSave'
 // GitHub repo, downloaded only when opened and then cached on this host
 // (src/manuals.js).
 
-const KIND = { relay: '🔌', dimmer: '💡', shutter: '🪟', controller: '🎛' }
-const COLOR = { FIBARO: '#0a84ff', Qubino: '#30d158', Shelly: '#ff375f', SmartBob: '#7c8cff' }
+const KIND = { relay: '🔌', dimmer: '💡', shutter: '🪟', controller: '🎛', sensor: '📡', siren: '🚨', meter: '⚡', bulb: '💡', remote: '🎚', stick: '🔑', thermostat: '🌡', extender: '📶' }
+const COLOR = { FIBARO: '#0a84ff', Qubino: '#30d158', Shelly: '#ff375f', SmartBob: '#7c8cff', Aeotec: '#00a0e9' }
 const kb = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.round(b / 1024)} kB`)
 
 export default function ManualsSection() {
