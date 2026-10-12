@@ -1,6 +1,6 @@
 # LSH REST API — endpoint reference
 
-Full HTTP method + URL for every LSH dashboard API route. Host shown as `http://192.168.1.229:3001` (casablanca / LSH); use `http://localhost:3001` on-box or your own host.
+Full HTTP method + URL for every LSH dashboard API route. Host shown as `http://<lsh-host>:3001` — use `http://localhost:3001` on-box, or your LSH server's address.
 
 **Auth:** every `/api/*` route requires authentication except the bootstrap `POST /api/auth/setup` and `POST /api/auth/login`. Authenticate with any of:
 - Query param: `?token=<API_TOKEN>`
@@ -16,87 +16,87 @@ Regenerate the machine-readable spec with `node scripts/gen-openapi.js` → `pub
 ## Auth
 
 ```
-POST   http://192.168.1.229:3001/api/auth/setup
-POST   http://192.168.1.229:3001/api/auth/login
-POST   http://192.168.1.229:3001/api/auth/logout
-GET    http://192.168.1.229:3001/api/auth/me
-POST   http://192.168.1.229:3001/api/auth/change-password
-GET    http://192.168.1.229:3001/api/auth/users
-POST   http://192.168.1.229:3001/api/auth/users
-DELETE http://192.168.1.229:3001/api/auth/users/:id
-GET    http://192.168.1.229:3001/api/auth/tokens
-POST   http://192.168.1.229:3001/api/auth/tokens
-DELETE http://192.168.1.229:3001/api/auth/tokens/:id
-GET    http://192.168.1.229:3001/api/connection
-GET    http://192.168.1.229:3001/api/status
-GET    http://192.168.1.229:3001/api/battery
-GET    http://192.168.1.229:3001/api/solar
-GET    http://192.168.1.229:3001/api/grid
-GET    http://192.168.1.229:3001/api/loads
-GET    http://192.168.1.229:3001/api/relays
-POST   http://192.168.1.229:3001/api/relay/:index/state
+POST   http://<lsh-host>:3001/api/auth/setup
+POST   http://<lsh-host>:3001/api/auth/login
+POST   http://<lsh-host>:3001/api/auth/logout
+GET    http://<lsh-host>:3001/api/auth/me
+POST   http://<lsh-host>:3001/api/auth/change-password
+GET    http://<lsh-host>:3001/api/auth/users
+POST   http://<lsh-host>:3001/api/auth/users
+DELETE http://<lsh-host>:3001/api/auth/users/:id
+GET    http://<lsh-host>:3001/api/auth/tokens
+POST   http://<lsh-host>:3001/api/auth/tokens
+DELETE http://<lsh-host>:3001/api/auth/tokens/:id
+GET    http://<lsh-host>:3001/api/connection
+GET    http://<lsh-host>:3001/api/status
+GET    http://<lsh-host>:3001/api/battery
+GET    http://<lsh-host>:3001/api/solar
+GET    http://<lsh-host>:3001/api/grid
+GET    http://<lsh-host>:3001/api/loads
+GET    http://<lsh-host>:3001/api/relays
+POST   http://<lsh-host>:3001/api/relay/:index/state
 ```
 
 ## Devices / Sensors
 
 ```
-GET    http://192.168.1.229:3001/api/devices
-GET    http://192.168.1.229:3001/api/devices/:deviceKey(*)
-POST   http://192.168.1.229:3001/api/device/:deviceKey(*)/command
-GET    http://192.168.1.229:3001/api/device/:deviceKey(*)/set
+GET    http://<lsh-host>:3001/api/devices
+GET    http://<lsh-host>:3001/api/devices/:deviceKey(*)
+POST   http://<lsh-host>:3001/api/device/:deviceKey(*)/command
+GET    http://<lsh-host>:3001/api/device/:deviceKey(*)/set
 ```
 
 ## History
 
 ```
-GET    http://192.168.1.229:3001/api/history/:key(*)          # ?hours=N — beyond 6h, only Mongo-backed if configured (see `mongo` config)
-GET    http://192.168.1.229:3001/api/history-status           # { mongoEnabled, retentionDays, bufferHours }
+GET    http://<lsh-host>:3001/api/history/:key(*)          # ?hours=N — beyond 6h, only Mongo-backed if configured (see `mongo` config)
+GET    http://<lsh-host>:3001/api/history-status           # { mongoEnabled, retentionDays, bufferHours }
 ```
 
 ## Loxone Config XML templates
 
 ```
-GET    http://192.168.1.229:3001/api/loxone/inputs.xml
-GET    http://192.168.1.229:3001/api/loxone/outputs.xml
+GET    http://<lsh-host>:3001/api/loxone/inputs.xml
+GET    http://<lsh-host>:3001/api/loxone/outputs.xml
 ```
 
 ## Automation (rules / scenes / notifications)
 
 ```
-GET    http://192.168.1.229:3001/api/automation/rules
-POST   http://192.168.1.229:3001/api/automation/rules
-DELETE http://192.168.1.229:3001/api/automation/rules/:id
-GET    http://192.168.1.229:3001/api/automation/scenes
-POST   http://192.168.1.229:3001/api/automation/scenes
-DELETE http://192.168.1.229:3001/api/automation/scenes/:id
-POST   http://192.168.1.229:3001/api/automation/scenes/:id/run
-GET    http://192.168.1.229:3001/api/automation/notifications
-POST   http://192.168.1.229:3001/api/automation/notifications
-DELETE http://192.168.1.229:3001/api/automation/notifications
+GET    http://<lsh-host>:3001/api/automation/rules
+POST   http://<lsh-host>:3001/api/automation/rules
+DELETE http://<lsh-host>:3001/api/automation/rules/:id
+GET    http://<lsh-host>:3001/api/automation/scenes
+POST   http://<lsh-host>:3001/api/automation/scenes
+DELETE http://<lsh-host>:3001/api/automation/scenes/:id
+POST   http://<lsh-host>:3001/api/automation/scenes/:id/run
+GET    http://<lsh-host>:3001/api/automation/notifications
+POST   http://<lsh-host>:3001/api/automation/notifications
+DELETE http://<lsh-host>:3001/api/automation/notifications
 ```
 
 ## Satel INTEGRA
 
 ```
-GET    http://192.168.1.229:3001/api/satel/zones
-GET    http://192.168.1.229:3001/api/satel/outputs
-GET    http://192.168.1.229:3001/api/satel/partitions
-GET    http://192.168.1.229:3001/api/satel/status
-POST   http://192.168.1.229:3001/api/satel/output/:num
-POST   http://192.168.1.229:3001/api/satel/partition/:num/:action(arm|disarm)
+GET    http://<lsh-host>:3001/api/satel/zones
+GET    http://<lsh-host>:3001/api/satel/outputs
+GET    http://<lsh-host>:3001/api/satel/partitions
+GET    http://<lsh-host>:3001/api/satel/status
+POST   http://<lsh-host>:3001/api/satel/output/:num
+POST   http://<lsh-host>:3001/api/satel/partition/:num/:action(arm|disarm)
 ```
 
 ## Cameras
 
 ```
-GET    http://192.168.1.229:3001/api/cameras
+GET    http://<lsh-host>:3001/api/cameras
 ```
 
 ## Local object detection (COCO-SSD) model selection
 
 ```
-GET    http://192.168.1.229:3001/api/settings/object-detection/model   # { base, loading, loaded, error, options: [{id, label}] }
-POST   http://192.168.1.229:3001/api/settings/object-detection/model   # { model: lite_mobilenet_v2|mobilenet_v2|mobilenet_v1 } — downloads + validates before persisting
+GET    http://<lsh-host>:3001/api/settings/object-detection/model   # { base, loading, loaded, error, options: [{id, label}] }
+POST   http://<lsh-host>:3001/api/settings/object-detection/model   # { model: lite_mobilenet_v2|mobilenet_v2|mobilenet_v1 } — downloads + validates before persisting
 ```
 
 GET always succeeds (shows `base: null` if not running); POST 503s unless `objectDetection.cameras` has at least one entry — the client (and its model) only load when there's a camera to run it against.
@@ -106,21 +106,21 @@ GET always succeeds (shows `base: null` if not running); POST 503s unless `objec
 `:backend` is one of `reolink` | `axis` | `kenik` | `camera` (the last is manual `cameras` entries with an `onvif` section). Continuous move needs `cam.ptz: true` (Reolink/Axis) or an `onvif` block (KENIK/manual); presets ride on the same gate. IR, patrol, siren, and floodlight are per-camera opt-in flags (`ir`/`floodlight`/`siren` — patrol needs no separate flag, it rides on `ptz`) since they don't apply to every camera on a backend.
 
 ```
-POST   http://192.168.1.229:3001/api/:backend/ptz/:idx                 # { op: left|right|up|down|zoomin|zoomout|stop, speed? }
+POST   http://<lsh-host>:3001/api/:backend/ptz/:idx                 # { op: left|right|up|down|zoomin|zoomout|stop, speed? }
 
-GET    http://192.168.1.229:3001/api/:backend/preset/:idx              # [{ id, name }], writable: bool
-POST   http://192.168.1.229:3001/api/:backend/preset/:idx              # { name? } — save current position (writable backends only: axis, kenik, camera)
-POST   http://192.168.1.229:3001/api/:backend/preset/:idx/:id/goto
-DELETE http://192.168.1.229:3001/api/:backend/preset/:idx/:id          # writable backends only
+GET    http://<lsh-host>:3001/api/:backend/preset/:idx              # [{ id, name }], writable: bool
+POST   http://<lsh-host>:3001/api/:backend/preset/:idx              # { name? } — save current position (writable backends only: axis, kenik, camera)
+POST   http://<lsh-host>:3001/api/:backend/preset/:idx/:id/goto
+DELETE http://<lsh-host>:3001/api/:backend/preset/:idx/:id          # writable backends only
 
-POST   http://192.168.1.229:3001/api/reolink/patrol/:idx               # { action: start|stop, id? } — best-effort, model/firmware-dependent
+POST   http://<lsh-host>:3001/api/reolink/patrol/:idx               # { action: start|stop, id? } — best-effort, model/firmware-dependent
 
-GET    http://192.168.1.229:3001/api/:backend/ir/:idx                  # { mode: on|off|auto } — backend ∈ reolink|axis|kenik|camera
-POST   http://192.168.1.229:3001/api/:backend/ir/:idx                  # { mode: on|off|auto }
+GET    http://<lsh-host>:3001/api/:backend/ir/:idx                  # { mode: on|off|auto } — backend ∈ reolink|axis|kenik|camera
+POST   http://<lsh-host>:3001/api/:backend/ir/:idx                  # { mode: on|off|auto }
 
-POST   http://192.168.1.229:3001/api/reolink/siren/:idx                # { times? } — manual trigger, no persistent state
-GET    http://192.168.1.229:3001/api/reolink/floodlight/:idx           # { on, brightness }
-POST   http://192.168.1.229:3001/api/reolink/floodlight/:idx           # { on: bool }
+POST   http://<lsh-host>:3001/api/reolink/siren/:idx                # { times? } — manual trigger, no persistent state
+GET    http://<lsh-host>:3001/api/reolink/floodlight/:idx           # { on, brightness }
+POST   http://<lsh-host>:3001/api/reolink/floodlight/:idx           # { on: bool }
 ```
 
 Reolink presets are list + goto only — the CGI API has no documented "save" call, so presets must be created via the Reolink app/NVR UI first.
@@ -128,270 +128,270 @@ Reolink presets are list + goto only — the CGI API has no documented "save" ca
 ## SIP doorbell intercom
 
 ```
-GET    http://192.168.1.229:3001/api/sip/status
-POST   http://192.168.1.229:3001/api/sip/answer
-POST   http://192.168.1.229:3001/api/sip/reject
-POST   http://192.168.1.229:3001/api/sip/hangup
-POST   http://192.168.1.229:3001/api/sip/open-door
+GET    http://<lsh-host>:3001/api/sip/status
+POST   http://<lsh-host>:3001/api/sip/answer
+POST   http://<lsh-host>:3001/api/sip/reject
+POST   http://<lsh-host>:3001/api/sip/hangup
+POST   http://<lsh-host>:3001/api/sip/open-door
 ```
 
 ## Sonos: URL playback + TTS announcements
 
 ```
-GET    http://192.168.1.229:3001/api/sonos/players
-POST   http://192.168.1.229:3001/api/sonos/announce
-GET    http://192.168.1.229:3001/api/sonos/announce
-POST   http://192.168.1.229:3001/api/sonos/play-url
-GET    http://192.168.1.229:3001/api/sonos/play-url
-GET    http://192.168.1.229:3001/api/smartthings-camera/:deviceId/snapshot
-POST   http://192.168.1.229:3001/api/smartthings-camera/:deviceId/take
-GET    http://192.168.1.229:3001/api/camera-log
-GET    http://192.168.1.229:3001/api/unifi/snapshot/:cameraId
-GET    http://192.168.1.229:3001/api/reolink/snapshot/:idx
-POST   http://192.168.1.229:3001/api/settings/cameras
+GET    http://<lsh-host>:3001/api/sonos/players
+POST   http://<lsh-host>:3001/api/sonos/announce
+GET    http://<lsh-host>:3001/api/sonos/announce
+POST   http://<lsh-host>:3001/api/sonos/play-url
+GET    http://<lsh-host>:3001/api/sonos/play-url
+GET    http://<lsh-host>:3001/api/smartthings-camera/:deviceId/snapshot
+POST   http://<lsh-host>:3001/api/smartthings-camera/:deviceId/take
+GET    http://<lsh-host>:3001/api/camera-log
+GET    http://<lsh-host>:3001/api/unifi/snapshot/:cameraId
+GET    http://<lsh-host>:3001/api/reolink/snapshot/:idx
+POST   http://<lsh-host>:3001/api/settings/cameras
 ```
 
 ## Reolink PoE cameras
 
 ```
-POST   http://192.168.1.229:3001/api/settings/reolink
-POST   http://192.168.1.229:3001/api/settings/test-reolink
+POST   http://<lsh-host>:3001/api/settings/reolink
+POST   http://<lsh-host>:3001/api/settings/test-reolink
 ```
 
 ## SolarEdge
 
 ```
-GET    http://192.168.1.229:3001/api/solaredge
-POST   http://192.168.1.229:3001/api/settings/test-solaredge
-POST   http://192.168.1.229:3001/api/settings/solaredge
+GET    http://<lsh-host>:3001/api/solaredge
+POST   http://<lsh-host>:3001/api/settings/test-solaredge
+POST   http://<lsh-host>:3001/api/settings/solaredge
 ```
 
 ## SmartThings
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-smartthings
-POST   http://192.168.1.229:3001/api/settings/smartthings
-GET    http://192.168.1.229:3001/api/settings/smartthings-token    # current bearer token, refreshed + written to disk every 24h
+POST   http://<lsh-host>:3001/api/settings/test-smartthings
+POST   http://<lsh-host>:3001/api/settings/smartthings
+GET    http://<lsh-host>:3001/api/settings/smartthings-token    # current bearer token, refreshed + written to disk every 24h
 ```
 
 ## Satel
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-satel
-POST   http://192.168.1.229:3001/api/settings/satel
+POST   http://<lsh-host>:3001/api/settings/test-satel
+POST   http://<lsh-host>:3001/api/settings/satel
 ```
 
 ## UniFi Protect
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-unifi
-POST   http://192.168.1.229:3001/api/settings/unifi
+POST   http://<lsh-host>:3001/api/settings/test-unifi
+POST   http://<lsh-host>:3001/api/settings/unifi
 ```
 
 ## VRM test + partial save
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-vrm
-POST   http://192.168.1.229:3001/api/settings/test-vrm-live
-POST   http://192.168.1.229:3001/api/settings/vrm
+POST   http://<lsh-host>:3001/api/settings/test-vrm
+POST   http://<lsh-host>:3001/api/settings/test-vrm-live
+POST   http://<lsh-host>:3001/api/settings/vrm
 ```
 
 ## Config backup / restore
 
 ```
-GET    http://192.168.1.229:3001/api/settings/export
-POST   http://192.168.1.229:3001/api/settings/import
+GET    http://<lsh-host>:3001/api/settings/export
+POST   http://<lsh-host>:3001/api/settings/import
 ```
 
 ## HomeKit QR
 
 ```
-GET    http://192.168.1.229:3001/api/homekit/setup-uri
+GET    http://<lsh-host>:3001/api/homekit/setup-uri
 ```
 
 ## Settings
 
 ```
-GET    http://192.168.1.229:3001/api/settings
-POST   http://192.168.1.229:3001/api/settings
-POST   http://192.168.1.229:3001/api/settings/test-mqtt
+GET    http://<lsh-host>:3001/api/settings
+POST   http://<lsh-host>:3001/api/settings
+POST   http://<lsh-host>:3001/api/settings/test-mqtt
 ```
 
 ## Dreame
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-dreame
-POST   http://192.168.1.229:3001/api/settings/dreame
+POST   http://<lsh-host>:3001/api/settings/test-dreame
+POST   http://<lsh-host>:3001/api/settings/dreame
 ```
 
 ## MC6 Thermostats
 
 ```
-POST   http://192.168.1.229:3001/api/settings/mc6
+POST   http://<lsh-host>:3001/api/settings/mc6
 
-GET    http://192.168.1.229:3001/api/mc6/:mac/schedule       # { countdown, daily[] }
-POST   http://192.168.1.229:3001/api/mc6/:mac/timer          # { minutes, action: 'on'|'off' } — one-shot countdown
-DELETE http://192.168.1.229:3001/api/mc6/:mac/timer          # cancel the countdown
-POST   http://192.168.1.229:3001/api/mc6/:mac/schedule       # { time: 'HH:MM', action: 'on'|'off', days?: [0-6], enabled? } — recurring daily entry
-DELETE http://192.168.1.229:3001/api/mc6/:mac/schedule/:id   # remove a daily entry
+GET    http://<lsh-host>:3001/api/mc6/:mac/schedule       # { countdown, daily[] }
+POST   http://<lsh-host>:3001/api/mc6/:mac/timer          # { minutes, action: 'on'|'off' } — one-shot countdown
+DELETE http://<lsh-host>:3001/api/mc6/:mac/timer          # cancel the countdown
+POST   http://<lsh-host>:3001/api/mc6/:mac/schedule       # { time: 'HH:MM', action: 'on'|'off', days?: [0-6], enabled? } — recurring daily entry
+DELETE http://<lsh-host>:3001/api/mc6/:mac/schedule/:id   # remove a daily entry
 ```
 
 ## Roborock
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-roborock
-POST   http://192.168.1.229:3001/api/settings/roborock
+POST   http://<lsh-host>:3001/api/settings/test-roborock
+POST   http://<lsh-host>:3001/api/settings/roborock
 ```
 
 ## Homey
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-homey
-POST   http://192.168.1.229:3001/api/settings/homey
+POST   http://<lsh-host>:3001/api/settings/test-homey
+POST   http://<lsh-host>:3001/api/settings/homey
 ```
 
 ## Somfy
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-somfy
-POST   http://192.168.1.229:3001/api/settings/somfy
+POST   http://<lsh-host>:3001/api/settings/test-somfy
+POST   http://<lsh-host>:3001/api/settings/somfy
 ```
 
 ## Bayrol
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-bayrol
-POST   http://192.168.1.229:3001/api/settings/bayrol
+POST   http://<lsh-host>:3001/api/settings/test-bayrol
+POST   http://<lsh-host>:3001/api/settings/bayrol
 ```
 
 ## Loxone
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-loxone
-POST   http://192.168.1.229:3001/api/settings/loxone
-POST   http://192.168.1.229:3001/api/settings/loxone-out
-POST   http://192.168.1.229:3001/api/settings/auxair
-POST   http://192.168.1.229:3001/api/settings/denon
-POST   http://192.168.1.229:3001/api/settings/test-denon
-POST   http://192.168.1.229:3001/api/settings/sonos
-POST   http://192.168.1.229:3001/api/settings/test-boneio
-POST   http://192.168.1.229:3001/api/settings/boneio
-POST   http://192.168.1.229:3001/api/settings/sip
-POST   http://192.168.1.229:3001/api/settings/test-aeotec
-POST   http://192.168.1.229:3001/api/settings/scan-snapshot
-POST   http://192.168.1.229:3001/api/settings/test-dirigera
-POST   http://192.168.1.229:3001/api/settings/dirigera
-POST   http://192.168.1.229:3001/api/settings/sip
-POST   http://192.168.1.229:3001/api/settings/tradfri
-POST   http://192.168.1.229:3001/api/settings/test-shelly
-POST   http://192.168.1.229:3001/api/settings/shelly
+POST   http://<lsh-host>:3001/api/settings/test-loxone
+POST   http://<lsh-host>:3001/api/settings/loxone
+POST   http://<lsh-host>:3001/api/settings/loxone-out
+POST   http://<lsh-host>:3001/api/settings/auxair
+POST   http://<lsh-host>:3001/api/settings/denon
+POST   http://<lsh-host>:3001/api/settings/test-denon
+POST   http://<lsh-host>:3001/api/settings/sonos
+POST   http://<lsh-host>:3001/api/settings/test-boneio
+POST   http://<lsh-host>:3001/api/settings/boneio
+POST   http://<lsh-host>:3001/api/settings/sip
+POST   http://<lsh-host>:3001/api/settings/test-aeotec
+POST   http://<lsh-host>:3001/api/settings/scan-snapshot
+POST   http://<lsh-host>:3001/api/settings/test-dirigera
+POST   http://<lsh-host>:3001/api/settings/dirigera
+POST   http://<lsh-host>:3001/api/settings/sip
+POST   http://<lsh-host>:3001/api/settings/tradfri
+POST   http://<lsh-host>:3001/api/settings/test-shelly
+POST   http://<lsh-host>:3001/api/settings/shelly
 ```
 
 ## Waveshare Modbus TCP
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-waveshare
-POST   http://192.168.1.229:3001/api/settings/waveshare
+POST   http://<lsh-host>:3001/api/settings/test-waveshare
+POST   http://<lsh-host>:3001/api/settings/waveshare
 ```
 
 ## BroadLink IR/RF
 
 ```
-GET    http://192.168.1.229:3001/api/broadlink/codes
-POST   http://192.168.1.229:3001/api/broadlink/learn/ir
-POST   http://192.168.1.229:3001/api/broadlink/learn/rf
-POST   http://192.168.1.229:3001/api/broadlink/send
-DELETE http://192.168.1.229:3001/api/broadlink/codes
-POST   http://192.168.1.229:3001/api/settings/test-broadlink
-POST   http://192.168.1.229:3001/api/settings/broadlink
+GET    http://<lsh-host>:3001/api/broadlink/codes
+POST   http://<lsh-host>:3001/api/broadlink/learn/ir
+POST   http://<lsh-host>:3001/api/broadlink/learn/rf
+POST   http://<lsh-host>:3001/api/broadlink/send
+DELETE http://<lsh-host>:3001/api/broadlink/codes
+POST   http://<lsh-host>:3001/api/settings/test-broadlink
+POST   http://<lsh-host>:3001/api/settings/broadlink
 ```
 
 ## ESPHome
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-esphome
-POST   http://192.168.1.229:3001/api/settings/esphome
+POST   http://<lsh-host>:3001/api/settings/test-esphome
+POST   http://<lsh-host>:3001/api/settings/esphome
 ```
 
 ## LG ThinQ
 
 ```
-POST   http://192.168.1.229:3001/api/settings/lgthinq-login
-POST   http://192.168.1.229:3001/api/settings/test-lgthinq
-POST   http://192.168.1.229:3001/api/settings/lgthinq
+POST   http://<lsh-host>:3001/api/settings/lgthinq-login
+POST   http://<lsh-host>:3001/api/settings/test-lgthinq
+POST   http://<lsh-host>:3001/api/settings/lgthinq
 ```
 
 ## Fibaro Home Center
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-fibaro
-POST   http://192.168.1.229:3001/api/settings/fibaro
+POST   http://<lsh-host>:3001/api/settings/test-fibaro
+POST   http://<lsh-host>:3001/api/settings/fibaro
 ```
 
 ## WebRTC WHEP proxy
 
 ```
-POST   http://192.168.1.229:3001/api/webrtc/offer
+POST   http://<lsh-host>:3001/api/webrtc/offer
 ```
 
 ## SmartBob
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-smartbob
-POST   http://192.168.1.229:3001/api/settings/smartbob
+POST   http://<lsh-host>:3001/api/settings/test-smartbob
+POST   http://<lsh-host>:3001/api/settings/smartbob
 ```
 
 ## Arduino MQTT
 
 ```
-POST   http://192.168.1.229:3001/api/settings/arduino
+POST   http://<lsh-host>:3001/api/settings/arduino
 ```
 
 ## Suppla
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-suppla
-POST   http://192.168.1.229:3001/api/settings/suppla
+POST   http://<lsh-host>:3001/api/settings/test-suppla
+POST   http://<lsh-host>:3001/api/settings/suppla
 ```
 
 ## KNX
 
 ```
-POST   http://192.168.1.229:3001/api/settings/test-knx
-POST   http://192.168.1.229:3001/api/settings/knx
+POST   http://<lsh-host>:3001/api/settings/test-knx
+POST   http://<lsh-host>:3001/api/settings/knx
 ```
 
 ## FFmpeg RTSP proxy
 
 ```
-GET    http://192.168.1.229:3001/api/rtsp-proxy
-POST   http://192.168.1.229:3001/api/settings/ffmpeg-rtsp
+GET    http://<lsh-host>:3001/api/rtsp-proxy
+POST   http://<lsh-host>:3001/api/settings/ffmpeg-rtsp
 ```
 
 ## Logs
 
 ```
-GET    http://192.168.1.229:3001/api/logs
-GET    http://192.168.1.229:3001/api/logs/:name
-DELETE http://192.168.1.229:3001/api/logs/:name
-POST   http://192.168.1.229:3001/api/admin/restart
-POST   http://192.168.1.229:3001/api/admin/reset-config
+GET    http://<lsh-host>:3001/api/logs
+GET    http://<lsh-host>:3001/api/logs/:name
+DELETE http://<lsh-host>:3001/api/logs/:name
+POST   http://<lsh-host>:3001/api/admin/restart
+POST   http://<lsh-host>:3001/api/admin/reset-config
 ```
 
 ## MQTT Explorer
 
 ```
-GET    http://192.168.1.229:3001/api/mqtt-explorer/topics
-GET    http://192.168.1.229:3001/api/mqtt-explorer/history
-POST   http://192.168.1.229:3001/api/mqtt-explorer/publish
-POST   http://192.168.1.229:3001/api/mqtt-explorer/subscribe
-POST   http://192.168.1.229:3001/api/mqtt-explorer/clear
+GET    http://<lsh-host>:3001/api/mqtt-explorer/topics
+GET    http://<lsh-host>:3001/api/mqtt-explorer/history
+POST   http://<lsh-host>:3001/api/mqtt-explorer/publish
+POST   http://<lsh-host>:3001/api/mqtt-explorer/subscribe
+POST   http://<lsh-host>:3001/api/mqtt-explorer/clear
 ```
 
 ## HTTPS / TLS settings
 
 ```
-POST   http://192.168.1.229:3001/api/settings/https
+POST   http://<lsh-host>:3001/api/settings/https
 ```
 ---
 
@@ -407,7 +407,7 @@ position) · `tilt` (0–100 % open slats — io venetian blinds only) · `stop`
 
 ```bash
 T=<API_TOKEN>
-B=http://192.168.1.229:3001
+B=http://<lsh-host>:3001
 
 # Read one cover's readings / a single sensor
 curl "$B/api/devices/somfy/io___2028-5589-5601_11600128?token=$T"

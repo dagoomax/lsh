@@ -79,7 +79,7 @@ export default function LoxoneXmlSection() {
       <Toggle label="Named devices only" hint='(skip unnamed Satel zones/outputs like "Zone 33")' checked={namedOnly} onChange={setNamedOnly}/>
       <Field label="API Token" hint="(embedded into the generated URLs)" type="select" value={tokenId} onChange={setTokenId}
         options={tokens.length ? tokens.map(t => ({ value: t.id, label: t.name })) : [{ value: '', label: '— no API tokens; create one in Security → API Tokens —' }]}/>
-      <Field label="LSH address as seen by the Miniserver" hint="(host:port)" value={host} onChange={setHost} placeholder="192.168.1.229:3000"/>
+      <Field label="LSH address as seen by the Miniserver" hint="(host:port)" value={host} onChange={setHost} placeholder="lsh.local:3000"/>
       <Field label="Input polling" hint="(ms, inputs.xml only)" type="number" value={polling} onChange={setPolling} placeholder="5000"/>
       <div className="stg-actions">
         <Button variant="primary" onClick={() => download('outputs')}>⬇ outputs.xml ({outputCount})</Button>

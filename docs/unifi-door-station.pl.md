@@ -46,7 +46,7 @@ Dwie niezależne ścieżki:
   `192.168.1.1`).
 - Aktywna aplikacja/usługa UniFi Talk na konsoli (dla ścieżki połączeń).
 - Działający serwer LSH (to repozytorium) — w tej instalacji
-  `192.168.1.229`, HTTP port `3001`, HTTPS `3443`.
+  `<lsh-host>` (adres w LAN), HTTP port `3001`, HTTPS `3443`.
 - Miniserver Loxone osiągalny z serwera LSH po HTTP.
 
 ## 3. Konfiguracja konsoli UniFi
@@ -234,7 +234,7 @@ Przeciągnij `VI_UnifiDoorbell` na stronę i podłącz np. do:
 Ustaw adres obrazu w bloku **Intercom / Strona WWW** na proxy zrzutów LSH:
 
 ```
-http://192.168.1.229:3001/api/unifi/snapshot/<cameraId>?token=TWÓJ_TOKEN_LSH
+http://<lsh-host>:3001/api/unifi/snapshot/<cameraId>?token=TWÓJ_TOKEN_LSH
 ```
 
 Token API utworzysz na dashboardzie LSH w *Ustawienia → Tokeny API* (lub

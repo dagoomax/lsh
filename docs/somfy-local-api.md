@@ -11,7 +11,7 @@ Mode token, generated in the Somfy/TaHoma app and stored in LSH config, not here
 
 > The box is only reachable on the LSH LAN. From outside, wrap each call:
 > `ssh casablanca "curl -sk -H 'Authorization: Bearer <TOKEN>' <url>"`
-> (casablanca = the LSH host at 192.168.1.229, on the same LAN as the box.)
+> (casablanca = the LSH host, on the same LAN as the box.)
 
 For the device inventory and live readings see
 [`somfy-devices-casablanca.md`](somfy-devices-casablanca.md).

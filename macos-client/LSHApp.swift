@@ -109,7 +109,7 @@ struct WebView: NSViewRepresentable {
 
 // ── UI ──────────────────────────────────────────────────────────────────────
 struct ContentView: View {
-    @AppStorage("serverURL") private var serverURL = "http://100.86.235.13:3000/react/"
+    @AppStorage("serverURL") private var serverURL = "http://casablanca:3000/react/"
     @StateObject private var model = WebModel()
 
     private var homeURL: URL? { URL(string: serverURL) }
@@ -214,7 +214,7 @@ final class ServerStore: ObservableObject {
         }
         if list.isEmpty {
             list = [
-                Server(name: "Casablanca", url: "http://100.86.235.13:3000/react/"),
+                Server(name: "Casablanca", url: "http://casablanca:3000/react/"),
                 Server(name: "Local dev",  url: "http://localhost:3001/react/"),
             ]
         }
@@ -235,7 +235,7 @@ final class ServerStore: ObservableObject {
 }
 
 struct SettingsView: View {
-    @AppStorage("serverURL") private var serverURL = "http://100.86.235.13:3000/react/"
+    @AppStorage("serverURL") private var serverURL = "http://casablanca:3000/react/"
     @StateObject private var store = ServerStore()
 
     var body: some View {

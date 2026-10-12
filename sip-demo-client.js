@@ -8,7 +8,7 @@
  *   node sip-demo-client.js [lsh-host] [lsh-port] [extension]
  *
  * Example:
- *   node sip-demo-client.js 192.168.1.229 5060 doorbell
+ *   node sip-demo-client.js 192.168.1.20 5060 doorbell
  */
 
 const dgram = require('dgram');
@@ -24,7 +24,7 @@ function localIPv4() {
   return '127.0.0.1';
 }
 
-const lshHost = process.argv[2] || '192.168.1.229';
+const lshHost = process.argv[2] || '127.0.0.1';
 const lshPort = parseInt(process.argv[3] || '5060');
 const extension = process.argv[4] || 'doorbell';
 const localIp = localIPv4();

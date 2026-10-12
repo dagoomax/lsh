@@ -115,7 +115,7 @@ Door station ──► │  UniFi Protect  (camera, snapshots, ring/motion event
 <ul>
   <li>Door station adopted in UniFi Protect on the console (UDM at <code>192.168.1.1</code>).</li>
   <li>UniFi Talk subscription/app active on the console (for the call path).</li>
-  <li>LSH server running — in this installation <code>192.168.1.229</code>, HTTP port <code>3001</code>, HTTPS <code>3443</code>.</li>
+  <li>LSH server running — at <code>&lt;lsh-host&gt;</code> (its LAN address), HTTP port <code>3001</code>, HTTPS <code>3443</code>.</li>
   <li>Loxone Miniserver reachable from the LSH server over HTTP.</li>
 </ul>
 
@@ -264,7 +264,7 @@ non-empty and at least one mapping exists; startup log:
 
 <h3>5.6 Door station image in the Loxone app</h3>
 <p>Point an <strong>Intercom / Webpage</strong> block's image URL at the LSH snapshot proxy:</p>
-<pre><code>http://192.168.1.229:3001/api/unifi/snapshot/&lt;cameraId&gt;?token=YOUR_LSH_TOKEN</code></pre>
+<pre><code>http://&lt;lsh-host&gt;:3001/api/unifi/snapshot/&lt;cameraId&gt;?token=YOUR_LSH_TOKEN</code></pre>
 <p>Create the API token in the LSH dashboard under <em>Settings → API Tokens</em> (or
 <code>POST /api/auth/tokens</code>); tokens are stored in <code>persist/api-tokens.json</code>.
 The image refreshes on each poll of the block.</p>
@@ -360,7 +360,7 @@ Stacja bramowa ─►│  UniFi Protect  (kamera, zrzuty, zdarzenia dzwonka/ruch
 <ul>
   <li>Stacja bramowa dodana (adopted) w UniFi Protect na konsoli (UDM, <code>192.168.1.1</code>).</li>
   <li>Aktywna aplikacja/usługa UniFi Talk na konsoli (dla ścieżki połączeń).</li>
-  <li>Działający serwer LSH — w tej instalacji <code>192.168.1.229</code>, HTTP port <code>3001</code>, HTTPS <code>3443</code>.</li>
+  <li>Działający serwer LSH — pod adresem <code>&lt;lsh-host&gt;</code> (w LAN), HTTP port <code>3001</code>, HTTPS <code>3443</code>.</li>
   <li>Miniserver Loxone osiągalny z serwera LSH po HTTP.</li>
 </ul>
 
@@ -511,7 +511,7 @@ co najmniej jedno mapowanie; log przy starcie:
 
 <h3>5.6 Obraz stacji bramowej w aplikacji Loxone</h3>
 <p>Ustaw adres obrazu w bloku <strong>Intercom / Strona WWW</strong> na proxy zrzutów LSH:</p>
-<pre><code>http://192.168.1.229:3001/api/unifi/snapshot/&lt;cameraId&gt;?token=TWÓJ_TOKEN_LSH</code></pre>
+<pre><code>http://&lt;lsh-host&gt;:3001/api/unifi/snapshot/&lt;cameraId&gt;?token=TWÓJ_TOKEN_LSH</code></pre>
 <p>Token API utworzysz na dashboardzie LSH w <em>Ustawienia → Tokeny API</em> (lub
 <code>POST /api/auth/tokens</code>); tokeny są zapisywane w <code>persist/api-tokens.json</code>.
 Obraz odświeża się przy każdym odpytaniu bloku.</p>

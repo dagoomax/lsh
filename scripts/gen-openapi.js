@@ -100,7 +100,7 @@ const spec = {
   },
   servers: [
     { url: '/api', description: 'This LSH server' },
-    { url: 'http://192.168.1.229:3000/api', description: 'Casablanca (LAN)' },
+    { url: 'http://lsh.local:3000/api', description: 'LSH on the LAN (replace with your server address)' },
   ],
   tags,
   security: [{ tokenQuery: [] }, { bearerAuth: [] }, { cookieAuth: [] }],

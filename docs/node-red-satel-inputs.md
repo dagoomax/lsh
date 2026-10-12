@@ -7,7 +7,7 @@ This guide shows how to read Satel INTEGRA system inputs (e.g., battery status, 
 Use the LSH dashboard as a gateway to Satel. This avoids duplicating protocol logic.
 
 ### Prerequisites
-- LSH dashboard running at 192.168.1.229:3001
+- LSH dashboard running at `<lsh-host>:3001`
 - Satel inputs configured in `config.json`
 
 ### Node-RED Flow
@@ -222,7 +222,7 @@ Check your Satel panel configuration for exact input mapping.
 
 ## Testing
 
-1. **Via LSH**: http://192.168.1.229:3001/api/store?filter=satel/input
+1. **Via LSH**: http://<lsh-host>:3001/api/store?filter=satel/input
 2. **Via Node-RED**: Deploy the flow and check the debug output
 3. **Via Dashboard**: Check the Satel inputs section
 

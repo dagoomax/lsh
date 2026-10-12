@@ -9,7 +9,7 @@ including the **`my`** favourite (Somfy remote middle button). Loxone-friendly
 Append `?token=<TOKEN>` to every URL. Manage tokens in the dashboard
 **Settings → API tokens** (the `loxone` token works here too).
 
-- LSH base URL: `http://192.168.1.229:3001`
+- LSH base URL: `http://<lsh-host>:3001`
 
 ## Endpoints
 
@@ -52,7 +52,7 @@ only on io covers.
 
 ## Loxone wiring
 
-- **Commands** — one **Virtual Output** (Address `http://192.168.1.229:3001`),
+- **Commands** — one **Virtual Output** (Address `http://<lsh-host>:3001`),
   a Virtual Output Command per action, e.g. *Command for ON*:
   `/api/somfy/2826492/cmd/my?token=<TOKEN>`
 - **Status** — a **Virtual HTTP Input** polling
@@ -63,13 +63,13 @@ only on io covers.
 
 ```
 # Move "Ogród lewa" to its My favourite
-http://192.168.1.229:3001/api/somfy/2826492/cmd/my?token=<TOKEN>
+http://<lsh-host>:3001/api/somfy/2826492/cmd/my?token=<TOKEN>
 
 # Bedroom blind to 50 %
-http://192.168.1.229:3001/api/somfy/3073581/cmd/position?value=50&token=<TOKEN>
+http://<lsh-host>:3001/api/somfy/3073581/cmd/position?value=50&token=<TOKEN>
 
 # Stop the awning
-http://192.168.1.229:3001/api/somfy/16762043/cmd/stop?token=<TOKEN>
+http://<lsh-host>:3001/api/somfy/16762043/cmd/stop?token=<TOKEN>
 ```
 
 The generic per-sensor API and the Loxone XML export

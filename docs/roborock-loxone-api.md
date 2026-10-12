@@ -9,7 +9,7 @@ Append `?token=<TOKEN>` to every URL. Manage tokens in the dashboard
 **Settings → API tokens** (or `persist/api-tokens.json`). A token named `loxone`
 has been created for this purpose.
 
-- LSH base URL: `http://192.168.1.229:3001`
+- LSH base URL: `http://<lsh-host>:3001`
 - Device ids (`duid`):
   - `ZXqqO8pTR639d` — 1(upstairs)
   - `6vEUVvV4INscI` — 2parter (downstairs)
@@ -54,7 +54,7 @@ GET /api/roborock/<duid>/cmd/<action>?token=<TOKEN>
 | Water flow     | `/cmd/water?value=0..3` (Off/Low/Medium/High) |
 | Clean rooms    | `/cmd/clean?rooms=16,17` |
 
-In Loxone, add a **Virtual Output** with the base address `http://192.168.1.229:3001`,
+In Loxone, add a **Virtual Output** with the base address `http://<lsh-host>:3001`,
 then a **Virtual Output Command** whose *Command for ON* is the path above
 (including `?token=…`).
 
@@ -67,11 +67,11 @@ then a **Virtual Output Command** whose *Command for ON* is the path above
 
 ```
 # Start the upstairs vacuum
-http://192.168.1.229:3001/api/roborock/ZXqqOvdMt639d/cmd/start?token=<TOKEN>
+http://<lsh-host>:3001/api/roborock/ZXqqOvdMt639d/cmd/start?token=<TOKEN>
 
 # Clean kitchen + hallway downstairs
-http://192.168.1.229:3001/api/roborock/6vXyhvV4INscI/cmd/clean?rooms=16,19&token=<TOKEN>
+http://<lsh-host>:3001/api/roborock/6vXyhvV4INscI/cmd/clean?rooms=16,19&token=<TOKEN>
 
 # Set water flow to Medium
-http://192.168.1.229:3001/api/roborock/ZXwdf1nGvdMt639d/cmd/water?value=2&token=<TOKEN>
+http://<lsh-host>:3001/api/roborock/ZXwdf1nGvdMt639d/cmd/water?value=2&token=<TOKEN>
 ```
