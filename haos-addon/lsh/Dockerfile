@@ -14,7 +14,7 @@
 # requirements are the io.hass.* labels below.
 FROM node:20-bookworm-slim
 
-LABEL io.hass.version="1.0.2" \
+LABEL io.hass.version="1.0.3" \
       io.hass.type="app" \
       io.hass.arch="amd64|aarch64"
 
@@ -23,8 +23,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 ARG LSH_REF=main
+# Supervisor passes BUILD_VERSION (config.yaml's version). Referencing it here
+# makes a version bump invalidate Docker's cached clone layer, so the rebuild
+# really fetches the current LSH_REF instead of reusing the old checkout.
+ARG BUILD_VERSION
 WORKDIR /app
-RUN git clone --depth 1 --branch "${LSH_REF}" https://github.com/dagoomax/lsh.git . \
+RUN echo "LSH add-on ${BUILD_VERSION}" \
+    && git clone --depth 1 --branch "${LSH_REF}" https://github.com/dagoomax/lsh.git . \
     && rm -rf .git
 
 ENV NODE_ENV=production
