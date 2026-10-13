@@ -102,6 +102,12 @@ module.exports = [
   { file: 'sinum-client', label: 'Sinum', expose: 'sinum', when: (config) => config.sinum?.host && (config.sinum?.token || (config.sinum?.username && config.sinum?.password)) },
   // vCLU (Virtual CLU) — devices + scenes through its MCP endpoint (bot token)
   { file: 'vclu-client', label: 'vCLU', expose: 'vclu', when: (config) => config.vclu?.host && config.vclu?.token },
+  // Zendure SolarFlow — official local HTTP API (zenSDK)
+  { file: 'zendure-client', label: 'Zendure', expose: 'zendure', when: (config) => config.zendure?.devices?.length },
+  // UGREEN PowerRoam power stations — UGREEN cloud (app account)
+  { file: 'ugreen-client', label: 'UGREEN', expose: 'ugreen', when: (config) => config.ugreen?.email && config.ugreen?.password },
+  // Anker SOLIX Solarbank Max / E5000 Pro / XE, Smart Meter & Plug Gen 2 — official local Modbus TCP
+  { file: 'anker-solix-client', label: 'Anker SOLIX', expose: 'ankerSolix', when: (config) => config.ankerSolix?.devices?.length },
   // Spotify Web API — playback control (OAuth PKCE, only a Client ID needed)
   { file: 'spotify-client', label: 'Spotify', expose: 'spotify', when: (config) => config.spotify?.clientId },
   // Apple Music — developer token for the dashboard's MusicKit player + player relay device

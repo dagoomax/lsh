@@ -1203,6 +1203,44 @@
       ],
       "deps": {}
     },
+    "zendure": {
+      "entry": "src/zendure-client.js",
+      "configKeys": [
+        "zendure"
+      ],
+      "when": "(config.zendure?.devices?.length)",
+      "files": [
+        "src/polling-client.js",
+        "src/zendure-client.js"
+      ],
+      "deps": {}
+    },
+    "ugreen": {
+      "entry": "src/ugreen-client.js",
+      "configKeys": [
+        "ugreen"
+      ],
+      "when": "(config.ugreen?.email && config.ugreen?.password)",
+      "files": [
+        "src/ugreen-client.js"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
+    },
+    "anker-solix": {
+      "entry": "src/anker-solix-client.js",
+      "configKeys": [
+        "ankerSolix"
+      ],
+      "when": "(config.ankerSolix?.devices?.length)",
+      "files": [
+        "src/anker-solix-client.js",
+        "src/anker-solix-maps.json",
+        "src/polling-client.js"
+      ],
+      "deps": {}
+    },
     "spotify": {
       "entry": "src/spotify-client.js",
       "configKeys": [
