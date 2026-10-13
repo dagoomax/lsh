@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { gt } from '../../../i18n'
+import HomeKitExclude from './HomeKitExclude'
 
 // Mirrors the vanilla page's approach exactly (public/settings.html loads the
 // same CDN script) rather than adding a new npm dependency just for this one
@@ -77,6 +78,9 @@ export default function HomeKitSection({ config, reload }) {
           onClick={() => save.save({ homekit: { name, pin, port: Number(port), username } }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>
       </div>
+
+      <h4 className="stg-subheading">Not in HomeKit</h4>
+      <HomeKitExclude/>
 
       <div style={{ borderTop: '1px solid var(--sep)', marginTop: 16, paddingTop: 14 }}>
         <div className="stg-hint" style={{ marginBottom: 8 }}>

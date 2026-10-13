@@ -960,3 +960,22 @@ select.stg-input { cursor: pointer; }
 .an-st { font-size: 12px; opacity: .8; }
 .an-st.ok { color: var(--green); opacity: 1; }
 .an-st.bad { color: var(--red); opacity: 1; }
+
+/* HomeKit exclusions */
+.hk-ex-h { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text3); margin: 14px 0 6px; }
+.hk-ex-h small { font-weight: 500; text-transform: none; letter-spacing: 0; margin-left: 6px; }
+.hk-ex-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.hk-ex-chip { padding: 4px 11px; border-radius: 999px; border: 1px solid var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); color: inherit; cursor: pointer; font-size: 12px; }
+.hk-ex-chip small { opacity: .6; margin-left: 2px; }
+.hk-ex-chip.off { border-color: var(--border); background: transparent; opacity: .6; text-decoration: line-through; }
+.hk-ex-tools { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
+.hk-ex-tools .stg-input { flex: 1; }
+.hk-ex-small { display: flex; gap: 4px; align-items: center; font-size: 12px; white-space: nowrap; }
+.hk-ex-list { max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; }
+.hk-ex-row { display: flex; gap: 10px; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 13px; }
+.hk-ex-row:last-child { border-bottom: 0; }
+.hk-ex-row.off .hk-ex-name { opacity: .5; text-decoration: line-through; }
+.hk-ex-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hk-ex-name small { opacity: .6; }
+.hk-ex-kinds { font-size: 12px; }
+.hk-ex-type { font-size: 11px; opacity: .55; min-width: 70px; text-align: right; }

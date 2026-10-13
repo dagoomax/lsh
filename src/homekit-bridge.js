@@ -133,12 +133,26 @@ class BridgePool {
   // event handlers below). HAP-NodeJS supports adding bridged accessories
   // to an already-published Bridge, which this file already relied on for
   // those late-discovery paths before this pool existed.
-  add(accessory) {
+  add(accessory, key) {
+    if (key && this.byKey?.has(key)) return; // already bridged
     let bridge = this.bridges[this.bridges.length - 1];
     if (bridge._count >= MAX_ACCESSORIES_PER_BRIDGE) bridge = this._addBridge();
     bridge.addBridgedAccessory(accessory);
     bridge._count++;
+    if (key) (this.byKey ||= new Map()).set(key, { accessory, bridge });
   }
+
+  // Take a bridged accessory out again (HomeKit exclusions, applied live)
+  remove(key) {
+    const e = this.byKey?.get(key);
+    if (!e) return false;
+    try { e.bridge.removeBridgedAccessory(e.accessory) } catch (err) { console.warn(`[HomeKit] Remove ${key}: ${err.message}`) }
+    e.bridge._count--;
+    this.byKey.delete(key);
+    return true;
+  }
+
+  has(key) { return !!this.byKey?.has(key) }
 
   // Publishes an accessory on its own instead of bridging it — used for
   // HomeKit Secure Video cameras: the Home app only offers "Recording
@@ -1361,6 +1375,8 @@ function buildDimmerAccessory(device, sensor, store) {
 // ── Camera accessory builder ───────────────────────────────────────────────
 
 function addCameraToBridge(cam, pool, store) {
+  pool.cameras?.set(cam.name, { cam, store });
+  if (pool.excluded?.('camera', cam.name) || pool.has(`camera:${cam.name}`)) return;
   const acc = new Accessory(cam.name, makeUUID(`camera-${cam.name}`));
   acc.category = Categories.CAMERA;
   setInfo(acc, 'Camera', cam.name, `CAM-${cam.name}`);
@@ -1387,8 +1403,12 @@ function addCameraToBridge(cam, pool, store) {
   acc.configureController(controller);
   // HKSV cameras must be standalone (see BridgePool.publishStandalone);
   // cam.standalone forces it for any camera (also better streaming).
-  if (cam.hksv || cam.standalone) pool.publishStandalone(acc, `camera-${cam.name}`, Categories.CAMERA);
-  else pool.add(acc);
+  if (cam.hksv || cam.standalone) {
+    // Standalone accessories are published once (exclusion takes effect on restart)
+    if ((pool.standaloneDone ||= new Set()).has(cam.name)) return;
+    pool.standaloneDone.add(cam.name);
+    pool.publishStandalone(acc, `camera-${cam.name}`, Categories.CAMERA);
+  } else pool.add(acc, `camera:${cam.name}`);
   const streamType = cam.url ? 'snapshot+stream' : 'snapshot';
   console.log(`[HomeKit] Camera: ${cam.name} (${streamType})${cam.hksv ? ' +HKSV' : ''}`);
 
@@ -1416,7 +1436,7 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
   // node-persist crashes on ANY subdirectory there (EISDIR on scan), e.g.
   // persist/plan-decor. One-time migration moves existing pairing files over.
   const persistRoot = path.join(__dirname, '..', 'persist');
-  const hapDir = path.join(persistRoot, 'homekit');
+  const hapDir = process.env.LSH_HAP_DIR || path.join(persistRoot, 'homekit'); // override: tests
   if (!fs.existsSync(hapDir)) {
     fs.mkdirSync(hapDir, { recursive: true });
     for (const f of fs.readdirSync(persistRoot)) {
@@ -1429,8 +1449,26 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
 
   const pool = new BridgePool(config.homekit);
 
+  // ── Exclusions: LSH devices / types / cameras / scenes / relays kept out of
+  // HomeKit (config.homekit.exclude = { devices: [deviceKey], types: [type],
+  // cameras: [name], scenes: [sceneId], relays: [index] }). applyExclude()
+  // re-reads them at runtime: excluded accessories are removed from the
+  // published bridge, re-included ones added back — no restart.
+  const norm = (e = {}) => ({
+    devices: new Set((e.devices || []).map(String)), types: new Set((e.types || []).map(String)),
+    cameras: new Set((e.cameras || []).map(String)), scenes: new Set((e.scenes || []).map(String)), relays: new Set((e.relays || []).map(String)),
+  });
+  let exclude = norm(config.homekit?.exclude);
+  pool.cameras = new Map();
+  pool.excluded = (kind, id, type) => {
+    if (kind === 'device') return exclude.devices.has(String(id)) || (type != null && exclude.types.has(String(type)));
+    return exclude[`${kind}s`]?.has(String(id)) || false;
+  };
+  const adders = []; // (re)add everything that's allowed and missing
+
   // ── Relay switches (from config) ──────────────────────────
-  for (const relay of config.relays) {
+  const addRelay = (relay) => {
+    if (pool.excluded('relay', relay.index) || pool.has(`relay:${relay.index}`)) return;
     const acc = new Accessory(relay.name, makeUUID(`relay-${relay.index}`));
     setInfo(acc, 'Victron Energy', 'GX Relay', `RELAY-${relay.index}`);
 
@@ -1452,9 +1490,11 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
       }
     });
 
-    pool.add(acc);
+    pool.add(acc, `relay:${relay.index}`);
     console.log(`[HomeKit] Relay switch: ${relay.name}`);
-  }
+  };
+  for (const relay of config.relays) addRelay(relay);
+  adders.push(() => { for (const relay of config.relays) addRelay(relay) });
 
   // ── Camera accessories ────────────────────────────────────
   for (const cam of config.cameras ?? []) {
@@ -1518,15 +1558,19 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
     // standalone Lightbulb accessory; a device-level homekit type still bridges
     // as a single accessory (SmartThings / Loxone / etc.).
     const bridgeDevice = (device, added) => {
+      if (pool.excluded('device', device.key, device.type)) return;
       for (const s of dimmerSensors(device)) {
-        pool.add(buildDimmerAccessory(device, s, store));
+        if (pool.has(`device:${device.key}#${s.path}`)) continue;
+        pool.add(buildDimmerAccessory(device, s, store), `device:${device.key}#${s.path}`);
         console.log(`[HomeKit] Light${added ? ' added' : ''}: ${s.name || device.label}`);
       }
-      if (device.homekit && device.homekit.length > 0) {
-        pool.add(buildDeviceAccessory(device, store));
+      if (device.homekit && device.homekit.length > 0 && !pool.has(`device:${device.key}`)) {
+        pool.add(buildDeviceAccessory(device, store), `device:${device.key}`);
         console.log(`[HomeKit] Sensor${added ? ' added' : ''}: ${device.label} (${device.homekit.join(', ')})`);
       }
     };
+    adders.push(() => { for (const device of sensorRegistry.getDevices()) bridgeDevice(device, true) });
+    pool.devicesForHomekit = () => sensorRegistry.getDevices().filter((d) => (d.homekit && d.homekit.length) || dimmerSensors(d).length);
 
     // Devices discovered before HomeKit started
     for (const device of sensorRegistry.getDevices()) bridgeDevice(device, false);
@@ -1543,7 +1587,8 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
 
   // ── Scene switches (LSH automation scenes as momentary switches) ──────────
   if (automation?.scenes?.length) {
-    for (const scene of automation.scenes) {
+    const addScene = (scene) => {
+      if (pool.excluded('scene', scene.id) || pool.has(`scene:${scene.id}`)) return;
       const name = `${scene.name}`;
       const acc  = new Accessory(name, makeUUID(`scene-${scene.id}`));
       acc.category = Categories.SWITCH;
@@ -1561,10 +1606,31 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
           // spring back to off so it behaves like a button
           setTimeout(() => svc.getCharacteristic(Characteristic.On).updateValue(false), 1000);
         });
-      pool.add(acc);
+      pool.add(acc, `scene:${scene.id}`);
       console.log(`[HomeKit] Scene switch: ${name}`);
-    }
+    };
+    for (const scene of automation.scenes) addScene(scene);
+    adders.push(() => { for (const scene of automation.scenes || []) addScene(scene) });
   }
+  pool.scenes = () => automation?.scenes || [];
+  pool.relays = () => config.relays || [];
+
+  pool.applyExclude = (next) => {
+    exclude = norm(next);
+    let removed = 0;
+    for (const key of [...(pool.byKey?.keys() || [])]) {
+      const [kind, rest] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+      const id = kind === 'device' ? rest.split('#')[0] : rest;
+      const dev = kind === 'device' ? sensorRegistry?.getDevices().find((d) => d.key === id) : null;
+      if (pool.excluded(kind, id, dev?.type)) { pool.remove(key); removed++ }
+    }
+    const before = pool.byKey?.size || 0;
+    for (const add of adders) { try { add() } catch (err) { console.error(`[HomeKit] Re-add failed: ${err.message}`) } }
+    for (const { cam, store: st } of pool.cameras.values()) { try { addCameraToBridge(cam, pool, st) } catch (err) { console.error(`[HomeKit] Camera re-add failed: ${err.message}`) } }
+    const added = (pool.byKey?.size || 0) - before;
+    console.log(`[HomeKit] Exclusions applied — ${removed} removed, ${added} added`);
+    return { removed, added };
+  };
 
   // Publishing happens inside BridgePool as each bridge is created (the
   // first one at construction, above; any overflow ones on demand from
