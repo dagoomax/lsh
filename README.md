@@ -4179,6 +4179,20 @@ When Spotify or Apple Music is configured, LSH also registers `music/player` (`s
 
 (`"enabled": false` turns it off.) The selected source survives restarts.
 
+### Aquilo tank sensors
+
+[Aquilo](https://aquilo.pl) liquid-level sensors (septic tank, rainwater tank, well) via the **WiFi receiver's local endpoint** `GET http://<gateway>/state` — no Aquilo account, no cloud (`src/aquilo-client.js`, no npm deps). Settings → Smart Home → **Aquilo Tank Sensors**: add the receiver's IP (give it a fixed DHCP lease), **Test gateway**, untick tanks you don't want, rename them, **Save** — applied live.
+
+```json
+"aquilo": {
+  "gateways": [{ "host": "192.168.1.60", "name": "Garage" }],
+  "pollSeconds": 300, "staleHours": 24, "overflowPct": 90,
+  "exclude": [], "names": { "0A1B2C": "Septic tank" }
+}
+```
+
+Every tank the receiver reports becomes device `aquilo/<id>` (tanks added later appear on the next poll): `fill` (%), `level` (cm), `overflow` (on at ≥ `overflowPct`), `stale` (on when the last transmission is older than `staleHours` — battery or radio died; the receiver keeps repeating the last reading), `lastRead`, and — when the receiver's firmware reports them — `battery` (%), `daysLeft`, `toFull` (cm), `lastEmptied`. HomeKit: fill as a level (humidity) sensor plus overflow as a leak sensor. API: `GET /api/aquilo/status`, `POST /api/aquilo/test {"host":"…"}`, `POST /api/settings/aquilo`. Test without hardware: `node scripts/aquilo-simulator.js 8095` and add gateway `127.0.0.1:8095`.
+
 ### Home Assistant
 
 Both ways (`src/homeassistant-client.js`, dep `ws`, installed on demand):

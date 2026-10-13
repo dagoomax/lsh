@@ -110,4 +110,6 @@ module.exports = [
   { file: 'announcer', label: 'Announce', expose: 'announce', when: (config) => config.announce?.enabled },
   // Home Assistant — imports HA entities (WebSocket API) and/or exports LSH devices (MQTT Discovery)
   { file: 'homeassistant-client', label: 'HomeAssistant', expose: 'homeassistant', when: (config) => (config.homeassistant?.url && config.homeassistant?.token) || config.homeassistant?.export?.enabled },
+  // Aquilo liquid-level sensors (septic / rainwater tanks) — WiFi gateway's local /state endpoint
+  { file: 'aquilo-client', label: 'Aquilo', expose: 'aquilo', when: (config) => config.aquilo?.gateways?.length },
 ];

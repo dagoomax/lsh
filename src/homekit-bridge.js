@@ -381,11 +381,11 @@ function addLeakSensorService(accessory, name, storePath, store) {
   const svc = accessory.addService(Service.LeakSensor, name);
 
   svc.getCharacteristic(Characteristic.LeakDetected)
-    .onGet(() => store.get(storePath) === 1 ? 1 : 0);
+    .onGet(() => (store.get(storePath) === 1 || store.get(storePath) === true ? 1 : 0));
 
   store.on('change', ({ key, value }) => {
     if (key === storePath) {
-      svc.getCharacteristic(Characteristic.LeakDetected).updateValue(value === 1 ? 1 : 0);
+      svc.getCharacteristic(Characteristic.LeakDetected).updateValue(value === 1 || value === true ? 1 : 0);
     }
   });
 

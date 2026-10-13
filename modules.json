@@ -36,6 +36,7 @@
     "src/routes/airplay.js",
     "src/routes/announce.js",
     "src/routes/apple-music.js",
+    "src/routes/aquilo.js",
     "src/routes/arduino.js",
     "src/routes/auth.js",
     "src/routes/automation.js",
@@ -1251,6 +1252,17 @@
       "deps": {
         "ws": "^7.5.11"
       }
+    },
+    "aquilo": {
+      "entry": "src/aquilo-client.js",
+      "configKeys": [
+        "aquilo"
+      ],
+      "when": "(config.aquilo?.gateways?.length)",
+      "files": [
+        "src/aquilo-client.js"
+      ],
+      "deps": {}
     },
     "lsh-lan": {
       "entry": "src/lsh-lan.js",

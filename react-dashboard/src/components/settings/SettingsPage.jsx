@@ -31,6 +31,7 @@ import LoxoneXmlSection from './sections/LoxoneXmlSection'
 import KnxSection from './sections/KnxSection'
 import BoneioGrentonSection from './sections/BoneioGrentonSection'
 import SmartBobSection from './sections/SmartBobSection'
+import AquiloSection from './sections/AquiloSection'
 import ArduinoSection from './sections/ArduinoSection'
 import EsphomeSection from './sections/EsphomeSection'
 import BroadlinkSection from './sections/BroadlinkSection'
@@ -96,6 +97,7 @@ const SECTION_COMPONENTS = {
   knx: KnxSection,
   'boneio-grenton': BoneioGrentonSection,
   smartbob: SmartBobSection,
+  aquilo: AquiloSection,
   arduino: ArduinoSection,
   esphome: EsphomeSection,
   broadlink: BroadlinkSection,

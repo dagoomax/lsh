@@ -3,7 +3,7 @@
   "info": {
     "title": "LSH — Lightweight Smart Home API",
     "version": "1.32.0",
-    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` + `src/routes/*.js` — 424 endpoints.",
+    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` + `src/routes/*.js` — 427 endpoints.",
     "license": {
       "name": "Repository",
       "url": "https://github.com/dagoomax/lsh"
@@ -358,7 +358,7 @@
     },
     {
       "name": "Saved links",
-      "description": "28 endpoints"
+      "description": "31 endpoints"
     }
   ],
   "security": [
@@ -16967,6 +16967,119 @@
         ],
         "summary": "POST /settings/announce",
         "operationId": "post_settings_announce",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/aquilo/status": {
+      "get": {
+        "tags": [
+          "Saved links"
+        ],
+        "summary": "GET /aquilo/status",
+        "operationId": "get_aquilo_status",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/aquilo/test": {
+      "post": {
+        "tags": [
+          "Saved links"
+        ],
+        "summary": "POST /aquilo/test",
+        "operationId": "post_aquilo_test",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/aquilo": {
+      "post": {
+        "tags": [
+          "Saved links"
+        ],
+        "summary": "POST /settings/aquilo",
+        "operationId": "post_settings_aquilo",
         "responses": {
           "200": {
             "description": "Success",
