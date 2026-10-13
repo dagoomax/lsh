@@ -40,6 +40,7 @@ import DscSection from './sections/DscSection'
 import HomeAssistantSection from './sections/HomeAssistantSection'
 import SpotifySection from './sections/SpotifySection'
 import AppleMusicSection from './sections/AppleMusicSection'
+import AnnounceSection from './sections/AnnounceSection'
 import TedeeSection from './sections/TedeeSection'
 import SipSection from './sections/SipSection'
 import PagingSection from './sections/PagingSection'
@@ -104,6 +105,7 @@ const SECTION_COMPONENTS = {
   homeassistant: HomeAssistantSection,
   spotify: SpotifySection,
   applemusic: AppleMusicSection,
+  announce: AnnounceSection,
   tedee: TedeeSection,
   sip: SipSection,
   paging: PagingSection,

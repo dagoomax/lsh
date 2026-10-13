@@ -99,7 +99,7 @@ class AirplayClient {
    * Play a local audio file (any format ffmpeg reads) out to one configured
    * speaker. Resolves once playback has finished (or the session ended).
    */
-  async play(speakerId, filePath) {
+  async play(speakerId, filePath, opts = {}) {
     const speaker = this._find(speakerId);
     if (!fs.existsSync(filePath)) throw new Error(`Audio file not found: ${filePath}`);
 
@@ -118,7 +118,8 @@ class AirplayClient {
         if (needsRealPairing) {
           throw new Error(
             `"${speaker.name}" requires one-time device pairing (PIN/password) that LSH doesn't support for `
-            + `automated playback — common on Apple TV/HomePod. Try a non-Apple AirPlay 2 speaker instead.`
+            + `automated playback — common on Apple TV/HomePod. For a HomePod / Apple TV: Home app → Home Settings → `
+            + `Speakers & TV → Allow Speaker & TV Access → "Everyone" (or "Anyone on the Same Network") with no password.`
           );
         }
       }
@@ -161,7 +162,7 @@ class AirplayClient {
         port: speaker.port || 5000,
         airplay2: speaker.airplay2 !== false,
         name: speaker.senderName || 'LSH',
-        volume: speaker.volume ?? 60,
+        volume: opts.volume ?? speaker.volume ?? 60,
       }, (event) => {
         if (event.event === 'error') { finish(new Error(event.message)); return; }
         // The receiver (or the network) ending the session on its own —

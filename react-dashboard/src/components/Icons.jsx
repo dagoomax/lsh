@@ -705,6 +705,7 @@ const TYPE_MAP = {
   sonos:        SpeakerIcon,
   spotify:      SpeakerIcon,
   applemusic:   SpeakerIcon,
+  announce:     SpeakerIcon,
   music:        SpeakerIcon,
   sinum:        ThermostatIcon,
   vclu:         RelayIcon,

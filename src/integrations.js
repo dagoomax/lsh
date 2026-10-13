@@ -106,6 +106,8 @@ module.exports = [
   { file: 'spotify-client', label: 'Spotify', expose: 'spotify', when: (config) => config.spotify?.clientId },
   // Apple Music — developer token for the dashboard's MusicKit player + player relay device
   { file: 'apple-music', label: 'AppleMusic', expose: 'appleMusic', when: (config) => config.appleMusic?.teamId && config.appleMusic?.keyId && (config.appleMusic?.privateKey || config.appleMusic?.keyFile) },
+  // Spoken announcements on AirPlay speakers (HomePod…) — from Loxone, rules, flows
+  { file: 'announcer', label: 'Announce', expose: 'announce', when: (config) => config.announce?.enabled },
   // Home Assistant — imports HA entities (WebSocket API) and/or exports LSH devices (MQTT Discovery)
   { file: 'homeassistant-client', label: 'HomeAssistant', expose: 'homeassistant', when: (config) => (config.homeassistant?.url && config.homeassistant?.token) || config.homeassistant?.export?.enabled },
 ];

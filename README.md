@@ -4117,6 +4117,26 @@ curl -H 'Authorization: Bearer lsh_xxxx...' \
 
 ---
 
+### Announcements (AirPlay / HomePod)
+
+LSH speaks on the AirPlay speakers from `airplay.speakers` (`src/announcer.js`): a short chime, then the message.
+
+```json
+"announce": {
+  "enabled": true, "speakers": ["kitchen-homepod"], "volume": 50, "chime": true, "lang": "pl", "engine": "auto",
+  "quietHours": { "from": "22:00", "to": "07:00" },
+  "messages": [ { "id": "doorbell", "label": "Doorbell", "text": "Ktoś dzwoni do drzwi" }, { "id": "pool", "text": "Basen ma {v} stopni" } ],
+  "rules": [ { "deviceKey": "loxone/…", "path": "…", "when": "on", "text": "{device}: otwarte", "urgent": true } ]
+}
+```
+
+- **Voice** (`engine`): `say` (macOS, offline — e.g. Zosia for Polish), `espeak` (espeak-ng, offline), `google` (Google Translate voice, online — the text goes to Google), `url` (`urlTemplate` with `{text}` / `{lang}`, e.g. a Piper server); `auto` picks a local voice for the language if there is one, else Google. Clips are cached in `persist/tts-cache/`.
+- **From Loxone**: every saved message is a command of the device `announce/lsh` — download `/api/loxone/outputs.xml?type=announce` (Settings → Media → Announcements has the button) and import it as a Virtual Output; pulse a command to speak it, or send an analog value for messages with `{v}`. Any text: a Virtual Output Command `GET /api/announce/say?text=…&speakers=a,b&volume=60&token=<API token>`. Or no Loxone Config change at all: a **rule** on a Loxone value LSH already reads.
+- **Rules**: `when` `on` (rising edge), `change`, or `equals` + `value`; `{device}`, `{sensor}`, `{value}` are filled in.
+- One announcement at a time per speaker; several speakers play together. During `quietHours` only `urgent` messages / rules speak.
+- API: `POST /api/announce {text, speakers?, volume?, urgent?}`, `GET /api/announce/status`, `GET /api/announce/preview?text=` (WAV).
+- **HomePod / Apple TV**: Home app → Home Settings → Speakers & TV → Allow Speaker & TV Access → **Everyone** (or Anyone on the Same Network), no password — otherwise they refuse AirPlay from LSH.
+
 ### Apple Music
 
 Apple has no API to control the Music app, iPhones or HomePods remotely, so Apple Music in LSH **plays in the browser**: the **Music** page (`/react/music`) runs Apple's MusicKit JS, signed in with the listener's Apple ID (full tracks need an Apple Music subscription; otherwise 30-second previews). LSH (`src/apple-music.js`) holds the MusicKit key and signs the developer token (ES256 JWT, 12 h, cached).

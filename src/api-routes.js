@@ -100,6 +100,7 @@ const ROUTE_GROUPS = [
   require('./routes/wiring-pair'),
   require('./routes/spotify'),
   require('./routes/apple-music'),
+  require('./routes/announce'),
 ];
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {

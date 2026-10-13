@@ -50,6 +50,7 @@ export const CATEGORIES = [
   { id: 'media', label: 'Media', sections: [
     { id: 'media-all', title: 'Denon, Sony Bravia, Sonos, Google Home', ported: true },
     { id: 'airplay', title: 'AirPlay Speakers', ported: true },
+    { id: 'announce', title: 'Announcements', ported: true, keywords: ['announce', 'announcement', 'tts', 'speech', 'homepod', 'airplay', 'loxone notification', 'say'] },
     { id: 'spotify', title: 'Spotify', ported: true, keywords: ['spotify', 'music', 'playlist', 'playback'] },
     { id: 'applemusic', title: 'Apple Music', ported: true, keywords: ['apple music', 'musickit', 'music', 'itunes'] },
   ] },

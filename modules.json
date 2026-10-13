@@ -34,6 +34,7 @@
     "src/routes/agenda.js",
     "src/routes/airly.js",
     "src/routes/airplay.js",
+    "src/routes/announce.js",
     "src/routes/apple-music.js",
     "src/routes/arduino.js",
     "src/routes/auth.js",
@@ -1220,6 +1221,21 @@
         "src/apple-music.js"
       ],
       "deps": {}
+    },
+    "announcer": {
+      "entry": "src/announcer.js",
+      "configKeys": [
+        "announce"
+      ],
+      "when": "(config.announce?.enabled)",
+      "files": [
+        "src/airplay-client.js",
+        "src/announcer.js"
+      ],
+      "deps": {
+        "@lox-audioserver/node-airplay-sender": "^0.4.10",
+        "bonjour-service": "^1.4.4"
+      }
     },
     "homeassistant": {
       "entry": "src/homeassistant-client.js",
