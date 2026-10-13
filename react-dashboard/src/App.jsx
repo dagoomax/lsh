@@ -129,7 +129,7 @@ export default function App() {
       <Header connection={connection} connected={connected} onLock={lock} onOpenSettings={() => setView('settings')} onOpenWall={() => setView('wall')}
         onOpenCssEditor={() => setView('css-editor')} onOpenClaudeCode={() => setView('claude-code')} onOpenTerminal={() => setView('terminal')}
         onOpenView={setView}
-        pagingRoomCount={paging.rooms.length} pagingMessageCount={paging.messages.length} onTogglePaging={() => setPagingOpen(o => !o)} />
+        pagingRoomCount={paging.rooms.length + paging.airplaySpeakers.length} pagingMessageCount={paging.messages.length} onTogglePaging={() => setPagingOpen(o => !o)} />
 
       <div style={{ flex:1, paddingTop:56, overflow:'hidden', display:'flex', flexDirection:'column' }}>
         <PlatformBar platforms={platforms} devices={devices} />

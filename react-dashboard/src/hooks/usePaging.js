@@ -27,6 +27,7 @@ export function usePaging() {
   const [recordingTo, setRecordingTo] = useState('') // roomId being recorded for, '' if idle
   const [airplaySpeakers, setAirplaySpeakers] = useState([]) // configured AirPlay speakers (src/airplay-client.js)
   const [castingId, setCastingId] = useState('') // message id currently being played out to a speaker, '' if idle
+  const [speakerStatus, setSpeakerStatus] = useState({}) // speakerId|'all' → 'sending' | 'ok' | error text
 
   const socketRef   = useRef(null)
   const recorderRef = useRef(null)
@@ -226,6 +227,23 @@ export function usePaging() {
       if (msgStreamRef.current) { msgStreamRef.current.getTracks().forEach(t => t.stop()); msgStreamRef.current = null }
       setRecordingTo('')
       if (!blob.size) return
+      // AirPlay speaker ('airplay:<id>' or 'airplay:all'): played out loud right away, chime first
+      if (to.startsWith('airplay:')) {
+        const target = to.slice(8)
+        setSpeakerStatus((st) => ({ ...st, [target]: 'sending' }))
+        try {
+          const res = await fetch(`/api/airplay/page?to=${encodeURIComponent(target)}`, {
+            method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': AUDIO_MIME }, body: blob,
+          })
+          const json = await res.json()
+          const failed = json?.success ? Object.entries(json.data || {}).filter(([, r]) => r !== 'ok') : []
+          setSpeakerStatus((st) => ({ ...st, [target]: json?.success ? (failed.length ? failed.map(([id, r]) => `${id}: ${r}`).join(' · ') : 'ok') : (json?.error || 'Could not play') }))
+        } catch {
+          setSpeakerStatus((st) => ({ ...st, [target]: 'Could not reach LSH' }))
+        }
+        setTimeout(() => setSpeakerStatus((st) => (st[target] === 'ok' ? { ...st, [target]: undefined } : st)), 4000)
+        return
+      }
       try {
         const res = await fetch(`/api/paging/message?from=${encodeURIComponent(myRoom)}&to=${encodeURIComponent(to)}`, {
           method: 'POST', credentials: 'same-origin',
@@ -282,6 +300,6 @@ export function usePaging() {
   return {
     rooms, myRoom, setMyRoom, active, error, startPage, endPage,
     messages, recordingTo, startRecordingMessage, cancelRecordingMessage, sendRecordedMessage, deleteMessage, keepMessage,
-    airplaySpeakers, castingId, castMessage,
+    airplaySpeakers, castingId, castMessage, speakerStatus,
   }
 }

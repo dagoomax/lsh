@@ -59,6 +59,33 @@ module.exports = function register(router, ctx) {
     }
   });
 
+  // Paging to speakers (dashboard → Paging → Speakers): a recorded voice
+  // message, with a chime first, played on one speaker or several at once
+  // (?to=all or ?to=a,b). Any authenticated user, like paging itself.
+  router.post('/airplay/page', raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
+    if (!airplayClient) return res.status(503).json({ success: false, error: 'AirPlay not configured' });
+    if (!req.body?.length) return res.status(400).json({ success: false, error: 'Empty audio' });
+    const all = airplayClient.getSpeakers().map((s) => s.id);
+    const want = String(req.query.to || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const ids = want.includes('all') ? all : want.filter((id) => all.includes(id));
+    if (!ids.length) return res.status(400).json({ success: false, error: 'No such speaker' });
+    const os = require('os');
+    const base = path.join(os.tmpdir(), `lsh-page-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    const src = `${base}.in`, out = `${base}.wav`;
+    try {
+      fs.writeFileSync(src, req.body);
+      await pageClip(src, out, req.query.chime !== '0');
+      const results = await Promise.all(ids.map((id) => airplayClient.play(id, out).then(() => [id, 'ok'], (err) => [id, err.message])));
+      const failed = results.filter(([, r]) => r !== 'ok');
+      if (failed.length === ids.length) return res.status(502).json({ success: false, error: failed.map(([id, r]) => `${id}: ${r}`).join(' · ') });
+      res.json({ success: true, data: Object.fromEntries(results) });
+    } catch (err) {
+      res.status(502).json({ success: false, error: err.message });
+    } finally {
+      fs.unlink(src, () => {}); fs.unlink(out, () => {});
+    }
+  });
+
   // ── Pairing (Apple TV PIN / AirPlay password) — src/airplay-client.js ──
   const pairRun = async (res, fn) => {
     if (!airplayClient) return res.status(503).json({ success: false, error: 'AirPlay not enabled — enable it, save and restart LSH' });
@@ -99,3 +126,15 @@ module.exports = function register(router, ctx) {
     }
   });
 };
+
+// Chime (two soft tones) + the recorded voice, as one 44.1 kHz stereo WAV
+function pageClip(src, out, chime) {
+  const { execFile } = require('child_process');
+  const args = chime
+    ? ['-f', 'lavfi', '-i', 'sine=frequency=1047:duration=0.16', '-f', 'lavfi', '-i', 'sine=frequency=784:duration=0.32', '-i', src,
+      '-filter_complex', '[0:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=0.35[a0];[1:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=0.35,afade=t=out:st=0.12:d=0.2,apad=pad_dur=0.25[a1];[2:a]aformat=sample_rates=44100:channel_layouts=stereo[a2];[a0][a1][a2]concat=n=3:v=0:a=1,apad=pad_dur=0.4[out]',
+      '-map', '[out]']
+    : ['-i', src];
+  return new Promise((resolve, reject) => execFile('ffmpeg', ['-y', '-loglevel', 'error', ...args, '-ar', '44100', '-ac', '2', out], { timeout: 60000 },
+    (err, so, se) => (err ? reject(new Error(`Couldn't read the recording (${String(se || err.message).trim().split('\n').pop()})`)) : resolve())));
+}

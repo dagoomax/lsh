@@ -52,12 +52,12 @@ function roomText(r) {
 export function PagingPanel({
   rooms, myRoom, setMyRoom, active, error, startPage, endPage, open, setOpen, anchorTop,
   messages = [], recordingTo = '', startRecordingMessage, cancelRecordingMessage, sendRecordedMessage, deleteMessage, keepMessage,
-  airplaySpeakers = [], castingId = '', castMessage,
+  airplaySpeakers = [], castingId = '', castMessage, speakerStatus = {},
 }) {
   const [bridgeFrom, setBridgeFrom] = useState('')
   const [bridgeTo, setBridgeTo] = useState('')
 
-  if (!rooms.length) return null // paging disabled / no rooms configured
+  if (!rooms.length && !airplaySpeakers.length) return null // paging disabled / nothing to page
   const roomLabel = (id) => { const r = rooms.find(x => x.id === id); return r ? roomText(r) : id }
 
   const others = rooms.filter(r => r.id !== myRoom)
@@ -80,6 +80,7 @@ export function PagingPanel({
               padding: 18, boxShadow: 'var(--shadow-2)',
             }}
           >
+            {rooms.length > 0 && (<>
             <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)', marginBottom: 10 }}>
               {gt('paging.this_device', 'This device')}
             </div>
@@ -173,6 +174,51 @@ export function PagingPanel({
                 >
                   {gt('paging.start', 'Start')}
                 </button>
+              </div>
+            )}
+            </>)}
+            {airplaySpeakers.length > 0 && (
+              <div style={{ marginTop: rooms.length ? 16 : 0, paddingTop: rooms.length ? 14 : 0, borderTop: rooms.length ? '1px solid var(--border)' : 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)' }}>
+                  {gt('paging.speakers', 'Speakers')}
+                </div>
+                {[...(airplaySpeakers.length > 1 ? [{ id: 'all', name: gt('paging.all_speakers', 'All speakers') }] : []), ...airplaySpeakers].map(sp => {
+                  const key = `airplay:${sp.id}`
+                  const rec = recordingTo === key
+                  const st = speakerStatus[sp.id]
+                  return (
+                    <div key={sp.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <button
+                        onClick={() => (rec ? sendRecordedMessage() : startRecordingMessage(key))}
+                        disabled={!!recordingTo && !rec}
+                        title={gt('paging.speaker_hint', 'Tap, speak, tap again — it plays on the speaker')}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                          border: `1px solid ${rec ? REJECT : 'var(--border)'}`, background: rec ? `${REJECT}22` : 'var(--surface2)',
+                          color: rec ? REJECT : 'var(--text)', fontSize: 16, fontWeight: 600, opacity: recordingTo && !rec ? 0.5 : 1,
+                        }}
+                      >
+                        <SpeakerIcon size={19}/>
+                        <span style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sp.name}</span>
+                        {rec
+                          ? <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                              <motion.span animate={{ opacity: [1, 0.35, 1] }} transition={{ repeat: Infinity, duration: 1.2 }} style={{ width: 8, height: 8, borderRadius: '50%', background: REJECT }}/>
+                              {gt('paging.tap_to_send', 'Tap to send')}
+                            </span>
+                          : st === 'sending' ? <span style={{ fontSize: 13, color: 'var(--text3)' }}>{gt('paging.playing', 'Playing…')}</span>
+                          : st === 'ok' ? <span style={{ fontSize: 13, color: 'var(--green)' }}>✓</span>
+                          : <MicIcon size={18}/>}
+                      </button>
+                      {rec && (
+                        <button onClick={cancelRecordingMessage} style={{
+                          alignSelf: 'flex-end', padding: '4px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                          border: '1px solid var(--border)', background: 'transparent', color: 'var(--text3)',
+                        }}>{gt('paging.cancel', 'Cancel')}</button>
+                      )}
+                      {st && st !== 'sending' && st !== 'ok' && <div style={{ fontSize: 12, color: REJECT, padding: '0 2px' }}>{st}</div>}
+                    </div>
+                  )
+                })}
               </div>
             )}
             {myRoom && messages.length > 0 && (
