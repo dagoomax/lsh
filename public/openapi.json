@@ -3,7 +3,7 @@
   "info": {
     "title": "LSH — Lightweight Smart Home API",
     "version": "1.32.0",
-    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` + `src/routes/*.js` — 416 endpoints.",
+    "description": "REST API for the LSH smart-home hub (Victron Energy, 30+ integrations, relays, cameras, SIP intercom, HomeKit, and a two-way Loxone bridge).\n\n**Auth:** every endpoint (except `POST /auth/login` and `POST /auth/setup`) requires either the `lsh-session` cookie (from a browser login) or an API token. Pass the token as `?token=<value>` (Loxone-friendly) or as `Authorization: Bearer <value>`. Create tokens in the dashboard under Settings → API Tokens.\n\n**Envelope:** JSON endpoints reply `{ \"success\": true, \"data\": … }` or `{ \"success\": false, \"error\": \"…\" }`. Binary endpoints (snapshots, XML, logs) return their native content type.\n\nGenerated from `src/api-routes.js` + `src/routes/*.js` — 421 endpoints.",
     "license": {
       "name": "Repository",
       "url": "https://github.com/dagoomax/lsh"
@@ -98,7 +98,11 @@
     },
     {
       "name": "AirPlay — play prerecorded audio out to a configured speaker",
-      "description": "5 endpoints"
+      "description": "4 endpoints"
+    },
+    {
+      "name": "Pairing (Apple TV PIN / AirPlay password) — src/airplay-client.js",
+      "description": "6 endpoints"
     },
     {
       "name": "Sonos: URL playback + TTS announcements",
@@ -4508,10 +4512,231 @@
         }
       }
     },
+    "/airplay/{id}/access": {
+      "get": {
+        "tags": [
+          "Pairing (Apple TV PIN / AirPlay password) — src/airplay-client.js"
+        ],
+        "summary": "GET /airplay/:id/access",
+        "operationId": "get_airplay_id_access",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/airplay/{id}/pair": {
+      "get": {
+        "tags": [
+          "Pairing (Apple TV PIN / AirPlay password) — src/airplay-client.js"
+        ],
+        "summary": "GET /airplay/:id/pair",
+        "operationId": "get_airplay_id_pair",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Pairing (Apple TV PIN / AirPlay password) — src/airplay-client.js"
+        ],
+        "summary": "POST /airplay/:id/pair",
+        "operationId": "post_airplay_id_pair",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Pairing (Apple TV PIN / AirPlay password) — src/airplay-client.js"
+        ],
+        "summary": "DELETE /airplay/:id/pair",
+        "operationId": "delete_airplay_id_pair",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/airplay/{id}/pair/pin": {
+      "post": {
+        "tags": [
+          "Pairing (Apple TV PIN / AirPlay password) — src/airplay-client.js"
+        ],
+        "summary": "POST /airplay/:id/pair/pin",
+        "operationId": "post_airplay_id_pair_pin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings/airplay": {
       "post": {
         "tags": [
-          "AirPlay — play prerecorded audio out to a configured speaker"
+          "Pairing (Apple TV PIN / AirPlay password) — src/airplay-client.js"
         ],
         "summary": "POST /settings/airplay",
         "operationId": "post_settings_airplay",

@@ -4135,7 +4135,7 @@ LSH speaks on the AirPlay speakers from `airplay.speakers` (`src/announcer.js`):
 - **Rules**: `when` `on` (rising edge), `change`, or `equals` + `value`; `{device}`, `{sensor}`, `{value}` are filled in.
 - One announcement at a time per speaker; several speakers play together. During `quietHours` only `urgent` messages / rules speak.
 - API: `POST /api/announce {text, speakers?, volume?, urgent?}`, `GET /api/announce/status`, `GET /api/announce/preview?text=` (WAV).
-- **HomePod / Apple TV**: Home app → Home Settings → Speakers & TV → Allow Speaker & TV Access → **Everyone** (or Anyone on the Same Network), no password — otherwise they refuse AirPlay from LSH.
+- **HomePod / Apple TV**: open to Everyone works as is. An Apple TV that asks for a code: Settings → Media → AirPlay Speakers → **Pair**, type the 4-digit PIN the TV shows — once; LSH keeps the pairing in `persist/airplay-pairings.json`. "Require Password": put the password on the speaker (`airplay.speakers[].password`). A HomePod limited to "Only People Sharing This Home" can't be paired by LSH — set Allow Speaker & TV Access to Everyone (optionally with a password).
 
 ### Apple Music
 

@@ -59,6 +59,18 @@ module.exports = function register(router, ctx) {
     }
   });
 
+  // ── Pairing (Apple TV PIN / AirPlay password) — src/airplay-client.js ──
+  const pairRun = async (res, fn) => {
+    if (!airplayClient) return res.status(503).json({ success: false, error: 'AirPlay not enabled — enable it, save and restart LSH' });
+    try { res.json({ success: true, data: await fn() }) }
+    catch (err) { res.status(400).json({ success: false, error: err.message }) }
+  };
+  router.get('/airplay/:id/access', requireAdmin, (req, res) => pairRun(res, () => airplayClient.access(req.params.id)));
+  router.get('/airplay/:id/pair', requireAdmin, (req, res) => pairRun(res, () => airplayClient.pairingStatus(req.params.id)));
+  router.post('/airplay/:id/pair', requireAdmin, (req, res) => pairRun(res, () => airplayClient.startPairing(req.params.id)));
+  router.post('/airplay/:id/pair/pin', requireAdmin, (req, res) => pairRun(res, () => airplayClient.submitPin(req.params.id, req.body?.pin)));
+  router.delete('/airplay/:id/pair', requireAdmin, (req, res) => pairRun(res, () => { airplayClient.cancelPairing(req.params.id); return { removed: airplayClient.unpair(req.params.id) } }));
+
   router.post('/settings/airplay', requireAdmin, (req, res) => {
     const current = readConfigFile();
     const { enabled, speakers } = req.body;
@@ -66,9 +78,12 @@ module.exports = function register(router, ctx) {
       const airplay = { ...current.airplay };
       if (enabled !== undefined) airplay.enabled = !!enabled;
       if (Array.isArray(speakers)) {
+        const prev = Object.fromEntries((current.airplay?.speakers || []).map((s) => [s.id, s]));
         airplay.speakers = speakers
           .filter((s) => s && s.id && s.host)
           .map((s) => ({
+            // AirPlay password (HomePod / Apple TV "Require Password"); •••• keeps the saved one
+            ...(() => { const pw = String(s.password ?? '').includes('•') ? prev[String(s.id).trim()]?.password : String(s.password || '').trim(); return pw ? { password: pw } : {} })(),
             id: String(s.id).trim(),
             name: String(s.name || s.id).trim(),
             host: String(s.host).trim(),

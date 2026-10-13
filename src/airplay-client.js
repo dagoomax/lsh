@@ -4,6 +4,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const { start: startAirplaySender } = require('@lox-audioserver/node-airplay-sender');
 const { Bonjour } = require('bonjour-service');
+const pairing = require('./airplay-pairing');
 
 /**
  * Sends prerecorded audio (any format ffmpeg can decode — the paging voice
@@ -34,10 +35,24 @@ const FLAG_ONE_TIME_PAIRING_REQUIRED = 1 << 9;
 class AirplayClient {
   constructor(config) {
     this._speakers = (config.airplay?.speakers || []).filter((s) => s && s.id && s.host);
+    this._pairings = new Map(); // speakerId → pairing in progress
   }
 
   getSpeakers() {
-    return this._speakers.map(({ id, name, host }) => ({ id, name: name || id, host }));
+    return this._speakers.map(({ id, name, host, password }) => ({ id, name: name || id, host, paired: !!pairing.get(id), hasPassword: !!password }));
+  }
+
+  // What the speaker asks for, from its mDNS flags (null = unknown)
+  async access(speakerId) {
+    const speaker = this._find(speakerId);
+    const flags = await this._lookupFlags(speaker.host, 2500);
+    if (flags === null) return { known: false };
+    return {
+      known: true, flags,
+      pin: !!(flags & FLAG_PIN_REQUIRED) || !!(flags & FLAG_ONE_TIME_PAIRING_REQUIRED),
+      password: !!(flags & FLAG_PASSWORD_REQUIRED),
+      paired: !!pairing.get(speakerId), hasPassword: !!speaker.password,
+    };
   }
 
   _find(id) {
@@ -103,24 +118,27 @@ class AirplayClient {
     const speaker = this._find(speakerId);
     if (!fs.existsSync(filePath)) throw new Error(`Audio file not found: ${filePath}`);
 
-    // Fail fast, before ever touching the network for real: a device that
-    // requires real (PIN/password) pairing will never accept the transient
-    // pairing this library always attempts (it has no persistent identity
-    // store, so even a one-time PIN flow couldn't survive to the next
-    // play() call anyway) — rather than let that hang or surface as a
-    // misleading generic "pair_failed", say so plainly up front.
+    // Apple TV / HomePod may ask for a PIN (on-screen code) or an AirPlay
+    // password instead of accepting anyone. A PIN device works once it has
+    // been paired in Settings (the pairing is remembered — airplay-pairing.js);
+    // a password device needs its password on the speaker. Say so up front
+    // instead of letting it surface as a vague "pair_failed".
+    let txt = [];
     if (speaker.airplay2 !== false) {
       const flags = await this._lookupFlags(speaker.host);
       if (flags !== null) {
-        const needsRealPairing = (flags & FLAG_PASSWORD_REQUIRED)
-          || (flags & FLAG_PIN_REQUIRED)
-          || (flags & FLAG_ONE_TIME_PAIRING_REQUIRED);
-        if (needsRealPairing) {
-          throw new Error(
-            `"${speaker.name}" requires one-time device pairing (PIN/password) that LSH doesn't support for `
-            + `automated playback — common on Apple TV/HomePod. For a HomePod / Apple TV: Home app → Home Settings → `
-            + `Speakers & TV → Allow Speaker & TV Access → "Everyone" (or "Anyone on the Same Network") with no password.`
-          );
+        const needsPin = (flags & FLAG_PIN_REQUIRED) || (flags & FLAG_ONE_TIME_PAIRING_REQUIRED);
+        const needsPassword = flags & FLAG_PASSWORD_REQUIRED;
+        if (needsPin || needsPassword) {
+          if (needsPin && !pairing.get(speakerId) && !speaker.password) {
+            throw new Error(`"${speaker.name}" asks for a PIN — pair it once in Settings → Media → AirPlay Speakers (Pair), `
+              + `or allow access without one: Home app → Home Settings → Speakers & TV → Allow Speaker & TV Access → "Everyone".`);
+          }
+          if (needsPassword && !speaker.password && !pairing.get(speakerId)) {
+            throw new Error(`"${speaker.name}" requires an AirPlay password — enter it for this speaker in Settings → Media → AirPlay Speakers.`);
+          }
+          // The library decides how to authenticate from the advertised flags
+          txt = [`sf=0x${flags.toString(16)}`];
         }
       }
     }
@@ -136,6 +154,9 @@ class AirplayClient {
     const MIN_SESSION_MS = 3500;
     const startedAt = Date.now();
 
+    if (txt.length) pairing.install();
+    const session = txt.length ? pairing.attach(speaker.host, speakerId) : null;
+
     return new Promise((resolve, reject) => {
       let settled = false;
       let weRequestedStop = false; // distinguishes our own wind-down from the receiver dropping the session
@@ -143,6 +164,10 @@ class AirplayClient {
       const finish = (err) => {
         if (settled) return;
         settled = true;
+        if (session) pairing.detach(speaker.host);
+        if (err && session?.resumed) {
+          err = new Error(`${err.message} — "${speaker.name}" didn't accept LSH's saved pairing (removed on the device?). Pair it again in Settings → Media → AirPlay Speakers.`);
+        }
         try { ffmpeg.kill('SIGKILL'); } catch { /* already gone */ }
         weRequestedStop = true;
         try { sender.stop(); } catch { /* already stopped */ }
@@ -163,8 +188,18 @@ class AirplayClient {
         airplay2: speaker.airplay2 !== false,
         name: speaker.senderName || 'LSH',
         volume: opts.volume ?? speaker.volume ?? 60,
+        txt,
       }, (event) => {
         if (event.event === 'error') { finish(new Error(event.message)); return; }
+        if (event.event === 'device' && event.message === 'need_password') {
+          if (speaker.password) sender.setPasscode(speaker.password);
+          else finish(new Error(`"${speaker.name}" asks for a PIN — pair it in Settings → Media → AirPlay Speakers.`));
+          return;
+        }
+        if (event.event === 'device' && event.message === 'pair_failed') {
+          finish(new Error(speaker.password ? `"${speaker.name}" rejected the AirPlay password` : `Pairing with "${speaker.name}" failed`));
+          return;
+        }
         // The receiver (or the network) ending the session on its own —
         // "connection_refused", a dropped pairing, etc. — means playback
         // never actually reached the speaker, even though ffmpeg finished
@@ -188,6 +223,89 @@ class AirplayClient {
         setTimeout(() => finish(), remaining + 500);
       });
     });
+  }
+
+  // ── Pairing with a PIN (Apple TV) or AirPlay password ──────────────────
+  // startPairing → the Apple TV shows a 4-digit code → submitPin(code). The
+  // identity LSH used is saved, so later playback needs no PIN. A speaker
+  // with an AirPlay password pairs straight away with that password.
+  async startPairing(speakerId) {
+    const speaker = this._find(speakerId);
+    this.cancelPairing(speakerId);
+    pairing.install();
+    pairing.remove(speakerId); // pairing again starts from scratch
+    const flags = await this._lookupFlags(speaker.host, 2500);
+    const state = { phase: 'connecting', speakerId, waiters: [] };
+    this._pairings.set(speakerId, state);
+    const settle = (phase, error) => {
+      if (['paired', 'failed'].includes(state.phase)) return;
+      state.phase = phase; state.error = error || null;
+      clearTimeout(state.timer);
+      if (phase === 'paired' || phase === 'failed') {
+        try { state.sender?.stop() } catch {}
+        pairing.detach(speaker.host);
+        this._pairings.delete(speakerId);
+      }
+      for (const w of state.waiters.splice(0)) w();
+    };
+    pairing.attach(speaker.host, speakerId, { onSaved: () => setTimeout(() => settle('paired'), 300) });
+    state.sender = startAirplaySender({
+      host: speaker.host, port: speaker.port || 5000, airplay2: true, name: speaker.senderName || 'LSH', volume: 0,
+      txt: [`sf=0x${((flags ?? 0) | FLAG_ONE_TIME_PAIRING_REQUIRED).toString(16)}`],
+    }, (event) => {
+      if (event.event === 'device' && event.message === 'need_password') {
+        if (speaker.password) { state.phase = 'verifying'; state.sender.setPasscode(speaker.password) }
+        else settle('pin');
+      } else if (event.event === 'device' && event.message === 'pair_failed') settle('failed', state.phase === 'verifying' ? 'Wrong PIN or password' : 'The speaker refused pairing');
+      else if (event.event === 'error') settle('failed', event.message);
+      else if (event.event === 'session-ended' && state.phase !== 'paired') settle('failed', `The speaker ended the session (${event.message || 'no reason'})`);
+    });
+    state.timer = setTimeout(() => settle('failed', 'No answer from the speaker'), 20000);
+    await this._waitPairing(state, ['pin', 'paired', 'failed']);
+    return this.pairingStatus(speakerId, state);
+  }
+
+  async submitPin(speakerId, pin) {
+    const state = this._pairings.get(speakerId);
+    if (!state || state.phase !== 'pin') throw new Error('No PIN is being asked for — press Pair first');
+    if (!/^\d{4,8}$/.test(String(pin))) throw new Error('Enter the code shown on the TV (4 digits)');
+    state.phase = 'verifying';
+    clearTimeout(state.timer);
+    state.timer = setTimeout(() => { state.phase = 'pin-timeout'; this._failPairing(speakerId, 'No answer after the PIN') }, 20000);
+    state.sender.setPasscode(String(pin));
+    await this._waitPairing(state, ['paired', 'failed']);
+    return this.pairingStatus(speakerId, state);
+  }
+
+  _failPairing(speakerId, error) {
+    const state = this._pairings.get(speakerId);
+    if (!state) return;
+    try { state.sender?.stop() } catch {}
+    state.phase = 'failed'; state.error = error;
+    pairing.detach(this._find(speakerId).host);
+    this._pairings.delete(speakerId);
+    for (const w of state.waiters.splice(0)) w();
+  }
+
+  cancelPairing(speakerId) {
+    if (this._pairings.has(speakerId)) this._failPairing(speakerId, 'Cancelled');
+  }
+
+  _waitPairing(state, phases) {
+    return new Promise((resolve) => {
+      const check = () => (phases.includes(state.phase) ? resolve() : state.waiters.push(check));
+      check();
+    });
+  }
+
+  pairingStatus(speakerId, state = this._pairings.get(speakerId)) {
+    const saved = pairing.get(speakerId);
+    return { phase: state?.phase || (saved ? 'paired' : 'idle'), error: state?.error || null, paired: !!saved, pairedAt: saved?.pairedAt || null };
+  }
+
+  unpair(speakerId) {
+    this._find(speakerId);
+    return pairing.remove(speakerId);
   }
 
   /**

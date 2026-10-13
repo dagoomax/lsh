@@ -11,7 +11,67 @@ const FIELDS = [
   { key: 'port',     label: 'Port',   type: 'number', placeholder: '5000', default: 5000 },
   { key: 'volume',   label: 'Volume', type: 'number', placeholder: '60', default: 60 },
   { key: 'airplay2', label: 'AirPlay 2', type: 'checkbox', default: true },
+  { key: 'password', label: 'Password', type: 'password', placeholder: 'only if it requires one' },
 ]
+
+const papi = (url, method = 'GET', body) => fetch(url, {
+  method, credentials: 'same-origin',
+  ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+}).then((r) => r.json())
+
+// Apple TV / HomePod that ask for a PIN or password: pair once, LSH keeps the
+// pairing (persist/airplay-pairings.json) so later playback needs no PIN.
+function PairRow({ sp }) {
+  const [acc, setAcc] = useState(null)
+  const [st, setSt] = useState({ phase: sp.paired ? 'paired' : 'idle' })
+  const [pin, setPin] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { papi(`/api/airplay/${encodeURIComponent(sp.id)}/access`).then((j) => j.success && setAcc(j.data)).catch(() => {}) }, [sp.id])
+  const call = async (url, method, body) => {
+    setBusy(true)
+    try { const j = await papi(url, method, body); setSt(j.success ? j.data : { phase: 'failed', error: j.error }) } finally { setBusy(false) }
+  }
+  const base = `/api/airplay/${encodeURIComponent(sp.id)}/pair`
+  const asks = !acc ? 'checking…' : acc.known ? (acc.pin ? 'asks for a PIN' : acc.password ? 'requires a password' : 'open to everyone — no pairing needed') : 'not answering at this address (offline, or its IP changed? — Scan network)'
+  return (
+    <div className="stg-list-row" style={{ display: 'grid', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <b>{sp.name}</b>
+        <span className="stg-hint">{sp.host} · {asks}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 13, color: st.phase === 'paired' || st.paired ? 'var(--green)' : st.phase === 'failed' ? 'var(--red)' : 'inherit' }}>
+          {st.phase === 'paired' || (st.paired && st.phase !== 'pin') ? '✓ Paired' : st.phase === 'failed' ? `✗ ${st.error || 'Failed'}` : ''}
+        </span>
+        {st.phase === 'pin'
+          ? <Button onClick={() => call(base, 'DELETE')}>Cancel</Button>
+          : <Button busy={busy} onClick={() => { setPin(''); call(base, 'POST') }}>{st.paired || st.phase === 'paired' ? 'Pair again' : 'Pair'}</Button>}
+        {(st.paired || st.phase === 'paired') && st.phase !== 'pin' && <Button onClick={() => call(base, 'DELETE').then(() => setSt({ phase: 'idle' }))}>Forget</Button>}
+      </div>
+      {st.phase === 'pin' && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span className="stg-hint">Enter the code shown on the TV:</span>
+          <input className="stg-input" style={{ width: 110, fontSize: 18, letterSpacing: 4, textAlign: 'center' }} inputMode="numeric" maxLength={8} autoFocus
+            value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} onKeyDown={(e) => e.key === 'Enter' && pin.length >= 4 && call(`${base}/pin`, 'POST', { pin })}/>
+          <Button variant="primary" busy={busy} disabled={pin.length < 4} onClick={() => call(`${base}/pin`, 'POST', { pin })}>OK</Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PairingTool() {
+  const [speakers, setSpeakers] = useState(null)
+  useEffect(() => { papi('/api/airplay/speakers').then((j) => setSpeakers(j?.data || [])).catch(() => setSpeakers([])) }, [])
+  if (!speakers?.length) return <div className="stg-hint">Saved speakers appear here after Save + restart.</div>
+  return (
+    <>
+      <div className="stg-hint" style={{ marginBottom: 6 }}>
+        An Apple TV or HomePod set to ask for a code: press <b>Pair</b>, the TV shows a 4-digit PIN, type it here — once. LSH remembers the pairing.
+        One that requires a password: put it in the speaker’s Password field above and Save. A HomePod limited to “Only People Sharing This Home” can’t be paired by LSH — set Allow Speaker &amp; TV Access to Everyone (optionally with a password).
+      </div>
+      <div className="stg-list">{speakers.map((sp) => <PairRow key={sp.id} sp={sp}/>)}</div>
+    </>
+  )
+}
 
 // mDNS scan (GET /api/airplay/discover, browses _raop._tcp + _airplay._tcp)
 // for AirPlay receivers on the LAN, with one-click "Add" into the speaker
@@ -174,6 +234,10 @@ export default function AirplaySection({ config, reload }) {
           }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>
       </div>
+
+      <div style={{ margin: '14px 0', borderTop: '1px solid var(--sep)' }}/>
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Apple TV / HomePod pairing</div>
+      <PairingTool/>
 
       <div style={{ margin: '14px 0', borderTop: '1px solid var(--sep)' }}/>
       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{gt('s.airplay_send_title', 'Send audio now')}</div>

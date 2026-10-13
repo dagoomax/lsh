@@ -229,7 +229,8 @@
       ],
       "when": "(config.airplay?.enabled)",
       "files": [
-        "src/airplay-client.js"
+        "src/airplay-client.js",
+        "src/airplay-pairing.js"
       ],
       "deps": {
         "@lox-audioserver/node-airplay-sender": "^0.4.10",
@@ -1230,6 +1231,7 @@
       "when": "(config.announce?.enabled)",
       "files": [
         "src/airplay-client.js",
+        "src/airplay-pairing.js",
         "src/announcer.js"
       ],
       "deps": {
