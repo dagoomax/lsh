@@ -32,6 +32,7 @@ import KnxSection from './sections/KnxSection'
 import BoneioGrentonSection from './sections/BoneioGrentonSection'
 import SmartBobSection from './sections/SmartBobSection'
 import AquiloSection from './sections/AquiloSection'
+import ZehnderSection from './sections/ZehnderSection'
 import ArduinoSection from './sections/ArduinoSection'
 import EsphomeSection from './sections/EsphomeSection'
 import BroadlinkSection from './sections/BroadlinkSection'
@@ -98,6 +99,7 @@ const SECTION_COMPONENTS = {
   'boneio-grenton': BoneioGrentonSection,
   smartbob: SmartBobSection,
   aquilo: AquiloSection,
+  zehnder: ZehnderSection,
   arduino: ArduinoSection,
   esphome: EsphomeSection,
   broadlink: BroadlinkSection,

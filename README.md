@@ -4193,6 +4193,29 @@ When Spotify or Apple Music is configured, LSH also registers `music/player` (`s
 
 Every tank the receiver reports becomes device `aquilo/<id>` (tanks added later appear on the next poll): `fill` (%), `level` (cm), `overflow` (on at ≥ `overflowPct`), `stale` (on when the last transmission is older than `staleHours` — battery or radio died; the receiver keeps repeating the last reading), `lastRead`, and — when the receiver's firmware reports them — `battery` (%), `daysLeft`, `toFull` (cm), `lastEmptied`. HomeKit: fill as a level (humidity) sensor plus overflow as a leak sensor. API: `GET /api/aquilo/status`, `POST /api/aquilo/test {"host":"…"}`, `POST /api/settings/aquilo`. Test without hardware: `node scripts/aquilo-simulator.js 8095` and add gateway `127.0.0.1:8095`.
 
+### Zehnder ventilation (rekuperacja)
+
+Zehnder heat-recovery ventilation units (`src/zehnder-client.js` + `src/zehnder/*`, no npm deps). Settings → Climate & Appliances → **Zehnder Ventilation** (Find LAN C gateways, Test, Save — applied live). Three ways in, one device model:
+
+| `type` | Unit | Interface | Notes |
+|---|---|---|---|
+| `lanc` | ComfoAir Q / ComfoAir Flex | **ComfoConnect LAN C** gateway, TCP/UDP 56747 | Zehnder's app protocol (as in aiocomfoconnect). LSH registers itself with the gateway **PIN** (default `0000`) under a stable id kept in `persist/zehnder.json`. The gateway holds **one session**: opening the ComfoControl app takes it over and LSH reconnects 5 minutes later. The gateway uuid is found by UDP discovery (or set `uuid`). |
+| `pro` | ComfoAir Q | **ComfoConnect Pro**, Modbus TCP (port 502, slave `unitId` 1) | Zehnder's official register map. Enable Modbus TCP on the Pro first. |
+| `ca350` | ComfoAir 350 / 550, StorkAir WHR930, Wernig G90-380, Paul Santos 370 DC | **RS232** 9600 8N1 | Through a serial-to-TCP bridge (`host` + `port`: ser2net, USR-TCP232, ESP-Link) or a local `serialPort` (needs the `serialport` package). `rs232Mode: "log"` / `"master"` sends the PC-mode command first, if your unit needs it. |
+
+```json
+"zehnder": {
+  "units": [
+    { "type": "lanc", "host": "192.168.1.70", "pin": 0, "name": "Rekuperator" },
+    { "type": "pro", "host": "192.168.1.71" },
+    { "type": "ca350", "host": "192.168.1.72", "port": 8899 }
+  ],
+  "boostMinutes": 60, "awayHours": 0
+}
+```
+
+Each unit becomes `zehnder/<host>` with what its interface offers — controls: `speed` 0–3 (away / low / medium / high), `auto`, `boost` (for `boostMinutes`), `away` (`awayHours`, 0 = until switched off), `profile` (0 normal, 1 cool, 2 warm — LAN C, Pro), `bypassMode` (0 auto, 1 open, 2 closed — LAN C), `targetTemp` (comfort temperature 12–28 °C — ComfoAir 350), `resetErrors`, `resetFilter` (ComfoAir 350); readings: outdoor / supply / extract / exhaust (and room, Pro) temperature and humidity, supply / exhaust flow or air flow, fan duty and rpm, power and energy (LAN C), bypass %, filter days left, `filterAlarm`, `error` + `errors` (text), CO₂ per zone (Pro, when sensors report). HomeKit: a fan (on = not away, rotation speed = level 33 / 67 / 100 %) plus extract-air temperature and humidity. API: `GET /api/zehnder/status`, `POST /api/zehnder/discover`, `POST /api/zehnder/test`, `POST /api/settings/zehnder`. Test without hardware: `node scripts/zehnder-simulator.js` (LAN C on 56747 with PIN 0000, Pro on 5020, ComfoAir 350 bridge on 5021).
+
 ### Home Assistant
 
 Both ways (`src/homeassistant-client.js`, dep `ws`, installed on demand):

@@ -42,6 +42,7 @@ export const CATEGORIES = [
     { id: 'climate-extra', title: 'AuxAir, Bayrol, OpenWeather, Airly, ViCare, Thermomix, Dyson', ported: true },
     { id: 'lgthinq', title: 'LG ThinQ', ported: true },
     { id: 'appliance-cloud', title: 'Home Connect & Miele@home', ported: true },
+    { id: 'zehnder', title: 'Zehnder Ventilation', ported: true, keywords: ['zehnder', 'rekuperacja', 'rekuperator', 'recuperation', 'heat recovery', 'mvhr', 'hrv', 'wtw', 'comfoair', 'comfoconnect', 'lan c', 'whr930', 'ca350', 'ventilation', 'wentylacja'] },
   ] },
   { id: 'lighting', label: 'Lighting', sections: [
     { id: 'lighting-extra', title: 'IKEA Dirigera & Tradfri', ported: true },

@@ -131,6 +131,7 @@
     "src/routes/wiring-pair.js",
     "src/routes/wled.js",
     "src/routes/yale.js",
+    "src/routes/zehnder.js",
     "src/rtsp-backchannel.js",
     "src/sensor-registry.js",
     "src/server-i18n.js",
@@ -1261,6 +1262,20 @@
       "when": "(config.aquilo?.gateways?.length)",
       "files": [
         "src/aquilo-client.js"
+      ],
+      "deps": {}
+    },
+    "zehnder": {
+      "entry": "src/zehnder-client.js",
+      "configKeys": [
+        "zehnder"
+      ],
+      "when": "((config.zehnder?.units || config.zehnder?.devices)?.length)",
+      "files": [
+        "src/zehnder-client.js",
+        "src/zehnder/ca350.js",
+        "src/zehnder/lanc.js",
+        "src/zehnder/pro.js"
       ],
       "deps": {}
     },

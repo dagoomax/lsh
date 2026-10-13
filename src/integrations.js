@@ -112,4 +112,6 @@ module.exports = [
   { file: 'homeassistant-client', label: 'HomeAssistant', expose: 'homeassistant', when: (config) => (config.homeassistant?.url && config.homeassistant?.token) || config.homeassistant?.export?.enabled },
   // Aquilo liquid-level sensors (septic / rainwater tanks) — WiFi gateway's local /state endpoint
   { file: 'aquilo-client', label: 'Aquilo', expose: 'aquilo', when: (config) => config.aquilo?.gateways?.length },
+  // Zehnder ventilation (rekuperacja) — ComfoConnect LAN C, ComfoConnect Pro (Modbus TCP), ComfoAir 350/550 (RS232)
+  { file: 'zehnder-client', label: 'Zehnder', expose: 'zehnder', when: (config) => (config.zehnder?.units || config.zehnder?.devices)?.length },
 ];

@@ -102,6 +102,7 @@ const ROUTE_GROUPS = [
   require('./routes/apple-music'),
   require('./routes/announce'),
   require('./routes/aquilo'),
+  require('./routes/zehnder'),
 ];
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {
