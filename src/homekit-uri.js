@@ -3,26 +3,21 @@
  *
  * Format:  X-HM://{9-char base36 payload}{4-char setupID}
  *
- * Payload bits (HAP spec §5.7.3):
- *   bits 44-40  category   (5 bits)  — BRIDGE = 2
- *   bits 39-36  flags      (4 bits)  — bit 38 = IP support
- *   bits 35-0   setup code (27 bits) — 8-digit PIN without dashes
+ * Payload bits (HAP spec §5.7.3, same as hap-nodejs Accessory.setupURI):
+ *   bits 38-31  category   (8 bits)  — BRIDGE = 2
+ *   bits 30-27  flags      (4 bits)  — bit 28 = IP support
+ *   bits 26-0   setup code (27 bits) — 8-digit PIN without dashes
+ * (The category used to sit one bit too high, so iOS read BRIDGE (2) as
+ * GARAGE_DOOR_OPENER (4) and showed the bridge as a garage door when pairing.)
  */
 function generateSetupUri(pin, setupID, category = 2) {
   const setupCode = parseInt(pin.replace(/-/g, ''), 10);
 
   if (isNaN(setupCode)) throw new Error('Invalid PIN: ' + pin);
 
-  const FLAG_IP = 1 << 28; // HAP over IP
-
-  // Low 32 bits: setup code | IP flag
-  const valueLow = (setupCode | FLAG_IP) >>> 0;
-  // High 32 bits: category
-  const valueHigh = category >>> 0;
-
-  // Combine into 64-bit BigInt, encode as uppercase base36, pad to 9 chars
-  const bigVal = (BigInt(valueHigh) << 32n) | BigInt(valueLow);
-  const encoded = bigVal.toString(36).toUpperCase().padStart(9, '0');
+  const FLAG_IP = 1n << 28n; // HAP over IP
+  const value = (BigInt(category) << 31n) | FLAG_IP | BigInt(setupCode);
+  const encoded = value.toString(36).toUpperCase().padStart(9, '0');
 
   return `X-HM://${encoded}${setupID}`;
 }
