@@ -4155,6 +4155,16 @@ When Spotify or Apple Music is configured, LSH also registers `music/player` (`s
 
 **Pictures** can't be pushed — Loxone fetches them: `GET /api/loxone/cover/<device key>.jpg?token=<API token>` (`spotify/player`, `radio/airplay-salon2`, `radio/all` = the first speaker playing) always returns the current album cover / station logo as a 400×400 JPEG (`src/media-cover.js`: fetched once, converted by ffmpeg, cached; a dark square when nothing plays or the source is an SVG / broken). Use it as the image URL of an **Intercom (custom) / Camera** block or in a **Webpage** block.
 
+#### LG webOS TVs
+
+```json
+"lgwebos": { "tvs": [{ "host": "192.168.1.50", "name": "Salon TV", "mac": "a8:23:fe:12:34:56" }] }
+```
+
+Local control of LG webOS TVs (`src/lgwebos-client.js`, LG's SSAP WebSocket: `wss://<tv>:3001` on 2018+ firmware, `ws://<tv>:3000` on older sets — tried in that order). **Settings → Media & Intercom → LG webOS TVs**: *Find TVs* (SSDP) or type the address, Save — the TV asks once to allow LSH; the client key (and the TV's MAC, learnt for Wake-on-LAN) is kept in `persist/lgwebos-keys.json`. Turn on **Turn on via Wi-Fi** (LG Connect Apps / Mobile TV On) on the TV so *Power on* works.
+
+Device `lgwebos/<host with _>`: `power` (on = Wake-on-LAN), `volume`, `volumeUp`/`volumeDown`, `mute`, `app` (number from the TV's launcher list, the hint names them), `input` (HDMI…), `channelUp`/`channelDown`, `play`/`pause`/`stop`, remote buttons `home`, `back`, `up`, `down`, `left`, `right`, `ok`, `notify` (text → a message on the TV), and `appName`, `channel`, `status`. Loxone: `GET /api/loxone/outputs.xml?type=lgwebos` / `inputs.xml?type=lgwebos`. The pairing manifest (`src/lgwebos-pairing.json`) is LG's signed one, from the lgtv2 package (MIT, © Sebastian Raff). Tested against `scripts/lgwebos-simulator.js`, not yet a real TV.
+
 #### Apple TV / HomePod "now playing"
 
 When LSH plays a station on an AirPlay receiver, the receiver's screen shows it: the song (ICY title) as title, the artist, the station as album and the station logo as artwork (`src/radio-devices.js` → `AirplayClient.setMetadata`). Sent when the receiver reports ready, again a few seconds later (the AirPlay library drops info sent while the receiver is busy), and whenever the song or station changes.

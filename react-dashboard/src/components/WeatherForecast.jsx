@@ -13,7 +13,7 @@ const POLL_MS = 10 * 60 * 1000
 const WIND_DIRS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
 const compass = (deg) => deg == null ? null : WIND_DIRS[Math.round(deg / 22.5) % 16]
 
-function useForecast() {
+export function useForecast() {
   const [days, setDays] = useState([])
   useEffect(() => {
     let stop = false
@@ -50,7 +50,7 @@ function DayCard({ day, index, onOpen }) {
   return (
     <button
       onClick={() => onOpen(day, index)}
-      className="detail-card"
+      className={`detail-card wx-day${index === 0 ? ' today' : ''}`}
       style={{
         flex: '1 1 0', minWidth: 84, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
         padding: '14px 8px', transition: 'border-color 0.15s, transform 0.15s',

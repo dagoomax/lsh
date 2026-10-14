@@ -35,6 +35,9 @@ const fmt = (s) => (s == null || !Number.isFinite(s) ? '0:00' : `${Math.floor(s 
 // One poll per mounted view; `enabled` false (the card collapsed) stops it.
 const playingStore = { v: false, l: new Set(), set(v) { if (v !== this.v) { this.v = v; this.l.forEach((f) => f()) } } }
 export const musicPlaying = { subscribe: (f) => { playingStore.l.add(f); return () => playingStore.l.delete(f) }, get: () => playingStore.v }
+// what's playing, for the home hero: { playing, line, color } (same snapshot object until it changes)
+const nowStore = { v: { playing: false, line: '', color: '' }, l: new Set(), set(n) { const v = this.v; if (n.playing !== v.playing || n.line !== v.line || n.color !== v.color) { this.v = n; this.l.forEach((f) => f()) } } }
+export const musicNow = { subscribe: (f) => { nowStore.l.add(f); return () => nowStore.l.delete(f) }, get: () => nowStore.v }
 export const openMusic = (mode = 'popup') => window.dispatchEvent(new CustomEvent('lsh-music', { detail: mode }))
 
 function useMusicState(enabled = true) {
@@ -71,7 +74,7 @@ function useMusicState(enabled = true) {
     : spPlaying ? { color: SPOTIFY } : amPlaying ? { color: APPLE }
     : radio.playing ? { color: `hsl(${radio.hue} 75% 58%)` } : { color: 'var(--accent)', idle: true }
   const nowLine = localPlaying ? local.title : radio.playing && radio.title ? radio.title : spPlaying ? `${spotify.player.item?.name || ''} · ${spotify.player.item?.artist || ''}` : amPlaying ? `${am.item?.name || ''} · ${am.item?.artistName || ''}` : ''
-  useEffect(() => { if (enabled) playingStore.set(!source.idle) }, [enabled, source.idle])
+  useEffect(() => { if (enabled) { playingStore.set(!source.idle); nowStore.set({ playing: !source.idle, line: nowLine, color: source.color }) } }, [enabled, source.idle, nowLine, source.color])
   return { spotify, loadSpotify, radio, loadRadio, local, am, localPlaying, spPlaying, amPlaying, source, nowLine }
 }
 

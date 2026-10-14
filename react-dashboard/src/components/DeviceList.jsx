@@ -23,6 +23,7 @@ import RelayPanel from './RelayPanel'
 import DashboardGrid, { hasCustomLayout, seedLayoutFromDevices, isWidgetPinned } from './DashboardGrid'
 import WeatherForecast from './WeatherForecast'
 import MusicHub from './MusicHub'
+import HomeHero from './HomeHero'
 
 const FIBARO_SENSOR_ICON = {
   switch:      SwitchOutletIcon,
@@ -195,7 +196,7 @@ export function getGroup(d) {
   if (d.type === 'smarttub') return 'Climate'
   if (d.type === 'sonos' || d.type === 'radio')  return 'Media'
   if (d.type === 'googlehome' || d.type === 'googletv' || d.type === 'sony') return 'Media'
-  if (d.type === 'denon')  return 'Media'
+  if (d.type === 'denon' || d.type === 'lgwebos')  return 'Media'
   if (d.type === 'beosound') return 'Media'
   const r = d.readings || {}
   const k = Object.keys(r)
@@ -326,7 +327,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const hasSwitch= r.switch != null
   const hasLevel = r.level != null
   const hasMy    = (device.sensors || []).some(s => s.path === 'my') // Somfy "my" favourite
-  const hasUpDn  = (device.sensors || []).some(s => s.path === 'up') // Somfy RTS ▲/▼
+  const hasUpDn  = device.type !== 'lgwebos' && (device.sensors || []).some(s => s.path === 'up') // Somfy RTS ▲/▼ (a TV's remote arrows aren't blinds)
   const hasCT    = r.colorTemperature != null
   const hasColor = r.hue != null && r.saturation != null
   const hasTemp  = r.temperature != null
@@ -362,7 +363,9 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   // radio (src/radio-devices.js: the media player's speakers) has the same play / volume / mute tile
   const isSonos  = device.type === 'sonos' || device.type === 'radio'
   const isRadio  = device.type === 'radio'
-  const isDenon  = device.type === 'denon'
+  // LG webOS TVs share the Denon tile: power, volume, mute, source pills (inputs)
+  const isTv     = device.type === 'lgwebos'
+  const isDenon  = device.type === 'denon' || isTv
   const isSpa    = device.type === 'smarttub'
   // Bento-style: media players and dimmable lights earn a wider card (room for
   // now-playing/transport, or a full-width brightness slider) the way Homey
@@ -376,10 +379,12 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const denonPower      = isDenon ? (merged.power?.value  === 1 || merged.power?.value  === true) : false
   const denonVolume     = isDenon ? (merged.volume?.value ?? 50) : 50
   const denonMute       = isDenon ? (merged.mute?.value   === 1 || merged.mute?.value   === true) : false
-  const denonInput      = isDenon ? (merged.input?.value  ?? '') : ''
-  const denonInputIdx   = isDenon ? (merged.input_idx?.value ?? 0) : 0
+  const denonInput      = isTv ? (merged.appName?.value ?? '') : isDenon ? (merged.input?.value  ?? '') : ''
+  const denonInputIdx   = isTv ? (Number(merged.input?.value) || 0) - 1 : isDenon ? (merged.input_idx?.value ?? 0) : 0
   // inputNames lives on the sensor descriptor (spread into readings by getDeviceReadings)
-  const denonInputNames = isDenon
+  const denonInputNames = isTv
+    ? [...String(device.sensors?.find(s => s.path === 'input')?.hint || '').matchAll(/(\d+) = ([^,]+)/g)].filter(m => m[1] !== '0').map(m => m[2].trim())
+    : isDenon
     ? (r.input_idx?.inputNames ?? device.sensors?.find(s => s.path === 'input_idx')?.inputNames ?? [])
     : []
 
@@ -688,7 +693,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
           {denonInputNames.length > 0 && (
             <div style={{ display:'flex', gap:3, flexWrap:'wrap' }}>
               {denonInputNames.map((name, i) => (
-                <button key={name} onClick={e => { e.stopPropagation(); cmd('input_idx', i) }}
+                <button key={name} onClick={e => { e.stopPropagation(); isTv ? cmd('input', i + 1) : cmd('input_idx', i) }}
                   style={{
                     fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
                     background: denonInputIdx === i ? 'var(--accent)' : 'var(--white-08)',
@@ -1413,13 +1418,14 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
           </div>
         </div>
 
-        <div style={{ flex:1, overflowY:'auto', padding:'0 12px 16px' }}>
+        <div className={`dash-scroll${cat === 'All' ? ' dash-all' : ''}`} style={{ flex:1, overflowY:'auto', padding:'0 12px 16px' }}>
           {cat === 'Graphs' && (
             <Suspense fallback={null}><StatsView devices={devices} energy={energy} onOpen={setOpenKey} /></Suspense>
           )}
           {cat === 'Plan' && (
             <HomePlan devices={devices} roomsMeta={roomsMeta} groupOf={getGroup} onOpen={setOpenKey} energy={energy} />
           )}
+          {cat === 'All' && <HomeHero energy={resolvedEnergy} onCount={onCount} liveCount={liveCount} />}
           {/* Energy as the top section of the overview */}
           {cat === 'All' && energy && (
             <div className="card" style={{

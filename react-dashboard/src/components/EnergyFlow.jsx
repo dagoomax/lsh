@@ -785,6 +785,7 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
   }, [])
   const modelFor = (deviceKey) => evVisual?.devices?.[deviceKey] || evVisual?.default || {}
   const [flowOpen, setFlowOpen] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(() => { try { return localStorage.getItem('lsh-energy-details') === '1' } catch { return false } })
   const solarEnergyKey = dailyEnergyKey(energySources?.solar || 'victron', energy)
   const tariff = energy?.tariff
   const earnings = useSolarEarnings(solarEnergyKey, !!tariff)
@@ -948,8 +949,13 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
       {/* ── Trend sparklines (real 6h history) ── */}
       <TrendRow solarColor="var(--orange)" battColor={battColor} sources={energySources} energy={energy} />
 
-      {/* ── Detail row ── */}
-      <div className="energy-detail-grid" style={{
+      {/* ── Detail row: folded behind "Details" (remembered) — the overview stays calm ── */}
+      <button type="button" className="energy-details-toggle" aria-expanded={detailsOpen} onClick={() => { const v = !detailsOpen; setDetailsOpen(v); try { localStorage.setItem('lsh-energy-details', v ? '1' : '0') } catch {} }}>
+        <span>{gt('details', 'Details')}</span>
+        <small>{[`${gt('t_battery', 'Battery')} ${battPct}%`, gridTotal != null ? `${gt('t_grid', 'Grid')} ${fmtW(gridTotal)}` : null, loadTotal != null ? `${gt('t_loads', 'AC Loads')} ${fmtW(loadTotal)}` : null].filter(Boolean).join(' · ')}</small>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: detailsOpen ? 'none' : 'rotate(-90deg)', transition: 'transform .2s ease' }}><polyline points="6 9 12 15 18 9" /></svg>
+      </button>
+      {detailsOpen && <div className="energy-detail-grid" style={{
         display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))',
         // Each card is as tall as its own rows. Stretching them to match the
         // longest one left the short cards holding ~150px of empty surface.
@@ -1005,7 +1011,7 @@ export default function EnergyFlow({ energy, evDevices = [], onCommand, energySo
           <DetailRow label={gt('r_l2','L2 Power')} value={fmtW(l?.powerL2)} />
           <DetailRow label={gt('r_l3','L3 Power')} value={fmtW(l?.powerL3)} />
         </DetailCard>
-      </div>
+      </div>}
 
     </div>
   )

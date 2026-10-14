@@ -716,6 +716,7 @@ const TYPE_MAP = {
   sinum:        ThermostatIcon,
   vclu:         RelayIcon,
   denon:        DenonIcon,
+  lgwebos:      MonitorIcon,
   arduino:      ArduinoIcon,
   suppla:       SuplaIcon,
   smarttub:     SpaIcon,
