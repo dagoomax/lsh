@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { LoxoneIcon } from '../../Icons'
@@ -61,6 +61,7 @@ function OutboundPushCard({ loxoneOut, reload }) {
       <Field label="Password" type="password" value={password} onChange={setPassword}/>
       <Field label="Mappings" hint="(storeKey = VirtualInputName, one per line)" type="textarea" value={mappingsText} onChange={setMappingsText}
         placeholder={'bayrol/19048/ph = PoolPH\nbayrol/19048/orp = PoolORP'}/>
+      <MediaTexts mappingsText={mappingsText} setMappingsText={setMappingsText} />
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy}
           onClick={() => save.save({ host, port: Number(port), username, password, mappings: parseMappings() }).then(reload)}>{gt('common.save', 'Save')}</Button>
@@ -98,5 +99,74 @@ function WeatherEmulatorCard({ loxoneWeather, reload }) {
         <ResultBanner result={test.result || save.result}/>
       </div>
     </SettingsCard>
+  )
+}
+
+// The media player's "now playing" text (and station numbers) → Loxone: ready-made
+// mappings to add, the Virtual (Text) Inputs to create, and a test push for each
+function MediaTexts({ mappingsText, setMappingsText }) {
+  const [list, setList] = useState(null)
+  const [images, setImages] = useState([])
+  const [pick, setPick] = useState({})
+  const [test, setTest] = useState({})
+  useEffect(() => {
+    fetch('/api/settings/loxone-out/suggestions', { credentials: 'include' }).then(r => r.json())
+      .then(j => { setList(j.success ? j.data : []); setImages(j.images || []) }).catch(() => setList([]))
+  }, [])
+  if (!list?.length) return null
+  const mapped = new Set(mappingsText.split('\n').map(l => l.split('=')[0].trim()).filter(Boolean))
+  const fresh = list.filter(x => !mapped.has(x.storeKey))
+  const chosen = (x) => pick[x.storeKey] ?? x.kind === 'text'
+  const add = () => {
+    const lines = fresh.filter(chosen).map(x => `${x.storeKey} = ${x.virtualInput}`)
+    if (lines.length) setMappingsText([mappingsText.trim(), ...lines].filter(Boolean).join('\n'))
+  }
+  const send = async (x) => {
+    setTest(t => ({ ...t, [x.virtualInput]: { busy: true } }))
+    const j = await fetch('/api/settings/loxone-out/test', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ virtualInput: x.virtualInput }) }).then(r => r.json()).catch(e => ({ error: e.message }))
+    setTest(t => ({ ...t, [x.virtualInput]: { ok: !!j.success, message: j.success ? j.message : j.error } }))
+  }
+  return (
+    <div className="stg-field">
+      <label>{tr('Media player → Loxone')}</label>
+      <p className="stg-hint" style={{ margin: '0 0 8px' }}>{tr('In Loxone Config create a Virtual Text Input (text) or a Virtual Input (number) for each line, named exactly as shown, then add the lines here and save. Loxone then shows what plays on each speaker and on Spotify, updated as it changes.')}</p>
+      <div className="lox-media">
+        {list.map(x => {
+          const done = mapped.has(x.storeKey), t = test[x.virtualInput]
+          return (
+            <div key={x.storeKey} className={`lox-media-row${done ? ' done' : ''}`}>
+              {done ? <span className="lox-media-ok" title={tr('Mapped')}>✓</span>
+                : <input type="checkbox" className="stg-checkbox" checked={chosen(x)} onChange={e => setPick(p => ({ ...p, [x.storeKey]: e.target.checked }))} aria-label={x.virtualInput} />}
+              <div className="lox-media-main">
+                <b>{x.virtualInput}</b> <span className={`lox-media-kind ${x.kind}`}>{x.kind === 'text' ? tr('Virtual Text Input') : tr('Virtual Input')}</span>
+                <small><code>{x.storeKey}</code> — {x.what}</small>
+                {t?.message && <small style={{ color: t.ok ? 'var(--green)' : 'var(--red)' }}>{t.ok ? '✓ ' : '✗ '}{t.message}</small>}
+              </div>
+              <button type="button" className="lox-media-btn" onClick={() => navigator.clipboard?.writeText(x.virtualInput)} title={tr('Copy')}>⧉</button>
+              {done && <button type="button" className="lox-media-btn" disabled={t?.busy} onClick={() => send(x)}>{tr('Send test')}</button>}
+            </div>
+          )
+        })}
+      </div>
+      {fresh.length > 0 && <div className="stg-actions"><Button onClick={add}>{tr('+ Add the ticked lines')}</Button></div>}
+      {images.length > 0 && (
+        <>
+          <label style={{ marginTop: 12 }}>{tr('Cover and station logo')}</label>
+          <p className="stg-hint" style={{ margin: '0 0 8px' }}>{tr('Pictures can’t be pushed into a Virtual Input — Loxone fetches them. Put one of these addresses as the image URL of an Intercom (custom) / Camera block, or in a Webpage block: it always shows the current album cover or station logo as a square JPEG. Replace the token placeholder with an API token.')}</p>
+          <div className="lox-media">
+            {images.map(x => {
+              const u = `http://${window.location.host}${x.path}?token=<API token>`
+              return (
+                <div key={x.path} className="lox-media-row">
+                  <img src={x.path} alt="" width="40" height="40" style={{ borderRadius: 6, flex: 'none' }} />
+                  <div className="lox-media-main"><b>{x.label}</b><small><code>{u}</code></small></div>
+                  <button type="button" className="lox-media-btn" onClick={() => navigator.clipboard?.writeText(u)} title={tr('Copy')}>⧉</button>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
   )
 }

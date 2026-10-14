@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>LSH Player</title>
+<!--
+  Now-playing display + controls for the Loxone app (Webpage block) or any
+  wall tablet: GET /api/loxone/player?token=<API token>[&speaker=<device key>][&theme=light][&lang=pl]
+  Radio on the media player's speakers (src/radio-devices.js, incl. "All
+  speakers") and Spotify (src/spotify-client.js). Every action is the same
+  /api/device/<key>/set call Loxone's Virtual Outputs make.
+-->
+<style>
+  :root { --bg: #0b0b0d; --card: #17171b; --card2: #202026; --text: #f2f2f5; --text2: #a3a3ad; --line: #2a2a31; --accent: #69c350; --red: #ff5a52; --spotify: #1db954; }
+  :root.light { --bg: #f2f2f6; --card: #fff; --card2: #ececf1; --text: #121216; --text2: #6b6b76; --line: #e2e2e8; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.35 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
+  body { padding: 12px; max-width: 760px; margin: 0 auto; }
+  button { font: inherit; color: inherit; border: none; cursor: pointer; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .chip { flex: none; padding: 8px 14px; border-radius: 999px; background: var(--card2); color: var(--text2); font-weight: 600; font-size: 14px; display: inline-flex; gap: 6px; align-items: center; }
+  .chip.on { background: var(--accent); color: #000; }
+  .chip.sp.on { background: var(--spotify); }
+  .chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .chip.on i { background: #000; }
+  .card { background: var(--card); border-radius: 22px; padding: 16px; margin-top: 12px; }
+  .now { display: grid; grid-template-columns: 112px 1fr; gap: 16px; align-items: center; }
+  .art { width: 112px; height: 112px; border-radius: 16px; background: var(--card2); display: grid; place-items: center; font-size: 36px; font-weight: 800; color: #fff; overflow: hidden; position: relative; }
+  .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .meta { min-width: 0; }
+  .meta .kicker { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text2); font-weight: 700; }
+  .meta h1 { font-size: 22px; margin: 2px 0 2px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta .song { color: var(--text); opacity: .85; font-size: 15px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .meta .where { color: var(--text2); font-size: 13px; margin-top: 4px; }
+  .ctrl { display: flex; justify-content: center; align-items: center; gap: 18px; margin: 18px 0 6px; }
+  .round { width: 56px; height: 56px; border-radius: 50%; background: var(--card2); display: grid; place-items: center; }
+  .round.big { width: 76px; height: 76px; background: var(--accent); color: #000; }
+  .round.big.sp { background: var(--spotify); }
+  .round.small { width: 44px; height: 44px; }
+  .round.on { background: var(--accent); color: #000; }
+  .round svg { width: 26px; height: 26px; }
+  .round.big svg { width: 34px; height: 34px; }
+  .vol { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .vol input { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--accent) var(--p, 50%), var(--card2) var(--p, 50%)); outline: none; }
+  .vol input::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+  .vol input::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: none; }
+  .vol b { width: 42px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text2); }
+  .vol .round.small.muted { background: var(--red); color: #fff; }
+  .eq { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .eq .chip { padding: 6px 11px; font-size: 13px; }
+  h2 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text2); margin: 0 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .tile { background: var(--card2); border-radius: 14px; padding: 10px; display: flex; gap: 10px; align-items: center; text-align: left; min-height: 56px; }
+  .tile .badge { width: 38px; height: 38px; flex: none; border-radius: 10px; display: grid; place-items: center; font-weight: 800; color: #fff; font-size: 14px; overflow: hidden; position: relative; }
+  .tile .badge img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .tile span { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .tile.on { outline: 2px solid var(--accent); }
+  .tile .n { margin-left: auto; color: var(--text2); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .err { color: var(--red); font-size: 13px; margin-top: 10px; min-height: 1em; }
+  .empty { color: var(--text2); text-align: center; padding: 40px 10px; }
+  @media (max-width: 420px) { .now { grid-template-columns: 84px 1fr; } .art { width: 84px; height: 84px; font-size: 28px; } .meta h1 { font-size: 19px; } }
+</style>
+</head>
+<body>
+<div class="chips" id="targets"></div>
+<div id="main"></div>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const token = q.get('token') || '';
+  const lock = q.get('speaker') || '';
+  if (q.get('theme') === 'light') document.documentElement.classList.add('light');
+  const PL = (q.get('lang') || navigator.language || '').toLowerCase().startsWith('pl');
+  const T = PL
+    ? { all: 'Wszystkie głośniki', nothing: 'Nic nie gra', stations: 'Stacje', playlists: 'Ulubione playlisty', speakers: 'Graj na', on: 'Gra na', radio: 'Radio', none: 'Brak głośników — włącz AirPlay lub Chromecast w LSH', eq: ['płasko', 'bas', 'wokal', 'rock', 'jazz', 'elektronika', 'noc'], noStations: 'Brak zapisanych stacji — dodaj ulubione w odtwarzaczu LSH', shuffle: 'Losowo' }
+    : { all: 'All speakers', nothing: 'Nothing playing', stations: 'Stations', playlists: 'Favourite playlists', speakers: 'Play on', on: 'Playing on', radio: 'Radio', none: 'No speakers — enable AirPlay or Chromecast in LSH', eq: ['flat', 'bass', 'vocal', 'rock', 'jazz', 'electronic', 'night'], noStations: 'No saved stations — add favourites in the LSH media player', shuffle: 'Shuffle' };
+  const withToken = (u) => token ? u + (u.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token) : u;
+  const get = (u) => fetch(withToken(u), { credentials: 'include' }).then((r) => r.json());
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const hue = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.codePointAt(0)) % 360; return h };
+  const initials = (s) => String(s || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  const icon = {
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+    stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+    prev: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM9.5 12l8.5 6V6z"/></svg>',
+    next: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>',
+    minus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    vol: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>',
+    mute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>',
+    shuffle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>',
+  };
+
+  let devices = [], stations = [], spotify = null, spotifyFav = [], sel = lock || localStorage.getItem('lsh-lox-player') || 'radio/all', err = '', busyUntil = 0, dragging = false;
+
+  const set = async (key, sensor, value) => {
+    err = ''; busyUntil = Date.now() + 2500;
+    try {
+      const j = await get(`/api/device/${encodeURIComponent(key)}/set?sensor=${encodeURIComponent(sensor)}&value=${encodeURIComponent(value)}`);
+      if (!j.success) err = j.error || 'Failed';
+    } catch (e) { err = e.message }
+    setTimeout(load, 700);
+    render();
+  };
+
+  async function load() {
+    try {
+      const [d, t] = await Promise.all([get('/api/devices'), get('/api/media/targets').catch(() => null)]);
+      if (d?.success === false) { err = d.error; return render() }
+      devices = (d.data || []).filter((x) => x.type === 'radio' || x.key === 'spotify/player');
+      stations = t?.data?.stations || [];
+      if (devices.some((x) => x.key === 'spotify/player')) {
+        const [s, f] = await Promise.all([get('/api/spotify/status').catch(() => null), spotifyFav.length ? null : get('/api/settings/spotify').catch(() => null)]);
+        spotify = s?.data || null;
+        if (f?.data?.favourites) spotifyFav = f.data.favourites;
+      }
+      if (!devices.some((x) => x.key === sel)) sel = devices.find((x) => x.key === 'radio/all')?.key || devices[0]?.key || '';
+    } catch (e) { err = e.message }
+    if (Date.now() > busyUntil && !dragging) render();
+  }
+
+  const val = (dev, k) => dev?.readings?.[k]?.value;
+
+  function renderTargets() {
+    const el = document.getElementById('targets');
+    if (lock) { el.innerHTML = ''; return }
+    const order = (d) => (d.key === 'radio/all' ? 0 : d.key === 'spotify/player' ? 2 : 1);
+    el.innerHTML = devices.slice().sort((a, b) => order(a) - order(b)).map((d) => {
+      const playing = val(d, 'playing') === 1;
+      const name = d.key === 'radio/all' ? T.all : d.label;
+      return `<button class="chip${d.key === sel ? ' on' : ''}${d.key === 'spotify/player' ? ' sp' : ''}" data-sel="${esc(d.key)}">${playing ? '<i></i>' : ''}${esc(name)}</button>`;
+    }).join('');
+  }
+
+  function art(name, img, big) {
+    const bg = `background:hsl(${hue(name)} 45% 32%)`;
+    return `<div class="${big ? 'art' : 'badge'}" style="${bg}">${esc(initials(name))}${img ? `<img src="${esc(img)}" alt="" onerror="this.remove()">` : ''}</div>`;
+  }
+
+  function volumeRow(key, dev) {
+    const v = Number(val(dev, 'volume')) || 0, muted = val(dev, 'mute') === 1;
+    return `<div class="vol">
+      <button class="round small${muted ? ' muted' : ''}" data-act="mute" title="Mute">${muted ? icon.mute : icon.vol}</button>
+      ${dev.sensors.some((s) => s.path === 'volumeDown') ? `<button class="round small" data-act="volumeDown">${icon.minus}</button>` : ''}
+      <input type="range" min="0" max="100" step="1" value="${v}" style="--p:${v}%" data-act="volume">
+      ${dev.sensors.some((s) => s.path === 'volumeUp') ? `<button class="round small" data-act="volumeUp">${icon.plus}</button>` : ''}
+      <b>${v}%</b></div>`;
+  }
+
+  function renderRadio(dev) {
+    const playing = val(dev, 'playing') === 1, isAll = dev.key === 'radio/all';
+    const st = Number(val(dev, 'station')) || 0;
+    const station = stations[st - 1];
+    const name = val(dev, 'stationName') || (playing ? val(dev, 'title') : '') || T.nothing;
+    const song = isAll ? '' : val(dev, 'song');
+    let where = '';
+    if (isAll) {
+      const on = devices.filter((d) => d.type === 'radio' && d.key !== 'radio/all' && val(d, 'playing') === 1);
+      where = on.length ? `${T.on}: ${on.map((d) => esc(d.label) + (val(d, 'song') ? ` <span style="opacity:.7">· ${esc(val(d, 'song'))}</span>` : '')).join(', ')}` : '';
+    } else where = esc(dev.label);
+    const hasEq = dev.sensors.some((s) => s.path === 'eq');
+    const eq = Number(val(dev, 'eq')) || 0;
+    return `<div class="card">
+      <div class="now">${art(playing ? name : '♪', playing ? station?.favicon : null, true)}
+        <div class="meta"><div class="kicker">${T.radio}${isAll ? ' · ' + T.all : ''}</div><h1>${esc(name)}</h1>${song ? `<div class="song">${esc(song)}</div>` : ''}<div class="where">${where}</div></div></div>
+      <div class="ctrl">
+        <button class="round" data-act="prevStation">${icon.prev}</button>
+        <button class="round big" data-act="playing" data-v="${playing ? 0 : 1}">${playing ? icon.stop : icon.play}</button>
+        <button class="round" data-act="nextStation">${icon.next}</button>
+      </div>
+      ${volumeRow(dev.key, dev)}
+      ${hasEq ? `<div class="eq">${T.eq.map((n, i) => `<button class="chip${i === eq ? ' on' : ''}" data-act="eq" data-v="${i}">${esc(n)}</button>`).join('')}</div>` : ''}
+      <div class="err">${esc(err)}</div>
+    </div>
+    <div class="card"><h2>${T.stations}</h2>${stations.length ? `<div class="grid">${stations.map((s, i) => `<button class="tile${playing && st === i + 1 ? ' on' : ''}" data-act="station" data-v="${i + 1}">${art(s.name, s.favicon)}<span>${esc(s.name)}</span><em class="n">${i + 1}</em></button>`).join('')}</div>` : `<div class="empty">${T.noStations}</div>`}</div>`;
+  }
+
+  function renderSpotify(dev) {
+    const p = spotify?.player, item = p?.item, playing = !!p?.playing;
+    const fav = Number(val(dev, 'playlist')) || 0;
+    const speakers = dev.sensors.filter((s) => s.path.startsWith('to_'));
+    const curSpk = Number(val(dev, 'speaker')) || 0;
+    return `<div class="card">
+      <div class="now">${art(item?.name || 'Spotify', item?.image, true)}
+        <div class="meta"><div class="kicker" style="color:var(--spotify)">Spotify</div><h1>${esc(item?.name || T.nothing)}</h1><div class="song">${esc([item?.artist, item?.album].filter(Boolean).join(' — '))}</div><div class="where">${p?.device ? `${T.on}: ${esc(p.device.name)}` : ''}</div></div></div>
+      <div class="ctrl">
+        <button class="round small${p?.shuffle ? ' on' : ''}" data-act="shuffle" data-v="${p?.shuffle ? 0 : 1}" title="${T.shuffle}">${icon.shuffle}</button>
+        <button class="round" data-act="prev">${icon.prev}</button>
+        <button class="round big sp" data-act="playing" data-v="${playing ? 0 : 1}">${playing ? icon.pause : icon.play}</button>
+        <button class="round" data-act="next">${icon.next}</button>
+        <span style="width:44px"></span>
+      </div>
+      ${volumeRow(dev.key, { ...dev, readings: { ...dev.readings, volume: { value: p?.device?.volume ?? val(dev, 'volume') } } })}
+      <div class="err">${esc(err || spotify?.error || '')}</div>
+    </div>
+    ${speakers.length ? `<div class="card"><h2>${T.speakers}</h2><div class="chips" style="flex-wrap:wrap">${speakers.map((s, i) => `<button class="chip${curSpk === i + 1 ? ' on sp' : ''}" data-act="${esc(s.path)}" data-v="1">${esc(s.label.replace(/^→\s*/, ''))}</button>`).join('')}</div></div>` : ''}
+    ${spotifyFav.length ? `<div class="card"><h2>${T.playlists}</h2><div class="grid">${spotifyFav.map((f, i) => `<button class="tile${fav === i + 1 ? ' on' : ''}" data-act="playlist" data-v="${i + 1}">${art(f.name)}<span>${esc(f.name)}</span><em class="n">${i + 1}</em></button>`).join('')}</div></div>` : ''}`;
+  }
+
+  function render() {
+    renderTargets();
+    const dev = devices.find((d) => d.key === sel);
+    document.getElementById('main').innerHTML = !dev ? `<div class="card empty">${err ? esc(err) : T.none}</div>` : dev.key === 'spotify/player' ? renderSpotify(dev) : renderRadio(dev);
+  }
+
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.sel) { sel = b.dataset.sel; localStorage.setItem('lsh-lox-player', sel); err = ''; return render() }
+    const act = b.dataset.act;
+    if (!act || act === 'volume') return;
+    const dev = devices.find((d) => d.key === sel);
+    if (!dev) return;
+    if (act === 'mute') return set(sel, 'mute', val(dev, 'mute') === 1 ? 0 : 1);
+    set(sel, act, b.dataset.v ?? 1);
+  });
+  document.addEventListener('input', (e) => {
+    if (e.target.dataset.act !== 'volume') return;
+    dragging = true;
+    e.target.style.setProperty('--p', e.target.value + '%');
+    e.target.parentElement.querySelector('b').textContent = e.target.value + '%';
+  });
+  document.addEventListener('change', (e) => {
+    if (e.target.dataset.act !== 'volume') return;
+    dragging = false;
+    set(sel, 'volume', e.target.value);
+  });
+
+  load();
+  setInterval(() => { if (!document.hidden) load() }, 2000);
+})();
+</script>
+</body>
+</html>

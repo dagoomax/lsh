@@ -7,8 +7,13 @@ const http = require('http');
 const { writeConfigFile } = require('../config-file-cache');
 const { readConfigFile } = require('./helpers');
 
+function cleanMappings(list) {
+  return list.map((m) => ({ storeKey: String(m?.storeKey || '').trim(), virtualInput: String(m?.virtualInput || '').trim() }))
+    .filter((m) => m.storeKey && m.virtualInput).slice(0, 500);
+}
+
 module.exports = function register(router, ctx) {
-  const { requireAdmin } = ctx;
+  const { requireAdmin, clients, store, sensorRegistry } = ctx;
 
   // ── Loxone ─────────────────────────────────────────────────────────────
 
@@ -68,13 +73,72 @@ module.exports = function register(router, ctx) {
           port:     parseInt(port || 80),
           username: username || current.loxoneOut?.username || 'admin',
           password: (password && !password.includes('•')) ? password : (current.loxoneOut?.password || ''),
-          mappings: Array.isArray(mappings) ? mappings : (current.loxoneOut?.mappings || []),
+          mappings: Array.isArray(mappings) ? cleanMappings(mappings) : (current.loxoneOut?.mappings || []),
         },
       });
-      res.json({ success: true, message: 'Loxone outbound settings saved. Restart to apply.' });
+      // apply now: the new mappings start pushing (and send what they have) right away
+      const next = readConfigFile();
+      clients.loxoneOut?.stop();
+      delete clients.loxoneOut;
+      if (next.loxoneOut.host && next.loxoneOut.mappings.length) {
+        const LoxoneOutClient = require('../loxone-out-client');
+        const c = new LoxoneOutClient(next, store);
+        c.start();
+        clients.loxoneOut = c;
+      }
+      res.json({ success: true, message: `Saved — ${next.loxoneOut.mappings.length} mapping(s) pushing to ${next.loxoneOut.host || '(no host)'}` });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
+  });
+
+  // Ready-made mappings for the media player's text (and numbers) — what to
+  // create in Loxone as Virtual Text Inputs / Virtual Inputs with these names
+  router.get('/settings/loxone-out/suggestions', requireAdmin, (req, res) => {
+    const out = [];
+    const add = (storeKey, virtualInput, kind, what) => out.push({ storeKey, virtualInput, kind, what });
+    for (const d of sensorRegistry?.getDevices() || []) {
+      const name = d.label.replace(/[^\p{L}\p{N} _-]+/gu, '').trim() || d.key;
+      if (d.type === 'radio') {
+        add(`${d.key}/nowPlaying`, `LSH ${name} gra`, 'text', d.key === 'radio/all' ? 'every speaker playing: “Salon2: RMF FM — Artist - Song · …”' : 'station — song, e.g. “RMF FM — Artist - Song”');
+        if (d.key !== 'radio/all') {
+          add(`${d.key}/song`, `LSH ${name} utwór`, 'text', 'the song as the station sends it, “Artist - Title” (empty when it sends none)');
+          add(`${d.key}/artist`, `LSH ${name} wykonawca`, 'text', 'artist of the song');
+          add(`${d.key}/songTitle`, `LSH ${name} tytuł`, 'text', 'title of the song');
+          add(`${d.key}/cover`, `LSH ${name} logo`, 'text', 'the station logo’s address (changes with the station)');
+        }
+        add(`${d.key}/station`, `LSH ${name} stacja`, 'number', 'station number, 0 = off');
+      } else if (d.key === 'spotify/player') {
+        add('spotify/player/nowPlaying', 'LSH Spotify gra', 'text', 'track — artist');
+        add('spotify/player/track', 'LSH Spotify utwór', 'text', 'track');
+        add('spotify/player/artist', 'LSH Spotify wykonawca', 'text', 'artist');
+        add('spotify/player/device', 'LSH Spotify głośnik', 'text', 'the room / device it plays on');
+        add('spotify/player/album', 'LSH Spotify album', 'text', 'album');
+        add('spotify/player/cover', 'LSH Spotify okładka', 'text', 'the album cover’s address (changes with the track)');
+      } else if (d.key === 'music/player') {
+        add('music/player/track', 'LSH Muzyka utwór', 'text', 'track of the selected source');
+        add('music/player/artist', 'LSH Muzyka wykonawca', 'text', 'artist of the selected source');
+      }
+    }
+    // images: what Loxone's Intercom / Camera or Webpage block can show (not pushed — Loxone fetches them)
+    const images = (sensorRegistry?.getDevices() || []).filter((d) => d.type === 'radio' || d.key === 'spotify/player')
+      .map((d) => ({ label: d.label, path: `/api/loxone/cover/${d.key}.jpg` }));
+    res.json({ success: true, data: out, images });
+  });
+
+  // Push one value now and report what the Miniserver said
+  router.post('/settings/loxone-out/test', requireAdmin, async (req, res) => {
+    const cfg = readConfigFile().loxoneOut;
+    if (!cfg?.host) return res.json({ success: false, error: 'Save the Miniserver address first' });
+    const virtualInput = String(req.body?.virtualInput || '').trim();
+    if (!virtualInput) return res.json({ success: false, error: 'Which Virtual Input?' });
+    const LoxoneOutClient = require('../loxone-out-client');
+    const c = clients.loxoneOut || new LoxoneOutClient({ loxoneOut: cfg }, store);
+    const value = req.body?.value ?? `LSH test ${new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`;
+    try {
+      await c.push(virtualInput, value);
+      res.json({ success: true, message: `Loxone took “${value}” on ${virtualInput}` });
+    } catch (err) { res.json({ success: false, error: err.message }) }
   });
 
   router.post('/settings/test-loxone-weather', requireAdmin, async (req, res) => {

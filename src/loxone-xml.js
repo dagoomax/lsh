@@ -70,7 +70,7 @@ function isOutputSensor(s) {
  * VirtualInHttp template — feedback: Miniserver polls /api/devices and
  * extracts one value per VirtualInHttpCmd.
  */
-function buildInputsXml(devices, { host, token, pollingMs = 5000 } = {}) {
+function buildInputsXml(devices, { host, token, pollingMs = 5000, title: blockTitle } = {}) {
   const cmds = [];
   for (const device of devices) {
     for (const sensor of (device.sensors || []).filter(isInputSensor)) {
@@ -89,7 +89,7 @@ function buildInputsXml(devices, { host, token, pollingMs = 5000 } = {}) {
 
   if (!cmds.length) return [];
 
-  const title  = devices.length === 1 ? `LSH ${devices[0].label}` : 'LSH Devices';
+  const title  = blockTitle || (devices.length === 1 ? `LSH ${devices[0].label}` : 'LSH Devices');
   const groups = chunk(cmds, MAX_CMDS);
   return groups.map((g, i) => {
     const suffix = groups.length > 1 ? ` ${i + 1}/${groups.length}` : '';
@@ -104,7 +104,7 @@ function buildInputsXml(devices, { host, token, pollingMs = 5000 } = {}) {
 /**
  * VirtualOut template — commands: Miniserver calls /api/device/<key>/set.
  */
-function buildOutputsXml(devices, { host, token } = {}) {
+function buildOutputsXml(devices, { host, token, title: blockTitle } = {}) {
   const cmds = [];
   for (const device of devices) {
     for (const sensor of (device.sensors || []).filter(isOutputSensor)) {
@@ -154,7 +154,7 @@ function buildOutputsXml(devices, { host, token } = {}) {
 
   if (!cmds.length) return [];
 
-  const title  = devices.length === 1 ? `LSH ${devices[0].label}` : 'LSH Devices';
+  const title  = blockTitle || (devices.length === 1 ? `LSH ${devices[0].label}` : 'LSH Devices');
   const groups = chunk(cmds, MAX_CMDS);
   return groups.map((g, i) => {
     const suffix = groups.length > 1 ? ` ${i + 1}/${groups.length}` : '';

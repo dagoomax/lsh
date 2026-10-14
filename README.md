@@ -4143,6 +4143,18 @@ When Spotify or Apple Music is configured, LSH also registers `music/player` (`s
 
 **Loxone:** Settings → Loxone XML Templates → **Music outputs.xml / Music inputs.xml**, or directly `GET /api/loxone/musicout.xml` and `/api/loxone/musicin.xml` (`?token=<api-token>` or `?tokenId=`, `?host=`, `?polling=`) — plain XML for Loxone Config's Virtual Output / Virtual HTTP Input template import. `GET /api/loxone/music.zip` bundles both: the Virtual Output (`LSH Music`, commands) and the Virtual HTTP Input (`LSH Music (feedback)`: source, playing, volume, ready flags) to import into Loxone Config. Apple Music only plays while the Music page is open on some device.
 
+#### Now-playing display (Loxone Webpage block / wall tablet)
+
+`GET /api/loxone/player?token=<API token>` — a touch page (`src/loxone-player.html`) for a Loxone **Webpage** block: station, song (the stream's ICY title), cover / station logo, play / stop / next / previous, volume ± and slider, mute, equalizer, the saved stations, and a tab per speaker plus **All speakers**; with Spotify set up, a Spotify tab (track, artist, cover, shuffle, favourite playlists, rooms). Every button is the same `/api/device/<key>/set` call the Loxone templates use. Options: `&speaker=<device key>` (lock to one speaker, e.g. `radio/airplay-salon2`, `radio/all`, `spotify/player`), `&theme=light`, `&lang=pl`.
+
+**All speakers** (`radio/all`) is an LSH device too, so it's in the Loxone Media player export: Play, Station, Next / Previous station, Volume, Volume ± and Mute (and Equalizer on the AirPlay ones) go to every speaker at once; feedback: playing (any), the station they share, average volume, speakers playing. Each speaker streams on its own, so rooms aren't sample-synchronised. Text readings (`song`, `nowPlaying` — e.g. "RMF FM — Artist - Song") can be pushed into a Loxone **Virtual Text Input** with `loxoneOut.mappings` (`{ "storeKey": "radio/airplay-salon2/nowPlaying", "virtualInput": "Salon2 gra" }`).
+
+#### Media player text and pictures in Loxone
+
+**Text** (Settings → Loxone → Loxone Outbound Push → *Media player → Loxone*: tick, *+ Add the ticked lines*, Save — applied live, current values sent at once, then only real changes): per speaker `nowPlaying` ("RMF FM — Artist - Title"), `song`, `artist`, `songTitle` (the station's ICY title split at " - "), `cover` (station logo URL), `station`; All speakers `nowPlaying`; Spotify `nowPlaying`, `track`, `artist`, `album`, `device`, `cover` (album art URL). In Loxone Config create a **Virtual Text Input** (or a Virtual Input for numbers) with exactly the suggested name; *Send test* checks it (`POST /api/settings/loxone-out/test`).
+
+**Pictures** can't be pushed — Loxone fetches them: `GET /api/loxone/cover/<device key>.jpg?token=<API token>` (`spotify/player`, `radio/airplay-salon2`, `radio/all` = the first speaker playing) always returns the current album cover / station logo as a 400×400 JPEG (`src/media-cover.js`: fetched once, converted by ffmpeg, cached; a dark square when nothing plays or the source is an SVG / broken). Use it as the image URL of an **Intercom (custom) / Camera** block or in a **Webpage** block.
+
 #### Spotify in Loxone
 
 `spotify/player` exposes numbers and pulses for Loxone besides Play / Next / Previous / Volume / Shuffle:
@@ -4167,10 +4179,12 @@ Every AirPlay speaker and Chromecast / Google Home / Nest of the dashboard's med
 | `station` | analog 0…N | 0 = stop, 1…N = saved station N (the dashboard's Favourites order); reads back the station playing |
 | `nextStation` / `prevStation` | pulse | wraps around the list |
 | `volume` | analog 0–100 | on an idle AirPlay speaker: the level the next station starts at |
+| `volumeUp` / `volumeDown` | pulse | ±5 |
 | `mute` | digital | |
+| `eq` | analog 0…6 | AirPlay only — equalizer preset: 0 flat, 1 bass, 2 vocal, 3 rock, 4 jazz, 5 electronic, 6 night (the dashboard's presets); a station playing restarts with it |
 | `stationName`, `title` | — | text, dashboard only |
 
-**Loxone:** Settings → Loxone XML Templates → **Radio outputs.xml / Radio inputs.xml**, or `GET /api/loxone/outputs.xml?type=radio` and `/api/loxone/inputs.xml?type=radio` (same `?tokenId=` / `?token=`, `?host=`, `?polling=`). Wire a Radio Buttons block's output to *Station*. The feedback inputs match each reading on its unique `ref` (`radio/airplay-salon2/station`), so every speaker reads its own values and adding stations doesn't break them; the output's comment lists the station numbers at export time.
+**Loxone — the whole media player at once:** Settings → Loxone XML Templates → **Media player — all (ZIP)**, or `GET /api/loxone/media.zip` (radio speakers + Spotify + the Music source selector; Virtual Output *LSH Media player* and Virtual HTTP Input *LSH Media player (feedback)*), or the same as plain XML: `/api/loxone/mediaout.xml`, `/api/loxone/mediain.xml`. Radio only: `GET /api/loxone/outputs.xml?type=radio` and `/api/loxone/inputs.xml?type=radio` (same `?tokenId=` / `?token=`, `?host=`, `?polling=`). Wire a Radio Buttons block's output to *Station*. The feedback inputs match each reading on its unique `ref` (`radio/airplay-salon2/station`), so every speaker reads its own values and adding stations doesn't break them; the output's comment lists the station numbers at export time.
 
 ```json
 "music": { "name": "Music", "defaultSource": 1 }

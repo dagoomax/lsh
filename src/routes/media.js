@@ -274,3 +274,4 @@ module.exports = function register(router, ctx) {
 
 module.exports.cleanStations = cleanStations;
 module.exports.LIVE_RE = LIVE_RE;
+module.exports.streamTitle = streamTitle;

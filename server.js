@@ -711,6 +711,7 @@ async function main() {
     if (LoxoneOutClient) {
       const loxoneOut = new LoxoneOutClient(config, store);
       loxoneOut.start();
+      apiClients.loxoneOut = loxoneOut; // Settings restarts it live (src/routes/loxone.js)
     }
   }
 

@@ -44,6 +44,8 @@ test('Spotify for Loxone: favourite playlists and speakers by number, "→ speak
     assert.equal(JSON.parse(sim.calls.filter((x) => x.path.startsWith('/v1/me/player/play')).at(-1).body).context_uri, 'spotify:playlist:37i9dQZF1DXcBWIGoYBM5M');
     await c.poll();
     assert.equal(store.get('spotify/player/playlist'), 1);
+    assert.equal(store.get('spotify/player/cover'), 'https://i.scdn.co/image/x', 'album cover for Loxone');
+    assert.match(store.get('spotify/player/nowPlaying'), / — /);
     assert.equal(store.get('spotify/player/playing'), 1);
 
     // Speaker 2 = Pixel

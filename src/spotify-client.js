@@ -227,6 +227,8 @@ class SpotifyClient {
         { path: 'album', label: 'Album', type: 'label' },
         { path: 'device', label: 'Playing on', type: 'label' },
         { path: 'repeat', label: 'Repeat', type: 'label' },
+        { path: 'nowPlaying', label: 'Now playing (text)', type: 'label' },
+        { path: 'cover', label: 'Cover (URL)', type: 'label' },
         ...this._listSensors(),
       ],
       _writeCapability: (capId, command, args) => this._command(capId, command, args),
@@ -242,8 +244,10 @@ class SpotifyClient {
     set('track', item?.name || '');
     set('artist', item ? (item.artists || []).map((a) => a.name).join(', ') || item.show?.name || '' : '');
     set('album', item?.album?.name || '');
+    set('cover', item ? (item.album?.images || item.images || [])[0]?.url || '' : '');
     set('device', p?.device?.name || '');
     set('repeat', p?.repeat_state || 'off');
+    set('nowPlaying', p?.is_playing && item ? [item.name, (item.artists || []).map((x) => x.name).join(', ') || item.show?.name].filter(Boolean).join(' — ') : '');
     set('playlist', p?.is_playing && p?.context?.uri ? this.favourites().findIndex((f) => f.uri === p.context.uri) + 1 : 0);
     set('speaker', p?.device?.name ? this.speakers().findIndex((x) => x.name.toLowerCase() === p.device.name.toLowerCase()) + 1 : 0);
   }

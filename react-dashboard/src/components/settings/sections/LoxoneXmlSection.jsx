@@ -31,8 +31,9 @@ export default function LoxoneXmlSection() {
   const isInput = s => !s.hidden && !['color', 'trigger', 'text', 'label'].includes(s.type) && !isMomentary(s)
   const isOutput = s => !s.hidden && s.controllable && s.type !== 'text'
   const music = devices.find(d => d.key === 'music/player')
-  const radios = devices.filter(d => d.type === 'radio')
-  const radioCount = (pick) => radios.reduce((n, d) => n + (d.sensors || []).filter(pick).length, 0)
+  // the dashboard media player: radio speakers, Spotify, Music (GET /api/loxone/media.zip)
+  const media = devices.filter(d => ['radio', 'spotify', 'music'].includes(d.type))
+  const mediaCount = (pick) => media.reduce((n, d) => n + (d.sensors || []).filter(pick).length, 0)
 
   const byType = {}
   for (const d of devices) byType[d.type] = (byType[d.type] || 0) + 1
@@ -98,12 +99,14 @@ export default function LoxoneXmlSection() {
           </div>
         </div>
       )}
-      {radios.length > 0 && (
+      {media.length > 0 && (
         <div className="stg-field">
-          <label>{tr('Radio')}{' '}<span className="stg-hint">{tr('(the media player’s speakers: Play, Station — 0 stop, 1… your saved stations in the dashboard’s order — Next / Previous station, Volume, Mute)')}</span></label>
+          <label>{tr('Media player')}{' '}<span className="stg-hint">{tr('(everything the dashboard’s player does: radio on each AirPlay / Chromecast speaker — Play, Station, Next / Previous station, Volume, Volume + / −, Mute, Equalizer — plus Spotify and the Music source selector)')}</span></label>
+          <div className="stg-hint" style={{ margin: '2px 0 6px' }}>{media.map(d => d.label).join(' · ')}</div>
           <div className="stg-actions">
-            <Button onClick={() => download('outputs', 'outputs.xml', false, 'radio')}>{tr('⬇ Radio outputs.xml ({countCount})', { countCount: radioCount(isOutput) })}</Button>
-            <Button onClick={() => download('inputs', 'inputs.xml', false, 'radio')}>{tr('⬇ Radio inputs.xml ({countCount})', { countCount: radioCount(isInput) })}</Button>
+            <Button onClick={() => download('inputs', 'media.zip', false)}>{tr('⬇ Media player — all (ZIP)')}</Button>
+            <Button onClick={() => download('outputs', 'mediaout.xml', false)}>{tr('⬇ Media outputs.xml ({countCount})', { countCount: mediaCount(isOutput) })}</Button>
+            <Button onClick={() => download('inputs', 'mediain.xml', false)}>{tr('⬇ Media inputs.xml ({countCount})', { countCount: mediaCount(isInput) })}</Button>
           </div>
         </div>
       )}

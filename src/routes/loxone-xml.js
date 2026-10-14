@@ -36,6 +36,7 @@ module.exports = function register(router, ctx) {
     if (!embedToken && req.query.tokenId && auth) embedToken = auth.getApiTokenValue(req.query.tokenId);
 
     const opts = {
+      title:     req.lshBlockTitle,
       host:      req.query.host || req.get('host'),
       token:     embedToken || 'YOUR_API_TOKEN',
       pollingMs: Math.max(1000, Number(req.query.polling) || 5000),
@@ -51,7 +52,7 @@ module.exports = function register(router, ctx) {
           : 'Matching devices have no readable sensors',
       });
     }
-    const base = ['lsh-loxone', kind, req.query.type || (req.query.device || '').replace(/\//g, '-')]
+    const base = req.lshFileBase || ['lsh-loxone', kind, (req.query.type || '').replace(/,/g, '-') || (req.query.device || '').replace(/\//g, '-')]
       .filter(Boolean).join('-');
     if (parts.length === 1) {
       res.set('Content-Type', 'application/xml; charset=utf-8');
@@ -85,6 +86,36 @@ module.exports = function register(router, ctx) {
     res.set('Content-Disposition', 'attachment; filename="lsh-loxone-music.zip"');
     res.send(zipStore(files));
   });
+  // The dashboard's media player, everything it does: radio on the AirPlay /
+  // Chromecast speakers (src/radio-devices.js), Spotify, and the Music source
+  // selector — outputs and inputs in one ZIP, or as plain XML each
+  const MEDIA_TYPES = ['radio', 'spotify', 'music'];
+  const mediaDevices = () => sensorRegistry.getDevices().filter((d) => MEDIA_TYPES.includes(d.type));
+  router.get('/loxone/media.zip', (req, res) => {
+    if (!sensorRegistry) return res.status(503).json({ success: false, error: 'Registry unavailable' });
+    const { buildInputsXml, buildOutputsXml } = require('../loxone-xml');
+    const devices = mediaDevices();
+    if (!devices.length) return res.status(404).json({ success: false, error: 'No media player devices — enable AirPlay speakers, Chromecast or Spotify first' });
+    let embedToken = req.query.token;
+    if (!embedToken && req.query.tokenId && auth) embedToken = auth.getApiTokenValue(req.query.tokenId);
+    const opts = { title: 'LSH Media player', host: req.query.host || req.get('host'), token: embedToken || 'YOUR_API_TOKEN', pollingMs: Math.max(1000, Number(req.query.polling) || 5000) };
+    const files = [
+      ...buildOutputsXml(devices, opts).map((data, i, a) => ({ name: `lsh-loxone-media-outputs${a.length > 1 ? `-${i + 1}` : ''}.xml`, data })),
+      ...buildInputsXml(devices, opts).map((data, i, a) => ({ name: `lsh-loxone-media-inputs${a.length > 1 ? `-${i + 1}` : ''}.xml`, data })),
+    ];
+    const { zipStore } = require('../zip');
+    res.set('Content-Type', 'application/zip');
+    res.set('Content-Disposition', 'attachment; filename="lsh-loxone-media.zip"');
+    res.send(zipStore(files));
+  });
+  for (const [file, kind] of [['mediaout.xml', 'outputs'], ['mediain.xml', 'inputs']]) {
+    router.get(`/loxone/${file}`, (req, res) => {
+      req.query.type = MEDIA_TYPES.join(','); delete req.query.device;
+      req.lshBlockTitle = 'LSH Media player';
+      req.lshFileBase = `lsh-loxone-media-${kind}`;
+      return loxoneXmlHandler(kind)(req, res);
+    });
+  }
   // Same as the ZIP, one plain XML each (Loxone Config imports .xml only)
   router.get('/loxone/musicout.xml', (req, res) => {
     req.query.device = 'music/player'; delete req.query.type;
@@ -93,6 +124,32 @@ module.exports = function register(router, ctx) {
   router.get('/loxone/musicin.xml', (req, res) => {
     req.query.device = 'music/player'; delete req.query.type;
     return loxoneXmlHandler('inputs')(req, res);
+  });
+  // Now-playing display + controls for a Loxone Webpage block / wall tablet
+  // (src/loxone-player.html). Auth like the XML: ?token=<API token> or a session.
+  router.get('/loxone/player', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.set('Content-Security-Policy', "default-src 'self'; img-src * data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; frame-ancestors *");
+    res.removeHeader('X-Frame-Options');
+    res.type('html').sendFile(require('path').join(__dirname, '..', 'loxone-player.html'));
+  });
+  // Cover art / station logo of a media device as a square JPEG (src/media-cover.js):
+  // /api/loxone/cover/spotify/player.jpg, /api/loxone/cover/radio/airplay-salon2.jpg,
+  // /api/loxone/cover/radio/all.jpg (the first speaker playing). For a Loxone
+  // Intercom / Camera block's image URL, or a Webpage block.
+  router.get('/loxone/cover/:key(*)', async (req, res) => {
+    const key = String(req.params.key || '').replace(/\.jpe?g$/i, '');
+    const { store } = ctx;
+    let url = store.get(`${key}/cover`);
+    if (key === 'radio/all') {
+      const playing = sensorRegistry.getDevices().find((d) => d.type === 'radio' && d.key !== 'radio/all' && store.get(`${d.key}/playing`) === 1 && store.get(`${d.key}/cover`));
+      url = playing ? store.get(`${playing.key}/cover`) : '';
+    }
+    try {
+      const jpg = await require('../media-cover').coverJpeg(url);
+      res.set('Cache-Control', 'no-store');
+      res.type('image/jpeg').send(jpg);
+    } catch (err) { res.status(500).json({ success: false, error: `Couldn’t make the image: ${err.message}` }) }
   });
   router.get('/loxone/inputs.xml',  loxoneXmlHandler('inputs'));
   router.get('/loxone/outputs.xml', loxoneXmlHandler('outputs'));
