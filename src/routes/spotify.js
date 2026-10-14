@@ -88,6 +88,17 @@ module.exports = function register(router, ctx) {
   router.get('/spotify/playlists', (req, res) => { const c = live(res); if (c) run(res, () => c.playlists()) });
   router.get('/spotify/search', (req, res) => { const c = live(res); if (c) run(res, () => c.search(req.query.q || '')) });
   router.post('/spotify/transfer', requireAdmin, (req, res) => { const c = live(res); if (c) run(res, () => c.transfer(String(req.body?.deviceId || ''), req.body?.play !== false)) });
+  // transport for the dashboard's music hub: play / pause / next / prev / volume (0–100) / shuffle (bool)
+  router.post('/spotify/control', requireAdmin, (req, res) => {
+    const c = live(res); if (!c) return;
+    const { action, value } = req.body || {};
+    const map = {
+      play: ['playing', 'play'], pause: ['playing', 'pause'], next: ['next', 'trigger'], prev: ['prev', 'trigger'],
+      volume: ['volume', 'setVolume', [Number(value)]], shuffle: ['shuffle', value ? 'on' : 'off'],
+    }[action];
+    if (!map) return res.status(400).json({ success: false, error: 'action must be play, pause, next, prev, volume or shuffle' });
+    run(res, () => c._command(...map));
+  });
   router.post('/spotify/play', requireAdmin, (req, res) => { const c = live(res); if (c) run(res, () => c.playUri(String(req.body?.uri || ''), req.body?.deviceId || undefined)) });
 };
 module.exports.redirectUriFor = redirectUriFor;

@@ -32,6 +32,15 @@ const FLAG_PASSWORD_REQUIRED = 1 << 7;
 const FLAG_PIN_REQUIRED = 1 << 3;
 const FLAG_ONE_TIME_PAIRING_REQUIRED = 1 << 9;
 
+// Equalizer (the dashboard's 5 bands, dB) as an ffmpeg audio filter
+const EQ_BANDS = [60, 230, 910, 3600, 14000];
+function eqFilter(gains) {
+  if (!Array.isArray(gains) || gains.length !== EQ_BANDS.length) return [];
+  const g = gains.map((x) => Math.max(-12, Math.min(12, Number(x) || 0)));
+  if (g.every((x) => x === 0)) return [];
+  return ['-af', g.map((gain, i) => `equalizer=f=${EQ_BANDS[i]}:t=o:w=${i === 0 || i === 4 ? 2 : 1.4}:g=${gain}`).join(',')];
+}
+
 class AirplayClient {
   constructor(config) {
     this._speakers = (config.airplay?.speakers || []).filter((s) => s && s.id && s.host);
@@ -42,7 +51,7 @@ class AirplayClient {
   // ── Now playing (dashboard media player) ──────────────────────────────
   nowPlaying(speakerId) {
     const s = this._sessions.get(speakerId);
-    return s ? { title: s.title, url: s.url, since: s.since, volume: s.volume } : null;
+    return s ? { title: s.title, url: s.url, since: s.since, volume: s.volume, muted: !!s.muted } : null;
   }
 
   stop(speakerId) {
@@ -53,7 +62,16 @@ class AirplayClient {
     const s = this._sessions.get(speakerId);
     if (!s) throw new Error('Nothing is playing on this speaker');
     s.volume = Math.max(0, Math.min(100, Math.round(volume)));
+    s.muted = false;
     s.setVolume(s.volume);
+  }
+
+  // AirPlay has no mute of its own: volume 0, and back to the level before
+  setMuted(speakerId, muted) {
+    const s = this._sessions.get(speakerId);
+    if (!s) throw new Error('Nothing is playing on this speaker');
+    s.muted = !!muted;
+    s.setVolume(muted ? 0 : s.volume);
   }
 
   getSpeakers() {
@@ -190,7 +208,7 @@ class AirplayClient {
         settled = true;
         if (this._sessions.get(speakerId)?.token === token) this._sessions.delete(speakerId);
         if (session) pairing.detach(speaker.host);
-        if (err && session?.resumed) {
+        if (err && session?.resumed && !session.verified) {
           err = new Error(`${err.message} — "${speaker.name}" didn't accept LSH's saved pairing (removed on the device?). Pair it again in Settings → Media → AirPlay Speakers.`);
         }
         try { ffmpeg.kill('SIGKILL'); } catch { /* already gone */ }
@@ -203,6 +221,7 @@ class AirplayClient {
         // a stream is read at its own pace and reconnected if the connection drops
         ...(isUrl ? ['-re', '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5'] : []),
         '-i', filePath,
+        ...eqFilter(opts.eq),
         '-f', 's16le', '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2',
         '-loglevel', 'error', 'pipe:1',
       ]);
@@ -402,3 +421,4 @@ class AirplayClient {
 }
 
 module.exports = AirplayClient;
+module.exports.eqFilter = eqFilter;

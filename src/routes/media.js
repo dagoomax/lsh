@@ -6,21 +6,27 @@
 // a list of saved stations (config.media.stations: [{ name, url }]).
 //
 //   GET  /media/targets             speakers + what they're playing, saved stations
-//   POST /media/play   { target, url, title? }     target = cast:<host> | airplay:<id>
+//   POST /media/play   { target, url, title?, volume?, eq? }  target = cast:<host> | airplay:<id>; eq = 5 gains (dB), AirPlay only
 //   POST /media/stop   { target }
 //   POST /media/pause | /media/resume { target }   (Cast)
 //   POST /media/volume { target, volume }
+//   POST /media/mute   { target, muted }
 //   POST /media/stations { stations: [{ name, url, favicon? }] }
 //   GET  /media/radio?q=&country=   internet radio directory (radio-browser.info, proxied + cached)
 //   GET  /media/nowplaying?url=     the stream's current song (ICY metadata), cached 15 s
 //   GET  /media/stream?url=         relays an audio stream to this screen (https pages can't
 //                                   play http streams; only audio content types pass)
+//   GET  /media/spectrum?url=       live spectrum of a stream playing on a speaker, as
+//                                   server-sent events (base64, 48 bands 0–255, ~21/s)
 //
 // Only http(s) URLs are played — never a path on this server.
 const http = require('http');
 const https = require('https');
 const { readConfigFile } = require('./helpers');
 const { writeConfigFile } = require('../config-file-cache');
+const SpectrumHub = require('../media-spectrum');
+
+const spectrum = new SpectrumHub();
 
 const URL_RE = /^https?:\/\/[^\s]+$/i;
 const LIVE_RE = /\.(m3u8|pls)(\?|$)|\/(stream|live|listen|radio)\b|icecast|shoutcast|:\d{4,5}\/?(;|$)/i;
@@ -151,7 +157,7 @@ module.exports = function register(router, ctx) {
     }
     for (const s of airplay()?.getSpeakers() || []) {
       targets.push({ id: `airplay:${s.id}`, kind: 'airplay', name: s.name,
-        state: s.playing ? 'playing' : 'idle', title: s.playing?.title || '', url: s.playing?.url || '', volume: s.playing?.volume ?? null, since: s.playing?.since });
+        state: s.playing ? 'playing' : 'idle', title: s.playing?.title || '', url: s.playing?.url || '', volume: s.playing?.volume ?? null, muted: !!s.playing?.muted, since: s.playing?.since });
     }
     let stations = [];
     try { stations = cleanStations(readConfigFile().media?.stations) } catch { /* no config */ }
@@ -163,12 +169,16 @@ module.exports = function register(router, ctx) {
     const url = String(req.body?.url || '').trim();
     if (!URL_RE.test(url)) throw new Error('Give an http(s) URL of a stream or audio file');
     const title = String(req.body?.title || '').trim().slice(0, 120) || undefined;
+    const vol = Number(req.body?.volume);
+    const volume = req.body?.volume != null && vol >= 0 && vol <= 100 ? Math.round(vol) : undefined; // start at this level
     if (kind === 'cast') {
       await cast().cast(id, { url, title, live: req.body?.live ?? LIVE_RE.test(url) });
+      if (volume !== undefined) await cast()._executeCommand(id, 'volume', 'setVolume', [volume]);
       return 'Playing';
     }
     // AirPlay plays until the stream ends — answer once it has clearly started (or failed early)
-    const playing = airplay().play(id, url, { title });
+    const eq = Array.isArray(req.body?.eq) && req.body.eq.length === 5 ? req.body.eq.map((x) => Math.max(-12, Math.min(12, Number(x) || 0))) : undefined;
+    const playing = airplay().play(id, url, { title, volume, eq });
     playing.catch((err) => console.warn(`[Media] AirPlay ${id}: ${err.message}`));
     const early = await Promise.race([playing.then(() => 'ended', (err) => { throw err }), new Promise((r) => setTimeout(() => r('playing'), 4000))]);
     return early === 'ended' ? 'Played' : 'Playing';
@@ -232,6 +242,26 @@ module.exports = function register(router, ctx) {
       req.on('close', close);
       up.on('error', () => res.destroy());
     } catch { if (!res.headersSent) res.status(502).end() }
+  });
+
+  router.post('/media/mute', requireAdmin, (req, res) => reply(res, async () => {
+    const { kind, id } = parseTarget(req.body?.target);
+    const muted = req.body?.muted === true || req.body?.muted === 'true';
+    if (kind === 'cast') await cast()._executeCommand(id, 'mute', muted ? 'on' : 'off');
+    else airplay().setMuted(id, muted);
+    return muted ? 'Muted' : 'Unmuted';
+  }));
+
+  router.get('/media/spectrum', requireAdmin, (req, res) => {
+    const url = String(req.query.url || '');
+    if (!URL_RE.test(url)) return res.status(400).end();
+    let stop;
+    try {
+      stop = spectrum.watch(url, (frame) => res.write(`data: ${Buffer.from(frame).toString('base64')}\n\n`));
+    } catch (err) { return res.status(429).json({ success: false, error: err.message }) }
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+    res.write(': spectrum\n\n');
+    req.on('close', () => stop());
   });
 
   router.post('/media/stations', requireAdmin, (req, res) => reply(res, () => {

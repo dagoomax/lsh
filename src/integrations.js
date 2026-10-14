@@ -108,6 +108,8 @@ module.exports = [
   { file: 'ugreen-client', label: 'UGREEN', expose: 'ugreen', when: (config) => config.ugreen?.email && config.ugreen?.password },
   // Anker SOLIX Solarbank Max / E5000 Pro / XE, Smart Meter & Plug Gen 2 — official local Modbus TCP
   { file: 'anker-solix-client', label: 'Anker SOLIX', expose: 'ankerSolix', when: (config) => config.ankerSolix?.devices?.length },
+  // TIDAL — official API: catalog search, your playlists / albums (playback opens in TIDAL)
+  { file: 'tidal-client', label: 'TIDAL', expose: 'tidal', when: (config) => config.tidal?.clientId },
   // Air conditioners — shared AC model in src/ac-common.js (HomeKit thermostat)
   // Daikin — local HTTP API of the Wi-Fi adapters (BRP069 / BRP072A; BRP072C with its key)
   { file: 'daikin-client', label: 'Daikin', expose: 'daikin', when: (config) => config.daikin?.devices?.length },

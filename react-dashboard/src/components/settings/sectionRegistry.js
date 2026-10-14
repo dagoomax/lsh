@@ -62,6 +62,7 @@ export const CATEGORIES = [
     { id: 'airplay', title: 'AirPlay Speakers', keywords: ['airplay', 'homepod', 'apple tv', 'speaker'] },
     { id: 'spotify', title: 'Spotify', keywords: ['spotify', 'music', 'playlist', 'playback'] },
     { id: 'applemusic', title: 'Apple Music', keywords: ['apple music', 'musickit', 'music', 'itunes'] },
+    { id: 'tidal', title: 'TIDAL', keywords: ['tidal', 'music', 'hifi', 'lossless', 'playlist'] },
     { id: 'announce', title: 'Announcements', keywords: ['announce', 'announcement', 'tts', 'speech', 'homepod', 'airplay', 'loxone notification', 'say'] },
     { id: 'sip', title: 'SIP Intercom', keywords: ['sip', 'intercom', 'doorbell', 'voip', 'phone'] },
     { id: 'paging', title: 'Room-to-Room Paging', keywords: ['paging', 'intercom', 'talk'] },

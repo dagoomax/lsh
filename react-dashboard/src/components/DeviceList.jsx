@@ -22,7 +22,7 @@ import SystemMetrics from './SystemMetrics'
 import RelayPanel from './RelayPanel'
 import DashboardGrid, { hasCustomLayout, seedLayoutFromDevices, isWidgetPinned } from './DashboardGrid'
 import WeatherForecast from './WeatherForecast'
-import MediaPlayer from './MediaPlayer'
+import MusicHub from './MusicHub'
 
 const FIBARO_SENSOR_ICON = {
   switch:      SwitchOutletIcon,
@@ -1459,7 +1459,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               )}
             </div>
           )}
-          {(cat === 'Media' || (cat === 'All' && !(hasCustomLayout() && isWidgetPinned('widget:media')))) && <MediaPlayer />}
+          {(cat === 'Media' || (cat === 'All' && !(hasCustomLayout() && isWidgetPinned('widget:media')))) && <MusicHub />}
           {cat === 'All' && <WeatherForecast />}
           {cat === 'All' && <YaleDoorbells devices={devices} />}
           {cat === 'All' && <SystemMetrics devices={devices} />}

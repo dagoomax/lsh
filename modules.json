@@ -22,6 +22,7 @@
     "src/loxone-xml.js",
     "src/manuals.js",
     "src/mcp-bots.js",
+    "src/media-spectrum.js",
     "src/mobotix-client.js",
     "src/mongo.js",
     "src/motion-log.js",
@@ -123,6 +124,7 @@
     "src/routes/tedee.js",
     "src/routes/terminal.js",
     "src/routes/thermomix.js",
+    "src/routes/tidal.js",
     "src/routes/ui-preferences.js",
     "src/routes/unifi-protect.js",
     "src/routes/vclu.js",
@@ -1241,6 +1243,17 @@
         "src/anker-solix-maps.json",
         "src/modbus-tcp.js",
         "src/polling-client.js"
+      ],
+      "deps": {}
+    },
+    "tidal": {
+      "entry": "src/tidal-client.js",
+      "configKeys": [
+        "tidal"
+      ],
+      "when": "(config.tidal?.clientId)",
+      "files": [
+        "src/tidal-client.js"
       ],
       "deps": {}
     },

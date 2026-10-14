@@ -99,6 +99,7 @@ const ROUTE_GROUPS = [
   require('./routes/homeassistant'),
   require('./routes/wiring-pair'),
   require('./routes/spotify'),
+  require('./routes/tidal'),
   require('./routes/apple-music'),
   require('./routes/announce'),
   require('./routes/aquilo'),

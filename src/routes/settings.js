@@ -43,6 +43,7 @@ module.exports = function register(router, ctx) {
     if (safe.ugreen?.password) safe.ugreen.password = '••••••••';
     if (safe.melcloud?.password) safe.melcloud.password = '••••••••';
     if (safe.sensibo?.apiKey) safe.sensibo.apiKey = '••••••••';
+    if (safe.tidal?.clientSecret) safe.tidal.clientSecret = '••••••••';
     if (Array.isArray(safe.daikin?.devices)) safe.daikin.devices = safe.daikin.devices.map((d) => (d?.key ? { ...d, key: '••••••••' } : d));
     if (Array.isArray(safe.midea?.devices)) safe.midea.devices = safe.midea.devices.map((d) => (d?.token || d?.key ? { ...d, ...(d.token ? { token: '••••••••' } : {}), ...(d.key ? { key: '••••••••' } : {}) } : d));
     if (Array.isArray(safe.gree?.devices)) safe.gree.devices = safe.gree.devices.map((d) => (d?.key ? { ...d, key: '••••••••' } : d));
