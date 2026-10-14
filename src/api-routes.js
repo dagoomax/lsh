@@ -104,6 +104,7 @@ const ROUTE_GROUPS = [
   require('./routes/aquilo'),
   require('./routes/zehnder'),
   require('./routes/integration-settings'),
+  require('./routes/media'),
 ];
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {

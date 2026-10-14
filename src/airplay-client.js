@@ -36,10 +36,28 @@ class AirplayClient {
   constructor(config) {
     this._speakers = (config.airplay?.speakers || []).filter((s) => s && s.id && s.host);
     this._pairings = new Map(); // speakerId → pairing in progress
+    this._sessions = new Map(); // speakerId → what's playing: { title, since, volume, stop(), setVolume() }
+  }
+
+  // ── Now playing (dashboard media player) ──────────────────────────────
+  nowPlaying(speakerId) {
+    const s = this._sessions.get(speakerId);
+    return s ? { title: s.title, since: s.since, volume: s.volume } : null;
+  }
+
+  stop(speakerId) {
+    this._sessions.get(speakerId)?.stop();
+  }
+
+  setVolume(speakerId, volume) {
+    const s = this._sessions.get(speakerId);
+    if (!s) throw new Error('Nothing is playing on this speaker');
+    s.volume = Math.max(0, Math.min(100, Math.round(volume)));
+    s.setVolume(s.volume);
   }
 
   getSpeakers() {
-    return this._speakers.map(({ id, name, host, password }) => ({ id, name: name || id, host, paired: !!pairing.get(id), hasPassword: !!password }));
+    return this._speakers.map(({ id, name, host, password }) => ({ id, name: name || id, host, paired: !!pairing.get(id), hasPassword: !!password, playing: this.nowPlaying(id) }));
   }
 
   // What the speaker asks for, from its mDNS flags (null = unknown)
@@ -114,9 +132,14 @@ class AirplayClient {
    * Play a local audio file (any format ffmpeg reads) out to one configured
    * speaker. Resolves once playback has finished (or the session ended).
    */
+  // source: a local audio file, or an http(s) URL (a stream or internet radio — read
+  // in real time). opts: { volume, title }. Starting something on a speaker stops
+  // what was playing there; the promise settles when playback ends or is stopped.
   async play(speakerId, filePath, opts = {}) {
     const speaker = this._find(speakerId);
-    if (!fs.existsSync(filePath)) throw new Error(`Audio file not found: ${filePath}`);
+    const isUrl = /^https?:\/\//i.test(String(filePath));
+    if (!isUrl && !fs.existsSync(filePath)) throw new Error(`Audio file not found: ${filePath}`);
+    this.stop(speakerId);
 
     // Apple TV / HomePod may ask for a PIN (on-screen code) or an AirPlay
     // password instead of accepting anyone. A PIN device works once it has
@@ -161,9 +184,11 @@ class AirplayClient {
       let settled = false;
       let weRequestedStop = false; // distinguishes our own wind-down from the receiver dropping the session
 
+      const token = Symbol('session');
       const finish = (err) => {
         if (settled) return;
         settled = true;
+        if (this._sessions.get(speakerId)?.token === token) this._sessions.delete(speakerId);
         if (session) pairing.detach(speaker.host);
         if (err && session?.resumed) {
           err = new Error(`${err.message} — "${speaker.name}" didn't accept LSH's saved pairing (removed on the device?). Pair it again in Settings → Media → AirPlay Speakers.`);
@@ -175,6 +200,8 @@ class AirplayClient {
       };
 
       const ffmpeg = spawn('ffmpeg', [
+        // a stream is read at its own pace and reconnected if the connection drops
+        ...(isUrl ? ['-re', '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5'] : []),
         '-i', filePath,
         '-f', 's16le', '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2',
         '-loglevel', 'error', 'pipe:1',
@@ -208,6 +235,11 @@ class AirplayClient {
         if (event.event === 'session-ended' && !weRequestedStop) {
           finish(new Error(`AirPlay session ended unexpectedly: ${event.message || event.detail?.reason || 'unknown reason'}`));
         }
+      });
+
+      this._sessions.set(speakerId, {
+        token, title: opts.title || (isUrl ? filePath : 'Audio'), since: Date.now(), volume: opts.volume ?? speaker.volume ?? 60,
+        stop: () => finish(), setVolume: (v) => { try { sender.setVolume(v) } catch { /* session ending */ } },
       });
 
       ffmpeg.stdout.on('data', (chunk) => {

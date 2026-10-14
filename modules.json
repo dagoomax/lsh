@@ -87,6 +87,7 @@
     "src/routes/mc6.js",
     "src/routes/mcp-oauth.js",
     "src/routes/mcp-server.js",
+    "src/routes/media.js",
     "src/routes/missed-calls.js",
     "src/routes/mobotix.js",
     "src/routes/modbus-emu.js",

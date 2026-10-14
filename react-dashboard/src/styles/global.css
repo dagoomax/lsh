@@ -1902,3 +1902,30 @@ input[type="range"]::-moz-range-thumb {
   .sm-tile:not(.sm-tile-wide) .sm-ring { transform: scale(0.85); transform-origin: left top; margin-bottom: -12px; }
   .sm-tile:not(.sm-tile-wide) .sm-detail { white-space: normal; }
 }
+
+/* ── Media player (components/MediaPlayer.jsx) ── */
+.media-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: none; cursor: pointer;
+  background: var(--white-08); color: var(--text2); font-size: 13px; font-weight: 600; transition: background .2s, color .2s;
+}
+.media-chip[data-on="true"] { background: var(--text); color: var(--bg); }
+.media-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.media-eq i { width: 3px; background: #30d158; border-radius: 1px; animation: media-eq 0.9s ease-in-out infinite; }
+.media-eq i:nth-child(2) { animation-delay: -0.3s; }
+.media-eq i:nth-child(3) { animation-delay: -0.6s; }
+@keyframes media-eq { 0%, 100% { height: 3px } 50% { height: 12px } }
+@media (prefers-reduced-motion: reduce) { .media-eq i { animation: none; height: 8px } }
+.media-round {
+  width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  background: var(--white-10); color: var(--text);
+}
+.media-round:disabled, .media-btn:disabled { opacity: .45; cursor: default; }
+.media-station { display: inline-flex; align-items: center; border-radius: 999px; background: var(--white-08); overflow: hidden; }
+.media-station button { border: none; background: none; color: var(--text); font-size: 13px; font-weight: 600; padding: 7px 4px 7px 12px; cursor: pointer; }
+.media-station .media-station-x { color: var(--text3); padding: 7px 10px 7px 6px; font-size: 15px; }
+.media-input {
+  background: var(--white-08); border: none; border-radius: 10px; color: var(--text); padding: 9px 12px; font-size: 14px; outline: none;
+}
+.media-input:focus { box-shadow: 0 0 0 2px var(--accent); }
+.media-btn { border: none; border-radius: 10px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; background: var(--white-10); color: var(--text); }
+.media-btn.primary { background: var(--accent); color: #fff; }

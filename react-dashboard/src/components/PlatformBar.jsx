@@ -57,11 +57,11 @@ const genericPlatform = (key) => {
 // between groups. Keys are platformStatus.set() keys; anything reporting
 // that isn't listed here falls into a trailing "Other" group.
 const GROUPS = [
-  { id: 'energy',     label: 'Energy',              keys: ['victron-mqtt', 'victron-vrm', 'solaredge', 'sofar', 'solaraccelerator', 'tauronTariff', 'ocpp', 'easee', 'wallbox', 'zaptec', 'goecharger', 'modbus', 'modbusEmu'] },
+  { id: 'energy',     label: 'Energy',              keys: ['victron-mqtt', 'victron-vrm', 'solaredge', 'sofar', 'solaraccelerator', 'tauronTariff', 'ocpp', 'easee', 'wallbox', 'zaptec', 'goecharger', 'modbus', 'modbusEmu', 'zendure', 'ugreen', 'ankerSolix'] },
   { id: 'security',   label: 'Security & access',   keys: ['satel', 'dsc', 'unifiAccess', 'yale', 'sip'] },
   { id: 'cameras',    label: 'Cameras',             keys: ['reolink', 'axis', 'mobotix', 'tuya-ipc', 'objectDetection'] },
   { id: 'control',    label: 'Lighting & control',  keys: ['loxone', 'loxoneOut', 'knx', 'fibaro', 'fibaroOut', 'boneio', 'grenton', 'nippy', 'ampio', 'wirenboard', 'shelly', 'wled', 'hue', 'tradfri', 'dirigera', 'somfy', 'suppla', 'smartbob', 'esphome', 'arduino', 'broadlink', 'can', 'lsh-ble'] },
-  { id: 'climate',    label: 'Climate & weather',   keys: ['vitodens', 'auxair', 'dyson', 'vents', 'mc6', 'airly', 'loxoneWeather', 'zehnder'] },
+  { id: 'climate',    label: 'Climate & weather',   keys: ['vitodens', 'auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo', 'dyson', 'vents', 'mc6', 'airly', 'loxoneWeather', 'zehnder'] },
   { id: 'outdoor',    label: 'Pool & garden',       keys: ['bayrol', 'smarttub', 'landroid', 'aquilo'] },
   { id: 'appliances', label: 'Appliances',          keys: ['lgthinq', 'homeconnect', 'miele', 'thermomix', 'roborock', 'dreame', 'karcher'] },
   { id: 'media',      label: 'Media',               keys: ['sonos', 'denon', 'beosound', 'sony', 'googletv', 'googlehome'] },

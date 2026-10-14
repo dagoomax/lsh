@@ -2,6 +2,7 @@ import { useEffect, useState, lazy, Suspense } from 'react'
 import './styles/global.css'
 import { useLSH }            from './hooks/useLSH'
 import { usePaging }         from './hooks/usePaging'
+import { gt }                from './i18n'
 import Header                from './components/Header'
 import PlatformBar           from './components/PlatformBar'
 import SceneStrip            from './components/SceneStrip'
@@ -10,11 +11,13 @@ import IncomingCall          from './components/IncomingCall'
 import { PagingPanel }       from './components/PagingWidget'
 import LockScreen            from './components/LockScreen'
 import LoginScreen           from './components/LoginScreen'
-import SettingsPage          from './components/settings/SettingsPage'
-import WallDashboard         from './components/WallDashboard'
-import CssEditorPage         from './components/CssEditorPage'
-import ClaudeCodePage        from './components/ClaudeCodePage'
 import SetupScreen           from './components/SetupScreen'
+// Full-page views load on first open, so the dashboard itself starts faster
+// (wall tablets, phones on mobile data)
+const SettingsPage   = lazy(() => import('./components/settings/SettingsPage'))
+const WallDashboard  = lazy(() => import('./components/WallDashboard'))
+const CssEditorPage  = lazy(() => import('./components/CssEditorPage'))
+const ClaudeCodePage = lazy(() => import('./components/ClaudeCodePage'))
 const TerminalPage = lazy(() => import('./components/TerminalPage'))
 const LogsPage  = lazy(() => import('./components/pages/LogsPage'))
 const MqttPage  = lazy(() => import('./components/pages/MqttPage'))
@@ -75,7 +78,9 @@ export default function App() {
   if (view === 'settings') {
     return (
       <div style={{ height:'100%', background:'var(--bg)', overflow:'hidden' }}>
-        <SettingsPage onClose={() => setView('dashboard')} onOpenCssEditor={() => setView('css-editor')}/>
+        <Suspense fallback={<PageLoading/>}>
+          <SettingsPage onClose={() => setView('dashboard')} onOpenCssEditor={() => setView('css-editor')}/>
+        </Suspense>
       </div>
     )
   }
@@ -83,7 +88,9 @@ export default function App() {
   if (view === 'css-editor') {
     return (
       <div style={{ height:'100%', background:'var(--bg)', overflow:'hidden' }}>
-        <CssEditorPage onClose={() => setView('dashboard')}/>
+        <Suspense fallback={<PageLoading/>}>
+          <CssEditorPage onClose={() => setView('dashboard')}/>
+        </Suspense>
       </div>
     )
   }
@@ -91,7 +98,9 @@ export default function App() {
   if (view === 'claude-code') {
     return (
       <div style={{ height:'100%', background:'var(--bg)', overflow:'hidden' }}>
-        <ClaudeCodePage onClose={() => setView('dashboard')}/>
+        <Suspense fallback={<PageLoading/>}>
+          <ClaudeCodePage onClose={() => setView('dashboard')}/>
+        </Suspense>
       </div>
     )
   }
@@ -99,7 +108,7 @@ export default function App() {
   if (view === 'terminal') {
     return (
       <div style={{ height:'100%', background:'var(--bg)', overflow:'hidden' }}>
-        <Suspense fallback={<div style={{ padding: 24, color: 'var(--text3)' }}>Loading…</div>}>
+        <Suspense fallback={<PageLoading/>}>
           <TerminalPage onClose={() => setView('dashboard')}/>
         </Suspense>
       </div>
@@ -110,7 +119,7 @@ export default function App() {
   if (ToolPage) {
     return (
       <div style={{ height:'100%', background:'var(--bg)', overflow:'hidden' }}>
-        <Suspense fallback={<div style={{ padding: 24, color: 'var(--text3)' }}>Loading…</div>}>
+        <Suspense fallback={<PageLoading/>}>
           <ToolPage onClose={() => setView('dashboard')}/>
         </Suspense>
       </div>
@@ -118,7 +127,11 @@ export default function App() {
   }
 
   if (view === 'wall') {
-    return <WallDashboard devices={devices} energy={energy} roomsMeta={roomsMeta} onClose={() => setView('dashboard')}/>
+    return (
+      <Suspense fallback={<PageLoading/>}>
+        <WallDashboard devices={devices} energy={energy} roomsMeta={roomsMeta} onClose={() => setView('dashboard')}/>
+      </Suspense>
+    )
   }
 
   return (
@@ -141,4 +154,8 @@ export default function App() {
       </div>
     </div>
   )
+}
+
+function PageLoading() {
+  return <div style={{ padding: 24, color: 'var(--text3)' }}>{gt('loading', 'Loading…')}</div>
 }

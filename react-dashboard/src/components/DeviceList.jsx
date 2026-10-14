@@ -1,13 +1,16 @@
-import { useState, useCallback, useEffect, useMemo, memo } from 'react'
+import { useState, useCallback, useEffect, useMemo, memo, lazy, Suspense } from 'react'
 import {
   resolveIcon, CAT_ICON_COMPONENT, GridPowerIcon,
   SwitchOutletIcon, BulbIcon, ShutterIcon, ThermometerIcon,
   HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon, RelayIcon, MyIcon,
   BatteryIcon, SignalIcon, PowerIcon,
 } from './Icons'
-import DeviceModal from './DeviceModal'
-import StatsView   from './StatsView'
+// the device popup and the Graphs tab load on first use (prefetched when the browser is idle)
+const loadModal = () => import('./DeviceModal')
+const DeviceModal = lazy(loadModal)
+const StatsView   = lazy(() => import('./StatsView'))
 import { gt }      from '../i18n'
+import { acView, acSummary, acText, fmtTemp, MODE_COLOR } from '../acModel'
 import { EDIT_EMOJI } from '../emoji'
 import EnergyFlow from './EnergyFlow'
 import EnergySourcePicker from './EnergySourcePicker'
@@ -19,6 +22,7 @@ import SystemMetrics from './SystemMetrics'
 import RelayPanel from './RelayPanel'
 import DashboardGrid, { hasCustomLayout, seedLayoutFromDevices } from './DashboardGrid'
 import WeatherForecast from './WeatherForecast'
+import MediaPlayer from './MediaPlayer'
 
 const FIBARO_SENSOR_ICON = {
   switch:      SwitchOutletIcon,
@@ -187,9 +191,10 @@ async function sendCommand(key, sensor, value) {
 // ── Categories ────────────────────────────────────────────────────────────────
 export function getGroup(d) {
   if (['vebus','battery','solarcharger'].includes(d.type)) return 'Victron'
-  if (d.type === 'auxair') return 'Climate'
+  if (['auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo'].includes(d.type)) return 'Climate'
   if (d.type === 'smarttub') return 'Climate'
   if (d.type === 'sonos')  return 'Media'
+  if (d.type === 'googlehome' || d.type === 'googletv' || d.type === 'sony') return 'Media'
   if (d.type === 'denon')  return 'Media'
   if (d.type === 'beosound') return 'Media'
   const r = d.readings || {}
@@ -351,7 +356,9 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const isTradfri      = device.type === 'tradfri'
   const isHue          = device.type === 'hue'
   const isWled         = device.type === 'wled'
-  const isAC      = device.type === 'auxair'
+  // air conditioners (AuxAir and the shared AC model) — see src/acModel.js
+  const ac        = acView(device, merged)
+  const isAC      = !!ac
   const isSonos  = device.type === 'sonos'
   const isDenon  = device.type === 'denon'
   const isSpa    = device.type === 'smarttub'
@@ -361,8 +368,6 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const isWide   = isSonos || isDenon || device.type === 'sony' || device.type === 'beosound'
     || (hasLevel && hasSwitch)
 
-  const AC_MODES  = ['Cool','Heat','Dry','Fan','Auto']
-  const FAN_NAMES = ['Auto','Low','Med','High','Turbo','Mute']
   // Mirrors HEAT_MODES order in src/smarttub-client.js — value is the index
   const SPA_MODES = ['Eco','Day','Auto','Ready','Rest']
 
@@ -392,12 +397,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
     .filter(s => s.type === 'boolean' && s.controllable)
     .map(s => ({ ...s, value: (merged[s.path] ?? r[s.path])?.value })) : []
 
-  const acPwr     = isAC ? (merged.pwr?.value ?? r.pwr?.value) : null
-  const acOn      = acPwr === 1 || acPwr === true || acPwr === '1' || acPwr === 'true'
-  const acSetTemp = isAC ? (merged.temp?.value    ?? r.temp?.value)    : null
-  const acEnvTemp = isAC ? (merged.envtemp?.value ?? r.envtemp?.value) : null
-  const acMode    = isAC ? (merged.ac_mode?.value ?? r.ac_mode?.value ?? 0) : 0
-  const acFan     = isAC ? (merged.ac_mark?.value ?? r.ac_mark?.value ?? 0) : 0
+  const acOn      = !!ac?.on
 
   // For SmartThings: extract sensor values from path-keyed readings
   const smartthingsSensors = isSmartthings ? (device.sensors || []).filter(s => !s.hidden).map(s => ({
@@ -486,14 +486,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
       if (sonosTrack) return sonosPlaying ? sonosTrack : `⏸ ${sonosTrack}`
       return sonosPlaying ? 'Playing' : 'Stopped'
     }
-    if (isAC) {
-      if (!acOn) return 'Off'
-      const parts = []
-      if (acEnvTemp != null) parts.push(`${Number(acEnvTemp).toFixed(1)}°C room`)
-      if (acSetTemp != null) parts.push(`→ ${Number(acSetTemp).toFixed(0)}°C`)
-      parts.push(AC_MODES[acMode] || 'Cool')
-      return parts.join(' · ')
-    }
+    if (isAC) return acSummary(ac)
     if (isFibaro) {
       const parts = []
       if (fibaroSwitches.length) parts.push(`${fibaroOnCount}/${fibaroSwitches.length} on`)
@@ -561,7 +554,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
             </button>
           )}
           {isAC && (
-            <Toggle on={acOn} onChange={val => cmd('pwr', val ? 1 : 0)} />
+            <Toggle on={acOn} onChange={val => cmd(...ac.cmd.power(val))} />
           )}
           {!isSonos && !isAC && hasSwitch && (
             <Toggle on={isOn} onChange={val => cmd('switch', val ? 1 : 0)} />
@@ -625,33 +618,33 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
         </div>
       )}
 
-      {/* AC controls: mode pills + temp */}
+      {/* AC controls: mode pills + set temperature */}
       {isAC && acOn && (
         <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:6 }}>
-          {/* Mode pills */}
           <div style={{ display:'flex', gap:3, flexWrap:'wrap' }}>
-            {AC_MODES.map((m, i) => (
-              <button key={m} onClick={e => { e.stopPropagation(); cmd('ac_mode', i) }}
+            {ac.modes.map(m => (
+              <button key={m} onClick={e => { e.stopPropagation(); cmd(...ac.cmd.mode(m)) }}
                 style={{
                   fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:6, border:'none',
-                  background: acMode === i ? 'var(--accent)' : 'var(--white-08)',
-                  color: acMode === i ? '#fff' : 'var(--text2)', cursor:'pointer',
+                  background: ac.mode === m ? MODE_COLOR[m] : 'var(--white-08)',
+                  color: ac.mode === m ? '#fff' : 'var(--text2)', cursor:'pointer',
                 }}>
-                {m}
+                {acText(m)}
               </button>
             ))}
           </div>
-          {/* Temp +/- */}
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <button className="mini-btn" onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.max(16, acSetTemp - 1)) }}
-              style={{ width:22, height:22, borderRadius:6, color:'var(--text)', fontSize:14 }}>−</button>
-            <span style={{ fontSize:12, fontWeight:700, color:'var(--tile-on-ink)', minWidth:36, textAlign:'center' }}>
-              {acSetTemp != null ? `${Number(acSetTemp).toFixed(0)}°C` : '—'}
-            </span>
-            <button className="mini-btn" onClick={e => { e.stopPropagation(); if (acSetTemp != null) cmd('temp', Math.min(30, acSetTemp + 1)) }}
-              style={{ width:22, height:22, borderRadius:6, color:'var(--text)', fontSize:14 }}>+</button>
-            <span style={{ fontSize:10, color:'var(--text3)', marginLeft:4 }}>{FAN_NAMES[acFan] || 'auto'} fan</span>
-          </div>
+          {ac.mode !== 'fan' && (
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <button className="mini-btn" onClick={e => { e.stopPropagation(); if (ac.setTemp != null) cmd(...ac.cmd.temp(Math.max(ac.min, ac.setTemp - ac.step))) }}
+                style={{ width:22, height:22, borderRadius:6, color:'var(--text)', fontSize:14 }}>−</button>
+              <span style={{ fontSize:12, fontWeight:700, color:'var(--tile-on-ink)', minWidth:36, textAlign:'center' }}>
+                {fmtTemp(ac.setTemp)}
+              </span>
+              <button className="mini-btn" onClick={e => { e.stopPropagation(); if (ac.setTemp != null) cmd(...ac.cmd.temp(Math.min(ac.max, ac.setTemp + ac.step))) }}
+                style={{ width:22, height:22, borderRadius:6, color:'var(--text)', fontSize:14 }}>+</button>
+              {ac.fan != null && <span style={{ fontSize:10, color:'var(--text3)', marginLeft:4 }}>{acText('fanSpeed')}: {acText(ac.fans[ac.fan] || 'auto')}</span>}
+            </div>
+          )}
         </div>
       )}
 
@@ -1169,6 +1162,12 @@ function RoomIconEditor({ room, current, onClose }) {
 }
 
 export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRelay }) {
+  // fetch the device popup's code once the dashboard is idle, so the first tap opens instantly
+  useEffect(() => {
+    const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500))
+    const id = idle(() => { loadModal().catch(() => {}) })
+    return () => (window.cancelIdleCallback || clearTimeout)(id)
+  }, [])
   const [openKey, setOpenKey] = useState(() => new URLSearchParams(window.location.search).get('device'))
   const openDevice = openKey ? devices.find(d => d.key === openKey) : null
   const [cat, setCat] = useState(() => {
@@ -1413,7 +1412,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
 
         <div style={{ flex:1, overflowY:'auto', padding:'0 12px 16px' }}>
           {cat === 'Graphs' && (
-            <StatsView devices={devices} energy={energy} onOpen={setOpenKey} />
+            <Suspense fallback={null}><StatsView devices={devices} energy={energy} onOpen={setOpenKey} /></Suspense>
           )}
           {cat === 'Plan' && (
             <HomePlan devices={devices} roomsMeta={roomsMeta} groupOf={getGroup} onOpen={setOpenKey} energy={energy} />
@@ -1460,6 +1459,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               )}
             </div>
           )}
+          {(cat === 'All' || cat === 'Media') && <MediaPlayer />}
           {cat === 'All' && <WeatherForecast />}
           {cat === 'All' && <YaleDoorbells devices={devices} />}
           {cat === 'All' && <SystemMetrics devices={devices} />}
@@ -1546,7 +1546,9 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
       {editingRoom && (
         <RoomIconEditor room={editingRoom} current={roomsMeta[editingRoom]?.icon} onClose={() => setEditingRoom(null)}/>
       )}
-      <DeviceModal device={openDevice} rooms={rooms} onClose={() => setOpenKey(null)} onCommand={onCommand} />
+      <Suspense fallback={null}>
+        <DeviceModal device={openDevice} rooms={rooms} onClose={() => setOpenKey(null)} onCommand={onCommand} />
+      </Suspense>
     </div>
   )
 }

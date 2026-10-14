@@ -4,6 +4,8 @@ import { resolveIcon, MyIcon, NAMED_ICONS } from './Icons'
 import { gt } from '../i18n'
 import { EDIT_EMOJI } from '../emoji'
 import { useHistoryPoints, smoothPath } from '../historyChart'
+import { acView, AC_PATHS } from '../acModel'
+import AcPanel from './AcPanel'
 
 // ── Advanced device popup: full controls + history graphs ──────────────────
 // Design language: flat Homey sheet — big hero state, grouped control rows,
@@ -839,9 +841,12 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
   const val = p => (localState[p] !== undefined ? localState[p] : r[p]?.value)
 
   const sensors = useMemo(() => (device?.sensors || []).filter(s => !s.hidden), [device])
-  const controls = sensors.filter(s => s.controllable && s.type !== 'color')
+  // air conditioners get their own panel (AcPanel); its paths leave the generic controls
+  const ac = device ? acView(device, { ...r, ...Object.fromEntries(Object.entries(localState).map(([k, v]) => [k, { ...r[k], value: v }])) }) : null
+  const controls = sensors.filter(s => s.controllable && s.type !== 'color' && !(ac && AC_PATHS.has(s.path)))
   const graphable = sensors.filter(s => {
     const v = r[s.path]?.value
+    if (ac && AC_PATHS.has(s.path) && !['targetTemp', 'temp'].includes(s.path)) return false // on/off, mode, fan: not chart material
     return typeof v === 'number' || typeof v === 'boolean'
   })
   // Everything else that actually has a reading — read-only text/status
@@ -930,7 +935,10 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               {editing && <EditPanel device={device} rooms={rooms} onClose={() => setEditing(false)}/>}
 
               {/* Homey-style hero: the device's headline state, big */}
-              {!editing && <HeroState device={device} val={val} accent={accent} />}
+              {!editing && !ac && <HeroState device={device} val={val} accent={accent} />}
+
+              {/* Air conditioner: set-point ring, mode, fan, swing */}
+              {!editing && ac && <AcPanel ac={ac} send={cmd} />}
 
               {/* Now Playing (Denon/Sony/Beosound) */}
               <NowPlayingBanner device={device} />

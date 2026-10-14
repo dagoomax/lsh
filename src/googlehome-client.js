@@ -57,7 +57,7 @@ class GoogleHomeClient {
     await client.connect();
     const receiver = ReceiverController.createReceiver({ client });
 
-    this._devices[host] = { deviceKey, client, receiver };
+    this._devices[host] = { deviceKey, client, receiver, name: name || `Google Home ${host}` };
 
     this._registry.registerDevice({
       key:    deviceKey,
@@ -122,6 +122,29 @@ class GoogleHomeClient {
     return unwrapped.isOk ? unwrapped.value : null;
   }
 
+  // Cast speakers / displays LSH controls (the dashboard media player)
+  targets() {
+    return Object.entries(this._devices).map(([host, d]) => ({ host, key: d.deviceKey, name: d.name }));
+  }
+
+  // Play a URL (stream, internet radio, audio file) on a Cast device through the
+  // Default Media Receiver — unlike play/pause/stop this does launch the receiver,
+  // replacing whatever the device was showing.
+  async cast(host, { url, title, contentType, live = false }) {
+    const d = this._devices[host];
+    if (!d) throw new Error(`Unknown Cast device ${host}`);
+    const joined = Result.unwrapWithErr(await DefaultMediaApp.launchAndJoin({ client: d.client }));
+    if (!joined.isOk) throw new Error(`${d.name}: could not start the media receiver`);
+    const media = joined.value;
+    try {
+      (await media.load({
+        media: { contentId: url, contentType: contentType || castContentType(url), streamType: live ? 'LIVE' : 'BUFFERED', metadata: { metadataType: 0, title: title || url } },
+        autoplay: true,
+      })).unwrapAndThrow();
+    } finally { media.dispose() }
+    setTimeout(() => this._poll(host), 1500);
+  }
+
   async _executeCommand(host, capId, command, args) {
     const d = this._devices[host];
     if (!d) return;
@@ -149,4 +172,12 @@ class GoogleHomeClient {
   }
 }
 
+const CAST_TYPES = { mp3: 'audio/mpeg', aac: 'audio/aac', m4a: 'audio/mp4', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', flac: 'audio/flac', wav: 'audio/wav',
+  m3u8: 'application/x-mpegURL', mp4: 'video/mp4', webm: 'video/webm' };
+function castContentType(url) {
+  const ext = String(url).split(/[?#]/)[0].split('.').pop().toLowerCase();
+  return CAST_TYPES[ext] || 'audio/mpeg';
+}
+
 module.exports = GoogleHomeClient;
+module.exports.castContentType = castContentType;
