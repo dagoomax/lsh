@@ -74,6 +74,18 @@ class AirplayClient {
     s.setVolume(muted ? 0 : s.volume);
   }
 
+  // "Now playing" on the receiver's screen — Apple TV (and HomePod / Mac) show
+  // title, artist, album and artwork for an AirPlay stream. meta = { title,
+  // artist?, album?, cover?: { data: Buffer, mime } }. Kept until the receiver
+  // is ready, re-sent as it changes; the library skips unchanged info.
+  setMetadata(speakerId, meta) {
+    const s = this._sessions.get(speakerId);
+    if (!s) return false;
+    s.meta = meta;
+    if (s.ready) { try { s.sendMeta(meta) } catch { /* session ending */ } }
+    return true;
+  }
+
   getSpeakers() {
     return this._speakers.map(({ id, name, host, password }) => ({ id, name: name || id, host, paired: !!pairing.get(id), hasPassword: !!password, playing: this.nowPlaying(id) }));
   }
@@ -206,7 +218,8 @@ class AirplayClient {
       const finish = (err) => {
         if (settled) return;
         settled = true;
-        if (this._sessions.get(speakerId)?.token === token) this._sessions.delete(speakerId);
+        const own = this._sessions.get(speakerId);
+        if (own?.token === token) { for (const t of own.metaTimers || []) clearTimeout(t); this._sessions.delete(speakerId); }
         if (session) pairing.detach(speaker.host);
         if (err && session?.resumed && !session.verified) {
           err = new Error(`${err.message} — "${speaker.name}" didn't accept LSH's saved pairing (removed on the device?). Pair it again in Settings → Media → AirPlay Speakers.`);
@@ -237,6 +250,12 @@ class AirplayClient {
         txt,
       }, (event) => {
         if (event.event === 'error') { finish(new Error(event.message)); return; }
+        // the receiver is streaming: now it takes "now playing" info and artwork
+        if (event.event === 'device' && (event.message === 'ready' || event.message === 'playing')) {
+          const sess = this._sessions.get(speakerId);
+          if (sess?.token === token && !sess.ready) { sess.ready = true; if (sess.meta) sess.sendMeta(sess.meta) }
+          return;
+        }
         if (event.event === 'device' && event.message === 'need_password') {
           if (speaker.password) sender.setPasscode(speaker.password);
           else finish(new Error(`"${speaker.name}" asks for a PIN — pair it in Settings → Media → AirPlay Speakers.`));
@@ -259,6 +278,20 @@ class AirplayClient {
       this._sessions.set(speakerId, {
         token, title: opts.title || (isUrl ? filePath : 'Audio'), url: isUrl ? filePath : null, since: Date.now(), volume: opts.volume ?? speaker.volume ?? 60,
         stop: () => finish(), setVolume: (v) => { try { sender.setVolume(v) } catch { /* session ending */ } },
+        ready: false, meta: null,
+        // The library drops info / artwork sent while the receiver is busy with
+        // another request (the volume right after connecting, say) and then
+        // never retries — so: the text, the artwork a moment later, both again
+        // a few seconds on. Re-sending the same info is harmless.
+        metaTimers: [],
+        sendMeta: (m) => {
+          const sess = this._sessions.get(speakerId);
+          if (!sess || sess.token !== token) return;
+          for (const t of sess.metaTimers) clearTimeout(t);
+          const info = () => { try { sender.setTrackInfo(m.title || '', m.artist || '', m.album || '') } catch { /* ending */ } };
+          const art = () => { if (m.cover?.data) try { sender.setArtwork(m.cover.data, m.cover.mime || 'image/jpeg') } catch { /* ending */ } };
+          sess.metaTimers = [[info, 700], [art, 1900], [info, 6000], [art, 7200]].map(([fn, ms]) => { const t = setTimeout(fn, ms); t.unref?.(); return t });
+        },
       });
 
       ffmpeg.stdout.on('data', (chunk) => {

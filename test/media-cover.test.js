@@ -46,3 +46,9 @@ test('cover art: any image → square JPEG; nothing / broken → placeholder', {
     assert.deepEqual(await coverJpeg(`${base}/page`), none, 'not an image → placeholder');
   } finally { srv.close() }
 });
+
+test('station titles that are ad-break markers are not songs', () => {
+  const { NOT_A_SONG } = require('../src/routes/media');
+  for (const t of ['STOP_AD_BREAK', 'START_AD_BREAK', 'Advert', 'Reklama', '-', '']) assert.ok(NOT_A_SONG.test(t), t);
+  for (const t of ['Tove Lo - Talking Body', 'ABBA - SOS', 'AC/DC - Thunderstruck', 'RMF FM']) assert.ok(!NOT_A_SONG.test(t), t);
+});

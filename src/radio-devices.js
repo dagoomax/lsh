@@ -117,6 +117,7 @@ class RadioDevices {
       this.store.update(`${t.key}/artist`, artist);
       this.store.update(`${t.key}/songTitle`, songTitle);
       this.store.update(`${t.key}/cover`, now.playing && idx ? stations[idx - 1].favicon || '' : '');
+      if (t.kind === 'airplay' && now.playing) this._screen(p, now, idx ? stations[idx - 1] : null, artist, songTitle);
       this.store.update(`${t.key}/nowPlaying`, now.playing ? [idx ? stations[idx - 1].name : now.title, song].filter(Boolean).join(' — ') : '');
       if (now.volume != null) this.store.update(`${t.key}/volume`, now.volume);
       else if (this.store.get(`${t.key}/volume`) == null) this.store.update(`${t.key}/volume`, 60);
@@ -124,6 +125,22 @@ class RadioDevices {
       if (t.kind === 'airplay' && this.store.get(`${t.key}/eq`) == null) this.store.update(`${t.key}/eq`, 0);
     }
     if (this.players.size) this._refreshAll(stations, hint);
+  }
+
+  // "Now playing" on the receiver's screen (Apple TV, HomePod, Mac): the song
+  // as title, the artist, the station as album, the station logo as artwork —
+  // sent when any of it changes (or a new session starts)
+  _screen(p, now, station, artist, songTitle) {
+    const name = station?.name || now.title || '';
+    const meta = songTitle ? { title: songTitle, artist: artist || name, album: name } : { title: name, artist: '', album: '' };
+    const cover = station?.favicon || '';
+    const key = [now.since, meta.title, meta.artist, meta.album, cover].join('|');
+    if (p.screenKey === key) return;
+    p.screenKey = key;
+    const send = (img) => { if (p.screenKey === key) this.clients.airplayClient?.setMetadata?.(p.id, img ? { ...meta, cover: { data: img, mime: 'image/jpeg' } } : meta) };
+    if (!cover) return send(null);
+    send(null); // the text at once, the logo when it's ready
+    require('./media-cover').coverJpeg(cover).then(send).catch(() => {});
   }
 
   // ── All speakers ──────────────────────────────────────────────────────
@@ -210,7 +227,7 @@ class RadioDevices {
   _now(p) {
     if (p.kind === 'airplay') {
       const n = this.clients.airplayClient?.nowPlaying(p.id);
-      return n ? { playing: true, url: n.url, title: n.title, volume: n.volume, muted: n.muted } : { playing: false };
+      return n ? { playing: true, url: n.url, title: n.title, volume: n.volume, muted: n.muted, since: n.since } : { playing: false };
     }
     const v = (k) => this.store.get(`${p.castKey}/${k}`);
     const state = String(v('playbackState') || 'idle');

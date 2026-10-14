@@ -155,3 +155,20 @@ test('All speakers: one command plays / changes / stops every speaker, with comb
   radio._refresh();
   assert.equal(store.get('radio/all/speakersPlaying'), 1, 'only the Chromecast fake still reports playing');
 });
+
+test('AirPlay receivers get "now playing" info and the station logo (Apple TV screen)', async () => {
+  const { radio, store, registry, sessions } = setup();
+  const sent = [];
+  radio.clients.airplayClient.setMetadata = (id, m) => { sent.push([id, m]); return true };
+  await radio.start();
+  radio.stop();
+  await registry.sendCommand('radio/airplay-salon', 'station', 1);
+  radio.songs.set('http://rmf.example/s', 'Tove Lo - Talking Body');
+  radio._refresh();
+  const last = sent.filter(([id]) => id === 'salon').at(-1)[1];
+  assert.deepEqual({ title: last.title, artist: last.artist, album: last.album }, { title: 'Talking Body', artist: 'Tove Lo', album: 'RMF FM' });
+  const n = sent.length;
+  radio._refresh();
+  assert.equal(sent.length, n, 'unchanged info is not re-sent');
+  assert.ok(!sent.some(([id]) => id === '10.0.0.20'), 'Chromecast has no AirPlay screen info');
+});

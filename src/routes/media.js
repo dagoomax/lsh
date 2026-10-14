@@ -96,6 +96,9 @@ function openUrl(url, headers, timeoutMs, hops = 0) {
 
 // ── what's on: ICY StreamTitle (Icecast / Shoutcast) ────────────────────────
 const titleCache = new Map(); // url → { at, title }
+// what stations put in StreamTitle that isn't a song: ad-break markers (RMF's
+// "STOP_AD_BREAK"), "advert", a lone dash, upper-case tokens with underscores
+const NOT_A_SONG = /^(?:[-–—\s.]*|(?:start|stop|begin|end)?_?ad_?(?:break|block)?(?:_(?:start|stop|begin|end))?|ad(?:vert(?:isement)?)?s?|commercials?|reklam[ay]?|[A-Z0-9]+(?:_[A-Z0-9]+)+)$/i;
 async function streamTitle(url) {
   const hit = titleCache.get(url);
   if (hit && Date.now() - hit.at < 15000) return hit.title;
@@ -125,6 +128,7 @@ async function streamTitle(url) {
       });
     } else req.destroy();
   } catch { /* no metadata — fine */ }
+  if (NOT_A_SONG.test(title)) title = ''; // ad-break markers and the like aren't songs
   titleCache.set(url, { at: Date.now(), title });
   if (titleCache.size > 100) titleCache.delete(titleCache.keys().next().value);
   return title;
@@ -275,3 +279,4 @@ module.exports = function register(router, ctx) {
 module.exports.cleanStations = cleanStations;
 module.exports.LIVE_RE = LIVE_RE;
 module.exports.streamTitle = streamTitle;
+module.exports.NOT_A_SONG = NOT_A_SONG;
