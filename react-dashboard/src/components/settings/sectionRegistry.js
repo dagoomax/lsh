@@ -60,6 +60,7 @@ export const CATEGORIES = [
   { id: 'media', label: 'Media & Intercom', sections: [
     { id: 'media-all', title: 'Denon, Sony, Sonos & Google Home', keywords: ['denon', 'marantz', 'sony', 'bravia', 'tv', 'sonos', 'google home', 'chromecast', 'nest'] },
     { id: 'airplay', title: 'AirPlay Speakers', keywords: ['airplay', 'homepod', 'apple tv', 'speaker'] },
+    { id: 'lgwebos', title: 'LG webOS TVs', keywords: ['lg', 'webos', 'tv', 'television', 'telewizor', 'remote'] },
     { id: 'spotify', title: 'Spotify', keywords: ['spotify', 'music', 'playlist', 'playback'] },
     { id: 'applemusic', title: 'Apple Music', keywords: ['apple music', 'musickit', 'music', 'itunes'] },
     { id: 'tidal', title: 'TIDAL', keywords: ['tidal', 'music', 'hifi', 'lossless', 'playlist'] },

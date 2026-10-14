@@ -75,6 +75,7 @@
     "src/routes/integration-settings.js",
     "src/routes/knx.js",
     "src/routes/lgthinq.js",
+    "src/routes/lgwebos.js",
     "src/routes/lock-pin.js",
     "src/routes/logs.js",
     "src/routes/loxone-xml.js",
@@ -400,6 +401,7 @@
       ],
       "when": "(config.airplay?.enabled || config.googlehome?.devices?.length)",
       "files": [
+        "src/media-cover.js",
         "src/radio-devices.js"
       ],
       "deps": {}
@@ -932,6 +934,20 @@
         "src/sony-client.js"
       ],
       "deps": {}
+    },
+    "lgwebos": {
+      "entry": "src/lgwebos-client.js",
+      "configKeys": [
+        "lgwebos"
+      ],
+      "when": "(config.lgwebos?.tvs?.length || config.lgwebos?.host)",
+      "files": [
+        "src/lgwebos-client.js",
+        "src/lgwebos-pairing.json"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
     },
     "googletv": {
       "entry": "src/googletv-client.js",

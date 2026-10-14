@@ -69,6 +69,7 @@ module.exports = [
   // Start Bang & Olufsen speaker client if configured
   { file: 'beosound-client', label: 'Beosound', when: (config) => config.beosound?.host },
   { file: 'sony-client', label: 'Sony', when: (config) => config.sony?.host },
+  { file: 'lgwebos-client', label: 'LGwebOS', expose: 'lgwebos', when: (config) => config.lgwebos?.tvs?.length || config.lgwebos?.host },
   // Start Android TV / Google TV client if configured (any brand — TCL, Sharp, ...)
   { file: 'googletv-client', label: 'GoogleTv', when: (config) => config.googletv?.host },
   { file: 'vents-client', label: 'VENTS', when: (config) => config.vents?.host },
