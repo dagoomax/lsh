@@ -64,7 +64,7 @@ module.exports = [
   // scripts/miele-auth.js; tokens persisted + auto-refreshed)
   { file: 'miele-client', label: 'Miele', when: (config) => config.miele },
   // Start LG ThinQ client if configured (token-based — no credentials needed)
-  { file: 'lgthinq-client', label: 'LGThinQ', when: (config) => config.lgthinq },
+  { file: 'lgthinq-client', label: 'LGThinQ', expose: 'lgthinq', when: (config) => config.lgthinq },
   { file: 'denon-client', label: 'Denon', when: (config) => config.denon?.host },
   // Start Bang & Olufsen speaker client if configured
   { file: 'beosound-client', label: 'Beosound', when: (config) => config.beosound?.host },

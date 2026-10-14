@@ -1,472 +1,280 @@
 'use strict';
 
-const https          = require('https');
-const fs             = require('fs');
-const path           = require('path');
-const crypto         = require('crypto');
-const platformStatus = require('./platform-status');
+// LG ThinQ — LG's official ThinQ Connect API (https://smartsolution.developer.lge.com/en/apiManage/thinq_connect)
+// with a Personal Access Token from https://connect-pat.lgthinq.com. Any LG
+// appliance on the account: its sensors are built from the device's own profile
+// (GET /devices/{id}/profile — what it reports, with ranges / options, and what
+// can be written), so a fridge, an AC, a washer or a purifier all work without
+// per-model code.
+//
+//   GET  /devices                    the account's appliances
+//   GET  /devices/{id}/profile       their properties
+//   GET  /devices/{id}/state         current values (polled)
+//   POST /devices/{id}/control       { group: { [locationName,] attribute: value } }
+//
+// The server is regional (api-eic Europe, api-aic Americas, api-kic Asia /
+// Pacific), picked by the account's country — which has to be the real one
+// (x-country; LG answers "Not supported country" otherwise). An old config with
+// a region code (EU, US…) instead of a country gets it detected once and saved.
+//
+// Sensors: <group>_<attribute>, or <group>_<location>_<attribute> for parts of
+// a device (FRIDGE / FREEZER…). Numbers and ranges → number / range; booleans →
+// boolean / toggle; options → text, or a 0…N number when writable (hint lists
+// them); POWER_ON / POWER_OFF style options → toggle.
+//
+// Token: config.lgthinq.token, else persist/lgthinq-tokens.json (access_token),
+// which older versions of the Settings page wrote.
+//
+// Verified against a real account (a refrigerator); other appliance types follow
+// the same profile format but haven't been tried on real hardware.
 
-// Public app constants embedded in the official LG ThinQ Android app
-const APP_ID       = 'LGAO221A02';
-const APP_KEY      = 'VGhpblEyLjAgU0VSVklDRQ==';
-const APP_VER      = '3.6.1200';
-const SVC_CODE     = 'SVC202';
-// OAuth credentials (public knowledge — extracted from LG app by community)
-const OAUTH_ID     = 'LGAO221A02';
-const OAUTH_SECRET = 'c053c2a6ddeb7ad97cb0eed0dcb31cf8';
-const REDIRECT_URI = 'lgaccount.lgsmartthinq://';
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const PollingClient = require('./polling-client');
 
-const GATEWAY_HOST = 'aic-service.lgthinq.com';
-
-// Country → EMP (auth) host
-const EMP_HOSTS = {
-  US: 'us.m.lgaccount.com',
-  EU: 'eu.m.lgaccount.com',
-  KR: 'kr.m.lgaccount.com',
-  AU: 'au.m.lgaccount.com',
-  CA: 'ca.m.lgaccount.com',
-  JP: 'jp.m.lgaccount.com',
-};
-const DEFAULT_EMP = 'm.lgaccount.com';
-
+// public key of LG's ThinQ Connect SDK (thinqconnect) — identifies the client kind, not the user
+const API_KEY = 'v6GFvkweNo7DK7yD3ylIZ9w52aKBU0eJ7wLXkSR3';
 const TOKENS_FILE = path.join(__dirname, '..', 'persist', 'lgthinq-tokens.json');
+const POLL_MS = 60 * 1000;
 
-class LGThinQClient {
+const AMERICAS = ['US', 'CA', 'MX', 'BR', 'AR', 'CL', 'CO', 'PE', 'EC', 'VE', 'UY', 'PY', 'BO', 'CR', 'PA', 'GT', 'HN', 'SV', 'NI', 'DO', 'PR', 'JM', 'TT'];
+const ASIA = ['KR', 'JP', 'AU', 'NZ', 'CN', 'TW', 'HK', 'SG', 'MY', 'TH', 'VN', 'PH', 'ID', 'IN'];
+const EUROPE = ['PL', 'DE', 'GB', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'CH', 'CZ', 'SK', 'HU', 'RO', 'BG', 'GR', 'PT', 'IE', 'DK', 'SE', 'NO', 'FI', 'EE', 'LV', 'LT', 'SI', 'HR', 'RS', 'BA', 'UA', 'LU', 'TR', 'IL', 'AE', 'SA', 'ZA', 'EG', 'MA'];
+const LEGACY = { EU: EUROPE, US: ['US', 'CA'], CA: ['CA', 'US'], KR: ['KR'], JP: ['JP'], AU: ['AU', 'NZ'] };
+
+function regionOf(country) {
+  if (AMERICAS.includes(country)) return 'aic';
+  if (ASIA.includes(country)) return 'kic';
+  return 'eic';
+}
+
+const human = (s) => String(s).replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+const slug = (s) => String(s).replace(/[^A-Za-z0-9]+/g, '');
+const POWER = /^(POWER_ON|POWER_OFF|ON|OFF|START|STOP)$/;
+
+// profile → [{ path, group, attr, location, spec }] (one per readable attribute)
+function propertiesOf(profile) {
+  const prop = profile?.property || {};
+  const groups = Array.isArray(prop) ? prop.map((p, i) => ['', p, i]) : Object.entries(prop).map(([g, v]) => [g, v]);
+  const out = [];
+  const add = (group, obj, location) => {
+    for (const [attr, spec] of Object.entries(obj || {})) {
+      if (attr === 'locationName' || attr === 'unit' || !spec || typeof spec !== 'object' || !spec.type) continue;
+      out.push({ path: [group, location, attr].filter(Boolean).map(slug).join('_'), group, attr, location, spec });
+    }
+  };
+  for (const [group, v] of groups) {
+    if (group === 'temperatureInUnits' && prop.temperature) continue; // same values as `temperature`
+    for (const part of [].concat(v)) {
+      if (!part || typeof part !== 'object') continue;
+      const location = typeof part.locationName === 'string' ? part.locationName : part.location?.locationName;
+      // nested groups (washer combos: { location, runState: {…}, … })
+      const nested = Object.entries(part).filter(([, x]) => x && typeof x === 'object' && !x.type && !Array.isArray(x) && Object.values(x).some((y) => y?.type));
+      if (nested.length && !Object.values(part).some((x) => x?.type)) for (const [g, x] of nested) add(group ? `${group}_${g}` : g, x, location);
+      else add(group, part, location);
+    }
+  }
+  return out;
+}
+
+// one property → an LSH sensor
+function sensorFor(p) {
+  const { spec } = p;
+  const mode = spec.mode || ['r'];
+  const writable = mode.includes('w');
+  const w = spec.value?.w ?? spec.value?.r;
+  const label = [p.location && human(p.location), human(p.attr)].filter(Boolean).join(' · ');
+  const s = { path: p.path, name: label, label };
+  if (/emperature/.test(p.attr)) s.format = 'temperature';
+  if (spec.type === 'range' || spec.type === 'number') {
+    Object.assign(s, { type: writable ? 'range' : 'number' });
+    if (writable) Object.assign(s, { controllable: true, min: w?.min ?? 0, max: w?.max ?? 100, step: w?.step ?? 1, writeCmd: 'set', capabilityId: p.path });
+  } else if (spec.type === 'boolean') {
+    Object.assign(s, writable ? { type: 'toggle', controllable: true, writeOn: 'true', writeOff: 'false', capabilityId: p.path } : { type: 'boolean', format: 'on-off' });
+  } else if (spec.type === 'enum') {
+    const opts = Array.isArray(w) ? w : Array.isArray(spec.value?.r) ? spec.value.r : [];
+    if (writable && opts.length === 2 && opts.every((o) => POWER.test(o))) {
+      const on = opts.find((o) => /ON|START/.test(o)), off = opts.find((o) => /OFF|STOP/.test(o));
+      Object.assign(s, { type: 'toggle', controllable: true, writeOn: on, writeOff: off, capabilityId: p.path, format: 'on-off' });
+    } else if (writable && opts.length) {
+      Object.assign(s, { type: 'range', controllable: true, min: 0, max: opts.length - 1, step: 1, writeCmd: 'set', capabilityId: p.path, hint: opts.map((o, i) => `${i} = ${o}`).join(', '), options: opts });
+    } else Object.assign(s, { type: 'label' });
+  } else return null;
+  return s;
+}
+
+// state + property → the value LSH stores
+function valueOf(state, p, sensor) {
+  let g = p.group ? state?.[p.group.split('_')[0]] : state;
+  if (p.group.includes('_')) g = [].concat(g).map((x) => x?.[p.group.split('_')[1]] ?? x);
+  const part = [].concat(g).find((x) => !p.location || x?.locationName === p.location || x?.location?.locationName === p.location) ?? (Array.isArray(g) ? null : g);
+  let v = part?.[p.attr];
+  if (v === undefined || v === null) return null;
+  if (sensor.type === 'toggle' && typeof v === 'string') return v === sensor.writeOn ? 1 : 0;
+  if (typeof v === 'boolean') return v ? 1 : 0;
+  if (sensor.options) { const i = sensor.options.indexOf(v); return i < 0 ? null : i }
+  return v;
+}
+
+class LGThinQClient extends PollingClient {
   constructor(config, store, sensorRegistry) {
-    this._config    = config;
-    this._store     = store;
-    this._registry  = sensorRegistry;
-    this._tokens    = null;
-    this._thinq2Host = null;
-    this._deviceMap  = {}; // deviceId → { deviceKey, type }
-    this._pollTimer  = null;
+    super({ statusKey: 'lgthinq', logTag: 'LGThinQ' });
+    this.cfg = config.lgthinq || {};
+    this.store = store;
+    this.registry = sensorRegistry;
+    this.clientId = `lsh-${crypto.createHash('sha256').update(String(this._token() || 'x')).digest('hex').slice(0, 16)}`;
+    this.devices = new Map(); // deviceId → { key, props: [{ p, sensor }] }
+    this.country = null;
+  }
+
+  _token() {
+    if (this.cfg.token) return String(this.cfg.token).trim();
+    try { return JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf8')).access_token || null } catch { return null }
   }
 
   async start() {
-    const hasTokens = !!(this._loadTokens()?.access_token);
-    if (!hasTokens) {
-      // not logged in yet — no platform-bar badge until there's an account
-      console.log('[LGThinQ] No tokens — log in via Settings → LG ThinQ to connect');
-      return;
-    }
-    try {
-      await this._authenticate();
-      await this._discoverDevices();
-      platformStatus.set('lgthinq', true);
-      this._pollTimer = setInterval(() => this._pollAll(), 30000);
-    } catch (err) {
-      console.error(`[LGThinQ] Start failed: ${err.message}`);
-      platformStatus.set('lgthinq', false);
-    }
+    if (!this._token()) { console.log('[LGThinQ] No Personal Access Token — add one in Settings → LG ThinQ'); return }
+    await this.startPolling(POLL_MS);
   }
 
-  stop() {
-    if (this._pollTimer) clearInterval(this._pollTimer);
-  }
+  stop() { this.stopPolling() }
 
-  // ── Authentication ────────────────────────────────────────────────────
-
-  async _authenticate() {
-    const saved = this._loadTokens();
-    if (!saved?.access_token) throw new Error('No LG ThinQ tokens configured');
-    this._tokens = saved;
-    // No expires_at = PAT or manually-set token; use as-is without refreshing
-    if (!saved.expires_at) return;
-    if (saved.expires_at > Date.now() + 60000) return;
-    if (saved.refresh_token && saved.refresh_token !== saved.access_token) {
-      const empHost = saved.empHost || EMP_HOSTS[(this._config.lgthinq?.country || 'US').toUpperCase()] || DEFAULT_EMP;
-      await this._refreshTokens(empHost);
-    }
-  }
-
-  async _login() {
-    const cfg     = this._config.lgthinq;
-    const country = (cfg.country || 'US').toUpperCase();
-    const lang    = cfg.lang || _defaultLang(country);
-
-    // 1. Gateway lookup → get country-specific server URLs
-    const gw = await this._gatewayInfo(country, lang);
-    const thinq2Raw  = gw.thinq2Path || gw.thinq2  || gw.thinq2Uri || '';
-    this._thinq2Host = thinq2Raw.startsWith('http') ? _parseHost(thinq2Raw) : thinq2Raw || `${country.toLowerCase()}.api.lge.com`;
-    const empHost    = gw.empPath || gw.empApiHost || gw.empHost || EMP_HOSTS[country] || DEFAULT_EMP;
-
-    // 2. Pre-login — exchange credentials for an OAuth code
-    const state     = crypto.randomBytes(4).toString('hex');
-    const prelogin  = await this._preLogin(empHost, cfg.username, cfg.password, state);
-    const redir     = prelogin.redirect_uri || prelogin.redirectUri || '';
-    const codeMatch = redir.match(/[?&]code=([^&]+)/);
-    if (!codeMatch) throw new Error(`LG pre-login did not return an auth code. Server response: ${JSON.stringify(prelogin).slice(0, 300)}`);
-    const code = decodeURIComponent(codeMatch[1]);
-
-    // 3. Token exchange
-    const tokens = await this._exchangeCode(empHost, code);
-    this._tokens = {
-      ...tokens,
-      expires_at:  Date.now() + (tokens.expires_in || 3600) * 1000,
-      thinq2Host:  this._thinq2Host,
-      empHost,
-    };
-    this._saveTokens(this._tokens);
-    console.log('[LGThinQ] Authenticated successfully');
-  }
-
-  async _refreshTokens(empHost) {
-    const body   = `grant_type=refresh_token&refresh_token=${encodeURIComponent(this._tokens.refresh_token)}`;
-    const creds  = Buffer.from(`${OAUTH_ID}:${OAUTH_SECRET}`).toString('base64');
-    const result = await this._httpsReq('POST', empHost, '/oauth2/token', body, {
-      'Authorization': `Basic ${creds}`,
-      'Content-Type':  'application/x-www-form-urlencoded',
+  // ── API ───────────────────────────────────────────────────────────────
+  async call(method, p, body, country = this.country) {
+    const res = await fetch(`https://api-${regionOf(country)}.lgthinq.com${p}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${this._token()}`,
+        'x-country': country,
+        'x-message-id': Buffer.from(crypto.randomUUID().replace(/-/g, ''), 'hex').toString('base64url'),
+        'x-client-id': this.clientId,
+        'x-api-key': API_KEY,
+        'x-service-phase': 'OP',
+        'Content-Type': 'application/json',
+        ...(method === 'POST' ? { 'x-conditional-control': 'true' } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(15000),
     });
-    this._tokens = {
-      ...this._tokens,
-      access_token: result.access_token,
-      expires_at:   Date.now() + (result.expires_in || 3600) * 1000,
-    };
-    this._saveTokens(this._tokens);
-  }
-
-  async _gatewayInfo(country, lang) {
-    return this._httpsReq('GET', GATEWAY_HOST,
-      `/service/users/gateways?countryCode=${country}&langCode=${lang.replace('-', '_')}`,
-      null, this._commonHeaders(country, lang)
-    ).then(r => r.result || r);
-  }
-
-  async _preLogin(empHost, username, password, state) {
-    // LG uses HMAC-SHA1 of specific data to sign the request
-    const ts     = Date.now();
-    const nonce  = crypto.randomBytes(8).toString('hex');
-    const b64pw  = Buffer.from(password).toString('base64');
-    const body   = {
-      user_auth2:   b64pw,
-      redirect_uri: REDIRECT_URI,
-      state,
-      username,
-      log_param:    `login request / redirect_uri=${REDIRECT_URI} / user_auth2=${b64pw} / state=${state}`,
-    };
-    return this._httpsReq('POST', empHost, `/spx/common/oauthapps/${APP_ID}/preLogin`, body, {
-      'Content-Type': 'application/json',
-    });
-  }
-
-  async _exchangeCode(empHost, code) {
-    const body  = `grant_type=authorization_code&code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
-    const creds = Buffer.from(`${OAUTH_ID}:${OAUTH_SECRET}`).toString('base64');
-    return this._httpsReq('POST', empHost, '/oauth2/token', body, {
-      'Authorization': `Basic ${creds}`,
-      'Content-Type':  'application/x-www-form-urlencoded',
-    });
-  }
-
-  // ── Device discovery ──────────────────────────────────────────────────
-
-  async _discoverDevices() {
-    const cfg     = this._config.lgthinq;
-    const country = (cfg.country || 'US').toUpperCase();
-    const lang    = cfg.lang || _defaultLang(country);
-
-    // v1 API: /v1/service/homes returns array of homes
-    let homeList = [];
-    try {
-      const resp = await this._thinqGet('/v1/service/homes', country, lang);
-      homeList   = Array.isArray(resp) ? resp : (resp.result || resp.item || []);
-    } catch {
-      const resp = await this._thinqGet('/v1/service/application/dashboard', country, lang);
-      homeList   = Array.isArray(resp) ? resp : (resp.result || resp.item || []);
+    const j = await res.json().catch(() => null);
+    if (!res.ok || j?.error) {
+      const e = j?.error || {};
+      const why = { 1218: 'the Personal Access Token is invalid or expired — create a new one at connect-pat.lgthinq.com', 1307: `"${country}" isn’t your LG account’s country`, 1310: `"${country}" isn’t your LG account’s country`, 1222: 'the appliance is offline', 2207: 'the appliance is offline' }[e.code];
+      const err = new Error(`LG ThinQ: ${why || e.message || `HTTP ${res.status}`}${e.code ? ` (${e.code})` : ''}`);
+      err.code = e.code;
+      throw err;
     }
-
-    for (const home of homeList) {
-      for (const dev of home.devices || home.device || []) {
-        await this._registerDevice(dev, country, lang).catch(err =>
-          console.warn(`[LGThinQ] Device init failed for ${dev.alias || dev.deviceId}: ${err.message}`)
-        );
-      }
-    }
-    console.log(`[LGThinQ] Registered ${Object.keys(this._deviceMap).length} device(s)`);
+    return j?.response;
   }
 
-  async _registerDevice(dev, country, lang) {
-    const deviceId = dev.deviceId;
-    const type     = _resolveType(dev.deviceType);
-    if (!type) return;
-
-    const deviceKey = `lgthinq/${deviceId}`;
-    const label     = dev.alias || dev.name || deviceId;
-
-    let snapshot = dev.snapshot || {};
-    try {
-      const st = await this._thinqGet(`/v1/service/devices/${deviceId}/status`, country, lang);
-      snapshot  = st.result || st.snapshot || st || snapshot;
-    } catch { /* use dev.snapshot */ }
-
-    const sensors = _sensorsForType(type);
-    if (!sensors.length) return;
-
-    const device = {
-      key:    deviceKey,
-      label,
-      type:   'lgthinq',
-      sensors,
-      _writeCapability: async (capId, command, args = []) =>
-        this._writeDevice(deviceId, type, capId, command, args, country, lang),
-    };
-
-    this._registry.registerDevice(device);
-    this._deviceMap[deviceId] = { deviceKey, type };
-    _applySnapshot(this._store, deviceKey, type, snapshot);
-    console.log(`[LGThinQ] Registered ${label} (${type})`);
-  }
-
-  // ── Write ─────────────────────────────────────────────────────────────
-
-  async _writeDevice(deviceId, type, capId, command, args, country, lang) {
-    let payload;
-    if (capId === 'power') {
-      const on = command === 'on';
-      payload  = { dataKey: 'airState.operation', dataValue: on ? 1 : 0 };
-    } else if (capId === 'targetTemp') {
-      payload = { dataKey: 'airState.tempState.target', dataValue: String(args[0]) };
-    } else {
-      payload = { dataKey: capId, dataValue: String(command) };
-    }
-    await this._thinqPost(`/v1/service/devices/${deviceId}/state`, { lge: [payload] }, country, lang);
-  }
-
-  // ── Polling ───────────────────────────────────────────────────────────
-
-  async _pollAll() {
-    const cfg     = this._config.lgthinq;
-    const country = (cfg.country || 'US').toUpperCase();
-    const lang    = cfg.lang || _defaultLang(country);
-
-    if (this._tokens?.expires_at && this._tokens.expires_at < Date.now() + 120000) {
+  // the account's country: as configured, or found once from an old region code and saved
+  async _country() {
+    if (this.country) return this.country;
+    const c = String(this.cfg.country || '').toUpperCase();
+    const known = [...AMERICAS, ...ASIA, ...EUROPE];
+    if (/^[A-Z]{2}$/.test(c) && known.includes(c) && !LEGACY[c]) return (this.country = c);
+    const tries = [...new Set([...(LEGACY[c] || []), ...(/^[A-Z]{2}$/.test(c) ? [c] : []), ...EUROPE, ...AMERICAS, ...ASIA])];
+    for (const t of tries) {
       try {
-        const empHost = this._tokens.empHost || EMP_HOSTS[country] || DEFAULT_EMP;
-        await this._refreshTokens(empHost);
-      } catch (err) {
-        console.error(`[LGThinQ] Token refresh failed: ${err.message}`);
-        platformStatus.set('lgthinq', false);
-        return;
-      }
-    }
-
-    for (const [deviceId, info] of Object.entries(this._deviceMap)) {
-      try {
-        const st       = await this._thinqGet(`/v1/service/devices/${deviceId}/status`, country, lang);
-        const snapshot = st.result || st.snapshot || st;
-        _applySnapshot(this._store, info.deviceKey, info.type, snapshot);
-      } catch (err) {
-        console.warn(`[LGThinQ] Poll failed for ${deviceId}: ${err.message}`);
-      }
-    }
-    platformStatus.set('lgthinq', true);
-  }
-
-  // ── ThinQ2 API helpers ────────────────────────────────────────────────
-
-  _apiHeaders(country, lang) {
-    const hdrs = {
-      ...this._commonHeaders(country, lang),
-      'x-emp-token': this._tokens.access_token,
-    };
-    if (this._tokens.user_number) hdrs['x-thinq-user-no'] = this._tokens.user_number;
-    return hdrs;
-  }
-
-  _apiHost(country) {
-    return this._tokens?.apiHost || `${country.toLowerCase()}.api.lge.com`;
-  }
-
-  async _thinqGet(apiPath, country, lang) {
-    return this._httpsReq('GET', this._apiHost(country), apiPath, null, this._apiHeaders(country, lang));
-  }
-
-  async _thinqPost(apiPath, body, country, lang) {
-    return this._httpsReq('POST', this._apiHost(country), apiPath, body, this._apiHeaders(country, lang));
-  }
-
-  _commonHeaders(country, lang) {
-    return {
-      'x-api-key':            APP_KEY,
-      'x-client-id':          APP_ID,
-      'x-country-code':       country,
-      'x-language-code':      lang.replace('-', '_'),
-      'x-message-id':         crypto.randomBytes(8).toString('hex'),
-      'x-service-id':         SVC_CODE,
-      'x-service-phase':      'OP',
-      'x-thinq-app-level':    'PRD',
-      'x-thinq-app-logintype':'LGE',
-      'x-thinq-app-os':       'ANDROID',
-      'x-thinq-app-type':     'NUTS',
-      'x-thinq-app-ver':      APP_VER,
-      'x-thinq-sdk-ver':      '2.0',
-      'Accept':               'application/json',
-    };
-  }
-
-  // ── Token persistence ─────────────────────────────────────────────────
-
-  _loadTokens() {
-    try {
-      if (fs.existsSync(TOKENS_FILE)) return JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf8'));
-    } catch {}
-    return null;
-  }
-
-  _saveTokens(tokens) {
-    try {
-      fs.mkdirSync(path.dirname(TOKENS_FILE), { recursive: true });
-      fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2), 'utf8');
-    } catch (err) {
-      console.warn(`[LGThinQ] Could not save tokens: ${err.message}`);
-    }
-  }
-
-  // ── HTTPS helper ──────────────────────────────────────────────────────
-
-  _httpsReq(method, hostname, reqPath, body, headers = {}) {
-    return new Promise((resolve, reject) => {
-      let payload = null;
-      if (body !== null && body !== undefined) {
-        if (typeof body === 'string') {
-          payload = Buffer.from(body, 'utf8');
-        } else {
-          payload = Buffer.from(JSON.stringify(body), 'utf8');
-          if (!headers['Content-Type']) headers['Content-Type'] = 'application/json';
+        await this.call('GET', '/devices', null, t);
+        this.country = t;
+        if (t !== c) {
+          console.log(`[LGThinQ] Account country is ${t} — saved to config`);
+          try {
+            const { readConfigCached, writeConfigFile } = require('./config-file-cache');
+            const cur = readConfigCached();
+            writeConfigFile({ ...cur, lgthinq: { ...(cur.lgthinq || {}), country: t } });
+          } catch { /* used for this run anyway */ }
         }
-        headers['Content-Length'] = payload.length;
+        return t;
+      } catch (err) {
+        if (err.code === '1307' || err.code === '1310') continue;
+        throw err;
       }
-      const req = https.request({ hostname, path: reqPath, method, timeout: 15000, headers }, res => {
-        const chunks = [];
-        res.on('data', d => chunks.push(d));
-        res.on('end', () => {
-          const text = Buffer.concat(chunks).toString();
-          if (res.statusCode < 200 || res.statusCode >= 300) {
-            return reject(new Error(`HTTP ${res.statusCode}: ${text.slice(0, 200)}`));
-          }
-          try { resolve(JSON.parse(text)); }
-          catch { reject(new Error(`Non-JSON: ${text.slice(0, 100)}`)); }
+    }
+    throw new Error('LG ThinQ: couldn’t find the account’s country — set it in Settings → LG ThinQ');
+  }
+
+  async _pollImpl() {
+    await this._country();
+    if (!this.devices.size) await this._discover();
+    let ok = 0;
+    for (const [id, d] of this.devices) {
+      try { this._apply(d, await this.call('GET', `/devices/${id}/state`)); ok++ }
+      catch (err) { console.warn(`[LGThinQ] ${d.label}: ${err.message}`) }
+    }
+    if (this.devices.size && !ok) throw new Error('No appliance answered');
+  }
+
+  async _discover() {
+    const list = (await this.call('GET', '/devices')) || [];
+    for (const dev of list) {
+      const id = dev.deviceId;
+      const info = dev.deviceInfo || {};
+      try {
+        const profile = await this.call('GET', `/devices/${id}/profile`);
+        const props = propertiesOf(profile).map((p) => ({ p, sensor: sensorFor(p) })).filter((x) => x.sensor);
+        const key = `lgthinq/${id}`;
+        const label = info.alias || info.modelName || id;
+        const d = { key, label, type: info.deviceType, props };
+        const writer = (capId, command, args = []) => this.write(id, capId, command, args);
+        const existing = this.registry.devices?.get?.(key);
+        // saved again from Settings: this client takes over the device the previous one registered
+        if (existing) Object.assign(existing, { sensors: props.map((x) => x.sensor), _writeCapability: writer });
+        else this.registry.registerDevice({
+          key, label, type: 'lgthinq', model: info.modelName, kind: String(info.deviceType || '').replace(/^DEVICE_/, '').toLowerCase(),
+          homekit: [], sensors: props.map((x) => x.sensor), _writeCapability: writer,
         });
-      });
-      req.on('error', reject);
-      req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
-      if (payload) req.write(payload);
-      req.end();
-    });
-  }
-}
-
-// ── Helpers (module-level) ───────────────────────────────────────────────────
-
-function _parseHost(url) {
-  try { return new URL(url).hostname; } catch { return url; }
-}
-
-function _defaultLang(country) {
-  const map = { KR: 'ko-KR', JP: 'ja-JP', EU: 'en-GB', PL: 'pl-PL', DE: 'de-DE', FR: 'fr-FR', IT: 'it-IT' };
-  return map[country] || 'en-US';
-}
-
-function _resolveType(raw) {
-  const t = String(raw || '').toUpperCase();
-  if (t === '101' || t.includes('REFRIGERATOR'))     return 'REFRIGERATOR';
-  if (t === '201' || t.includes('WASHER'))           return 'WASHER';
-  if (t === '202' || t.includes('DRYER'))            return 'DRYER';
-  if (t === '204' || t.includes('DISHWASHER'))       return 'DISHWASHER';
-  if (t === '206' || t.includes('AIR_CONDITIONER'))  return 'AC';
-  if (t === '401' || t.includes('AIR_PURIFIER'))     return 'AIR_PURIFIER';
-  if (t === '402' || t.includes('HUMIDIFIER'))       return 'HUMIDIFIER';
-  if (t === '406' || t.includes('DEHUMIDIFIER'))     return 'DEHUMIDIFIER';
-  if (t === '101' || t.includes('ROBOT_CLEANER'))    return null; // no practical sensors
-  return null;
-}
-
-function _sensorsForType(type) {
-  switch (type) {
-    case 'AC':
-      return [
-        { path: 'power',       name: 'Power',        type: 'boolean', controllable: true,  capabilityId: 'power',      writeOn: 'on', writeOff: 'off', homekit: { service: 'Switch', characteristic: 'On' } },
-        { path: 'targetTemp',  name: 'Target Temp',  type: 'range',   controllable: true,  capabilityId: 'targetTemp', writeCmd: 'set', min: 16, max: 30, format: 'temperature' },
-        { path: 'currentTemp', name: 'Current Temp', type: 'number',  controllable: false, format: 'temperature' },
-      ];
-    case 'AIR_PURIFIER':
-      return [
-        { path: 'power', name: 'Power', type: 'boolean', controllable: true, capabilityId: 'power', writeOn: 'on', writeOff: 'off' },
-        { path: 'pm1',   name: 'PM1.0', type: 'number',  controllable: false, format: 'pm25' },
-        { path: 'pm25',  name: 'PM2.5', type: 'number',  controllable: false, format: 'pm25' },
-        { path: 'pm10',  name: 'PM10',  type: 'number',  controllable: false, format: 'pm10' },
-      ];
-    case 'WASHER':
-    case 'DRYER':
-      return [
-        { path: 'state',     name: 'State',           type: 'number', controllable: false, format: 'washer-state' },
-        { path: 'remaining', name: 'Remaining (min)', type: 'number', controllable: false },
-      ];
-    case 'DISHWASHER':
-      return [
-        { path: 'state', name: 'State', type: 'number', controllable: false, format: 'washer-state' },
-      ];
-    case 'REFRIGERATOR':
-      return [
-        { path: 'fridgeTemp',  name: 'Fridge Temp',  type: 'number', controllable: false, format: 'temperature' },
-        { path: 'freezeTemp',  name: 'Freezer Temp', type: 'number', controllable: false, format: 'temperature' },
-      ];
-    case 'HUMIDIFIER':
-    case 'DEHUMIDIFIER':
-      return [
-        { path: 'power',    name: 'Power',    type: 'boolean', controllable: true, capabilityId: 'power', writeOn: 'on', writeOff: 'off' },
-        { path: 'humidity', name: 'Humidity', type: 'number',  controllable: false, format: 'percent' },
-      ];
-    default:
-      return [];
-  }
-}
-
-function _get(obj, ...keys) {
-  for (const k of keys) {
-    if (obj[k] !== undefined && obj[k] !== null) return obj[k];
-  }
-  return undefined;
-}
-
-function _applySnapshot(store, deviceKey, type, snap) {
-  const set = (p, v) => { if (v !== undefined && v !== null) store.set(`${deviceKey}/${p}`, v); };
-  switch (type) {
-    case 'AC':
-      set('power',       _get(snap, 'airState.operation', 'operation') === 1 ? 1 : 0);
-      set('targetTemp',  parseFloat(_get(snap, 'airState.tempState.target',  'targetTemperature') ?? 'x') || undefined);
-      set('currentTemp', parseFloat(_get(snap, 'airState.tempState.current', 'currentTemperature') ?? 'x') || undefined);
-      break;
-    case 'AIR_PURIFIER':
-      set('power', _get(snap, 'airState.operation', 'operation') === 1 ? 1 : 0);
-      set('pm1',   parseFloat(_get(snap, 'airState.airQuality.PM1H',  'PM1H')  ?? 'x') || undefined);
-      set('pm25',  parseFloat(_get(snap, 'airState.airQuality.PM2H',  'PM2H')  ?? 'x') || undefined);
-      set('pm10',  parseFloat(_get(snap, 'airState.airQuality.PM10H', 'PM10H') ?? 'x') || undefined);
-      break;
-    case 'WASHER':
-    case 'DRYER': {
-      const raw = _get(snap, 'washerDryer.state', 'state') || '';
-      set('state', String(raw).replace(/@WM_STATE_|@DW_STATE_|_W$/g, '') || 'STANDBY');
-      const h = parseInt(_get(snap, 'washerDryer.remainTimeHour',   'remainTimeHour')   || 0, 10);
-      const m = parseInt(_get(snap, 'washerDryer.remainTimeMinute', 'remainTimeMinute') || 0, 10);
-      set('remaining', h * 60 + m);
-      break;
+        this.devices.set(id, d);
+        console.log(`[LGThinQ] ${label} (${info.deviceType}): ${props.length} sensor(s)`);
+      } catch (err) { console.warn(`[LGThinQ] ${info.alias || id}: ${err.message}`) }
     }
-    case 'DISHWASHER': {
-      const raw = _get(snap, 'dishwasher.state', 'state') || '';
-      set('state', String(raw).replace(/@DW_STATE_|_W$/g, '') || 'STANDBY');
-      break;
+    if (!list.length) console.log('[LGThinQ] No appliances on this LG account');
+  }
+
+  _apply(d, state) {
+    d.state = state;
+    for (const { p, sensor } of d.props) {
+      const v = valueOf(state, p, sensor);
+      if (v !== null) this.store.update(`${d.key}/${sensor.path}`, v);
     }
-    case 'REFRIGERATOR':
-      set('fridgeTemp',  parseFloat(_get(snap, 'refState.fridgeTemp', 'fridgeTemp') ?? 'x') || undefined);
-      set('freezeTemp',  parseFloat(_get(snap, 'refState.freezeTemp', 'freezeTemp') ?? 'x') || undefined);
-      break;
-    case 'HUMIDIFIER':
-    case 'DEHUMIDIFIER':
-      set('power',    _get(snap, 'airState.operation', 'operation') === 1 ? 1 : 0);
-      set('humidity', parseFloat(_get(snap, 'airState.humidity.current', 'currentHumidity') ?? 'x') || undefined);
-      break;
+  }
+
+  async write(id, capId, command, args) {
+    const d = this.devices.get(id);
+    const x = d?.props.find((y) => y.p.path === capId);
+    if (!x) throw new Error('Unknown LG ThinQ setting');
+    const { p, sensor } = x;
+    let value;
+    if (sensor.type === 'toggle') value = p.spec.type === 'boolean' ? command === 'true' : command;
+    else if (sensor.options) value = sensor.options[Math.round(Number(args[0]))];
+    else value = Number(args[0]);
+    if (value === undefined || (typeof value === 'number' && !Number.isFinite(value))) throw new Error('Invalid value');
+    const inner = { ...(p.location ? { locationName: p.location } : {}), [p.attr]: value };
+    if (/emperature/.test(p.attr) && p.group === 'temperature') {
+      const part = [].concat(d.state?.temperature || []).find((t) => !p.location || t?.locationName === p.location);
+      if (part?.unit) inner.unit = part.unit; // as the device reports it
+    }
+    const [g, sub] = p.group.split('_');
+    const body = !g ? inner : sub ? { [g]: { [sub]: inner } } : { [g]: inner };
+    await this.call('POST', `/devices/${id}/control`, body);
+    this.store.update(`${d.key}/${sensor.path}`, sensor.type === 'toggle' ? (value === true || value === sensor.writeOn ? 1 : 0) : sensor.options ? Number(args[0]) : value);
+    setTimeout(() => this.call('GET', `/devices/${id}/state`).then((s) => this._apply(d, s)).catch(() => {}), 3000).unref?.();
   }
 }
 
 module.exports = LGThinQClient;
+module.exports.propertiesOf = propertiesOf;
+module.exports.sensorFor = sensorFor;
+module.exports.valueOf = valueOf;
+module.exports.regionOf = regionOf;
+// for Settings (GET /api/settings/lgthinq): every country the client knows, with its English name and LG server
+const REGION_NAME = { eic: 'Europe, Middle East & Africa', aic: 'Americas', kic: 'Asia & Pacific' };
+module.exports.countries = () => {
+  let dn = null;
+  try { dn = new Intl.DisplayNames(['en'], { type: 'region' }) } catch { /* no ICU */ }
+  return [...EUROPE, ...AMERICAS, ...ASIA]
+    .map((code) => ({ code, name: dn?.of(code) || code, region: regionOf(code), regionName: REGION_NAME[regionOf(code)] }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+};

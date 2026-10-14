@@ -413,19 +413,7 @@ npm install node-tradfri-client   # optional dependency
 
 ### `src/lgthinq-client.js`
 
-Integrates **LG ThinQ** appliances (air conditioners, washers, dryers, dishwashers, refrigerators, etc.) via the **LG v1 REST API** (`<country>.api.lge.com`).
-
-**Authentication:** Token-based only. Tokens are loaded from `persist/lgthinq-tokens.json` at startup. If no tokens are present the client skips start silently. PATs (Personal Access Tokens, prefix `thinqpat_`) are treated as non-expiring; OAuth access tokens are refreshed automatically using the stored refresh token.
-
-**Auth headers used:**
-- `x-emp-token` — access token
-- `x-thinq-user-no` — user number (required for all v1 API calls)
-
-**Discovery:** `GET /v1/service/homes` returns all home groups. Falls back to `GET /v1/service/application/dashboard` if no homes are found. Each device is registered in the sensor registry. Device state is polled every 30 s via `GET /v1/service/devices/:id/status`.
-
-**Supported device types:** AC (on/off, mode, target temperature, fan speed), washer, dryer, dishwasher, refrigerator. Commands are sent via `POST /v1/service/devices/:id/control`.
-
-**One-time user number setup:** Use **Settings → Controllers → LG ThinQ → Fetch Tokens & User Number** with your LG email/password. The server runs the LG OAuth pre-login flow (`eu.m.lgaccount.com`), extracts the user number from the JWT `sub` claim, and stores everything in `persist/lgthinq-tokens.json`. Credentials are not stored.
+LG ThinQ appliances via LG's official ThinQ Connect API (`api-eic|aic|kic.lgthinq.com`) with a Personal Access Token from connect-pat.lgthinq.com. `GET /devices` → each appliance's `/profile` builds its sensors (no per-model code), `/state` polled every 60 s, `POST /devices/{id}/control` for writes. See [Module-lgthinq-client](Module-lgthinq-client).
 
 **Config:** See [`lgthinq`](#lgthinq) config section above.
 

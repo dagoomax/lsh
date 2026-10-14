@@ -110,10 +110,10 @@ module.exports = function register(router, ctx) {
       try {
         const tok = JSON.parse(fs.readFileSync(tokFile, 'utf8'));
         safe.lgthinq.hasTokens  = !!tok.access_token;
-        safe.lgthinq.userNumber = tok.user_number || '';
-      } catch { safe.lgthinq.hasTokens = false; safe.lgthinq.userNumber = ''; }
+      } catch { safe.lgthinq.hasTokens = false; }
       delete safe.lgthinq.username;
       delete safe.lgthinq.password;
+      delete safe.lgthinq.token;
     }
     res.json({ success: true, data: safe });
   });

@@ -525,8 +525,9 @@ curl -b cookies.txt -X POST http://localhost:3001/api/auth/tokens \
 | `POST` | `/api/settings/knx` | Save KNX gateway + group address list |
 | `POST` | `/api/settings/test-esphome` | Test ESPHome device reachability `{ host, port, password }` |
 | `POST` | `/api/settings/esphome` | Save ESPHome device list |
-| `POST` | `/api/settings/lgthinq-login` | One-time LG OAuth flow — fetches tokens + user number (credentials not stored) |
-| `POST` | `/api/settings/lgthinq` | Save LG ThinQ tokens to `persist/lgthinq-tokens.json` |
+| `GET` | `/api/settings/lgthinq` | Account country, whether a token is saved, the appliances found |
+| `POST` | `/api/settings/lgthinq` | `{ token, country }` — checks the Personal Access Token with LG, saves it to `persist/lgthinq-tokens.json`, restarts the client |
+| `POST` | `/api/settings/lgthinq/disconnect` | Forget the token |
 | `POST` | `/api/settings/ffmpeg-rtsp` | Save FFmpeg RTSP proxy settings (enabled, basePort, ffmpegPath) |
 | `GET` | `/api/rtsp-proxy` | List RTSP proxy streams with per-camera port, slug, and active status |
 

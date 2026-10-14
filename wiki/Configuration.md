@@ -25,7 +25,7 @@
 | `homey` | No | Homey Pro (local or cloud) |
 | `dirigera` | No | IKEA Dirigera smart-home hub |
 | `tradfri` | No | IKEA Tradfri gateway |
-| `lgthinq` | No | LG ThinQ appliances (token-based auth, v1 API) |
+| `lgthinq` | No | LG ThinQ appliances (official ThinQ Connect API, Personal Access Token) |
 | `esphome` | No | ESPHome ESP32/ESP8266 devices (HTTP REST API) |
 | `knx` | No | KNX bus via KNXnet/IP gateway (group address mapping) |
 | `fibaro` | No | Fibaro Home Center 2 / 3 (rooms, switches, dimmers, sensors) |
@@ -266,31 +266,15 @@ First run: set `securityCode` from the sticker on the gateway back. The server g
 
 ```json
 "lgthinq": {
-  "country": "EU",
-  "lang": "en-US"
+  "country": "PL"
 }
 ```
 
-`country` and `lang` select the correct LG API regional host. Common country values: `EU`, `US`, `KR`.
+LG appliances through LG's official **ThinQ Connect API**. `country` is your LG account's country (2-letter code) — it picks the regional server and LG refuses any other; an old config with a region code (`EU`, `US`…) has it detected on start and saved.
 
-Authentication uses tokens stored in `persist/lgthinq-tokens.json` — no credentials are kept in `config.json`. To authenticate:
+To connect: create a **Personal Access Token** at [connect-pat.lgthinq.com](https://connect-pat.lgthinq.com) (sign in with your LG account, tick all permissions), then paste it in **Settings → LG ThinQ** with your country and press **Check & save** — LSH checks it with LG and lists your appliances. The token is kept in `persist/lgthinq-tokens.json` (`{ "access_token": "thinqpat_…" }`), not in `config.json`.
 
-1. Click **Fetch Tokens & User Number** in **Settings → Controllers → LG ThinQ**
-2. Enter your LG account email and password once — they are used only to obtain an OAuth token and are never saved
-3. The server extracts the user number from the JWT and saves the tokens to `persist/lgthinq-tokens.json`
-
-Alternatively, paste a **Personal Access Token** (PAT — starts with `thinqpat_`) directly into the Manual Token field. PATs do not expire.
-
-Token file schema (`persist/lgthinq-tokens.json`):
-```json
-{
-  "access_token": "thinqpat_...",
-  "refresh_token": "thinqpat_...",
-  "user_number": "1234567890",
-  "apiHost": "eu.api.lge.com",
-  "empHost": "eu.m.lgaccount.com"
-}
-```
+Each appliance's sensors come from its own ThinQ profile (setpoints, modes, power, door, run state…); see `wiki/Module-lgthinq-client.md`.
 
 ### `esphome`
 
