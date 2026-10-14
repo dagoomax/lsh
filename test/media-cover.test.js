@@ -52,3 +52,16 @@ test('station titles that are ad-break markers are not songs', () => {
   for (const t of ['STOP_AD_BREAK', 'START_AD_BREAK', 'Advert', 'Reklama', '-', '']) assert.ok(NOT_A_SONG.test(t), t);
   for (const t of ['Tove Lo - Talking Body', 'ABBA - SOS', 'AC/DC - Thunderstruck', 'RMF FM']) assert.ok(!NOT_A_SONG.test(t), t);
 });
+
+test('Loxone weather emulator: picto-codes in meteoblue numbering (what the app animates from)', () => {
+  const { wmoToMeteoblue } = require('../src/loxone-weather-server');
+  assert.equal(wmoToMeteoblue(0), 1);          // clear
+  assert.equal(wmoToMeteoblue(2, 40), 7);      // partly cloudy
+  assert.equal(wmoToMeteoblue(3, 100), 22);    // overcast
+  assert.equal(wmoToMeteoblue(3, 70), 19);     // mostly cloudy
+  assert.equal(wmoToMeteoblue(45), 16);        // fog
+  assert.equal(wmoToMeteoblue(61), 33);        // light rain
+  assert.equal(wmoToMeteoblue(65), 25);        // heavy rain
+  assert.equal(wmoToMeteoblue(73), 24);        // snow
+  assert.equal(wmoToMeteoblue(95), 27);        // thunderstorm
+});

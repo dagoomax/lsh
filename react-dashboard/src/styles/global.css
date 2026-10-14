@@ -2284,7 +2284,9 @@ input[type="range"]::-moz-range-thumb {
 .wx-icon-rain { color: #4aa3ff; } .wx-icon-storm { color: #b18cff; } .wx-icon-snow { color: #8fd4ff; } .wx-icon-fog { color: #a9aeb8; }
 
 /* overview cards ease in, one after another */
-.dash-all > .card, .dash-all > .hero { animation: dash-card-in .45s cubic-bezier(.2,.8,.2,1) both; }
+/* fill-mode backwards: nothing stays on the card once it's in — a leftover transform
+   would make the card the containing block of its popups (position: fixed) */
+.dash-all > .card, .dash-all > .hero { animation: dash-card-in .45s cubic-bezier(.2,.8,.2,1) backwards; }
 .dash-all > :nth-child(2) { animation-delay: .04s } .dash-all > :nth-child(3) { animation-delay: .08s } .dash-all > :nth-child(4) { animation-delay: .12s }
 .dash-all > :nth-child(5) { animation-delay: .16s } .dash-all > :nth-child(6) { animation-delay: .2s }
 @keyframes dash-card-in { from { opacity: 0; transform: translateY(10px) } }
@@ -2293,3 +2295,16 @@ input[type="range"]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) { .dash-all > .card, .dash-all > .hero { animation: none; } .device-tile:hover { transform: none; } }
 .wx-day.today { background: color-mix(in srgb, var(--accent) 12%, var(--surface2)) !important; border-color: color-mix(in srgb, var(--accent) 35%, transparent) !important; }
 [data-theme="light"] .wx-day.today { background: color-mix(in srgb, var(--accent) 9%, #fff) !important; }
+/* forecast: the days share the width — five fit on a phone, no sideways scroll */
+.wx-strip { display: grid; gap: 8px; align-items: stretch; }
+@media (max-width: 520px) {
+  .wx-strip { gap: 5px; }
+  .wx-day { padding: 10px 2px !important; gap: 4px !important; }
+  .wx-day > div:first-child { font-size: 10px !important; letter-spacing: .03em !important; }
+  .wx-day-icon svg { width: 26px; height: 26px; }
+  .wx-temps span:first-child { font-size: 14px !important; } .wx-temps span + span { font-size: 11px !important; }
+  .wx-temps { gap: 3px !important; }
+}
+.wx-icon-moon { display: inline-block; color: #e9e2b8; animation: wx-moon 6s ease-in-out infinite; }
+@keyframes wx-moon { 50% { filter: drop-shadow(0 0 6px rgba(233,226,184,.55)); transform: translateY(-1px) } }
+@media (prefers-reduced-motion: reduce) { .wx-icon-moon { animation: none; } }

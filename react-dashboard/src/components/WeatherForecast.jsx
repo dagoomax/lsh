@@ -3,7 +3,7 @@ import { weatherText } from '../weatherConditions'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gt, getLang } from '../i18n'
 import { weatherIconFor, weatherSceneFor, moonPhaseFor } from '../weatherIcons'
-import { DropletIcon } from './Icons'
+import { DropletIcon, MoonIcon } from './Icons'
 
 // 5-day forecast strip (OpenWeatherMap's free tier caps at 5 days — see the
 // honesty note in openweather-client.js for why this isn't 7). Self-fetching
@@ -45,15 +45,28 @@ function fullDayLabel(dateStr, index) {
   return weekday
 }
 
+// today: the conditions now (at night a clear / partly-cloudy sky is a moon);
+// the range counts what was measured earlier (server) — one value when there's no range yet
+const CLEARISH = ['☀️', '🌤️', '⛅']
 function DayCard({ day, index, onOpen }) {
-  const { Icon: DayIcon, anim: dayAnim } = weatherIconFor(day.icon)
+  const today = index === 0
+  const iconKey = today && day.now?.icon ? day.now.icon : day.icon
+  const night = today && (day.now ? !day.now.isDay : day.isDay === false)
+  const { Icon: BaseIcon, anim: baseAnim } = weatherIconFor(iconKey)
+  const moon = night && CLEARISH.includes(iconKey)
+  const DayIcon = moon ? MoonIcon : BaseIcon
+  const dayAnim = moon ? 'wx-icon-moon' : baseAnim
+  const hi = day.tempMax != null ? Math.round(day.tempMax) : null
+  const lo = day.tempMin != null ? Math.round(day.tempMin) : null
+  const single = today && (hi == null || lo == null || hi === lo)
+  const nowT = today && day.now?.temp != null ? Math.round(day.now.temp) : null
   return (
     <button
       onClick={() => onOpen(day, index)}
       className={`detail-card wx-day${index === 0 ? ' today' : ''}`}
       style={{
-        flex: '1 1 0', minWidth: 84, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-        padding: '14px 8px', transition: 'border-color 0.15s, transform 0.15s',
+        minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: 6,
+        padding: '14px 4px', transition: 'border-color 0.15s, transform 0.15s',
         cursor: 'pointer', font: 'inherit', color: 'inherit', appearance: 'none',
       }}
       onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.96)' }}
@@ -63,15 +76,20 @@ function DayCard({ day, index, onOpen }) {
       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)' }}>
         {dayLabel(day.date, index)}
       </div>
-      <div className={dayAnim} style={{ lineHeight: 1 }}><DayIcon size={34}/></div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+      <div className={`wx-day-icon ${dayAnim}`} style={{ lineHeight: 1 }}><DayIcon size={34}/></div>
+      <div className="wx-temps" style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
         <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
-          {day.tempMax != null ? Math.round(day.tempMax) : '—'}°
+          {single ? (nowT ?? hi ?? '—') : (hi ?? '—')}°
         </span>
-        <span style={{ fontSize: 13, color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' }}>
-          {day.tempMin != null ? Math.round(day.tempMin) : '—'}°
-        </span>
+        {!single && (
+          <span style={{ fontSize: 13, color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' }}>
+            {lo ?? '—'}°
+          </span>
+        )}
       </div>
+      {today && nowT != null && !single && (
+        <div style={{ fontSize: 11, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' }}>{gt('weather_now', 'Now')} {nowT}°</div>
+      )}
       {day.pop > 0 && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600,
@@ -579,7 +597,7 @@ export default function WeatherForecast() {
         <HeaderIcon size={15}/>
         <span style={{ fontSize: 13, fontWeight: 700 }}>{gt('weather_forecast', 'Forecast')}</span>
       </div>
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
+      <div className="wx-strip" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
         {days.map((day, i) => <DayCard key={day.date} day={day} index={i} onOpen={(d, idx) => setSelected({ day: d, index: idx })} />)}
       </div>
       {selected && <DayDetailModal days={days} index={selected.index} onClose={() => setSelected(null)} />}

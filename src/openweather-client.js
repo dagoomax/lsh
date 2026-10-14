@@ -45,6 +45,8 @@ class OpenWeatherClient extends PollingClient {
     this._store    = store;
     this._registry = sensorRegistry;
     this._forecast = [];
+    this._today = null; // { date, min, max } — temperatures measured today (the forecast only covers what's ahead)
+    this._now = null;   // the current conditions, for today's tile
   }
 
   async start() {
@@ -116,11 +118,30 @@ class OpenWeatherClient extends PollingClient {
     if (data.clouds?.all != null)        this._store.update(`${k}/cloudiness`, data.clouds.all);
     if (data.visibility != null)         this._store.update(`${k}/visibility`, data.visibility);
     if (data.sys?.sunrise != null)       this._store.update(`${k}/sunrise`, data.sys.sunrise);
+    if (data.main?.temp != null) this._observe(data);
     if (data.sys?.sunset != null)        this._store.update(`${k}/sunset`, data.sys.sunset);
 
     await this._pollForecast(qs, units).catch((err) => console.error(`[OpenWeather] Forecast poll failed: ${err.message}`));
 
     if (initial) console.log(`[OpenWeather] Started for ${data.name || `${cfg.lat},${cfg.lon}`}`);
+  }
+
+  // Today's measured range: every current-weather reading of the local day,
+  // seeded from the store's history (~6 h) after a restart
+  _observe(data) {
+    const tz = data.timezone || 0;
+    const date = new Date((Date.now() / 1000 + tz) * 1000).toISOString().slice(0, 10);
+    if (this._today?.date !== date) {
+      this._today = { date, min: Infinity, max: -Infinity };
+      const dayStart = Date.parse(`${date}T00:00:00Z`) - tz * 1000;
+      for (const [t, v] of this._store.getHistory?.(`${this._key}/temperature`) || []) { // [ms, value]
+        if (t >= dayStart && typeof v === 'number') { this._today.min = Math.min(this._today.min, v); this._today.max = Math.max(this._today.max, v) }
+      }
+    }
+    const t = data.main.temp;
+    this._today.min = Math.min(this._today.min, t);
+    this._today.max = Math.max(this._today.max, t);
+    this._now = { temp: t, icon: emojiFor(data.weather?.[0]?.icon), condition: data.weather?.[0]?.description || '', isDay: /d$/.test(data.weather?.[0]?.icon || 'd') };
   }
 
   async _pollForecast(qs, units) {
@@ -165,10 +186,14 @@ class OpenWeatherClient extends PollingClient {
         isDay = nowSec >= citySunrise && nowSec <= citySunset;
       }
 
+      // today: what's ahead plus what was measured earlier — in the evening the
+      // forecast alone is one or two slots, so its "range" is a single value
+      if (i === 0 && this._today?.date === day.dateKey && Number.isFinite(this._today.min)) temps.push(this._today.min, this._today.max);
       return {
         date:      day.dateKey,
         tempMin:   temps.length ? Math.min(...temps) : null,
         tempMax:   temps.length ? Math.max(...temps) : null,
+        ...(i === 0 && this._now ? { now: this._now } : {}),
         pop:       pops.length ? Math.round(Math.max(...pops) * 100) : 0,
         condition: noonStep?.weather?.[0]?.description || '',
         icon:      emojiFor(noonStep?.weather?.[0]?.icon),
