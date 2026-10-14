@@ -27,7 +27,7 @@ module.exports = function register(router, ctx) {
 
   router.get('/settings/spotify', requireAdmin, (req, res) => {
     const s = readConfigFile().spotify || {};
-    res.json({ success: true, data: { clientId: s.clientId || '', redirectUri: redirectUriFor(req, s), customRedirect: !!s.redirectUri, defaultDevice: s.defaultDevice || '', pollInterval: s.pollInterval || 5 } });
+    res.json({ success: true, data: { clientId: s.clientId || '', redirectUri: redirectUriFor(req, s), customRedirect: !!s.redirectUri, defaultDevice: s.defaultDevice || '', pollInterval: s.pollInterval || 5, favourites: s.favourites || [], speakers: s.speakers || [] } });
   });
 
   router.post('/settings/spotify', requireAdmin, async (req, res) => {
@@ -53,6 +53,22 @@ module.exports = function register(router, ctx) {
     } catch (err) {
       res.json({ success: true, message: `Saved; restart LSH to apply (${err.message})` });
     }
+  });
+
+  // Loxone: favourite playlists (Playlist 1…N) and speakers (Speaker 1…N, "→ room" pulses)
+  router.post('/settings/spotify/loxone', requireAdmin, (req, res) => {
+    const b = req.body || {};
+    const favourites = (Array.isArray(b.favourites) ? b.favourites : [])
+      .map((f) => ({ name: String(f?.name || '').trim().slice(0, 80), uri: String(f?.uri || '').trim() }))
+      .filter((f) => f.name && /^spotify:(playlist|album|artist|show|track):[A-Za-z0-9]+$/.test(f.uri)).slice(0, 50);
+    const seen = new Set();
+    const speakers = (Array.isArray(b.speakers) ? b.speakers : [])
+      .map((x) => ({ name: String(x?.name || '').trim().slice(0, 80) }))
+      .filter((x) => x.name && !seen.has(x.name.toLowerCase()) && seen.add(x.name.toLowerCase())).slice(0, 30);
+    const cur = readConfigFile();
+    writeConfigFile({ ...cur, spotify: { ...(cur.spotify || {}), favourites, speakers } });
+    sp()?.setLists({ favourites, speakers });
+    res.json({ success: true, message: `Saved — ${favourites.length} playlist(s), ${speakers.length} speaker(s)` });
   });
 
   // Sign-in: redirect to Spotify. The callback below is public (no LSH session

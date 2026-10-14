@@ -158,7 +158,7 @@ export default function SpotifySection({ reload }) {
               <div className="sp-grid">{lists.map((x) => <Tile key={x.uri} x={{ ...x, kind: 'playlist', sub: x.tracks != null ? `${x.tracks} tracks` : x.owner }} onPlay={play}/>)}</div>
             </>
           )}
-          <p className="stg-hint">{tr('In flows and Loxone: device')}{' '}<code>spotify/player</code> — <code>playing</code>, <code>next</code>, <code>prev</code>, <code>volume</code>, <code>shuffle</code>{tr('; start a playlist with')}{' '}<code>POST /api/spotify/play {'{'} "uri": "spotify:playlist:…" {'}'}</code>.</p>
+          <LoxoneLists initial={s} lists={lists} devices={devices} />
         </>
       )}
     </SettingsCard>
@@ -172,5 +172,67 @@ function Tile({ x, onPlay }) {
       <b>{x.name}</b>
       <span>{x.kind !== 'playlist' ? `${x.kind}${x.sub ? ' · ' : ''}` : ''}{x.sub}</span>
     </button>
+  )
+}
+
+// Loxone: numbered favourite playlists and speakers — what Playlist 1…N, Speaker 1…N
+// and the "→ room" pulses of the spotify/player device play / move to
+function LoxoneLists({ initial, lists, devices }) {
+  const [fav, setFav] = useState(initial.favourites || [])
+  const [spk, setSpk] = useState(initial.speakers || [])
+  const [name, setName] = useState('')
+  const [tokenId, setTokenId] = useState('')
+  const save = useSettingsSave('/api/settings/spotify/loxone')
+  useEffect(() => { api('/api/auth/tokens').then((j) => { if (j.success && j.data?.length) setTokenId(j.data[0].id) }).catch(() => {}) }, [])
+
+  const move = (arr, set, i, d) => { const a = arr.slice(); const [x] = a.splice(i, 1); a.splice(i + d, 0, x); set(a) }
+  const addSpeaker = (n) => { n = n.trim(); if (n && !spk.some((x) => x.name.toLowerCase() === n.toLowerCase())) setSpk([...spk, { name: n }]); setName('') }
+  const freeLists = lists.filter((l) => !fav.some((f) => f.uri === l.uri))
+  const freeDevices = devices.filter((d) => !spk.some((x) => x.name.toLowerCase() === d.name.toLowerCase()))
+  const xml = (kind) => `/api/loxone/${kind}.xml?type=spotify&host=${encodeURIComponent(window.location.host)}${tokenId ? `&tokenId=${encodeURIComponent(tokenId)}` : ''}`
+
+  const Row = ({ i, label, arr, set }) => (
+    <li className="sp-lox-row">
+      <b>{i + 1}</b><span>{label}</span>
+      <button type="button" disabled={i === 0} onClick={() => move(arr, set, i, -1)} title={tr('Up')}>↑</button>
+      <button type="button" disabled={i === arr.length - 1} onClick={() => move(arr, set, i, 1)} title={tr('Down')}>↓</button>
+      <button type="button" onClick={() => set(arr.filter((_, k) => k !== i))} title={tr('Remove')}>✕</button>
+    </li>
+  )
+
+  return (
+    <>
+      <h4 className="stg-subheading">{tr('Loxone')}</h4>
+      <p className="stg-hint">{tr('Loxone gets Spotify as numbers and pulses: Playlist 0 = pause, 1… = the favourites below; Speaker 1… = move the music to that speaker; one “→ speaker” pulse per speaker; plus Play, Next, Previous, Volume, Shuffle. Feedback: playing, volume, shuffle, which playlist and speaker. Keep the order once Loxone uses the numbers.')}</p>
+
+      <div className="stg-field">
+        <label>{tr('Favourite playlists')}</label>
+        <ol className="sp-lox-list">{fav.map((f, i) => <Row key={f.uri} i={i} label={f.name} arr={fav} set={setFav} />)}</ol>
+        {freeLists.length > 0 && (
+          <select className="stg-input" value="" onChange={(e) => { const l = lists.find((x) => x.uri === e.target.value); if (l) setFav([...fav, { name: l.name, uri: l.uri }]) }}>
+            <option value="">{tr('+ Add a playlist…')}</option>
+            {freeLists.map((l) => <option key={l.uri} value={l.uri}>{l.name}</option>)}
+          </select>
+        )}
+      </div>
+
+      <div className="stg-field">
+        <label>{tr('Speakers')}{' '}<span className="stg-hint">{tr('(Spotify Connect names — Sonos rooms appear under the room’s name)')}</span></label>
+        <ol className="sp-lox-list">{spk.map((x, i) => <Row key={x.name} i={i} label={x.name} arr={spk} set={setSpk} />)}</ol>
+        <div className="sp-row">
+          {freeDevices.map((d) => <button key={d.id} type="button" className="sp-chip" onClick={() => addSpeaker(d.name)}>+ {DEVICE_ICON[d.type] || '🔈'} {d.name}</button>)}
+          <input className="stg-input" style={{ flex: 1, minWidth: 140 }} value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSpeaker(name) } }} placeholder={tr('or type a speaker name')} />
+          <Button onClick={() => addSpeaker(name)} disabled={!name.trim()}>{tr('Add')}</Button>
+        </div>
+      </div>
+
+      <div className="stg-actions">
+        <Button variant="primary" busy={save.busy} onClick={() => save.save({ favourites: fav, speakers: spk }).catch(() => {})}>{gt('common.save', 'Save')}</Button>
+        <Button href={xml('outputs')}>{tr('⬇ Spotify outputs.xml')}</Button>
+        <Button href={xml('inputs')}>{tr('⬇ Spotify inputs.xml')}</Button>
+        <ResultBanner result={save.result} />
+      </div>
+      {!tokenId && <p className="stg-hint">{tr('Create an API token first (Security → API Tokens) — it goes into the Loxone templates.')}</p>}
+    </>
   )
 }

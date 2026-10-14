@@ -82,14 +82,14 @@ function startSimulator({ port = 8889, premium = true } = {}) {
       if (p === '/me') return json(200, { id: 'lshuser', display_name: 'LSH User', product: sim.premium ? 'premium' : 'free' });
       if (p === '/me/player' && req.method === 'GET') {
         if (!st.active) return none();
-        return json(200, { device: dev(), is_playing: st.playing, shuffle_state: st.shuffle, repeat_state: st.repeat, progress_ms: st.progress, item: TRACKS[st.idx], currently_playing_type: 'track' });
+        return json(200, { device: dev(), is_playing: st.playing, shuffle_state: st.shuffle, repeat_state: st.repeat, progress_ms: st.progress, item: TRACKS[st.idx], currently_playing_type: 'track', context: st.context ? { type: 'playlist', uri: st.context } : null });
       }
       if (p === '/me/player' && req.method === 'PUT') { if (!control()) return; needActive(b.device_ids?.[0]); st.playing = b.play !== false ? true : st.playing; return none() }
       if (p === '/me/player/devices') return json(200, { devices });
       if (p === '/me/player/play') {
         if (!control() || !needActive(q.get('device_id'))) return;
-        if (b.uris) st.idx = Math.max(0, TRACKS.findIndex((t) => t.uri === b.uris[0]));
-        if (b.context_uri) st.idx = 0;
+        if (b.uris) { st.idx = Math.max(0, TRACKS.findIndex((t) => t.uri === b.uris[0])); st.context = null }
+        if (b.context_uri) { st.idx = 0; st.context = b.context_uri }
         st.playing = true; return none();
       }
       if (p === '/me/player/pause') { if (!control() || !needActive()) return; st.playing = false; return none() }

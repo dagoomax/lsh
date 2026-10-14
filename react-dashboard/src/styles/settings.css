@@ -982,3 +982,11 @@ select.stg-input { cursor: pointer; }
 .hk-ex-name small { opacity: .6; }
 .hk-ex-kinds { font-size: 12px; }
 .hk-ex-type { font-size: 11px; opacity: .55; min-width: 70px; text-align: right; }
+/* Spotify → Loxone numbered lists */
+.sp-lox-list { list-style: none; margin: 4px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.sp-lox-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 10px; border-radius: 10px; background: var(--white-06, rgba(127,127,127,.08)); font-size: 13.5px; }
+.sp-lox-row b { min-width: 22px; height: 22px; border-radius: 6px; display: inline-grid; place-items: center; background: #1db954; color: #000; font-size: 12px; }
+.sp-lox-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-lox-row button { border: none; background: none; color: var(--text2); cursor: pointer; padding: 2px 6px; border-radius: 6px; font-size: 13px; }
+.sp-lox-row button:hover:not(:disabled) { background: var(--white-06, rgba(127,127,127,.12)); color: var(--text); }
+.sp-lox-row button:disabled { opacity: .3; cursor: default; }

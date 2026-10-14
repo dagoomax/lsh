@@ -55,7 +55,6 @@ export const P9 = {
   "Use Let's Encrypt staging (for testing)": ["Użyj środowiska testowego Let's Encrypt (do testów)", "Let's-Encrypt-Staging verwenden (zum Testen)", "Utiliser l’environnement de test Let's Encrypt (pour essais)", "Usar el entorno de pruebas de Let's Encrypt (para probar)", "Usa lo staging di Let's Encrypt (per i test)", "Використовувати тестове середовище Let's Encrypt (для тестування)"],
   'Used when local MQTT is unavailable.': ['Używane, gdy lokalne MQTT jest niedostępne.', 'Wird verwendet, wenn lokales MQTT nicht verfügbar ist.', 'Utilisé quand le MQTT local est indisponible.', 'Se usa cuando el MQTT local no está disponible.', 'Usato quando l’MQTT locale non è disponibile.', 'Використовується, коли локальний MQTT недоступний.'],
   'User': ['Użytkownik', 'Benutzer', 'Utilisateur', 'Usuario', 'Utente', 'Користувач'],
-  'User Number': ['Numer użytkownika', 'Benutzernummer', 'Numéro d’utilisateur', 'Número de usuario', 'Numero utente', 'Номер користувача'],
   'User code (arm / disarm)': ['Kod użytkownika (uzbrajanie / rozbrajanie)', 'Benutzercode (scharf / unscharf)', 'Code utilisateur (armer / désarmer)', 'Código de usuario (armar / desarmar)', 'Codice utente (inserisci / disinserisci)', 'Код користувача (охорона / зняття)'],
   'Username': ['Nazwa użytkownika', 'Benutzername', 'Nom d’utilisateur', 'Nombre de usuario', 'Nome utente', 'Ім’я користувача'],
   'Users': ['Użytkownicy', 'Benutzer', 'Utilisateurs', 'Usuarios', 'Utenti', 'Користувачі'],

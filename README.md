@@ -307,7 +307,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `homey` | No | Homey Pro (local or cloud) |
 | `dirigera` | No | IKEA Dirigera smart-home hub |
 | `tradfri` | No | IKEA Tradfri gateway |
-| `lgthinq` | No | LG ThinQ appliances (token-based auth, v1 API) |
+| `lgthinq` | No | LG ThinQ appliances (official ThinQ Connect API, Personal Access Token) |
 | `esphome` | No | ESPHome ESP32/ESP8266 devices (HTTP REST API) |
 | `knx` | No | KNX bus via KNXnet/IP gateway (group address mapping) |
 | `fibaro` | No | Fibaro Home Center 2 / 3 (rooms, switches, dimmers, sensors) |
@@ -943,31 +943,15 @@ Simulators can also be **enabled/disabled at runtime** — `GET /api/simulators`
 
 ```json
 "lgthinq": {
-  "country": "EU",
-  "lang": "en-US"
+  "country": "PL"
 }
 ```
 
-`country` and `lang` select the correct LG API regional host. Common country values: `EU`, `US`, `KR`.
+LG appliances through LG's official **ThinQ Connect API**. `country` is your LG account's country (2-letter code) — it picks the regional server and LG refuses any other; an old config with a region code (`EU`, `US`…) has it detected on start and saved.
 
-Authentication uses tokens stored in `persist/lgthinq-tokens.json` — no credentials are kept in `config.json`. To authenticate:
+To connect: create a **Personal Access Token** at [connect-pat.lgthinq.com](https://connect-pat.lgthinq.com) (sign in with your LG account, tick all permissions), then paste it in **Settings → LG ThinQ** with your country and press **Check & save** — LSH checks it with LG and lists your appliances. The token is kept in `persist/lgthinq-tokens.json` (`{ "access_token": "thinqpat_…" }`), not in `config.json`.
 
-1. Click **Fetch Tokens & User Number** in **Settings → Controllers → LG ThinQ**
-2. Enter your LG account email and password once — they are used only to obtain an OAuth token and are never saved
-3. The server extracts the user number from the JWT and saves the tokens to `persist/lgthinq-tokens.json`
-
-Alternatively, paste a **Personal Access Token** (PAT — starts with `thinqpat_`) directly into the Manual Token field. PATs do not expire.
-
-Token file schema (`persist/lgthinq-tokens.json`):
-```json
-{
-  "access_token": "thinqpat_...",
-  "refresh_token": "thinqpat_...",
-  "user_number": "1234567890",
-  "apiHost": "eu.api.lge.com",
-  "empHost": "eu.m.lgaccount.com"
-}
-```
+Each appliance's sensors come from its own ThinQ profile (setpoints, modes, power, door, run state…); see `wiki/Module-lgthinq-client.md`.
 
 ### `homeConnect`
 
@@ -3093,21 +3077,7 @@ npm install node-tradfri-client   # optional dependency
 
 ### `src/lgthinq-client.js`
 
-Integrates **LG ThinQ** appliances (air conditioners, washers, dryers, dishwashers, refrigerators, etc.) via the **LG v1 REST API** (`<country>.api.lge.com`).
-
-**Authentication:** Token-based only. Tokens are loaded from `persist/lgthinq-tokens.json` at startup. If no tokens are present the client skips start silently. PATs (Personal Access Tokens, prefix `thinqpat_`) are treated as non-expiring; OAuth access tokens are refreshed automatically using the stored refresh token.
-
-**Auth headers used:**
-- `x-emp-token` — access token
-- `x-thinq-user-no` — user number (required for all v1 API calls)
-
-**Discovery:** `GET /v1/service/homes` returns all home groups. Falls back to `GET /v1/service/application/dashboard` if no homes are found. Each device is registered in the sensor registry. Device state is polled every 30 s via `GET /v1/service/devices/:id/status`.
-
-**Supported device types:** AC (on/off, mode, target temperature, fan speed), washer, dryer, dishwasher, refrigerator. Commands are sent via `POST /v1/service/devices/:id/control`.
-
-**One-time user number setup:** Use **Settings → Controllers → LG ThinQ → Fetch Tokens & User Number** with your LG email/password. The server runs the LG OAuth pre-login flow (`eu.m.lgaccount.com`), extracts the user number from the JWT `sub` claim, and stores everything in `persist/lgthinq-tokens.json`. Credentials are not stored.
-
-**Config:** See [`lgthinq`](#lgthinq) config section above.
+LG ThinQ appliances via LG's official ThinQ Connect API (`api-eic|aic|kic.lgthinq.com`) with a Personal Access Token. `GET /devices` → each appliance's `/profile` builds its sensors (no per-model code), `/state` polled every 60 s, `POST /devices/{id}/control` for writes. Verified with a real refrigerator; other types follow the same profile format. **Config:** See [`lgthinq`](#lgthinq) config section above.
 
 ---
 
@@ -4173,6 +4143,35 @@ When Spotify or Apple Music is configured, LSH also registers `music/player` (`s
 
 **Loxone:** Settings → Loxone XML Templates → **Music outputs.xml / Music inputs.xml**, or directly `GET /api/loxone/musicout.xml` and `/api/loxone/musicin.xml` (`?token=<api-token>` or `?tokenId=`, `?host=`, `?polling=`) — plain XML for Loxone Config's Virtual Output / Virtual HTTP Input template import. `GET /api/loxone/music.zip` bundles both: the Virtual Output (`LSH Music`, commands) and the Virtual HTTP Input (`LSH Music (feedback)`: source, playing, volume, ready flags) to import into Loxone Config. Apple Music only plays while the Music page is open on some device.
 
+#### Spotify in Loxone
+
+`spotify/player` exposes numbers and pulses for Loxone besides Play / Next / Previous / Volume / Shuffle:
+
+| Sensor | Loxone | |
+|---|---|---|
+| `playlist` | analog 0…N | 0 = pause, N = favourite playlist N (`spotify.favourites: [{ name, uri }]`); reads back the favourite playing (0 = something else) |
+| `speaker` | analog 0…N | move playback to speaker N (`spotify.speakers: [{ name }]`, Spotify Connect names — Sonos rooms appear under the room name); reads back where it plays |
+| `to_<name>` | pulse | one per speaker — "Spotify → Gabinet" |
+
+Pick and order both lists in **Settings → Spotify → Loxone** (stored in `config.spotify`, applied live), then **⬇ Spotify outputs.xml / inputs.xml** there, or `GET /api/loxone/outputs.xml?type=spotify` / `inputs.xml?type=spotify`. The list-dependent feedback inputs match on a fixed `ref`, so editing the lists doesn't break them in Loxone; keep the order once Loxone uses the numbers. `POST /api/settings/spotify/loxone { favourites, speakers }` saves them.
+
+Wiring schematics for Loxone Config (playlist selector, room buttons, volume, feedback in the app, scenes): [`docs/spotify-loxone.md`](docs/spotify-loxone.md).
+
+#### Radio on the speakers (Loxone)
+
+Every AirPlay speaker and Chromecast / Google Home / Nest of the dashboard's media player is also a device of type `radio` (`src/radio-devices.js`; started when `airplay.enabled` or `googlehome.devices` is set): `radio/airplay-<speaker id>` and `radio/cast-<host with _>`.
+
+| Sensor | Loxone | |
+|---|---|---|
+| `playing` | digital | on = play the last station (or station 1), off = stop |
+| `station` | analog 0…N | 0 = stop, 1…N = saved station N (the dashboard's Favourites order); reads back the station playing |
+| `nextStation` / `prevStation` | pulse | wraps around the list |
+| `volume` | analog 0–100 | on an idle AirPlay speaker: the level the next station starts at |
+| `mute` | digital | |
+| `stationName`, `title` | — | text, dashboard only |
+
+**Loxone:** Settings → Loxone XML Templates → **Radio outputs.xml / Radio inputs.xml**, or `GET /api/loxone/outputs.xml?type=radio` and `/api/loxone/inputs.xml?type=radio` (same `?tokenId=` / `?token=`, `?host=`, `?polling=`). Wire a Radio Buttons block's output to *Station*. The feedback inputs match each reading on its unique `ref` (`radio/airplay-salon2/station`), so every speaker reads its own values and adding stations doesn't break them; the output's comment lists the station numbers at export time.
+
 ```json
 "music": { "name": "Music", "defaultSource": 1 }
 ```
@@ -4375,8 +4374,9 @@ curl -b cookies.txt -X POST http://localhost:3001/api/auth/tokens \
 | `POST` | `/api/settings/knx` | Save KNX gateway + group address list |
 | `POST` | `/api/settings/test-esphome` | Test ESPHome device reachability `{ host, port, password }` |
 | `POST` | `/api/settings/esphome` | Save ESPHome device list |
-| `POST` | `/api/settings/lgthinq-login` | One-time LG OAuth flow — fetches tokens + user number (credentials not stored) |
-| `POST` | `/api/settings/lgthinq` | Save LG ThinQ tokens to `persist/lgthinq-tokens.json` |
+| `GET` | `/api/settings/lgthinq` | Account country, whether a token is saved, the appliances found |
+| `POST` | `/api/settings/lgthinq` | `{ token, country }` — checks the Personal Access Token with LG, saves it to `persist/lgthinq-tokens.json`, restarts the client |
+| `POST` | `/api/settings/lgthinq/disconnect` | Forget the token |
 | `POST` | `/api/settings/ffmpeg-rtsp` | Save FFmpeg RTSP proxy settings (enabled, basePort, ffmpegPath) |
 | `GET` | `/api/rtsp-proxy` | List RTSP proxy streams with per-camera port, slug, and active status |
 

@@ -392,6 +392,18 @@
       ],
       "deps": {}
     },
+    "radio-devices": {
+      "entry": "src/radio-devices.js",
+      "configKeys": [
+        "airplay",
+        "googlehome"
+      ],
+      "when": "(config.airplay?.enabled || config.googlehome?.devices?.length)",
+      "files": [
+        "src/radio-devices.js"
+      ],
+      "deps": {}
+    },
     "matter-bridge": {
       "entry": "src/matter-bridge.js",
       "configKeys": [
@@ -883,7 +895,8 @@
       ],
       "when": "(config.lgthinq)",
       "files": [
-        "src/lgthinq-client.js"
+        "src/lgthinq-client.js",
+        "src/polling-client.js"
       ],
       "deps": {}
     },

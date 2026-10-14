@@ -7,11 +7,18 @@
 // persist/spotify-oauth.json (override with LSH_SPOTIFY_TOKENS).
 //
 // Registers one LSH device, `spotify/player`: play/pause, previous/next,
-// volume, shuffle, plus what's playing and where. Controlling playback needs
+// volume, shuffle, plus what's playing and where. For Loxone (numbers and
+// pulses, stable across restarts) it adds:
+//   playlist   0 = pause, 1…N = play favourite playlist N (config.spotify.favourites)
+//   speaker    0…N = move playback to speaker N (config.spotify.speakers — Spotify
+//              Connect device names; Sonos rooms appear under the room's name)
+//   to_<name>  one pulse per speaker: "Spotify → Gabinet"
+// and reads back which favourite / speaker is playing (0 = another one). Controlling playback needs
 // Spotify Premium (Spotify's rule). Extra calls for the settings player:
 // devices, transfer, play a URI, playlists, search.
 //
-// config.spotify = { clientId, redirectUri?, pollInterval = 5 (s), defaultDevice? }
+// config.spotify = { clientId, redirectUri?, pollInterval = 5 (s), defaultDevice?,
+//   favourites?: [{ name, uri }], speakers?: [{ name }] }
 // Tested against scripts/spotify-simulator.js (test/spotify.test.js); apiBase /
 // accountsBase in config point it at the simulator.
 
@@ -23,6 +30,7 @@ const platformStatus = require('./platform-status');
 const TOKEN_FILE = process.env.LSH_SPOTIFY_TOKENS || path.join(__dirname, '..', 'persist', 'spotify-oauth.json');
 const SCOPES = ['user-read-playback-state', 'user-modify-playback-state', 'user-read-currently-playing', 'playlist-read-private', 'playlist-read-collaborative'];
 const KEY = 'spotify/player';
+const slug = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'L').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').toLowerCase() || 'speaker';
 const b64url = (buf) => buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 class SpotifyClient {
@@ -182,6 +190,29 @@ class SpotifyClient {
     }
   }
 
+  favourites() { return (this.cfg.favourites || []).filter((f) => f?.uri) }
+  speakers() { return (this.cfg.speakers || []).filter((x) => x?.name) }
+
+  // the Loxone controls that depend on the lists; `ref` (last) is what Loxone's feedback matches on
+  _listSensors() {
+    const fav = this.favourites(), spk = this.speakers();
+    return [
+      { path: 'playlist', label: 'Playlist', controllable: true, type: 'range', min: 0, max: Math.max(1, fav.length), step: 1, writeCmd: 'setPlaylist', capabilityId: 'playlist',
+        hint: `0 = pause${fav.map((f, i) => `, ${i + 1} = ${f.name}`).join('')}`, ref: `${KEY}/playlist` },
+      { path: 'speaker', label: 'Speaker', controllable: true, type: 'range', min: 0, max: Math.max(1, spk.length), step: 1, writeCmd: 'setSpeaker', capabilityId: 'speaker',
+        hint: `0 = keep${spk.map((x, i) => `, ${i + 1} = ${x.name}`).join('')}`, ref: `${KEY}/speaker` },
+      ...spk.map((x) => ({ path: `to_${slug(x.name)}`, label: `→ ${x.name}`, type: 'trigger', controllable: true, writeOn: 'trigger', writeOff: null, capabilityId: `to:${x.name}` })),
+    ];
+  }
+
+  // favourites / speakers changed in Settings: same device, controls rebuilt
+  setLists({ favourites, speakers }) {
+    this.cfg = { ...this.cfg, favourites, speakers };
+    const dev = this.registry.devices?.get?.(KEY);
+    if (dev) dev.sensors = [...dev.sensors.filter((x) => !['playlist', 'speaker'].includes(x.path) && !x.path.startsWith('to_')), ...this._listSensors()];
+    if (this.player) this._apply(this.player);
+  }
+
   _register() {
     this.registry.registerDevice({
       key: KEY, label: this.cfg.name || 'Spotify', type: 'spotify', icon: '🎵', homekit: [],
@@ -196,6 +227,7 @@ class SpotifyClient {
         { path: 'album', label: 'Album', type: 'label' },
         { path: 'device', label: 'Playing on', type: 'label' },
         { path: 'repeat', label: 'Repeat', type: 'label' },
+        ...this._listSensors(),
       ],
       _writeCapability: (capId, command, args) => this._command(capId, command, args),
     });
@@ -212,6 +244,8 @@ class SpotifyClient {
     set('album', item?.album?.name || '');
     set('device', p?.device?.name || '');
     set('repeat', p?.repeat_state || 'off');
+    set('playlist', p?.is_playing && p?.context?.uri ? this.favourites().findIndex((f) => f.uri === p.context.uri) + 1 : 0);
+    set('speaker', p?.device?.name ? this.speakers().findIndex((x) => x.name.toLowerCase() === p.device.name.toLowerCase()) + 1 : 0);
   }
 
   // Play / transfer to the active device, else the default one, else the first available
@@ -230,8 +264,29 @@ class SpotifyClient {
     else if (capId === 'prev') await this.call('POST', '/me/player/previous');
     else if (capId === 'volume') await this.call('PUT', `/me/player/volume?volume_percent=${Math.max(0, Math.min(100, Math.round(Number(args[0]) || 0)))}`);
     else if (capId === 'shuffle') await this.call('PUT', `/me/player/shuffle?state=${command === 'on'}`);
+    else if (capId === 'playlist') return this.playFavourite(Math.round(Number(args[0])));
+    else if (capId === 'speaker') { const n = Math.round(Number(args[0])); if (n > 0) return this.playOn(this.speakers()[n - 1]?.name || `#${n}`); return }
+    else if (capId.startsWith('to:')) return this.playOn(capId.slice(3));
     else throw new Error(`Unknown Spotify command ${capId}`);
     setTimeout(() => this.poll().catch(() => {}), 400).unref?.();
+  }
+
+  // favourite playlist n (1…), 0 = pause
+  async playFavourite(n) {
+    if (n === 0) return this._command('playing', 'pause');
+    const fav = this.favourites();
+    const f = fav[n - 1];
+    if (!f) throw new Error(fav.length ? `There are ${fav.length} favourite playlists — ${n} isn’t one of them` : 'No favourite playlists — pick them in Settings → Spotify → Loxone');
+    return this.playUri(f.uri);
+  }
+
+  // move playback to a Spotify Connect device by name (and play)
+  async playOn(name) {
+    const { devices = [] } = (await this.call('GET', '/me/player/devices')) || {};
+    const d = devices.find((x) => x.name.toLowerCase() === String(name).toLowerCase());
+    if (!d) throw new Error(`Spotify can’t see “${name}” right now — is it on, and linked to Spotify?`);
+    if (d.is_restricted) throw new Error(`“${name}” doesn’t accept remote control from Spotify`);
+    return this.transfer(d.id, true);
   }
 
   // ── For the settings player ──────────────────────────────────────────────
