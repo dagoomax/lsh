@@ -21,7 +21,7 @@ const path = require('path');
 const FILE = process.env.LSH_AIRPLAY_PAIRINGS || path.join(__dirname, '..', 'persist', 'airplay-pairings.json');
 
 // RTSP client states (dist/core/rtsp.js)
-const PAIR_PIN_START = 14, PAIR_SETUP_3 = 20, PAIR_VERIFY_HAP_1 = 21;
+const RECORD = 3, PAIR_PIN_START = 14, PAIR_SETUP_3 = 20, PAIR_VERIFY_HAP_1 = 21, SETUP_AP2_1 = 23;
 
 function load() { try { return JSON.parse(fs.readFileSync(FILE, 'utf8')) } catch { return {} } }
 function write(all) {
@@ -39,7 +39,7 @@ function remove(speakerId) { const all = load(); if (!all[speakerId]) return fal
 // host → { speakerId, creds | null, onSaved?, resumed? } for connections in progress
 const sessions = new Map();
 function attach(host, speakerId, { onSaved } = {}) {
-  const s = { speakerId, creds: get(speakerId), onSaved, resumed: false };
+  const s = { speakerId, creds: get(speakerId), onSaved, resumed: false, verified: false };
   sessions.set(host, s);
   return s;
 }
@@ -79,6 +79,15 @@ function install() {
       this.credentials = new Credentials('sdsds', Buffer.from(c.identifier, 'hex'), c.pairingId, Buffer.from(c.publicKey, 'hex'), this.seed);
       this.status = PAIR_VERIFY_HAP_1;
     }
+    // RECORD derives the event-channel keys from this.srp.computeK(), which only
+    // exists after a pair-setup in this same connection. A resumed session
+    // skipped that (pair-verify only), so the library threw "computeK is not a
+    // function" and the speaker timed out. AirPlay 2 derives them from the
+    // pair-verify shared secret then, as it already does for the control keys.
+    if (this.status === RECORD && this.sharedSecret && typeof this.srp?.computeK !== 'function') {
+      const k = Buffer.from(this.sharedSecret);
+      this.srp = { computeK: () => k };
+    }
     return send.apply(this, args);
   };
 
@@ -86,6 +95,9 @@ function install() {
   proto.processData = function (...args) {
     const before = this.status;
     const r = proc.apply(this, args);
+    // the device accepted the saved identity: it answered the first encrypted
+    // request (the library doesn't check pair-verify's error code itself)
+    if (before === SETUP_AP2_1 && this.status !== SETUP_AP2_1) { const s = sessions.get(this.hostip); if (s) s.verified = true }
     // pair-setup just finished: keep the identity for next time
     if (before === PAIR_SETUP_3 && this.status === PAIR_VERIFY_HAP_1 && this.credentials && this.privateKey) {
       const s = sessions.get(this.hostip);
