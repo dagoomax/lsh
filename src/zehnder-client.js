@@ -98,17 +98,30 @@ class ZehnderClient {
 
   async start() {
     const list = (this.cfg.units || this.cfg.devices || []).filter((u) => u && BACKENDS[u.type || 'lanc'] && (u.host || u.serialPort));
-    await Promise.all(list.map((u) => this._startUnit(u)));
+    // id from the host (or serial port); units sharing a host (several ports on one serial bridge) also get
+    // the port, so single units keep their existing device key
+    const base = (u) => slug(u.id || u.host || u.serialPort);
+    const ids = new Set();
+    const withIds = list.map((u) => {
+      let id = base(u);
+      if (!u.id && u.host && list.filter((o) => o !== u && base(o) === id).length) id = slug(`${u.host}_${u.port || ''}`);
+      for (let n = 2, b = id; ids.has(id); n++) id = `${b}_${n}`;
+      ids.add(id);
+      return [u, id];
+    });
+    await Promise.all(withIds.map(([u, id]) => this._startUnit(u, id)));
     this._status();
   }
 
-  stop() { for (const u of this.units.values()) try { u.backend.stop() } catch {} }
+  stop() {
+    for (const u of this.units.values()) try { u.backend.stop() } catch {}
+    platformStatus.set('zehnder', false);
+  }
 
   _status() { platformStatus.set('zehnder', [...this.units.values()].some((u) => u.backend.connected)) }
 
-  async _startUnit(cfg) {
+  async _startUnit(cfg, id) {
     const type = cfg.type || 'lanc';
-    const id = slug(cfg.id || cfg.host || cfg.serialPort);
     const Backend = BACKENDS[type]();
     const opts = { ...cfg, pollSeconds: Number(cfg.pollSeconds) || undefined };
     if (type === 'lanc') Object.assign(opts, { localUuid: this._localUuid(), name: cfg.appName || 'LSH', port: Number(cfg.port) || undefined });
@@ -210,7 +223,7 @@ class ZehnderClient {
   status() {
     return [...this.units.values()].map((u) => ({
       id: u.id, type: u.type, typeLabel: TYPE_LABEL[u.type], label: u.label, deviceKey: u.deviceKey,
-      host: u.cfg.host || null, serialPort: u.cfg.serialPort || null,
+      host: u.cfg.host || null, port: Number(u.cfg.port) || null, serialPort: u.cfg.serialPort || null,
       connected: !!u.backend.connected, error: u.backend.connected ? null : u.error, info: u.backend.info || {},
       values: u.values,
     }));

@@ -14,95 +14,10 @@
 //   holding     0 preset (0–3), 1 temperature profile (0 normal, 1 cool, 2 warm),
 //               2 profile mode, 3 external setpoint (°C×10), 4 boost time (s)
 //
-// A tiny Modbus TCP client is built in (FC 1/2/3/4/5/6) — no npm dependency.
+// Modbus TCP through the shared src/modbus-tcp.js — no npm dependency.
 
-const net          = require('net');
 const EventEmitter = require('events');
-
-class ModbusTcp {
-  constructor({ host, port = 502, unitId = 1, timeout = 5000 }) {
-    Object.assign(this, { host, port, unitId, timeout });
-    this.tid = 0;
-    this.queue = Promise.resolve();
-  }
-
-  _connect() {
-    if (this.sock && !this.sock.destroyed) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-      const s = net.connect({ host: this.host, port: this.port });
-      s.setTimeout(this.timeout, () => s.destroy(new Error(`Timeout connecting to ${this.host}:${this.port}`)));
-      s.once('connect', () => { s.setTimeout(0); resolve() });
-      s.on('error', (e) => { reject(e); this._fail(e) });
-      s.on('close', () => this._fail(new Error('Connection closed')));
-      s.on('data', (d) => this._onData(d));
-      this.buf = Buffer.alloc(0);
-      this.sock = s;
-    });
-  }
-
-  _fail(err) {
-    const p = this.pending;
-    this.pending = null;
-    if (p) { clearTimeout(p.t); p.reject(err) }
-  }
-
-  _onData(d) {
-    this.buf = Buffer.concat([this.buf, d]);
-    while (this.buf.length >= 7) {
-      const len = this.buf.readUInt16BE(4);
-      if (this.buf.length < 6 + len) return;
-      const tid = this.buf.readUInt16BE(0), pdu = this.buf.subarray(7, 6 + len);
-      this.buf = this.buf.subarray(6 + len);
-      const p = this.pending;
-      if (!p || p.tid !== tid) continue;
-      this.pending = null; clearTimeout(p.t);
-      if (pdu[0] & 0x80) p.reject(new Error(`Modbus exception ${pdu[1]} (function ${pdu[0] & 0x7f})`));
-      else p.resolve(pdu);
-    }
-  }
-
-  // one request at a time
-  request(pdu) {
-    const run = async () => {
-      await this._connect();
-      const tid = this.tid = (this.tid + 1) & 0xffff;
-      const head = Buffer.alloc(7);
-      head.writeUInt16BE(tid, 0); head.writeUInt16BE(0, 2); head.writeUInt16BE(pdu.length + 1, 4); head[6] = this.unitId;
-      return new Promise((resolve, reject) => {
-        const t = setTimeout(() => { this.pending = null; reject(new Error(`No Modbus answer from ${this.host}`)); this.sock?.destroy() }, this.timeout);
-        this.pending = { tid, resolve, reject, t };
-        this.sock.write(Buffer.concat([head, pdu]));
-      });
-    };
-    const r = this.queue.then(run, run);
-    this.queue = r.catch(() => {});
-    return r;
-  }
-
-  async readBits(fc, addr, count) {
-    const q = Buffer.alloc(5); q[0] = fc; q.writeUInt16BE(addr, 1); q.writeUInt16BE(count, 3);
-    const r = await this.request(q);
-    return Array.from({ length: count }, (_, i) => !!(r[2 + (i >> 3)] & (1 << (i & 7))));
-  }
-
-  async readRegs(fc, addr, count) {
-    const q = Buffer.alloc(5); q[0] = fc; q.writeUInt16BE(addr, 1); q.writeUInt16BE(count, 3);
-    const r = await this.request(q);
-    return Array.from({ length: count }, (_, i) => r.readUInt16BE(2 + i * 2));
-  }
-
-  writeCoil(addr, on) {
-    const q = Buffer.alloc(5); q[0] = 5; q.writeUInt16BE(addr, 1); q.writeUInt16BE(on ? 0xff00 : 0, 3);
-    return this.request(q);
-  }
-
-  writeReg(addr, value) {
-    const q = Buffer.alloc(5); q[0] = 6; q.writeUInt16BE(addr, 1); q.writeUInt16BE(value & 0xffff, 3);
-    return this.request(q);
-  }
-
-  close() { this.sock?.destroy(); this.sock = null }
-}
+const ModbusTcp    = require('../modbus-tcp');
 
 const s16 = (v) => (v > 0x7fff ? v - 0x10000 : v);
 const temp = (v) => { const t = s16(v); return t <= -2000 || t >= 2000 ? null : t / 10 };

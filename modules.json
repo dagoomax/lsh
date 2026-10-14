@@ -1237,6 +1237,7 @@
       "files": [
         "src/anker-solix-client.js",
         "src/anker-solix-maps.json",
+        "src/modbus-tcp.js",
         "src/polling-client.js"
       ],
       "deps": {}
@@ -1310,6 +1311,7 @@
       ],
       "when": "((config.zehnder?.units || config.zehnder?.devices)?.length)",
       "files": [
+        "src/modbus-tcp.js",
         "src/zehnder-client.js",
         "src/zehnder/ca350.js",
         "src/zehnder/lanc.js",

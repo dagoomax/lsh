@@ -51,13 +51,28 @@ class UgreenClient {
     if (!this.cfg.email || !this.cfg.password) throw new Error('config.ugreen needs email and password (the UGREEN app account)');
     if (!WebSocketLib) throw new Error('"ws" module missing');
     platformStatus.set('ugreen', false);
-    await this.login();
-    for (const d of await this.devices()) this._register(d);
-    for (const name of this.units.keys()) this._connect(name);
+    await this._init();
+  }
+
+  // Login + device list; on failure (cloud or internet briefly down at boot) retry with backoff.
+  // Rejected credentials fail start() at once — retrying them only risks locking the account.
+  async _init(backoff = 30_000, first = true) {
+    if (this.stopped) return;
+    try {
+      await this.login();
+      for (const d of await this.devices()) this._register(d);
+      for (const name of this.units.keys()) this._connect(name);
+    } catch (err) {
+      if (err.credentials) { if (first) throw err; console.error(`[UGREEN] ${err.message}`); return }
+      console.warn(`[UGREEN] ${err.message} — retrying in ${Math.round(backoff / 1000)} s`);
+      this._initTimer = setTimeout(() => this._init(Math.min(backoff * 2, 600_000), false), backoff);
+      this._initTimer.unref?.();
+    }
   }
 
   stop() {
     this.stopped = true;
+    clearTimeout(this._initTimer);
     for (const u of this.units.values()) this._close(u);
     platformStatus.set('ugreen', false);
   }
@@ -84,7 +99,12 @@ class UgreenClient {
     let r;
     try {
       r = await this._call('POST', '/app/v1/login', { account: enc(this.cfg.email), password: enc(this.cfg.password), code: null, type: 2, uuid: k.uuid });
-    } catch (err) { throw new Error(`UGREEN login failed — check the app e-mail and password (${err.message})`) }
+    } catch (err) {
+      if (!('auth' in err)) throw err; // no answer from the cloud — not a credentials problem
+      const e = new Error(`UGREEN login failed — check the app e-mail and password (${err.message})`);
+      e.credentials = true;
+      throw e;
+    }
     this.token = r.token; this.userId = r.userId;
   }
 

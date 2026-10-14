@@ -11,9 +11,12 @@ const HOST_RE = /^[\w.-]+$/;
 function cleanUnit(u) {
   const type = TYPES.includes(u?.type) ? u.type : 'lanc';
   const out = { type, host: String(u?.host || '').trim(), name: String(u?.name || '').trim() };
+  // hand-set fields the client honours — dropping them would change the device key / LAN C app name
+  const id = String(u?.id || '').trim();
+  if (id) out.id = id;
   const num = (k) => { const n = Number(u?.[k]); if (u?.[k] !== '' && u?.[k] != null && Number.isFinite(n)) out[k] = n };
   num('port');
-  if (type === 'lanc') { num('pin'); if (/^[0-9a-f]{32}$/i.test(String(u?.uuid || '').replace(/-/g, ''))) out.uuid = String(u.uuid).replace(/-/g, '').toLowerCase() }
+  if (type === 'lanc') { num('pin'); if (String(u?.appName || '').trim()) out.appName = String(u.appName).trim(); if (/^[0-9a-f]{32}$/i.test(String(u?.uuid || '').replace(/-/g, ''))) out.uuid = String(u.uuid).replace(/-/g, '').toLowerCase() }
   if (type === 'pro') num('unitId');
   if (type === 'ca350') {
     const sp = String(u?.serialPort || '').trim();
@@ -49,7 +52,8 @@ module.exports = function register(router, ctx) {
   router.post('/zehnder/test', requireAdmin, async (req, res) => {
     const u = cleanUnit(req.body || {});
     if (!u.host && !u.serialPort) return res.status(400).json({ success: false, error: 'host (or serial port) required' });
-    const live = clients.zehnder?.status().find((s) => s.type === u.type && (s.host === u.host && (!u.serialPort || s.serialPort === u.serialPort)));
+    const live = clients.zehnder?.status().find((s) => s.type === u.type && (s.host || '') === u.host
+      && (u.host ? !u.port || !s.port || s.port === u.port : s.serialPort === u.serialPort));
     if (live) {
       return res.json({ success: live.connected, data: live.values, message: live.connected ? `${live.label}: connected (running in LSH)` : undefined, error: live.connected ? undefined : live.error || 'not connected' });
     }

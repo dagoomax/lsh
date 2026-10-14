@@ -98,7 +98,8 @@ class CA350 extends EventEmitter {
       });
     }
     this.buf = Buffer.alloc(0);
-    if (this.o.rs232Mode) await this._exchange(0x9b, [this.o.rs232Mode === 'master' ? 0x03 : 0x04], true).catch(() => {});
+    // already inside a queued _exchange — send directly, going through the queue would wait on itself
+    if (this.o.rs232Mode) await this._send(0x9b, [this.o.rs232Mode === 'master' ? 0x03 : 0x04], true).catch(() => {});
   }
 
   _onData(d) {
@@ -112,16 +113,21 @@ class CA350 extends EventEmitter {
     }
   }
 
-  // send cmd; wait for its answer (cmd + 1), or only the ack for set commands
+  // send cmd on the open port; wait for its answer (cmd + 1), or only the ack for set commands
+  _send(cmd, data = [], ackOnly = false) {
+    return new Promise((resolve, reject) => {
+      const w = { reply: cmd + 1, wantAck: ackOnly, resolve, reject };
+      w.t = setTimeout(() => { this.waiters.splice(this.waiters.indexOf(w), 1); reject(new Error(`No answer from the ComfoAir to command 0x${cmd.toString(16).padStart(4, '0')}`)) }, this.o.timeout);
+      this.waiters.push(w);
+      this.port.write(encode(cmd, data));
+    });
+  }
+
+  // one exchange at a time, opening the port first
   _exchange(cmd, data = [], ackOnly = false) {
     const run = async () => {
       await this._open();
-      return new Promise((resolve, reject) => {
-        const w = { reply: cmd + 1, wantAck: ackOnly, resolve, reject };
-        w.t = setTimeout(() => { this.waiters.splice(this.waiters.indexOf(w), 1); reject(new Error(`No answer from the ComfoAir to command 0x${cmd.toString(16).padStart(4, '0')}`)) }, this.o.timeout);
-        this.waiters.push(w);
-        this.port.write(encode(cmd, data));
-      });
+      return this._send(cmd, data, ackOnly);
     };
     const r = this.queue.then(run, run);
     this.queue = r.catch(() => {});
