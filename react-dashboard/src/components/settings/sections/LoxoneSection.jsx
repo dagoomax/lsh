@@ -79,9 +79,10 @@ function WeatherEmulatorCard({ loxoneWeather, reload }) {
   const [name, setName] = useState(loxoneWeather?.name || '')
   const [country, setCountry] = useState(loxoneWeather?.country || '')
   const [timezone, setTimezone] = useState(loxoneWeather?.timezone || '')
+  const [pictoMode, setPictoMode] = useState(loxoneWeather?.pictoMode || 'meteoblue')
   const test = useSettingsSave('/api/settings/test-loxone-weather')
   const save = useSettingsSave('/api/settings/loxone-weather')
-  const payload = () => ({ port: Number(port), lat: Number(lat), lon: Number(lon), asl: Number(asl), name, country, timezone })
+  const payload = () => ({ port: Number(port), lat: Number(lat), lon: Number(lon), asl: Number(asl), name, country, timezone, pictoMode })
 
   return (
     <SettingsCard icon={LoxoneIcon} title="Loxone Weather Emulator" badge={{ label: gt('common.optional', 'Optional') }}
@@ -93,6 +94,8 @@ function WeatherEmulatorCard({ loxoneWeather, reload }) {
       <Field label="Station Name" value={name} onChange={setName} placeholder="Katowice"/>
       <Field label="Country Code" value={country} onChange={setCountry} placeholder="PL"/>
       <Field label="Timezone" value={timezone} onChange={setTimezone} placeholder="Europe/Warsaw"/>
+      <Field label="Weather pictures" hint="(what the Loxone app animates from)" type="select" value={pictoMode} onChange={setPictoMode}
+        options={[{ value: 'meteoblue', label: 'meteoblue codes, like Loxone’s weather service (recommended)' }, { value: 'loxone', label: 'Miniserver weather types (older emulator behaviour)' }]}/>
       <div className="stg-actions">
         <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>{gt('common.test', 'Test Connection')}</Button>
         <Button variant="primary" busy={save.busy} onClick={() => save.save(payload()).then(reload)}>{gt('common.save', 'Save')}</Button>

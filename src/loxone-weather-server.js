@@ -35,6 +35,11 @@ const DEFAULTS = {
   // First line inside <station> = the station-info row matching header line 1.
   // The original cloud service sends it; some emulators omit it. Keep it on.
   stationInfoLine: true,
+  // 'meteoblue' (default): the picto-code column carries meteoblue's hourly
+  // pictocodes 1–35, which the Loxone service (meteoblue-backed) sends and the
+  // app animates from. 'loxone': the Miniserver's weather-type numbers instead
+  // (1 clear … 29 sleet showers) — how this emulator used to answer.
+  pictoMode: 'meteoblue',
 };
 
 const HEADER_STATION =
@@ -68,11 +73,42 @@ const WMO_TO_PICTO = {
   95: 18, 96: 19, 99: 19,
 };
 
+/**
+ * WMO weather code (+ cloud cover) -> meteoblue hourly pictocode, the numbering
+ * of the cloud service's picto-code column:
+ *   1 clear · 2 clear, few cirrus · 4 clear, few low clouds · 7 partly cloudy ·
+ *   16 fog · 19 mostly cloudy · 22 overcast · 23 overcast with rain ·
+ *   24 overcast with snow · 25 heavy rain · 26 heavy snow · 27 rain, thunderstorms ·
+ *   30 heavy rain, thunderstorms · 31 showers · 32 snow showers ·
+ *   33 light rain · 34 light snow · 35 snow and rain
+ */
+function wmoToMeteoblue(code, cloud = null) {
+  switch (code) {
+    case 0: return 1;
+    case 1: return cloud != null && cloud < 15 ? 2 : 4;
+    case 2: return cloud != null && cloud >= 60 ? 19 : 7;
+    case 3: return cloud != null && cloud < 85 ? 19 : 22;
+    case 45: case 48: return 16;
+    case 51: case 53: case 61: return 33;
+    case 55: case 63: return 23;
+    case 65: case 82: return 25;
+    case 56: case 57: case 66: case 67: return 35;
+    case 71: case 77: return 34;
+    case 73: return 24;
+    case 75: return 26;
+    case 80: case 81: return 31;
+    case 85: case 86: return 32;
+    case 95: return 27;
+    case 96: case 99: return 30;
+    default: return cloud == null ? 7 : cloud < 20 ? 1 : cloud < 50 ? 7 : cloud < 85 ? 19 : 22;
+  }
+}
+
 const HOURLY_VARS = [
   'temperature_2m', 'apparent_temperature', 'wind_speed_10m', 'wind_direction_10m',
   'wind_gusts_10m', 'cloud_cover_low', 'cloud_cover_mid', 'cloud_cover_high',
   'precipitation', 'precipitation_probability', 'snowfall', 'pressure_msl',
-  'relative_humidity_2m', 'weather_code', 'shortwave_radiation', 'cape',
+  'relative_humidity_2m', 'weather_code', 'shortwave_radiation', 'cape', 'cloud_cover',
 ].join(',');
 
 class LoxoneWeatherServer {
@@ -180,7 +216,7 @@ class LoxoneWeatherServer {
         r0(h.pressure_msl[i]),
         r0(h.relative_humidity_2m[i]),
         r0(h.cape ? h.cape[i] : 0),
-        WMO_TO_PICTO[h.weather_code[i]] ?? 3,
+        this.cfg.pictoMode === 'loxone' ? (WMO_TO_PICTO[h.weather_code[i]] ?? 3) : wmoToMeteoblue(h.weather_code[i], h.cloud_cover?.[i] ?? null),
         r0(h.shortwave_radiation[i]),
       ].join(';') + ';');
     }
@@ -197,3 +233,4 @@ const r0 = (v) => Math.round(Number.isFinite(v) ? v : 0);
 const hhmm = (dt) => `${p2(dt.getUTCHours())}:${p2(dt.getUTCMinutes())}`;
 
 module.exports = LoxoneWeatherServer;
+module.exports.wmoToMeteoblue = wmoToMeteoblue;

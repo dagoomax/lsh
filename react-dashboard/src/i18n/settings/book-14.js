@@ -22,5 +22,9 @@ export const P14 = {
   'Turn on via Wi-Fi': ['Włączanie przez Wi-Fi', 'Über WLAN einschalten', 'Allumer via Wi-Fi', 'Encender por Wi-Fi', 'Accendi tramite Wi-Fi', 'Увімкнення через Wi-Fi'],
   'apps': ['aplikacje', 'Apps', 'applis', 'apps', 'app', 'застосунки'],
   'paired': ['sparowany', 'gekoppelt', 'appairé', 'emparejado', 'abbinato', 'сполучено'],
+  '(what the Loxone app animates from)': ['(z tego aplikacja Loxone tworzy animację)', '(daraus animiert die Loxone-App)', '(ce que l’app Loxone anime)', '(lo que anima la app de Loxone)', '(ciò che l’app Loxone anima)', '(з цього застосунок Loxone робить анімацію)'],
+  'Miniserver weather types (older emulator behaviour)': ['Typy pogody Miniservera (dawne działanie emulatora)', 'Miniserver-Wettertypen (früheres Verhalten)', 'Types météo du Miniserver (ancien comportement)', 'Tipos de tiempo del Miniserver (comportamiento anterior)', 'Tipi meteo del Miniserver (comportamento precedente)', 'Типи погоди Miniserver (попередня поведінка)'],
+  'Weather pictures': ['Obrazki pogody', 'Wetterbilder', 'Images météo', 'Imágenes del tiempo', 'Immagini meteo', 'Зображення погоди'],
+  'meteoblue codes, like Loxone’s weather service (recommended)': ['kody meteoblue, jak w usłudze pogody Loxone (zalecane)', 'meteoblue-Codes wie der Loxone-Wetterdienst (empfohlen)', 'codes meteoblue, comme le service météo Loxone (recommandé)', 'códigos meteoblue, como el servicio del tiempo de Loxone (recomendado)', 'codici meteoblue, come il servizio meteo Loxone (consigliato)', 'коди meteoblue, як у сервісі погоди Loxone (рекомендовано)'],
 }
 export const S14 = ['Salon TV']

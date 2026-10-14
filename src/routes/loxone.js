@@ -163,7 +163,7 @@ module.exports = function register(router, ctx) {
 
   router.post('/settings/loxone-weather', requireAdmin, (req, res) => {
     const current = readConfigFile();
-    const { port, lat, lon, asl, name, country, timezone } = req.body;
+    const { port, lat, lon, asl, name, country, timezone, pictoMode } = req.body;
     const c = current.loxoneWeather || {};
     try {
       writeConfigFile({
@@ -176,6 +176,7 @@ module.exports = function register(router, ctx) {
           name:     name || c.name || '',
           country:  country || c.country || '',
           timezone: timezone || c.timezone || 'UTC',
+          pictoMode: pictoMode === 'loxone' ? 'loxone' : pictoMode === 'meteoblue' ? 'meteoblue' : (c.pictoMode || 'meteoblue'),
         },
       });
       res.json({ success: true, message: 'Loxone Weather settings saved. Restart to apply.' });
