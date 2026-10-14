@@ -42,7 +42,7 @@ class AirplayClient {
   // ── Now playing (dashboard media player) ──────────────────────────────
   nowPlaying(speakerId) {
     const s = this._sessions.get(speakerId);
-    return s ? { title: s.title, since: s.since, volume: s.volume } : null;
+    return s ? { title: s.title, url: s.url, since: s.since, volume: s.volume } : null;
   }
 
   stop(speakerId) {
@@ -238,7 +238,7 @@ class AirplayClient {
       });
 
       this._sessions.set(speakerId, {
-        token, title: opts.title || (isUrl ? filePath : 'Audio'), since: Date.now(), volume: opts.volume ?? speaker.volume ?? 60,
+        token, title: opts.title || (isUrl ? filePath : 'Audio'), url: isUrl ? filePath : null, since: Date.now(), volume: opts.volume ?? speaker.volume ?? 60,
         stop: () => finish(), setVolume: (v) => { try { sender.setVolume(v) } catch { /* session ending */ } },
       });
 

@@ -1,22 +1,27 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { getLang } from '../i18n'
 import { localAudio } from '../localAudio'
 
-// Media player: play internet radio / a stream / an audio file URL on this
-// screen itself (the browser), a Chromecast (Google Home, Nest,
-// Chromecast-built-in) or an AirPlay speaker (HomePod, Apple TV, AirPlay 2),
-// with pause / stop / volume and saved stations. Server: src/routes/media.js;
-// this screen: src/localAudio.js.
-//   compact — no URL form (Wall Dashboard)
-//   fill    — fills its box and scrolls (a widget in the custom dashboard grid)
+// Media player: internet radio, streams and audio file URLs on this screen (the
+// browser), a Chromecast (Google Home, Nest, Chromecast-built-in) or an AirPlay
+// speaker (HomePod, Apple TV, AirPlay 2) — now playing with artwork and the live
+// song title, a "Play on" output picker, favourites and a station directory.
+// Server: src/routes/media.js; this screen: src/localAudio.js.
+//   compact — Wall Dashboard: now playing, controls, favourites strip
+//   fill    — a widget in the custom dashboard grid (fills its box, scrolls)
+const COUNTRY = { pl: 'PL', de: 'DE', fr: 'FR', es: 'ES', it: 'IT', uk: 'UA' }
+const LAST_KEY = 'lsh-media-last'
+
 export default function MediaPlayer({ compact = false, fill = false }) {
   const [data, setData] = useState(null)
-  const [sel, setSel] = useState(() => { try { return localStorage.getItem('lsh-media-target') || '' } catch { return '' } })
-  const [url, setUrl] = useState('')
-  const [name, setName] = useState('')
+  const [sel, setSel] = useState(() => store.get('lsh-media-target') || '')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
   const [vol, setVol] = useState(null)
+  const [tab, setTab] = useState('fav')
+  const [song, setSong] = useState('')
+  const [last, setLast] = useState(() => { try { return JSON.parse(store.get(LAST_KEY) || 'null') } catch { return null } })
+  const [browse, setBrowse] = useState({ q: '', list: null, loading: false, error: null })
   const volTimer = useRef(null)
   const local = useSyncExternalStore(localAudio.subscribe, localAudio.get)
 
@@ -28,164 +33,327 @@ export default function MediaPlayer({ compact = false, fill = false }) {
     return () => clearInterval(t)
   }, [load])
 
-  const here = { id: 'local', kind: 'browser', name: T('thisScreen'), state: local.status, title: local.title, volume: local.volume }
+  const here = { id: 'local', kind: 'browser', name: T('thisScreen'), state: local.status, title: local.title, url: local.url, volume: local.volume }
   const targets = [here, ...(data?.targets || [])]
-  // remembered choice, else the first speaker, else this screen
   const target = targets.find((t) => t.id === sel) || targets.find((t) => t.kind !== 'browser') || here
   const isHere = target.kind === 'browser'
-  useEffect(() => { if (!volTimer.current) setVol(target.volume ?? null) }, [target.id, target.volume])
+  const stations = data?.stations || []
+  const playing = ['playing', 'buffering'].includes(target.state)
+  const paused = target.state === 'paused'
+  const active = playing || paused
+  const canPause = target.kind !== 'airplay' // an AirPlay stream can only be stopped
 
-  const pick = (id) => { setSel(id); try { localStorage.setItem('lsh-media-target', id) } catch { /* private mode */ } }
+  // what's on: the station (from favourites / directory / last played) and the live song
+  const known = useMemo(() => {
+    const m = new Map()
+    for (const s of [...(browse.list || []), ...stations, ...(last ? [last] : [])]) if (s?.url) m.set(s.url, s)
+    return m
+  }, [browse.list, stations, last])
+  const station = active ? (known.get(target.url) || { name: target.title, url: target.url }) : null
+  useEffect(() => { if (!volTimer.current) setVol(target.volume ?? null) }, [target.id, target.volume])
+  useEffect(() => {
+    setSong('')
+    if (!playing || !target.url) return
+    let stop = false
+    const get = () => fetch(`/api/media/nowplaying?url=${encodeURIComponent(target.url)}`, { credentials: 'include' })
+      .then((r) => r.json()).then((j) => { if (!stop && j.success) setSong(j.data?.title || '') }).catch(() => {})
+    get()
+    const t = setInterval(() => { if (!document.hidden) get() }, 20000)
+    return () => { stop = true; clearInterval(t) }
+  }, [playing, target.url])
+
+  // directory: top stations of the dashboard language's country, or a search
+  const country = COUNTRY[getLang()] || ''
+  const runSearch = useCallback((q) => {
+    setBrowse((b) => ({ ...b, q, loading: true, error: null }))
+    fetch(`/api/media/radio?q=${encodeURIComponent(q)}&country=${q ? '' : country}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => setBrowse((b) => (b.q !== q ? b : { ...b, loading: false, list: j.success ? j.data : [], error: j.success ? null : j.error })))
+      .catch((err) => setBrowse((b) => ({ ...b, loading: false, error: err.message })))
+  }, [country])
+  useEffect(() => { if (tab === 'browse' && browse.list === null && !browse.loading) runSearch('') }, [tab])
+  const searchTimer = useRef(null)
+  const onSearch = (q) => {
+    setBrowse((b) => ({ ...b, q }))
+    clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => runSearch(q.trim()), 400)
+  }
+
+  const pick = (id) => { setSel(id); store.set('lsh-media-target', id) }
   const post = async (path, body) => {
     setBusy(true); setMsg(null)
     try {
       const r = await fetch(`/api/media/${path}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const j = await r.json().catch(() => ({}))
-      setMsg(j.success ? null : { err: true, text: j.error || `HTTP ${r.status}` })
+      if (!j.success) setMsg(j.error || `HTTP ${r.status}`)
       setTimeout(load, 800)
       return j.success
-    } catch (err) {
-      setMsg({ err: true, text: err.message })
-      return false
-    } finally { setBusy(false) }
+    } catch (err) { setMsg(err.message); return false } finally { setBusy(false) }
   }
-  // play / pause / resume / stop on the chosen target — this screen plays it itself
-  const act = (action, extra = {}) => {
+  const play = (st) => {
+    const remembered = { name: st.name, url: st.url, ...(st.favicon ? { favicon: st.favicon } : {}) }
+    setLast(remembered); store.set(LAST_KEY, JSON.stringify(remembered))
+    if (isHere) { setMsg(null); return localAudio.play(st.url, st.name, `/api/media/stream?url=${encodeURIComponent(st.url)}`) }
+    return post('play', { target: target.id, url: st.url, title: st.name })
+  }
+  const act = (action) => {
     if (isHere) {
       setMsg(null)
-      if (action === 'play') return localAudio.play(extra.url, extra.title)
-      if (action === 'pause') return localAudio.pause()
-      if (action === 'resume') return localAudio.resume()
-      if (action === 'stop') return localAudio.stop()
+      return { pause: () => localAudio.pause(), resume: () => localAudio.resume(), stop: () => localAudio.stop() }[action]()
     }
-    return post(action, { target: target.id, ...extra })
+    return post(action, { target: target.id })
   }
-  const play = (u, title) => act('play', { url: u, title })
+  const mainButton = () => {
+    if (playing) return canPause ? act('pause') : act('stop')
+    if (paused) return act('resume')
+    if (last) return play(last)
+    setTab('browse')
+  }
   const changeVolume = (v) => {
     setVol(v)
     if (isHere) { localAudio.setVolume(v); return }
     clearTimeout(volTimer.current)
     volTimer.current = setTimeout(() => { volTimer.current = null; post('volume', { target: target.id, volume: v }) }, 350)
   }
-  const stations = data?.stations || []
-  const saveStation = async () => {
-    const list = [...stations.filter((s) => s.url !== url.trim()), { name: name.trim() || url.trim(), url: url.trim() }]
-    if (await post('stations', { stations: list })) { setName(''); load() }
-  }
-  const removeStation = (s) => post('stations', { stations: stations.filter((x) => x.url !== s.url) }).then(load)
+  const isFav = (st) => stations.some((s) => s.url === st.url)
+  const toggleFav = (st) => post('stations', {
+    stations: isFav(st) ? stations.filter((s) => s.url !== st.url) : [...stations, { name: st.name, url: st.url, ...(st.favicon ? { favicon: st.favicon } : {}) }],
+  }).then(load)
 
-  const playingNow = ['playing', 'buffering'].includes(target.state)
-  const paused = target.state === 'paused'
-  const canPause = target.kind !== 'airplay' // an AirPlay stream can only be stopped
-  const validUrl = /^https?:\/\/\S+$/i.test(url.trim())
-  const error = msg?.err ? msg.text : isHere && local.error ? T(local.error) : null
+  const error = msg || (isHere && local.error ? T(local.error) : null)
+  const tint = station ? hue(station.name || station.url) : 211
+  const meta = station && [T('live'), known.get(target.url)?.codec, known.get(target.url)?.bitrate ? `${known.get(target.url).bitrate} kbps` : ''].filter(Boolean).join(' · ')
 
   return (
-    <div className={`card sm-card media-player${fill ? ' media-player-fill' : ''}`}>
-      <div className="sm-head">
-        <div className="sm-host-icon" style={{ background: playingNow ? '#30d158' : 'var(--white-10)', color: playingNow ? '#fff' : 'var(--text2)' }}>
-          <NoteIcon />
-        </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div className="sm-title">{T('title')}</div>
-          <div className="sm-status" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            <span style={{ background: playingNow ? '#30d158' : paused ? '#ff9f0a' : 'var(--text3)' }} />
-            {target.title ? `${T(playingNow ? 'playing' : paused ? 'paused' : 'idle')} · ${target.title}` : T('idle')}
+    <div className={`card mp${compact ? ' mp-compact' : ''}${fill ? ' mp-fill' : ''}${active ? ' mp-active' : ''}`} style={{ '--mp-hue': tint }}>
+      <div className="mp-now">
+        <Artwork station={station} size={compact ? 64 : 96} playing={playing} />
+        <div className="mp-info">
+          <div className="mp-kicker">{active ? (paused ? T('paused') : meta) : T('title')}</div>
+          <div className="mp-name">{station?.name || T('idle')}</div>
+          <div className="mp-song">
+            {active ? (song || (playing ? T('playingOn', { name: target.name }) : target.name)) : (last ? T('lastPlayed', { name: last.name }) : T('pickStation'))}
           </div>
         </div>
+        {!compact && <OutputPicker targets={targets} target={target} ready={data !== null || sel === 'local'} onPick={pick} />}
       </div>
 
-      {/* where to play */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {targets.map((t) => (
-          <button key={t.id} onClick={() => pick(t.id)} className="media-chip" data-on={String((data !== null || sel === 'local') && t.id === target.id)}
-            title={t.kind === 'airplay' ? 'AirPlay' : t.kind === 'chromecast' ? 'Chromecast' : T('thisScreenHint')}>
-            {t.kind === 'airplay' ? <AirPlayIcon /> : t.kind === 'chromecast' ? <CastIcon /> : <ScreenIcon />}
-            <span>{t.name}</span>
-            {['playing', 'buffering'].includes(t.state) && <span className="media-eq" aria-hidden="true"><i /><i /><i /></span>}
-          </button>
-        ))}
-      </div>
-
-      {/* transport + volume */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        {canPause && (playingNow || paused) && (
-          <RoundBtn disabled={busy} label={paused ? T('resume') : T('pause')} onClick={() => act(paused ? 'resume' : 'pause')}>
-            {paused ? <PlayIcon /> : <PauseIcon />}
-          </RoundBtn>
-        )}
-        {(playingNow || paused) && <RoundBtn disabled={busy} label={T('stop')} onClick={() => act('stop')}><StopIcon /></RoundBtn>}
+      <div className="mp-controls">
+        <button className="mp-main" onClick={mainButton} disabled={busy} aria-label={playing ? (canPause ? T('pause') : T('stop')) : T('play')} title={playing ? (canPause ? T('pause') : T('stop')) : T('play')}>
+          {playing ? (canPause ? <PauseIcon /> : <StopIcon />) : <PlayIcon />}
+        </button>
+        {active && canPause && <button className="mp-round" onClick={() => act('stop')} disabled={busy} aria-label={T('stop')} title={T('stop')}><StopIcon /></button>}
         {vol != null && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 160 }}>
-            <span style={{ fontSize: 12, color: 'var(--text2)' }}>{T('volume')}</span>
-            <input type="range" min="0" max="100" value={vol} onChange={(e) => changeVolume(Number(e.target.value))} style={{ flex: 1, accentColor: 'var(--accent)' }} aria-label={T('volume')} />
-            <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', width: 32, textAlign: 'right' }}>{vol}%</span>
+          <label className="mp-volume">
+            <VolumeIcon level={vol} />
+            <input type="range" min="0" max="100" value={vol} onChange={(e) => changeVolume(Number(e.target.value))} aria-label={T('volume')} style={{ '--mp-vol': `${vol}%` }} />
+            <span>{vol}</span>
           </label>
         )}
+        {compact && <OutputPicker targets={targets} target={target} ready={data !== null || sel === 'local'} onPick={pick} small />}
       </div>
+      {error && <div className="mp-error">{error}</div>}
 
-      {/* stations */}
-      {stations.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {stations.map((s) => (
-            <span key={s.url} className="media-station">
-              <button disabled={busy} onClick={() => play(s.url, s.name)} title={s.url}>▶ {s.name}</button>
-              {!compact && <button className="media-station-x" onClick={() => removeStation(s)} aria-label={`${T('remove')} ${s.name}`} title={T('remove')}>×</button>}
-            </span>
+      {compact ? (
+        <div className="mp-strip">
+          {(stations.length ? stations : []).map((st) => (
+            <button key={st.url} className="mp-strip-item" data-on={String(active && st.url === target.url)} onClick={() => play(st)} disabled={busy} title={st.name}>
+              <Logo station={st} size={44} />
+              <span>{st.name}</span>
+            </button>
           ))}
+          {!stations.length && <div className="mp-empty">{T('noStations')}</div>}
         </div>
+      ) : (
+        <>
+          <div className="mp-tabs" role="tablist">
+            <button role="tab" aria-selected={tab === 'fav'} onClick={() => setTab('fav')}>{T('favourites')}{stations.length ? ` · ${stations.length}` : ''}</button>
+            <button role="tab" aria-selected={tab === 'browse'} onClick={() => setTab('browse')}>{T('browse')}</button>
+          </div>
+          {tab === 'fav' && (
+            <div className="mp-grid">
+              {stations.map((st) => <StationTile key={st.url} st={st} on={active && st.url === target.url} fav onPlay={play} onFav={toggleFav} busy={busy} />)}
+              <AddUrlTile onAdd={(st) => post('stations', { stations: [...stations.filter((s) => s.url !== st.url), st] }).then(load)} onPlay={play} busy={busy} />
+            </div>
+          )}
+          {tab === 'browse' && (
+            <>
+              <div className="mp-search">
+                <SearchIcon />
+                <input value={browse.q} onChange={(e) => onSearch(e.target.value)} placeholder={T('searchPh')} aria-label={T('searchPh')} />
+              </div>
+              {browse.loading && !browse.list && <div className="mp-empty">{T('loading')}</div>}
+              {browse.error && <div className="mp-error">{browse.error}</div>}
+              {browse.list && (
+                <div className="mp-grid">
+                  {browse.list.map((st) => <StationTile key={st.url} st={st} on={active && st.url === target.url} fav={isFav(st)} onPlay={play} onFav={toggleFav} busy={busy} />)}
+                  {!browse.list.length && !browse.loading && <div className="mp-empty">{T('noResults')}</div>}
+                </div>
+              )}
+              <div className="mp-credit">{T('directory')} <a href="https://www.radio-browser.info" target="_blank" rel="noreferrer">radio-browser.info</a></div>
+            </>
+          )}
+        </>
       )}
-      {compact && stations.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--text3)' }}>{T('noStations')}</div>}
-
-      {/* any URL */}
-      {!compact && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <input className="media-input" style={{ flex: 3, minWidth: 200 }} placeholder={T('urlPh')} value={url} onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && validUrl) play(url.trim(), name.trim() || undefined) }} />
-          <input className="media-input" style={{ flex: 1, minWidth: 110 }} placeholder={T('namePh')} value={name} onChange={(e) => setName(e.target.value)} />
-          <button className="media-btn primary" disabled={busy || !validUrl} onClick={() => play(url.trim(), name.trim() || undefined)}>{T('play')}</button>
-          <button className="media-btn" disabled={busy || !validUrl} onClick={saveStation}>{T('save')}</button>
-        </div>
-      )}
-      {error && <div style={{ fontSize: 12.5, color: 'var(--red)' }}>✗ {error}</div>}
     </div>
   )
 }
 
-function RoundBtn({ children, onClick, disabled, label }) {
-  return <button className="media-round" onClick={onClick} disabled={disabled} title={label} aria-label={label}>{children}</button>
+function OutputPicker({ targets, target, ready, onPick, small }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e) => { if (!ref.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
+  }, [open])
+  const Icon = (t) => (t.kind === 'airplay' ? <AirPlayIcon /> : t.kind === 'chromecast' ? <CastIcon /> : <ScreenIcon />)
+  return (
+    <div className={`mp-output${small ? ' small' : ''}`} ref={ref}>
+      <button className="mp-output-btn" onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open} title={`${T('playOn')}: ${target.name}`}>
+        {Icon(target)}
+        <span className="mp-output-label">{!small && <small>{T('playOn')}</small>}{ready ? target.name : '…'}</span>
+        <ChevronIcon />
+      </button>
+      {open && (
+        <div className="mp-output-menu" role="listbox">
+          {targets.map((t) => (
+            <button key={t.id} role="option" aria-selected={t.id === target.id} onClick={() => { onPick(t.id); setOpen(false) }}>
+              {Icon(t)}
+              <span className="mp-output-name">{t.name}<small>{t.kind === 'browser' ? T('thisScreenHint') : t.kind === 'airplay' ? 'AirPlay' : 'Chromecast'}{t.title && ['playing', 'buffering', 'paused'].includes(t.state) ? ` · ${t.title}` : ''}</small></span>
+              {['playing', 'buffering'].includes(t.state) && <span className="mp-eq" aria-hidden="true"><i /><i /><i /></span>}
+              {t.id === target.id && <CheckIcon />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
-const svg = (d, fill) => (p) => <svg width="18" height="18" viewBox="0 0 24 24" fill={fill ? 'currentColor' : 'none'} stroke={fill ? 'none' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>{d}</svg>
+function StationTile({ st, on, fav, onPlay, onFav, busy }) {
+  const meta = [st.country, st.codec, st.bitrate ? `${st.bitrate}k` : ''].filter(Boolean).join(' · ') || (st.tags || []).join(', ')
+  return (
+    <div className="mp-tile" data-on={String(on)}>
+      <button className="mp-tile-play" onClick={() => onPlay(st)} disabled={busy} title={st.url}>
+        <Logo station={st} size={42} />
+        <span className="mp-tile-text"><b>{st.name}</b>{meta && <small>{meta}</small>}</span>
+        {on && <span className="mp-eq" aria-hidden="true"><i /><i /><i /></span>}
+      </button>
+      <button className="mp-star" data-on={String(!!fav)} onClick={() => onFav(st)} disabled={busy}
+        aria-label={fav ? T('unfavourite') : T('favourite')} title={fav ? T('unfavourite') : T('favourite')}>{fav ? '★' : '☆'}</button>
+    </div>
+  )
+}
+
+function AddUrlTile({ onAdd, onPlay, busy }) {
+  const [open, setOpen] = useState(false)
+  const [url, setUrl] = useState('')
+  const [name, setName] = useState('')
+  const ok = /^https?:\/\/\S+$/i.test(url.trim())
+  if (!open) return <button className="mp-tile mp-add" onClick={() => setOpen(true)}><span>＋</span>{T('addUrl')}</button>
+  const st = () => ({ name: name.trim() || url.trim(), url: url.trim() })
+  return (
+    <div className="mp-tile mp-add-form">
+      <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} placeholder={T('urlPh')} onKeyDown={(e) => { if (e.key === 'Enter' && ok) onPlay(st()) }} />
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder={T('namePh')} />
+      <div>
+        <button disabled={!ok || busy} onClick={() => onPlay(st())}>{T('play')}</button>
+        <button disabled={!ok || busy} className="primary" onClick={() => { onAdd(st()); setOpen(false); setUrl(''); setName('') }}>{T('save')}</button>
+        <button onClick={() => setOpen(false)}>✕</button>
+      </div>
+    </div>
+  )
+}
+
+function Artwork({ station, size, playing }) {
+  return (
+    <div className="mp-art" style={{ width: size, height: size }}>
+      {station ? <Logo station={station} size={size} plain /> : <NoteIcon size={size * 0.38} />}
+      {playing && <span className="mp-art-eq" aria-hidden="true"><i /><i /><i /></span>}
+    </div>
+  )
+}
+
+// station logo, or a coloured monogram when there's none (or it won't load)
+function Logo({ station, size, plain }) {
+  const [broken, setBroken] = useState(false)
+  useEffect(() => setBroken(false), [station?.favicon])
+  const h = hue(station?.name || station?.url || '')
+  if (station?.favicon && !broken) {
+    return <img className={plain ? 'mp-logo plain' : 'mp-logo'} src={station.favicon} alt="" width={size} height={size} referrerPolicy="no-referrer" loading="lazy" onError={() => setBroken(true)} />
+  }
+  const initials = String(station?.name || '♪').replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '♪'
+  return (
+    <span className={plain ? 'mp-mono plain' : 'mp-mono'} style={{ width: size, height: size, fontSize: size * 0.36, background: `linear-gradient(135deg, hsl(${h} 70% 55%), hsl(${(h + 40) % 360} 70% 42%))` }}>{initials}</span>
+  )
+}
+
+function hue(s) {
+  let h = 0
+  for (const c of String(s)) h = (h * 31 + c.codePointAt(0)) % 360
+  return h
+}
+
+const store = {
+  get: (k) => { try { return localStorage.getItem(k) } catch { return null } },
+  set: (k, v) => { try { localStorage.setItem(k, v) } catch { /* private mode */ } },
+}
+
+const svg = (d, fill) => ({ size = 18, ...p }) => <svg width={size} height={size} viewBox="0 0 24 24" fill={fill ? 'currentColor' : 'none'} stroke={fill ? 'none' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...p}>{d}</svg>
 const NoteIcon = svg(<><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></>)
-const PlayIcon = svg(<path d="M7 4l13 8-13 8z" />, true)
-const PauseIcon = svg(<><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></>, true)
-const StopIcon = svg(<rect x="5" y="5" width="14" height="14" rx="2" />, true)
+const PlayIcon = svg(<path d="M8 5.5v13a1 1 0 0 0 1.5.86l11-6.5a1 1 0 0 0 0-1.72l-11-6.5A1 1 0 0 0 8 5.5z" />, true)
+const PauseIcon = svg(<><rect x="6" y="4.5" width="4" height="15" rx="1.2" /><rect x="14" y="4.5" width="4" height="15" rx="1.2" /></>, true)
+const StopIcon = svg(<rect x="6" y="6" width="12" height="12" rx="2" />, true)
 const CastIcon = svg(<><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" /><line x1="2" y1="20" x2="2.01" y2="20" /></>)
 const AirPlayIcon = svg(<><path d="M5 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1" /><polygon points="12 15 17 21 7 21 12 15" /></>)
 const ScreenIcon = svg(<><rect x="5" y="2" width="14" height="20" rx="2" /><path d="M11 18h2" /></>)
+const ChevronIcon = svg(<path d="M6 9l6 6 6-6" />)
+const CheckIcon = svg(<path d="M20 6L9 17l-5-5" />)
+const SearchIcon = svg(<><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>)
+function VolumeIcon({ level }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" />
+      {level > 0 && <path d="M15.5 8.5a5 5 0 0 1 0 7" />}
+      {level > 50 && <path d="M19 5a10 10 0 0 1 0 14" />}
+    </svg>
+  )
+}
 
 const TX = {
-  en: { title: 'Media player', playing: 'Playing', paused: 'Paused', idle: 'Nothing playing', pause: 'Pause', resume: 'Resume', stop: 'Stop', volume: 'Volume', play: 'Play', save: 'Save station', remove: 'Remove', urlPh: 'Stream or audio URL (https://…)', namePh: 'Name',
-    thisScreen: 'This screen', thisScreenHint: 'Play on this device', noStations: 'No saved stations yet — add one on the main dashboard.',
+  en: { title: 'Media player', idle: 'Nothing playing', paused: 'Paused', live: 'Live', play: 'Play', pause: 'Pause', stop: 'Stop', volume: 'Volume', playOn: 'Play on', playingOn: 'Playing on {name}', lastPlayed: 'Last played: {name}', pickStation: 'Pick a station below',
+    favourites: 'Favourites', browse: 'Browse', searchPh: 'Search radio stations…', loading: 'Loading stations…', noResults: 'No stations found', directory: 'Station directory:', favourite: 'Add to favourites', unfavourite: 'Remove from favourites',
+    addUrl: 'Add stream URL', urlPh: 'https://… stream or audio file', namePh: 'Name (optional)', save: 'Save', thisScreen: 'This screen', thisScreenHint: 'This device', noStations: 'No favourites yet — star stations on the main dashboard.',
     "This browser can't play that stream": "This browser can't play that stream", 'Tap play to start sound on this screen': 'Tap play to start sound on this screen' },
-  pl: { title: 'Odtwarzacz', playing: 'Gra', paused: 'Pauza', idle: 'Nic nie gra', pause: 'Pauza', resume: 'Wznów', stop: 'Stop', volume: 'Głośność', play: 'Odtwórz', save: 'Zapisz stację', remove: 'Usuń', urlPh: 'Adres strumienia lub pliku (https://…)', namePh: 'Nazwa',
-    thisScreen: 'Ten ekran', thisScreenHint: 'Odtwarzaj na tym urządzeniu', noStations: 'Brak zapisanych stacji — dodaj je na głównym panelu.',
+  pl: { title: 'Odtwarzacz', idle: 'Nic nie gra', paused: 'Pauza', live: 'Na żywo', play: 'Odtwórz', pause: 'Pauza', stop: 'Stop', volume: 'Głośność', playOn: 'Odtwarzaj na', playingOn: 'Gra na: {name}', lastPlayed: 'Ostatnio: {name}', pickStation: 'Wybierz stację poniżej',
+    favourites: 'Ulubione', browse: 'Przeglądaj', searchPh: 'Szukaj stacji radiowych…', loading: 'Wczytywanie stacji…', noResults: 'Nie znaleziono stacji', directory: 'Katalog stacji:', favourite: 'Dodaj do ulubionych', unfavourite: 'Usuń z ulubionych',
+    addUrl: 'Dodaj adres strumienia', urlPh: 'https://… strumień lub plik audio', namePh: 'Nazwa (opcjonalnie)', save: 'Zapisz', thisScreen: 'Ten ekran', thisScreenHint: 'To urządzenie', noStations: 'Brak ulubionych — oznacz stacje gwiazdką na głównym panelu.',
     "This browser can't play that stream": 'Ta przeglądarka nie odtworzy tego strumienia', 'Tap play to start sound on this screen': 'Dotknij odtwarzania, aby włączyć dźwięk na tym ekranie' },
-  de: { title: 'Mediaplayer', playing: 'Spielt', paused: 'Pausiert', idle: 'Keine Wiedergabe', pause: 'Pause', resume: 'Fortsetzen', stop: 'Stopp', volume: 'Lautstärke', play: 'Abspielen', save: 'Sender speichern', remove: 'Entfernen', urlPh: 'Stream- oder Audio-URL (https://…)', namePh: 'Name',
-    thisScreen: 'Dieser Bildschirm', thisScreenHint: 'Auf diesem Gerät abspielen', noStations: 'Noch keine Sender gespeichert — im Haupt-Dashboard hinzufügen.',
+  de: { title: 'Mediaplayer', idle: 'Keine Wiedergabe', paused: 'Pausiert', live: 'Live', play: 'Abspielen', pause: 'Pause', stop: 'Stopp', volume: 'Lautstärke', playOn: 'Wiedergabe auf', playingOn: 'Läuft auf {name}', lastPlayed: 'Zuletzt: {name}', pickStation: 'Unten einen Sender wählen',
+    favourites: 'Favoriten', browse: 'Entdecken', searchPh: 'Radiosender suchen…', loading: 'Sender werden geladen…', noResults: 'Keine Sender gefunden', directory: 'Senderverzeichnis:', favourite: 'Zu Favoriten', unfavourite: 'Aus Favoriten entfernen',
+    addUrl: 'Stream-URL hinzufügen', urlPh: 'https://… Stream oder Audiodatei', namePh: 'Name (optional)', save: 'Speichern', thisScreen: 'Dieser Bildschirm', thisScreenHint: 'Dieses Gerät', noStations: 'Noch keine Favoriten — Sender im Haupt-Dashboard markieren.',
     "This browser can't play that stream": 'Dieser Browser kann den Stream nicht abspielen', 'Tap play to start sound on this screen': 'Auf Abspielen tippen, um hier Ton zu starten' },
-  fr: { title: 'Lecteur multimédia', playing: 'Lecture', paused: 'En pause', idle: 'Rien en lecture', pause: 'Pause', resume: 'Reprendre', stop: 'Arrêt', volume: 'Volume', play: 'Lire', save: 'Enregistrer la station', remove: 'Supprimer', urlPh: 'URL de flux ou de fichier audio (https://…)', namePh: 'Nom',
-    thisScreen: 'Cet écran', thisScreenHint: 'Lire sur cet appareil', noStations: 'Aucune station enregistrée — ajoutez-en depuis le tableau de bord principal.',
+  fr: { title: 'Lecteur multimédia', idle: 'Rien en lecture', paused: 'En pause', live: 'En direct', play: 'Lire', pause: 'Pause', stop: 'Arrêt', volume: 'Volume', playOn: 'Lire sur', playingOn: 'En lecture sur {name}', lastPlayed: 'Dernière écoute : {name}', pickStation: 'Choisissez une station ci-dessous',
+    favourites: 'Favoris', browse: 'Parcourir', searchPh: 'Rechercher des radios…', loading: 'Chargement des stations…', noResults: 'Aucune station trouvée', directory: 'Annuaire des stations :', favourite: 'Ajouter aux favoris', unfavourite: 'Retirer des favoris',
+    addUrl: 'Ajouter une URL de flux', urlPh: 'https://… flux ou fichier audio', namePh: 'Nom (facultatif)', save: 'Enregistrer', thisScreen: 'Cet écran', thisScreenHint: 'Cet appareil', noStations: 'Aucun favori — ajoutez des étoiles depuis le tableau de bord principal.',
     "This browser can't play that stream": 'Ce navigateur ne peut pas lire ce flux', 'Tap play to start sound on this screen': 'Touchez lecture pour lancer le son sur cet écran' },
-  es: { title: 'Reproductor', playing: 'Reproduciendo', paused: 'En pausa', idle: 'No suena nada', pause: 'Pausa', resume: 'Reanudar', stop: 'Detener', volume: 'Volumen', play: 'Reproducir', save: 'Guardar emisora', remove: 'Quitar', urlPh: 'URL de stream o audio (https://…)', namePh: 'Nombre',
-    thisScreen: 'Esta pantalla', thisScreenHint: 'Reproducir en este dispositivo', noStations: 'Aún no hay emisoras guardadas — añádelas en el panel principal.',
+  es: { title: 'Reproductor', idle: 'No suena nada', paused: 'En pausa', live: 'En directo', play: 'Reproducir', pause: 'Pausa', stop: 'Detener', volume: 'Volumen', playOn: 'Reproducir en', playingOn: 'Sonando en {name}', lastPlayed: 'Último: {name}', pickStation: 'Elige una emisora abajo',
+    favourites: 'Favoritas', browse: 'Explorar', searchPh: 'Buscar emisoras…', loading: 'Cargando emisoras…', noResults: 'No se encontraron emisoras', directory: 'Directorio de emisoras:', favourite: 'Añadir a favoritas', unfavourite: 'Quitar de favoritas',
+    addUrl: 'Añadir URL de stream', urlPh: 'https://… stream o archivo de audio', namePh: 'Nombre (opcional)', save: 'Guardar', thisScreen: 'Esta pantalla', thisScreenHint: 'Este dispositivo', noStations: 'Aún no hay favoritas — márcalas con estrella en el panel principal.',
     "This browser can't play that stream": 'Este navegador no puede reproducir ese stream', 'Tap play to start sound on this screen': 'Pulsa reproducir para activar el sonido en esta pantalla' },
-  it: { title: 'Lettore multimediale', playing: 'In riproduzione', paused: 'In pausa', idle: 'Niente in riproduzione', pause: 'Pausa', resume: 'Riprendi', stop: 'Stop', volume: 'Volume', play: 'Riproduci', save: 'Salva stazione', remove: 'Rimuovi', urlPh: 'URL di stream o file audio (https://…)', namePh: 'Nome',
-    thisScreen: 'Questo schermo', thisScreenHint: 'Riproduci su questo dispositivo', noStations: 'Nessuna stazione salvata — aggiungile dalla dashboard principale.',
+  it: { title: 'Lettore multimediale', idle: 'Niente in riproduzione', paused: 'In pausa', live: 'In diretta', play: 'Riproduci', pause: 'Pausa', stop: 'Stop', volume: 'Volume', playOn: 'Riproduci su', playingOn: 'In riproduzione su {name}', lastPlayed: 'Ultimo: {name}', pickStation: 'Scegli una stazione qui sotto',
+    favourites: 'Preferiti', browse: 'Sfoglia', searchPh: 'Cerca stazioni radio…', loading: 'Caricamento stazioni…', noResults: 'Nessuna stazione trovata', directory: 'Elenco stazioni:', favourite: 'Aggiungi ai preferiti', unfavourite: 'Rimuovi dai preferiti',
+    addUrl: 'Aggiungi URL di stream', urlPh: 'https://… stream o file audio', namePh: 'Nome (facoltativo)', save: 'Salva', thisScreen: 'Questo schermo', thisScreenHint: 'Questo dispositivo', noStations: 'Nessun preferito — aggiungi le stelle dalla dashboard principale.',
     "This browser can't play that stream": 'Questo browser non può riprodurre lo stream', 'Tap play to start sound on this screen': 'Tocca play per avviare l’audio su questo schermo' },
-  uk: { title: 'Медіаплеєр', playing: 'Грає', paused: 'Пауза', idle: 'Нічого не грає', pause: 'Пауза', resume: 'Продовжити', stop: 'Стоп', volume: 'Гучність', play: 'Відтворити', save: 'Зберегти станцію', remove: 'Видалити', urlPh: 'URL потоку або аудіофайлу (https://…)', namePh: 'Назва',
-    thisScreen: 'Цей екран', thisScreenHint: 'Відтворювати на цьому пристрої', noStations: 'Ще немає збережених станцій — додайте їх на головній панелі.',
+  uk: { title: 'Медіаплеєр', idle: 'Нічого не грає', paused: 'Пауза', live: 'Наживо', play: 'Відтворити', pause: 'Пауза', stop: 'Стоп', volume: 'Гучність', playOn: 'Відтворювати на', playingOn: 'Грає на: {name}', lastPlayed: 'Останнє: {name}', pickStation: 'Оберіть станцію нижче',
+    favourites: 'Обране', browse: 'Огляд', searchPh: 'Пошук радіостанцій…', loading: 'Завантаження станцій…', noResults: 'Станцій не знайдено', directory: 'Каталог станцій:', favourite: 'Додати в обране', unfavourite: 'Прибрати з обраного',
+    addUrl: 'Додати URL потоку', urlPh: 'https://… потік або аудіофайл', namePh: 'Назва (необов’язково)', save: 'Зберегти', thisScreen: 'Цей екран', thisScreenHint: 'Цей пристрій', noStations: 'Обраного ще немає — позначте станції зірочкою на головній панелі.',
     "This browser can't play that stream": 'Цей браузер не може відтворити потік', 'Tap play to start sound on this screen': 'Торкніться відтворення, щоб увімкнути звук на цьому екрані' },
 }
-function T(k) { return (TX[getLang()] || TX.en)[k] || TX.en[k] || k }
+function T(k, vars) {
+  let s = (TX[getLang()] || TX.en)[k] || TX.en[k] || k
+  if (vars) for (const [n, v] of Object.entries(vars)) s = s.split(`{${n}}`).join(v)
+  return s
+}

@@ -37,10 +37,12 @@ function el() {
 export const localAudio = {
   subscribe(f) { listeners.add(f); return () => listeners.delete(f) },
   get() { return state },
-  async play(url, title) {
+  // url = the stream (what's shown / looked up); src = what the element loads, e.g.
+  // LSH's relay (/api/media/stream?url=…) so https pages can play http streams
+  async play(url, title, src = url) {
     const a = el()
     stopping = false
-    a.src = url
+    a.src = src
     emit({ url, title: title || url, status: 'buffering', error: null })
     try { await a.play() } catch (err) {
       emit({ status: 'idle', error: err.name === 'NotAllowedError' ? 'Tap play to start sound on this screen' : 'This browser can\'t play that stream' })

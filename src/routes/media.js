@@ -10,9 +10,15 @@
 //   POST /media/stop   { target }
 //   POST /media/pause | /media/resume { target }   (Cast)
 //   POST /media/volume { target, volume }
-//   POST /media/stations { stations: [{ name, url }] }
+//   POST /media/stations { stations: [{ name, url, favicon? }] }
+//   GET  /media/radio?q=&country=   internet radio directory (radio-browser.info, proxied + cached)
+//   GET  /media/nowplaying?url=     the stream's current song (ICY metadata), cached 15 s
+//   GET  /media/stream?url=         relays an audio stream to this screen (https pages can't
+//                                   play http streams; only audio content types pass)
 //
 // Only http(s) URLs are played — never a path on this server.
+const http = require('http');
+const https = require('https');
 const { readConfigFile } = require('./helpers');
 const { writeConfigFile } = require('../config-file-cache');
 
@@ -21,10 +27,104 @@ const LIVE_RE = /\.(m3u8|pls)(\?|$)|\/(stream|live|listen|radio)\b|icecast|shout
 
 function cleanStations(list) {
   return (Array.isArray(list) ? list : [])
-    .map((s) => ({ name: String(s?.name || '').trim().slice(0, 80), url: String(s?.url || '').trim() }))
+    .map((s) => {
+      const st = { name: String(s?.name || '').trim().slice(0, 80), url: String(s?.url || '').trim() };
+      const icon = String(s?.favicon || '').trim();
+      if (URL_RE.test(icon) && icon.length < 500) st.favicon = icon;
+      return st;
+    })
     .filter((s) => s.name && URL_RE.test(s.url))
     .slice(0, 50);
 }
+
+// ── internet radio directory (radio-browser.info: free, community-run) ──────
+const RB_HOSTS = ['de1.api.radio-browser.info', 'nl1.api.radio-browser.info', 'at1.api.radio-browser.info'];
+const radioCache = new Map(); // query → { at, data }
+async function radioSearch({ q, country }) {
+  const key = `${q}|${country}`;
+  const hit = radioCache.get(key);
+  if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.data;
+  const params = new URLSearchParams({ limit: '40', hidebroken: 'true', order: 'clickcount', reverse: 'true' });
+  if (q) params.set('name', q);
+  if (country) params.set('countrycode', country);
+  let lastErr;
+  for (const host of RB_HOSTS) {
+    try {
+      const res = await fetch(`https://${host}/json/stations/search?${params}`, { headers: { 'User-Agent': 'LSH/1.0' }, signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const seen = new Set();
+      const data = (await res.json())
+        .filter((st) => URL_RE.test(st.url_resolved || '') && !seen.has(st.url_resolved) && seen.add(st.url_resolved))
+        .map((st) => ({
+          name: String(st.name || '').trim().slice(0, 80), url: st.url_resolved,
+          favicon: URL_RE.test(st.favicon || '') ? st.favicon : undefined,
+          country: st.countrycode || '', codec: st.codec || '', bitrate: st.bitrate || 0, hls: !!st.hls,
+          tags: String(st.tags || '').split(',').map((t) => t.trim()).filter(Boolean).slice(0, 3),
+        }))
+        .filter((st) => st.name);
+      radioCache.set(key, { at: Date.now(), data });
+      if (radioCache.size > 200) radioCache.delete(radioCache.keys().next().value);
+      return data;
+    } catch (err) { lastErr = err }
+  }
+  throw new Error(`Radio directory unreachable (${lastErr?.message || 'no answer'})`);
+}
+
+// open an http(s) GET, following up to 3 redirects
+function openUrl(url, headers, timeoutMs, hops = 0) {
+  return new Promise((resolve, reject) => {
+    const mod = url.startsWith('https:') ? https : http;
+    const req = mod.get(url, { headers: { 'User-Agent': 'LSH/1.0', ...headers }, timeout: timeoutMs }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hops < 3) {
+        res.resume();
+        const next = new URL(res.headers.location, url).toString();
+        if (!URL_RE.test(next)) return reject(new Error('Bad redirect'));
+        return openUrl(next, headers, timeoutMs, hops + 1).then(resolve, reject);
+      }
+      resolve({ res, req });
+    });
+    req.on('timeout', () => req.destroy(new Error('Timed out')));
+    req.on('error', reject);
+  });
+}
+
+// ── what's on: ICY StreamTitle (Icecast / Shoutcast) ────────────────────────
+const titleCache = new Map(); // url → { at, title }
+async function streamTitle(url) {
+  const hit = titleCache.get(url);
+  if (hit && Date.now() - hit.at < 15000) return hit.title;
+  let title = '';
+  try {
+    const { res, req } = await openUrl(url, { 'Icy-MetaData': '1' }, 6000);
+    const metaint = Number(res.headers['icy-metaint']);
+    if (res.statusCode === 200 && metaint > 0 && metaint < 1e6) {
+      title = await new Promise((resolve) => {
+        let got = 0, buf = Buffer.alloc(0);
+        const done = (t) => { req.destroy(); resolve(t) };
+        const timer = setTimeout(() => done(''), 6000);
+        res.on('data', (chunk) => {
+          got += chunk.length;
+          buf = Buffer.concat([buf, chunk]);
+          if (buf.length > metaint + 1) {
+            const len = buf[metaint] * 16;
+            if (buf.length >= metaint + 1 + len) {
+              clearTimeout(timer);
+              const meta = buf.subarray(metaint + 1, metaint + 1 + len).toString('utf8');
+              done((/StreamTitle='(.*?)';/.exec(meta)?.[1] || '').trim());
+            }
+          }
+          if (got > metaint + 4096 + 1) { clearTimeout(timer); done('') }
+        });
+        res.on('error', () => { clearTimeout(timer); done('') });
+      });
+    } else req.destroy();
+  } catch { /* no metadata — fine */ }
+  titleCache.set(url, { at: Date.now(), title });
+  if (titleCache.size > 100) titleCache.delete(titleCache.keys().next().value);
+  return title;
+}
+
+const AUDIO_TYPE = /^(audio\/|application\/(ogg|octet-stream|x-mpegurl|vnd\.apple\.mpegurl)|video\/mp2t)/i;
 
 module.exports = function register(router, ctx) {
   const { clients, requireAdmin, store } = ctx;
@@ -47,11 +147,11 @@ module.exports = function register(router, ctx) {
     for (const t of cast()?.targets() || []) {
       const v = (p) => store.get(`${t.key}/${p}`);
       targets.push({ id: `cast:${t.host}`, kind: 'chromecast', name: t.name, deviceKey: t.key,
-        state: v('playbackState') || 'idle', title: v('nowPlaying') || '', volume: v('volume'), muted: v('mute') === 1 });
+        state: v('playbackState') || 'idle', title: v('nowPlaying') || '', url: v('mediaUrl') || '', volume: v('volume'), muted: v('mute') === 1 });
     }
     for (const s of airplay()?.getSpeakers() || []) {
       targets.push({ id: `airplay:${s.id}`, kind: 'airplay', name: s.name,
-        state: s.playing ? 'playing' : 'idle', title: s.playing?.title || '', volume: s.playing?.volume ?? null, since: s.playing?.since });
+        state: s.playing ? 'playing' : 'idle', title: s.playing?.title || '', url: s.playing?.url || '', volume: s.playing?.volume ?? null, since: s.playing?.since });
     }
     let stations = [];
     try { stations = cleanStations(readConfigFile().media?.stations) } catch { /* no config */ }
@@ -102,6 +202,37 @@ module.exports = function register(router, ctx) {
     else airplay().setVolume(id, v);
     return `Volume ${Math.round(v)}%`;
   }));
+
+  router.get('/media/radio', async (req, res) => {
+    try {
+      const q = String(req.query.q || '').trim().slice(0, 80);
+      const country = /^[A-Za-z]{2}$/.test(req.query.country || '') ? String(req.query.country).toUpperCase() : '';
+      res.json({ success: true, data: await radioSearch({ q, country }) });
+    } catch (err) { res.status(502).json({ success: false, error: err.message }) }
+  });
+
+  router.get('/media/nowplaying', requireAdmin, async (req, res) => {
+    const url = String(req.query.url || '');
+    if (!URL_RE.test(url)) return res.status(400).json({ success: false, error: 'url must be http(s)' });
+    res.json({ success: true, data: { title: await streamTitle(url) } });
+  });
+
+  router.get('/media/stream', requireAdmin, async (req, res) => {
+    const url = String(req.query.url || '');
+    if (!URL_RE.test(url)) return res.status(400).end();
+    try {
+      const { res: up, req: upReq } = await openUrl(url, req.headers.range ? { Range: req.headers.range } : {}, 15000);
+      const type = String(up.headers['content-type'] || '');
+      if (![200, 206].includes(up.statusCode) || !AUDIO_TYPE.test(type)) { upReq.destroy(); return res.status(415).end() }
+      res.status(up.statusCode);
+      for (const h of ['content-type', 'content-length', 'content-range', 'accept-ranges', 'icy-name']) if (up.headers[h]) res.setHeader(h, up.headers[h]);
+      res.setHeader('Cache-Control', 'no-store');
+      up.pipe(res);
+      const close = () => upReq.destroy();
+      req.on('close', close);
+      up.on('error', () => res.destroy());
+    } catch { if (!res.headersSent) res.status(502).end() }
+  });
 
   router.post('/media/stations', requireAdmin, (req, res) => reply(res, () => {
     const stations = cleanStations(req.body?.stations);

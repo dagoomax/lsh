@@ -101,10 +101,12 @@ class GoogleHomeClient {
         this._store.update(`${k}/playbackState`, (s.playerState || 'IDLE').toLowerCase());
         const title = s.media?.metadata?.title || s.media?.contentId || '';
         this._store.update(`${k}/nowPlaying`, title);
+        this._store.update(`${k}/mediaUrl`, s.media?.contentId || '');
         media.dispose();
       } else {
         this._store.update(`${k}/playbackState`, 'idle');
         this._store.update(`${k}/nowPlaying`, '');
+        this._store.update(`${k}/mediaUrl`, '');
       }
 
       platformStatus.set('googlehome', true);
