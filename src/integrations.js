@@ -108,6 +108,17 @@ module.exports = [
   { file: 'ugreen-client', label: 'UGREEN', expose: 'ugreen', when: (config) => config.ugreen?.email && config.ugreen?.password },
   // Anker SOLIX Solarbank Max / E5000 Pro / XE, Smart Meter & Plug Gen 2 — official local Modbus TCP
   { file: 'anker-solix-client', label: 'Anker SOLIX', expose: 'ankerSolix', when: (config) => config.ankerSolix?.devices?.length },
+  // Air conditioners — shared AC model in src/ac-common.js (HomeKit thermostat)
+  // Daikin — local HTTP API of the Wi-Fi adapters (BRP069 / BRP072A; BRP072C with its key)
+  { file: 'daikin-client', label: 'Daikin', expose: 'daikin', when: (config) => config.daikin?.devices?.length },
+  // Gree and its rebrands (Sinclair, Cooper&Hunter, Tosot…) — local UDP
+  { file: 'gree-client', label: 'Gree', expose: 'gree', when: (config) => config.gree?.devices?.length },
+  // Midea and its brands (Comfee, Carrier, Toshiba, Electrolux…) — local LAN V2 / V3
+  { file: 'midea-client', label: 'Midea', expose: 'midea', when: (config) => config.midea?.devices?.length },
+  // Mitsubishi Electric — MELCloud (app account)
+  { file: 'melcloud-client', label: 'MELCloud', expose: 'melcloud', when: (config) => config.melcloud?.email && config.melcloud?.password },
+  // Sensibo — official cloud API (any IR air conditioner)
+  { file: 'sensibo-client', label: 'Sensibo', expose: 'sensibo', when: (config) => config.sensibo?.apiKey },
   // Spotify Web API — playback control (OAuth PKCE, only a Client ID needed)
   { file: 'spotify-client', label: 'Spotify', expose: 'spotify', when: (config) => config.spotify?.clientId },
   // Apple Music — developer token for the dashboard's MusicKit player + player relay device

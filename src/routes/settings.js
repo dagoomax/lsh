@@ -41,6 +41,11 @@ module.exports = function register(router, ctx) {
     if (safe.vclu?.token) safe.vclu.token = '••••••••';
     if (Array.isArray(safe.airplay?.speakers)) safe.airplay.speakers = safe.airplay.speakers.map((sp) => (sp?.password ? { ...sp, password: '••••••••' } : sp));
     if (safe.ugreen?.password) safe.ugreen.password = '••••••••';
+    if (safe.melcloud?.password) safe.melcloud.password = '••••••••';
+    if (safe.sensibo?.apiKey) safe.sensibo.apiKey = '••••••••';
+    if (Array.isArray(safe.daikin?.devices)) safe.daikin.devices = safe.daikin.devices.map((d) => (d?.key ? { ...d, key: '••••••••' } : d));
+    if (Array.isArray(safe.midea?.devices)) safe.midea.devices = safe.midea.devices.map((d) => (d?.token || d?.key ? { ...d, ...(d.token ? { token: '••••••••' } : {}), ...(d.key ? { key: '••••••••' } : {}) } : d));
+    if (Array.isArray(safe.gree?.devices)) safe.gree.devices = safe.gree.devices.map((d) => (d?.key ? { ...d, key: '••••••••' } : d));
     if (safe.zway?.password) safe.zway.password = '••••••••';
     if (safe.wirenboard?.password) safe.wirenboard.password = '••••••••';
     if (safe.kenik?.password) safe.kenik.password = '••••••••';

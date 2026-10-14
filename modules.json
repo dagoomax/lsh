@@ -1242,6 +1242,71 @@
       ],
       "deps": {}
     },
+    "daikin": {
+      "entry": "src/daikin-client.js",
+      "configKeys": [
+        "daikin"
+      ],
+      "when": "(config.daikin?.devices?.length)",
+      "files": [
+        "src/ac-common.js",
+        "src/daikin-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
+    },
+    "gree": {
+      "entry": "src/gree-client.js",
+      "configKeys": [
+        "gree"
+      ],
+      "when": "(config.gree?.devices?.length)",
+      "files": [
+        "src/ac-common.js",
+        "src/gree-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
+    },
+    "midea": {
+      "entry": "src/midea-client.js",
+      "configKeys": [
+        "midea"
+      ],
+      "when": "(config.midea?.devices?.length)",
+      "files": [
+        "src/ac-common.js",
+        "src/midea-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
+    },
+    "melcloud": {
+      "entry": "src/melcloud-client.js",
+      "configKeys": [
+        "melcloud"
+      ],
+      "when": "(config.melcloud?.email && config.melcloud?.password)",
+      "files": [
+        "src/ac-common.js",
+        "src/melcloud-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
+    },
+    "sensibo": {
+      "entry": "src/sensibo-client.js",
+      "configKeys": [
+        "sensibo"
+      ],
+      "when": "(config.sensibo?.apiKey)",
+      "files": [
+        "src/ac-common.js",
+        "src/polling-client.js",
+        "src/sensibo-client.js"
+      ],
+      "deps": {}
+    },
     "spotify": {
       "entry": "src/spotify-client.js",
       "configKeys": [

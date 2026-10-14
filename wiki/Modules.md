@@ -2,7 +2,7 @@
 
 ‹ [Home](Home) · [Architecture](Architecture) ›
 
-Every JavaScript module in `src/` has a reference page below (110 modules). Pages are generated from source plus the README's module notes.
+Every JavaScript module in `src/` has a reference page below (117 modules). Pages are generated from source plus the README's module notes.
 
 ## Core
 
@@ -64,8 +64,10 @@ Every JavaScript module in `src/` has a reference page below (110 modules). Page
 
 | Module | Lines | Config | Devices |
 |---|---|---|---|
+| [`ac-common.js`](Module-ac-common) | 117 | — | — |
 | [`camera-log.js`](Module-camera-log) | 27 | — | — |
 | [`logger.js`](Module-logger) | 131 | — | — |
+| [`modbus-tcp.js`](Module-modbus-tcp) | 111 | — | — |
 | [`platform-status.js`](Module-platform-status) | 21 | — | — |
 | [`server-i18n.js`](Module-server-i18n) | 142 | `json` | — |
 | [`simulator-manager.js`](Module-simulator-manager) | 120 | `simulators` | — |
@@ -88,6 +90,7 @@ Every JavaScript module in `src/` has a reference page below (110 modules). Page
 | [`boneio-client.js`](Module-boneio-client) | 255 | — | `boneio` |
 | [`broadlink-client.js`](Module-broadlink-client) | 349 | `broadlink` | — |
 | [`can-client.js`](Module-can-client) | 208 | `can` | `can` |
+| [`daikin-client.js`](Module-daikin-client) | 171 | `daikin` | `daikin` |
 | [`denon-client.js`](Module-denon-client) | 213 | `denon` | — |
 | [`dirigera-client.js`](Module-dirigera-client) | 318 | `dirigera` | — |
 | [`domatiq-client.js`](Module-domatiq-client) | 352 | `domatiq` | `domatiq` |
@@ -101,6 +104,7 @@ Every JavaScript module in `src/` has a reference page below (110 modules). Page
 | [`goecharger-client.js`](Module-goecharger-client) | 139 | `goecharger` | — |
 | [`googlehome-client.js`](Module-googlehome-client) | 153 | `googlehome` | `googlehome` |
 | [`googletv-client.js`](Module-googletv-client) | 144 | `googletv` | `googletv` |
+| [`gree-client.js`](Module-gree-client) | 204 | `gree` | `gree` |
 | [`grenton-client.js`](Module-grenton-client) | 201 | `grenton` | `grenton` |
 | [`homeassistant-client.js`](Module-homeassistant-client) | 404 | `homeassistant` | `ha` |
 | [`homeconnect-client.js`](Module-homeconnect-client) | 353 | `homeConnect` | `homeconnect` |
@@ -115,6 +119,8 @@ Every JavaScript module in `src/` has a reference page below (110 modules). Page
 | [`loxone-out-client.js`](Module-loxone-out-client) | 61 | `loxoneOut` | — |
 | [`lsh-ble-client.js`](Module-lsh-ble-client) | 325 | `lshBle` | `lshble` |
 | [`mc6-client.js`](Module-mc6-client) | 127 | `mc` | — |
+| [`melcloud-client.js`](Module-melcloud-client) | 129 | `melcloud` | `melcloud` |
+| [`midea-client.js`](Module-midea-client) | 321 | `midea` | `midea` |
 | [`miele-client.js`](Module-miele-client) | 353 | `miele` | `miele` |
 | [`modbus-client.js`](Module-modbus-client) | 430 | `modbus` | `modbus` |
 | [`modbus-emulator.js`](Module-modbus-emulator) | 386 | `modbusEmu` | — |
@@ -125,6 +131,7 @@ Every JavaScript module in `src/` has a reference page below (110 modules). Page
 | [`roborock-client.js`](Module-roborock-client) | 211 | `roborock` | — |
 | [`roborock-cloud-client.js`](Module-roborock-cloud-client) | 836 | `roborock` | `roborock` |
 | [`satel-client.js`](Module-satel-client) | 467 | `satel` | `satel` |
+| [`sensibo-client.js`](Module-sensibo-client) | 117 | `sensibo` | `sensibo` |
 | [`shelly-client.js`](Module-shelly-client) | 327 | `shelly` | — |
 | [`sinum-client.js`](Module-sinum-client) | 294 | `sinum` | `sinum` |
 | [`smartbob-client.js`](Module-smartbob-client) | 128 | `smartbob` | — |
