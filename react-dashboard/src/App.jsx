@@ -1,3 +1,4 @@
+import { MusicOverlay } from './components/MusicHub'
 import { useEffect, useState, lazy, Suspense } from 'react'
 import './styles/global.css'
 import { useLSH }            from './hooks/useLSH'
@@ -138,6 +139,7 @@ export default function App() {
     <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--bg)', overflow:'hidden' }}>
       <Toast />
       <IncomingCall />
+      <MusicOverlay />
       <PagingPanel {...paging} open={pagingOpen} setOpen={setPagingOpen} anchorTop />
       <Header connection={connection} connected={connected} onLock={lock} onOpenSettings={() => setView('settings')} onOpenWall={() => setView('wall')}
         onOpenCssEditor={() => setView('css-editor')} onOpenClaudeCode={() => setView('claude-code')} onOpenTerminal={() => setView('terminal')}

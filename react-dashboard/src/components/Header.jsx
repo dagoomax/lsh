@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { musicPlaying, openMusic } from './MusicHub'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { LANGUAGES, getLang, setLang, gt } from '../i18n'
 import { MonitorIcon, BroadcastIcon, LockIcon, SunIcon, MoonIcon } from './Icons'
 
@@ -19,6 +20,18 @@ const iconBtnStyle = {
   width: 38, height: 38, flexShrink: 0,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   cursor: 'pointer',
+}
+
+// ♪ — the music hub in a popup (a dot while something plays); MusicOverlay in App renders it
+function MusicButton({ style }) {
+  const playing = useSyncExternalStore(musicPlaying.subscribe, musicPlaying.get)
+  const label = gt('music', 'Music')
+  return (
+    <button className="header-icon-btn" onClick={() => openMusic('popup')} title={label} aria-label={label} style={{ ...style, position: 'relative' }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+      {playing && <span className="hdr-music-dot" />}
+    </button>
+  )
 }
 
 export default function Header({ connection, connected, onLock, onOpenSettings, onOpenWall, onOpenCssEditor, onOpenClaudeCode, onOpenTerminal, onOpenView, pagingRoomCount, pagingMessageCount, onTogglePaging }) {
@@ -165,6 +178,7 @@ export default function Header({ connection, connected, onLock, onOpenSettings, 
             )}
           </button>
         )}
+        <MusicButton style={iconBtnStyle} />
         <button
           className="header-icon-btn"
           onClick={onLock}

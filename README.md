@@ -4155,6 +4155,10 @@ When Spotify or Apple Music is configured, LSH also registers `music/player` (`s
 
 **Pictures** can't be pushed — Loxone fetches them: `GET /api/loxone/cover/<device key>.jpg?token=<API token>` (`spotify/player`, `radio/airplay-salon2`, `radio/all` = the first speaker playing) always returns the current album cover / station logo as a 400×400 JPEG (`src/media-cover.js`: fetched once, converted by ffmpeg, cached; a dark square when nothing plays or the source is an SVG / broken). Use it as the image URL of an **Intercom (custom) / Camera** block or in a **Webpage** block.
 
+#### Apple TV / HomePod "now playing"
+
+When LSH plays a station on an AirPlay receiver, the receiver's screen shows it: the song (ICY title) as title, the artist, the station as album and the station logo as artwork (`src/radio-devices.js` → `AirplayClient.setMetadata`). Sent when the receiver reports ready, again a few seconds later (the AirPlay library drops info sent while the receiver is busy), and whenever the song or station changes.
+
 #### Spotify in Loxone
 
 `spotify/player` exposes numbers and pulses for Loxone besides Play / Next / Previous / Volume / Shuffle:
