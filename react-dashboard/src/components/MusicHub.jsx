@@ -113,10 +113,13 @@ export default function MusicHub() {
 }
 
 // ── Visualizer ────────────────────────────────────────────────────────────────
+const VIZ_MODES = ['bars', 'wave', 'ring']
 function Visualizer({ color, active, live, url, delay = 0 }) {
   const canvas = useRef(null)
-  const state = useRef({ color, active, live, bars: [], t: 0, frames: [], lastFrame: 0 })
-  state.current.color = color; state.current.active = active; state.current.live = live; state.current.delay = delay
+  const [mode, setMode] = useState(() => { const m = store.get('lsh-viz-mode'); return VIZ_MODES.includes(m) ? m : 'bars' })
+  const state = useRef({ color, active, live, mode, bars: [], peaks: [], peakV: [], t: 0, frames: [], lastFrame: 0, bass: 0, trail: [], sparks: [] })
+  Object.assign(state.current, { color, active, live, delay, mode })
+  const pickMode = (m) => { setMode(m); store.set('lsh-viz-mode', m) }
   const [serverLive, setServerLive] = useState(false)
   // spectrum of a station on a speaker, from LSH — frames queued, shown `delay` ms later
   useEffect(() => {
@@ -138,7 +141,7 @@ function Visualizer({ color, active, live, url, delay = 0 }) {
     const c = canvas.current
     if (!c) return
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    let raf, freq = null
+    let raf, freq = null, colorKey = '', hue = 210, sat = 75
     const draw = () => {
       const s = state.current
       const dpr = window.devicePixelRatio || 1
@@ -147,66 +150,35 @@ function Visualizer({ color, active, live, url, delay = 0 }) {
       const g = c.getContext('2d')
       g.setTransform(dpr, 0, 0, dpr, 0, 0)
       g.clearRect(0, 0, w, h)
-      const n = Math.max(24, Math.min(96, Math.floor(w / 11)))
-      if (s.bars.length !== n) s.bars = new Array(n).fill(0)
+      // colour → hue / saturation (any CSS colour, resolved through the canvas)
+      if (colorKey !== s.color) {
+        colorKey = s.color
+        g.fillStyle = s.color.startsWith('var(') ? getComputedStyle(c).getPropertyValue('--accent').trim() || '#0a84ff' : s.color
+        ;[hue, sat] = hsOf(g.fillStyle)
+      }
+      const n = s.mode === 'ring' ? 72 : Math.max(24, Math.min(96, Math.floor(w / 11)))
+      if (s.bars.length !== n) { s.bars = new Array(n).fill(0); s.peaks = new Array(n).fill(0); s.peakV = new Array(n).fill(0) }
       s.t += reduce ? 0 : 0.016
-      const an = s.live === 'local' ? localAudio.analyser() : null
-      if (an) {
-        if (!freq || freq.length !== an.frequencyBinCount) freq = new Uint8Array(an.frequencyBinCount)
-        an.getByteFrequencyData(freq)
-      }
-      // server frames: the newest one that's at least `delay` old (in step with the speaker)
-      let srv = null
-      if (s.live === 'server' && s.frames.length) {
-        const due = performance.now() - (s.delay || 0)
-        let k = -1
-        for (let j = s.frames.length - 1; j >= 0; j--) if (s.frames[j].t <= due) { k = j; break }
-        if (k >= 0) { srv = s.frames[k].f; if (k > 0) s.frames.splice(0, k) }
-      }
-      // colour: resolve CSS colours through the canvas
-      g.fillStyle = s.color.startsWith('var(') ? getComputedStyle(c).getPropertyValue('--accent').trim() || '#0a84ff' : s.color
-      const base = g.fillStyle
-      const mid = h * 0.62 // bars rise from here, a mirrored reflection falls below
-      const bw = w / n
+      const spectrum = readSpectrum(s, n, freq, (f) => { freq = f })
+      // smoothing: fast attack, slow release; peak caps that hang then fall
+      let bass = 0
       for (let i = 0; i < n; i++) {
-        let target
-        if (srv) {
-          const pos = (i / Math.max(1, n - 1)) * (srv.length - 1), a = Math.floor(pos), frac = pos - a
-          target = ((srv[a] * (1 - frac) + srv[Math.min(srv.length - 1, a + 1)] * frac) / 255) * (1.05 - 0.15 * (i / n))
-        } else if (an) {
-          // log-spaced bins: more detail in the bass, as ears hear it
-          const lo = Math.floor(Math.pow(freq.length * 0.7, i / n)), hi = Math.max(lo + 1, Math.floor(Math.pow(freq.length * 0.7, (i + 1) / n)))
-          let sum = 0
-          for (let k = lo; k < hi; k++) sum += freq[k]
-          target = sum / (hi - lo) / 255
-        } else {
-          // no audio to read: layered waves, a kick every half second and per-bar
-          // variation — reads as music without pretending to be its spectrum
-          const x = i / n
-          const ph = (Math.sin(i * 12.9898) * 43758.5453) % 1
-          const beat = 0.62 + 0.38 * Math.pow(Math.max(0, Math.sin(s.t * Math.PI * 4)), 6)
-          const body = (0.5 + 0.5 * Math.sin(x * 7 + s.t * 2.3 + ph * 6)) * (0.6 + 0.4 * Math.sin(x * 19 - s.t * 3.4 + ph * 3))
-          const flicker = 0.85 + 0.15 * Math.sin(s.t * 11 + ph * 40)
-          target = s.active
-            ? Math.min(1, (0.12 + 0.88 * body * flicker) * (1.2 - 0.6 * x) * (x < 0.18 ? beat : 0.85 + 0.15 * beat))
-            : 0.05 + 0.04 * (0.5 + 0.5 * Math.sin(x * 6 + s.t))
-        }
-        s.bars[i] += (target - s.bars[i]) * (target > s.bars[i] ? 0.45 : 0.12)
-        const bh = Math.max(2, s.bars[i] * (mid - 8))
-        const x0 = i * bw + bw * 0.18, bwid = bw * 0.64
-        const grad = g.createLinearGradient(0, mid - bh, 0, mid)
-        grad.addColorStop(0, s.active ? 'rgba(255,255,255,0.9)' : base)
-        grad.addColorStop(Math.min(0.35, 6 / bh), base)
-        grad.addColorStop(1, withAlpha(base, 0.35))
-        g.fillStyle = grad
-        g.shadowColor = base; g.shadowBlur = s.active ? 14 : 0
-        roundRect(g, x0, mid - bh, bwid, bh, Math.min(4, bwid / 2))
-        g.shadowBlur = 0
-        const rgrad = g.createLinearGradient(0, mid + 2, 0, mid + 2 + bh * 0.45)
-        rgrad.addColorStop(0, withAlpha(base, 0.28)); rgrad.addColorStop(1, withAlpha(base, 0))
-        g.fillStyle = rgrad
-        roundRect(g, x0, mid + 2, bwid, bh * 0.45, Math.min(4, bwid / 2))
+        s.bars[i] += (spectrum[i] - s.bars[i]) * (spectrum[i] > s.bars[i] ? 0.5 : 0.13)
+        if (s.bars[i] >= s.peaks[i]) { s.peaks[i] = s.bars[i]; s.peakV[i] = 0 } else { s.peakV[i] += 0.0009; s.peaks[i] = Math.max(s.bars[i], s.peaks[i] - s.peakV[i]) }
+        if (i < n * 0.12) bass += s.bars[i]
       }
+      bass /= Math.max(1, Math.floor(n * 0.12))
+      s.bass += (bass - s.bass) * 0.25
+      const col = (i, l = 60, a = 1) => `hsla(${(hue + (i / n) * 70) % 360} ${sat}% ${l}% / ${a})`
+      // bass glow behind everything
+      if (s.active) {
+        const glow = g.createRadialGradient(w / 2, h * 0.62, 0, w / 2, h * 0.62, Math.max(w, h) * (0.35 + s.bass * 0.35))
+        glow.addColorStop(0, `hsla(${hue} ${sat}% 55% / ${0.10 + s.bass * 0.22})`); glow.addColorStop(1, `hsla(${hue} ${sat}% 55% / 0)`)
+        g.fillStyle = glow; g.fillRect(0, 0, w, h)
+      }
+      if (s.mode === 'wave') drawWave(g, s, w, h, n, col)
+      else if (s.mode === 'ring') drawRing(g, s, w, h, n, col, hue, sat)
+      else drawBars(g, s, w, h, n, col)
       raf = requestAnimationFrame(draw)
     }
     raf = requestAnimationFrame(draw)
@@ -216,8 +188,185 @@ function Visualizer({ color, active, live, url, delay = 0 }) {
     <div className="hub-viz" title={live === 'local' ? T('vizLive') : live === 'server' && serverLive ? T('vizStation') : T('vizAnim')}>
       <canvas ref={canvas} aria-hidden="true" />
       {(live === 'local' || (live === 'server' && serverLive)) && <span className="hub-viz-badge">● {T('liveSpectrum')}</span>}
+      <div className="hub-viz-modes" role="radiogroup" aria-label={T('vizStyle')}>
+        {VIZ_MODES.map((m) => (
+          <button key={m} type="button" role="radio" aria-checked={mode === m} title={T(`viz_${m}`)} onClick={() => pickMode(m)}>
+            {m === 'bars' ? <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><rect x="1" y="7" width="3" height="8" rx="1"/><rect x="6.5" y="2" width="3" height="13" rx="1"/><rect x="12" y="5" width="3" height="10" rx="1"/></svg>
+              : m === 'wave' ? <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M1 8c2-5 3-5 4.5 0S8.5 13 10 8s3-5 5 0"/></svg>
+              : <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="8" cy="8" r="3.2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M3 13l1.4-1.4M11.6 4.4L13 3" strokeLinecap="round"/></svg>}
+          </button>
+        ))}
+      </div>
     </div>
   )
+}
+
+// n levels 0…1: from LSH's frames (a station on a speaker), this screen's analyser, or an animation
+function readSpectrum(s, n, freq, keepFreq) {
+  const out = new Array(n)
+  const an = s.live === 'local' ? localAudio.analyser() : null
+  if (an) {
+    if (!freq || freq.length !== an.frequencyBinCount) { freq = new Uint8Array(an.frequencyBinCount); keepFreq(freq) }
+    an.getByteFrequencyData(freq)
+  }
+  let srv = null
+  if (s.live === 'server' && s.frames.length) {
+    const due = performance.now() - (s.delay || 0)
+    let k = -1
+    for (let j = s.frames.length - 1; j >= 0; j--) if (s.frames[j].t <= due) { k = j; break }
+    if (k >= 0) { srv = s.frames[k].f; if (k > 0) s.frames.splice(0, k) }
+  }
+  for (let i = 0; i < n; i++) {
+    if (srv) {
+      const pos = (i / Math.max(1, n - 1)) * (srv.length - 1), a = Math.floor(pos), frac = pos - a
+      out[i] = ((srv[a] * (1 - frac) + srv[Math.min(srv.length - 1, a + 1)] * frac) / 255) * (1.05 - 0.15 * (i / n))
+    } else if (an) {
+      // log-spaced bins: more detail in the bass, as ears hear it
+      const lo = Math.floor(Math.pow(freq.length * 0.7, i / n)), hi = Math.max(lo + 1, Math.floor(Math.pow(freq.length * 0.7, (i + 1) / n)))
+      let sum = 0
+      for (let k = lo; k < hi; k++) sum += freq[k]
+      out[i] = sum / (hi - lo) / 255
+    } else {
+      // no audio to read: layered waves, a kick every half second and per-bar
+      // variation — reads as music without pretending to be its spectrum
+      const x = i / n
+      const ph = (Math.sin(i * 12.9898) * 43758.5453) % 1
+      const beat = 0.62 + 0.38 * Math.pow(Math.max(0, Math.sin(s.t * Math.PI * 4)), 6)
+      const body = (0.5 + 0.5 * Math.sin(x * 7 + s.t * 2.3 + ph * 6)) * (0.6 + 0.4 * Math.sin(x * 19 - s.t * 3.4 + ph * 3))
+      const flicker = 0.85 + 0.15 * Math.sin(s.t * 11 + ph * 40)
+      out[i] = s.active
+        ? Math.min(1, (0.12 + 0.88 * body * flicker) * (1.2 - 0.6 * x) * (x < 0.18 ? beat : 0.85 + 0.15 * beat))
+        : 0.05 + 0.04 * (0.5 + 0.5 * Math.sin(x * 6 + s.t))
+    }
+  }
+  return out
+}
+
+// bars rising from a floor, colour sweeping bass → treble, peak caps, a soft reflection
+function drawBars(g, s, w, h, n, col) {
+  const mid = h * 0.7, bw = w / n
+  for (let i = 0; i < n; i++) {
+    const v = s.bars[i], bh = Math.max(2, v * (mid - 10))
+    const x0 = i * bw + bw * 0.16, bwid = bw * 0.68, r = Math.min(4, bwid / 2)
+    const grad = g.createLinearGradient(0, mid - bh, 0, mid)
+    grad.addColorStop(0, col(i, s.active ? 78 : 60))
+    grad.addColorStop(1, col(i, 45, 0.55))
+    g.fillStyle = grad
+    g.shadowColor = col(i, 60, 0.8); g.shadowBlur = s.active ? 10 + s.bass * 14 : 0
+    roundRect(g, x0, mid - bh, bwid, bh, r)
+    g.shadowBlur = 0
+    if (s.active) {
+      const py = mid - Math.max(2, s.peaks[i] * (mid - 10)) - 5
+      g.fillStyle = col(i, 85, 0.95)
+      roundRect(g, x0, py, bwid, 2.5, 1.2)
+    }
+    const rg = g.createLinearGradient(0, mid + 3, 0, mid + 3 + bh * 0.4)
+    rg.addColorStop(0, col(i, 55, 0.25)); rg.addColorStop(1, col(i, 55, 0))
+    g.fillStyle = rg
+    roundRect(g, x0, mid + 3, bwid, bh * 0.4, r)
+  }
+}
+
+// a smooth mirrored waveform with a glow and fading echoes of the last frames
+function drawWave(g, s, w, h, n, col) {
+  const mid = h / 2, amp = h * 0.44
+  // taper the first and last 6 % so the curve meets the midline instead of ending in a cliff
+  const vals = s.bars.map((v, i) => { const x = i / (n - 1), e = Math.min(1, x / 0.06, (1 - x) / 0.06); return v * Math.sin((e * Math.PI) / 2) })
+  s.trail.unshift(vals)
+  if (s.trail.length > 5) s.trail.length = 5
+  const path = (vals, k) => {
+    g.beginPath()
+    g.moveTo(0, mid)
+    for (let i = 0; i < n; i++) {
+      const x = (i / (n - 1)) * w, y = mid - vals[i] * amp * k
+      const px = ((i - 1) / (n - 1)) * w, py = mid - (vals[i - 1] ?? 0) * amp * k
+      g.quadraticCurveTo(px, py, (px + x) / 2, (py + y) / 2)
+    }
+    g.lineTo(w, mid)
+  }
+  const grad = g.createLinearGradient(0, 0, w, 0)
+  for (let i = 0; i <= 4; i++) grad.addColorStop(i / 4, col((i / 4) * n, 62))
+  // echoes
+  for (let k = s.trail.length - 1; k >= 1; k--) {
+    g.globalAlpha = 0.12 * (1 - k / s.trail.length)
+    for (const dir of [1, -1]) { path(s.trail[k], dir); g.strokeStyle = grad; g.lineWidth = 1.5; g.stroke() }
+  }
+  g.globalAlpha = 1
+  // filled body, top and mirrored bottom
+  for (const dir of [1, -1]) {
+    path(vals, dir)
+    const fill = g.createLinearGradient(0, mid - amp * dir, 0, mid)
+    fill.addColorStop(0, col(n * 0.3, 60, s.active ? 0.55 : 0.25)); fill.addColorStop(1, col(n * 0.3, 50, 0.02))
+    g.fillStyle = fill; g.fill()
+    path(vals, dir)
+    g.strokeStyle = grad; g.lineWidth = 2.2
+    g.shadowColor = col(n * 0.3, 60, 0.9); g.shadowBlur = s.active ? 12 + s.bass * 16 : 0
+    g.stroke(); g.shadowBlur = 0
+  }
+  g.fillStyle = col(n * 0.3, 70, 0.35); g.fillRect(0, mid - 0.5, w, 1)
+}
+
+// a circular spectrum around a core that pulses with the bass; sparks fly out on kicks
+function drawRing(g, s, w, h, n, col, hue, sat) {
+  const cx = w / 2, cy = h / 2
+  const r0 = Math.min(h * 0.17, w * 0.2) * (1 + s.bass * 0.15)
+  const len = Math.min(h * 0.27, w * 0.25) // r0 · 1.15 + 4 + len stays inside the strip
+  const rot = s.t * 0.15
+  // core
+  const core = g.createRadialGradient(cx, cy, 0, cx, cy, r0)
+  core.addColorStop(0, `hsla(${hue} ${sat}% 70% / ${s.active ? 0.55 + s.bass * 0.3 : 0.2})`); core.addColorStop(1, `hsla(${hue} ${sat}% 45% / 0.05)`)
+  g.fillStyle = core; g.beginPath(); g.arc(cx, cy, r0 * 0.92, 0, Math.PI * 2); g.fill()
+  g.strokeStyle = `hsla(${hue} ${sat}% 70% / 0.5)`; g.lineWidth = 1.5; g.beginPath(); g.arc(cx, cy, r0, 0, Math.PI * 2); g.stroke()
+  // spokes: mirrored so the ring is symmetric left / right
+  g.lineCap = 'round'
+  for (let i = 0; i < n; i++) {
+    const v = s.bars[i < n / 2 ? i * 2 : (n - 1 - i) * 2 + 1] ?? s.bars[i]
+    const a = rot + (i / n) * Math.PI * 2 - Math.PI / 2
+    const l = 3 + v * len
+    g.strokeStyle = col(i < n / 2 ? i * 2 : (n - i) * 2, 66, 0.95)
+    g.lineWidth = Math.max(2, (Math.PI * 2 * r0) / n * 0.55)
+    g.shadowColor = g.strokeStyle; g.shadowBlur = s.active ? 8 : 0
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * (r0 + 4), cy + Math.sin(a) * (r0 + 4)); g.lineTo(cx + Math.cos(a) * (r0 + 4 + l), cy + Math.sin(a) * (r0 + 4 + l)); g.stroke()
+  }
+  g.shadowBlur = 0
+  // orbit
+  g.strokeStyle = `hsla(${(hue + 40) % 360} ${sat}% 70% / 0.18)`; g.lineWidth = 1
+  g.beginPath(); g.ellipse(cx, cy, r0 + len + 14, Math.min((r0 + len + 14) * 0.92, h / 2 - 2), rot, 0, Math.PI * 2); g.stroke()
+  // sparks on strong bass
+  if (s.active && s.bass > 0.55 && Math.random() < s.bass * 0.5 && s.sparks.length < 60) {
+    const a = Math.random() * Math.PI * 2
+    s.sparks.push({ x: cx + Math.cos(a) * r0, y: cy + Math.sin(a) * r0, vx: Math.cos(a) * (1 + s.bass * 3), vy: Math.sin(a) * (1 + s.bass * 3), life: 1, hue: hue + Math.random() * 70 })
+  }
+  for (const p of s.sparks) { p.x += p.vx; p.y += p.vy; p.life -= 0.02 }
+  s.sparks = s.sparks.filter((p) => p.life > 0 && p.x > -10 && p.x < w + 10 && p.y > -10 && p.y < h + 10)
+  for (const p of s.sparks) { g.fillStyle = `hsla(${p.hue % 360} ${sat}% 72% / ${p.life})`; g.beginPath(); g.arc(p.x, p.y, 1.6 + p.life * 1.4, 0, Math.PI * 2); g.fill() }
+  // side spectra fill the wide strip: bars fading out to the edges
+  const side = Math.max(0, cx - (r0 + len + 30))
+  if (side > 60) {
+    const m = Math.floor(side / 9)
+    for (let k = 0; k < m; k++) {
+      const v = s.bars[Math.floor((k / m) * n * 0.8)] * (1 - k / m)
+      const bh = 2 + v * h * 0.7
+      for (const dir of [-1, 1]) {
+        const x = cx + dir * (r0 + len + 30 + k * 9)
+        g.fillStyle = col((k / m) * n, 62, 0.35 + 0.5 * (1 - k / m))
+        roundRect(g, x - 2, cy - bh / 2, 4, bh, 2)
+      }
+    }
+  }
+}
+
+// "#rrggbb" / "rgb(…)" → [hue, saturation %]
+function hsOf(c) {
+  let r, gg, b
+  if (c.startsWith('#')) { r = parseInt(c.slice(1, 3), 16); gg = parseInt(c.slice(3, 5), 16); b = parseInt(c.slice(5, 7), 16) }
+  else { [r, gg, b] = (c.match(/\d+(\.\d+)?/g) || [0, 0, 0]).map(Number) }
+  r /= 255; gg /= 255; b /= 255
+  const max = Math.max(r, gg, b), min = Math.min(r, gg, b), d = max - min
+  let h = 0
+  if (d) h = max === r ? ((gg - b) / d) % 6 : max === gg ? (b - r) / d + 2 : (r - gg) / d + 4
+  const l = (max + min) / 2, sat = d ? d / (1 - Math.abs(2 * l - 1)) : 0
+  return [Math.round((h * 60 + 360) % 360), Math.round(Math.max(45, Math.min(90, sat * 100)))]
 }
 function roundRect(g, x, y, w, h, r) {
   g.beginPath()
@@ -588,49 +737,56 @@ function TidalLogo({ size = 18 }) {
 
 // ── texts ─────────────────────────────────────────────────────────────────────
 const TX = {
-  en: { tdSetup: 'TIDAL isn’t set up', tdConnect: 'Sign in to TIDAL', tdWhy: 'Search TIDAL and browse your playlists and albums here. TIDAL doesn’t let other apps control playback, so Play opens the item in TIDAL.', tdSearch: 'Search TIDAL', tdOpen: 'Open TIDAL', tdSignIn: 'Sign in for your library', tdSignedIn: 'Signed in as', tdGuest: 'Search only — sign in to see your playlists and albums', tdHere: 'Play opens in the TIDAL web player or app', tdEmpty: 'Nothing in your collection yet', yourAlbums: 'Your albums',
+  en: { vizStyle: 'Visualizer style', viz_bars: 'Bars', viz_wave: 'Wave', viz_ring: 'Ring',
+    tdSetup: 'TIDAL isn’t set up', tdConnect: 'Sign in to TIDAL', tdWhy: 'Search TIDAL and browse your playlists and albums here. TIDAL doesn’t let other apps control playback, so Play opens the item in TIDAL.', tdSearch: 'Search TIDAL', tdOpen: 'Open TIDAL', tdSignIn: 'Sign in for your library', tdSignedIn: 'Signed in as', tdGuest: 'Search only — sign in to see your playlists and albums', tdHere: 'Play opens in the TIDAL web player or app', tdEmpty: 'Nothing in your collection yet', yourAlbums: 'Your albums',
     vizStation: 'Spectrum of the station, decoded by LSH and timed to the speaker', music: 'Music', show: 'Show music', hide: 'Hide music', hidden: 'hidden', equalizer: 'Equalizer', loading: 'Loading…', nothing: 'Nothing playing', play: 'Play', pause: 'Pause', prev: 'Previous', next: 'Next', shuffle: 'Shuffle', devices: 'Spotify devices', noDevices: 'No devices — open Spotify on a phone, computer or speaker', playingOn: 'Playing on', failed: 'That didn’t work',
     spSetup: 'Spotify isn’t set up', spConnect: 'Connect your Spotify account', spWhy: 'Control playback, browse your playlists and search — Spotify Premium is needed to control playback.', openSettings: 'Open Settings', spPick: 'Pick a playlist or search below', spSearch: 'Search Spotify', yourPlaylists: 'Your playlists', noPlaylists: 'No playlists', noResults: 'Nothing found', tracks: '{n} tracks', track: 'Song', playlist: 'Playlist', album: 'Album', artist: 'Artist',
     amLoading: 'Loading Apple Music…', amSetup: 'Apple Music isn’t set up', amWhy: 'An admin adds the MusicKit key in Settings → Media → Apple Music. Music then plays right here.', amPick: 'Pick something below', amPreview: 'Sign in to play full tracks — without it you get 30-second previews', amSignIn: 'Sign in', amSignOut: 'Sign out', amHere: 'Plays on this screen', amSearch: 'Search Apple Music', recent: 'Recently played', amEmpty: 'Nothing in your library yet', position: 'Position',
     eqOn: 'Equalizer on', eqOff: 'Equalizer off', p_flat: 'Flat', p_bass: 'Bass boost', p_vocal: 'Vocal', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Electronic', p_night: 'Night',
     eqWhere: 'Applies live to radio on this screen, and to AirPlay speakers from the next station you start. Chromecast, Spotify and Apple Music play elsewhere or protected, so they can’t be equalized here. Double-click a slider to reset it.',
     liveSpectrum: 'live spectrum', vizLive: 'Spectrum of the audio playing on this screen', vizAnim: 'Animation — Spotify and Apple Music audio is protected, so its spectrum can’t be read' },
-  pl: { tdSetup: 'TIDAL nie jest skonfigurowany', tdConnect: 'Zaloguj się do TIDAL', tdWhy: 'Wyszukuj w TIDAL i przeglądaj tu swoje playlisty i albumy. TIDAL nie pozwala innym aplikacjom sterować odtwarzaniem, więc Odtwórz otwiera pozycję w TIDAL.', tdSearch: 'Szukaj w TIDAL', tdOpen: 'Otwórz TIDAL', tdSignIn: 'Zaloguj się, by zobaczyć bibliotekę', tdSignedIn: 'Zalogowano jako', tdGuest: 'Tylko wyszukiwanie — zaloguj się, by zobaczyć swoje playlisty i albumy', tdHere: 'Odtwarzanie otwiera się w odtwarzaczu TIDAL w przeglądarce lub w aplikacji', tdEmpty: 'Twoja kolekcja jest jeszcze pusta', yourAlbums: 'Twoje albumy',
+  pl: { vizStyle: 'Styl wizualizacji', viz_bars: 'Słupki', viz_wave: 'Fala', viz_ring: 'Pierścień',
+    tdSetup: 'TIDAL nie jest skonfigurowany', tdConnect: 'Zaloguj się do TIDAL', tdWhy: 'Wyszukuj w TIDAL i przeglądaj tu swoje playlisty i albumy. TIDAL nie pozwala innym aplikacjom sterować odtwarzaniem, więc Odtwórz otwiera pozycję w TIDAL.', tdSearch: 'Szukaj w TIDAL', tdOpen: 'Otwórz TIDAL', tdSignIn: 'Zaloguj się, by zobaczyć bibliotekę', tdSignedIn: 'Zalogowano jako', tdGuest: 'Tylko wyszukiwanie — zaloguj się, by zobaczyć swoje playlisty i albumy', tdHere: 'Odtwarzanie otwiera się w odtwarzaczu TIDAL w przeglądarce lub w aplikacji', tdEmpty: 'Twoja kolekcja jest jeszcze pusta', yourAlbums: 'Twoje albumy',
     vizStation: 'Widmo stacji, dekodowane przez LSH i zgrane z głośnikiem', music: 'Muzyka', show: 'Pokaż muzykę', hide: 'Ukryj muzykę', hidden: 'ukryte', equalizer: 'Korektor', loading: 'Wczytywanie…', nothing: 'Nic nie gra', play: 'Odtwórz', pause: 'Pauza', prev: 'Poprzedni', next: 'Następny', shuffle: 'Losowo', devices: 'Urządzenia Spotify', noDevices: 'Brak urządzeń — otwórz Spotify na telefonie, komputerze lub głośniku', playingOn: 'Gra na', failed: 'Nie udało się',
     spSetup: 'Spotify nie jest skonfigurowane', spConnect: 'Połącz konto Spotify', spWhy: 'Steruj odtwarzaniem, przeglądaj playlisty i wyszukuj — do sterowania potrzebne jest Spotify Premium.', openSettings: 'Otwórz Ustawienia', spPick: 'Wybierz playlistę albo wyszukaj poniżej', spSearch: 'Szukaj w Spotify', yourPlaylists: 'Twoje playlisty', noPlaylists: 'Brak playlist', noResults: 'Nic nie znaleziono', tracks: 'utwory: {n}', track: 'Utwór', playlist: 'Playlista', album: 'Album', artist: 'Wykonawca',
     amLoading: 'Wczytywanie Apple Music…', amSetup: 'Apple Music nie jest skonfigurowane', amWhy: 'Admin dodaje klucz MusicKit w Ustawienia → Multimedia → Apple Music. Muzyka gra wtedy tutaj.', amPick: 'Wybierz coś poniżej', amPreview: 'Zaloguj się, aby słuchać całych utworów — bez tego 30-sekundowe fragmenty', amSignIn: 'Zaloguj', amSignOut: 'Wyloguj', amHere: 'Gra na tym ekranie', amSearch: 'Szukaj w Apple Music', recent: 'Ostatnio odtwarzane', amEmpty: 'Biblioteka jest pusta', position: 'Pozycja',
     eqOn: 'Korektor włączony', eqOff: 'Korektor wyłączony', p_flat: 'Płasko', p_bass: 'Więcej basu', p_vocal: 'Wokal', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Elektronika', p_night: 'Noc',
     eqWhere: 'Działa na żywo dla radia na tym ekranie oraz dla głośników AirPlay od następnej uruchomionej stacji. Chromecast, Spotify i Apple Music grają gdzie indziej lub są chronione, więc nie da się ich tu korygować. Kliknij dwukrotnie suwak, aby go wyzerować.',
     liveSpectrum: 'widmo na żywo', vizLive: 'Widmo dźwięku grającego na tym ekranie', vizAnim: 'Animacja — dźwięk Spotify i Apple Music jest chroniony, więc nie da się odczytać jego widma' },
-  de: { tdSetup: 'TIDAL ist nicht eingerichtet', tdConnect: 'Bei TIDAL anmelden', tdWhy: 'TIDAL durchsuchen und deine Playlists und Alben hier ansehen. TIDAL erlaubt anderen Apps keine Wiedergabesteuerung, daher öffnet Abspielen den Eintrag in TIDAL.', tdSearch: 'In TIDAL suchen', tdOpen: 'TIDAL öffnen', tdSignIn: 'Für deine Bibliothek anmelden', tdSignedIn: 'Angemeldet als', tdGuest: 'Nur Suche — melde dich an, um deine Playlists und Alben zu sehen', tdHere: 'Abspielen öffnet den TIDAL-Web-Player oder die App', tdEmpty: 'Deine Sammlung ist noch leer', yourAlbums: 'Deine Alben',
+  de: { vizStyle: 'Visualisierung', viz_bars: 'Balken', viz_wave: 'Welle', viz_ring: 'Ring',
+    tdSetup: 'TIDAL ist nicht eingerichtet', tdConnect: 'Bei TIDAL anmelden', tdWhy: 'TIDAL durchsuchen und deine Playlists und Alben hier ansehen. TIDAL erlaubt anderen Apps keine Wiedergabesteuerung, daher öffnet Abspielen den Eintrag in TIDAL.', tdSearch: 'In TIDAL suchen', tdOpen: 'TIDAL öffnen', tdSignIn: 'Für deine Bibliothek anmelden', tdSignedIn: 'Angemeldet als', tdGuest: 'Nur Suche — melde dich an, um deine Playlists und Alben zu sehen', tdHere: 'Abspielen öffnet den TIDAL-Web-Player oder die App', tdEmpty: 'Deine Sammlung ist noch leer', yourAlbums: 'Deine Alben',
     vizStation: 'Spektrum des Senders, von LSH dekodiert und auf den Lautsprecher abgestimmt', music: 'Musik', show: 'Musik zeigen', hide: 'Musik ausblenden', hidden: 'ausgeblendet', equalizer: 'Equalizer', loading: 'Wird geladen…', nothing: 'Keine Wiedergabe', play: 'Abspielen', pause: 'Pause', prev: 'Zurück', next: 'Weiter', shuffle: 'Zufall', devices: 'Spotify-Geräte', noDevices: 'Keine Geräte — Spotify auf Handy, Computer oder Lautsprecher öffnen', playingOn: 'Läuft auf', failed: 'Das hat nicht geklappt',
     spSetup: 'Spotify ist nicht eingerichtet', spConnect: 'Spotify-Konto verbinden', spWhy: 'Wiedergabe steuern, Playlists durchsuchen und suchen — zum Steuern ist Spotify Premium nötig.', openSettings: 'Einstellungen öffnen', spPick: 'Unten eine Playlist wählen oder suchen', spSearch: 'In Spotify suchen', yourPlaylists: 'Deine Playlists', noPlaylists: 'Keine Playlists', noResults: 'Nichts gefunden', tracks: '{n} Titel', track: 'Titel', playlist: 'Playlist', album: 'Album', artist: 'Künstler',
     amLoading: 'Apple Music wird geladen…', amSetup: 'Apple Music ist nicht eingerichtet', amWhy: 'Ein Admin fügt den MusicKit-Schlüssel unter Einstellungen → Medien → Apple Music hinzu. Die Musik spielt dann hier.', amPick: 'Unten etwas wählen', amPreview: 'Anmelden für ganze Titel — sonst 30-Sekunden-Vorschauen', amSignIn: 'Anmelden', amSignOut: 'Abmelden', amHere: 'Spielt auf diesem Bildschirm', amSearch: 'In Apple Music suchen', recent: 'Zuletzt gespielt', amEmpty: 'Noch nichts in der Mediathek', position: 'Position',
     eqOn: 'Equalizer an', eqOff: 'Equalizer aus', p_flat: 'Neutral', p_bass: 'Bass-Boost', p_vocal: 'Gesang', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Elektronisch', p_night: 'Nacht',
     eqWhere: 'Wirkt sofort auf Radio auf diesem Bildschirm und auf AirPlay-Lautsprecher ab dem nächsten gestarteten Sender. Chromecast, Spotify und Apple Music spielen anderswo oder geschützt und lassen sich hier nicht entzerren. Doppelklick auf einen Regler setzt ihn zurück.',
     liveSpectrum: 'Live-Spektrum', vizLive: 'Spektrum des Tons auf diesem Bildschirm', vizAnim: 'Animation — der Ton spielt auf einem Lautsprecher oder ist geschützt, daher kann diese Seite sein Spektrum nicht lesen' },
-  fr: { tdSetup: 'TIDAL n’est pas configuré', tdConnect: 'Connectez-vous à TIDAL', tdWhy: 'Cherchez dans TIDAL et parcourez ici vos playlists et albums. TIDAL ne permet pas aux autres apps de piloter la lecture : Lire ouvre l’élément dans TIDAL.', tdSearch: 'Rechercher sur TIDAL', tdOpen: 'Ouvrir TIDAL', tdSignIn: 'Se connecter pour voir sa bibliothèque', tdSignedIn: 'Connecté en tant que', tdGuest: 'Recherche seule — connectez-vous pour voir vos playlists et albums', tdHere: 'Lire ouvre le lecteur web TIDAL ou l’app', tdEmpty: 'Votre collection est encore vide', yourAlbums: 'Vos albums',
+  fr: { vizStyle: 'Style de visualisation', viz_bars: 'Barres', viz_wave: 'Onde', viz_ring: 'Anneau',
+    tdSetup: 'TIDAL n’est pas configuré', tdConnect: 'Connectez-vous à TIDAL', tdWhy: 'Cherchez dans TIDAL et parcourez ici vos playlists et albums. TIDAL ne permet pas aux autres apps de piloter la lecture : Lire ouvre l’élément dans TIDAL.', tdSearch: 'Rechercher sur TIDAL', tdOpen: 'Ouvrir TIDAL', tdSignIn: 'Se connecter pour voir sa bibliothèque', tdSignedIn: 'Connecté en tant que', tdGuest: 'Recherche seule — connectez-vous pour voir vos playlists et albums', tdHere: 'Lire ouvre le lecteur web TIDAL ou l’app', tdEmpty: 'Votre collection est encore vide', yourAlbums: 'Vos albums',
     vizStation: 'Spectre de la station, décodé par LSH et calé sur l’enceinte', music: 'Musique', show: 'Afficher la musique', hide: 'Masquer la musique', hidden: 'masqué', equalizer: 'Égaliseur', loading: 'Chargement…', nothing: 'Rien en lecture', play: 'Lire', pause: 'Pause', prev: 'Précédent', next: 'Suivant', shuffle: 'Aléatoire', devices: 'Appareils Spotify', noDevices: 'Aucun appareil — ouvrez Spotify sur un téléphone, un ordinateur ou une enceinte', playingOn: 'Lecture sur', failed: 'Échec',
     spSetup: 'Spotify n’est pas configuré', spConnect: 'Connectez votre compte Spotify', spWhy: 'Pilotez la lecture, parcourez vos playlists et cherchez — Spotify Premium est requis pour piloter la lecture.', openSettings: 'Ouvrir les réglages', spPick: 'Choisissez une playlist ou cherchez ci-dessous', spSearch: 'Rechercher sur Spotify', yourPlaylists: 'Vos playlists', noPlaylists: 'Aucune playlist', noResults: 'Aucun résultat', tracks: '{n} titres', track: 'Titre', playlist: 'Playlist', album: 'Album', artist: 'Artiste',
     amLoading: 'Chargement d’Apple Music…', amSetup: 'Apple Music n’est pas configuré', amWhy: 'Un admin ajoute la clé MusicKit dans Réglages → Médias → Apple Music. La musique joue alors ici.', amPick: 'Choisissez quelque chose ci-dessous', amPreview: 'Connectez-vous pour les titres complets — sinon extraits de 30 secondes', amSignIn: 'Se connecter', amSignOut: 'Se déconnecter', amHere: 'Joue sur cet écran', amSearch: 'Rechercher sur Apple Music', recent: 'Écoutés récemment', amEmpty: 'Rien dans votre bibliothèque', position: 'Position',
     eqOn: 'Égaliseur activé', eqOff: 'Égaliseur désactivé', p_flat: 'Plat', p_bass: 'Basses', p_vocal: 'Voix', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Électro', p_night: 'Nuit',
     eqWhere: 'S’applique en direct à la radio sur cet écran, et aux enceintes AirPlay à partir de la prochaine station lancée. Chromecast, Spotify et Apple Music jouent ailleurs ou sont protégés et ne peuvent pas être égalisés ici. Double-cliquez sur un curseur pour le remettre à zéro.',
     liveSpectrum: 'spectre en direct', vizLive: 'Spectre du son joué sur cet écran', vizAnim: 'Animation — le son joue sur une enceinte ou est protégé, cette page ne peut donc pas lire son spectre' },
-  es: { tdSetup: 'TIDAL no está configurado', tdConnect: 'Inicia sesión en TIDAL', tdWhy: 'Busca en TIDAL y explora aquí tus listas y álbumes. TIDAL no permite que otras apps controlen la reproducción, así que Reproducir abre el elemento en TIDAL.', tdSearch: 'Buscar en TIDAL', tdOpen: 'Abrir TIDAL', tdSignIn: 'Inicia sesión para ver tu biblioteca', tdSignedIn: 'Sesión iniciada como', tdGuest: 'Solo búsqueda — inicia sesión para ver tus listas y álbumes', tdHere: 'Reproducir abre el reproductor web de TIDAL o la app', tdEmpty: 'Tu colección aún está vacía', yourAlbums: 'Tus álbumes',
+  es: { vizStyle: 'Estilo de visualización', viz_bars: 'Barras', viz_wave: 'Onda', viz_ring: 'Anillo',
+    tdSetup: 'TIDAL no está configurado', tdConnect: 'Inicia sesión en TIDAL', tdWhy: 'Busca en TIDAL y explora aquí tus listas y álbumes. TIDAL no permite que otras apps controlen la reproducción, así que Reproducir abre el elemento en TIDAL.', tdSearch: 'Buscar en TIDAL', tdOpen: 'Abrir TIDAL', tdSignIn: 'Inicia sesión para ver tu biblioteca', tdSignedIn: 'Sesión iniciada como', tdGuest: 'Solo búsqueda — inicia sesión para ver tus listas y álbumes', tdHere: 'Reproducir abre el reproductor web de TIDAL o la app', tdEmpty: 'Tu colección aún está vacía', yourAlbums: 'Tus álbumes',
     vizStation: 'Espectro de la emisora, decodificado por LSH y sincronizado con el altavoz', music: 'Música', show: 'Mostrar música', hide: 'Ocultar música', hidden: 'oculto', equalizer: 'Ecualizador', loading: 'Cargando…', nothing: 'No suena nada', play: 'Reproducir', pause: 'Pausa', prev: 'Anterior', next: 'Siguiente', shuffle: 'Aleatorio', devices: 'Dispositivos Spotify', noDevices: 'Sin dispositivos — abre Spotify en un móvil, ordenador o altavoz', playingOn: 'Sonando en', failed: 'No funcionó',
     spSetup: 'Spotify no está configurado', spConnect: 'Conecta tu cuenta de Spotify', spWhy: 'Controla la reproducción, explora tus listas y busca — se necesita Spotify Premium para controlar la reproducción.', openSettings: 'Abrir ajustes', spPick: 'Elige una lista o busca abajo', spSearch: 'Buscar en Spotify', yourPlaylists: 'Tus listas', noPlaylists: 'Sin listas', noResults: 'Sin resultados', tracks: '{n} canciones', track: 'Canción', playlist: 'Lista', album: 'Álbum', artist: 'Artista',
     amLoading: 'Cargando Apple Music…', amSetup: 'Apple Music no está configurado', amWhy: 'Un admin añade la clave MusicKit en Ajustes → Multimedia → Apple Music. La música suena aquí.', amPick: 'Elige algo abajo', amPreview: 'Inicia sesión para canciones completas — si no, fragmentos de 30 segundos', amSignIn: 'Iniciar sesión', amSignOut: 'Cerrar sesión', amHere: 'Suena en esta pantalla', amSearch: 'Buscar en Apple Music', recent: 'Escuchado recientemente', amEmpty: 'Tu biblioteca está vacía', position: 'Posición',
     eqOn: 'Ecualizador activado', eqOff: 'Ecualizador desactivado', p_flat: 'Plano', p_bass: 'Graves', p_vocal: 'Voz', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Electrónica', p_night: 'Noche',
     eqWhere: 'Se aplica en directo a la radio en esta pantalla y a los altavoces AirPlay desde la próxima emisora que inicies. Chromecast, Spotify y Apple Music suenan en otro sitio o están protegidos, así que aquí no se pueden ecualizar. Doble clic en un control para restablecerlo.',
     liveSpectrum: 'espectro en directo', vizLive: 'Espectro del audio que suena en esta pantalla', vizAnim: 'Animación — el audio suena en un altavoz o está protegido, así que esta página no puede leer su espectro' },
-  it: { tdSetup: 'TIDAL non è configurato', tdConnect: 'Accedi a TIDAL', tdWhy: 'Cerca su TIDAL e sfoglia qui le tue playlist e i tuoi album. TIDAL non consente ad altre app di controllare la riproduzione, quindi Riproduci apre l’elemento in TIDAL.', tdSearch: 'Cerca su TIDAL', tdOpen: 'Apri TIDAL', tdSignIn: 'Accedi per la tua libreria', tdSignedIn: 'Accesso come', tdGuest: 'Solo ricerca — accedi per vedere le tue playlist e i tuoi album', tdHere: 'Riproduci apre il web player di TIDAL o l’app', tdEmpty: 'La tua raccolta è ancora vuota', yourAlbums: 'I tuoi album',
+  it: { vizStyle: 'Stile di visualizzazione', viz_bars: 'Barre', viz_wave: 'Onda', viz_ring: 'Anello',
+    tdSetup: 'TIDAL non è configurato', tdConnect: 'Accedi a TIDAL', tdWhy: 'Cerca su TIDAL e sfoglia qui le tue playlist e i tuoi album. TIDAL non consente ad altre app di controllare la riproduzione, quindi Riproduci apre l’elemento in TIDAL.', tdSearch: 'Cerca su TIDAL', tdOpen: 'Apri TIDAL', tdSignIn: 'Accedi per la tua libreria', tdSignedIn: 'Accesso come', tdGuest: 'Solo ricerca — accedi per vedere le tue playlist e i tuoi album', tdHere: 'Riproduci apre il web player di TIDAL o l’app', tdEmpty: 'La tua raccolta è ancora vuota', yourAlbums: 'I tuoi album',
     vizStation: 'Spettro della stazione, decodificato da LSH e allineato all’altoparlante', music: 'Musica', show: 'Mostra musica', hide: 'Nascondi musica', hidden: 'nascosto', equalizer: 'Equalizzatore', loading: 'Caricamento…', nothing: 'Niente in riproduzione', play: 'Riproduci', pause: 'Pausa', prev: 'Precedente', next: 'Successivo', shuffle: 'Casuale', devices: 'Dispositivi Spotify', noDevices: 'Nessun dispositivo — apri Spotify su un telefono, computer o altoparlante', playingOn: 'In riproduzione su', failed: 'Non è riuscito',
     spSetup: 'Spotify non è configurato', spConnect: 'Collega il tuo account Spotify', spWhy: 'Controlla la riproduzione, sfoglia le playlist e cerca — per controllare la riproduzione serve Spotify Premium.', openSettings: 'Apri impostazioni', spPick: 'Scegli una playlist o cerca qui sotto', spSearch: 'Cerca su Spotify', yourPlaylists: 'Le tue playlist', noPlaylists: 'Nessuna playlist', noResults: 'Nessun risultato', tracks: '{n} brani', track: 'Brano', playlist: 'Playlist', album: 'Album', artist: 'Artista',
     amLoading: 'Caricamento di Apple Music…', amSetup: 'Apple Music non è configurato', amWhy: 'Un admin aggiunge la chiave MusicKit in Impostazioni → Media → Apple Music. La musica suona qui.', amPick: 'Scegli qualcosa qui sotto', amPreview: 'Accedi per i brani completi — altrimenti anteprime di 30 secondi', amSignIn: 'Accedi', amSignOut: 'Esci', amHere: 'Suona su questo schermo', amSearch: 'Cerca su Apple Music', recent: 'Ascoltati di recente', amEmpty: 'Libreria vuota', position: 'Posizione',
     eqOn: 'Equalizzatore attivo', eqOff: 'Equalizzatore spento', p_flat: 'Piatto', p_bass: 'Bassi', p_vocal: 'Voce', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Elettronica', p_night: 'Notte',
     eqWhere: 'Si applica subito alla radio su questo schermo e agli altoparlanti AirPlay dalla prossima stazione avviata. Chromecast, Spotify e Apple Music suonano altrove o sono protetti, quindi qui non si possono equalizzare. Doppio clic su un cursore per azzerarlo.',
     liveSpectrum: 'spettro dal vivo', vizLive: 'Spettro dell’audio su questo schermo', vizAnim: 'Animazione — l’audio suona su un altoparlante o è protetto, quindi questa pagina non può leggerne lo spettro' },
-  uk: { tdSetup: 'TIDAL не налаштовано', tdConnect: 'Увійдіть у TIDAL', tdWhy: 'Шукайте в TIDAL і переглядайте тут свої плейлисти й альбоми. TIDAL не дозволяє іншим застосункам керувати відтворенням, тож «Відтворити» відкриває елемент у TIDAL.', tdSearch: 'Пошук у TIDAL', tdOpen: 'Відкрити TIDAL', tdSignIn: 'Увійдіть, щоб бачити бібліотеку', tdSignedIn: 'Вхід як', tdGuest: 'Лише пошук — увійдіть, щоб бачити свої плейлисти й альбоми', tdHere: '«Відтворити» відкриває вебплеєр TIDAL або застосунок', tdEmpty: 'Ваша колекція поки порожня', yourAlbums: 'Ваші альбоми',
+  uk: { vizStyle: 'Стиль візуалізації', viz_bars: 'Стовпці', viz_wave: 'Хвиля', viz_ring: 'Кільце',
+    tdSetup: 'TIDAL не налаштовано', tdConnect: 'Увійдіть у TIDAL', tdWhy: 'Шукайте в TIDAL і переглядайте тут свої плейлисти й альбоми. TIDAL не дозволяє іншим застосункам керувати відтворенням, тож «Відтворити» відкриває елемент у TIDAL.', tdSearch: 'Пошук у TIDAL', tdOpen: 'Відкрити TIDAL', tdSignIn: 'Увійдіть, щоб бачити бібліотеку', tdSignedIn: 'Вхід як', tdGuest: 'Лише пошук — увійдіть, щоб бачити свої плейлисти й альбоми', tdHere: '«Відтворити» відкриває вебплеєр TIDAL або застосунок', tdEmpty: 'Ваша колекція поки порожня', yourAlbums: 'Ваші альбоми',
     vizStation: 'Спектр станції, декодований LSH і синхронізований з динаміком', music: 'Музика', show: 'Показати музику', hide: 'Сховати музику', hidden: 'приховано', equalizer: 'Еквалайзер', loading: 'Завантаження…', nothing: 'Нічого не грає', play: 'Відтворити', pause: 'Пауза', prev: 'Попередній', next: 'Наступний', shuffle: 'Перемішати', devices: 'Пристрої Spotify', noDevices: 'Немає пристроїв — відкрийте Spotify на телефоні, комп’ютері чи динаміку', playingOn: 'Грає на', failed: 'Не вдалося',
     spSetup: 'Spotify не налаштовано', spConnect: 'Під’єднайте обліковий запис Spotify', spWhy: 'Керуйте відтворенням, переглядайте плейлисти й шукайте — для керування потрібен Spotify Premium.', openSettings: 'Відкрити налаштування', spPick: 'Оберіть плейлист або знайдіть нижче', spSearch: 'Пошук у Spotify', yourPlaylists: 'Ваші плейлисти', noPlaylists: 'Немає плейлистів', noResults: 'Нічого не знайдено', tracks: 'треків: {n}', track: 'Трек', playlist: 'Плейлист', album: 'Альбом', artist: 'Виконавець',
     amLoading: 'Завантаження Apple Music…', amSetup: 'Apple Music не налаштовано', amWhy: 'Адміністратор додає ключ MusicKit у Налаштування → Медіа → Apple Music. Тоді музика грає тут.', amPick: 'Оберіть щось нижче', amPreview: 'Увійдіть для повних треків — інакше 30-секундні фрагменти', amSignIn: 'Увійти', amSignOut: 'Вийти', amHere: 'Грає на цьому екрані', amSearch: 'Пошук в Apple Music', recent: 'Нещодавно слухали', amEmpty: 'Медіатека порожня', position: 'Позиція',
