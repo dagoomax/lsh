@@ -32,7 +32,11 @@ function xmlEsc(s) {
 // sensor's reading as it appears in /api/devices, with `\v` capturing the
 // value. Contiguous and unique per sensor (readings serialize as
 // { ...sensor, value } with value appended last).
+// A sensor with a `ref` (its own last property, unique across LSH — e.g. the
+// radio devices, whose readings are otherwise identical per speaker and carry a
+// station list that changes) is matched on that alone.
 function checkPattern(sensor) {
+  if (sensor.ref) return `"ref":${JSON.stringify(sensor.ref)},"value":\\v`;
   const json = JSON.stringify({ ...sensor, value: 0 });
   return json.slice(1, -1).replace(/"value":0$/, '"value":\\v');
 }

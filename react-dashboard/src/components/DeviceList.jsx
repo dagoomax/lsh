@@ -193,7 +193,7 @@ export function getGroup(d) {
   if (['vebus','battery','solarcharger'].includes(d.type)) return 'Victron'
   if (['auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo'].includes(d.type)) return 'Climate'
   if (d.type === 'smarttub') return 'Climate'
-  if (d.type === 'sonos')  return 'Media'
+  if (d.type === 'sonos' || d.type === 'radio')  return 'Media'
   if (d.type === 'googlehome' || d.type === 'googletv' || d.type === 'sony') return 'Media'
   if (d.type === 'denon')  return 'Media'
   if (d.type === 'beosound') return 'Media'
@@ -359,7 +359,9 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   // air conditioners (AuxAir and the shared AC model) — see src/acModel.js
   const ac        = acView(device, merged)
   const isAC      = !!ac
-  const isSonos  = device.type === 'sonos'
+  // radio (src/radio-devices.js: the media player's speakers) has the same play / volume / mute tile
+  const isSonos  = device.type === 'sonos' || device.type === 'radio'
+  const isRadio  = device.type === 'radio'
   const isDenon  = device.type === 'denon'
   const isSpa    = device.type === 'smarttub'
   // Bento-style: media players and dimmable lights earn a wider card (room for
@@ -384,8 +386,9 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const sonosPlaying = isSonos ? (merged.playing?.value === 1 || merged.playing?.value === true) : false
   const sonosVolume  = isSonos ? (merged.volume?.value  ?? 50) : 50
   const sonosMute    = isSonos ? (merged.mute?.value    === 1 || merged.mute?.value === true) : false
-  const sonosTrack   = isSonos ? (merged.track?.value   ?? '') : ''
-  const sonosArtist  = isSonos ? (merged.artist?.value  ?? '') : ''
+  const radioTitle   = isRadio ? (merged.title?.value ?? '') : ''
+  const sonosTrack   = isRadio ? (merged.stationName?.value || radioTitle) : isSonos ? (merged.track?.value   ?? '') : ''
+  const sonosArtist  = isRadio ? (radioTitle !== sonosTrack ? radioTitle : '') : isSonos ? (merged.artist?.value  ?? '') : ''
 
   const spaWater   = isSpa ? (merged.water_temp?.value ?? r.water_temp?.value) : null
   const spaSetTemp = isSpa ? (merged.set_temp?.value   ?? r.set_temp?.value)   : null
@@ -734,9 +737,9 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
           )}
           {/* Prev / Next / Mute */}
           <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('prev', true) }}
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd(isRadio ? 'prevStation' : 'prev', true) }}
               style={{ flex:1, height:24, borderRadius:7, color:'var(--text2)', fontSize:12 }}>⏮</button>
-            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('next', true) }}
+            <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd(isRadio ? 'nextStation' : 'next', true) }}
               style={{ flex:1, height:24, borderRadius:7, color:'var(--text2)', fontSize:12 }}>⏭</button>
             <button className="mini-btn" onClick={e => { e.stopPropagation(); cmd('mute', sonosMute ? 0 : 1) }}
               style={{ width:28, height:24, borderRadius:7,

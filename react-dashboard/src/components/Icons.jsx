@@ -708,6 +708,7 @@ const TYPE_MAP = {
   melcloud:     AirCondIcon,
   sensibo:      AirCondIcon,
   sonos:        SpeakerIcon,
+  radio:        SpeakerIcon,
   spotify:      SpeakerIcon,
   applemusic:   SpeakerIcon,
   announce:     SpeakerIcon,

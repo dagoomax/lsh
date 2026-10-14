@@ -31,6 +31,8 @@ export default function LoxoneXmlSection() {
   const isInput = s => !s.hidden && !['color', 'trigger', 'text', 'label'].includes(s.type) && !isMomentary(s)
   const isOutput = s => !s.hidden && s.controllable && s.type !== 'text'
   const music = devices.find(d => d.key === 'music/player')
+  const radios = devices.filter(d => d.type === 'radio')
+  const radioCount = (pick) => radios.reduce((n, d) => n + (d.sensors || []).filter(pick).length, 0)
 
   const byType = {}
   for (const d of devices) byType[d.type] = (byType[d.type] || 0) + 1
@@ -50,11 +52,12 @@ export default function LoxoneXmlSection() {
     setSelectedTypes(next)
   }
 
-  const download = (kind, file = `${kind}.xml`, filtered = true) => {
+  const download = (kind, file = `${kind}.xml`, filtered = true, type = '') => {
     if (!tokenId) { setError('Create an API token first (Security → API Tokens)'); return }
     const params = new URLSearchParams()
     params.set('tokenId', tokenId)
-    if (filtered && selectedTypes.size) params.set('type', [...selectedTypes].join(','))
+    if (type) params.set('type', type)
+    else if (filtered && selectedTypes.size) params.set('type', [...selectedTypes].join(','))
     if (filtered && namedOnly) params.set('named', '1')
     if (host.trim()) params.set('host', host.trim())
     if (kind === 'inputs' && polling) params.set('polling', String(polling))
@@ -92,6 +95,15 @@ export default function LoxoneXmlSection() {
           <div className="stg-actions">
             <Button onClick={() => download('outputs', 'musicout.xml', false)}>{tr('⬇ Music outputs.xml ({countCount})', { countCount: (music.sensors || []).filter(isOutput).length })}</Button>
             <Button onClick={() => download('inputs', 'musicin.xml', false)}>{tr('⬇ Music inputs.xml ({countCount})', { countCount: (music.sensors || []).filter(isInput).length })}</Button>
+          </div>
+        </div>
+      )}
+      {radios.length > 0 && (
+        <div className="stg-field">
+          <label>{tr('Radio')}{' '}<span className="stg-hint">{tr('(the media player’s speakers: Play, Station — 0 stop, 1… your saved stations in the dashboard’s order — Next / Previous station, Volume, Mute)')}</span></label>
+          <div className="stg-actions">
+            <Button onClick={() => download('outputs', 'outputs.xml', false, 'radio')}>{tr('⬇ Radio outputs.xml ({countCount})', { countCount: radioCount(isOutput) })}</Button>
+            <Button onClick={() => download('inputs', 'inputs.xml', false, 'radio')}>{tr('⬇ Radio inputs.xml ({countCount})', { countCount: radioCount(isInput) })}</Button>
           </div>
         </div>
       )}

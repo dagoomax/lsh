@@ -566,6 +566,17 @@ async function main() {
     }
   }
 
+  // Radio — the media player's AirPlay speakers and Chromecasts as devices
+  // (play saved stations from Loxone / flows). Needs the live apiClients map.
+  if (config.airplay?.enabled || config.googlehome?.devices?.length) {
+    const RadioDevices = tryRequire('./src/radio-devices');
+    if (RadioDevices) {
+      const radio = new RadioDevices(config, store, sensorRegistry, apiClients);
+      apiClients.radio = radio;
+      radio.start().catch((err) => console.error(`[Radio] Start failed: ${err.message}`));
+    }
+  }
+
   // Start the Matter bridge if enabled — exposes LSH devices to Apple Home /
   // Google Home / Alexa / SmartThings etc. as one bridged Matter node.
   if (config.matter?.bridge?.enabled) {

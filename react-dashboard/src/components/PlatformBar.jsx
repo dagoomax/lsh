@@ -64,7 +64,7 @@ const GROUPS = [
   { id: 'climate',    label: 'Climate & weather',   keys: ['vitodens', 'auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo', 'dyson', 'vents', 'mc6', 'airly', 'loxoneWeather', 'zehnder'] },
   { id: 'outdoor',    label: 'Pool & garden',       keys: ['bayrol', 'smarttub', 'landroid', 'aquilo'] },
   { id: 'appliances', label: 'Appliances',          keys: ['lgthinq', 'homeconnect', 'miele', 'thermomix', 'roborock', 'dreame', 'karcher'] },
-  { id: 'media',      label: 'Media',               keys: ['sonos', 'denon', 'beosound', 'sony', 'googletv', 'googlehome'] },
+  { id: 'media',      label: 'Media',               keys: ['sonos', 'radio', 'denon', 'beosound', 'sony', 'googletv', 'googlehome'] },
   { id: 'hubs',       label: 'Hubs & ecosystems',   keys: ['smartthings', 'homeassistant', 'homey', 'vera', 'zway', 'zwaveJs', 'aqara', 'matter-bridge', 'matter-controller', 'virtual'] },
   { id: 'system',     label: 'Network & system',    keys: ['unifi', 'mqtt-explorer', 'systemMetrics', 'google-calendar'] },
 ]
