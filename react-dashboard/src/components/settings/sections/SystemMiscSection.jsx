@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, ListEditor, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { RelayIcon, RouterIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 import CssEditor from '../CssEditor'
 
 const RELAY_FIELDS = [
@@ -106,11 +106,11 @@ function InterfaceCard({ ui, reload, onOpenCssEditor }) {
       <div className="stg-field">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
           <label style={{ margin: 0 }}>
-            Custom CSS <span className="stg-hint">(applies to both dashboards — loaded as a real stylesheet, so it may need !important)</span>
+            {tr('Custom CSS')}{' '}<span className="stg-hint">{tr('(applies to both dashboards — loaded as a real stylesheet, so it may need !important)')}</span>
           </label>
           {onOpenCssEditor && (
             <button type="button" className="stg-disclosure" onClick={onOpenCssEditor} style={{ flexShrink: 0 }}>
-              Open full-page editor ↗
+              {tr('Open full-page editor ↗')}
             </button>
           )}
         </div>
@@ -148,7 +148,7 @@ function ServerCard({ server, reload }) {
   return (
     <SettingsCard icon={RouterIcon} title={gt('s.server_title', 'Server')}>
       <Field label={gt('s.server_port', 'HTTP Port')} type="number" value={port} onChange={setPort} placeholder="3000" style={{ maxWidth: 160 }}/>
-      <p className="stg-hint">Restart the server to apply a port change.</p>
+      <p className="stg-hint">{tr('Restart the server to apply a port change.')}</p>
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy} onClick={() => save.save({ server: { port: Number(port) } }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button, Toggle, Field } from './primitives'
+import { tr } from '../../i18n'
 
 // Saved LAN devices (Settings → System → LAN scan → Devices): everything the
 // scans have seen, with tags (new / ip-changed / offline are automatic),
@@ -30,7 +31,7 @@ export function DeviceIcon({ icon, size = 26 }) {
 export function TagChips({ tags, onRemove }) {
   return (tags || []).map((t) => (
     <span key={t} className={`lan-tag ${SYSTEM[t] || ''}`}>
-      {t}{onRemove && <button onClick={(e) => { e.stopPropagation(); onRemove(t) }} title="Remove tag">×</button>}
+      {t}{onRemove && <button onClick={(e) => { e.stopPropagation(); onRemove(t) }} title={tr('Remove tag')}>×</button>}
     </span>
   ))
 }
@@ -49,7 +50,7 @@ export default function LanDevices({ onInspect, refreshKey }) {
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t) }, [load, refreshKey])
 
   if (error) return <div className="stg-banner err" style={{ marginTop: 8 }}>✗ {error}</div>
-  if (!data) return <div className="stg-hint" style={{ marginTop: 8 }}>Loading saved devices…</div>
+  if (!data) return <div className="stg-hint" style={{ marginTop: 8 }}>{tr('Loading saved devices…')}</div>
 
   const devices = data.data
   const userTags = data.tags
@@ -77,7 +78,7 @@ export default function LanDevices({ onInspect, refreshKey }) {
 
   return (
     <div className="lan-devices">
-      {!devices.length && <p className="stg-hint">No saved devices yet — run a scan. The first scan becomes the baseline; devices that appear in later scans are tagged <b>new</b>.</p>}
+      {!devices.length && <p className="stg-hint">{tr('No saved devices yet — run a scan. The first scan becomes the baseline; devices that appear in later scans are tagged')}{' '}<b>{tr('new')}</b>.</p>}
       {devices.length > 0 && (
         <>
           <div className="lan-filters">
@@ -86,10 +87,10 @@ export default function LanDevices({ onInspect, refreshKey }) {
                 {f}{counts[f] != null ? ` (${counts[f]})` : f === 'all' ? ` (${devices.length})` : ''}
               </button>
             ))}
-            <input className="stg-input" style={{ maxWidth: 220, padding: '6px 10px', fontSize: 13 }} placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)}/>
+            <input className="stg-input" style={{ maxWidth: 220, padding: '6px 10px', fontSize: 13 }} placeholder={tr('Search…')} value={q} onChange={(e) => setQ(e.target.value)}/>
             <IconsAuto onDone={load}/>
             {(counts.new > 0 || counts['ip-changed'] > 0) && (
-              <Button variant="secondary" onClick={() => api('/api/lsh-lan/devices/acknowledge', 'POST', {}).then(load)}>✓ Mark all known</Button>
+              <Button variant="secondary" onClick={() => api('/api/lsh-lan/devices/acknowledge', 'POST', {}).then(load)}>{tr('✓ Mark all known')}</Button>
             )}
           </div>
           <div className="stg-ble-scan">
@@ -107,7 +108,7 @@ export default function LanDevices({ onInspect, refreshKey }) {
                     </div>
                     <div className="stg-hint">
                       {d.ip}{d.mac ? ` · ${d.mac}` : ''}{d.vendor ? ` · ${d.vendor}` : ''}{d.kindLabel ? ` · ${d.kindLabel}` : ''}
-                      {' · '}seen {ago(d.lastSeen)}
+                      {' · '}{tr('seen')}{' '}{ago(d.lastSeen)}
                       {d.monitored && d.status?.latency != null && ` · ${d.status.latency} ms`}
                     </div>
                   </div>
@@ -137,7 +138,7 @@ function IconsAuto({ onDone }) {
   }
   return (
     <>
-      <Button variant="secondary" busy={busy} onClick={run} title="Download brand logos (Simple Icons) for devices without an icon">🖼 Fetch icons</Button>
+      <Button variant="secondary" busy={busy} onClick={run} title="Download brand logos (Simple Icons) for devices without an icon">{tr('🖼 Fetch icons')}</Button>
       {msg && <span className="stg-hint">{msg}</span>}
     </>
   )
@@ -156,14 +157,14 @@ function IconEditor({ d, onChanged }) {
   const remove = async () => { await api(`/api/lsh-lan/devices/${encodeURIComponent(d.key)}/icon`, 'DELETE'); onChanged() }
   return (
     <div>
-      <label className="stg-hint">Icon</label>
+      <label className="stg-hint">{tr('Icon')}</label>
       <div className="lan-icon-edit">
-        <span className="lan-icon-preview">{d.icon ? <DeviceIcon icon={d.icon} size={40}/> : <span className="stg-hint">none</span>}</span>
-        <Button variant="secondary" busy={busy === 'vendor'} onClick={() => set('vendor')}>Brand logo</Button>
-        <Button variant="secondary" busy={busy === 'favicon'} onClick={() => set('favicon')}>Device's own icon</Button>
+        <span className="lan-icon-preview">{d.icon ? <DeviceIcon icon={d.icon} size={40}/> : <span className="stg-hint">{tr('none')}</span>}</span>
+        <Button variant="secondary" busy={busy === 'vendor'} onClick={() => set('vendor')}>{tr('Brand logo')}</Button>
+        <Button variant="secondary" busy={busy === 'favicon'} onClick={() => set('favicon')}>{tr("Device's own icon")}</Button>
         <input className="stg-input" placeholder="https://… image URL" value={url} onChange={(e) => setUrl(e.target.value)}/>
-        <Button variant="secondary" busy={busy === 'url'} disabled={!/^https?:\/\//.test(url)} onClick={() => set('url')}>Download</Button>
-        {d.icon && <Button variant="danger" onClick={remove}>Remove</Button>}
+        <Button variant="secondary" busy={busy === 'url'} disabled={!/^https?:\/\//.test(url)} onClick={() => set('url')}>{tr('Download')}</Button>
+        {d.icon && <Button variant="danger" onClick={remove}>{tr('Remove')}</Button>}
       </div>
       {d.icon && <div className="stg-hint">Source: {d.icon.source}{d.icon.ref ? ` · ${d.icon.ref}` : ''}</div>}
       {err && <div className="stg-banner err">✗ {err}</div>}
@@ -187,10 +188,10 @@ function DeviceEditor({ d, suggestions, onSave, onDelete, onInspect, onIconChang
     <div className="ble-dd lan-editor" onClick={(e) => e.stopPropagation()}>
       <Field label="Name" value={label} onChange={setLabel} placeholder={d.name || d.ip}/>
       <div>
-        <label className="stg-hint">Tags</label>
+        <label className="stg-hint">{tr('Tags')}</label>
         <div className="lan-tag-edit">
           <TagChips tags={tags} onRemove={(t) => setTags(tags.filter((x) => x !== t))}/>
-          <input className="stg-input" list="lan-tag-suggestions" value={tagInput} placeholder="add tag…"
+          <input className="stg-input" list="lan-tag-suggestions" value={tagInput} placeholder={tr('add tag…')}
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagInput) } }}/>
           <datalist id="lan-tag-suggestions">{suggestions.map((s) => <option key={s} value={s}/>)}</datalist>
@@ -208,15 +209,15 @@ function DeviceEditor({ d, suggestions, onSave, onDelete, onInspect, onIconChang
       <Toggle label="Monitor this device" checked={monitored || permanent} onChange={(v) => !permanent && setMonitored(v)}
         hint={permanent ? 'on — permanent devices are always monitored' : 'online/offline + latency, shown as an LSH device (lan/…) for Flows and automations'}/>
       <div className="stg-hint">
-        First seen {new Date(d.firstSeen).toLocaleString()} · last seen {new Date(d.lastSeen).toLocaleString()}
+        {tr('First seen')}{' '}{new Date(d.firstSeen).toLocaleString()}{' '}{tr('· last seen')}{' '}{new Date(d.lastSeen).toLocaleString()}
         {d.ipHistory?.length > 1 && ` · IPs: ${d.ipHistory.join(', ')}`}
         {d.integration && ` · LSH integration: ${d.integration}`}
       </div>
       <div className="stg-actions">
-        <Button variant="primary" onClick={() => onSave({ label, tags: tagInput ? [...tags, tagInput] : tags, notes, monitored: monitored || permanent, permanent })}>Save</Button>
-        <Button variant="secondary" onClick={onInspect}>Deep dive</Button>
+        <Button variant="primary" onClick={() => onSave({ label, tags: tagInput ? [...tags, tagInput] : tags, notes, monitored: monitored || permanent, permanent })}>{tr('Save')}</Button>
+        <Button variant="secondary" onClick={onInspect}>{tr('Deep dive')}</Button>
         <Button variant="danger" disabled={d.permanent} title={d.permanent ? 'Permanent — remove the permanent tag first' : undefined}
-          onClick={() => { if (window.confirm(`Forget ${d.label || d.name || d.ip}?`)) onDelete() }}>Forget</Button>
+          onClick={() => { if (window.confirm(`Forget ${d.label || d.name || d.ip}?`)) onDelete() }}>{tr('Forget')}</Button>
       </div>
     </div>
   )
@@ -233,7 +234,7 @@ function MonitorSettings({ settings, running, onSaved }) {
   }
   return (
     <div className="lan-monitor-settings">
-      <div className="ble-dd-title">Monitoring {running ? <span className="lan-tag tag-ok">running</span> : <span className="lan-tag">off</span>}</div>
+      <div className="ble-dd-title">{tr('Monitoring')}{' '}{running ? <span className="lan-tag tag-ok">{tr('running')}</span> : <span className="lan-tag">{tr('off')}</span>}</div>
       <Toggle label="Enable monitoring" checked={!!s.enabled} onChange={(v) => setS({ ...s, enabled: v })}
         hint="checks monitored devices; switching a device's Monitor on enables this automatically"/>
       <div className="lan-settings-row">
@@ -243,7 +244,7 @@ function MonitorSettings({ settings, running, onSaved }) {
       <Toggle label="Notify on new devices" checked={s.notifyNew !== false} onChange={(v) => setS({ ...s, notifyNew: v })} hint="background scans"/>
       <Toggle label="Notify when a monitored device goes offline / comes back" checked={s.notifyOffline !== false} onChange={(v) => setS({ ...s, notifyOffline: v })}/>
       <div className="stg-actions">
-        <Button variant="primary" onClick={save}>Save monitoring</Button>
+        <Button variant="primary" onClick={save}>{tr('Save monitoring')}</Button>
         {msg && <span className={`stg-banner ${msg.ok ? 'ok' : 'err'}`}>{msg.ok ? '✓' : '✗'} {msg.text}</span>}
       </div>
     </div>

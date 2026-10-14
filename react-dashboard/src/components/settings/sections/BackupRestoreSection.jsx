@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { SettingsCard, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 export default function BackupRestoreSection() {
   const fileRef = useRef(null)
@@ -38,13 +38,13 @@ export default function BackupRestoreSection() {
       <div className="stg-backup-row">
         <div className="stg-backup-item">
           <div className="stg-backup-label">{gt('s.export', 'Export')}</div>
-          <p className="stg-hint">Download <code>config.json</code> including all credentials and settings.</p>
+          <p className="stg-hint">{tr('Download')}{' '}<code>config.json</code>{' '}{tr('including all credentials and settings.')}</p>
           <Button variant="secondary" href="/api/settings/export" download>⬇ {gt('s.download_config', 'Download Config')}</Button>
         </div>
         <div className="stg-backup-divider"/>
         <div className="stg-backup-item">
           <div className="stg-backup-label">{gt('s.import_lbl', 'Import')}</div>
-          <p className="stg-hint">Restore from a previously exported config file.</p>
+          <p className="stg-hint">{tr('Restore from a previously exported config file.')}</p>
           <label className="stg-btn stg-btn-secondary">
             ⬆ {gt('s.choose_file', 'Choose File…')}
             <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={onFile}/>

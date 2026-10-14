@@ -71,6 +71,7 @@
     "src/routes/homekit.js",
     "src/routes/homey.js",
     "src/routes/https.js",
+    "src/routes/integration-settings.js",
     "src/routes/knx.js",
     "src/routes/lgthinq.js",
     "src/routes/lock-pin.js",

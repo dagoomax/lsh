@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from './primitives'
 import Sparkline from '../Sparkline'
+import { tr } from '../../i18n'
 
 // Deep dive on one BLE device (POST /api/lsh-ble/inspect): watches its
 // advertisements for a few seconds, shows everything BlueZ knows, decodes
@@ -29,7 +30,7 @@ export default function BleDeepDive({ mac }) {
     setGatt({ busy: false, data: r.success ? r.data.gatt : null, error: r.success ? r.data.gatt?.error : r.error })
   }
 
-  if (state.busy) return <div className="ble-dd stg-hint">Watching {mac} for 8 s…</div>
+  if (state.busy) return <div className="ble-dd stg-hint">{tr('Watching {mac} for 8 s…', { mac })}</div>
   if (state.error) return <div className="ble-dd"><div className="stg-banner err">✗ {state.error}</div></div>
   const d = state.data
   const points = d.rssi.samples.map((s) => [s.t, s.rssi])
@@ -75,14 +76,14 @@ export default function BleDeepDive({ mac }) {
       <Section title="GATT">
         {!gatt.data && (
           <div className="stg-actions" style={{ marginTop: 0 }}>
-            <Button variant="secondary" busy={gatt.busy} onClick={readGatt}>Connect &amp; read GATT</Button>
-            <span className="stg-hint">Read-only: connects without pairing, reads, disconnects. Many phones/beacons don't accept connections.</span>
+            <Button variant="secondary" busy={gatt.busy} onClick={readGatt}>{tr('Connect & read GATT')}</Button>
+            <span className="stg-hint">{tr("Read-only: connects without pairing, reads, disconnects. Many phones/beacons don't accept connections.")}</span>
           </div>
         )}
         {gatt.error && <div className="stg-banner err">✗ {gatt.error}</div>}
         {gatt.data?.services?.map((s) => (
           <div key={s.uuid} className="ble-dd-svc">
-            <div className="ble-dd-svc-name">{s.uuid}{s.primary ? '' : ' (secondary)'}</div>
+            <div className="ble-dd-svc-name">{s.uuid}{s.primary ? '' : ' ' + tr('(secondary)')}</div>
             {s.characteristics.map((c) => (
               <div key={c.uuid} className="ble-dd-char">
                 <span className="ble-dd-mono">{c.uuid}</span>

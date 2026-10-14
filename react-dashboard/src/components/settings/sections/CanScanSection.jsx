@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { SettingsCard, Button } from '../primitives'
+import { tr } from '../../../i18n'
 
 // Settings → System → CAN bus scan — passive (listen-only) look at a CAN bus:
 // SocketCAN interfaces (incl. the Arduino VENTUNO Q's three CAN-FD ports,
@@ -103,32 +104,32 @@ export default function CanScanSection() {
         <div className="lan-hero-body">
           {busy ? (
             <>
-              <div className="lan-hero-title">Listening<span className="lan-dots"><i/><i/><i/></span></div>
-              <div className="lan-hero-sub">{src?.iface || src?.serialPort} · listen-only · {Math.max(0, Math.ceil(seconds - elapsed))} s left</div>
+              <div className="lan-hero-title">{tr('Listening')}<span className="lan-dots"><i/><i/><i/></span></div>
+              <div className="lan-hero-sub">{tr('{v} · listen-only · {v2} s left', { v: src?.iface || src?.serialPort, v2: Math.max(0, Math.ceil(seconds - elapsed)) })}</div>
               <div className="lan-progress"><i style={{ width: `${Math.min(100, (elapsed / seconds) * 100)}%` }}/></div>
             </>
           ) : data ? (
             <>
               <div className="lan-hero-title">{data.protocolLabel}</div>
-              <div className="lan-hero-sub">{data.source.name}{data.source.bitrate ? ` · ${kbit(data.source.bitrate)}` : ''} · {Math.round(data.durationMs / 1000)} s{data.source.listenOnly ? ' · listen-only' : ''}{data.truncated ? ' · capture capped' : ''}</div>
+              <div className="lan-hero-sub">{data.source.name}{data.source.bitrate ? ` · ${kbit(data.source.bitrate)}` : ''} · {Math.round(data.durationMs / 1000)} s{data.source.listenOnly ? ' ' + tr('· listen-only') : ''}{data.truncated ? ' ' + tr('· capture capped') : ''}</div>
             </>
           ) : (
             <>
-              <div className="lan-hero-title">{ifs?.ventuno ? 'VENTUNO Q CAN-FD' : 'What’s on the CAN bus'}</div>
-              <div className="lan-hero-sub">Passive capture — frame IDs, rates, protocol, decoded values. Never transmits.</div>
+              <div className="lan-hero-title">{ifs?.ventuno ? tr('VENTUNO Q CAN-FD') : tr('What’s on the CAN bus')}</div>
+              <div className="lan-hero-sub">{tr('Passive capture — frame IDs, rates, protocol, decoded values. Never transmits.')}</div>
             </>
           )}
           {data && (
             <div className="lan-stats">
-              <div className="lan-stat"><b>{data.frames}</b><span>frames</span></div>
-              <div className="lan-stat ble-blue"><b>{data.idCount}</b><span>IDs</span></div>
-              <div className="lan-stat"><b>{data.nodes.length}</b><span>nodes</span></div>
-              <div className={`lan-stat ${data.busLoad > 70 ? 'orange' : 'green'}`}><b>{data.busLoad ?? '—'}{data.busLoad != null && <small>%</small>}</b><span>bus load</span></div>
+              <div className="lan-stat"><b>{data.frames}</b><span>{tr('frames')}</span></div>
+              <div className="lan-stat ble-blue"><b>{data.idCount}</b><span>{tr('IDs')}</span></div>
+              <div className="lan-stat"><b>{data.nodes.length}</b><span>{tr('nodes')}</span></div>
+              <div className={`lan-stat ${data.busLoad > 70 ? 'orange' : 'green'}`}><b>{data.busLoad ?? '—'}{data.busLoad != null && <small>%</small>}</b><span>{tr('bus load')}</span></div>
             </div>
           )}
           <div className="lan-hero-actions">
-            <button className="lan-scan-btn" disabled={busy || !src || needsModule} onClick={run}>{busy ? 'Listening…' : data ? '↻ Listen again' : '🚌 Listen'}</button>
-            {needsModule && <Button variant="primary" busy={busy} onClick={install}>Install module</Button>}
+            <button className="lan-scan-btn" disabled={busy || !src || needsModule} onClick={run}>{busy ? tr('Listening…') : data ? tr('↻ Listen again') : tr('🚌 Listen')}</button>
+            {needsModule && <Button variant="primary" busy={busy} onClick={install}>{tr('Install module')}</Button>}
           </div>
         </div>
       </div>
@@ -179,7 +180,7 @@ export default function CanScanSection() {
           {data.nodes.map((n) => (
             <span key={n.address} className="lan-filter" title={`${n.frames} frames${n.pgnCount ? ` · ${n.pgnCount} PGNs` : ''}`}>
               <i className="lan-filter-dot" style={{ background: color }}/>
-              {n.name?.manufacturer || (n.name ? `mfr ${n.name.manufacturerCode}` : 'node')} · {n.address}
+              {n.name?.manufacturer || (n.name ? `mfr ${n.name.manufacturerCode}` : tr('node'))} · {n.address}
             </span>
           ))}
         </div>
@@ -187,7 +188,7 @@ export default function CanScanSection() {
 
       {data && (
         <>
-          {data.ids.length > 8 && <div className="lan-toolbar"><input className="stg-input lan-search" placeholder="Search ID, PGN, name, bytes…" value={filter} onChange={(e) => setFilter(e.target.value)}/></div>}
+          {data.ids.length > 8 && <div className="lan-toolbar"><input className="stg-input lan-search" placeholder={tr('Search ID, PGN, name, bytes…')} value={filter} onChange={(e) => setFilter(e.target.value)}/></div>}
           <div className="lan-grid can-grid">
             {rows.map((r, i) => {
               const key = `${r.ext ? 'x' : 's'}${r.id}`
@@ -197,12 +198,12 @@ export default function CanScanSection() {
                   <div className="lan-tile-main" onClick={() => setOpen(isOpen ? null : key)}>
                     <div className="lan-tile-icon can-id">{r.ext ? 'EXT' : 'STD'}</div>
                     <div className="lan-tile-text">
-                      <div className="lan-tile-name"><span className="can-mono">{r.idHex}</span> {r.name || 'Unknown'}</div>
+                      <div className="lan-tile-name"><span className="can-mono">{r.idHex}</span> {r.name || tr('Unknown')}</div>
                       <div className="lan-tile-sub">
-                        {r.pgn != null ? `PGN ${r.pgn} · src ${r.source}` : ''}{r.pgn != null ? ' · ' : ''}{r.count}× · DLC {r.dlc.join('/')}{r.fd ? ' · FD' : ''}
+                        {r.pgn != null ? `PGN ${r.pgn} · src ${r.source}` : ''}{r.pgn != null ? ' · ' : ''}{r.count}{tr('× · DLC')}{' '}{r.dlc.join('/')}{r.fd ? ' ' + tr('· FD') : ''}
                       </div>
                     </div>
-                    <span className="lan-lat good">{r.rate}<small>Hz</small></span>
+                    <span className="lan-lat good">{r.rate}<small>{tr('Hz')}</small></span>
                   </div>
                   <div className="lan-tile-chips"><Bytes hex={r.data} mask={r.changedMask}/></div>
                   {r.decoded.length > 0 && (
@@ -213,21 +214,21 @@ export default function CanScanSection() {
                   {isOpen && (
                     <div className="ble-dd">
                       <div className="ble-dd-sec">
-                        <div className="ble-dd-title">Last distinct payloads</div>
+                        <div className="ble-dd-title">{tr('Last distinct payloads')}</div>
                         {r.samples.map((s) => <div key={s}><Bytes hex={s} mask={0}/></div>)}
                       </div>
                       <div className="ble-dd-sec">
-                        <div className="ble-dd-kv"><span className="stg-hint">Period</span><span>{r.periodMs != null ? `${r.periodMs} ms` : '—'}</span></div>
-                        {r.priority != null && <div className="ble-dd-kv"><span className="stg-hint">Priority / destination</span><span>{r.priority} / {r.dest === 255 ? 'broadcast' : r.dest}</span></div>}
-                        <div className="ble-dd-kv"><span className="stg-hint">Changing bytes</span><span>{r.changedMask ? [...Array(8)].map((_, b) => (r.changedMask & (1 << b) ? b : null)).filter((x) => x != null).join(', ') : 'none (static)'}</span></div>
-                        {r.remote > 0 && <div className="ble-dd-kv"><span className="stg-hint">Remote frames</span><span>{r.remote}</span></div>}
+                        <div className="ble-dd-kv"><span className="stg-hint">{tr('Period')}</span><span>{r.periodMs != null ? `${r.periodMs} ms` : '—'}</span></div>
+                        {r.priority != null && <div className="ble-dd-kv"><span className="stg-hint">{tr('Priority / destination')}</span><span>{r.priority} / {r.dest === 255 ? tr('broadcast') : r.dest}</span></div>}
+                        <div className="ble-dd-kv"><span className="stg-hint">{tr('Changing bytes')}</span><span>{r.changedMask ? [...Array(8)].map((_, b) => (r.changedMask & (1 << b) ? b : null)).filter((x) => x != null).join(', ') : tr('none (static)')}</span></div>
+                        {r.remote > 0 && <div className="ble-dd-kv"><span className="stg-hint">{tr('Remote frames')}</span><span>{r.remote}</span></div>}
                       </div>
                     </div>
                   )}
                 </div>
               )
             })}
-            {!rows.length && <div className="stg-hint">{data.frames ? 'Nothing matches.' : 'No frames received — check wiring, termination (120 Ω at both ends) and bitrate.'}</div>}
+            {!rows.length && <div className="stg-hint">{data.frames ? tr('Nothing matches.') : tr('No frames received — check wiring, termination (120 Ω at both ends) and bitrate.')}</div>}
           </div>
         </>
       )}
@@ -237,13 +238,13 @@ export default function CanScanSection() {
 
 function Hints({ ifs, sel }) {
   const tips = []
-  if (ifs.platform !== 'linux') tips.push(<>CAN scanning needs a Linux LSH host (e.g. an Arduino VENTUNO Q).</>)
+  if (ifs.platform !== 'linux') tips.push(<>{tr('CAN scanning needs a Linux LSH host (e.g. an Arduino VENTUNO Q).')}</>)
   else {
-    if (ifs.ventuno && !ifs.ventuno.interfaces.length) tips.push(<>VENTUNO Q CAN-FD firmware found on USB (1209:ca01) but no CAN interfaces — load the gs_usb driver: <code>sudo modprobe gs_usb; echo 1209 ca01 | sudo tee /sys/bus/usb/drivers/gs_usb/new_id</code></>)
-    if (ifs.socketcan.length && !ifs.candump) tips.push(<>Install can-utils for SocketCAN capture: <code>sudo apt install can-utils</code></>)
-    if (sel && !sel.up) tips.push(<>{sel.name} is down. Bring it up listen-only, e.g. at 250 kbit/s (NMEA 2000, VE.Can, J1939) or 500 kbit/s (battery BMS): <code>sudo ip link set {sel.name} up type can bitrate 250000 listen-only on</code></>)
-    if (sel && sel.up && !sel.listenOnly && !sel.virtual) tips.push(<>{sel.name} isn’t in listen-only mode — LSH never transmits, but the controller still ACKs frames. For a strictly passive tap: <code>sudo ip link set {sel.name} down; sudo ip link set {sel.name} up type can bitrate {sel.bitrate || 250000} listen-only on</code></>)
-    if (!ifs.socketcan.length && !ifs.serial.length) tips.push(<>No CAN interface or USB serial adapter found on this host.</>)
+    if (ifs.ventuno && !ifs.ventuno.interfaces.length) tips.push(<>{tr('VENTUNO Q CAN-FD firmware found on USB (1209:ca01) but no CAN interfaces — load the gs_usb driver:')}{' '}<code>sudo modprobe gs_usb; echo 1209 ca01 | sudo tee /sys/bus/usb/drivers/gs_usb/new_id</code></>)
+    if (ifs.socketcan.length && !ifs.candump) tips.push(<>{tr('Install can-utils for SocketCAN capture:')}{' '}<code>sudo apt install can-utils</code></>)
+    if (sel && !sel.up) tips.push(<>{sel.name}{' '}{tr('is down. Bring it up listen-only, e.g. at 250 kbit/s (NMEA 2000, VE.Can, J1939) or 500 kbit/s (battery BMS):')}{' '}<code>sudo ip link set {sel.name} up type can bitrate 250000 listen-only on</code></>)
+    if (sel && sel.up && !sel.listenOnly && !sel.virtual) tips.push(<>{sel.name}{' '}{tr('isn’t in listen-only mode — LSH never transmits, but the controller still ACKs frames. For a strictly passive tap:')}{' '}<code>sudo ip link set {sel.name} down; sudo ip link set {sel.name} up type can bitrate {sel.bitrate || 250000} listen-only on</code></>)
+    if (!ifs.socketcan.length && !ifs.serial.length) tips.push(<>{tr('No CAN interface or USB serial adapter found on this host.')}</>)
   }
   if (!tips.length) return null
   return <div className="can-hints">{tips.map((t, i) => <div key={i} className="stg-hint">{t}</div>)}</div>

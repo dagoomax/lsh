@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { OvenIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 export default function ApplianceCloudSection({ config, reload }) {
   return (
@@ -21,7 +21,7 @@ function HomeConnectCard({ homeConnect, reload }) {
 
   return (
     <SettingsCard icon={OvenIcon} title="Home Connect" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Bosch, Siemens, Gaggenau and Neff appliances via the official Home Connect cloud. Register a free app at <a href="https://developer.home-connect.com" target="_blank" rel="noopener">developer.home-connect.com</a> (Device Flow), save credentials here, then run <code>node scripts/homeconnect-auth.js</code> once to authorize.</>}>
+      desc={<>{tr('Bosch, Siemens, Gaggenau and Neff appliances via the official Home Connect cloud. Register a free app at')}{' '}<a href="https://developer.home-connect.com" target="_blank" rel="noopener">developer.home-connect.com</a>{' '}{tr('(Device Flow), save credentials here, then run')}{' '}<code>node scripts/homeconnect-auth.js</code>{' '}{tr('once to authorize.')}</>}>
       <Field label="Client ID" value={clientId} onChange={setClientId}/>
       <Field label="Client Secret" type="password" value={clientSecret} onChange={setClientSecret}/>
       <Field label="Environment" type="select" value={String(simulator)} onChange={v => setSimulator(v === 'true')}
@@ -54,7 +54,7 @@ function MieleCard({ miele, reload }) {
 
   return (
     <SettingsCard icon={OvenIcon} title="Miele@home" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Miele appliances via the official 3rd Party API. Register a free app at <a href="https://developer.miele.com" target="_blank" rel="noopener">developer.miele.com</a>, enter its credentials plus your Miele account login. If direct login is rejected, run <code>node scripts/miele-auth.js</code> once instead.</>}>
+      desc={<>{tr('Miele appliances via the official 3rd Party API. Register a free app at')}{' '}<a href="https://developer.miele.com" target="_blank" rel="noopener">developer.miele.com</a>{tr(', enter its credentials plus your Miele account login. If direct login is rejected, run')}{' '}<code>node scripts/miele-auth.js</code>{' '}{tr('once instead.')}</>}>
       <Field label="Client ID" value={clientId} onChange={setClientId}/>
       <Field label="Client Secret" type="password" value={clientSecret} onChange={setClientSecret}/>
       <Field label="Miele Account Email" type="email" value={username} onChange={setUsername}/>

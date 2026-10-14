@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { SettingsCard, ListEditor, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { RemoteIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const FIELDS = [
   { key: 'name', label: 'Name' },
@@ -67,16 +67,16 @@ export default function BroadlinkSection({ config, reload }) {
 
       {devices.filter(d => d.host).length > 0 && (
         <>
-          <h4 className="stg-subheading">Code Library</h4>
+          <h4 className="stg-subheading">{tr('Code Library')}</h4>
           {devices.filter(d => d.host).map(d => (
             <div key={d.host} className="stg-subfields">
               <div className="stg-token-list">
-                {(Object.entries(codes[d.host] || {})).length === 0 && <span className="stg-token-empty">No codes learned yet for {d.name || d.host}.</span>}
+                {(Object.entries(codes[d.host] || {})).length === 0 && <span className="stg-token-empty">{tr('No codes learned yet for {v}.', { v: d.name || d.host })}</span>}
                 {Object.entries(codes[d.host] || {}).map(([name, entry]) => (
                   <div className="stg-token-row" key={name}>
                     <span className="stg-token-name">{name}</span>
                     <span className="stg-token-role">{entry.type}</span>
-                    <Button variant="secondary" onClick={() => sendCode(d.host, name)}>Send</Button>
+                    <Button variant="secondary" onClick={() => sendCode(d.host, name)}>{tr('Send')}</Button>
                     <button className="stg-token-delete" onClick={() => deleteCode(d.host, name)}>✕</button>
                   </div>
                 ))}
@@ -84,8 +84,8 @@ export default function BroadlinkSection({ config, reload }) {
               <div className="stg-actions">
                 <Field label="" value={learnName[d.host] || ''} onChange={v => setLearnName(prev => ({ ...prev, [d.host]: v }))}
                   placeholder="Code name" style={{ flex: 1, marginBottom: 0 }}/>
-                <Button variant="secondary" busy={learning === d.host} onClick={() => learn(d.host, 'ir')}>Learn IR</Button>
-                <Button variant="secondary" busy={learning === d.host} onClick={() => learn(d.host, 'rf')}>Learn RF</Button>
+                <Button variant="secondary" busy={learning === d.host} onClick={() => learn(d.host, 'ir')}>{tr('Learn IR')}</Button>
+                <Button variant="secondary" busy={learning === d.host} onClick={() => learn(d.host, 'rf')}>{tr('Learn RF')}</Button>
               </div>
             </div>
           ))}

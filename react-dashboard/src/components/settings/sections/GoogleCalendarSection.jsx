@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { BoltIcon } from '../../Icons'
+import { tr } from '../../../i18n'
 
 export default function GoogleCalendarSection({ config }) {
   const [clientId, setClientId] = useState(config?.googleCalendar?.clientId || '')
@@ -30,7 +31,7 @@ export default function GoogleCalendarSection({ config }) {
 
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy} onClick={() => save.save({ clientId, clientSecret, calendarId })}>
-          Save
+          {tr('Save')}
         </Button>
         <ResultBanner result={save.result}/>
       </div>
@@ -38,12 +39,12 @@ export default function GoogleCalendarSection({ config }) {
       {status?.configured && (
         <div className="stg-actions" style={{ marginTop: 8 }}>
           {status.connected
-            ? <span className="stg-hint">✓ Connected</span>
-            : <Button variant="primary" href="/api/google-calendar/oauth/start">Connect with Google</Button>}
+            ? <span className="stg-hint">{tr('✓ Connected')}</span>
+            : <Button variant="primary" href="/api/google-calendar/oauth/start">{tr('Connect with Google')}</Button>}
         </div>
       )}
       {!status?.configured && (
-        <p className="stg-hint">Save a client ID and secret, then restart LSH — a "Connect with Google" link will appear here.</p>
+        <p className="stg-hint">{tr('Save a client ID and secret, then restart LSH — a "Connect with Google" link will appear here.')}</p>
       )}
     </SettingsCard>
   )

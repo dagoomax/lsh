@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { SettingsCard, ListEditor, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const TYPES = [
   { value: 'switch', label: 'Switch (on/off)' },
@@ -30,7 +30,7 @@ export default function VirtualDevicesSection({ config, reload }) {
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy}
           onClick={() => save.save(devices.filter(d => d.name).map(d => ({ ...d, id: d.id || randomId() }))).then(reload)}>
-          Save Virtual Devices
+          {tr('Save Virtual Devices')}
         </Button>
         <ResultBanner result={save.result}/>
       </div>

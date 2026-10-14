@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { CATEGORIES, findSection, FIRST_PORTED_ID } from './sectionRegistry'
-import { gt } from '../../i18n'
+import { useEffect, useRef, useState } from 'react'
+import { filterCategories, findSection, FIRST_SECTION_ID } from './sectionRegistry'
+import { gt, tr, LANGUAGES, getLang, setLang, loadPhrases } from '../../i18n'
 import '../../styles/settings.css'
 
 import ConnectionSection from './sections/ConnectionSection'
@@ -33,6 +33,7 @@ import BoneioGrentonSection from './sections/BoneioGrentonSection'
 import SmartBobSection from './sections/SmartBobSection'
 import AquiloSection from './sections/AquiloSection'
 import ZehnderSection from './sections/ZehnderSection'
+import { AirConditionersSection, BatteriesSection } from './sections/IntegrationsSection'
 import ArduinoSection from './sections/ArduinoSection'
 import EsphomeSection from './sections/EsphomeSection'
 import BroadlinkSection from './sections/BroadlinkSection'
@@ -66,9 +67,7 @@ import WiringSection from './sections/WiringSection'
 import BleScanSection from './sections/BleScanSection'
 import LanScanSection from './sections/LanScanSection'
 
-// Section id → component, for the handful ported so far (see sectionRegistry
-// for the full 57-section map). Anything not listed here renders a stub
-// linking back to the classic page instead of pretending to exist.
+// Section id → component (sectionRegistry has the sidebar grouping)
 const SECTION_COMPONENTS = {
   connection: ConnectionSection,
   'energy-extra': EnergySection,
@@ -100,6 +99,8 @@ const SECTION_COMPONENTS = {
   smartbob: SmartBobSection,
   aquilo: AquiloSection,
   zehnder: ZehnderSection,
+  'air-conditioners': AirConditionersSection,
+  'home-batteries': BatteriesSection,
   arduino: ArduinoSection,
   esphome: EsphomeSection,
   broadlink: BroadlinkSection,
@@ -134,8 +135,31 @@ const SECTION_COMPONENTS = {
   wiring: WiringSection,
 }
 
+// The open section lives in the URL — /react/settings/<section> — so a reload,
+// a bookmark or the back button lands on it again
+const sectionFromPath = () => {
+  const id = window.location.pathname.replace(/^\/react\/settings\/?/, '').split('/')[0]
+  return findSection(id) ? id : null
+}
+
 export default function SettingsPage({ onClose, onOpenCssEditor }) {
-  const [activeId, setActiveId] = useState(FIRST_PORTED_ID)
+  const [activeId, setActiveIdState] = useState(() => sectionFromPath() || FIRST_SECTION_ID)
+  const setActiveId = (id) => {
+    setActiveIdState(id)
+    const path = `/react/settings/${id}`
+    if (window.location.pathname !== path) window.history.pushState({}, '', path)
+  }
+  useEffect(() => {
+    const onPop = () => setActiveIdState(sectionFromPath() || FIRST_SECTION_ID)
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+  // Settings text comes from the phrase book — fetched for the selected
+  // language, again whenever the language changes (picker below or Header)
+  const lang = getLang()
+  useEffect(() => { loadPhrases() }, [lang])
+  const activeRef = useRef(null)
+  useEffect(() => { activeRef.current?.scrollIntoView({ block: 'nearest' }) }, [activeId])
   const [query, setQuery] = useState('')
   const [config, setConfig] = useState(null)
   const [loadError, setLoadError] = useState(null)
@@ -163,14 +187,8 @@ export default function SettingsPage({ onClose, onOpenCssEditor }) {
   }
   useEffect(() => { load() }, [])
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return CATEGORIES
-    return CATEGORIES
-      .map(cat => ({ ...cat, sections: cat.sections.filter(s =>
-        s.title.toLowerCase().includes(q) || s.keywords?.some(k => k.includes(q))) }))
-      .filter(cat => cat.sections.length)
-  }, [query])
+  // not memoized: cheap, and the translated titles change when the phrase book arrives
+  const filtered = filterCategories(query, tr)
 
   const active = findSection(activeId)
   const ActiveComponent = SECTION_COMPONENTS[activeId]
@@ -185,7 +203,11 @@ export default function SettingsPage({ onClose, onOpenCssEditor }) {
         </button>
         <h1 className="stg-page-title">{gt('stg_title', 'Settings')}</h1>
         <span className="stg-page-title-spacer"/>
-        <button className="stg-back" onClick={toggleTheme} title={theme === 'dark' ? 'Light theme' : 'Dark theme'}>
+        <select className="stg-lang" value={lang} onChange={e => setLang(e.target.value)}
+          title={tr('Language')} aria-label={tr('Language')}>
+          {LANGUAGES.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+        </select>
+        <button className="stg-back" onClick={toggleTheme} title={theme === 'dark' ? tr('Light theme') : tr('Dark theme')}>
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
       </div>
@@ -198,17 +220,20 @@ export default function SettingsPage({ onClose, onOpenCssEditor }) {
               <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>
             </svg>
             <input className="stg-search" placeholder={gt('stg_search', 'Search settings…')}
-              value={query} onChange={e => setQuery(e.target.value)}/>
+              value={query} onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && filtered[0]) setActiveId(filtered[0].sections[0].id)
+                if (e.key === 'Escape') setQuery('')
+              }}/>
           </div>
           {filtered.map(cat => (
             <div className="stg-nav-group" key={cat.id}>
-              <div className="stg-nav-group-title">{cat.label}</div>
+              <div className="stg-nav-group-title">{tr(cat.label)}</div>
               {cat.sections.map(s => (
-                <button key={s.id}
-                  className={`stg-nav-item${s.id === activeId ? ' active' : ''}${s.ported ? '' : ' stub'}`}
+                <button key={s.id} ref={s.id === activeId ? activeRef : null}
+                  className={`stg-nav-item${s.id === activeId ? ' active' : ''}`}
                   onClick={() => setActiveId(s.id)}>
-                  <span>{s.title}</span>
-                  {!s.ported && <span className="stg-nav-stub-dot" title="Not yet in the new Settings"/>}
+                  <span>{tr(s.title)}</span>
                 </button>
               ))}
             </div>
@@ -222,7 +247,7 @@ export default function SettingsPage({ onClose, onOpenCssEditor }) {
           {config && (
             ActiveComponent
               ? <ActiveComponent config={config} reload={load} onOpenCssEditor={onOpenCssEditor}/>
-              : <NotPortedNotice section={active}/>
+              : <MissingSection section={active}/>
           )}
         </div>
       </div>
@@ -230,10 +255,10 @@ export default function SettingsPage({ onClose, onOpenCssEditor }) {
   )
 }
 
-function NotPortedNotice({ section }) {
+function MissingSection({ section }) {
   return (
     <div className="stg-stub">
-      <h2>{section?.title}</h2>
+      <h2>{tr(section?.title)}</h2>
       <p>{gt('stg_stub_desc_v2', "This section isn't available in this version.")}</p>
     </div>
   )

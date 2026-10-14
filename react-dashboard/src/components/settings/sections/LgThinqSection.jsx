@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { LgAppliianceIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const COUNTRIES = [['US', 'US — United States'], ['EU', 'EU — Europe'], ['KR', 'KR — Korea'], ['AU', 'AU — Australia'], ['CA', 'CA — Canada'], ['JP', 'JP — Japan']]
 
@@ -36,12 +36,12 @@ export default function LgThinqSection({ config, reload }) {
       <Field label="LG Account Email" hint="(used once to fetch tokens — never stored)" type="email" value={loginEmail} onChange={setLoginEmail}/>
       <Field label="LG Account Password" hint="(used once — never stored)" type="password" value={loginPass} onChange={setLoginPass}/>
       <div className="stg-actions">
-        <Button variant="secondary" busy={fetchTokens.busy} onClick={doFetch}>Fetch Tokens &amp; User Number</Button>
+        <Button variant="secondary" busy={fetchTokens.busy} onClick={doFetch}>{tr('Fetch Tokens & User Number')}</Button>
         <ResultBanner result={fetchTokens.result}/>
       </div>
 
       <button className="stg-disclosure" onClick={() => setShowManual(v => !v)}>
-        {showManual ? '▾' : '▸'} Or paste tokens manually
+        {tr('{v} Or paste tokens manually', { v: showManual ? '▾' : '▸' })}
       </button>
       {showManual && (
         <div className="stg-subfields">

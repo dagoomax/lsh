@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SettingsCard, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
+import { tr, trn } from '../../../i18n'
 
 // Settings → Controllers & Buses → Modbus emulator — LSH answers Modbus
 // TCP/RTU register queries with live LSH values (src/modbus-emulator.js).
@@ -51,7 +52,7 @@ export default function ModbusEmuSection() {
   }, [])
 
   const srcMap = useMemo(() => new Map(sources.map((s) => [s.key, s])), [sources])
-  if (!cfg) return <SettingsCard title="Modbus emulator"><p className="stg-hint">Loading…</p></SettingsCard>
+  if (!cfg) return <SettingsCard title="Modbus emulator"><p className="stg-hint">{tr('Loading…')}</p></SettingsCard>
 
   const setDev = (i, patch) => setCfg((c) => ({ ...c, devices: c.devices.map((d, j) => (j === i ? { ...d, ...patch } : d)) }))
   const setReg = (i, k, patch) => setDev(i, { registers: cfg.devices[i].registers.map((r, j) => (j === k ? { ...r, ...patch } : r)) })
@@ -65,18 +66,18 @@ export default function ModbusEmuSection() {
       <div className="lan-hero">
         <LiveGrid words={liveWords} active={running.length > 0 && totals.clients > 0}/>
         <div className="lan-hero-body">
-          <div className="lan-hero-title">{running.length ? `${running.length} emulated device${running.length === 1 ? '' : 's'} online` : cfg.enabled ? 'Not running' : 'Emulator off'}</div>
-          <div className="lan-hero-sub">{running.map((s) => `${s.name} · ${s.endpoint} · unit ${s.unitId}`).join('  ·  ') || 'Enable, add a device, map registers, save — applied live.'}</div>
+          <div className="lan-hero-title">{running.length ? trn('{n} emulated device online|{n} emulated devices online', running.length) : cfg.enabled ? tr('Not running') : tr('Emulator off')}</div>
+          <div className="lan-hero-sub">{running.map((s) => `${s.name} · ${s.endpoint} · unit ${s.unitId}`).join('  ·  ') || tr('Enable, add a device, map registers, save — applied live.')}</div>
           <div className="lan-stats">
-            <div className="lan-stat"><b>{running.length}</b><span>devices</span></div>
-            <div className="lan-stat ble-blue"><b>{totals.clients}</b><span>clients</span></div>
-            <div className="lan-stat green"><b>{totals.requests}</b><span>requests</span></div>
-            <div className={`lan-stat ${totals.writes ? 'orange' : ''}`}><b>{totals.writes}</b><span>writes</span></div>
+            <div className="lan-stat"><b>{running.length}</b><span>{tr('devices')}</span></div>
+            <div className="lan-stat ble-blue"><b>{totals.clients}</b><span>{tr('clients')}</span></div>
+            <div className="lan-stat green"><b>{totals.requests}</b><span>{tr('requests')}</span></div>
+            <div className={`lan-stat ${totals.writes ? 'orange' : ''}`}><b>{totals.writes}</b><span>{tr('writes')}</span></div>
           </div>
         </div>
       </div>
 
-      {needsModule && <div className="stg-banner err" style={{ marginTop: 10 }}>Install the <b>modbus-emulator</b> module in Settings → Integration Modules first.</div>}
+      {needsModule && <div className="stg-banner err" style={{ marginTop: 10 }}>{tr('Install the')}{' '}<b>{tr('modbus-emulator')}</b>{' '}{tr('module in Settings → Integration Modules first.')}</div>}
 
       <div style={{ marginTop: 12 }}>
         <Toggle label="Enable Modbus emulator" checked={!!cfg.enabled} onChange={(v) => setCfg({ ...cfg, enabled: v })}/>
@@ -94,43 +95,43 @@ export default function ModbusEmuSection() {
                 <div className="lan-tile-sub">
                   {st?.error ? <span style={{ color: 'var(--red)' }}>✗ {st.error}</span>
                     : st?.endpoint ? `${st.endpoint} · unit ${st.unitId} · ${st.stats.requests} requests${st.stats.lastClient ? ` · last from ${st.stats.lastClient}` : ''}`
-                      : 'not running — save to apply'}
+                      : tr('not running — save to apply')}
                 </div>
               </div>
-              <label className="emu-inline"><input type="checkbox" checked={d.enabled !== false} onChange={(e) => setDev(i, { enabled: e.target.checked })}/> on</label>
-              <button className="emu-x" title="Remove device" onClick={() => setCfg({ ...cfg, devices: cfg.devices.filter((_, j) => j !== i) })}>✕</button>
+              <label className="emu-inline"><input type="checkbox" checked={d.enabled !== false} onChange={(e) => setDev(i, { enabled: e.target.checked })}/>{' '}{tr('on')}</label>
+              <button className="emu-x" title={tr('Remove device')} onClick={() => setCfg({ ...cfg, devices: cfg.devices.filter((_, j) => j !== i) })}>✕</button>
             </div>
 
             <div className="mb-form">
-              <label className="mid"><span>Transport</span>
-                <select className="stg-input" value={d.transport} onChange={(e) => setDev(i, { transport: e.target.value })}><option value="tcp">Modbus TCP</option><option value="rtu">RTU (RS-485)</option></select>
+              <label className="mid"><span>{tr('Transport')}</span>
+                <select className="stg-input" value={d.transport} onChange={(e) => setDev(i, { transport: e.target.value })}><option value="tcp">{tr('Modbus TCP')}</option><option value="rtu">{tr('RTU (RS-485)')}</option></select>
               </label>
               {d.transport === 'tcp' ? (
                 <>
-                  <label className="narrow"><span>Port</span><input className="stg-input" type="number" value={d.port ?? 1502} onChange={(e) => setDev(i, { port: Number(e.target.value) })}/></label>
-                  <label><span>Listen on</span><input className="stg-input" value={d.bindHost ?? '0.0.0.0'} onChange={(e) => setDev(i, { bindHost: e.target.value })}/></label>
+                  <label className="narrow"><span>{tr('Port')}</span><input className="stg-input" type="number" value={d.port ?? 1502} onChange={(e) => setDev(i, { port: Number(e.target.value) })}/></label>
+                  <label><span>{tr('Listen on')}</span><input className="stg-input" value={d.bindHost ?? '0.0.0.0'} onChange={(e) => setDev(i, { bindHost: e.target.value })}/></label>
                 </>
               ) : (
                 <>
-                  <label><span>Serial port</span><input className="stg-input" value={d.serialPort || ''} placeholder="/dev/ttyUSB0" onChange={(e) => setDev(i, { serialPort: e.target.value })}/></label>
-                  <label className="narrow"><span>Baud</span><select className="stg-input" value={d.baud || 9600} onChange={(e) => setDev(i, { baud: Number(e.target.value) })}>{BAUDS.map((b) => <option key={b}>{b}</option>)}</select></label>
-                  <label className="narrow"><span>Parity</span><select className="stg-input" value={d.parity || 'none'} onChange={(e) => setDev(i, { parity: e.target.value })}>{['none', 'even', 'odd'].map((p) => <option key={p}>{p}</option>)}</select></label>
+                  <label><span>{tr('Serial port')}</span><input className="stg-input" value={d.serialPort || ''} placeholder="/dev/ttyUSB0" onChange={(e) => setDev(i, { serialPort: e.target.value })}/></label>
+                  <label className="narrow"><span>{tr('Baud')}</span><select className="stg-input" value={d.baud || 9600} onChange={(e) => setDev(i, { baud: Number(e.target.value) })}>{BAUDS.map((b) => <option key={b}>{b}</option>)}</select></label>
+                  <label className="narrow"><span>{tr('Parity')}</span><select className="stg-input" value={d.parity || 'none'} onChange={(e) => setDev(i, { parity: e.target.value })}>{['none', 'even', 'odd'].map((p) => <option key={p}>{p}</option>)}</select></label>
                 </>
               )}
-              <label className="narrow"><span>Unit ID</span><input className="stg-input" type="number" min="1" max="247" value={d.unitId ?? 1} onChange={(e) => setDev(i, { unitId: Number(e.target.value) })}/></label>
+              <label className="narrow"><span>{tr('Unit ID')}</span><input className="stg-input" type="number" min="1" max="247" value={d.unitId ?? 1} onChange={(e) => setDev(i, { unitId: Number(e.target.value) })}/></label>
               {templates && (
-                <label><span>Template</span>
+                <label><span>{tr('Template')}</span>
                   <select className="stg-input" value="" onChange={(e) => {
                     const t = templates[e.target.value]
                     if (t) setDev(i, { registers: t.registers.map((r) => ({ ...r })), template: e.target.value })
                   }}>
-                    <option value="">Apply template…</option>
+                    <option value="">{tr('Apply template…')}</option>
                     {Object.entries(templates).map(([k, t]) => <option key={k} value={k}>{t.label}</option>)}
                   </select>
                 </label>
               )}
             </div>
-            {d.port && d.port < 1024 && d.transport === 'tcp' && <div className="stg-hint">Ports below 1024 (like the standard 502) need root. Use 1502 and set the client to it, or redirect: <code>sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-port 1502</code></div>}
+            {d.port && d.port < 1024 && d.transport === 'tcp' && <div className="stg-hint">{tr('Ports below 1024 (like the standard 502) need root. Use 1502 and set the client to it, or redirect:')}{' '}<code>sudo iptables -t nat -A PREROUTING -p tcp --dport 502 -j REDIRECT --to-port 1502</code></div>}
             {templates?.[d.template]?.note && <div className="stg-hint">{templates[d.template].note}</div>}
 
             <div className="emu-regs">
@@ -141,28 +142,28 @@ export default function ModbusEmuSection() {
                   <div key={k} className="emu-reg">
                     <input className="emu-in w-label" placeholder="label" value={r.label || ''} onChange={(e) => setReg(i, k, { label: e.target.value })}/>
                     <select className="emu-in" value={r.table} onChange={(e) => setReg(i, k, { table: e.target.value, ...(e.target.value === 'coil' || e.target.value === 'discrete' ? { type: 'bool' } : r.type === 'bool' ? { type: 'u16' } : {}) })}>{Object.entries(TABLES).map(([t, l]) => <option key={t} value={t}>{l}</option>)}</select>
-                    <input className="emu-in w-num" type="number" min="0" max="65535" title="Address" value={r.address} onChange={(e) => setReg(i, k, { address: Number(e.target.value) })}/>
+                    <input className="emu-in w-num" type="number" min="0" max="65535" title={tr('Address')} value={r.address} onChange={(e) => setReg(i, k, { address: Number(e.target.value) })}/>
                     {!bit && (
                       <span className="emu-type">
                         <select className="emu-in" value={r.type} onChange={(e) => setReg(i, k, { type: e.target.value })}>{TYPES.map((t) => <option key={t}>{t}</option>)}</select>
-                        {WIDTH[r.type] === 2 && <select className="emu-in" title="Word order" value={r.wordOrder || 'be'} onChange={(e) => setReg(i, k, { wordOrder: e.target.value })}><option value="be">AB CD</option><option value="le">CD AB</option></select>}
-                        {r.type === 'string' && <input className="emu-in w-num" type="number" min="1" max="64" title="Length (registers)" value={r.length || 8} onChange={(e) => setReg(i, k, { length: Number(e.target.value) })}/>}
+                        {WIDTH[r.type] === 2 && <select className="emu-in" title={tr('Word order')} value={r.wordOrder || 'be'} onChange={(e) => setReg(i, k, { wordOrder: e.target.value })}><option value="be">{tr('AB CD')}</option><option value="le">{tr('CD AB')}</option></select>}
+                        {r.type === 'string' && <input className="emu-in w-num" type="number" min="1" max="64" title={tr('Length (registers)')} value={r.length || 8} onChange={(e) => setReg(i, k, { length: Number(e.target.value) })}/>}
                         <span className="emu-x-label">×</span>
-                        <input className="emu-in w-num" type="number" step="any" title="Scale: raw = value × scale" value={r.scale ?? 1} onChange={(e) => setReg(i, k, { scale: Number(e.target.value) })}/>
+                        <input className="emu-in w-num" type="number" step="any" title={tr('Scale: raw = value × scale')} value={r.scale ?? 1} onChange={(e) => setReg(i, k, { scale: Number(e.target.value) })}/>
                       </span>
                     )}
                     <span className="emu-src">
-                      <input className="emu-in w-src" list={`emu-src-${i}`} placeholder="LSH value (store key)" value={r.source || ''} onChange={(e) => setReg(i, k, { source: e.target.value })}/>
+                      <input className="emu-in w-src" list={`emu-src-${i}`} placeholder={tr('LSH value (store key)')} value={r.source || ''} onChange={(e) => setReg(i, k, { source: e.target.value })}/>
                       {!r.source && <input className="emu-in w-num" placeholder="const" value={r.value ?? ''} onChange={(e) => setReg(i, k, { value: e.target.value })}/>}
                     </span>
                     {r.table !== 'input' && r.table !== 'discrete' && (
-                      <label className="emu-inline" title="Allow Modbus masters to write this register">
-                        <input type="checkbox" checked={!!r.writable} onChange={(e) => setReg(i, k, { writable: e.target.checked })}/> writable
+                      <label className="emu-inline" title={tr('Allow Modbus masters to write this register')}>
+                        <input type="checkbox" checked={!!r.writable} onChange={(e) => setReg(i, k, { writable: e.target.checked })}/>{' '}{tr('writable')}
                       </label>
                     )}
-                    {r.writable && <input className="emu-in w-src" list={`emu-cmd-${i}`} placeholder="→ LSH device/sensor (optional)" value={r.command || ''} onChange={(e) => setReg(i, k, { command: e.target.value })}/>}
+                    {r.writable && <input className="emu-in w-src" list={`emu-cmd-${i}`} placeholder={tr('→ LSH device/sensor (optional)')} value={r.command || ''} onChange={(e) => setReg(i, k, { command: e.target.value })}/>}
                     <span className="emu-live">{lv ? <><b>{fmt(lv.value)}</b><span>{lv.words.map((w) => w.toString(16).padStart(4, '0')).join(' ')}</span></> : <span className="stg-hint">—</span>}</span>
-                    <button className="emu-x" title="Remove register" onClick={() => setDev(i, { registers: d.registers.filter((_, j) => j !== k) })}>✕</button>
+                    <button className="emu-x" title={tr('Remove register')} onClick={() => setDev(i, { registers: d.registers.filter((_, j) => j !== k) })}>✕</button>
                     {r.source && srcMap.get(r.source) && <div className="emu-src-hint">{srcMap.get(r.source).label}</div>}
                   </div>
                 )
@@ -171,16 +172,16 @@ export default function ModbusEmuSection() {
             <datalist id={`emu-src-${i}`}>{sources.map((s) => <option key={s.key} value={s.key}>{`${s.label} = ${fmt(s.value)}${s.unit ? ` ${s.unit}` : ''}`}</option>)}</datalist>
             <datalist id={`emu-cmd-${i}`}>{sources.filter((s) => s.controllable).map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}</datalist>
             <div className="stg-actions" style={{ marginTop: 6 }}>
-              <Button onClick={() => setDev(i, { registers: [...d.registers, { table: 'holding', address: nextAddress(d.registers, 'holding'), type: 'u16', label: '', source: '', scale: 1 }] })}>+ Register</Button>
-              <label className="emu-inline"><input type="checkbox" checked={!!d.strict} onChange={(e) => setDev(i, { strict: e.target.checked })}/> strict (unmapped registers → exception 2, otherwise read as 0)</label>
+              <Button onClick={() => setDev(i, { registers: [...d.registers, { table: 'holding', address: nextAddress(d.registers, 'holding'), type: 'u16', label: '', source: '', scale: 1 }] })}>{tr('+ Register')}</Button>
+              <label className="emu-inline"><input type="checkbox" checked={!!d.strict} onChange={(e) => setDev(i, { strict: e.target.checked })}/>{' '}{tr('strict (unmapped registers → exception 2, otherwise read as 0)')}</label>
             </div>
           </div>
         )
       })}
 
       <div className="stg-actions">
-        <Button onClick={() => setCfg({ ...cfg, devices: [...cfg.devices, newDevice(cfg.devices.length + 1)] })}>+ Emulated device</Button>
-        <Button variant="primary" busy={save.busy} onClick={() => save.save(cfg).then(() => get('/api/settings/modbus-emu').then((j) => j.success && setCfg(j.data))).catch(() => {})}>Save &amp; apply</Button>
+        <Button onClick={() => setCfg({ ...cfg, devices: [...cfg.devices, newDevice(cfg.devices.length + 1)] })}>{tr('+ Emulated device')}</Button>
+        <Button variant="primary" busy={save.busy} onClick={() => save.save(cfg).then(() => get('/api/settings/modbus-emu').then((j) => j.success && setCfg(j.data))).catch(() => {})}>{tr('Save & apply')}</Button>
         <ResultBanner result={save.result}/>
       </div>
     </SettingsCard>

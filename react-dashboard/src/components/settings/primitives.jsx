@@ -1,19 +1,25 @@
 import { PlusIcon, MinusIcon } from '../Icons'
+import { tr } from '../../i18n'
 
 // ── Shared Settings design system ───────────────────────────────────────────
 // Visual rules live in ../../styles/settings.css (built on the existing CSS
 // vars in styles/global.css, so dark/light theme parity is automatic). These
 // components only carry structure + behavior.
+//
+// Text props (title, desc, label, hint, placeholder, option labels, button
+// text…) are passed through tr(), so sections can pass plain English and it
+// shows in the selected language (src/i18n/settings). Options holding user data
+// (device, speaker, token names) set `raw: true` so they're never translated.
 
 export function SettingsCard({ icon: Icon, title, badge, desc, children }) {
   return (
     <section className="stg-card">
       <div className="stg-card-head">
         {Icon && <span className="stg-card-icon"><Icon size={20}/></span>}
-        <h3 className="stg-card-title">{title}</h3>
-        {badge && <span className={`stg-badge stg-badge-${badge.tone || 'optional'}`}>{badge.label}</span>}
+        <h3 className="stg-card-title">{tr(title)}</h3>
+        {badge && <span className={`stg-badge stg-badge-${badge.tone || 'optional'}`}>{tr(badge.label)}</span>}
       </div>
-      {desc && <p className="stg-card-desc">{desc}</p>}
+      {desc && <p className="stg-card-desc">{tr(desc)}</p>}
       <div className="stg-card-body">{children}</div>
     </section>
   )
@@ -26,20 +32,20 @@ export function Field({
   const id = 'f-' + Math.random().toString(36).slice(2, 9)
   return (
     <div className="stg-field" style={style}>
-      {label && <label htmlFor={id}>{label}{hint && <span className="stg-hint"> {hint}</span>}</label>}
+      {label && <label htmlFor={id}>{tr(label)}{hint && <span className="stg-hint"> {tr(hint)}</span>}</label>}
       {type === 'select' ? (
         <select id={id} className="stg-input" value={value} disabled={disabled}
           onChange={e => onChange(e.target.value)}>
-          {(options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {(options || []).map(o => <option key={o.value} value={o.value}>{o.raw ? o.label : tr(o.label)}</option>)}
         </select>
       ) : type === 'textarea' ? (
-        <textarea id={id} className="stg-input stg-textarea" value={value} placeholder={placeholder}
+        <textarea id={id} className="stg-input stg-textarea" value={value} placeholder={tr(placeholder)}
           disabled={disabled} onChange={e => onChange(e.target.value)} rows={4}/>
       ) : type === 'checkbox' ? (
         <input id={id} className="stg-checkbox" type="checkbox" checked={!!value}
           disabled={disabled} onChange={e => onChange(e.target.checked)}/>
       ) : (
-        <input id={id} className="stg-input" type={type} value={value} placeholder={placeholder}
+        <input id={id} className="stg-input" type={type} value={value} placeholder={tr(placeholder)}
           min={min} max={max} maxLength={maxLength} autoComplete={autoComplete} inputMode={inputMode}
           disabled={disabled} onChange={e => onChange(e.target.value)}/>
       )}
@@ -55,7 +61,7 @@ export function Toggle({ label, checked, onChange, hint }) {
     <label className="stg-toggle-row">
       <input type="checkbox" className="stg-toggle-input" checked={!!checked} onChange={e => onChange(e.target.checked)}/>
       <span className={`stg-toggle ${checked ? 'on' : ''}`}><span className="stg-toggle-knob"/></span>
-      <span className="stg-toggle-label">{label}{hint && <span className="stg-hint"> {hint}</span>}</span>
+      <span className="stg-toggle-label">{tr(label)}{hint && <span className="stg-hint"> {tr(hint)}</span>}</span>
     </label>
   )
 }
@@ -63,19 +69,19 @@ export function Toggle({ label, checked, onChange, hint }) {
 export function Button({ children, onClick, variant = 'secondary', busy, disabled, type, href, download, title }) {
   const cls = `stg-btn stg-btn-${variant}${busy ? ' busy' : ''}`
   if (href) {
-    return <a className={cls} href={href} download={download} title={title}>{children}</a>
+    return <a className={cls} href={href} download={download} title={tr(title)}>{tr(children)}</a>
   }
   return (
-    <button className={cls} onClick={onClick} disabled={disabled || busy} type={type || 'button'} title={title}>
+    <button className={cls} onClick={onClick} disabled={disabled || busy} type={type || 'button'} title={tr(title)}>
       {busy && <span className="stg-spinner"/>}
-      {children}
+      {tr(children)}
     </button>
   )
 }
 
 export function ResultBanner({ result }) {
   if (!result) return null
-  return <span className={`stg-banner ${result.ok ? 'ok' : 'err'}`}>{result.ok ? '✓' : '✗'} {result.message}</span>
+  return <span className={`stg-banner ${result.ok ? 'ok' : 'err'}`}>{result.ok ? '✓' : '✗'} {tr(result.message)}</span>
 }
 
 // Generic editable array-of-objects list — the one interaction pattern with
@@ -106,14 +112,14 @@ export function ListEditor({ rows, onChange, fields, renderExtra, addLabel = '+ 
           </div>
           <div className="stg-list-row-actions">
             {renderExtra && renderExtra(row, i, (patch) => setRow(i, patch))}
-            <button className="stg-list-remove" title="Remove" onClick={() => removeRow(i)}>
+            <button className="stg-list-remove" title={tr('Remove')} onClick={() => removeRow(i)}>
               <MinusIcon size={16}/>
             </button>
           </div>
         </div>
       ))}
       <button className="stg-list-add" onClick={addRow}>
-        <PlusIcon size={16}/> {addLabel}
+        <PlusIcon size={16}/> {tr(addLabel)}
       </button>
     </div>
   )

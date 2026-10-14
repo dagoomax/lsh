@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { HomeIcon, ShutterIcon, RelayIcon, ZWaveIcon, ThermostatIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 export default function SmartHomeSection({ config, reload }) {
   return (
@@ -71,7 +71,7 @@ function SomfyCard({ somfy, reload }) {
       <Field label="Device Filter" hint="(comma-separated labels — leave blank for all)" value={devicesText} onChange={setDevicesText} placeholder="Living Room Blind, Garage Door"/>
       <Field label="Poll Interval" hint="(seconds, default 30)" type="number" value={pollInterval} onChange={setPollInterval}/>
       <div className="stg-actions">
-        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ host, port: Number(port), email, password })}>Test Connection</Button>
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ host, port: Number(port), email, password })}>{tr('Test Connection')}</Button>
         <Button variant="primary" busy={save.busy} onClick={() => save.save({
           host, port: Number(port), token, email, password,
           devices: devicesText.split(',').map(s => s.trim()).filter(Boolean),
@@ -100,7 +100,7 @@ function LandroidCard({ landroid, reload }) {
       <Field label="Password" type="password" value={password} onChange={setPassword}/>
       <Field label="Poll Interval" hint="(seconds)" type="number" value={pollInterval} onChange={setPollInterval} placeholder="60"/>
       <div className="stg-actions">
-        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ brand, email, password })}>Test Login</Button>
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ brand, email, password })}>{tr('Test Login')}</Button>
         <Button variant="primary" busy={save.busy} onClick={() => save.save({ brand, email, password, pollInterval: Number(pollInterval) }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={test.result || save.result}/>
       </div>
@@ -122,7 +122,7 @@ function SupplaCard({ suppla, reload }) {
       <Field label="Server URL" hint="(default: https://cloud.supla.org)" value={server} onChange={setServer}/>
       <Field label="Poll Interval" hint="(seconds, min 10)" type="number" value={pollInterval} onChange={setPollInterval}/>
       <div className="stg-actions">
-        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ token, server })}>Test Connection</Button>
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ token, server })}>{tr('Test Connection')}</Button>
         <Button variant="primary" busy={save.busy} onClick={() => save.save({ token, server, pollInterval: Number(pollInterval) }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={test.result || save.result}/>
       </div>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, ListEditor, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { CameraIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const FIELDS = [
   { key: 'name', label: 'Name' },
@@ -25,7 +25,7 @@ export default function MobotixSection({ config, reload }) {
 
   return (
     <SettingsCard icon={CameraIcon} title="MOBOTIX" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>MOBOTIX IP cameras / IP video door stations. Snapshots (<code>/cgi-bin/image.jpg</code>) are proxied so the password stays server-side. Door/relay outputs are advanced — configure them in <code>config.json</code>; they're preserved when you save here.</>}>
+      desc={<>{tr('MOBOTIX IP cameras / IP video door stations. Snapshots (')}<code>/cgi-bin/image.jpg</code>{tr(') are proxied so the password stays server-side. Door/relay outputs are advanced — configure them in')}{' '}<code>config.json</code>{tr("; they're preserved when you save here.")}</>}>
       <ListEditor rows={cams} onChange={setCams} fields={FIELDS} addLabel="+ Add MOBOTIX Camera"
         renderExtra={(row, i) => (
           <Button variant="secondary" busy={test.busy && testingIdx === i}

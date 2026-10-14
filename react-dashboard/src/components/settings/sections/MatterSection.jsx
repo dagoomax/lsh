@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner, Toggle } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 export default function MatterSection({ config, reload }) {
   const [bridgeEnabled, setBridgeEnabled] = useState(!!config.matter?.bridge?.enabled)
@@ -39,16 +39,16 @@ export default function MatterSection({ config, reload }) {
           {setupInfo && !setupInfo.isCommissioned && (
             <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
               {setupInfo.qrDataUri
-                ? <img src={setupInfo.qrDataUri} alt="Matter pairing QR code" width={180} height={180} style={{ borderRadius: 12, flexShrink: 0 }}/>
+                ? <img src={setupInfo.qrDataUri} alt={tr('Matter pairing QR code')} width={180} height={180} style={{ borderRadius: 12, flexShrink: 0 }}/>
                 : <div style={{ width: 180, height: 180, background: '#161b22', borderRadius: 12, flexShrink: 0 }}/>}
               <div>
                 <div className="stg-hint" style={{ textTransform: 'uppercase', fontWeight: 700, fontSize: 11 }}>{gt('s.matter_pairing_code', 'Manual Pairing Code')}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.05em' }}>{setupInfo.manualPairingCodeFormatted || setupInfo.manualPairingCode || '--'}</div>
-                <p className="stg-hint" style={{ marginTop: 10 }}>Scan with a phone's Home app, or enter the code manually when adding a Matter accessory.</p>
+                <p className="stg-hint" style={{ marginTop: 10 }}>{tr("Scan with a phone's Home app, or enter the code manually when adding a Matter accessory.")}</p>
               </div>
             </div>
           )}
-          {setupInfo?.isCommissioned && <p className="stg-hint">Already commissioned by a controller — decommission it from that app (e.g. Apple Home) to re-pair.</p>}
+          {setupInfo?.isCommissioned && <p className="stg-hint">{tr('Already commissioned by a controller — decommission it from that app (e.g. Apple Home) to re-pair.')}</p>}
           {setupError && <p className="stg-banner err">{setupError}</p>}
         </>
       )}
@@ -59,7 +59,7 @@ export default function MatterSection({ config, reload }) {
       <Toggle label={gt('s.matter_controller_enabled', 'Enable Matter controller')} checked={controllerEnabled} onChange={setControllerEnabled}/>
       {controllerEnabled && (
         <p className="stg-hint" style={{ marginTop: 4 }}>
-          Commission a device first (one-time, per device — needs terminal access): <code>node scripts/matter-commission.js</code>. Already-commissioned devices reconnect automatically on every LSH start.
+          {tr('Commission a device first (one-time, per device — needs terminal access):')}{' '}<code>node scripts/matter-commission.js</code>{tr('. Already-commissioned devices reconnect automatically on every LSH start.')}
         </p>
       )}
 

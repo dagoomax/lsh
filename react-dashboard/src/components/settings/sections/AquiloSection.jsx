@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SettingsCard, ListEditor, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const api = (url, method = 'GET', body) => fetch(url, {
   method, credentials: 'include',
@@ -62,7 +62,7 @@ export default function AquiloSection({ config, reload }) {
   return (
     <SettingsCard title="Aquilo" badge={{ label: gt('common.optional', 'Optional') }}
       desc="Aquilo liquid-level sensors (septic tanks, rainwater tanks, wells). LSH reads the WiFi receiver on your LAN at http://<gateway>/state — no Aquilo account needed. Find the receiver's IP in your router (give it a fixed DHCP lease). Every tank becomes a device with fill %, level, battery, an overflow-risk alarm (HomeKit leak sensor) and a stale-data flag.">
-      <h4 className="stg-subheading">Gateways</h4>
+      <h4 className="stg-subheading">{tr('Gateways')}</h4>
       <ListEditor rows={gateways} onChange={setGateways} fields={GW_FIELDS} addLabel="Add gateway"
         renderExtra={(row) => {
           const g = gwState.get(row.host?.trim())
@@ -78,10 +78,10 @@ export default function AquiloSection({ config, reload }) {
       </div>
 
       {tanks.length > 0 && <>
-        <h4 className="stg-subheading">Tanks</h4>
+        <h4 className="stg-subheading">{tr('Tanks')}</h4>
         <div style={{ overflowX: 'auto' }}>
           <table className="stg-table" style={{ width: '100%', fontSize: 12.5 }}>
-            <thead><tr><th>In LSH</th><th>Name</th><th>Fill</th><th>Level</th><th>Battery</th><th>Last reading</th></tr></thead>
+            <thead><tr><th>{tr('In LSH')}</th><th>{tr('Name')}</th><th>{tr('Fill')}</th><th>{tr('Level')}</th><th>{tr('Battery')}</th><th>{tr('Last reading')}</th></tr></thead>
             <tbody>
               {tanks.map((t) => {
                 const off = exclude.includes(t.id)
@@ -98,7 +98,7 @@ export default function AquiloSection({ config, reload }) {
                     <td>{t.fill != null ? <b style={{ color: (t.overflow ?? t.fill >= overflowPct) ? 'var(--red)' : 'inherit' }}>{t.fill}%</b> : '—'}</td>
                     <td>{t.level != null ? `${t.level} cm` : '—'}</td>
                     <td>{t.battery != null ? `${t.battery}%` : '—'}</td>
-                    <td style={{ color: stale ? 'var(--orange, #f39c12)' : 'inherit' }}>{ago(t.lastRead)}{stale ? ' · stale' : ''}</td>
+                    <td style={{ color: stale ? 'var(--orange, #f39c12)' : 'inherit' }}>{ago(t.lastRead)}{stale ? ' ' + tr('· stale') : ''}</td>
                   </tr>
                 )
               })}
@@ -108,7 +108,7 @@ export default function AquiloSection({ config, reload }) {
       </>}
 
       <div className="stg-actions">
-        <Button variant="secondary" busy={test.busy} onClick={runTest}>Test gateway</Button>
+        <Button variant="secondary" busy={test.busy} onClick={runTest}>{tr('Test gateway')}</Button>
         <Button variant="primary" busy={save.busy} onClick={doSave}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result || test.result}/>
       </div>

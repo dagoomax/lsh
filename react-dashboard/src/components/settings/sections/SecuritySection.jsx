@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { SettingsCard, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { ShieldIcon, RouterIcon, TerminalIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 // The single worst-case section in the classic page — 6 unrelated
 // sub-features fanning out to 6 endpoints. Split into independent cards so
@@ -17,7 +17,7 @@ export default function SecuritySection({ config }) {
         endpoint="/api/settings/edit-pin" placeholder="••••"/>
       <PinCard
         title={gt('s.dashboard_pin_title', 'Dashboard Lock PIN')}
-        desc={<>PIN for the padlock screen-lock in the dashboard header. Default when unset: <code>0000</code>.</>}
+        desc={<>{tr('PIN for the padlock screen-lock in the dashboard header. Default when unset:')}{' '}<code>0000</code>.</>}
         endpoint="/api/settings/dashboard-pin" placeholder="0000"/>
       <UsersCard/>
       <TokensCard/>
@@ -100,7 +100,7 @@ function McpCard({ mcp }) {
 
   return (
     <SettingsCard icon={RouterIcon} title="MCP Server & AI bots" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Lets AI assistants (Claude, Gemini, ChatGPT) read and control the house through MCP at <code>POST /api/mcp</code>. Each assistant gets its own <b>bot</b>: a separate credential that works only for MCP, with its own permissions — read only or control, limited to chosen rooms, and locks / alarm / gates / doors blocked unless you allow them. Every call is rate-limited and logged.</>}>
+      desc={<>{tr('Lets AI assistants (Claude, Gemini, ChatGPT) read and control the house through MCP at')}{' '}<code>POST /api/mcp</code>{tr('. Each assistant gets its own')}{' '}<b>{tr('bot')}</b>{tr(': a separate credential that works only for MCP, with its own permissions — read only or control, limited to chosen rooms, and locks / alarm / gates / doors blocked unless you allow them. Every call is rate-limited and logged.')}</>}>
       <Toggle label="Enable MCP server" checked={enabled} onChange={setEnabled}/>
       <Field label="Public HTTPS address" hint="(for ChatGPT / claude.ai — the https:// URL those services reach LSH at; leave empty for this address)" value={publicUrl} onChange={setPublicUrl} placeholder="https://lsh.example.ts.net"/>
       <Toggle label="Also accept plain API tokens (legacy, full admin access)" hint="Off = only bots can use MCP. Turn on only for an old setup that still uses an API token." checked={allowApiTokens} onChange={setAllowApiTokens}/>
@@ -108,24 +108,24 @@ function McpCard({ mcp }) {
         <Button variant="primary" busy={save.busy} onClick={() => save.save({ enabled, publicUrl, allowApiTokens })}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result}/>
       </div>
-      {insecure && <div className="stg-banner err" style={{ marginTop: 8 }}>⚠ This address is plain http. Tokens would travel unencrypted outside your LAN, and ChatGPT / claude.ai need HTTPS — set up HTTPS (or Tailscale) and fill in the public address.</div>}
+      {insecure && <div className="stg-banner err" style={{ marginTop: 8 }}>{tr('⚠ This address is plain http. Tokens would travel unencrypted outside your LAN, and ChatGPT / claude.ai need HTTPS — set up HTTPS (or Tailscale) and fill in the public address.')}</div>}
 
       <div className="stg-field" style={{ marginTop: 16 }}>
-        <label>Bots</label>
+        <label>{tr('Bots')}</label>
         <div className="stg-token-list">
-          {bots == null && <span className="stg-token-empty">Loading…</span>}
-          {bots?.length === 0 && <span className="stg-token-empty">No bots yet — create one per assistant below</span>}
+          {bots == null && <span className="stg-token-empty">{tr('Loading…')}</span>}
+          {bots?.length === 0 && <span className="stg-token-empty">{tr('No bots yet — create one per assistant below')}</span>}
           {bots?.map(b => (
             <div className="stg-token-row" key={b.id} style={{ flexWrap: 'wrap', gap: 6, opacity: b.enabled === false ? 0.55 : 1 }}>
               <span className="stg-token-name" style={{ flex: '1 1 200px' }}>
-                <b>{b.name}</b> · {MCP_CLIENTS.find(c => c.value === b.client)?.label.split(' (')[0] || b.client} · {b.access === 'control' ? 'control' : 'read only'}
-                {b.sensitive ? ' · locks/alarm allowed' : ''}{b.rooms?.length ? ` · ${b.rooms.join(', ')}` : ' · all rooms'}
-                <span className="stg-hint"> — {b.tokenHint}{b.oauthGrants ? ` · ${b.oauthGrants} OAuth sign-in(s)` : ''} · last used {b.lastUsedAt ? new Date(b.lastUsedAt).toLocaleString() : 'never'}</span>
+                <b>{b.name}</b> · {MCP_CLIENTS.find(c => c.value === b.client)?.label.split(' (')[0] || b.client} · {b.access === 'control' ? tr('control') : tr('read only')}
+                {b.sensitive ? ' ' + tr('· locks/alarm allowed') : ''}{b.rooms?.length ? ` · ${b.rooms.join(', ')}` : ' ' + tr('· all rooms')}
+                <span className="stg-hint"> — {b.tokenHint}{b.oauthGrants ? ` · ${b.oauthGrants} OAuth sign-in(s)` : ''}{' '}{tr('· last used')}{' '}{b.lastUsedAt ? new Date(b.lastUsedAt).toLocaleString() : tr('never')}</span>
               </span>
-              <Button variant="secondary" onClick={() => toggle(b)}>{b.enabled === false ? 'Enable' : 'Disable'}</Button>
-              <Button variant="secondary" onClick={() => rotate(b)}>New token</Button>
-              {b.oauthGrants > 0 && <Button variant="secondary" onClick={() => revokeOAuth(b)}>Sign out OAuth</Button>}
-              <button className="stg-token-delete" title="Remove bot" onClick={() => remove(b)}>✕</button>
+              <Button variant="secondary" onClick={() => toggle(b)}>{b.enabled === false ? tr('Enable') : tr('Disable')}</Button>
+              <Button variant="secondary" onClick={() => rotate(b)}>{tr('New token')}</Button>
+              {b.oauthGrants > 0 && <Button variant="secondary" onClick={() => revokeOAuth(b)}>{tr('Sign out OAuth')}</Button>}
+              <button className="stg-token-delete" title={tr('Remove bot')} onClick={() => remove(b)}>✕</button>
             </div>
           ))}
         </div>
@@ -137,9 +137,9 @@ function McpCard({ mcp }) {
         options={[{ value: 'read', label: 'Read only — see devices and history, change nothing' }, { value: 'control', label: 'Control — may switch devices and run scenes' }]}/>
       {form.access === 'control' && <Toggle label="Allow locks, alarm, gates and doors" hint="Off (recommended): those stay read-only for this bot, and scenes that touch them are refused." checked={form.sensitive} onChange={v => setForm({ ...form, sensitive: v })}/>}
       <div className="stg-field">
-        <label>Rooms <span className="stg-hint">(none checked = all rooms)</span></label>
+        <label>{tr('Rooms')}{' '}<span className="stg-hint">{tr('(none checked = all rooms)')}</span></label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px' }}>
-          {rooms.length === 0 && <span className="stg-hint">No rooms assigned to devices yet</span>}
+          {rooms.length === 0 && <span className="stg-hint">{tr('No rooms assigned to devices yet')}</span>}
           {rooms.map(r => (
             <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, cursor: 'pointer' }}>
               <input type="checkbox" className="stg-checkbox" checked={form.rooms.includes(r)}
@@ -149,24 +149,24 @@ function McpCard({ mcp }) {
         </div>
       </div>
       <div className="stg-actions">
-        <Button variant="secondary" busy={act.busy} onClick={create}>Create bot</Button>
-        <Button variant="secondary" onClick={showAudit}>Show recent bot activity</Button>
+        <Button variant="secondary" busy={act.busy} onClick={create}>{tr('Create bot')}</Button>
+        <Button variant="secondary" onClick={showAudit}>{tr('Show recent bot activity')}</Button>
         <ResultBanner result={act.result}/>
       </div>
 
       {revealed && (
         <div className="stg-token-reveal">
-          <span className="stg-hint">Token for <b>{revealed.bot.name}</b> — copy it now, it will <strong>not</strong> be shown again. Treat it like a password: anyone with it can do what this bot can.</span>
+          <span className="stg-hint">{tr('Token for')}{' '}<b>{revealed.bot.name}</b>{' '}{tr('— copy it now, it will')}{' '}<strong>{tr('not')}</strong>{' '}{tr('be shown again. Treat it like a password: anyone with it can do what this bot can.')}</span>
           <McpSetup client={revealed.bot.client} url={url} token={revealed.token}/>
-          <div className="stg-actions"><Button variant="secondary" onClick={() => setRevealed(null)}>Done</Button></div>
+          <div className="stg-actions"><Button variant="secondary" onClick={() => setRevealed(null)}>{tr('Done')}</Button></div>
         </div>
       )}
 
       {audit && (
         <div className="stg-field" style={{ marginTop: 12 }}>
-          <label>Recent bot activity <span className="stg-hint">(since the last restart)</span></label>
+          <label>{tr('Recent bot activity')}{' '}<span className="stg-hint">{tr('(since the last restart)')}</span></label>
           <div style={{ maxHeight: 260, overflow: 'auto', fontSize: 12, fontFamily: 'ui-monospace, monospace' }}>
-            {audit.length === 0 && <span className="stg-hint">Nothing yet</span>}
+            {audit.length === 0 && <span className="stg-hint">{tr('Nothing yet')}</span>}
             {audit.map((e, i) => (
               <div key={i} style={{ color: e.ok ? 'inherit' : 'var(--danger, #d33)' }}>
                 {new Date(e.at).toLocaleTimeString()} · {e.bot} · {e.tool} {e.args && Object.keys(e.args).length ? JSON.stringify(e.args) : ''} {e.ok ? '✓' : `✗ ${e.error || ''}`}
@@ -194,8 +194,8 @@ function TerminalCard({ terminal }) {
       desc="A real interactive Linux shell, run as this server's own OS user, streamed straight into the dashboard — no SSH client needed. Off by default: needs this toggle here, admin + the per-user 'Terminal' permission below (only grantable while installer mode is on), and localhost/LAN access — never reachable over remote access.">
       <div className={`stg-banner ${installerMode ? 'ok' : ''}`} style={{ marginBottom: 4 }}>
         {installerMode
-          ? '🔓 Installer mode is ON — this toggle is editable.'
-          : <>🔒 Installer mode is OFF. Set <code>"installerMode": true</code> in <code>config.json</code> to change it (no in-app toggle, by design).</>}
+          ? tr('🔓 Installer mode is ON — this toggle is editable.')
+          : <>{tr('🔒 Installer mode is OFF. Set')}{' '}<code>"installerMode": true</code>{' '}{tr('in')}{' '}<code>config.json</code>{' '}{tr('to change it (no in-app toggle, by design).')}</>}
       </div>
       <Toggle label="Enable embedded terminal" checked={enabled} onChange={installerMode ? setEnabled : () => {}}/>
       <div className="stg-actions">
@@ -280,12 +280,12 @@ function UsersCard() {
       desc="Flows, Claude Code, and Terminal need an extra permission beyond Admin, shown below each user — granting it requires installer mode.">
       <div className={`stg-banner ${installerMode ? 'ok' : ''}`} style={{ marginBottom: 4 }}>
         {installerMode
-          ? '🔓 Installer mode is ON — permission checkboxes below are editable.'
-          : <>🔒 Installer mode is OFF — permissions are read-only. Set <code>"installerMode": true</code> in <code>config.json</code> to change them (no in-app toggle, by design).</>}
+          ? tr('🔓 Installer mode is ON — permission checkboxes below are editable.')
+          : <>{tr('🔒 Installer mode is OFF — permissions are read-only. Set')}{' '}<code>"installerMode": true</code>{' '}{tr('in')}{' '}<code>config.json</code>{' '}{tr('to change them (no in-app toggle, by design).')}</>}
       </div>
       <div className="stg-token-list">
-        {users == null && <span className="stg-token-empty">Loading…</span>}
-        {users?.length === 0 && <span className="stg-token-empty">No users</span>}
+        {users == null && <span className="stg-token-empty">{tr('Loading…')}</span>}
+        {users?.length === 0 && <span className="stg-token-empty">{tr('No users')}</span>}
         {users?.map(u => (
           <div className="stg-token-row" key={u.id} style={{ flexWrap: 'wrap', rowGap: 6 }}>
             <span className="stg-token-name">{u.username}</span>
@@ -293,17 +293,17 @@ function UsersCard() {
             <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)' }}>
               <input type="checkbox" className="stg-checkbox" checked={!!u.permissions?.flows} disabled={!installerMode}
                 onChange={(e) => togglePermission(u.id, 'flows', e.target.checked)}/>
-              Flows
+              {tr('Flows')}
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)' }}>
               <input type="checkbox" className="stg-checkbox" checked={!!u.permissions?.claudeCode} disabled={!installerMode}
                 onChange={(e) => togglePermission(u.id, 'claudeCode', e.target.checked)}/>
-              Claude Code
+              {tr('Claude Code')}
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)' }}>
               <input type="checkbox" className="stg-checkbox" checked={!!u.permissions?.terminal} disabled={!installerMode}
                 onChange={(e) => togglePermission(u.id, 'terminal', e.target.checked)}/>
-              Terminal
+              {tr('Terminal')}
             </label>
             <button className="stg-token-delete" onClick={() => removeUser(u.id)}>✕</button>
           </div>
@@ -344,10 +344,10 @@ function TokensCard() {
 
   return (
     <SettingsCard title={gt('s.api_tokens', 'API Tokens')}
-      desc={<>Bearer tokens for scripts &amp; integrations. Use header: <code>Authorization: Bearer &lt;token&gt;</code></>}>
+      desc={<>{tr('Bearer tokens for scripts & integrations. Use header:')}{' '}<code>Authorization: Bearer &lt;token&gt;</code></>}>
       <div className="stg-token-list">
-        {tokens == null && <span className="stg-token-empty">Loading…</span>}
-        {tokens?.length === 0 && <span className="stg-token-empty">No tokens</span>}
+        {tokens == null && <span className="stg-token-empty">{tr('Loading…')}</span>}
+        {tokens?.length === 0 && <span className="stg-token-empty">{tr('No tokens')}</span>}
         {tokens?.map(t => (
           <div className="stg-token-row" key={t.id}>
             <span className="stg-token-name">{t.name}</span>
@@ -362,7 +362,7 @@ function TokensCard() {
       </div>
       {revealed && (
         <div className="stg-token-reveal">
-          <span className="stg-hint">Save this token — it will <strong>not</strong> be shown again:</span>
+          <span className="stg-hint">{tr('Save this token — it will')}{' '}<strong>{tr('not')}</strong>{' '}{tr('be shown again:')}</span>
           <div className="stg-token-value-box">
             <code>{revealed}</code>
             <Button variant="secondary" onClick={() => navigator.clipboard?.writeText(revealed)}>{gt('common.copy', 'Copy')}</Button>
@@ -399,7 +399,7 @@ function HttpsCard({ server }) {
       <Toggle label={gt('s.enable_le', "Enable Let's Encrypt (auto certificate)")} checked={leEnabled} onChange={setLeEnabled}/>
       {leEnabled && (
         <div className="stg-subfields">
-          <p className="stg-hint">⚠ Requires port 80 accessible from the internet for HTTP-01 challenge.</p>
+          <p className="stg-hint">{tr('⚠ Requires port 80 accessible from the internet for HTTP-01 challenge.')}</p>
           <Field label={gt('s.le_domain', 'Domain')} value={leDomain} onChange={setLeDomain} placeholder="dashboard.example.com"/>
           <Field label={gt('s.le_email', "Email (Let's Encrypt account)")} type="email" value={leEmail} onChange={setLeEmail} placeholder="admin@example.com"/>
           <Field label={gt('s.le_port', 'HTTPS Port')} type="number" value={lePort} onChange={setLePort} placeholder="443"/>

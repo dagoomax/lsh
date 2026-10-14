@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { ArduinoIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const PLACEHOLDER = `[
   {
@@ -42,8 +42,7 @@ export default function ArduinoSection({ config, reload }) {
       <Field label="Password" hint="(optional)" type="password" value={password} onChange={setPassword}/>
       <Field label="Devices" hint="(JSON array — see example)" type="textarea" value={devicesText} onChange={setDevicesText} placeholder={PLACEHOLDER}/>
       <p className="stg-hint">
-        Sensor <code>type</code>: omit for read-only · <code>"toggle"</code> for on/off switch · <code>"range"</code> for slider (add <code>min</code>/<code>max</code>).
-        Override per-sensor with <code>stateTopic</code>/<code>commandTopic</code>. Use <code>jsonKey</code> if the JSON key differs from <code>path</code>.
+        {tr('Sensor')}{' '}<code>type</code>{tr(': omit for read-only ·')}{' '}<code>"toggle"</code>{' '}{tr('for on/off switch ·')}{' '}<code>"range"</code>{' '}{tr('for slider (add')}{' '}<code>min</code>/<code>max</code>{tr('). Override per-sensor with')}{' '}<code>stateTopic</code>/<code>commandTopic</code>{tr('. Use')}{' '}<code>jsonKey</code>{' '}{tr('if the JSON key differs from')}{' '}<code>path</code>.
       </p>
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy} onClick={doSave}>{gt('common.save', 'Save')}</Button>

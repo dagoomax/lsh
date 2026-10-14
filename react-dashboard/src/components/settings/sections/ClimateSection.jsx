@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner, Toggle } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { AirCondIcon, PoolIcon, SunIcon, ThermostatIcon, WindIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const THERMOMIX_COUNTRIES = [
   ['pl', 'Poland (cookidoo.pl)'], ['de', 'Germany (cookidoo.de)'], ['at', 'Austria (cookidoo.at)'],
@@ -95,7 +95,7 @@ function OpenWeatherCard({ openweather, reload }) {
       <Field label="Poll Interval" hint="(seconds, minimum 60)" type="number" value={pollInterval} onChange={setPollInterval}/>
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy} onClick={() => save.save(payload()).then(reload)}>{gt('common.save', 'Save')}</Button>
-        <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>Test connection</Button>
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>{tr('Test connection')}</Button>
         <ResultBanner result={save.result || test.result}/>
       </div>
     </SettingsCard>
@@ -122,7 +122,7 @@ function AirlyCard({ airly, reload }) {
       <Field label="Poll Interval" hint="(seconds, minimum 300)" type="number" value={pollInterval} onChange={setPollInterval}/>
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy} onClick={() => save.save(payload()).then(reload)}>{gt('common.save', 'Save')}</Button>
-        <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>Test connection</Button>
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>{tr('Test connection')}</Button>
         <ResultBanner result={save.result || test.result}/>
       </div>
     </SettingsCard>

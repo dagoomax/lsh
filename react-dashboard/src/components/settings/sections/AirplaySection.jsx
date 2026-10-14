@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { SettingsCard, ListEditor, Toggle, Button, ResultBanner, Field } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { SpeakerIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const FIELDS = [
   { key: 'id',       label: 'ID',     placeholder: 'living-room' },
@@ -39,16 +39,16 @@ function PairRow({ sp }) {
         <b>{sp.name}</b>
         <span className="stg-hint">{sp.host} · {asks}</span>
         <span style={{ marginLeft: 'auto', fontSize: 13, color: st.phase === 'paired' || st.paired ? 'var(--green)' : st.phase === 'failed' ? 'var(--red)' : 'inherit' }}>
-          {st.phase === 'paired' || (st.paired && st.phase !== 'pin') ? '✓ Paired' : st.phase === 'failed' ? `✗ ${st.error || 'Failed'}` : ''}
+          {st.phase === 'paired' || (st.paired && st.phase !== 'pin') ? tr('✓ Paired') : st.phase === 'failed' ? `✗ ${st.error || 'Failed'}` : ''}
         </span>
         {st.phase === 'pin'
-          ? <Button onClick={() => call(base, 'DELETE')}>Cancel</Button>
-          : <Button busy={busy} onClick={() => { setPin(''); call(base, 'POST') }}>{st.paired || st.phase === 'paired' ? 'Pair again' : 'Pair'}</Button>}
-        {(st.paired || st.phase === 'paired') && st.phase !== 'pin' && <Button onClick={() => call(base, 'DELETE').then(() => setSt({ phase: 'idle' }))}>Forget</Button>}
+          ? <Button onClick={() => call(base, 'DELETE')}>{tr('Cancel')}</Button>
+          : <Button busy={busy} onClick={() => { setPin(''); call(base, 'POST') }}>{st.paired || st.phase === 'paired' ? tr('Pair again') : tr('Pair')}</Button>}
+        {(st.paired || st.phase === 'paired') && st.phase !== 'pin' && <Button onClick={() => call(base, 'DELETE').then(() => setSt({ phase: 'idle' }))}>{tr('Forget')}</Button>}
       </div>
       {st.phase === 'pin' && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span className="stg-hint">Enter the code shown on the TV:</span>
+          <span className="stg-hint">{tr('Enter the code shown on the TV:')}</span>
           <input className="stg-input" style={{ width: 110, fontSize: 18, letterSpacing: 4, textAlign: 'center' }} inputMode="numeric" maxLength={8} autoFocus
             value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} onKeyDown={(e) => e.key === 'Enter' && pin.length >= 4 && call(`${base}/pin`, 'POST', { pin })}/>
           <Button variant="primary" busy={busy} disabled={pin.length < 4} onClick={() => call(`${base}/pin`, 'POST', { pin })}>OK</Button>
@@ -61,12 +61,11 @@ function PairRow({ sp }) {
 function PairingTool() {
   const [speakers, setSpeakers] = useState(null)
   useEffect(() => { papi('/api/airplay/speakers').then((j) => setSpeakers(j?.data || [])).catch(() => setSpeakers([])) }, [])
-  if (!speakers?.length) return <div className="stg-hint">Saved speakers appear here after Save + restart.</div>
+  if (!speakers?.length) return <div className="stg-hint">{tr('Saved speakers appear here after Save + restart.')}</div>
   return (
     <>
       <div className="stg-hint" style={{ marginBottom: 6 }}>
-        An Apple TV or HomePod set to ask for a code: press <b>Pair</b>, the TV shows a 4-digit PIN, type it here — once. LSH remembers the pairing.
-        One that requires a password: put it in the speaker’s Password field above and Save. A HomePod limited to “Only People Sharing This Home” can’t be paired by LSH — set Allow Speaker &amp; TV Access to Everyone (optionally with a password).
+        {tr('An Apple TV or HomePod set to ask for a code: press')}{' '}<b>{tr('Pair')}</b>{tr(', the TV shows a 4-digit PIN, type it here — once. LSH remembers the pairing. One that requires a password: put it in the speaker’s Password field above and Save. A HomePod limited to “Only People Sharing This Home” can’t be paired by LSH — set Allow Speaker & TV Access to Everyone (optionally with a password).')}
       </div>
       <div className="stg-list">{speakers.map((sp) => <PairRow key={sp.id} sp={sp}/>)}</div>
     </>
@@ -123,7 +122,7 @@ function DiscoverTool({ speakers, onAdd }) {
                 <div>
                   <div style={{ fontWeight: 600 }}>
                     {d.name}
-                    {d.airplay2 && <span className="stg-hint"> · AirPlay 2</span>}
+                    {d.airplay2 && <span className="stg-hint">{tr('· AirPlay 2')}</span>}
                   </div>
                   <div className="stg-hint">{d.host}:{d.port}{d.model ? ` · ${d.model}` : ''}</div>
                 </div>
@@ -185,7 +184,7 @@ function SendAudioTool() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
       <Field label={gt('s.airplay_speaker', 'Speaker')} type="select" value={speakerId} onChange={setSpeakerId}
-        options={[{ value: '', label: gt('s.airplay_choose', 'Choose…') }, ...speakers.map(s => ({ value: s.id, label: s.name }))]}/>
+        options={[{ value: '', label: gt('s.airplay_choose', 'Choose…') }, ...speakers.map(s => ({ value: s.id, label: s.name, raw: true }))]}/>
       <div className="stg-field">
         <label>{gt('s.airplay_file', 'Audio file')}</label>
         <input className="stg-input" type="file" accept="audio/*"
@@ -236,7 +235,7 @@ export default function AirplaySection({ config, reload }) {
       </div>
 
       <div style={{ margin: '14px 0', borderTop: '1px solid var(--sep)' }}/>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Apple TV / HomePod pairing</div>
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{tr('Apple TV / HomePod pairing')}</div>
       <PairingTool/>
 
       <div style={{ margin: '14px 0', borderTop: '1px solid var(--sep)' }}/>

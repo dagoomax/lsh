@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, ListEditor, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { CameraIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 // The single worst-case array editor in the classic page: a nested onvif{}
 // object per row plus two async side-effect buttons (WS-Discovery scan,
@@ -68,14 +68,14 @@ export default function CamerasSection({ config, reload }) {
   return (
     <SettingsCard icon={CameraIcon} title="Cameras" desc="Cameras shown on the dashboard. Provide an RTSP URL and optionally a snapshot URL for live preview, or an ONVIF host to auto-fetch both.">
       <div className="stg-actions" style={{ marginBottom: 12 }}>
-        <Button variant="secondary" busy={discover.busy} onClick={runDiscover}>🔍 Discover ONVIF cameras</Button>
+        <Button variant="secondary" busy={discover.busy} onClick={runDiscover}>{tr('🔍 Discover ONVIF cameras')}</Button>
         <ResultBanner result={discover.result}/>
       </div>
       <ListEditor rows={rows} onChange={setRows} fields={FIELDS} addLabel="+ Add Camera"
         renderExtra={(row, i, patch) => (
           <Button variant="secondary" busy={fetchOnvif.busy && busyIdx === i} onClick={() => fetchRowOnvif(row, i, patch)}
             disabled={!row.onvifHost} title={row.onvifHost ? 'Fetch stream/snapshot URL via ONVIF' : 'Enter an ONVIF host first'}>
-            Fetch via ONVIF
+            {tr('Fetch via ONVIF')}
           </Button>
         )}/>
       <div className="stg-actions">

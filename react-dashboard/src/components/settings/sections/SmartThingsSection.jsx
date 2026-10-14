@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { HomeIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 export default function SmartThingsSection({ config, reload }) {
   const st = config.smartthings || {}
@@ -17,7 +17,7 @@ export default function SmartThingsSection({ config, reload }) {
   return (
     <SettingsCard icon={HomeIcon} title={gt('s.st_title', 'Samsung SmartThings')}
       badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>{gt('sdesc.d3', 'Adds SmartThings devices (switches, power meters, sensors) to the dashboard.')} Get a Personal Access Token from <strong>account.smartthings.com/tokens</strong>.</>}>
+      desc={<>{gt('sdesc.d3', 'Adds SmartThings devices (switches, power meters, sensors) to the dashboard.')}{' '}{tr('Get a Personal Access Token from')}{' '}<strong>account.smartthings.com/tokens</strong>.</>}>
       <Field label={gt('s.st_token', 'Personal Access Token')} type="password" value={token} onChange={setToken}
         placeholder="••••••••••••••••••••••••••••••••••••"/>
       <Field label={gt('s.st_device_ids', 'Device IDs to sync')} hint={gt('s.st_device_ids_hint', '(comma-separated — leave blank for all devices)')}

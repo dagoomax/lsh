@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { SettingsCard, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { CameraIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 export default function CamerasExtraSection({ config, reload }) {
   return (
@@ -67,11 +67,11 @@ function FFmpegRtspCard({ ffmpegRtsp, reload }) {
       </div>
       {streams && (
         <div className="stg-import-preview">
-          <div className="stg-import-preview-title"><span>RTSP URLs for Loxone</span></div>
+          <div className="stg-import-preview-title"><span>{tr('RTSP URLs for Loxone')}</span></div>
           {streams.map((s, i) => (
             <div className="stg-import-kv" key={i}>
-              <span>{s.name} {s.active ? '● Live' : '◌ Waiting'}</span>
-              <strong>rtsp://&lt;host&gt;:{s.port}/{s.slug}</strong>
+              <span>{s.name} {s.active ? tr('● Live') : tr('◌ Waiting')}</span>
+              <strong>{tr('rtsp://<host>:{port}/{slug}', { port: s.port, slug: s.slug })}</strong>
             </div>
           ))}
         </div>

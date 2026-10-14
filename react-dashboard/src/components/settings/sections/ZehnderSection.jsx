@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SettingsCard, ListEditor, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const api = (url, method = 'GET', body) => fetch(url, {
   method, credentials: 'include',
@@ -59,30 +59,30 @@ export default function ZehnderSection({ config, reload }) {
         <Field label="Away lasts" hint="(hours, 0 = until switched off)" type="number" value={awayHours} onChange={setAway}/>
       </div>
       <div className="stg-actions">
-        <Button variant="secondary" busy={disc.busy} onClick={discover}>Find LAN C gateways</Button>
-        <Button variant="secondary" busy={test.busy} onClick={runTest}>Test</Button>
+        <Button variant="secondary" busy={disc.busy} onClick={discover}>{tr('Find LAN C gateways')}</Button>
+        <Button variant="secondary" busy={test.busy} onClick={runTest}>{tr('Test')}</Button>
         <Button variant="primary" busy={save.busy} onClick={doSave}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result || test.result || disc.result}/>
       </div>
 
       {status.length > 0 && <>
-        <h4 className="stg-subheading">Units</h4>
+        <h4 className="stg-subheading">{tr('Units')}</h4>
         <div style={{ overflowX: 'auto' }}>
           <table className="stg-table" style={{ width: '100%', fontSize: 12.5 }}>
-            <thead><tr><th>Unit</th><th>State</th><th>Level</th><th>Outdoor</th><th>Supply</th><th>Room</th><th>Humidity</th><th>Filter</th><th>Messages</th></tr></thead>
+            <thead><tr><th>{tr('Unit')}</th><th>{tr('State')}</th><th>{tr('Level')}</th><th>{tr('Outdoor')}</th><th>{tr('Supply')}</th><th>{tr('Room')}</th><th>{tr('Humidity')}</th><th>{tr('Filter')}</th><th>{tr('Messages')}</th></tr></thead>
             <tbody>
               {status.map((s) => {
                 const v = s.values || {}
                 return (
                   <tr key={s.id}>
                     <td><b>{s.label}</b><div className="stg-hint">{s.typeLabel} · {s.host || s.serialPort}</div></td>
-                    <td style={{ color: s.connected ? 'var(--green)' : 'var(--red)' }}>{s.connected ? '● connected' : `● ${s.error || 'offline'}`}</td>
-                    <td>{v.speed != null ? SPEED[v.speed] : '—'}{v.auto ? ' · auto' : ''}{v.boost ? ' · boost' : ''}{v.away ? ' · away' : ''}</td>
+                    <td style={{ color: s.connected ? 'var(--green)' : 'var(--red)' }}>{s.connected ? tr('● connected') : `● ${s.error || 'offline'}`}</td>
+                    <td>{v.speed != null ? SPEED[v.speed] : '—'}{v.auto ? ' ' + tr('· auto') : ''}{v.boost ? ' ' + tr('· boost') : ''}{v.away ? ' ' + tr('· away') : ''}</td>
                     <td>{fmt(v.outdoorTemp, ' °C')}</td>
                     <td>{fmt(v.supplyTemp, ' °C')}</td>
                     <td>{fmt(v.extractTemp ?? v.roomTemp, ' °C')}</td>
                     <td>{fmt(v.extractHumidity ?? v.roomHumidity, ' %')}</td>
-                    <td style={{ color: v.filterAlarm ? 'var(--red)' : 'inherit' }}>{v.filterDays != null ? `${v.filterDays} d` : v.filterAlarm ? 'replace' : '—'}</td>
+                    <td style={{ color: v.filterAlarm ? 'var(--red)' : 'inherit' }}>{v.filterDays != null ? `${v.filterDays} d` : v.filterAlarm ? tr('replace') : '—'}</td>
                     <td>{v.errors && v.errors !== 'OK' ? v.errors : '—'}</td>
                   </tr>
                 )

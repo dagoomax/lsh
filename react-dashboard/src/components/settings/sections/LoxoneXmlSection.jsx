@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SettingsCard, Field, Toggle, Button } from '../primitives'
 import { LoxoneIcon } from '../../Icons'
+import { tr } from '../../../i18n'
 
 export default function LoxoneXmlSection() {
   const [devices, setDevices] = useState([])
@@ -65,9 +66,9 @@ export default function LoxoneXmlSection() {
     <SettingsCard icon={LoxoneIcon} title="Loxone XML Templates"
       desc="Generates ready-to-import Virtual Output (commands) and Virtual HTTP Input (feedback) templates for Loxone Config 17.1. Filter by brand, pick the API token to embed, and download — then import via Virtual Outputs/Virtual HTTP Inputs → template import.">
       <div className="stg-field">
-        <label>Brands / Integrations <span className="stg-hint">(none checked = all)</span></label>
+        <label>{tr('Brands / Integrations')}{' '}<span className="stg-hint">{tr('(none checked = all)')}</span></label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px' }}>
-          {types.length === 0 && <span className="stg-hint">Loading devices…</span>}
+          {types.length === 0 && <span className="stg-hint">{tr('Loading devices…')}</span>}
           {types.map(t => (
             <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, cursor: 'pointer' }}>
               <input type="checkbox" className="stg-checkbox" checked={selectedTypes.has(t)} onChange={() => toggleType(t)}/>
@@ -78,19 +79,19 @@ export default function LoxoneXmlSection() {
       </div>
       <Toggle label="Named devices only" hint='(skip unnamed Satel zones/outputs like "Zone 33")' checked={namedOnly} onChange={setNamedOnly}/>
       <Field label="API Token" hint="(embedded into the generated URLs)" type="select" value={tokenId} onChange={setTokenId}
-        options={tokens.length ? tokens.map(t => ({ value: t.id, label: t.name })) : [{ value: '', label: '— no API tokens; create one in Security → API Tokens —' }]}/>
+        options={tokens.length ? tokens.map(t => ({ value: t.id, label: t.name, raw: true })) : [{ value: '', label: '— no API tokens; create one in Security → API Tokens —' }]}/>
       <Field label="LSH address as seen by the Miniserver" hint="(host:port)" value={host} onChange={setHost} placeholder="lsh.local:3000"/>
       <Field label="Input polling" hint="(ms, inputs.xml only)" type="number" value={polling} onChange={setPolling} placeholder="5000"/>
       <div className="stg-actions">
-        <Button variant="primary" onClick={() => download('outputs')}>⬇ outputs.xml ({outputCount})</Button>
-        <Button variant="primary" onClick={() => download('inputs')}>⬇ inputs.xml ({inputCount})</Button>
+        <Button variant="primary" onClick={() => download('outputs')}>{tr('⬇ outputs.xml ({outputCount})', { outputCount })}</Button>
+        <Button variant="primary" onClick={() => download('inputs')}>{tr('⬇ inputs.xml ({inputCount})', { inputCount })}</Button>
       </div>
       {music && (
         <div className="stg-field">
-          <label>Music player <span className="stg-hint">(Spotify / Apple Music source selector — wire a Radio Buttons block to “Music Source”: 0 stop, 1 Spotify, 2 Apple Music)</span></label>
+          <label>{tr('Music player')}{' '}<span className="stg-hint">{tr('(Spotify / Apple Music source selector — wire a Radio Buttons block to “Music Source”: 0 stop, 1 Spotify, 2 Apple Music)')}</span></label>
           <div className="stg-actions">
-            <Button onClick={() => download('outputs', 'musicout.xml', false)}>⬇ Music outputs.xml ({(music.sensors || []).filter(isOutput).length})</Button>
-            <Button onClick={() => download('inputs', 'musicin.xml', false)}>⬇ Music inputs.xml ({(music.sensors || []).filter(isInput).length})</Button>
+            <Button onClick={() => download('outputs', 'musicout.xml', false)}>{tr('⬇ Music outputs.xml ({countCount})', { countCount: (music.sensors || []).filter(isOutput).length })}</Button>
+            <Button onClick={() => download('inputs', 'musicin.xml', false)}>{tr('⬇ Music inputs.xml ({countCount})', { countCount: (music.sensors || []).filter(isInput).length })}</Button>
           </div>
         </div>
       )}

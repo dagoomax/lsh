@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { SettingsCard, ListEditor, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { PlanIcon } from '../../Icons'
+import { tr } from '../../../i18n'
 
 const FLOORS = [['cellar', 'Cellar'], ['floor1', '1st Floor'], ['floor2', '2nd Floor']]
 const ROOM_FIELDS = [
@@ -65,21 +66,21 @@ export default function HomePlanSection() {
         </div>
       ))}
 
-      <h4 className="stg-subheading">Rooms</h4>
+      <h4 className="stg-subheading">{tr('Rooms')}</h4>
       {rooms == null
-        ? <p className="stg-hint">Loading…</p>
+        ? <p className="stg-hint">{tr('Loading…')}</p>
         : <ListEditor rows={rooms} onChange={setRooms} fields={ROOM_FIELDS} addLabel="+ Add Room"/>}
 
-      <h4 className="stg-subheading">Default layer visibility</h4>
+      <h4 className="stg-subheading">{tr('Default layer visibility')}</h4>
       <p className="stg-hint">
-        Starting state of each Plan-view toggle pill, for browsers that haven't set one themselves yet — an explicit tap on a pill always overrides this.
+        {tr("Starting state of each Plan-view toggle pill, for browsers that haven't set one themselves yet — an explicit tap on a pill always overrides this.")}
       </p>
       {LAYER_TOGGLES.map(([key, label]) => (
         <Toggle key={key} label={label} checked={defaultLayers[key] !== false} onChange={v => setLayer(key, v)}/>
       ))}
 
       <div className="stg-actions">
-        <Button variant="primary" busy={save.busy} onClick={doSave}>Save Plan</Button>
+        <Button variant="primary" busy={save.busy} onClick={doSave}>{tr('Save Plan')}</Button>
         <ResultBanner result={save.result}/>
       </div>
     </SettingsCard>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { RouterIcon, SunIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 export default function ConnectionSection({ config, reload }) {
   return (
@@ -84,7 +84,7 @@ function VrmCard({ vrm, reload }) {
 
       {live && (
         <div className="stg-live-preview">
-          <div className="stg-live-title">{live.installationName || 'Installation'}</div>
+          <div className="stg-live-title">{live.installationName || tr('Installation')}</div>
           <div className="stg-live-grid">
             <LiveStat label="Battery SOC" value={live.soc} suffix="%"/>
             <LiveStat label="Voltage" value={live.voltage} suffix="V"/>

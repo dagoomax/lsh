@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { SettingsCard, ListEditor, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { BoltIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const WINDOW_FIELDS = [
   { key: 'label', label: 'Label' },
@@ -32,11 +32,11 @@ export default function TariffSection({ config }) {
         desc="Peak/off-peak pricing windows, shown on the Home Plan's live power-flow overlay. Windows may wrap midnight (e.g. Off-Peak 23:00–16:00).">
         <Field label="Currency symbol" value={currency} onChange={setCurrency} placeholder="£"/>
 
-        <h4 className="stg-subheading">Windows</h4>
+        <h4 className="stg-subheading">{tr('Windows')}</h4>
         <ListEditor rows={windows} onChange={setWindows} fields={WINDOW_FIELDS} addLabel="+ Add Window"/>
 
         <div className="stg-actions">
-          <Button variant="primary" busy={save.busy} onClick={() => save.save({ currency, windows })}>Save Tariff</Button>
+          <Button variant="primary" busy={save.busy} onClick={() => save.save({ currency, windows })}>{tr('Save Tariff')}</Button>
           <ResultBanner result={save.result}/>
         </div>
       </SettingsCard>

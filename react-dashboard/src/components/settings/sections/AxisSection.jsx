@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, ListEditor, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { CameraIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const FIELDS = [
   { key: 'name', label: 'Name' },
@@ -28,7 +28,7 @@ export default function AxisSection({ config, reload }) {
 
   return (
     <SettingsCard icon={CameraIcon} title="Axis" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Axis IP cameras via VAPIX. Snapshots (<code>/axis-cgi/jpg/image.cgi</code>) are proxied; Axis defaults to HTTP Digest auth. I/O relay outputs are advanced — configure them in <code>config.json</code>; they're preserved when you save here.</>}>
+      desc={<>{tr('Axis IP cameras via VAPIX. Snapshots (')}<code>/axis-cgi/jpg/image.cgi</code>{tr(') are proxied; Axis defaults to HTTP Digest auth. I/O relay outputs are advanced — configure them in')}{' '}<code>config.json</code>{tr("; they're preserved when you save here.")}</>}>
       <ListEditor rows={cams} onChange={setCams} fields={FIELDS} addLabel="+ Add Axis Camera"
         renderExtra={(row, i) => (
           <Button variant="secondary" busy={test.busy && testingIdx === i}

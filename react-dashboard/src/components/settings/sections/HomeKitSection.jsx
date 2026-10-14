@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 import HomeKitExclude from './HomeKitExclude'
 
 // Mirrors the vanilla page's approach exactly (public/settings.html loads the
@@ -66,10 +66,10 @@ export default function HomeKitSection({ config, reload }) {
         <div>
           <div className="stg-hint" style={{ textTransform: 'uppercase', fontWeight: 700, fontSize: 11 }}>{gt('s.hk_pin_code', 'PIN Code')}</div>
           <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.05em' }}>{pin || '--'}</div>
-          <p className="stg-hint" style={{ marginTop: 10 }}>Scan with iPhone Camera or open <strong>Home → Add Accessory</strong> and scan this code.</p>
-          <p className="stg-hint" style={{ marginTop: 6 }}>Or choose <strong>More Options</strong> and enter the PIN manually.</p>
-          {setupId && <p className="stg-hint">Setup ID: {setupId}</p>}
-          {qrError && <p className="stg-banner err">QR error: {qrError}</p>}
+          <p className="stg-hint" style={{ marginTop: 10 }}>{tr('Scan with iPhone Camera or open')}{' '}<strong>{tr('Home → Add Accessory')}</strong>{' '}{tr('and scan this code.')}</p>
+          <p className="stg-hint" style={{ marginTop: 6 }}>{tr('Or choose')}{' '}<strong>{tr('More Options')}</strong>{' '}{tr('and enter the PIN manually.')}</p>
+          {setupId && <p className="stg-hint">{tr('Setup ID: {setupId}', { setupId })}</p>}
+          {qrError && <p className="stg-banner err">{tr('QR error: {qrError}', { qrError })}</p>}
         </div>
       </div>
 
@@ -79,7 +79,7 @@ export default function HomeKitSection({ config, reload }) {
         <ResultBanner result={save.result}/>
       </div>
 
-      <h4 className="stg-subheading">Not in HomeKit</h4>
+      <h4 className="stg-subheading">{tr('Not in HomeKit')}</h4>
       <HomeKitExclude/>
 
       <div style={{ borderTop: '1px solid var(--sep)', marginTop: 16, paddingTop: 14 }}>

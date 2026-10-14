@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, ListEditor, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { DinRailIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const GRENTON_TYPES = ['light', 'dimmer', 'switch', 'blind', 'temperature', 'sensor']
 const GRENTON_FIELDS = [
@@ -61,7 +61,7 @@ function GrentonCard({ grenton, reload }) {
 
   return (
     <SettingsCard title="Grenton" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Grenton CLU controllers via the GATE HTTP module running the companion Lua script (<code>docs/grenton-gate-lsh.lua</code>). Add each object by its Object Manager name. Advanced per-object options live in <code>config.json</code> and are preserved on save.</>}>
+      desc={<>{tr('Grenton CLU controllers via the GATE HTTP module running the companion Lua script (')}<code>docs/grenton-gate-lsh.lua</code>{tr('). Add each object by its Object Manager name. Advanced per-object options live in')}{' '}<code>config.json</code>{' '}{tr('and are preserved on save.')}</>}>
       <Field label="GATE Host / IP" value={host} onChange={setHost} placeholder="192.168.1.x"/>
       <Field label="Port" type="number" value={port} onChange={setPort} placeholder="80" style={{ maxWidth: 120 }}/>
       <Field label="Path" value={path} onChange={setPath} placeholder="/lsh" style={{ maxWidth: 160 }}/>
@@ -69,7 +69,7 @@ function GrentonCard({ grenton, reload }) {
       <Field label="Token" hint="(optional — must match the Lua script)" type="password" value={token} onChange={setToken}/>
       <Toggle label="Run local simulator" hint="(off by default; disable when using a real GATE module)" checked={simEnabled} onChange={toggleSim}/>
       {simStatus && <span className="stg-hint">{simStatus}</span>}
-      <h4 className="stg-subheading">Objects</h4>
+      <h4 className="stg-subheading">{tr('Objects')}</h4>
       <ListEditor rows={devices} onChange={setDevices} fields={GRENTON_FIELDS} addLabel="+ Add Object"/>
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy}

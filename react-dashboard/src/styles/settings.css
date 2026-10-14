@@ -31,6 +31,11 @@
   transition: opacity 0.15s;
 }
 .stg-back:hover { opacity: 0.7; }
+.stg-lang {
+  background: var(--white-10); color: var(--text); border: none; border-radius: 999px;
+  height: 32px; padding: 0 10px; font-size: 13px; font-weight: 600; margin-right: 8px; cursor: pointer;
+}
+[data-theme="light"] .stg-lang { background: rgba(118,118,128,0.12); }
 .stg-page-title { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
 .stg-page-title-spacer { flex: 1; }
 
@@ -70,8 +75,6 @@
 }
 .stg-nav-item:hover { background: var(--white-06); }
 .stg-nav-item.active { background: var(--accent); color: #fff; font-weight: 600; }
-.stg-nav-item.stub { color: var(--text3); }
-.stg-nav-stub-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text3); flex-shrink: 0; opacity: 0.6; }
 .stg-no-results { padding: 20px 12px; color: var(--text3); font-size: 13px; text-align: center; }
 
 .stg-content {

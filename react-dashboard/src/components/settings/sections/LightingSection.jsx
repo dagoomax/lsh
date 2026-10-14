@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { BulbIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 export default function LightingSection({ config, reload }) {
   return (
@@ -21,7 +21,7 @@ function DirigeraCard({ dirigera, reload }) {
 
   return (
     <SettingsCard icon={BulbIcon} title={gt('s.dirigera_title', 'IKEA Dirigera')} badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Connects to an IKEA Dirigera hub (2022+). Requires a bearer token obtained once via <code>node scripts/dirigera-auth.js &lt;hub-ip&gt;</code>.</>}>
+      desc={<>{tr('Connects to an IKEA Dirigera hub (2022+). Requires a bearer token obtained once via')}{' '}<code>node scripts/dirigera-auth.js &lt;hub-ip&gt;</code>.</>}>
       <Field label={gt('s.dirigera_host', 'Hub Host / IP')} value={host} onChange={setHost} placeholder="192.168.x.x"/>
       <Field label={gt('s.dirigera_token', 'Bearer Token')} hint={gt('s.dirigera_token_hint', '(from dirigera-auth.js)')} type="password" value={token} onChange={setToken}/>
       <div className="stg-actions">

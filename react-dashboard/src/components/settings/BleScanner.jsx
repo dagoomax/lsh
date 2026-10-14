@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from './primitives'
 import BleDeepDive from './BleDeepDive'
+import { tr, trn } from '../../i18n'
 
 // Bluetooth LE scan of the LSH host (POST /api/lsh-ble/scan — lives in the
 // lsh-ble module, so it offers to install that module when it's missing).
@@ -103,37 +104,37 @@ export default function BleScanner({ victronOnly = false, configuredMacs = new S
         <div className="lan-hero-body">
           {scanning ? (
             <>
-              <div className="lan-hero-title">Listening<span className="lan-dots"><i/><i/><i/></span></div>
-              <div className="lan-hero-sub">Bluetooth LE advertisements · {Math.max(0, Math.ceil(seconds - elapsed))} s left</div>
+              <div className="lan-hero-title">{tr('Listening')}<span className="lan-dots"><i/><i/><i/></span></div>
+              <div className="lan-hero-sub">{tr('Bluetooth LE advertisements · {v} s left', { v: Math.max(0, Math.ceil(seconds - elapsed)) })}</div>
               <div className="lan-progress"><i style={{ width: `${Math.min(100, (elapsed / seconds) * 100)}%` }}/></div>
             </>
           ) : results ? (
             <>
-              <div className="lan-hero-title">{all.length} device{all.length === 1 ? '' : 's'} in range</div>
+              <div className="lan-hero-title">{trn('{n} device in range|{n} devices in range', all.length)}</div>
               <div className="lan-hero-sub">
-                {victronOnly && !victron.length ? 'No Victron devices — enable Instant readout and disconnect VictronConnect' : 'Closer to the centre = stronger signal'}
+                {victronOnly && !victron.length ? tr('No Victron devices — enable Instant readout and disconnect VictronConnect') : tr('Closer to the centre = stronger signal')}
               </div>
             </>
           ) : (
             <>
-              <div className="lan-hero-title">{victronOnly ? 'Find Victron devices' : 'What’s around, over Bluetooth'}</div>
-              <div className="lan-hero-sub">Listens to Bluetooth LE advertisements on this LSH host for {seconds} s · manufacturer, signal strength, Victron model</div>
+              <div className="lan-hero-title">{victronOnly ? tr('Find Victron devices') : tr('What’s around, over Bluetooth')}</div>
+              <div className="lan-hero-sub">{tr('Listens to Bluetooth LE advertisements on this LSH host for {seconds} s · manufacturer, signal strength, Victron model', { seconds })}</div>
             </>
           )}
           {results && (
             <div className="lan-stats">
-              <div className="lan-stat"><b>{all.length}</b><span>devices</span></div>
-              <div className="lan-stat ble-blue"><b>{victron.length}</b><span>Victron</span></div>
-              <div className="lan-stat"><b>{all.filter((d) => d.name || d.victron?.model).length}</b><span>named</span></div>
-              <div className="lan-stat green"><b>{strongest ?? '—'}{strongest != null && <small>dBm</small>}</b><span>strongest</span></div>
+              <div className="lan-stat"><b>{all.length}</b><span>{tr('devices')}</span></div>
+              <div className="lan-stat ble-blue"><b>{victron.length}</b><span>{tr('Victron')}</span></div>
+              <div className="lan-stat"><b>{all.filter((d) => d.name || d.victron?.model).length}</b><span>{tr('named')}</span></div>
+              <div className="lan-stat green"><b>{strongest ?? '—'}{strongest != null && <small>dBm</small>}</b><span>{tr('strongest')}</span></div>
             </div>
           )}
           {present.length > 0 && (
             <div className="lan-mix">{present.map(({ g, n }) => <i key={g.id} style={{ flex: n, background: g.color }} title={`${g.label}: ${n}`}/>)}</div>
           )}
           <div className="lan-hero-actions">
-            <button className="lan-scan-btn" disabled={busy} onClick={run}>{scanning ? 'Listening…' : results ? '↻ Scan again' : '📡 Scan Bluetooth'}</button>
-            {needsModule && <Button variant="primary" busy={busy} onClick={install}>Install module</Button>}
+            <button className="lan-scan-btn" disabled={busy} onClick={run}>{scanning ? tr('Listening…') : results ? tr('↻ Scan again') : tr('📡 Scan Bluetooth')}</button>
+            {needsModule && <Button variant="primary" busy={busy} onClick={install}>{tr('Install module')}</Button>}
           </div>
         </div>
       </div>
@@ -142,17 +143,17 @@ export default function BleScanner({ victronOnly = false, configuredMacs = new S
       {results && (
         <>
           <div className="lan-toolbar">
-            {all.length > 6 && <input className="stg-input lan-search" placeholder="Search name, MAC, manufacturer…" value={filter} onChange={(e) => setFilter(e.target.value)}/>}
+            {all.length > 6 && <input className="stg-input lan-search" placeholder={tr('Search name, MAC, manufacturer…')} value={filter} onChange={(e) => setFilter(e.target.value)}/>}
             {victronOnly && (
               <label className="stg-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                 <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)}/>
-                show non-Victron devices
+                {tr('show non-Victron devices')}
               </label>
             )}
           </div>
           {showAll && present.length > 1 && (
             <div className="lan-filters">
-              <button className={`lan-filter${!group ? ' active' : ''}`} onClick={() => setGroup(null)}>All {all.length}</button>
+              <button className={`lan-filter${!group ? ' active' : ''}`} onClick={() => setGroup(null)}>{tr('All {allCount}', { allCount: all.length })}</button>
               {present.map(({ g, n }) => (
                 <button key={g.id} className={`lan-filter${group === g.id ? ' active' : ''}`} style={{ '--g': g.color }} onClick={() => setGroup(group === g.id ? null : g.id)}>
                   <i className="lan-filter-dot"/>{g.label} {n}
@@ -167,10 +168,10 @@ export default function BleScanner({ victronOnly = false, configuredMacs = new S
               const s = strength(d.rssi)
               return (
                 <div key={d.mac} className={`lan-tile${isOpen ? ' open' : ''}`} style={{ '--g': g.color, animationDelay: `${Math.min(i, 30) * 25}ms` }}>
-                  <div className="lan-tile-main" onClick={() => setOpen(isOpen ? null : d.mac)} title="Deep dive">
+                  <div className="lan-tile-main" onClick={() => setOpen(isOpen ? null : d.mac)} title={tr('Deep dive')}>
                     <div className="lan-tile-icon"><span>{g.icon}</span></div>
                     <div className="lan-tile-text">
-                      <div className="lan-tile-name">{d.victron ? (d.victron.model || 'Victron device') : (d.name || (COMPANIES[d.manufacturers[0]] ? `${COMPANIES[d.manufacturers[0]]} device` : 'Unnamed device'))}</div>
+                      <div className="lan-tile-name">{d.victron ? (d.victron.model || tr('Victron device')) : (d.name || (COMPANIES[d.manufacturers[0]] ? `${COMPANIES[d.manufacturers[0]]} device` : tr('Unnamed device')))}</div>
                       <div className="lan-tile-sub">{d.mac}{d.name && d.victron ? ` · ${d.name}` : ''}</div>
                     </div>
                     <div className={`ble-signal s${s}`} title={`${d.rssi} dBm · ${proximity(d.rssi)}`}>
@@ -181,18 +182,18 @@ export default function BleScanner({ victronOnly = false, configuredMacs = new S
                   <div className="lan-tile-chips">
                     <span className="lan-kind">{proximity(d.rssi)}</span>
                     {d.victron?.kindLabel && <span className="stg-ble-chip">{d.victron.kindLabel}</span>}
-                    {d.victron?.keyStartsWith && <span className="lan-port">key {d.victron.keyStartsWith}…</span>}
+                    {d.victron?.keyStartsWith && <span className="lan-port">{tr('key {keyStartsWith}…', { keyStartsWith: d.victron.keyStartsWith })}</span>}
                     {d.victron?.note && <span className="lan-tag tag-warn">{d.victron.note}</span>}
                     {d.manufacturers.map((m) => <span key={m} className="lan-port">{company(m)}</span>)}
                     {d.victron && onAdd && (configuredMacs.has(d.mac)
-                      ? <span className="lan-tag tag-ok">added</span>
-                      : <span onClick={(e) => e.stopPropagation()}><Button variant="primary" onClick={() => onAdd(d)}>+ Add</Button></span>)}
+                      ? <span className="lan-tag tag-ok">{tr('added')}</span>
+                      : <span onClick={(e) => e.stopPropagation()}><Button variant="primary" onClick={() => onAdd(d)}>{tr('+ Add')}</Button></span>)}
                   </div>
                   {isOpen && <BleDeepDive mac={d.mac}/>}
                 </div>
               )
             })}
-            {!shown.length && <div className="stg-hint">{victronOnly && !showAll ? 'No Victron devices in range.' : 'Nothing matches.'}</div>}
+            {!shown.length && <div className="stg-hint">{victronOnly && !showAll ? tr('No Victron devices in range.') : tr('Nothing matches.')}</div>}
           </div>
         </>
       )}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { SettingsCard, Button } from '../primitives'
 import LanTopology, { GROUPS, groupOf } from '../LanTopology'
 import LanDevices, { TagChips, DeviceIcon } from '../LanDevices'
+import { tr, trn } from '../../../i18n'
 
 // Settings → System → LAN scan — what's on this LSH host's local network
 // (tool module lsh-lan, installed from here on first use). Click a host for
@@ -46,19 +47,19 @@ function Hero({ data, busy, elapsed, onScan, needsModule, onInstall }) {
       <div className="lan-hero-body">
         {busy ? (
           <>
-            <div className="lan-hero-title">Scanning<span className="lan-dots"><i/><i/><i/></span></div>
+            <div className="lan-hero-title">{tr('Scanning')}<span className="lan-dots"><i/><i/><i/></span></div>
             <div className="lan-hero-sub">{PHASES[Math.floor(elapsed / 4) % PHASES.length]} · {elapsed}s</div>
             <div className="lan-progress"><i style={{ width: `${Math.min(96, (elapsed / 35) * 100)}%` }}/></div>
           </>
         ) : data ? (
           <>
             <div className="lan-hero-title">{data.networks.map((n) => n.cidr).join(' · ')}</div>
-            <div className="lan-hero-sub">{data.networks.map((n) => n.iface).join(', ')} · scanned in {Math.round(data.durationMs / 1000)} s{data.baseline ? ' · baseline saved' : ''}</div>
+            <div className="lan-hero-sub">{data.networks.map((n) => n.iface).join(', ')}{' '}{tr('· scanned in')}{' '}{Math.round(data.durationMs / 1000)} s{data.baseline ? ' ' + tr('· baseline saved') : ''}</div>
           </>
         ) : (
           <>
-            <div className="lan-hero-title">Your network, mapped</div>
-            <div className="lan-hero-sub">ARP, TCP, Bonjour and UPnP discovery · vendors, open ports, fingerprints and LSH integrations</div>
+            <div className="lan-hero-title">{tr('Your network, mapped')}</div>
+            <div className="lan-hero-sub">{tr('ARP, TCP, Bonjour and UPnP discovery · vendors, open ports, fingerprints and LSH integrations')}</div>
           </>
         )}
         {data && (
@@ -70,13 +71,13 @@ function Hero({ data, busy, elapsed, onScan, needsModule, onInstall }) {
           </div>
         )}
         {groups.length > 0 && (
-          <div className="lan-mix" title="Device mix">
+          <div className="lan-mix" title={tr('Device mix')}>
             {groups.map(({ g, n }) => <i key={g.id} style={{ flex: n, background: g.color }} title={`${g.label}: ${n}`}/>)}
           </div>
         )}
         <div className="lan-hero-actions">
-          <button className="lan-scan-btn" disabled={busy} onClick={onScan}>{busy ? 'Scanning…' : data ? '↻ Scan again' : '🛰 Scan network'}</button>
-          {needsModule && <Button variant="primary" busy={busy} onClick={onInstall}>Install module</Button>}
+          <button className="lan-scan-btn" disabled={busy} onClick={onScan}>{busy ? tr('Scanning…') : data ? tr('↻ Scan again') : tr('🛰 Scan network')}</button>
+          {needsModule && <Button variant="primary" busy={busy} onClick={onInstall}>{tr('Install module')}</Button>}
         </div>
       </div>
     </div>
@@ -151,11 +152,11 @@ export default function LanScanSection() {
               onClick={() => setView(v)}>{{ list: '▤ Devices', topology: '◎ Map', devices: '★ Saved' }[v]}</button>
           ))}
         </div>
-        {data && view === 'list' && <input className="stg-input lan-search" placeholder="Search name, IP, vendor, port…" value={filter} onChange={(e) => setFilter(e.target.value)}/>}
+        {data && view === 'list' && <input className="stg-input lan-search" placeholder={tr('Search name, IP, vendor, port…')} value={filter} onChange={(e) => setFilter(e.target.value)}/>}
       </div>
       {view === 'devices' && (
         <>
-          {data?.newDevices > 0 && <div className="stg-banner ok" style={{ marginTop: 6 }}>{data.newDevices} new device{data.newDevices === 1 ? '' : 's'} since the last scan</div>}
+          {data?.newDevices > 0 && <div className="stg-banner ok" style={{ marginTop: 6 }}>{trn('{n} new device since the last scan|{n} new devices since the last scan', data.newDevices)}</div>}
           <LanDevices refreshKey={devicesKey} onInspect={(ip) => { setOpen(ip); setView(data ? 'list' : 'devices') }}/>
           {open && !data && <LanDeepDive key={open} ip={open} post={post}/>}
         </>
@@ -168,7 +169,7 @@ export default function LanScanSection() {
         <>
           {presentGroups.length > 1 && (
             <div className="lan-filters">
-              <button className={`lan-filter${!group ? ' active' : ''}`} onClick={() => setGroup(null)}>All {data.hosts.length}</button>
+              <button className={`lan-filter${!group ? ' active' : ''}`} onClick={() => setGroup(null)}>{tr('All {hostsCount}', { hostsCount: data.hosts.length })}</button>
               {presentGroups.map((g) => (
                 <button key={g.id} className={`lan-filter${group === g.id ? ' active' : ''}`} style={{ '--g': g.color }} onClick={() => setGroup(group === g.id ? null : g.id)}>
                   <i className="lan-filter-dot"/>{g.label} {data.hosts.filter((h) => groupOf(h) === g).length}
@@ -191,15 +192,15 @@ export default function LanScanSection() {
                       <div className="lan-tile-name">{h.saved?.label || h.name || h.id?.label || h.ip}</div>
                       <div className="lan-tile-sub">{h.ip}{h.vendor ? ` · ${h.vendor}` : ''}</div>
                     </div>
-                    {h.latency != null && <span className={`lan-lat ${latencyClass(h.latency)}`}>{h.latency}<small>ms</small></span>}
+                    {h.latency != null && <span className={`lan-lat ${latencyClass(h.latency)}`}>{h.latency}<small>{tr('ms')}</small></span>}
                   </div>
                   <div className="lan-tile-chips">
-                    {h.self && <span className="stg-ble-chip">this host</span>}
-                    {h.gateway && <span className="stg-ble-chip">gateway</span>}
+                    {h.self && <span className="stg-ble-chip">{tr('this host')}</span>}
+                    {h.gateway && <span className="stg-ble-chip">{tr('gateway')}</span>}
                     {h.id?.label && h.name !== h.id.label && <span className="lan-kind">{h.id.label}</span>}
-                    {h.id?.integration && <span className="stg-ble-chip lan-int">LSH · {h.id.integration}</span>}
+                    {h.id?.integration && <span className="stg-ble-chip lan-int">{tr('LSH · {integration}', { integration: h.id.integration })}</span>}
                     <TagChips tags={h.saved?.tags}/>
-                    {h.saved?.monitored && <span title="Monitored">🔔</span>}
+                    {h.saved?.monitored && <span title={tr('Monitored')}>🔔</span>}
                     {h.ports.slice(0, 6).map((p) => <span key={p} className="lan-port">{p}</span>)}
                     {h.ports.length > 6 && <span className="lan-port">+{h.ports.length - 6}</span>}
                   </div>
@@ -207,7 +208,7 @@ export default function LanScanSection() {
                 </div>
               )
             })}
-            {!hosts.length && <div className="stg-hint">Nothing matches.</div>}
+            {!hosts.length && <div className="stg-hint">{tr('Nothing matches.')}</div>}
           </div>
         </>
       )}
@@ -222,7 +223,7 @@ function LanDeepDive({ ip, post }) {
     post('/api/lsh-lan/inspect', { ip }).then((j) => alive && setState(j.success ? { data: j.data } : { error: j.error }))
     return () => { alive = false }
   }, [ip])
-  if (!state || state.busy) return <div className="ble-dd stg-hint">Deep dive on {ip} — probing ~120 ports, Bonjour, UPnP…</div>
+  if (!state || state.busy) return <div className="ble-dd stg-hint">{tr('Deep dive on {ip} — probing ~120 ports, Bonjour, UPnP…', { ip })}</div>
   if (state.error) return <div className="ble-dd"><div className="stg-banner err">✗ {state.error}</div></div>
   const d = state.data
   return (
@@ -244,7 +245,7 @@ function LanDeepDive({ ip, post }) {
               <div className="ble-dd-svc-name"><span className="ble-dd-mono">{p.port}</span> {p.service || ''}</div>
               {p.http && <div className="ble-dd-char">HTTP {p.http.status}{p.http.server ? ` · ${p.http.server}` : ''}{p.http.title ? ` · “${p.http.title}”` : ''}
                 {Object.entries(p.http.headers || {}).filter(([k]) => k !== 'server').map(([k, v]) => <div key={k} className="ble-dd-mono stg-hint">{k}: {v}</div>)}</div>}
-              {p.tls && <div className="ble-dd-char">TLS {p.tls.protocol} · CN {p.tls.subject} · issuer {p.tls.issuer}{p.tls.selfSigned ? ' (self-signed)' : ''} · valid to {p.tls.validTo}
+              {p.tls && <div className="ble-dd-char">TLS {p.tls.protocol}{' '}{tr('· CN')}{' '}{p.tls.subject}{' '}{tr('· issuer')}{' '}{p.tls.issuer}{p.tls.selfSigned ? ' ' + tr('(self-signed)') : ''}{' '}{tr('· valid to')}{' '}{p.tls.validTo}
                 {p.tls.altNames && <div className="ble-dd-mono stg-hint">{p.tls.altNames}</div>}</div>}
               {p.banner && <div className="ble-dd-char ble-dd-mono">{p.banner}</div>}
             </div>

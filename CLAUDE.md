@@ -62,6 +62,8 @@ A fresh install (`scripts/install.sh`) ships only the core: the files in `module
 
 `react-dashboard/` — Vite + React PWA served at `/react/`, the only UI. Talks to the REST API + Socket.IO (`src/hooks/useLSH.js`). Full-page views each have a URL (`/react/settings`, `/react/flows`, `/react/logs`, `/react/mqtt`, …; `VIEWS` in `App.jsx`); the old classic page URLs (`/settings.html`, `/login.html`, …) 301 to them. `public/` now only holds assets the React app references (logo, floor-plan SVGs) and the Swagger UI files for `/api-docs`.
 
+Settings text is written in plain English and translated by its English wording: the Settings primitives (`SettingsCard`, `Field`, `Button`, …) pass text props through `tr()`, and other text is wrapped in `tr('…')` (`node react-dashboard/scripts/settings-phrases.mjs wrap --write` does it for bare JSX text). Translations live in `react-dashboard/src/i18n/settings/book-*.js` (English → pl, de, fr, es, it, uk; brand names in `SAME`), loaded only when Settings opens in another language. After adding Settings text, `node react-dashboard/scripts/settings-phrases.mjs missing` lists what needs translating, then `scripts/gen-settings-book-index.sh` if you add a part; `test/settings-i18n.test.js` fails on gaps.
+
 ### Loxone is bidirectional
 
 `loxone-client.js` pulls data in from a Miniserver; `loxone-out-client.js` pushes LSH values out to Loxone virtual inputs via configured `loxoneOut.mappings`; `/api/loxone/inputs.xml|outputs.xml` serve Loxone-compatible templates. `fibaro-out-client.js` is the same pattern toward Fibaro Home Center: `fibaroOut.mappings` (exact `storeKey`→`variable` or bulk `storePrefix`→`variablePrefix`) push store values to HC global variables.

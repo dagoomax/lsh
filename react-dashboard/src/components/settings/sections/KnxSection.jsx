@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, ListEditor, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { KnxBusIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const DPTS = ['DPT1', 'DPT5', 'DPT9', 'DPT14']
 const HK_TYPES = ['', 'Switch', 'TemperatureSensor', 'HumiditySensor', 'LightSensor', 'OccupancySensor', 'ContactSensor']
@@ -26,10 +26,10 @@ export default function KnxSection({ config, reload }) {
 
   return (
     <SettingsCard icon={KnxBusIcon} title="KNX" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Connects to a KNXnet/IP gateway or IP router over TCP/IP. Group addresses are mapped to dashboard device cards with read/write support. Requires <code>npm install knx</code>.</>}>
+      desc={<>{tr('Connects to a KNXnet/IP gateway or IP router over TCP/IP. Group addresses are mapped to dashboard device cards with read/write support. Requires')}{' '}<code>npm install knx</code>.</>}>
       <Field label="Gateway Host / IP" value={host} onChange={setHost} placeholder="192.168.1.100"/>
       <Field label="Port" hint="(default 3671)" type="number" value={port} onChange={setPort} style={{ maxWidth: 160 }}/>
-      <h4 className="stg-subheading">Group Addresses</h4>
+      <h4 className="stg-subheading">{tr('Group Addresses')}</h4>
       <ListEditor rows={gas} onChange={setGas} fields={FIELDS} addLabel="+ Add Group Address"/>
       <div className="stg-actions">
         <Button variant="secondary" busy={test.busy} onClick={() => test.save({ host, port: Number(port) })}>{gt('common.test', 'Test Connection')}</Button>

@@ -1,98 +1,98 @@
-// Full inventory of the vanilla Settings page's 57 sections, grouped by the
-// same categories public/settings.html already uses (data-category), so the
-// sidebar is a complete map of what Settings covers even though only a
-// handful of sections are ported to React so far. Unported entries link out
-// to the classic page instead of silently not existing.
+// Settings sidebar: every section, grouped by what it's for. Order is the
+// order shown — the house-wide basics first, then integrations by kind,
+// then platforms LSH bridges to, then diagnostics tools.
 //
-// `component` is lazy-loaded (import()) so unported categories don't pull in
-// component code that doesn't exist yet.
+// `keywords` feed the sidebar search (alongside the title and category) —
+// list every brand / product a section configures, so searching for e.g.
+// "Dyson" finds the section that holds it.
 export const CATEGORIES = [
-  // Unlike every other category here, "calendar" isn't one of the vanilla
-  // page's 57 sections — Google Calendar/agenda is React-only, added
-  // alongside the Wall Dashboard feature it feeds.
-  { id: 'calendar', label: 'Calendar', sections: [
-    { id: 'google-calendar', title: 'Google Calendar', ported: true },
+  { id: 'general', label: 'General', sections: [
+    { id: 'system-misc', title: 'Interface, Relays & Server', keywords: ['language', 'theme', 'port', 'relays', 'server', 'interface'] },
+    { id: 'security-auth', title: 'Security & Authentication', keywords: ['users', 'password', 'login', 'mcp', 'bot', 'bots', 'ai', 'claude', 'gemini', 'chatgpt', 'openai', 'oauth', 'token', 'api token'] },
+    { id: 'backup', title: 'Backup & Restore', keywords: ['backup', 'restore', 'export', 'import', 'config'] },
+    { id: 'modules', title: 'Integration Modules', keywords: ['install', 'github', 'plugins', 'update', 'modules'] },
+  ] },
+  { id: 'home', label: 'Home', sections: [
+    { id: 'homeplan', title: 'Home Plan', keywords: ['floor plan', 'rooms', 'plan'] },
+    { id: 'virtual', title: 'Virtual Devices', keywords: ['virtual', 'dummy', 'variable'] },
+    { id: 'google-calendar', title: 'Google Calendar', keywords: ['calendar', 'agenda', 'events', 'google'] },
   ] },
   { id: 'energy', label: 'Energy', sections: [
-    { id: 'connection', title: 'MQTT & VRM Connection', ported: true },
-    { id: 'energy-extra', title: 'MongoDB & SolarEdge', ported: true },
-    { id: 'lsh-ble', title: 'LSH BLE', ported: true, keywords: ['ble', 'smartshunt', 'smartsolar', 'instant readout', 'arduino'] },
-    { id: 'tariff', title: 'Electricity Tariff', ported: true },
+    { id: 'connection', title: 'Victron (MQTT & VRM)', keywords: ['victron', 'venus', 'cerbo', 'mqtt', 'vrm', 'gx'] },
+    { id: 'energy-extra', title: 'MongoDB & SolarEdge', keywords: ['mongodb', 'mongo', 'solaredge', 'database'] },
+    { id: 'lsh-ble', title: 'LSH BLE', keywords: ['ble', 'smartshunt', 'smartsolar', 'instant readout', 'arduino'] },
+    { id: 'home-batteries', title: 'Home Batteries & Power Stations', keywords: ['battery', 'zendure', 'solarflow', 'anker', 'solix', 'solarbank', 'ugreen', 'powerroam', 'power station', 'magazyn energii'] },
+    { id: 'tariff', title: 'Electricity Tariff', keywords: ['tariff', 'price', 'tauron', 'dynamic pricing', 'kwh'] },
   ] },
-  { id: 'smarthome', label: 'Smart Home', sections: [
-    { id: 'homeassistant', title: 'Home Assistant', ported: true, keywords: ['home assistant', 'hass', 'ha', 'mqtt discovery'] },
-    { id: 'smartthings', title: 'Samsung SmartThings', ported: true },
-    { id: 'smarthome-extra', title: 'Homey, Somfy, Landroid, Suppla, Fibaro, Sinum, vCLU', ported: true, keywords: ['sinum', 'tech', 'tech sterowniki', 'eh-01', 'thermostat', 'vclu', 'virtual clu', 'grenton', 'mcp'] },
-    { id: 'roborock', title: 'Roborock', ported: true },
-    { id: 'dreame', title: 'Dreame', ported: true },
-    { id: 'karcher', title: 'Kärcher Home Robots', ported: true },
-    { id: 'aquilo', title: 'Aquilo Tank Sensors', ported: true, keywords: ['aquilo', 'tank', 'septic', 'szambo', 'rainwater', 'deszczówka', 'well', 'studnia', 'liquid level', 'poziom cieczy'] },
+  { id: 'climate', label: 'Climate & Water', sections: [
+    { id: 'zehnder', title: 'Zehnder Ventilation', keywords: ['zehnder', 'rekuperacja', 'rekuperator', 'recuperation', 'heat recovery', 'mvhr', 'hrv', 'wtw', 'comfoair', 'comfoconnect', 'lan c', 'whr930', 'ca350', 'ventilation', 'wentylacja'] },
+    { id: 'air-conditioners', title: 'Air Conditioners', keywords: ['air conditioner', 'ac', 'aircon', 'klimatyzacja', 'klimatyzator', 'daikin', 'gree', 'sinclair', 'cooper', 'hunter', 'tosot', 'midea', 'comfee', 'carrier', 'toshiba', 'electrolux', 'mitsubishi', 'melcloud', 'sensibo', 'fujitsu', 'panasonic'] },
+    { id: 'lgthinq', title: 'LG ThinQ', keywords: ['lg', 'thinq', 'air conditioner', 'ac'] },
+    { id: 'climate-extra', title: 'AuxAir, Dyson, ViCare & more', keywords: ['auxair', 'aux', 'air conditioner', 'ac', 'bayrol', 'pool', 'openweather', 'weather', 'airly', 'air quality', 'vicare', 'viessmann', 'vitodens', 'boiler', 'thermomix', 'dyson', 'purifier'] },
+    { id: 'aquilo', title: 'Aquilo Tank Sensors', keywords: ['aquilo', 'tank', 'septic', 'szambo', 'rainwater', 'deszczówka', 'well', 'studnia', 'liquid level', 'poziom cieczy'] },
+  ] },
+  { id: 'appliances', label: 'Appliances & Robots', sections: [
+    { id: 'appliance-cloud', title: 'Home Connect & Miele@home', keywords: ['bosch', 'siemens', 'neff', 'gaggenau', 'home connect', 'miele', 'dishwasher', 'washer', 'oven'] },
+    { id: 'roborock', title: 'Roborock', keywords: ['roborock', 'vacuum', 'xiaomi'] },
+    { id: 'dreame', title: 'Dreame', keywords: ['dreame', 'vacuum', 'mower'] },
+    { id: 'karcher', title: 'Kärcher Home Robots', keywords: ['karcher', 'kärcher', 'vacuum'] },
+  ] },
+  { id: 'lighting', label: 'Lighting & Switches', sections: [
+    { id: 'shelly', title: 'Shelly', keywords: ['shelly', 'relay', 'dimmer'] },
+    { id: 'lighting-extra', title: 'IKEA Dirigera & Tradfri', keywords: ['ikea', 'dirigera', 'tradfri'] },
+    { id: 'wled', title: 'WLED', keywords: ['wled', 'led strip', 'esp32'] },
+  ] },
+  { id: 'security', label: 'Security & Access', sections: [
+    { id: 'satel', title: 'Satel INTEGRA', keywords: ['satel', 'integra', 'alarm', 'ethm'] },
+    { id: 'dsc', title: 'DSC PowerSeries Neo', keywords: ['dsc', 'neo', 'tl280', 'itv2', 'alarm', 'alarm panel'] },
+    { id: 'tedee', title: 'Tedee Smart Lock', keywords: ['tedee', 'lock', 'door'] },
   ] },
   { id: 'cameras', label: 'Cameras', sections: [
-    { id: 'cameras-extra', title: 'UniFi Protect & FFmpeg RTSP', ported: true },
-    { id: 'aeotec', title: 'Aeotec 360', ported: true },
-    { id: 'aidetect', title: 'AI Camera Detection', ported: true },
-    { id: 'reolink', title: 'Reolink', ported: true },
-    { id: 'mobotix', title: 'MOBOTIX', ported: true },
-    { id: 'axis', title: 'Axis (VAPIX)', ported: true },
-    { id: 'yale', title: 'Yale Doorbell Cameras', ported: true },
-    { id: 'manualcams', title: 'Cameras', ported: true },
+    { id: 'manualcams', title: 'Cameras', keywords: ['rtsp', 'onvif', 'camera', 'stream'] },
+    { id: 'cameras-extra', title: 'UniFi Protect & FFmpeg RTSP', keywords: ['unifi', 'protect', 'ffmpeg', 'rtsp'] },
+    { id: 'reolink', title: 'Reolink', keywords: ['reolink'] },
+    { id: 'mobotix', title: 'MOBOTIX', keywords: ['mobotix'] },
+    { id: 'axis', title: 'Axis (VAPIX)', keywords: ['axis', 'vapix'] },
+    { id: 'yale', title: 'Yale Doorbell Cameras', keywords: ['yale', 'doorbell', 'august'] },
+    { id: 'aeotec', title: 'Aeotec 360', keywords: ['aeotec', '360'] },
+    { id: 'aidetect', title: 'AI Camera Detection', keywords: ['ai', 'detection', 'person', 'object', 'yolo', 'motion'] },
   ] },
-  { id: 'climate', label: 'Climate & Appliances', sections: [
-    { id: 'climate-extra', title: 'AuxAir, Bayrol, OpenWeather, Airly, ViCare, Thermomix, Dyson', ported: true },
-    { id: 'lgthinq', title: 'LG ThinQ', ported: true },
-    { id: 'appliance-cloud', title: 'Home Connect & Miele@home', ported: true },
-    { id: 'zehnder', title: 'Zehnder Ventilation', ported: true, keywords: ['zehnder', 'rekuperacja', 'rekuperator', 'recuperation', 'heat recovery', 'mvhr', 'hrv', 'wtw', 'comfoair', 'comfoconnect', 'lan c', 'whr930', 'ca350', 'ventilation', 'wentylacja'] },
+  { id: 'media', label: 'Media & Intercom', sections: [
+    { id: 'media-all', title: 'Denon, Sony, Sonos & Google Home', keywords: ['denon', 'marantz', 'sony', 'bravia', 'tv', 'sonos', 'google home', 'chromecast', 'nest'] },
+    { id: 'airplay', title: 'AirPlay Speakers', keywords: ['airplay', 'homepod', 'apple tv', 'speaker'] },
+    { id: 'spotify', title: 'Spotify', keywords: ['spotify', 'music', 'playlist', 'playback'] },
+    { id: 'applemusic', title: 'Apple Music', keywords: ['apple music', 'musickit', 'music', 'itunes'] },
+    { id: 'announce', title: 'Announcements', keywords: ['announce', 'announcement', 'tts', 'speech', 'homepod', 'airplay', 'loxone notification', 'say'] },
+    { id: 'sip', title: 'SIP Intercom', keywords: ['sip', 'intercom', 'doorbell', 'voip', 'phone'] },
+    { id: 'paging', title: 'Room-to-Room Paging', keywords: ['paging', 'intercom', 'talk'] },
   ] },
-  { id: 'lighting', label: 'Lighting', sections: [
-    { id: 'lighting-extra', title: 'IKEA Dirigera & Tradfri', ported: true },
-    { id: 'wled', title: 'WLED', ported: true },
-    { id: 'shelly', title: 'Shelly', ported: true },
-  ] },
-  { id: 'media', label: 'Media', sections: [
-    { id: 'media-all', title: 'Denon, Sony Bravia, Sonos, Google Home', ported: true },
-    { id: 'airplay', title: 'AirPlay Speakers', ported: true },
-    { id: 'announce', title: 'Announcements', ported: true, keywords: ['announce', 'announcement', 'tts', 'speech', 'homepod', 'airplay', 'loxone notification', 'say'] },
-    { id: 'spotify', title: 'Spotify', ported: true, keywords: ['spotify', 'music', 'playlist', 'playback'] },
-    { id: 'applemusic', title: 'Apple Music', ported: true, keywords: ['apple music', 'musickit', 'music', 'itunes'] },
+  { id: 'platforms', label: 'Platforms & Hubs', sections: [
+    { id: 'homekit', title: 'HomeKit', keywords: ['homekit', 'apple', 'siri', 'home app', 'pairing', 'qr'] },
+    { id: 'matter', title: 'Matter & Thread', keywords: ['matter', 'thread', 'border router'] },
+    { id: 'homeassistant', title: 'Home Assistant', keywords: ['home assistant', 'hass', 'ha', 'mqtt discovery'] },
+    { id: 'smartthings', title: 'Samsung SmartThings', keywords: ['samsung', 'smartthings'] },
+    { id: 'smarthome-extra', title: 'Homey, Fibaro, Somfy & more', keywords: ['homey', 'athom', 'somfy', 'tahoma', 'landroid', 'worx', 'mower', 'suppla', 'supla', 'fibaro', 'home center', 'sinum', 'tech', 'tech sterowniki', 'eh-01', 'thermostat', 'vclu', 'virtual clu', 'grenton', 'mcp'] },
   ] },
   { id: 'controllers', label: 'Controllers & Buses', sections: [
-    { id: 'loxone', title: 'Loxone Miniserver & Outbound Push', ported: true },
-    { id: 'fibaroout', title: 'Fibaro Outbound Push', ported: true },
-    { id: 'loxonexml', title: 'Loxone XML Templates', ported: true },
-    { id: 'knx', title: 'KNX', ported: true },
-    { id: 'boneio-grenton', title: 'BoneIO & Grenton', ported: true },
-    { id: 'smartbob', title: 'SmartBob', ported: true },
-    { id: 'arduino', title: 'Arduino MQTT', ported: true },
-    { id: 'esphome', title: 'ESPHome', ported: true, keywords: ['sensy', 'sensy-one', 'mmwave', 'presence'] },
-    { id: 'broadlink', title: 'BroadLink RM4', ported: true },
-    { id: 'waveshare', title: 'Waveshare Modbus TCP', ported: true },
-    { id: 'modbus-emu', title: 'Modbus emulator', ported: true, keywords: ['modbus', 'emulator', 'slave', 'server', 'registers', 'rtu', 'rs485', 'sdm630', 'sdm120', 'plc', 'scada'] },
+    { id: 'loxone', title: 'Loxone Miniserver', keywords: ['loxone', 'miniserver', 'outbound', 'push', 'virtual input'] },
+    { id: 'loxonexml', title: 'Loxone XML Templates', keywords: ['loxone', 'xml', 'template', 'virtual output'] },
+    { id: 'fibaroout', title: 'Fibaro Outbound Push', keywords: ['fibaro', 'home center', 'global variables', 'push'] },
+    { id: 'knx', title: 'KNX', keywords: ['knx', 'eib', 'group address'] },
+    { id: 'boneio-grenton', title: 'BoneIO & Grenton', keywords: ['boneio', 'grenton', 'clu'] },
+    { id: 'smartbob', title: 'SmartBob', keywords: ['smartbob'] },
+    { id: 'arduino', title: 'Arduino MQTT', keywords: ['arduino', 'mqtt'] },
+    { id: 'esphome', title: 'ESPHome', keywords: ['esphome', 'esp32', 'esp8266', 'sensy', 'sensy-one', 'mmwave', 'presence'] },
+    { id: 'broadlink', title: 'BroadLink RM4', keywords: ['broadlink', 'ir', 'infrared', 'rf', 'remote'] },
+    { id: 'waveshare', title: 'Waveshare Modbus TCP', keywords: ['waveshare', 'modbus', 'relay board'] },
   ] },
-  { id: 'security', label: 'Security', sections: [
-    { id: 'satel', title: 'Satel INTEGRA', ported: true },
-    { id: 'dsc', title: 'DSC PowerSeries Neo', ported: true, keywords: ['dsc', 'neo', 'tl280', 'itv2', 'alarm', 'alarm panel'] },
-    { id: 'tedee', title: 'Tedee Smart Lock', ported: true },
-  ] },
-  { id: 'communication', label: 'Communication', sections: [
-    { id: 'sip', title: 'SIP Intercom', ported: true },
-    { id: 'paging', title: 'Room-to-Room Paging', ported: true },
-  ] },
-  { id: 'system', label: 'System', sections: [
-    { id: 'virtual', title: 'Virtual Devices', ported: true },
-    { id: 'system-misc', title: 'Interface, Relays & Server', ported: true },
-    { id: 'homekit', title: 'HomeKit', ported: true },
-    { id: 'matter', title: 'Matter & Thread', ported: true },
-    { id: 'homeplan', title: 'Home Plan', ported: true },
-    { id: 'security-auth', title: 'Security & Authentication', ported: true, keywords: ['mcp', 'bot', 'bots', 'ai', 'claude', 'gemini', 'chatgpt', 'openai', 'oauth', 'token'] },
-    { id: 'backup', title: 'Backup & Restore', ported: true },
-    { id: 'lan-scan', title: 'LAN scan', ported: true, keywords: ['network', 'lan', 'scan', 'ip', 'devices', 'ports', 'mdns', 'bonjour', 'upnp', 'discover'] },
-    { id: 'ble-scan', title: 'Bluetooth scan', ported: true, keywords: ['ble', 'bluetooth', 'scan', 'bluez', 'devices nearby'] },
-    { id: 'can-scan', title: 'CAN bus scan', ported: true, keywords: ['can', 'canbus', 'can-fd', 'nmea 2000', 'n2k', 've.can', 'j1939', 'canopen', 'bms', 'pylontech', 'ventuno', 'socketcan', 'candump'] },
-    { id: 'modbus-scan', title: 'Modbus scan', ported: true, keywords: ['modbus', 'rtu', 'rs485', 'rs-485', 'tcp', '502', 'sunspec', 'energy meter', 'eastron', 'sdm', 'inverter', 'registers'] },
-    { id: 'manuals', title: 'Device manuals', ported: true, keywords: ['manual', 'manuals', 'pdf', 'wiring', 'fibaro', 'shelly', 'qubino', 'z-wave', 'installation'] },
-    { id: 'wiring', title: 'Wiring emulator', ported: true, keywords: ['wiring', 'wire', 'emulator', 'assistant', 'diagram', 'fibaro', 'shelly', 'z-wave', 'relay', 'dimmer', 'shutter', 'install'] },
-    { id: 'modules', title: 'Integration Modules', ported: true, keywords: ['install', 'github', 'plugins', 'update'] },
+  { id: 'tools', label: 'Tools', sections: [
+    { id: 'lan-scan', title: 'LAN scan', keywords: ['network', 'lan', 'scan', 'ip', 'devices', 'ports', 'mdns', 'bonjour', 'upnp', 'discover'] },
+    { id: 'ble-scan', title: 'Bluetooth scan', keywords: ['ble', 'bluetooth', 'scan', 'bluez', 'devices nearby'] },
+    { id: 'can-scan', title: 'CAN bus scan', keywords: ['can', 'canbus', 'can-fd', 'nmea 2000', 'n2k', 've.can', 'j1939', 'canopen', 'bms', 'pylontech', 'ventuno', 'socketcan', 'candump'] },
+    { id: 'modbus-scan', title: 'Modbus scan', keywords: ['modbus', 'rtu', 'rs485', 'rs-485', 'tcp', '502', 'sunspec', 'energy meter', 'eastron', 'sdm', 'inverter', 'registers'] },
+    { id: 'modbus-emu', title: 'Modbus emulator', keywords: ['modbus', 'emulator', 'slave', 'server', 'registers', 'rtu', 'rs485', 'sdm630', 'sdm120', 'plc', 'scada'] },
+    { id: 'wiring', title: 'Wiring emulator', keywords: ['wiring', 'wire', 'emulator', 'assistant', 'diagram', 'fibaro', 'shelly', 'z-wave', 'relay', 'dimmer', 'shutter', 'install'] },
+    { id: 'manuals', title: 'Device manuals', keywords: ['manual', 'manuals', 'pdf', 'wiring', 'fibaro', 'shelly', 'qubino', 'z-wave', 'installation'] },
   ] },
 ]
 
@@ -104,4 +104,17 @@ export function findSection(id) {
   return null
 }
 
-export const FIRST_PORTED_ID = 'connection'
+// Sidebar search: every word must appear in the title, a keyword or the
+// category name — English or, with `translate`, the shown language
+export function filterCategories(query, translate = (x) => x) {
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length) return CATEGORIES
+  return CATEGORIES
+    .map(cat => ({ ...cat, sections: cat.sections.filter(s => {
+      const hay = [s.title, cat.label, translate(s.title), translate(cat.label), ...(s.keywords || [])].join(' ').toLowerCase()
+      return words.every(w => hay.includes(w))
+    }) }))
+    .filter(cat => cat.sections.length)
+}
+
+export const FIRST_SECTION_ID = 'system-misc'

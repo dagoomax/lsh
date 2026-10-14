@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button, ResultBanner } from '../primitives'
+import { tr } from '../../../i18n'
 
 const api = (url, method = 'GET', body) => fetch(url, {
   method, credentials: 'include',
@@ -30,7 +31,7 @@ export default function HomeKitExclude() {
     .filter((x) => !onlyOff || ex.devices.includes(x.key) || typeOff(x.type))
     .sort((a, b) => String(a.type).localeCompare(String(b.type)) || String(a.label).localeCompare(String(b.label))), [d, q, onlyOff, ex])
 
-  if (!d || !ex) return <p className="stg-hint">Loading…</p>
+  if (!d || !ex) return <p className="stg-hint">{tr('Loading…')}</p>
   const offCount = (d.devices || []).filter((x) => ex.devices.includes(x.key) || typeOff(x.type)).length
   const dirty = JSON.stringify(ex) !== JSON.stringify(d.exclude)
   const save = async () => {
@@ -41,11 +42,11 @@ export default function HomeKitExclude() {
 
   return (
     <div className="hk-ex">
-      <p className="stg-hint">Untick what shouldn’t appear in the Home app. Changes apply right away — no restart. A device you take out and later put back comes back as a new accessory (Home app room and name reset).</p>
+      <p className="stg-hint">{tr('Untick what shouldn’t appear in the Home app. Changes apply right away — no restart. A device you take out and later put back comes back as a new accessory (Home app room and name reset).')}</p>
 
       {d.types.length > 1 && (
         <>
-          <div className="hk-ex-h">Whole integrations</div>
+          <div className="hk-ex-h">{tr('Whole integrations')}</div>
           <div className="hk-ex-chips">
             {d.types.map((t) => {
               const n = d.devices.filter((x) => x.type === t).length
@@ -55,10 +56,10 @@ export default function HomeKitExclude() {
         </>
       )}
 
-      <div className="hk-ex-h">Devices <small>{d.devices.length - offCount} of {d.devices.length} in HomeKit</small></div>
+      <div className="hk-ex-h">{tr('Devices')}{' '}<small>{tr('{v} of {devicesCount} in HomeKit', { v: d.devices.length - offCount, devicesCount: d.devices.length })}</small></div>
       <div className="hk-ex-tools">
-        <input className="stg-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter by name, room, type…"/>
-        <label className="hk-ex-small"><input type="checkbox" checked={onlyOff} onChange={(e) => setOnlyOff(e.target.checked)}/> only excluded</label>
+        <input className="stg-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('Filter by name, room, type…')}/>
+        <label className="hk-ex-small"><input type="checkbox" checked={onlyOff} onChange={(e) => setOnlyOff(e.target.checked)}/>{' '}{tr('only excluded')}</label>
       </div>
       <div className="hk-ex-list">
         {devices.map((x) => {
@@ -73,7 +74,7 @@ export default function HomeKitExclude() {
             </label>
           )
         })}
-        {!devices.length && <p className="stg-hint">Nothing matches.</p>}
+        {!devices.length && <p className="stg-hint">{tr('Nothing matches.')}</p>}
       </div>
 
       {[['cameras', 'Cameras', (c) => c.name, (c) => `${c.name}${c.standalone ? ' (standalone — applies after restart)' : ''}`],
@@ -96,11 +97,11 @@ export default function HomeKitExclude() {
       ))}
 
       <div className="stg-actions">
-        <Button variant="primary" busy={busy} disabled={!dirty} onClick={save}>Apply</Button>
-        {dirty && <Button onClick={() => setEx(d.exclude)}>Undo</Button>}
+        <Button variant="primary" busy={busy} disabled={!dirty} onClick={save}>{tr('Apply')}</Button>
+        {dirty && <Button onClick={() => setEx(d.exclude)}>{tr('Undo')}</Button>}
         <ResultBanner result={msg}/>
       </div>
-      {!d.running && <p className="stg-hint">HomeKit isn’t running — the choice applies when it starts.</p>}
+      {!d.running && <p className="stg-hint">{tr('HomeKit isn’t running — the choice applies when it starts.')}</p>}
     </div>
   )
 }

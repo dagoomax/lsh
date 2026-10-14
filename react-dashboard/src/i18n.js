@@ -487,7 +487,59 @@ function lang() {
 }
 
 export function gt(key, fallback, vars) {
-  let s = DICT[lang()]?.[key] || fallback
-  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, v)
+  const l = lang()
+  const s = DICT[l]?.[key] || (typeof fallback === 'string' && PHRASES[l]?.[norm(fallback)]) || fallback
+  return fill(s, vars)
+}
+
+// {name} placeholders → values; like React, null / undefined / booleans show as nothing
+function fill(s, vars) {
+  if (!vars || typeof s !== 'string') return s
+  for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(v == null || typeof v === 'boolean' ? '' : v)
   return s
+}
+
+// ── Settings phrase book ─────────────────────────────────────────────────────
+// Settings text is keyed by its English wording (like the wiring emulator's):
+// tr('Save') → 'Zapisz'. The book (src/i18n/settings/*.js, every language)
+// is only fetched when Settings opens in a language other than English —
+// loadPhrases() — and gt() falls back to it through its English fallback.
+// Tooling: scripts/settings-phrases.mjs; test/settings-i18n.test.js checks
+// every phrase used in Settings is translated.
+const PHRASES = {}
+const norm = (s) => s.replace(/\s+/g, ' ').trim()
+
+export function tr(text, vars) {
+  if (typeof text !== 'string') return text
+  return fill(PHRASES[lang()]?.[norm(text)] || text, vars)
+}
+
+// Plural: forms separated by | in the order of the language's plural categories
+// (Intl.PluralRules — English 'one|other', Polish/Ukrainian 'one|few|many|other';
+// a missing form falls back to the last one). {n} is the count.
+//   trn('{n} device|{n} devices', count)   pl: '{n} urządzenie|{n} urządzenia|{n} urządzeń'
+const ORDER = ['zero', 'one', 'two', 'few', 'many', 'other']
+export function trn(text, n, vars) {
+  const l = lang()
+  const forms = (PHRASES[l]?.[norm(text)] || text).split('|')
+  const code = PHRASES[l]?.[norm(text)] ? l : 'en'
+  let cats
+  try { cats = new Intl.PluralRules(code).resolvedOptions().pluralCategories } catch { cats = ['one', 'other'] }
+  cats = ORDER.filter((c) => cats.includes(c))
+  let cat
+  try { cat = new Intl.PluralRules(code).select(n) } catch { cat = n === 1 ? 'one' : 'other' }
+  const i = Math.min(Math.max(cats.indexOf(cat), 0), forms.length - 1)
+  return fill(forms[i], { n, ...vars })
+}
+
+let loading = null
+export function loadPhrases() {
+  const l = lang()
+  if (l === 'en' || PHRASES[l] || !LANGUAGES.some(([code]) => code === l)) return Promise.resolve()
+  loading = loading || import('./i18n/settings/index.js').then(({ BOOK, LANGS }) => {
+    for (const code of LANGS) PHRASES[code] = {}
+    for (const [en, tx] of Object.entries(BOOK)) LANGS.forEach((code, i) => { if (tx[i]) PHRASES[code][en] = tx[i] })
+    window.dispatchEvent(new Event('lsh-lang-changed')) // re-render with the translations
+  }).catch((err) => { loading = null; console.warn('[i18n] settings phrases:', err.message) })
+  return loading
 }

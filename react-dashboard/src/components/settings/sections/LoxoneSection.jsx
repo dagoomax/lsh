@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { LoxoneIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 export default function LoxoneSection({ config, reload }) {
   return (
@@ -54,7 +54,7 @@ function OutboundPushCard({ loxoneOut, reload }) {
 
   return (
     <SettingsCard icon={LoxoneIcon} title="Loxone Outbound Push" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Pushes sensor values from LSH to Loxone Virtual Inputs in real time. One mapping per line: <code>storeKey = VirtualInputName</code>.</>}>
+      desc={<>{tr('Pushes sensor values from LSH to Loxone Virtual Inputs in real time. One mapping per line:')}{' '}<code>storeKey = VirtualInputName</code>.</>}>
       <Field label="Miniserver Host / IP" value={host} onChange={setHost} placeholder="192.168.1.100"/>
       <Field label="Port" hint="(default 80)" type="number" value={port} onChange={setPort}/>
       <Field label="Username" value={username} onChange={setUsername}/>
@@ -84,7 +84,7 @@ function WeatherEmulatorCard({ loxoneWeather, reload }) {
 
   return (
     <SettingsCard icon={LoxoneIcon} title="Loxone Weather Emulator" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Stands in for Loxone's cloud weather service using Open-Meteo. Point <code>weather.loxone.com</code> at this host via DNS override — the Miniserver will fetch its hourly forecast from here on port {port || 6066} instead. Not yet verified against a real Miniserver.</>}>
+      desc={<>{tr("Stands in for Loxone's cloud weather service using Open-Meteo. Point")}{' '}<code>weather.loxone.com</code>{' '}{tr('at this host via DNS override — the Miniserver will fetch its hourly forecast from here on port')}{' '}{port || 6066}{' '}{tr('instead. Not yet verified against a real Miniserver.')}</>}>
       <Field label="Listen Port" hint="(default 6066)" type="number" value={port} onChange={setPort}/>
       <Field label="Latitude" type="number" value={lat} onChange={setLat}/>
       <Field label="Longitude" type="number" value={lon} onChange={setLon}/>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { SettingsCard, ListEditor, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const SB_TYPES = ['switch', 'light', 'temperature', 'humidity', 'number', 'boolean']
 const SB_HK = ['', 'switch-rw', 'light-rw', 'temperature', 'humidity', 'motion', 'contact', 'co2-sensor']
@@ -34,10 +34,10 @@ export default function SmartBobSection({ config, reload }) {
       <Field label="Port" hint="(default 1883)" type="number" value={port} onChange={setPort}/>
       <Field label="Username" hint="(optional)" value={username} onChange={setUsername} placeholder="(none)"/>
       <Field label="Password" hint="(optional)" type="password" value={password} onChange={setPassword}/>
-      <h4 className="stg-subheading">Entities</h4>
+      <h4 className="stg-subheading">{tr('Entities')}</h4>
       <ListEditor rows={entities} onChange={setEntities} fields={FIELDS} addLabel="+ Add Entity"/>
       <div className="stg-actions">
-        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ host, port: Number(port) })}>Test Broker</Button>
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ host, port: Number(port) })}>{tr('Test Broker')}</Button>
         <Button variant="primary" busy={save.busy}
           onClick={() => save.save({ name, host, port: Number(port), username, password, entities }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={test.result || save.result}/>

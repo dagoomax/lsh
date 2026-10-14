@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SettingsCard, Button } from '../primitives'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 // Integration modules fetched on demand from GitHub (src/module-manager.js).
 // Configured ones are auto-installed at startup; this list is for browsing,
@@ -54,10 +54,10 @@ export default function ModulesSection() {
       badge={mods ? `${installedCount}/${mods.length}` : null}
       desc="Integrations are downloaded from GitHub when you need them. Anything configured in config.json is installed automatically at startup; install here to get one ready before configuring it. Restart LSH after installing.">
       {error && <div className="stg-banner err">✗ {error}</div>}
-      {!mods && !error && <p className="stg-hint">Loading…</p>}
+      {!mods && !error && <p className="stg-hint">{tr('Loading…')}</p>}
       {mods && (
         <>
-          <input className="stg-input stg-mod-filter" placeholder="Filter modules…" value={filter}
+          <input className="stg-input stg-mod-filter" placeholder={tr('Filter modules…')} value={filter}
             onChange={(e) => setFilter(e.target.value)}/>
           <div className="stg-mod-list">
             {shown.map((m) => {
@@ -68,22 +68,22 @@ export default function ModulesSection() {
                   <div className="stg-mod-main">
                     <div className="stg-mod-name">
                       {m.id}
-                      {m.configured && <span className="stg-mod-chip cfg">configured</span>}
+                      {m.configured && <span className="stg-mod-chip cfg">{tr('configured')}</span>}
                       <span className={`stg-mod-chip ${m.installed ? 'ok' : partial ? 'warn' : ''}`}>
-                        {m.installed ? 'installed' : partial ? 'missing npm deps' : 'not installed'}
+                        {m.installed ? tr('installed') : partial ? tr('missing npm deps') : tr('not installed')}
                       </span>
                     </div>
                     <div className="stg-hint stg-mod-meta">
                       config: <code>{m.configKeys.join(', ')}</code>
-                      {m.deps.length > 0 && <> · npm: {m.deps.join(', ')}</>}
-                      {m.ref && <> · from {m.ref}</>}
+                      {m.deps.length > 0 && <>{tr('· npm:')}{' '}{m.deps.join(', ')}</>}
+                      {m.ref && <>{tr('· from')}{' '}{m.ref}</>}
                     </div>
                     {r && <div className={`stg-banner ${r.ok ? 'ok' : 'err'}`}>{r.ok ? '✓' : '✗'} {r.message}</div>}
                   </div>
                   <Button variant={m.installed ? 'secondary' : 'primary'} busy={busy === m.id}
                     disabled={busy !== null && busy !== m.id}
                     onClick={() => install(m.id, m.installed)}>
-                    {m.installed ? 'Update' : 'Install'}
+                    {m.installed ? tr('Update') : tr('Install')}
                   </Button>
                 </div>
               )

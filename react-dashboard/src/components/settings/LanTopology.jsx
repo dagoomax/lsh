@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { tr } from '../../i18n'
 
 // Generated network map for Settings → System → LAN scan. Logical, not
 // physical: a single host's scan can't see which mesh node / switch port a
@@ -28,10 +29,10 @@ export default function LanTopology({ data, onSelect, selected, renderDetails, i
   return (
     <>
       <div className="lan-topo">
-        <button className="lan-expand" onClick={() => setPopup(true)} title="Open large map">⤢</button>
+        <button className="lan-expand" onClick={() => setPopup(true)} title={tr('Open large map')}>⤢</button>
         <Graph graph={graph} data={data} selected={selected} onSelect={(ip) => { setPopup(true); onSelect?.(ip) }} interactive={false}/>
         <Legend data={data}/>
-        <div className="lan-open-large"><button onClick={() => setPopup(true)}>Open large map ⤢</button></div>
+        <div className="lan-open-large"><button onClick={() => setPopup(true)}>{tr('Open large map ⤢')}</button></div>
       </div>
       {popup && (
         <TopologyPopup graph={graph} data={data} selected={selected} onSelect={onSelect}
@@ -53,9 +54,9 @@ function TopologyPopup({ graph, data, selected, onSelect, renderDetails, onClose
     <div className="lan-popup-backdrop" onClick={onClose}>
       <div className="lan-popup" onClick={(e) => e.stopPropagation()}>
         <div className="lan-popup-head">
-          <b>Network map</b>
-          <span className="stg-hint">{data.hosts.length} devices · {data.networks.map((n) => n.cidr).join(', ')} · scroll to zoom, drag to pan, click a device for details</span>
-          <button className="lan-popup-close" onClick={onClose} title="Close (Esc)">✕</button>
+          <b>{tr('Network map')}</b>
+          <span className="stg-hint">{tr('{hostsCount} devices · {v} · scroll to zoom, drag to pan, click a device for details', { hostsCount: data.hosts.length, v: data.networks.map((n) => n.cidr).join(', ') })}</span>
+          <button className="lan-popup-close" onClick={onClose} title={tr('Close (Esc)')}>✕</button>
         </div>
         <div className="lan-popup-body">
           <div className="lan-popup-graph">
@@ -64,7 +65,7 @@ function TopologyPopup({ graph, data, selected, onSelect, renderDetails, onClose
           </div>
           {selected && renderDetails && (
             <aside className="lan-popup-side">
-              <button className="lan-popup-close side" onClick={() => onSelect?.(selected)} title="Close details">✕</button>
+              <button className="lan-popup-close side" onClick={() => onSelect?.(selected)} title={tr('Close details')}>✕</button>
               {renderDetails(selected)}
             </aside>
           )}
@@ -121,12 +122,12 @@ function Graph({ graph, data, selected, onSelect, interactive }) {
     <div className={`lan-graph${interactive ? ' interactive' : ''}`}>
       {interactive && (
         <div className="lan-zoom">
-          <button onClick={() => zoom(1 / 1.3)} title="Zoom in">+</button>
-          <button onClick={() => zoom(1.3)} title="Zoom out">−</button>
-          <button onClick={() => setVb(full)} title="Reset">⟲</button>
+          <button onClick={() => zoom(1 / 1.3)} title={tr('Zoom in')}>+</button>
+          <button onClick={() => zoom(1.3)} title={tr('Zoom out')}>−</button>
+          <button onClick={() => setVb(full)} title={tr('Reset')}>⟲</button>
         </div>
       )}
-      <svg ref={svgRef} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="lan-topo-svg" role="img" aria-label="Network topology"
+      <svg ref={svgRef} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="lan-topo-svg" role="img" aria-label={tr('Network topology')}
         onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}>
         <defs>
           <radialGradient id="lan-bg" r="0.5">
@@ -201,8 +202,8 @@ function Graph({ graph, data, selected, onSelect, interactive }) {
           <div>{hover.host.ip}{hover.host.mac ? ` · ${hover.host.mac}` : ''}</div>
           {hover.host.vendor && <div>{hover.host.vendor}</div>}
           {hover.host.id?.label && <div>{hover.host.id.label}{hover.host.id.integration ? ` → LSH “${hover.host.id.integration}”` : ''}</div>}
-          {hover.host.ports?.length > 0 && <div>ports {hover.host.ports.join(', ')}</div>}
-          {hover.host.latency != null && <div>{hover.host.latency} ms</div>}
+          {hover.host.ports?.length > 0 && <div>{tr('ports {v}', { v: hover.host.ports.join(', ') })}</div>}
+          {hover.host.latency != null && <div>{tr('{latency} ms', { latency: hover.host.latency })}</div>}
         </div>
       )}
     </div>
@@ -215,8 +216,8 @@ function Legend({ data }) {
       {GROUPS.filter((g) => data.hosts.some((h) => groupOf(h) === g)).map((g) => (
         <span key={g.id}><i style={{ background: g.color }}/>{g.label}</span>
       ))}
-      <span><i className="ring"/>LSH can connect</span>
-      <span className="stg-hint">Logical map — physical links (which mesh node / port) aren't visible to a scan.</span>
+      <span><i className="ring"/>{tr('LSH can connect')}</span>
+      <span className="stg-hint">{tr("Logical map — physical links (which mesh node / port) aren't visible to a scan.")}</span>
     </div>
   )
 }

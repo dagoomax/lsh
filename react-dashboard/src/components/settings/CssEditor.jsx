@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DEFAULTS, FONT_OPTIONS, ACCENT_PRESETS, SLIDERS, SELECTS, TOGGLES, buildQuickBlock, mergeQuickBlock, parseQuickState } from '../../cssQuickControls'
+import { tr } from '../../i18n'
 
 // Upgrades the plain <textarea> Custom CSS field into something closer to a
 // real editor: line-number gutter, Tab inserts spaces instead of leaving the
@@ -110,7 +111,7 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
             const name = rest.join(':')
             if (kind && name) applyTheme(kind, name)
           }}>
-          <option value="" disabled>Load theme…</option>
+          <option value="" disabled>{tr('Load theme…')}</option>
           {themes.builtin.length > 0 && (
             <optgroup label="Built-in">
               {themes.builtin.map((n) => <option key={`builtin:${n}`} value={`builtin:${n}`}>{n}</option>)}
@@ -122,26 +123,26 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
             </optgroup>
           )}
         </select>
-        <button type="button" className="stg-disclosure" onClick={saveTheme}>Save as theme…</button>
+        <button type="button" className="stg-disclosure" onClick={saveTheme}>{tr('Save as theme…')}</button>
         {themeSel.startsWith('custom:') && (
           <button type="button" className="stg-disclosure css-editor-theme-delete"
             onClick={() => deleteTheme(themeSel.slice('custom:'.length))}>
-            Delete "{themeSel.slice('custom:'.length)}"
+            {tr('Delete "{v}"', { v: themeSel.slice('custom:'.length) })}
           </button>
         )}
       </div>
       <div className="css-editor-quick">
         <div className="css-editor-quick-head">
-          <span>Quick tweaks</span>
+          <span>{tr('Quick tweaks')}</span>
           <button type="button" className="stg-disclosure" onClick={() => setControl(DEFAULTS)}>
-            Reset tweaks
+            {tr('Reset tweaks')}
           </button>
         </div>
 
-        <div className="css-editor-quick-section">Colour & type</div>
+        <div className="css-editor-quick-section">{tr('Colour & type')}</div>
         <div className="css-editor-quick-row">
           <div className="css-editor-quick-item">
-            <span>Accent</span>
+            <span>{tr('Accent')}</span>
             <div className="css-editor-swatches">
               {ACCENT_PRESETS.map((a) => (
                 <button key={a.value} type="button" title={a.label} aria-label={a.label}
@@ -149,12 +150,12 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
                   data-on={controls.accent.toLowerCase() === a.value || undefined}
                   onClick={() => setControl({ accent: a.value })}/>
               ))}
-              <input type="color" title="Custom colour" value={controls.accent}
+              <input type="color" title={tr('Custom colour')} value={controls.accent}
                 onChange={(e) => setControl({ accent: e.target.value })}/>
             </div>
           </div>
           <label className="css-editor-quick-item">
-            <span>Font</span>
+            <span>{tr('Font')}</span>
             <select className="stg-input" value={controls.font} onChange={(e) => setControl({ font: e.target.value })}>
               {FONT_OPTIONS.map((f) => <option key={f.label} value={f.value}>{f.label}</option>)}
             </select>
@@ -169,7 +170,7 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
           ))}
         </div>
 
-        <div className="css-editor-quick-section">Size & shape</div>
+        <div className="css-editor-quick-section">{tr('Size & shape')}</div>
         <div className="css-editor-quick-row">
           {SLIDERS.map((sl) => (
             <label key={sl.key} className="css-editor-quick-item">
@@ -177,12 +178,12 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
               <input type="range" min={sl.min} max={sl.max} step={sl.step} value={controls[sl.key]}
                 onChange={(e) => setControl({ [sl.key]: Number(e.target.value) })}
                 onDoubleClick={() => setControl({ [sl.key]: DEFAULTS[sl.key] })}
-                title="Double-click to reset"/>
+                title={tr('Double-click to reset')}/>
             </label>
           ))}
         </div>
 
-        <div className="css-editor-quick-section">Tweaks</div>
+        <div className="css-editor-quick-section">{tr('Tweaks')}</div>
         <div className="css-editor-toggles">
           {TOGGLES.map((t) => (
             <label key={t.key} className="css-editor-toggle-chip" data-on={controls[t.key] || undefined}>
@@ -197,7 +198,7 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
         <label className="css-editor-preview-toggle">
           <input type="checkbox" className="stg-checkbox" checked={preview}
             onChange={(e) => setPreview(e.target.checked)} />
-          Live preview on this page
+          {tr('Live preview on this page')}
         </label>
         <span className="css-editor-toolbar-spacer"/>
         <button type="button" className="stg-disclosure" onClick={() => {
@@ -205,7 +206,7 @@ export default function CssEditor({ value, onChange, rows = 12 }) {
           if (!window.confirm('Clear all Custom CSS? This removes everything in the box below, not just the Quick controls block.')) return
           onChange('')
         }}>
-          Reset to defaults
+          {tr('Reset to defaults')}
         </button>
       </div>
       <div className="css-editor-body">

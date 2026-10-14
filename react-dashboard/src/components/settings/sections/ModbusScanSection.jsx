@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { SettingsCard, Button } from '../primitives'
+import { tr, trn } from '../../../i18n'
 
 // Settings → System → Modbus scan — read-only discovery of Modbus TCP servers
 // on this host's LAN and of unit IDs on an RS-485 bus (Modbus RTU), with a
@@ -90,33 +91,33 @@ export default function ModbusScanSection() {
         <div className="lan-hero-body">
           {busy ? (
             <>
-              <div className="lan-hero-title">Polling<span className="lan-dots"><i/><i/><i/></span></div>
+              <div className="lan-hero-title">{tr('Polling')}<span className="lan-dots"><i/><i/><i/></span></div>
               <div className="lan-hero-sub">{targetLabel} · {elapsed} s</div>
               <div className="lan-progress"><i style={{ width: `${Math.min(96, (elapsed / (mode === 'rtu' ? 60 : 20)) * 100)}%` }}/></div>
             </>
           ) : data ? (
             <>
-              <div className="lan-hero-title">{found.length} Modbus device{found.length === 1 ? '' : 's'}</div>
-              <div className="lan-hero-sub">{data.mode === 'tcp' ? `${data.hosts.length} host${data.hosts.length === 1 ? '' : 's'} with port ${data.port} open` : data.target} · {Math.round(data.durationMs / 1000)} s</div>
+              <div className="lan-hero-title">{trn('{n} Modbus device|{n} Modbus devices', found.length)}</div>
+              <div className="lan-hero-sub">{data.mode === 'tcp' ? trn('{n} host with port {port} open|{n} hosts with port {port} open', data.hosts.length, { port: data.port }) : data.target} · {Math.round(data.durationMs / 1000)} s</div>
             </>
           ) : (
             <>
-              <div className="lan-hero-title">Find Modbus devices</div>
-              <div className="lan-hero-sub">Modbus TCP on the LAN or RTU on RS-485 · identify, then browse registers</div>
+              <div className="lan-hero-title">{tr('Find Modbus devices')}</div>
+              <div className="lan-hero-sub">{tr('Modbus TCP on the LAN or RTU on RS-485 · identify, then browse registers')}</div>
             </>
           )}
           {data && (
             <div className="lan-stats">
-              <div className="lan-stat"><b>{data.mode === 'tcp' ? data.hosts.length : '—'}</b><span>hosts</span></div>
-              <div className="lan-stat ble-blue"><b>{found.length}</b><span>units</span></div>
-              <div className="lan-stat green"><b>{found.filter((d) => d.kind !== 'unknown').length}</b><span>identified</span></div>
-              <div className="lan-stat"><b>{Math.round(data.durationMs / 1000)}<small>s</small></b><span>scan time</span></div>
+              <div className="lan-stat"><b>{data.mode === 'tcp' ? data.hosts.length : '—'}</b><span>{tr('hosts')}</span></div>
+              <div className="lan-stat ble-blue"><b>{found.length}</b><span>{tr('units')}</span></div>
+              <div className="lan-stat green"><b>{found.filter((d) => d.kind !== 'unknown').length}</b><span>{tr('identified')}</span></div>
+              <div className="lan-stat"><b>{Math.round(data.durationMs / 1000)}<small>s</small></b><span>{tr('scan time')}</span></div>
             </div>
           )}
           {kinds.length > 0 && <div className="lan-mix">{kinds.map(({ k, n }) => <i key={k} style={{ flex: n, background: KIND[k].color }} title={`${KIND[k].label}: ${n}`}/>)}</div>}
           <div className="lan-hero-actions">
-            <button className="lan-scan-btn" disabled={busy || needsModule || (mode === 'rtu' && !serialPort)} onClick={run}>{busy ? 'Scanning…' : data ? '↻ Scan again' : '🔎 Scan'}</button>
-            {needsModule && <Button variant="primary" busy={busy} onClick={install}>Install module</Button>}
+            <button className="lan-scan-btn" disabled={busy || needsModule || (mode === 'rtu' && !serialPort)} onClick={run}>{busy ? tr('Scanning…') : data ? tr('↻ Scan again') : tr('🔎 Scan')}</button>
+            {needsModule && <Button variant="primary" busy={busy} onClick={install}>{tr('Install module')}</Button>}
           </div>
         </div>
       </div>
@@ -125,36 +126,36 @@ export default function ModbusScanSection() {
 
       <div className="lan-toolbar">
         <div className="lan-viewtoggle">
-          <button className={mode === 'tcp' ? 'active' : ''} onClick={() => setMode('tcp')}>Modbus TCP</button>
-          <button className={mode === 'rtu' ? 'active' : ''} onClick={() => setMode('rtu')}>Modbus RTU (RS-485)</button>
+          <button className={mode === 'tcp' ? 'active' : ''} onClick={() => setMode('tcp')}>{tr('Modbus TCP')}</button>
+          <button className={mode === 'rtu' ? 'active' : ''} onClick={() => setMode('rtu')}>{tr('Modbus RTU (RS-485)')}</button>
         </div>
       </div>
       <div className="mb-form">
         {mode === 'tcp' ? (
           <>
-            <label><span>Host(s)</span><input className="stg-input" value={host} onChange={(e) => setHost(e.target.value)} placeholder="empty = sweep this LAN"/></label>
-            <label className="narrow"><span>Port</span><input className="stg-input" type="number" value={tcpPort} onChange={(e) => setTcpPort(Number(e.target.value))}/></label>
-            <label><span>Unit IDs</span><input className="stg-input" value={units} onChange={(e) => setUnits(e.target.value)} placeholder="1,2,3,100,126,247,255,0"/></label>
+            <label><span>{tr('Host(s)')}</span><input className="stg-input" value={host} onChange={(e) => setHost(e.target.value)} placeholder={tr('empty = sweep this LAN')}/></label>
+            <label className="narrow"><span>{tr('Port')}</span><input className="stg-input" type="number" value={tcpPort} onChange={(e) => setTcpPort(Number(e.target.value))}/></label>
+            <label><span>{tr('Unit IDs')}</span><input className="stg-input" value={units} onChange={(e) => setUnits(e.target.value)} placeholder="1,2,3,100,126,247,255,0"/></label>
           </>
         ) : (
           <>
-            <label><span>Serial port</span>
+            <label><span>{tr('Serial port')}</span>
               <select className="stg-input" value={serialPort} onChange={(e) => setSerialPort(e.target.value)}>
-                {!ports?.serial.length && <option value="">No USB serial adapter found</option>}
+                {!ports?.serial.length && <option value="">{tr('No USB serial adapter found')}</option>}
                 {ports?.serial.map((p) => <option key={p.path} value={p.path}>{p.label} ({p.device})</option>)}
               </select>
             </label>
-            <label className="narrow"><span>Baud</span>
+            <label className="narrow"><span>{tr('Baud')}</span>
               <select className="stg-input" value={baud} onChange={(e) => setBaud(Number(e.target.value))}>{BAUDS.map((b) => <option key={b}>{b}</option>)}</select>
             </label>
-            <label className="narrow"><span>Parity</span>
+            <label className="narrow"><span>{tr('Parity')}</span>
               <select className="stg-input" value={parity} onChange={(e) => setParity(e.target.value)}>{['none', 'even', 'odd'].map((p) => <option key={p}>{p}</option>)}</select>
             </label>
-            <label><span>Unit IDs</span><input className="stg-input" value={units} onChange={(e) => setUnits(e.target.value)} placeholder="1-247"/></label>
+            <label><span>{tr('Unit IDs')}</span><input className="stg-input" value={units} onChange={(e) => setUnits(e.target.value)} placeholder="1-247"/></label>
           </>
         )}
       </div>
-      {mode === 'rtu' && <div className="stg-hint" style={{ margin: '0 0 8px' }}>A full 1–247 sweep takes about a minute. Most meters ship at 9600 baud, 8N1 or 8E1; if nothing answers, try swapping A/B.</div>}
+      {mode === 'rtu' && <div className="stg-hint" style={{ margin: '0 0 8px' }}>{tr('A full 1–247 sweep takes about a minute. Most meters ship at 9600 baud, 8N1 or 8E1; if nothing answers, try swapping A/B.')}</div>}
 
       {data && (
         <div className="lan-grid">
@@ -174,15 +175,15 @@ export default function ModbusScanSection() {
                 </div>
                 <div className="lan-tile-chips">
                   {d.values?.map((v) => <span key={v.label} className="lan-kind">{v.label}: <b>{v.value}{v.unit ? ` ${v.unit}` : ''}</b></span>)}
-                  {d.details?.sunspec && <span className="lan-port">SN {d.details.sunspec.serial} · fw {d.details.sunspec.version} · models {d.details.sunspec.models.join(', ')}</span>}
-                  {d.details?.deviceId?.revision && <span className="lan-port">rev {d.details.deviceId.revision}</span>}
-                  {d.kind === 'unknown' && d.probe?.exception && <span className="lan-port">exception {d.probe.exception} at register 0</span>}
+                  {d.details?.sunspec && <span className="lan-port">{tr('SN {serial} · fw {version} · models {v}', { serial: d.details.sunspec.serial, version: d.details.sunspec.version, v: d.details.sunspec.models.join(', ') })}</span>}
+                  {d.details?.deviceId?.revision && <span className="lan-port">{tr('rev {revision}', { revision: d.details.deviceId.revision })}</span>}
+                  {d.kind === 'unknown' && d.probe?.exception && <span className="lan-port">{tr('exception {exception} at register 0', { exception: d.probe.exception })}</span>}
                 </div>
                 {isOpen && <Explorer dev={d} rtu={{ serialPort, baud, parity }}/>}
               </div>
             )
           })}
-          {!devs.length && <div className="stg-hint">No Modbus devices answered{data.mode === 'tcp' ? ` (no host with port ${data.port} open${data.hosts.length ? ' answered' : ''})` : ' — check baud, parity, A/B wiring and termination'}.</div>}
+          {!devs.length && <div className="stg-hint">{tr('No Modbus devices answered')}{data.mode === 'tcp' ? ` (no host with port ${data.port} open${data.hosts.length ? ' answered' : ''})` : ' ' + tr('— check baud, parity, A/B wiring and termination')}.</div>}
         </div>
       )}
     </SettingsCard>
@@ -205,10 +206,10 @@ function Explorer({ dev, rtu }) {
   return (
     <div className="ble-dd" onClick={(e) => e.stopPropagation()}>
       <div className="mb-form tight">
-        <label><span>Function</span><select className="stg-input" value={fc} onChange={(e) => setFc(Number(e.target.value))}>{Object.entries(FC).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
-        <label className="narrow"><span>Address</span><input className="stg-input" type="number" value={address} onChange={(e) => setAddress(Number(e.target.value))}/></label>
-        <label className="narrow"><span>Count</span><input className="stg-input" type="number" min="1" max="125" value={count} onChange={(e) => setCount(Number(e.target.value))}/></label>
-        <Button variant="primary" busy={busy} onClick={go}>Read</Button>
+        <label><span>{tr('Function')}</span><select className="stg-input" value={fc} onChange={(e) => setFc(Number(e.target.value))}>{Object.entries(FC).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+        <label className="narrow"><span>{tr('Address')}</span><input className="stg-input" type="number" value={address} onChange={(e) => setAddress(Number(e.target.value))}/></label>
+        <label className="narrow"><span>{tr('Count')}</span><input className="stg-input" type="number" min="1" max="125" value={count} onChange={(e) => setCount(Number(e.target.value))}/></label>
+        <Button variant="primary" busy={busy} onClick={go}>{tr('Read')}</Button>
       </div>
       {res?.error && <div className="stg-banner err">✗ {res.error}</div>}
       {res?.values && (res.fc <= 2 ? (
@@ -216,7 +217,7 @@ function Explorer({ dev, rtu }) {
       ) : (
         <div className="mb-table-wrap">
           <table className="mb-table">
-            <thead><tr><th>Addr</th><th>u16</th><th>i16</th><th>hex</th><th>ascii</th><th>u32</th><th>float32</th></tr></thead>
+            <thead><tr><th>{tr('Addr')}</th><th>u16</th><th>i16</th><th>{tr('hex')}</th><th>{tr('ascii')}</th><th>u32</th><th>float32</th></tr></thead>
             <tbody>
               {res.values.map((v, i) => (
                 <tr key={i}><td>{res.address + i}</td><td>{v.u16}</td><td>{v.i16}</td><td>{v.hex}</td><td>{v.ascii}</td><td>{v.u32 ?? ''}</td><td>{v.f32 ?? ''}</td></tr>

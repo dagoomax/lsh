@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SettingsCard, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { DenonIcon, SpeakerIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 export default function MediaSection({ config, reload }) {
   return (
@@ -68,7 +68,7 @@ function DenonCard({ denon, reload }) {
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy}
           onClick={() => save.save({ host, name, maxVolume: Number(maxVolume), inputs: inputsText.split('\n').map(s => s.trim()).filter(Boolean) }).then(reload)}>{gt('common.save', 'Save')}</Button>
-        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ host })}>Test connection</Button>
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ host })}>{tr('Test connection')}</Button>
         <ResultBanner result={save.result || test.result}/>
       </div>
     </SettingsCard>
@@ -91,7 +91,7 @@ function SonyCard({ sony, reload }) {
 
   return (
     <SettingsCard icon={SpeakerIcon} title="Sony Bravia TV" badge={{ label: gt('common.optional', 'Optional') }}
-      desc={<>Controls a Sony Bravia Android/Google TV over its local REST API. On the TV: Settings → Network → IP control → enable "Pre-Shared Key".</>}>
+      desc={<>{tr('Controls a Sony Bravia Android/Google TV over its local REST API. On the TV: Settings → Network → IP control → enable "Pre-Shared Key".')}</>}>
       <Field label="TV IP / Hostname" value={host} onChange={setHost} placeholder="192.168.1.28"/>
       <Field label="Pre-Shared Key" type="password" value={psk} onChange={setPsk}/>
       <Field label="Display Name" hint="(optional)" value={name} onChange={setName} placeholder="Living Room TV"/>
@@ -101,7 +101,7 @@ function SonyCard({ sony, reload }) {
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy}
           onClick={() => save.save({ host, psk, name, maxVolume: Number(maxVolume), pollInterval: Number(pollInterval), inputs: parseInputs() }).then(reload)}>{gt('common.save', 'Save')}</Button>
-        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ host, psk })}>Test connection</Button>
+        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ host, psk })}>{tr('Test connection')}</Button>
         <ResultBanner result={save.result || test.result}/>
       </div>
     </SettingsCard>

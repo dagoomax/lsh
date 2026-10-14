@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { SettingsCard, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { HomeIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 const api = (url, method = 'GET', body) => fetch(url, {
   method, credentials: 'include',
@@ -48,7 +48,7 @@ export default function HomeAssistantSection({ reload }) {
     .filter((e) => domains.includes(e.domain))
     .filter((e) => !filter || `${e.entity_id} ${e.name}`.toLowerCase().includes(filter.toLowerCase())), [entities, domains, filter])
 
-  if (!s) return <SettingsCard icon={HomeIcon} title="Home Assistant"><p className="stg-hint">Loading…</p></SettingsCard>
+  if (!s) return <SettingsCard icon={HomeIcon} title="Home Assistant"><p className="stg-hint">{tr('Loading…')}</p></SettingsCard>
 
   const picked = s.import.entities || []
   const imp = status?.import, exp = status?.export
@@ -61,7 +61,7 @@ export default function HomeAssistantSection({ reload }) {
     <SettingsCard icon={HomeIcon} title="Home Assistant" badge={{ label: gt('common.optional', 'Optional') }}
       desc="Both ways: Home Assistant entities show up as LSH devices (dashboard, flows, HomeKit, Loxone), and LSH devices show up in Home Assistant through MQTT Discovery. Entities LSH exported are never imported back, so nothing loops.">
 
-      <h4 className="stg-subheading">Import from Home Assistant</h4>
+      <h4 className="stg-subheading">{tr('Import from Home Assistant')}</h4>
       <Field label="Home Assistant URL" value={s.url} onChange={set(null, 'url')} placeholder="http://homeassistant.local:8123"/>
       <Field label="Long-lived access token" type="password" value={s.token} onChange={set(null, 'token')} autoComplete="off"
         hint="Home Assistant → your profile → Security → Long-lived access tokens → Create token"/>
@@ -70,7 +70,7 @@ export default function HomeAssistantSection({ reload }) {
         <>
           <Toggle label="Import cameras" checked={s.import.cameras} onChange={set('import', 'cameras')}
             hint="HA camera entities appear in Cameras — snapshot and live MJPEG through LSH, the HA token stays on the server"/>
-          <div className="stg-hint" style={{ margin: '6px 0' }}>Domains</div>
+          <div className="stg-hint" style={{ margin: '6px 0' }}>{tr('Domains')}</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
             {s.defaultDomains.map((d) => (
               <button type="button" key={d} style={chip(domains.includes(d))}
@@ -82,7 +82,7 @@ export default function HomeAssistantSection({ reload }) {
           </div>
           {entities.length > 0 && (
             <details className="stg-hint" open={picked.length > 0}>
-              <summary>Entities — {picked.length ? `${picked.length} chosen` : `all ${shown.length} in these domains`}</summary>
+              <summary>{tr('Entities — {v}', { v: picked.length ? `${picked.length} chosen` : `all ${shown.length} in these domains` })}</summary>
               <Field label="" value={filter} onChange={setFilter} placeholder="Filter…"/>
               <div style={{ maxHeight: 260, overflowY: 'auto', display: 'grid', gap: 2 }}>
                 {shown.map((e) => (
@@ -95,13 +95,13 @@ export default function HomeAssistantSection({ reload }) {
                   </label>
                 ))}
               </div>
-              {picked.length > 0 && <Button onClick={() => set('import', 'entities')([])}>Import all instead</Button>}
+              {picked.length > 0 && <Button onClick={() => set('import', 'entities')([])}>{tr('Import all instead')}</Button>}
             </details>
           )}
         </>
       )}
 
-      <h4 className="stg-subheading">Export to Home Assistant</h4>
+      <h4 className="stg-subheading">{tr('Export to Home Assistant')}</h4>
       <Toggle label="Publish LSH devices to Home Assistant (MQTT Discovery)" checked={s.export.enabled} onChange={set('export', 'enabled')}
         hint="needs the MQTT integration in Home Assistant, connected to the same broker"/>
       {s.export.enabled && (
@@ -112,41 +112,41 @@ export default function HomeAssistantSection({ reload }) {
             <div style={{ flex: 1, minWidth: 160 }}><Field label="Password" type="password" value={s.export.password} onChange={set('export', 'password')} autoComplete="off"/></div>
           </div>
           <details className="stg-hint">
-            <summary>Topics</summary>
+            <summary>{tr('Topics')}</summary>
             <Field label="Discovery prefix" value={s.export.prefix} onChange={set('export', 'prefix')} hint="Home Assistant's default is homeassistant"/>
             <Field label="State / command base topic" value={s.export.base} onChange={set('export', 'base')}/>
             <Field label="Node id" value={s.export.node} onChange={set('export', 'node')} hint="prefix of every unique_id — change it when running two LSH hubs"/>
           </details>
-          <div className="stg-hint" style={{ margin: '6px 0' }}>Device types to export {s.export.types.length ? '' : '(none chosen = all)'}</div>
+          <div className="stg-hint" style={{ margin: '6px 0' }}>{tr('Device types to export {v}', { v: s.export.types.length ? '' : tr('(none chosen = all)') })}</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
             {s.types.map((t) => <button type="button" key={t} style={chip(s.export.types.includes(t))} onClick={() => toggleIn('export', 'types', t)}>{t}</button>)}
           </div>
         </>
       )}
 
-      <h4 className="stg-subheading">Status</h4>
-      {!status ? <p className="stg-hint">Not running — fill in the URL and token (or enable export) and save.</p> : (
+      <h4 className="stg-subheading">{tr('Status')}</h4>
+      {!status ? <p className="stg-hint">{tr('Not running — fill in the URL and token (or enable export) and save.')}</p> : (
         <>
           <p className="stg-hint">
             Import: {imp?.connected
-              ? <span style={{ color: 'var(--green)' }}>✓ connected to Home Assistant {imp.version} · {imp.entities} entities{imp.cameras ? ` · ${imp.cameras} cameras` : ''}</span>
-              : <span>not connected{imp?.error ? <span style={{ color: 'var(--red)' }}> — {imp.error}</span> : ''}</span>}
+              ? <span style={{ color: 'var(--green)' }}>{tr('✓ connected to Home Assistant')}{' '}{imp.version} · {imp.entities}{' '}{tr('entities')}{imp.cameras ? ` · ${imp.cameras} cameras` : ''}</span>
+              : <span>{tr('not connected')}{imp?.error ? <span style={{ color: 'var(--red)' }}> — {imp.error}</span> : ''}</span>}
           </p>
           <p className="stg-hint">
             Export: {exp?.connected
-              ? <span style={{ color: 'var(--green)' }}>✓ broker connected · {exp.published} entities published</span>
-              : <span>{s.export.enabled ? 'broker not connected' : 'off'}{exp?.error ? <span style={{ color: 'var(--red)' }}> — {exp.error}</span> : ''}</span>}
+              ? <span style={{ color: 'var(--green)' }}>{tr('✓ broker connected · {published} entities published', { published: exp.published })}</span>
+              : <span>{s.export.enabled ? tr('broker not connected') : tr('off')}{exp?.error ? <span style={{ color: 'var(--red)' }}> — {exp.error}</span> : ''}</span>}
           </p>
           {plan.length > 0 && (
             <details className="stg-hint">
               <summary>{exp?.connected ? `Published entities (${plan.length})` : `Would be published (${plan.length})`}</summary>
               <table className="stg-table" style={{ width: '100%' }}>
-                <thead><tr><th>Device</th><th>Value</th><th>As</th></tr></thead>
+                <thead><tr><th>{tr('Device')}</th><th>{tr('Value')}</th><th>{tr('As')}</th></tr></thead>
                 <tbody>{plan.map((p) => <tr key={p.objectId}><td>{p.device}</td><td>{p.label}</td><td>{p.component}</td></tr>)}</tbody>
               </table>
             </details>
           )}
-          {exp?.connected && <Button onClick={unpublish}>Remove LSH entities from Home Assistant</Button>}
+          {exp?.connected && <Button onClick={unpublish}>{tr('Remove LSH entities from Home Assistant')}</Button>}
           <ResultBanner result={msg}/>
         </>
       )}

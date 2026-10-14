@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SettingsCard, ListEditor, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 import BleScanner from '../BleScanner'
 
 const FIELDS = [
@@ -50,7 +50,7 @@ export default function LshBleSection({ config, reload }) {
           return (
             <span className="stg-hint" style={{ whiteSpace: 'nowrap' }}>
               {d.error ? <span style={{ color: 'var(--red)' }}>✗ {d.error}</span>
-                : d.lastSeen ? `✓ ${d.kind?.replace(/_/g, ' ') || ''} · ${ago(d.lastSeen)}` : 'waiting for signal…'}
+                : d.lastSeen ? `✓ ${d.kind?.replace(/_/g, ' ') || ''} · ${ago(d.lastSeen)}` : tr('waiting for signal…')}
             </span>
           )
         }}/>
@@ -58,7 +58,7 @@ export default function LshBleSection({ config, reload }) {
       <Field label="Bluetooth adapter" value={adapter} onChange={setAdapter} placeholder="hci0"/>
       <Toggle label="Feed the Energy dashboard" checked={feedDashboard} onChange={setFeedDashboard}
         hint="battery SOC/voltage/current, solar power and yield"/>
-      {!status && <p className="stg-hint">Not running on this LSH host (needs Linux + Bluetooth, and a restart after saving).</p>}
+      {!status && <p className="stg-hint">{tr('Not running on this LSH host (needs Linux + Bluetooth, and a restart after saving).')}</p>}
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy}
           onClick={() => save.save({ devices, adapter, feedDashboard }).then(reload).catch(() => {})}>

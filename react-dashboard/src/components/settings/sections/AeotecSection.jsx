@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { SettingsCard, Field, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { CameraIcon } from '../../Icons'
-import { gt } from '../../../i18n'
+import { gt, tr } from '../../../i18n'
 
 export default function AeotecSection({ reload }) {
   const [name, setName] = useState('')
@@ -45,7 +45,7 @@ export default function AeotecSection({ reload }) {
     <SettingsCard icon={CameraIcon} title="Aeotec 360 Camera" badge={{ label: gt('common.optional', 'Optional') }}
       desc="Add an Aeotec Indoor Camera 360° by local IP. Sensor data (motion, sound) flows via SmartThings; the local RTSP stream is added to your Cameras list for live video.">
       <div className="stg-field">
-        <label>SmartThings API Token</label>
+        <label>{tr('SmartThings API Token')}</label>
         <div className="stg-token-value-box">
           <code>{token ?? 'Loading…'}</code>
           {token && token !== 'Not available' &&
@@ -60,15 +60,15 @@ export default function AeotecSection({ reload }) {
 
       {ip && (
         <div className="stg-import-preview">
-          <div className="stg-import-kv"><span>RTSP (main stream)</span><strong>{rtsp}</strong></div>
-          <div className="stg-import-kv"><span>RTSP (sub stream)</span><strong>{rtspSub}</strong></div>
-          <div className="stg-import-kv"><span>Snapshot URL</span><strong>{snapshot}</strong></div>
+          <div className="stg-import-kv"><span>{tr('RTSP (main stream)')}</span><strong>{rtsp}</strong></div>
+          <div className="stg-import-kv"><span>{tr('RTSP (sub stream)')}</span><strong>{rtspSub}</strong></div>
+          <div className="stg-import-kv"><span>{tr('Snapshot URL')}</span><strong>{snapshot}</strong></div>
         </div>
       )}
 
       <div className="stg-actions">
         <Button variant="secondary" busy={test.busy} onClick={() => test.save({ ip, username: user, password: pass })}>{gt('common.test', 'Test Connection')}</Button>
-        <Button variant="primary" busy={add.busy} onClick={addToCameras} disabled={!ip}>Add to Cameras</Button>
+        <Button variant="primary" busy={add.busy} onClick={addToCameras} disabled={!ip}>{tr('Add to Cameras')}</Button>
         <ResultBanner result={test.result || add.result}/>
       </div>
     </SettingsCard>
