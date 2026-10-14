@@ -467,6 +467,9 @@ const DICT = {
         's.dyson_no_ip': 'IP не вказано' },
 }
 
+// dashboard widget names (the custom grid's "Add widget" list)
+for (const [l, v] of Object.entries({ pl: 'Odtwarzacz', de: 'Mediaplayer', fr: 'Lecteur multimédia', es: 'Reproductor', it: 'Lettore multimediale', uk: 'Медіаплеєр' })) DICT[l].media_player = v
+
 export const LANGUAGES = [
   ['en', 'EN'], ['pl', 'PL'], ['fr', 'FR'], ['de', 'DE'], ['es', 'ES'], ['it', 'IT'], ['uk', 'UA'],
 ]

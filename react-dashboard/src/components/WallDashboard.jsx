@@ -10,6 +10,7 @@ import WeatherDetails from './WeatherDetails'
 import ForecastStrip from './ForecastStrip'
 import AgendaPanel from './AgendaPanel'
 import PagingWidget from './PagingWidget'
+import MediaPlayer from './MediaPlayer'
 import { loadEnergySources, resolveEnergy } from '../energySources'
 import { gt } from '../i18n'
 
@@ -159,6 +160,7 @@ export default function WallDashboard({ devices, energy, roomsMeta, onClose }) {
         <WeatherClock devices={devices} />
         <WeatherDetails devices={devices} />
         <AgendaPanel events={agendaEvents} onRefresh={refreshAgenda} />
+        <MediaPlayer compact />
       </div>
       <div className="wall-region wall-region-plan">
         <HomePlan devices={devices} roomsMeta={roomsMeta} groupOf={getGroup} onOpen={setOpenKey} energy={resolvedEnergy} kiosk />

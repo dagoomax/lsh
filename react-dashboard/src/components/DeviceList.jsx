@@ -20,7 +20,7 @@ import Cameras from './Cameras'
 import YaleDoorbells from './YaleDoorbells'
 import SystemMetrics from './SystemMetrics'
 import RelayPanel from './RelayPanel'
-import DashboardGrid, { hasCustomLayout, seedLayoutFromDevices } from './DashboardGrid'
+import DashboardGrid, { hasCustomLayout, seedLayoutFromDevices, isWidgetPinned } from './DashboardGrid'
 import WeatherForecast from './WeatherForecast'
 import MediaPlayer from './MediaPlayer'
 
@@ -1459,7 +1459,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
               )}
             </div>
           )}
-          {(cat === 'All' || cat === 'Media') && <MediaPlayer />}
+          {(cat === 'Media' || (cat === 'All' && !(hasCustomLayout() && isWidgetPinned('widget:media')))) && <MediaPlayer />}
           {cat === 'All' && <WeatherForecast />}
           {cat === 'All' && <YaleDoorbells devices={devices} />}
           {cat === 'All' && <SystemMetrics devices={devices} />}

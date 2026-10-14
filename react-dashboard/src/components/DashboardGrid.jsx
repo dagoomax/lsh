@@ -3,12 +3,19 @@ import GridLayout, { WidthProvider } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import { DeviceTile } from './DeviceList'
+import MediaPlayer from './MediaPlayer'
 import { gt } from '../i18n'
 
 const ReactGridLayout = WidthProvider(GridLayout)
 const STORAGE_KEY = 'lsh-dashboard-layout'
 const COLS = 12
 const ROW_H = 150
+
+// Widgets that aren't a device — pinned by these ids next to device keys.
+// size: grid cells (12 columns × 150 px rows) when first added.
+const WIDGETS = {
+  'widget:media': { label: () => gt('media_player', 'Media player'), size: { w: 6, h: 3 }, render: () => <MediaPlayer fill /> },
+}
 
 function loadSaved() {
   try {
@@ -28,6 +35,11 @@ function save(layout, pinned) {
 // CSS grid (unchanged default behaviour) until someone actually saves one.
 export function hasCustomLayout() {
   return !!loadSaved()
+}
+
+// whether a custom layout shows this widget (DeviceList then leaves out its fixed card)
+export function isWidgetPinned(id) {
+  return !!loadSaved()?.pinned.includes(id)
 }
 
 // Seeds a starting layout from whatever's currently visible, so switching
@@ -62,7 +74,7 @@ export default function DashboardGrid({ devices, onCommand, onOpen }) {
   const pinnedSet = useMemo(() => new Set(saved?.pinned || []), [saved])
   const byKey     = useMemo(() => new Map(devices.map(d => [d.key, d])), [devices])
   const layout    = saved?.layout || []
-  const tiles     = layout.filter(l => byKey.has(l.i))
+  const tiles     = layout.filter(l => byKey.has(l.i) || WIDGETS[l.i])
 
   const commit = useCallback((nextLayout, nextPinned) => {
     save(nextLayout, nextPinned)
@@ -84,7 +96,8 @@ export default function DashboardGrid({ devices, onCommand, onOpen }) {
   const addTile = (key) => {
     const nextPinned = new Set(pinnedSet)
     nextPinned.add(key)
-    commit([...layout, { i: key, ...nextSlot(layout, 1, 1) }], nextPinned)
+    const size = WIDGETS[key]?.size || { w: 1, h: 1 }
+    commit([...layout, { i: key, ...nextSlot(layout, size.w, size.h) }], nextPinned)
     setPicking(false)
   }
 
@@ -96,6 +109,7 @@ export default function DashboardGrid({ devices, onCommand, onOpen }) {
   }
 
   const addable = devices.filter(d => !pinnedSet.has(d.key))
+  const addableWidgets = Object.keys(WIDGETS).filter(id => !pinnedSet.has(id))
 
   return (
     <div>
@@ -137,6 +151,7 @@ export default function DashboardGrid({ devices, onCommand, onOpen }) {
       >
         {tiles.map(l => {
           const device = byKey.get(l.i)
+          const widget = WIDGETS[l.i]
           return (
             <div key={l.i} style={{ position: 'relative' }}>
               {editing && (
@@ -153,7 +168,7 @@ export default function DashboardGrid({ devices, onCommand, onOpen }) {
                 >✕</button>
               )}
               <div style={{ width: '100%', height: '100%', pointerEvents: editing ? 'none' : 'auto' }}>
-                <DeviceTile device={device} onCommand={onCommand} onOpen={onOpen} />
+                {widget ? widget.render() : <DeviceTile device={device} onCommand={onCommand} onOpen={onOpen} />}
               </div>
             </div>
           )
@@ -173,7 +188,16 @@ export default function DashboardGrid({ devices, onCommand, onOpen }) {
             background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 16,
           }}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>{gt('dash_edit_pick_title', 'Add a widget')}</div>
-            {addable.length === 0 && (
+            {addableWidgets.map(id => (
+              <button key={id} onClick={() => addTile(id)} style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 10, marginBottom: 4,
+                border: 'none', background: 'var(--white-04)', cursor: 'pointer', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, textAlign: 'left',
+              }}>
+                <span style={{ flex: 1 }}>{WIDGETS[id].label()}</span>
+                <span style={{ fontSize: 11, color: 'var(--text3)' }}>widget</span>
+              </button>
+            ))}
+            {addable.length === 0 && addableWidgets.length === 0 && (
               <div style={{ color: 'var(--text3)', fontSize: 13 }}>{gt('dash_edit_pick_empty', 'Every device is already on the dashboard.')}</div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

@@ -1929,3 +1929,5 @@ input[type="range"]::-moz-range-thumb {
 .media-input:focus { box-shadow: 0 0 0 2px var(--accent); }
 .media-btn { border: none; border-radius: 10px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; background: var(--white-10); color: var(--text); }
 .media-btn.primary { background: var(--accent); color: #fff; }
+.media-player-fill { height: 100%; overflow-y: auto; box-sizing: border-box; }
+.wall-region-rightcol .media-player { align-self: stretch; flex-shrink: 0; background: rgba(255,255,255,0.05); padding: 14px; gap: 10px; }
