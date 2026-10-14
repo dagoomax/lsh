@@ -1,7 +1,7 @@
 name: "LSH"
-version: "1.0.5"
+version: "1.0.6"
 slug: "lsh"
-description: "Victron / Loxone / KNX smart-home hub (~40 integrations) — Node.js, no external dependencies"
+description: "Victron / Loxone / KNX smart-home hub (~55 integrations) — Node.js, no external dependencies"
 url: "https://github.com/dagoomax/lsh"
 arch:
   - amd64
