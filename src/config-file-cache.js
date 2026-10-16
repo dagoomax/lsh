@@ -43,6 +43,13 @@ function readConfigCached() {
 const BACKUP_PATH = `${CONFIG_PATH}.bak`;
 
 function writeConfigFile(data, configPath = CONFIG_PATH) {
+  const linkPath = configPath;
+  // config.json may be a symlink (the Home Assistant add-on links it to /data,
+  // its only storage that survives restarts and updates): write next to the
+  // real file and rename over that — renaming over the link itself would
+  // replace it with a plain file in the container, and every change made in
+  // Settings would be gone at the next add-on restart.
+  try { configPath = fs.realpathSync(configPath); } catch { /* not there yet */ }
   const json = JSON.stringify(data, null, 2);
   const tmp = `${configPath}.${process.pid}.tmp`;
   let mode = 0o600; // holds credentials — keep an existing file's mode, else owner-only
@@ -61,7 +68,7 @@ function writeConfigFile(data, configPath = CONFIG_PATH) {
     fs.copyFileSync(configPath, `${configPath}.bak`);
   } catch { /* first write, or current file is broken */ }
   fs.renameSync(tmp, configPath);
-  if (configPath === CONFIG_PATH) {
+  if (linkPath === CONFIG_PATH || configPath === CONFIG_PATH) {
     _cached = data;
     try { _cachedMtimeMs = fs.statSync(CONFIG_PATH).mtimeMs; } catch { _cachedMtimeMs = 0; }
   }

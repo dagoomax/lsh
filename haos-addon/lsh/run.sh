@@ -14,11 +14,22 @@
 # to add it for four lines.
 set -e
 
+# which LSH this image was built from — the first line of the add-on log, so
+# after Update / Rebuild it's clear whether the new code really arrived
+echo "LSH add-on $(cat /app/.lsh-build 2>/dev/null || echo '(unknown build)')"
+
 mkdir -p /data/persist /data/certs
 [ -f /data/config.json ] || echo '{}' > /data/config.json
 
-rm -rf /app/config.json /app/persist /app/certs
+rm -rf /app/config.json /app/config.json.bak /app/automations.json /app/persist /app/certs
 ln -s /data/config.json /app/config.json
+# flows, rules and scenes (src/automation-engine.js) live beside config.json —
+# outside /data they'd be gone at every add-on restart; LSH creates the file
+# on the first save, written through the link
+ln -s /data/automations.json /app/automations.json
+# config.js falls back to config.json.bak when config.json is broken; LSH
+# writes the backup next to the real file (/data), so link it too
+ln -s /data/config.json.bak /app/config.json.bak
 ln -s /data/persist     /app/persist
 ln -s /data/certs       /app/certs
 

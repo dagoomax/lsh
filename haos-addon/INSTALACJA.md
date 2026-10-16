@@ -38,13 +38,66 @@ Home Assistant Green to `aarch64` (ARM 64-bit) — dodatek jest dla niego wspier
 3. Na stronie dodatku włącz **Uruchom przy starcie** i **Watchdog**, potem **Uruchom**. Postęp w zakładce **Dziennik** — LSH jest gotowy, gdy pojawi się linia `[Automation] Started`.
 4. Otwórz `http://<ip-green>:3000` (np. `http://homeassistant.local:3000`) → utwórz konto administratora → konfiguracja w **Ustawieniach** LSH.
 
-**Aktualizacje.** Dodatek pobiera kod LSH w chwili budowania obrazu, a Home Assistant przebudowuje go tylko przy zmianie wersji dodatku. Nowa wersja: ⋮ → **Sprawdź aktualizacje** → **Aktualizuj**. Najnowszy kod bez zmiany wersji: na stronie dodatku ⋮ → **Przebuduj**. Konfiguracja, użytkownicy, tokeny i parowanie HomeKit zostają (są w `/data`). Po przebudowaniu pierwszy start trwa dłużej — LSH dociąga pakiety skonfigurowanych integracji.
+**Aktualizacje.** Dodatek pobiera kod LSH w chwili budowania obrazu, a Home Assistant przebudowuje go przy zmianie wersji dodatku. Instrukcja krok po kroku: [Przebudowa na Home Assistant Green](#przebudowa-na-home-assistant-green). Konfiguracja, użytkownicy, tokeny, flowy i parowanie HomeKit zostają (są w `/data`).
 
 **Połączenie z Home Assistant na tym samym Green.** W LSH: **Ustawienia → Home Assistant** → adres `http://127.0.0.1:8123` i długoterminowy token dostępu (Home Assistant → profil użytkownika → **Bezpieczeństwo → Tokeny długoterminowe**).
 
 **Porty.** 3000, 3443, 47128 i 8554 są zajęte bezpośrednio na Green — inny dodatek używający portu 3000 będzie kolidował.
 
 **Odtwarzacz muzyki i Loxone.** Po skonfigurowaniu Spotify lub Apple Music (**Ustawienia → Media**) pojawia się urządzenie `music/player` z wyborem źródła. Pliki do Loxone Config: **Ustawienia → Loxone XML Templates → Music outputs.xml / Music inputs.xml** — w polu adresu wpisz `<ip-green>:3000`, żeby Miniserver łączył się z Green. W Loxone podłącz blok **Radio Buttons** do wyjścia „Music Source”: 0 = stop, 1 = Spotify, 2 = Apple Music.
+
+## Przebudowa na Home Assistant Green
+
+Tak wgrywasz na Green nową wersję LSH, np. **1.0.8**, która naprawia znikanie ustawień po restarcie. Wszystko robisz w przeglądarce, w interfejsie Home Assistant. Terminal ani SSH nie są potrzebne.
+
+> ⚠️ **Nigdy nie klikaj „Odinstaluj”**, żeby „zacząć od nowa”. Odinstalowanie kasuje `/data` dodatku: konfigurację, konta, tokeny API, flowy i parowanie HomeKit.
+
+### 1. Kopia zapasowa (2 minuty)
+
+1. **Ustawienia → System → Kopie zapasowe → Utwórz kopię zapasową**.
+2. Wybierz **Częściowa**, zaznacz tylko dodatek **LSH** i zatwierdź.
+
+Jeśli coś pójdzie źle, tę kopię przywrócisz w tym samym miejscu.
+
+### 2. Pobranie nowej wersji
+
+1. **Ustawienia → Dodatki → Sklep z dodatkami**.
+2. ⋮ (prawy górny róg) → **Sprawdź aktualizacje**.
+3. Otwórz **Ustawienia → Dodatki → LSH**. Przy wersji powinien być przycisk **Aktualizuj** (np. 1.0.7 → 1.0.8). Kliknij go.
+4. Green buduje obraz od zera: pobiera LSH z GitHuba i instaluje pakiety wszystkich integracji. Trwa to **10–25 minut**. Nie zamykaj tego i nie restartuj Green.
+
+Jeśli przycisku **Aktualizuj** nie ma:
+- Odczekaj kilka minut i powtórz **Sprawdź aktualizacje**, bo sklep odświeża się z opóźnieniem.
+- Jeśli nadal go nie ma, wejdź w ⋮ → **Repozytoria** i sprawdź, czy jest tam `https://github.com/dagoomax/lsh`.
+
+### 3. Sprawdzenie, że to nowy kod
+
+Na stronie dodatku otwórz zakładkę **Dziennik**. Pierwsza linia po starcie wygląda tak:
+
+```
+LSH add-on 1.0.8 · main @ 1a2b3c4 · built 2026-10-16
+```
+
+Numer wersji i data budowania mówią, z którego kodu powstał obraz. LSH jest gotowy, gdy w dzienniku pojawi się `[Automation] Started`.
+
+### 4. Test restartu
+
+1. Otwórz `http://<ip-green>:3000` i zaloguj się.
+2. W **Ustawieniach** zapisz dowolną drobną zmianę.
+3. Na stronie dodatku kliknij **Uruchom ponownie**.
+4. Po minucie odśwież LSH. Zmiana musi być na miejscu.
+
+Ustawień, które zniknęły **przed** aktualizacją, nie da się odzyskać, bo przepadły razem ze starym kontenerem. Wpisz je raz jeszcze (np. głośniki AirPlay) i zapisz. Od 1.0.8 zostają na stałe.
+
+### Przebudowa bez zmiany wersji
+
+Na stronie dodatku ⋮ → **Przebuduj** buduje obraz jeszcze raz z tą samą wersją. Docker może przy tym użyć zapamiętanej kopii kodu. Sprawdź datę budowania w pierwszej linii dziennika. Jeśli się nie zmieniła, nowy kod przyjdzie dopiero z następną wersją dodatku (krok 2).
+
+### Gdy coś pójdzie nie tak
+
+- **Budowanie kończy się błędem.** Zwykle to sieć: Green musi mieć dostęp do `github.com` i `registry.npmjs.org`. Szczegóły są w **Ustawienia → System → Logi → Supervisor**. Spróbuj ponownie przez **Aktualizuj** albo **Przebuduj**. Stara wersja działa do czasu udanego zbudowania nowej.
+- **LSH nie startuje po aktualizacji.** Przeczytaj **Dziennik** dodatku. W ostateczności przywróć kopię z kroku 1: **Ustawienia → System → Kopie zapasowe → kopia → Przywróć**.
+- **Port 3000 zajęty.** Inny dodatek używa tego portu. Zatrzymaj go albo zmień jego port.
 
 ## Pierwsze uruchomienie
 
@@ -65,7 +118,7 @@ Dodatek działa z `host_network: true` — to wymagane, żeby HomeKit mógł og�
 
 ## Dane trwałe i kopie zapasowe
 
-`config.json`, folder `persist/` (parowanie HomeKit, tokeny API, użytkownicy — **nigdy nie usuwać**) oraz `certs/` znajdują się w katalogu `/data` dodatku, który Supervisor zachowuje automatycznie między restartami, aktualizacjami **i uwzględnia w kopiach zapasowych Home Assistant**.
+`config.json`, `automations.json` (flowy, reguły, sceny), folder `persist/` (parowanie HomeKit, tokeny API, użytkownicy — **nigdy nie usuwać**) oraz `certs/` znajdują się w katalogu `/data` dodatku, który Supervisor zachowuje automatycznie między restartami, aktualizacjami **i uwzględnia w kopiach zapasowych Home Assistant**.
 
 ## Podłączenie do Home Assistant
 
@@ -81,7 +134,7 @@ Po uruchomieniu LSH można odczytywać/sterować urządzeniami z poziomu Home As
 
 **Instalacja/build trwa bardzo długo albo kończy się błędem sieci.** Dockerfile dodatku pobiera źródła LSH z GitHuba (`git clone`) i instaluje zależności (`npm ci`) przy każdym budowaniu obrazu — wymaga to działającego dostępu hosta HA do internetu. Sprawdź połączenie sieciowe hosta i spróbuj **Odśwież → Zbuduj ponownie**.
 
-**Po restarcie dodatku zniknęła konfiguracja.** Nie powinno się zdarzyć — `config.json`, `persist/` i `certs/` są symlinkami do `/data`, które Supervisor zachowuje niezależnie od cyklu życia kontenera. Jeśli mimo to dane znikają, sprawdź w logach dodatku, czy `/data` faktycznie się montuje (linia `mkdir -p /data/...` w `run.sh` nie powinna zgłaszać błędu uprawnień).
+**Po restarcie dodatku zniknęła konfiguracja.** W wersjach do 1.0.7 zapis w Ustawieniach trafiał do kontenera zamiast do `/data`, a flowy w ogóle nie były w `/data`. Restart je kasował. Naprawione w 1.0.8: zaktualizuj według [Przebudowa na Home Assistant Green](#przebudowa-na-home-assistant-green) i zapisz ustawienia jeszcze raz.
 
 **Dodatek nie pojawia się po dodaniu repozytorium.** Supervisor wyszukuje `config.yaml` rekursywnie w całym repozytorium — jeśli mimo to dodatek się nie pojawia, sprawdź w logach Supervisora (**Ustawienia → System → Logi**, wybierz *Supervisor*) komunikat o błędnym repozytorium; zwykle oznacza to chwilowy problem z pobraniem repozytorium z GitHuba, nie błąd w samym dodatku.
 

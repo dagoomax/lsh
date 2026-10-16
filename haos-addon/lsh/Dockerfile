@@ -14,7 +14,7 @@
 # requirements are the io.hass.* labels below.
 FROM node:20-bookworm-slim
 
-LABEL io.hass.version="1.0.7" \
+LABEL io.hass.version="1.0.8" \
       io.hass.type="app" \
       io.hass.arch="amd64|aarch64"
 
@@ -30,10 +30,21 @@ ARG BUILD_VERSION
 WORKDIR /app
 RUN echo "LSH add-on ${BUILD_VERSION}" \
     && git clone --depth 1 --branch "${LSH_REF}" https://github.com/dagoomax/lsh.git . \
+    && echo "${BUILD_VERSION:-dev} · ${LSH_REF} @ $(git rev-parse --short HEAD) · built $(date -u +%Y-%m-%d)" > /app/.lsh-build \
     && rm -rf .git
 
 ENV NODE_ENV=production
 RUN npm ci --omit=dev
+# Every integration's npm packages, now: a plain install fetches them when an
+# integration is first configured (src/module-manager.js), but here
+# /app/node_modules is part of the container, which Supervisor recreates on
+# every add-on start — they'd be fetched again at each boot (needing the
+# internet right then, delaying the web server past the watchdog), and AirPlay
+# & co. would be missing whenever that failed.
+RUN node -e "const m=require('./modules.json');const d={};for(const x of Object.values(m.modules))Object.assign(d,x.deps||{});console.log(Object.entries(d).map(([n,v])=>n+'@'+v).join(' '))" > /tmp/module-deps \
+    && if [ -s /tmp/module-deps ]; then npm install --no-save --no-audit --no-fund --omit=dev $(cat /tmp/module-deps) \
+         || echo "Some integration packages failed to install — LSH fetches them when needed"; fi \
+    && rm /tmp/module-deps
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh

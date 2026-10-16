@@ -35,3 +35,18 @@ test('writeConfigFile: a broken config.json never overwrites a good .bak', () =>
   writeConfigFile({ good: true, n: 2 }, file);
   assert.equal(JSON.parse(fs.readFileSync(`${file}.bak`, 'utf8')).good, true);
 });
+
+test('writeConfigFile keeps a symlinked config.json a symlink (Home Assistant add-on: /app/config.json → /data)', () => {
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const { writeConfigFile } = require('../src/config-file-cache');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lsh-cfg-link-'));
+  const data = path.join(dir, 'data'); fs.mkdirSync(data);
+  const app = path.join(dir, 'app'); fs.mkdirSync(app);
+  fs.writeFileSync(path.join(data, 'config.json'), '{"a":1}');
+  fs.symlinkSync(path.join(data, 'config.json'), path.join(app, 'config.json'));
+  writeConfigFile({ a: 2, airplay: { enabled: true } }, path.join(app, 'config.json'));
+  assert.ok(fs.lstatSync(path.join(app, 'config.json')).isSymbolicLink(), 'still a symlink');
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(data, 'config.json'), 'utf8')), { a: 2, airplay: { enabled: true } }, 'the change is in /data');
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(data, 'config.json.bak'), 'utf8')), { a: 1 }, 'backup next to the real file');
+  assert.deepEqual(fs.readdirSync(app), ['config.json'], 'nothing left in the container dir');
+});
