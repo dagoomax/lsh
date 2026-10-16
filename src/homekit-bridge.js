@@ -38,7 +38,7 @@ function setInfo(accessory, manufacturer, model, serial) {
   accessory.getService(Service.AccessoryInformation)
     .setCharacteristic(Characteristic.Manufacturer, manufacturer)
     .setCharacteristic(Characteristic.Model, model)
-    .setCharacteristic(Characteristic.SerialNumber, serial);
+    .setCharacteristic(Characteristic.SerialNumber, String(serial).slice(-64)); // HAP: max 64 characters
 }
 
 // ── Multi-bridge pool (HAP's own hard cap: 149 bridged accessories) ───────
@@ -1146,10 +1146,66 @@ function addSpaServices(acc, device, store) {
   }
 }
 
+/**
+ * Appliance (LG ThinQ fridge, AC, …): services from the sensors' own tags —
+ *   homekit 'setpoint'  writable temperature → Thermostat (Cool only for a
+ *                       fridge / freezer; current = the matching current-
+ *                       temperature reading of the same part, else the setpoint)
+ *   homekit 'switch'    on/off setting → Switch
+ *   homekit 'contact'   a door: value `contactOpen` ('OPEN') → ContactSensor open
+ * Each service is named after the part ("Lodówka Freezer").
+ */
+function addApplianceServices(acc, device, store) {
+  const cooling = /refrigerator|freezer|wine/i.test(device.kind || '');
+  for (const sn of device.sensors.filter((x) => x.homekit === 'setpoint')) {
+    const setPath = `${device.key}/${sn.path}`;
+    const cur = sn.hkCurrent ? `${device.key}/${sn.hkCurrent}` : setPath;
+    const min = sn.min ?? 0, max = sn.max ?? 30, step = sn.step || 0.5;
+    const svc = acc.addService(Service.Thermostat, `${device.label} ${sn.hkName || sn.label}`, sn.path);
+    const mode = cooling ? 2 : 3; // COOL / AUTO — a setpoint, no mode switching here
+    svc.getCharacteristic(Characteristic.CurrentHeatingCoolingState).onGet(() => (cooling ? 2 : 0));
+    // the value first, then the narrower range — HAP checks the current (default) value against new props
+    const thcs = svc.getCharacteristic(Characteristic.TargetHeatingCoolingState);
+    thcs.value = mode;
+    thcs.setProps({ validValues: [mode] }).onGet(() => mode).onSet(() => {});
+    const ct = svc.getCharacteristic(Characteristic.CurrentTemperature);
+    ct.value = Number(store.get(cur) ?? store.get(setPath) ?? min);
+    ct.setProps({ minValue: Math.min(-40, min), maxValue: Math.max(60, max) })
+      .onGet(() => Number(store.get(cur) ?? store.get(setPath) ?? min));
+    const tt = svc.getCharacteristic(Characteristic.TargetTemperature);
+    tt.value = clamp(Number(store.get(setPath) ?? min), min, max);
+    tt.setProps({ minValue: min, maxValue: max, minStep: step })
+      .onGet(() => clamp(Number(store.get(setPath) ?? min), min, max))
+      .onSet(async (v) => {
+        try { await device._writeCapability(sn.capabilityId, sn.writeCmd, [v]); store.update(setPath, v) }
+        catch (err) {
+          console.error(`[HomeKit] ${device.label} ${sn.path}: ${err.message}`);
+          throw new hap.HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+        }
+      });
+    svc.getCharacteristic(Characteristic.TemperatureDisplayUnits).onGet(() => 0).onSet(() => {});
+    store.on('change', ({ key: k, value }) => {
+      if (k === setPath) svc.getCharacteristic(Characteristic.TargetTemperature).updateValue(clamp(Number(value), min, max));
+      if (k === cur) svc.getCharacteristic(Characteristic.CurrentTemperature).updateValue(Number(value));
+    });
+  }
+  for (const sn of device.sensors.filter((x) => x.homekit === 'switch' && x.controllable)) {
+    const p = `${device.key}/${sn.path}`;
+    addSwitchService(acc, `${device.label} ${sn.hkName || sn.label}`, p, store, (command) => device._writeCapability(sn.capabilityId, command), sn.path);
+  }
+  for (const sn of device.sensors.filter((x) => x.homekit === 'contact')) {
+    const p = `${device.key}/${sn.path}`;
+    const svc = acc.addService(Service.ContactSensor, `${device.label} ${sn.hkName || sn.label}`, sn.path);
+    const state = (v) => (String(v) === String(sn.contactOpen ?? 1) ? 1 : 0); // 1 = open
+    svc.getCharacteristic(Characteristic.ContactSensorState).onGet(() => state(store.get(p)));
+    store.on('change', ({ key: k, value }) => { if (k === p) svc.getCharacteristic(Characteristic.ContactSensorState).updateValue(state(value)) });
+  }
+}
+
 function buildDeviceAccessory(device, store) {
   const acc = new Accessory(device.label, makeUUID(device.key));
-  const manufacturer = device.type === 'smartthings' ? 'Samsung SmartThings' : 'Victron Energy';
-  setInfo(acc, manufacturer, device.label, device.key);
+  const manufacturer = device.type === 'smartthings' ? 'Samsung SmartThings' : device.type === 'lgthinq' ? 'LG' : 'Victron Energy';
+  setInfo(acc, manufacturer, device.model || device.label, device.key);
 
   // device.homekit can list the same tag more than once (e.g. a 2-relay
   // Shelly's ['switch-rw', 'switch-rw', ...]) — one entry per sensor, not
@@ -1160,6 +1216,10 @@ function buildDeviceAccessory(device, store) {
   for (const hkType of new Set(device.homekit)) {
     if (hkType === 'spa') {
       addSpaServices(acc, device, store);
+    }
+
+    if (hkType === 'appliance') {
+      addApplianceServices(acc, device, store);
     }
 
     if (hkType === 'temperature') {
@@ -1640,3 +1700,4 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
 }
 
 module.exports = startHomekitBridge;
+module.exports.buildDeviceAccessory = buildDeviceAccessory; // for tests

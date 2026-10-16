@@ -57,6 +57,7 @@ import VirtualDevicesSection from './sections/VirtualDevicesSection'
 import SmartThingsSection from './sections/SmartThingsSection'
 import SecuritySection from './sections/SecuritySection'
 import ReolinkSection from './sections/ReolinkSection'
+import EzvizSection from './sections/EzvizSection'
 import CamerasSection from './sections/CamerasSection'
 import BackupRestoreSection from './sections/BackupRestoreSection'
 import ModulesSection from './sections/ModulesSection'
@@ -126,6 +127,7 @@ const SECTION_COMPONENTS = {
   smartthings: SmartThingsSection,
   'security-auth': SecuritySection,
   reolink: ReolinkSection,
+  ezviz: EzvizSection,
   manualcams: CamerasSection,
   backup: BackupRestoreSection,
   modules: ModulesSection,

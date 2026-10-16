@@ -8,6 +8,7 @@ import { T6 } from './i18n-dict-6.js'
 import { T7 } from './i18n-dict-7.js'
 import { T8 } from './i18n-dict-8.js'
 import { T9 } from './i18n-dict-9.js'
+import { T10 } from './i18n-dict-10.js'
 
 const LANGS = ['pl', 'de', 'fr', 'es', 'it', 'uk']
 
@@ -272,6 +273,7 @@ const T1 = {
   ...T7,
   ...T8,
   ...T9,
+  ...T10,
 }
 
 export const WR = Object.fromEntries(LANGS.map((l, i) => [l, Object.fromEntries(Object.entries(T1).map(([k, v]) => [k, v[i]]))]))

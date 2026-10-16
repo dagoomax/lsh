@@ -15,7 +15,7 @@ const api = (url, method = 'GET', body) => fetch(url, {
 
 const ACTIVE = ['including', 'grant', 'dsk', 'interviewing', 'excluding']
 
-export default function PairPanel({ device, scenario }) {
+export default function PairPanel({ device, scenario, onSaved }) {
   const network = device.protocol === 'Wi-Fi' || device.protocol === 'LAN' ? 'wifi' : 'zwave'
   const [gw, setGw] = useState(null)
   const [how, setHow] = useState(network)       // 'zwave' | 'wifi' | 'existing'
@@ -69,7 +69,7 @@ export default function PairPanel({ device, scenario }) {
       emulatorDevice: device.id, model: `${device.manufacturer} ${device.model}`, scenario: scenario.id,
       protocol: how === 'zwave' ? 'Z-Wave' : how === 'wifi' ? (device.protocol || 'Wi-Fi') : exType,
     })
-    if (j.success) { setMsg({ ok: true, text: t('Saved as {id}', { id: j.data.realId }) + (j.message && j.message !== 'Saved' ? ` · ${j.message}` : '') }); loadLinks() }
+    if (j.success) { setMsg({ ok: true, text: t('Saved as {id}', { id: j.data.realId }) + (j.message && j.message !== 'Saved' ? ` · ${j.message}` : '') }); loadLinks(); onSaved?.({ ...j.data, name, room, protocol: how === 'zwave' ? 'Z-Wave' : how === 'wifi' ? (device.protocol || 'Wi-Fi') : exType }) }
     return j
   })
   const unlink = (id) => api(`/api/wiring/links/${id}`, 'DELETE').then(loadLinks)

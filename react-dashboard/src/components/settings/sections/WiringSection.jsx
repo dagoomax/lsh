@@ -8,6 +8,7 @@ import { t } from '../wiring/i18n.js'
 import WiringInfo from '../wiring/WiringInfo.jsx'
 import ModulePhoto from '../wiring/ModulePhoto.jsx'
 import PairPanel from '../wiring/PairPanel.jsx'
+import DocPanel, { useWiringDoc } from '../wiring/DocPanel.jsx'
 import { getLang } from '../../../i18n'
 
 const NONE = []
@@ -52,6 +53,12 @@ export default function WiringSection() {
   const [info, setInfo] = useState(false)
   const [temps, setTemps] = useState({})
   const [lastTerm, setLastTerm] = useState(null)
+  // installation documentation: written as the wiring progresses (wiring/DocPanel.jsx)
+  const wd = useWiringDoc(device)
+  const logStep = (i) => {
+    const s = stepList[i]
+    if (wd.active && s) wd.log('step', t('Wire {n}/{total}: {text}', { n: i + 1, total: stepList.length, text: s.text }), { index: i, total: stepList.length, wire: s.wire, realBox })
+  }
 
   useEffect(() => { if (device.enclosure === 'din') setRealBox(false) }, [devId])
   const plan = useMemo(() => { const p = wallBoxPlan(device, scenario); return { ...p, parts: placeConnectors(p.parts) } }, [device, scenario])
@@ -90,6 +97,24 @@ export default function WiringSection() {
     if (r.short) { setTripped(r.short); setPower(false); setSim(null); return }
     setSim(r)
   }, [power, wires, switches, tick, device, scenario, extras, realBox])
+
+  // documentation: a power-on that holds for 2 s is a passed test (once per power-on); a trip, with why
+  useEffect(() => {
+    if (!power || !wd.active) return
+    const tm = setTimeout(() => { wd.log('test', t('Power on: no fault — {n} wires', { n: wires.length }), { wires: wires.length, mode }); wd.snapshot() }, 2000)
+    return () => clearTimeout(tm)
+  }, [power, wd.active])
+  useEffect(() => { if (tripped && wd.active) wd.log('trip', t('Breaker tripped: {why}', { why: tripped })) }, [tripped])
+  // documentation: the checklist, a moment after the last tick
+  useEffect(() => {
+    if (!wd.active || !Object.keys(checked).length) return
+    const tm = setTimeout(() => {
+      const items = [...kit.tools.map((x) => ({ text: x.text, done: !!checked[x.id] })), ...kit.materials.map((m) => ({ text: m.text, done: !!checked[`m-${m.id}`] }))]
+      wd.log('checklist', t('Tools and materials: {n} of {total} ready', { n: items.filter((x) => x.done).length, total: items.length }), { items })
+    }, 1500)
+    return () => clearTimeout(tm)
+  }, [checked])
+
 
   // Blind travel
   const motorDir = sim && Object.values(sim.motors || {})[0]
@@ -243,7 +268,8 @@ export default function WiringSection() {
               </ol>
               <div className="stg-actions" style={{ marginTop: 6 }}>
                 <Button onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>← {t('Back')}</Button>
-                <Button variant="primary" onClick={() => setStep(Math.min(stepList.length - 1, step + 1))} disabled={step >= stepList.length - 1}>{t('Next wire')} →</Button>
+                <Button variant="primary" onClick={() => { logStep(step); setStep(Math.min(stepList.length - 1, step + 1)) }} disabled={step >= stepList.length - 1}>{t('Next wire')} →</Button>
+                {wd.active && step >= stepList.length - 1 && <Button variant="primary" onClick={() => { logStep(step); wd.snapshot() }}>✓ {t('Last wire done')}</Button>}
                 <Button onClick={() => setStep(0)}>{t('Restart')}</Button>
               </div>
               <div className="stg-hint" style={{ marginTop: 8 }}>{step >= stepList.length - 1 ? t('All wires in — switch the power on and try the wall switch.') : t('Tip: the highlighted wire is the current step.')}</div>
@@ -253,7 +279,14 @@ export default function WiringSection() {
               <div className="ble-dd-title">{t('Your wiring · wires: {n}', { n: userWires.length })}</div>
               <div className="stg-hint">{draft ? t('From {p} — click empty space to add bends, then the point where it ends.', { p: portName(device, scenario, draft.from, extras) }) : t('Click a connection point to start a wire, click empty space to route it, click the end point to finish. Rails (L / N / PE) are mains. Click a wire to remove it. Add connectors from the palette and drag them where you like.')}</div>
               <div className="stg-actions" style={{ marginTop: 8 }}>
-                <Button variant="primary" onClick={() => setResult(check(device, scenario, userWires, userParts))}>✓ {t('Check wiring')}</Button>
+                <Button variant="primary" onClick={() => {
+                  const r = check(device, scenario, userWires, userParts)
+                  setResult(r)
+                  if (wd.active) {
+                    wd.log('check', r.ok ? t('Own wiring checked: matches the manual ({n} wires)', { n: userWires.length }) : t('Own wiring checked: {m} missing, {e} wrong', { m: r.missing.length, e: r.extra.length }), { ok: r.ok, missing: r.missing.length, extra: r.extra.length, wires: userWires.map(([a, b]) => `${portName(device, scenario, a, userParts)} ↔ ${portName(device, scenario, b, userParts)}`) })
+                    if (r.ok) wd.snapshot()
+                  }
+                }}>✓ {t('Check wiring')}</Button>
                 <Button onClick={() => { const src = realBox ? plan : { parts: [], wires: scenario.wires }; setUserParts(src.parts.map((p) => ({ ...p }))); setUserWires(src.wires.map((w) => [...w])); setResult(null) }}>{t('Show solution')}</Button>
                 <Button onClick={() => { setUserWires([]); setUserParts([]); setResult(null); setPower(false) }}>{t('Clear')}</Button>
               </div>
@@ -275,7 +308,9 @@ export default function WiringSection() {
             </div>
           )}
 
-          <PairPanel device={device} scenario={scenario}/>
+          <DocPanel wd={wd} device={device} scenario={scenario} onSwitchDevice={(id) => setDevId(id)}/>
+
+          <PairPanel device={device} scenario={scenario} onSaved={(l) => wd.log('pair', t('Paired: {name} — {id} via {how}', { name: l.name || device.name, id: l.realId, how: l.protocol || l.gateway || '' }), { realId: l.realId, deviceKey: l.deviceKey, gateway: l.gateway, room: l.room })}/>
 
           <div className="wr-panel">
             <div className="ble-dd-title">{t('Tools to mount it')}</div>

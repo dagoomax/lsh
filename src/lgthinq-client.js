@@ -101,6 +101,11 @@ function sensorFor(p) {
       Object.assign(s, { type: 'range', controllable: true, min: 0, max: opts.length - 1, step: 1, writeCmd: 'set', capabilityId: p.path, hint: opts.map((o, i) => `${i} = ${o}`).join(', '), options: opts });
     } else Object.assign(s, { type: 'label' });
   } else return null;
+  // HomeKit (src/homekit-bridge.js, type 'appliance'): setpoints, on/off settings, doors
+  const part = p.location ? human(p.location) : null;
+  if (s.controllable && s.type === 'range' && /emperature/.test(p.attr) && !s.options) Object.assign(s, { homekit: 'setpoint', hkName: part || human(p.attr) });
+  else if (s.controllable && s.type === 'toggle') Object.assign(s, { homekit: 'switch', hkName: [part, human(p.attr)].filter(Boolean).join(' ') });
+  else if (s.type === 'label' && /door/i.test(p.attr + p.group) && (spec.value?.r || []).includes('OPEN')) Object.assign(s, { homekit: 'contact', contactOpen: 'OPEN', hkName: [part, 'Door'].filter(Boolean).join(' ') });
   return s;
 }
 
@@ -215,16 +220,23 @@ class LGThinQClient extends PollingClient {
       try {
         const profile = await this.call('GET', `/devices/${id}/profile`);
         const props = propertiesOf(profile).map((p) => ({ p, sensor: sensorFor(p) })).filter((x) => x.sensor);
+        // a setpoint shows the part's current temperature in HomeKit when the appliance reports one
+        for (const { p, sensor } of props) {
+          if (sensor.homekit !== 'setpoint') continue;
+          const cur = props.find((x) => x.p.group === p.group && x.p.location === p.location && /current/i.test(x.p.attr) && x.sensor.type === 'number');
+          if (cur) sensor.hkCurrent = cur.sensor.path;
+        }
+        const homekit = props.some((x) => x.sensor.homekit) ? ['appliance'] : [];
         const key = `lgthinq/${id}`;
         const label = info.alias || info.modelName || id;
         const d = { key, label, type: info.deviceType, props };
         const writer = (capId, command, args = []) => this.write(id, capId, command, args);
         const existing = this.registry.devices?.get?.(key);
         // saved again from Settings: this client takes over the device the previous one registered
-        if (existing) Object.assign(existing, { sensors: props.map((x) => x.sensor), _writeCapability: writer });
+        if (existing) Object.assign(existing, { sensors: props.map((x) => x.sensor), _writeCapability: writer, homekit });
         else this.registry.registerDevice({
           key, label, type: 'lgthinq', model: info.modelName, kind: String(info.deviceType || '').replace(/^DEVICE_/, '').toLowerCase(),
-          homekit: [], sensors: props.map((x) => x.sensor), _writeCapability: writer,
+          homekit, sensors: props.map((x) => x.sensor), _writeCapability: writer,
         });
         this.devices.set(id, d);
         console.log(`[LGThinQ] ${label} (${info.deviceType}): ${props.length} sensor(s)`);
@@ -247,7 +259,11 @@ class LGThinQClient extends PollingClient {
     if (!x) throw new Error('Unknown LG ThinQ setting');
     const { p, sensor } = x;
     let value;
-    if (sensor.type === 'toggle') value = p.spec.type === 'boolean' ? command === 'true' : command;
+    // toggles: 'true'/'false' from LSH, 'on'/'off' from HomeKit; option toggles (POWER_ON / POWER_OFF) map on/off to them
+    if (sensor.type === 'toggle') {
+      const on = command === 'true' || command === 'on' || command === sensor.writeOn;
+      value = p.spec.type === 'boolean' ? on : on ? sensor.writeOn : sensor.writeOff;
+    }
     else if (sensor.options) value = sensor.options[Math.round(Number(args[0]))];
     else value = Number(args[0]);
     if (value === undefined || (typeof value === 'number' && !Number.isFinite(value))) throw new Error('Invalid value');

@@ -61,6 +61,7 @@
     "src/routes/dyson.js",
     "src/routes/esphome.js",
     "src/routes/ev-charging.js",
+    "src/routes/ezviz.js",
     "src/routes/ffmpeg-rtsp.js",
     "src/routes/fibaro.js",
     "src/routes/google-calendar.js",
@@ -133,6 +134,7 @@
     "src/routes/vrm.js",
     "src/routes/waveshare.js",
     "src/routes/webrtc-whep.js",
+    "src/routes/wiring-docs.js",
     "src/routes/wiring-pair.js",
     "src/routes/wled.js",
     "src/routes/yale.js",
@@ -144,6 +146,7 @@
     "src/system-metrics-client.js",
     "src/vrm-client.js",
     "src/websocket.js",
+    "src/wiring-docs.js",
     "src/wiring-links.js"
   ],
   "modules": {
@@ -948,6 +951,18 @@
       "deps": {
         "ws": "^7.5.11"
       }
+    },
+    "ezviz": {
+      "entry": "src/ezviz-client.js",
+      "configKeys": [
+        "ezviz"
+      ],
+      "when": "(config.ezviz?.username)",
+      "files": [
+        "src/ezviz-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
     },
     "googletv": {
       "entry": "src/googletv-client.js",

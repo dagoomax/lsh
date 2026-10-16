@@ -91,6 +91,8 @@ module.exports = function register(router, ctx) {
     if (safe.karcher?.password) safe.karcher.password = '••••••••';
     if (safe.landroid?.password) safe.landroid.password = '••••••••';
     if (safe.sony?.psk) safe.sony.psk = '••••••••';
+    if (safe.ezviz?.password) safe.ezviz.password = '••••••••';
+    if (safe.ezviz?.codes) safe.ezviz.codes = Object.fromEntries(Object.keys(safe.ezviz.codes).map((k) => [k, '••••••••']));
     if (safe.openweather?.apiKey) safe.openweather.apiKey = '••••••••';
     if (safe.airly?.apiKey) safe.airly.apiKey = '••••••••';
     if (safe.esphome?.devices) {

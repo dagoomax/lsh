@@ -197,6 +197,7 @@ export function getGroup(d) {
   if (d.type === 'sonos' || d.type === 'radio')  return 'Media'
   if (d.type === 'googlehome' || d.type === 'googletv' || d.type === 'sony') return 'Media'
   if (d.type === 'denon' || d.type === 'lgwebos')  return 'Media'
+  if (d.type === 'ezviz') return d.kind === 'smart plug' ? 'Switches' : 'Security'
   if (d.type === 'beosound') return 'Media'
   const r = d.readings || {}
   const k = Object.keys(r)

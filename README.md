@@ -4155,6 +4155,20 @@ When Spotify or Apple Music is configured, LSH also registers `music/player` (`s
 
 **Pictures** can't be pushed — Loxone fetches them: `GET /api/loxone/cover/<device key>.jpg?token=<API token>` (`spotify/player`, `radio/airplay-salon2`, `radio/all` = the first speaker playing) always returns the current album cover / station logo as a 400×400 JPEG (`src/media-cover.js`: fetched once, converted by ffmpeg, cached; a dark square when nothing plays or the source is an SVG / broken). Use it as the image URL of an **Intercom (custom) / Camera** block or in a **Webpage** block.
 
+#### Wiring emulator — installation documentation
+
+**Settings → System → Wiring emulator → Documentation**: start an installation (title, room) and the documentation writes itself as the wiring progresses — each wire of the assistant (*Next wire* / *Last wire done*, with its terminals), checking your own wiring (ok / missing / wrong), the power test (a power-on that holds without a fault) or the breaker tripping and why, the tools & materials checklist, pairing the real module (its real id and how), and your notes — each with a timestamp — plus the diagram as built (the emulator's drawing). **Open document** gives a printable as-built document (browser → Print / Save as PDF), per installation or *All installations* for the whole house with a contents list. Stored in `persist/wiring-docs.json` (`src/wiring-docs.js`; `GET/POST /api/wiring/docs`, `POST /api/wiring/docs/:id/events`, `PATCH`, `DELETE`, `GET /api/wiring/docs/export.html?id=`).
+
+#### EZVIZ
+
+```json
+"ezviz": { "username": "you@example.com", "password": "…", "region": "eu", "codes": { "C6N123456": "ABCDEF" } }
+```
+
+EZVIZ cameras, battery cameras, doorbells, base stations / NVRs, peephole cameras and smart plugs (`src/ezviz-client.js`). The account goes through the EZVIZ cloud API the app uses (following pyEzviz, Apache 2.0 — Home Assistant's EZVIZ library): every device, online, battery, **motion** (an alarm in the last minute — HomeKit motion), last event + picture, **motion detection** on/off, **privacy**, **sleep**, status light, alarm light, infrared, **siren**, **pan & tilt** (PTZ models), and a plug's power (`switch`, HomeKit switch). Two-step sign-in: EZVIZ e-mails a code — enter it in Settings. The session is kept in `persist/ezviz-session.json`, not the password.
+
+**Video stays local:** enter each camera's verification code (the 6 capital letters on its sticker) in **Settings → Cameras → EZVIZ** and press **Add cameras to LSH** — the camera's RTSP stream (`rtsp://admin:<code>@<ip>:554/h264/ch1/main/av_stream`; `ezviz.rtspPath` overrides the path) joins LSH's camera list: Cameras view, snapshots, recording, object detection, HomeKit video (after a restart). Battery cameras sleep and have no local stream. Tested against `scripts/ezviz-simulator.js`, not a real EZVIZ account yet.
+
 #### LG webOS TVs
 
 ```json

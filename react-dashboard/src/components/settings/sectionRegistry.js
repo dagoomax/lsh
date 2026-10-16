@@ -51,6 +51,7 @@ export const CATEGORIES = [
     { id: 'manualcams', title: 'Cameras', keywords: ['rtsp', 'onvif', 'camera', 'stream'] },
     { id: 'cameras-extra', title: 'UniFi Protect & FFmpeg RTSP', keywords: ['unifi', 'protect', 'ffmpeg', 'rtsp'] },
     { id: 'reolink', title: 'Reolink', keywords: ['reolink'] },
+    { id: 'ezviz', title: 'EZVIZ', keywords: ['ezviz', 'hikvision', 'camera', 'doorbell', 'kamera', 'dzwonek'] },
     { id: 'mobotix', title: 'MOBOTIX', keywords: ['mobotix'] },
     { id: 'axis', title: 'Axis (VAPIX)', keywords: ['axis', 'vapix'] },
     { id: 'yale', title: 'Yale Doorbell Cameras', keywords: ['yale', 'doorbell', 'august'] },

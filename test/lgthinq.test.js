@@ -81,3 +81,49 @@ test('LG ThinQ Connect: regional server by country', () => {
   assert.equal(regionOf('US'), 'aic');
   assert.equal(regionOf('KR'), 'kic');
 });
+
+test('LG fridge in HomeKit: two cooling thermostats, express switches, door contact — writes reach the appliance', async () => {
+  const { buildDeviceAccessory } = require('../src/homekit-bridge');
+  const { Service, Characteristic } = require('hap-nodejs');
+  const DataStore = require('../src/data-store');
+  const props = build(FRIDGE_PROFILE);
+  const sent = [];
+  const device = {
+    key: 'lgthinq/fr', label: 'Lodówka', type: 'lgthinq', kind: 'refrigerator', model: '2REB1GLVB1',
+    homekit: ['appliance'], sensors: props.map((x) => x.sensor),
+    _writeCapability: async (cap, cmd, args) => { sent.push([cap, cmd, args?.[0]]) },
+  };
+  const store = new DataStore();
+  for (const { p, sensor } of props) { const v = valueOf(FRIDGE_STATE, p, sensor); if (v != null) store.update(`lgthinq/fr/${sensor.path}`, v) }
+  const acc = buildDeviceAccessory(device, store);
+  const svc = (type, sub) => acc.services.find((s) => s.UUID === type.UUID && (!sub || s.subtype === sub));
+  const fridge = svc(Service.Thermostat, 'temperature_FRIDGE_targetTemperature');
+  const freezer = svc(Service.Thermostat, 'temperature_FREEZER_targetTemperature');
+  assert.ok(fridge && freezer);
+  assert.equal(fridge.displayName, 'Lodówka Fridge');
+  assert.equal(await freezer.getCharacteristic(Characteristic.TargetTemperature).handleGetRequest(), -23);
+  assert.deepEqual([freezer.getCharacteristic(Characteristic.TargetTemperature).props.minValue, freezer.getCharacteristic(Characteristic.TargetTemperature).props.maxValue], [-23, -15]);
+  assert.deepEqual(fridge.getCharacteristic(Characteristic.TargetHeatingCoolingState).props.validValues, [2], 'cool only');
+  await fridge.getCharacteristic(Characteristic.TargetTemperature).handleSetRequest(5);
+  assert.deepEqual(sent.at(-1), ['temperature_FRIDGE_targetTemperature', 'set', 5]);
+
+  const express = svc(Service.Switch, 'refrigeration_expressMode');
+  assert.ok(express);
+  await express.getCharacteristic(Characteristic.On).handleSetRequest(true);
+  assert.deepEqual(sent.at(-1), ['refrigeration_expressMode', 'on', undefined]);
+
+  const door = svc(Service.ContactSensor, 'doorStatus_MAIN_doorState');
+  assert.equal(await door.getCharacteristic(Characteristic.ContactSensorState).handleGetRequest(), 0, 'closed');
+  store.update('lgthinq/fr/doorStatus_MAIN_doorState', 'OPEN');
+  assert.equal(await door.getCharacteristic(Characteristic.ContactSensorState).handleGetRequest(), 1, 'open');
+  assert.equal(acc.getService(Service.AccessoryInformation).getCharacteristic(Characteristic.Manufacturer).value, 'LG');
+
+  // HomeKit's 'on' reaches LG as true
+  const c = Object.create(LG.prototype);
+  const out = [];
+  c.call = async (m, p, body) => { out.push(body); return {} };
+  c.store = { update() {} };
+  c.devices = new Map([['fr1', { key: 'lgthinq/fr1', props, state: FRIDGE_STATE }]]);
+  await c.write('fr1', 'refrigeration_expressMode', 'on', []);
+  assert.deepEqual(out.at(-1), { refrigeration: { expressMode: true } });
+});

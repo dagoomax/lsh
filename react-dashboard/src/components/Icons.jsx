@@ -717,6 +717,7 @@ const TYPE_MAP = {
   vclu:         RelayIcon,
   denon:        DenonIcon,
   lgwebos:      MonitorIcon,
+  ezviz:        CameraIcon,
   arduino:      ArduinoIcon,
   suppla:       SuplaIcon,
   smarttub:     SpaIcon,
@@ -1037,6 +1038,7 @@ export function resolveIcon(device) {
   if (custom) return custom
 
   // Per-device specifics — kind and role, not just integration type
+  if (device.type === 'ezviz' && device.kind === 'smart plug') return SwitchOutletIcon
   if (device.type === 'satel') {
     const key = device.key || ''
     if (key.includes('/partition/')) return ShieldIcon
