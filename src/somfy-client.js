@@ -55,7 +55,9 @@ class SomfyClient {
     this._port       = 8443;
     this._basePath   = BASE_PATH;
     // TaHoma box uses a self-signed TLS certificate; the cloud uses a valid one.
-    this._agent      = new https.Agent({ rejectUnauthorized: false });
+    // keepAlive: the 1 s event poll would otherwise open (and handshake) a new
+    // TLS connection every second.
+    this._agent      = new https.Agent({ rejectUnauthorized: false, keepAlive: true });
   }
 
   async start() {
@@ -70,7 +72,7 @@ class SomfyClient {
       if (!this._host) throw new Error(`Unknown Somfy region: ${region}`);
       this._port     = 443;
       this._basePath = CLOUD_BASE_PATH;
-      this._agent    = new https.Agent({ rejectUnauthorized: true });
+      this._agent    = new https.Agent({ rejectUnauthorized: true, keepAlive: true });
       await this._cloudLogin(cfg);
       console.log(`[Somfy] Using cloud auth (Overkiz ${region}) — token valid`);
     } else {
@@ -104,7 +106,8 @@ class SomfyClient {
   stop() {
     if (this._eventTimer) clearInterval(this._eventTimer);
     if (this._pollTimer)  clearInterval(this._pollTimer);
-    if (this._listenerId) this._unregisterListener().catch(() => {});
+    const bye = this._listenerId ? this._unregisterListener().catch(() => {}) : Promise.resolve();
+    bye.finally(() => this._agent.destroy()); // then close the idle keep-alive sockets
   }
 
   // ── Authentication ─────────────────────────────────────────────────────────

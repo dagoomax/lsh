@@ -62,7 +62,10 @@ function useMusicState(enabled = true) {
     if (!enabled) return
     loadRadio()
     const t = setInterval(() => { if (!document.hidden) loadRadio() }, 5000)
-    return () => clearInterval(t)
+    // back on screen: what plays now, not what played when the page was hidden
+    const onVisibility = () => { if (!document.hidden) loadRadio() }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisibility) }
   }, [enabled, loadRadio])
 
   const localPlaying = local.status === 'playing'
@@ -312,21 +315,31 @@ function Visualizer({ color, active, live, url, delay = 0, around = null, onBass
   Object.assign(state.current, { color, active, live, delay, mode, around, onBass, canvasEl: canvas })
   const pickMode = (m) => { setMode(m); store.set('lsh-viz-mode', m) }
   const [serverLive, setServerLive] = useState(false)
-  // spectrum of a station on a speaker, from LSH — frames queued, shown `delay` ms later
+  // spectrum of a station on a speaker, from LSH — frames queued, shown `delay` ms later.
+  // Only while this page is on screen: LSH downloads and decodes the station for it,
+  // and a tab left in the background would keep that going for good.
   useEffect(() => {
     if (live !== 'server' || !url) return
     const st = state.current
-    st.frames = []
-    const es = new EventSource(`/api/media/spectrum?url=${encodeURIComponent(url)}`)
-    es.onmessage = (e) => {
-      const bin = atob(e.data), f = new Uint8Array(bin.length)
-      for (let i = 0; i < bin.length; i++) f[i] = bin.charCodeAt(i)
-      st.frames.push({ t: performance.now(), f })
-      if (st.frames.length > 400) st.frames.splice(0, st.frames.length - 400)
-      st.lastFrame = performance.now()
+    let es = null
+    const open = () => {
+      if (es || document.hidden) return
+      st.frames = []
+      es = new EventSource(`/api/media/spectrum?url=${encodeURIComponent(url)}`)
+      es.onmessage = (e) => {
+        const bin = atob(e.data), f = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) f[i] = bin.charCodeAt(i)
+        st.frames.push({ t: performance.now(), f })
+        if (st.frames.length > 400) st.frames.splice(0, st.frames.length - 400)
+        st.lastFrame = performance.now()
+      }
     }
+    const close = () => { es?.close(); es = null }
+    const onVisibility = () => (document.hidden ? close() : open())
+    open()
+    document.addEventListener('visibilitychange', onVisibility)
     const watch = setInterval(() => setServerLive(performance.now() - st.lastFrame < 2500), 1000)
-    return () => { es.close(); clearInterval(watch); st.frames = []; setServerLive(false) }
+    return () => { document.removeEventListener('visibilitychange', onVisibility); close(); clearInterval(watch); st.frames = []; setServerLive(false) }
   }, [live, url])
   useEffect(() => {
     const c = canvas.current

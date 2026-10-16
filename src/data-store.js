@@ -232,9 +232,15 @@ class DataStore extends EventEmitter {
   }
 
   update(key, value) {
+    const prev = this.data[key];
     this.data[key] = { value, timestamp: Date.now() };
     this._record(key, value);
-    this.emit('change', { key, value });
+    // Most clients re-publish every value on every poll, so most events carry
+    // the value that was already stored. `changed` lets listeners that only
+    // care about new values (websocket.js) skip those. Objects always count
+    // as changed: a client may mutate one in place and set it again.
+    const changed = !prev || !Object.is(prev.value, value) || (typeof value === 'object' && value !== null);
+    this.emit('change', { key, value, changed });
   }
 
   // alias — several integration clients (and CLAUDE.md) write via store.set()

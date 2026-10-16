@@ -17,7 +17,8 @@
 //   GET  /media/stream?url=         relays an audio stream to this screen (https pages can't
 //                                   play http streams; only audio content types pass)
 //   GET  /media/spectrum?url=       live spectrum of a stream playing on a speaker, as
-//                                   server-sent events (base64, 48 bands 0–255, ~21/s)
+//                                   server-sent events (base64, 48 bands 0–255, ~21/s);
+//                                   204 when no speaker plays it
 //
 // Only http(s) URLs are played — never a path on this server.
 const http = require('http');
@@ -135,6 +136,7 @@ async function streamTitle(url) {
 }
 
 const AUDIO_TYPE = /^(audio\/|application\/(ogg|octet-stream|x-mpegurl|vnd\.apple\.mpegurl)|video\/mp2t)/i;
+const SPECTRUM_CHECK_MS = 15000; // is the station still on a speaker?
 
 module.exports = function register(router, ctx) {
   const { clients, requireAdmin, store } = ctx;
@@ -152,7 +154,8 @@ module.exports = function register(router, ctx) {
     .then((message) => res.json({ success: true, message }))
     .catch((err) => res.status(/must be|not configured|not enabled|Unknown|URL/.test(err.message) ? 400 : 502).json({ success: false, error: err.message }));
 
-  router.get('/media/targets', (req, res) => {
+  // the speakers and what they're playing
+  const listTargets = () => {
     const targets = [];
     for (const t of cast()?.targets() || []) {
       const v = (p) => store.get(`${t.key}/${p}`);
@@ -163,6 +166,12 @@ module.exports = function register(router, ctx) {
       targets.push({ id: `airplay:${s.id}`, kind: 'airplay', name: s.name,
         state: s.playing ? 'playing' : 'idle', title: s.playing?.title || '', url: s.playing?.url || '', volume: s.playing?.volume ?? null, muted: !!s.playing?.muted, since: s.playing?.since });
     }
+    return targets;
+  };
+  const onSpeaker = (url) => listTargets().some((t) => t.url === url && (t.state === 'playing' || t.state === 'buffering'));
+
+  router.get('/media/targets', (req, res) => {
+    const targets = listTargets();
     let stations = [];
     try { stations = cleanStations(readConfigFile().media?.stations) } catch { /* no config */ }
     res.json({ success: true, data: { targets, stations } });
@@ -256,16 +265,32 @@ module.exports = function register(router, ctx) {
     return muted ? 'Muted' : 'Unmuted';
   }));
 
+  // Only while a speaker plays the station: decoding it means downloading it
+  // too, and a dashboard left open in a background tab never closes its
+  // stream. Once the station has been off every speaker for two checks in a
+  // row the stream ends; the EventSource reconnects, and the 204 it gets then
+  // is what tells it to stop for good.
   router.get('/media/spectrum', requireAdmin, (req, res) => {
     const url = String(req.query.url || '');
     if (!URL_RE.test(url)) return res.status(400).end();
+    if (!onSpeaker(url)) return res.status(204).end();
     let stop;
     try {
       stop = spectrum.watch(url, (frame) => res.write(`data: ${Buffer.from(frame).toString('base64')}\n\n`));
     } catch (err) { return res.status(429).json({ success: false, error: err.message }) }
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
     res.write(': spectrum\n\n');
-    req.on('close', () => stop());
+    let check = null, off = 0;
+    const done = () => {
+      if (!stop) return;
+      clearInterval(check);
+      stop();
+      stop = null;
+      if (!res.destroyed && !res.writableEnded) res.end();
+    };
+    check = setInterval(() => { off = onSpeaker(url) ? 0 : off + 1; if (off >= 2) done() }, SPECTRUM_CHECK_MS);
+    req.on('close', done);
+    res.on('close', done);
   });
 
   router.post('/media/stations', requireAdmin, (req, res) => reply(res, () => {

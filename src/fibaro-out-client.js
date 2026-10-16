@@ -25,6 +25,7 @@ class FibaroOutClient {
     this._prefixes = [];   // [{ storePrefix, variablePrefix }]
     this._existing = new Set(); // variable names known to exist on the HC
     this._timers   = {};   // storeKey → debounce timer
+    this._last     = new Map(); // variable → last value sent (LSH re-emits unchanged values; send real changes only)
   }
 
   async start() {
@@ -82,6 +83,8 @@ class FibaroOutClient {
 
   async _push(key, name, value) {
     const str = _stringify(value);
+    if (this._last.get(name) === str) return;
+    this._last.set(name, str);
     try {
       if (!this._existing.has(name)) {
         await this._request('POST', '/api/globalVariables', { name, value: str });
@@ -92,6 +95,7 @@ class FibaroOutClient {
       }
       platformStatus.set('fibaroOut', true);
     } catch (err) {
+      this._last.delete(name); // failed: try again on the next change
       // 409 on POST: variable appeared since we listed — remember it and retry as update
       if (err.status === 409 && !this._existing.has(name)) {
         this._existing.add(name);

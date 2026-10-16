@@ -43,11 +43,21 @@ test('HomeKit exclusions: devices, whole types, scenes, relays — removed and a
     assert.deepEqual(keys(), ['device:loxone/c']);
     assert.equal(r.removed, 3);
     assert.equal(pool.bridges[0]._count, 1);
+    // a removed accessory takes its store listeners with it — only the hall
+    // sensor still listens
+    assert.equal(store.listenerCount('change'), 1);
 
     r = pool.applyExclude({});
     assert.deepEqual(keys(), ['device:loxone/c', 'device:shelly/a', 'device:shelly/b', 'device:shelly/d', 'relay:0', 'scene:s1']);
     assert.equal(r.added, 5);
     assert.equal(pool.bridges[0].bridgedAccessories.length, 6);
+    assert.equal(store.listenerCount('change'), 5, 'four temperature sensors + the relay');
+
+    // excluding and re-including again doesn't pile listeners up
+    pool.applyExclude({ types: ['shelly'], scenes: ['s1'], relays: ['0'] });
+    assert.equal(store.listenerCount('change'), 1);
+    pool.applyExclude({});
+    assert.equal(store.listenerCount('change'), 5);
   } finally {
     for (const b of pool.bridges) await b.unpublish().catch?.(() => {});
   }
