@@ -96,7 +96,17 @@ class HomeyClient {
       this._baseUrl = `http://${cfg.host}`;
     }
 
-    await this._discoverDevices();
+    // Homey Pro / SHS can be slow to answer while the host is still booting —
+    // keep retrying instead of leaving the integration down until a restart
+    try {
+      await this._discoverDevices();
+    } catch (err) {
+      platformStatus.set('homey', false);
+      if (this._stopped) return;
+      console.error(`[Homey] Start failed: ${err.message} — retrying in 60s`);
+      this._retryTimer = setTimeout(() => this.start().catch(() => {}), 60000);
+      return;
+    }
     platformStatus.set('homey', true);
 
     const interval = (cfg.pollInterval ?? 10) * 1000;
@@ -105,7 +115,9 @@ class HomeyClient {
   }
 
   stop() {
+    this._stopped = true;
     if (this._timer) clearInterval(this._timer);
+    if (this._retryTimer) clearTimeout(this._retryTimer);
     console.log('[Homey] Stopped');
   }
 

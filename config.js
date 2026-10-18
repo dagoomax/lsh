@@ -36,7 +36,9 @@ function loadConfig() {
     // default handling.
     ...fileConfig,
     mqtt: {
-      host: process.env.VICTRON_MQTT_HOST || fileConfig.mqtt?.host || '192.168.1.100',
+      // An mqtt section without a host means no local Venus broker; the
+      // .100 default only applies when config.json has no mqtt section at all
+      host: process.env.VICTRON_MQTT_HOST || fileConfig.mqtt?.host || (fileConfig.mqtt ? '' : '192.168.1.100'),
       port: parseInt(process.env.VICTRON_MQTT_PORT || fileConfig.mqtt?.port || 1883),
       portalId: process.env.VICTRON_PORTAL_ID || fileConfig.mqtt?.portalId || '',
     },
