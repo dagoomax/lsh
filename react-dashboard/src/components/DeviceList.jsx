@@ -191,9 +191,22 @@ async function sendCommand(key, sensor, value) {
 
 
 // ── Categories ────────────────────────────────────────────────────────────────
+// Shutters, venetian blinds, awnings: a position/slat control, a cover
+// reading, or a cover category. Somfy lights and plugs stay out.
+const BLIND_CATEGORIES = new Set(['cover', 'blind', 'blinds', 'shutter', 'curtain', 'awning'])
+function isBlind(d) {
+  if (BLIND_CATEGORIES.has(d.category)) return true
+  const sensors = d.sensors || []
+  if (d.type === 'somfy') return !sensors.some(s => s.capabilityId === 'light' || s.capabilityId === 'intensity')
+  return sensors.some(s => s.capabilityId === 'position' || s.capabilityId === 'orientation')
+    || d.readings?.cover_position != null
+}
+
 export function getGroup(d) {
   if (['vebus','battery','solarcharger'].includes(d.type)) return 'Victron'
+  if (isBlind(d)) return 'Blinds'
   if (['auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo'].includes(d.type)) return 'Climate'
+  if (d.type === 'zehnder' || d.category === 'ventilation') return 'Climate'
   if (d.type === 'smarttub') return 'Climate'
   if (d.type === 'sonos' || d.type === 'radio')  return 'Media'
   if (d.type === 'googlehome' || d.type === 'googletv' || d.type === 'sony') return 'Media'
@@ -210,7 +223,7 @@ export function getGroup(d) {
   return 'Other'
 }
 
-const CATS = ['All','Victron','Lighting','Switches','Climate','Media','Security','Sensors','Other','Plan','Graphs']
+const CATS = ['All','Victron','Lighting','Switches','Blinds','Climate','Media','Security','Sensors','Other','Plan','Graphs']
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 function Toggle({ on, onChange }) {

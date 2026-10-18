@@ -1221,6 +1221,7 @@ input[type="range"]::-moz-range-thumb {
    status palette so both themes stay in step automatically. */
 [data-cat="Lighting"] { --cat-c: var(--gold); }
 [data-cat="Switches"] { --cat-c: var(--accent); }
+[data-cat="Blinds"]   { --cat-c: var(--blue); }
 [data-cat="Climate"]  { --cat-c: var(--orange); }
 [data-cat="Media"]    { --cat-c: var(--violet); }
 [data-cat="Security"] { --cat-c: var(--red); }
