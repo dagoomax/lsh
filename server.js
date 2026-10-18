@@ -338,6 +338,17 @@ async function main() {
     }
   }
 
+  // Microcontroller index — estimate of embedded MCUs from the devices marked
+  // permanent. Enabled by default; set config.microcontrollerIndex to false to
+  // disable, or to an object to tune { pollInterval, name, defaultPerDevice, perType }.
+  if (config.microcontrollerIndex !== false) {
+    const McuIndexClient = tryRequire('./src/microcontroller-index-client');
+    if (McuIndexClient) {
+      const mcuIndex = new McuIndexClient(config, store, sensorRegistry);
+      mcuIndex.start().catch((err) => console.error(`[McuIndex] Start failed: ${err.message}`));
+    }
+  }
+
   // Loxone Weather Service emulator — standalone HTTP listener (not a
   // device client: no sensors, nothing pushed to the store), so DNS-override
   // weather.loxone.com to this host to serve Miniservers their hourly forecast.

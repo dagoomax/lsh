@@ -28,6 +28,7 @@ class SensorRegistry extends EventEmitter {
     if (o.room) device.room = o.room;
     if (o.icon) device.customIcon = o.icon;
     if (o.label) { device._origLabel = device.label; device.label = o.label; }
+    if (o.permanent) device.permanent = true;
     if (o.planX != null) device.planX = o.planX;
     if (o.planY != null) device.planY = o.planY;
     if (o.planFloor) device.planFloor = o.planFloor;
@@ -38,7 +39,7 @@ class SensorRegistry extends EventEmitter {
 
   // Persist a user customization and apply it to the live descriptor.
   // Empty-string fields clear the override for that field.
-  setOverride(deviceKey, { room, icon, label, planX, planY, planFloor, camAngle, camFov, camRange } = {}) {
+  setOverride(deviceKey, { room, icon, label, permanent, planX, planY, planFloor, camAngle, camFov, camRange } = {}) {
     const device = this.devices.get(deviceKey);
     if (!device) throw new Error(`Unknown device: ${deviceKey}`);
 
@@ -62,6 +63,12 @@ class SensorRegistry extends EventEmitter {
         delete o.label;
         if (device._origLabel != null) { device.label = device._origLabel; delete device._origLabel; }
       }
+    }
+
+    // Marks a device as permanently on the network (counted by the microcontroller index)
+    if (permanent !== undefined) {
+      if (permanent === true || permanent === 'true') { o.permanent = true; device.permanent = true; }
+      else { delete o.permanent; delete device.permanent; }
     }
 
     if (planFloor !== undefined) {

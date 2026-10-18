@@ -679,6 +679,7 @@ function EditPanel({ device, rooms, onClose }) {
   const [label, setLabel] = useState(device.label || '')
   const [room,  setRoom]  = useState(device.room || '')
   const [icon,  setIcon]  = useState(device.customIcon || '')
+  const [permanent, setPermanent] = useState(!!device.permanent)
   const [busy,  setBusy]  = useState(false)
   const [err,   setErr]   = useState(null)
 
@@ -690,7 +691,7 @@ function EditPanel({ device, rooms, onClose }) {
         const res = await fetch(`/api/device/${encodeURIComponent(device.key)}/customize`, {
           method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ label, room, icon, pin }),
+          body: JSON.stringify({ label, room, icon, permanent, pin }),
         })
         if (res.status === 403) {
           const entered = window.prompt(gt('pin_prompt', 'Enter edit PIN'))
@@ -756,6 +757,10 @@ function EditPanel({ device, rooms, onClose }) {
           ))}
         </div>
       </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+        <input type="checkbox" checked={permanent} onChange={e => setPermanent(e.target.checked)}/>
+        {gt('edit_permanent', 'Permanent on the network (counted in the microcontroller index)')}
+      </label>
       {err && <div style={{ fontSize: 12, color: 'var(--red)' }}>{err}</div>}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button onClick={onClose} disabled={busy}
