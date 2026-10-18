@@ -1361,6 +1361,8 @@ Connects to a **Somfy TaHoma** installation and discovers roller shutters, awnin
 
 **`devices`** — optional name filter array. Leave empty to discover all. Example: `["Salon", "Bedroom"]`.
 
+**`tiltPresets`** — optional one-tap slat buttons for venetian blinds (io covers with `setOrientation`), shown under the Tilt slider at the top of the device popup. `true` gives Closed / Half / Open (0 / 50 / 100 % open); an array sets your own values, e.g. `[0, 30, 100]`. Off by default.
+
 **Control:** Each device exposes these sensors, controllable via `GET /api/device/<key>/set?sensor=<path>&value=<v>` (or `POST /api/device/<key>/command`):
 
 | Sensor | Type | Command |

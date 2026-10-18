@@ -186,6 +186,12 @@ class SomfyClient {
     const json    = await this._getJson(cfg, `${this._basePath}/setup/devices`);
     const devices = Array.isArray(json) ? json : [];
     const filter  = (cfg.devices || []).map(f => f.toLowerCase());
+    // true → Closed / Half / Open; or a list of % open values, e.g. [0, 30, 100]
+    const presetValues = cfg.tiltPresets === true ? [0, 50, 100]
+      : Array.isArray(cfg.tiltPresets) ? cfg.tiltPresets.map(Number).filter(v => v >= 0 && v <= 100) : [];
+    const tiltPresets = presetValues.map(v => ({
+      value: v, label: v === 0 ? 'Closed' : v === 100 ? 'Open' : v === 50 ? 'Half' : `${v}%`,
+    }));
 
     console.log(`[Somfy] ${devices.length} device(s) found from TaHoma`);
     for (const dev of devices) {
@@ -313,6 +319,9 @@ class SomfyClient {
             controllable: true, type: 'range',
             writeCmd: 'setOrientation', capabilityId: 'orientation',
             min: 0, max: 100, rangeFormat: 'percent',
+            // config.somfy.tiltPresets: one-tap slat buttons, shown at the
+            // top of the device popup
+            ...(tiltPresets.length ? { presets: tiltPresets, pinned: true } : {}),
           }] : []),
         ],
         _writeCapability: (capId, command, args) =>

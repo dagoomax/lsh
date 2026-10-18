@@ -461,6 +461,17 @@ function RangeControl({ sensor, value, onCommit, label }) {
           <svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10.5" fill="none" stroke="currentColor" strokeWidth="2.5"/><circle cx="13" cy="13" r="6" fill="currentColor"/></svg>
         </button>
       </div>
+      {/* one-tap presets (sensor.presets: [{ value, label }]) — commit at once, no debounce */}
+      {sensor.presets?.length > 0 && (
+        <div className="hm-range-presets">
+          {sensor.presets.map(p => (
+            <button key={p.value} type="button" data-active={local === p.value || undefined}
+              onClick={() => { clearTimeout(tRef.current); setLocal(p.value); onCommit(p.value) }}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -849,6 +860,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
   // air conditioners get their own panel (AcPanel); its paths leave the generic controls
   const ac = device ? acView(device, { ...r, ...Object.fromEntries(Object.entries(localState).map(([k, v]) => [k, { ...r[k], value: v }])) }) : null
   const controls = sensors.filter(s => s.controllable && s.type !== 'color' && !(ac && AC_PATHS.has(s.path)))
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) // pinned (e.g. Somfy slat presets) first
   const graphable = sensors.filter(s => {
     const v = r[s.path]?.value
     if (ac && AC_PATHS.has(s.path) && !['targetTemp', 'temp'].includes(s.path)) return false // on/off, mode, fan: not chart material

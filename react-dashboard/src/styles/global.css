@@ -1772,6 +1772,13 @@ input[type="range"]::-moz-range-thumb {
 }
 [data-theme="light"] .hm-range-fill { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08); }
 .hm-range-track[data-dragging] .hm-range-fill { transition: opacity 0.15s; }
+.hm-range-presets { display: flex; gap: 8px; }
+.hm-range-presets button {
+  flex: 1; min-height: 40px; border: none; border-radius: 12px; cursor: pointer;
+  background: var(--white-10); color: var(--text); font-size: 13px; font-weight: 600;
+  -webkit-tap-highlight-color: transparent; transition: background 0.15s, color 0.15s;
+}
+.hm-range-presets button[data-active] { background: var(--accent); color: #fff; }
 @media (prefers-reduced-motion: reduce) { .hm-range-fill { transition: none; } }
 
 /* ── Weather day popup (Homey / iOS-weather layout) ─────────────────────── */
