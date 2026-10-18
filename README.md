@@ -860,6 +860,29 @@ Lights, plugs and Zigbee accessories are **auto-discovered** and polled every `p
 
 For development without a bridge, run `node scripts/hue-simulator.js` (a fake bridge on port 8180 with a color light, dimmable light, plug, motion trio and a dimmer switch) and point the config at `"host": "127.0.0.1", "port": 8180, "username": "sim"`.
 
+### `homekitController`
+
+```json
+"homekitController": {
+  "enabled": true,
+  "pollInterval": 60
+}
+```
+
+**HomeKit accessories → LSH (→ Loxone).** LSH acts as a HomeKit *controller*, the way the Home app does, and pulls third-party HomeKit accessories in as `homekitc` devices. This is the opposite direction to the `homekit` bridge (LSH devices → Apple Home). From there they work like any other LSH device. Loxone reads their state through `/api/loxone/inputs.xml?type=homekitc` (virtual HTTP inputs) and controls them through `/api/loxone/outputs.xml?type=homekitc` (virtual outputs). For push instead of polling, use `loxoneOut` mappings.
+
+Only HomeKit over IP (Wi-Fi/Ethernet) works. BLE and Thread accessories are not supported. A HomeKit accessory accepts one controller: **remove it from the Home app first** (or factory-reset it), then pair it with LSH:
+
+```bash
+node scripts/homekit-pair.js                       # list accessories, shows which are ready to pair
+node scripts/homekit-pair.js <id> <setup-code>     # pair (code from the label, 123-45-678)
+node scripts/homekit-pair.js --remove <id>         # unpair
+```
+
+Pairings are stored in `persist/homekit-controller.json`; restart LSH after pairing. Each accessory behind a paired bridge becomes its own device. Every readable characteristic becomes a sensor, and writable ones become controls: on/off and 0/1 states (lock target, active) become toggles, numbers become sliders, colour temperature is converted from mireds to Kelvin, and hue + saturation become one colour control that takes Loxone's composite RGB value. Values arrive by HAP event subscription, and `pollInterval` is a fallback. IP/port changes are followed via mDNS. These devices are never re-exposed through the LSH HomeKit bridge.
+
+For development without accessories, run `node scripts/homekit-accessory-simulator.js` (a fake bridge with a colour bulb, temperature/humidity sensor and lock; setup code `031-45-154`).
+
 ### EV chargers
 
 Five integrations register EV chargers as `category: 'ev-charger'` devices, each exposing the same sensor set — `power` (W), `energy` (kWh), `status`, a `charging` toggle (start/stop) and a `currentLimit` range (amps). Whatever chargers you have registered are auto-summed into a new EV node on the energy-flow diagram; no separate source-picker setup is needed.

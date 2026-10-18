@@ -93,6 +93,8 @@ module.exports = [
   { file: 'modbus-client', label: 'Modbus', when: (config) => config.modbus?.devices?.length },
   // Start Domatiq CAN bus bridge if configured (domatiq-loxone-bridge ESP32 gateway)
   { file: 'domatiq-client', label: 'Domatiq', when: (config) => config.domatiq?.host },
+  // HomeKit accessories pulled in (LSH as controller) — pairings from scripts/homekit-pair.js
+  { file: 'homekit-controller-client', label: 'HomeKitC', hint: 'npm install hap-controller', when: (config) => config.homekitController?.enabled },
   { file: 'homey-client', label: 'Homey', when: (config) => config.homey?.token && (config.homey?.host || config.homey?.homeyId) },
   // Victron devices over Bluetooth, read by the LSH host itself (Arduino UNO Q)
   { file: 'lsh-ble-client', label: 'LSH BLE', expose: 'lshBle', when: (config) => config.lshBle?.devices?.length },

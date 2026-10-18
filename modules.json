@@ -1175,6 +1175,19 @@
       ],
       "deps": {}
     },
+    "homekit-controller": {
+      "entry": "src/homekit-controller-client.js",
+      "configKeys": [
+        "homekitController"
+      ],
+      "when": "(config.homekitController?.enabled)",
+      "files": [
+        "src/homekit-controller-client.js"
+      ],
+      "deps": {
+        "hap-controller": "^0.10.2"
+      }
+    },
     "homey": {
       "entry": "src/homey-client.js",
       "configKeys": [
