@@ -11,9 +11,37 @@
 // ServerNode.create()/environment name, which matter.js uses as a
 // subdirectory under this one shared base path — so they don't collide on
 // disk despite sharing a base path.
+const fs = require('fs');
 const path = require('path');
 
-require('@matter/nodejs/config').config.defaultStoragePath = path.join(__dirname, '..', 'persist', 'matter');
+const STORAGE_DIR = path.join(__dirname, '..', 'persist', 'matter');
+
+// matter.js treats a lock as held while its pid is alive. After an unclean
+// shutdown + reboot that pid is often reused by an unrelated boot service
+// (seen: adbd on the UNO Q), which locks the bridge/controller out forever.
+// On Linux, drop locks whose owner isn't a node process. This runs before
+// this process takes any lock of its own.
+function clearForeignLocks() {
+  if (process.platform !== 'linux') return;
+  let dirs;
+  try { dirs = fs.readdirSync(STORAGE_DIR); } catch { return; }
+  for (const d of dirs) {
+    const lockPath = path.join(STORAGE_DIR, d, 'matter.lock');
+    const pidPath  = path.join(STORAGE_DIR, d, 'matter.pid');
+    if (!fs.existsSync(lockPath)) continue;
+    let pid;
+    try { pid = parseInt(fs.readFileSync(pidPath, 'utf8'), 10); } catch { continue; }
+    if (!pid || pid === process.pid) continue;
+    let cmd;
+    try { cmd = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8'); } catch { continue; } // gone — matter.js cleans it
+    if (/node/.test(cmd)) continue;
+    console.log(`[Matter] Clearing stale storage lock for ${d} (pid ${pid} is now ${cmd.split('\0')[0]})`);
+    try { fs.unlinkSync(lockPath); fs.unlinkSync(pidPath); } catch {}
+  }
+}
+clearForeignLocks();
+
+require('@matter/nodejs/config').config.defaultStoragePath = STORAGE_DIR;
 
 const { Logger, LogLevel } = require('@matter/main');
 // matter.js's own logger is very chatty at its default DEBUG level and
