@@ -2499,7 +2499,8 @@ Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standa
     { "name": "dom", "host": "192.168.1.108", "username": "lsh", "password": "secret",
       "port": 80, "https": false, "rtspPort": 554, "stream": "main", "events": true }
   ],
-  "holdSeconds": 10, "pollSeconds": 60
+  "holdSeconds": 10, "pollSeconds": 60,
+  "mjpeg": { "fps": 10, "width": 640, "stream": "sub" }
 }
 ```
 
@@ -2507,7 +2508,8 @@ Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standa
 
 - **Cameras** — every *connected* channel of an NVR (unused inputs are skipped; set `channels: [1, 3]` to pick) becomes a camera tile named after the channel title. Snapshots are proxied at `/api/dahua/snapshot/<device>/<channel>` so the password never reaches the browser; the RTSP URL is `rtsp://user:pass@host:554/cam/realmonitor?channel=<n>&subtype=0` (`stream: "sub"` → `subtype=1`) for go2rtc / HomeKit / recording. `webrtcUrls: { "1": "http://go2rtc:1984/api/webrtc?src=brama" }` adds live view per channel.
 - **Events** — LSH keeps the NVR's `eventManager.cgi?action=attach` stream open (heartbeat every 5 s, reconnects with backoff). Each channel is a device `dahua/<device>/<channel>` with `motion` (VideoMotion start/stop, HomeKit motion sensor) and `online` (NVR channel state, VideoLoss). **Person / Vehicle** (SmartMotionHuman / SmartMotionVehicle, or the object type of an IVS rule) and **Line crossing / Intrusion** (CrossLineDetection / CrossRegionDetection) each become their own device `dahua/<device>/<channel>/<kind>` with `detected` the first time the NVR reports one — a separate HomeKit motion sensor each, like Reolink's AI categories. Pulse-type events stay on for `holdSeconds`. `events: false` turns the stream off.
-- `GET /api/dahua/status` — per device: reachable, model, event stream up, channels.
+- **Loxone app** — it shows only JPEG / MJPEG, not RTSP. Per channel LSH serves **live MJPEG** at `/api/dahua/mjpeg/<device>/<channel>?token=<API token>`: ffmpeg converts the NVR's sub-stream (`mjpeg.stream`, default `sub`) to `mjpeg.fps` (default 10) at `mjpeg.width` (default 640 px) — started by the first viewer, one ffmpeg per channel shared by every viewer, stopped 10 s after the last one leaves; `?fps=` / `?width=` override per URL. **Snapshots** take `?width=` to scale the NVR's 4K still down. In Loxone Config add an **Intercom (custom)** block per camera with the live address as the video stream and the snapshot as the image; Settings → Dahua lists both addresses for every camera. Needs `ffmpeg` (`ffmpegRtsp.ffmpegPath` if it's not on the PATH). Load: about 5–8 % of a Raspberry Pi 5 core per watched camera at 640 px / 10 fps.
+- `GET /api/dahua/status` — per device: reachable, model, event stream up, channels with their Loxone addresses, MJPEG viewers.
 
 Test without hardware: `node scripts/dahua-simulator.js 8096` (login `admin` / `admin123`, type events such as `CrossLineDetection Pulse 1 Human`) and add host `127.0.0.1`, port `8096`. `test/dahua.test.js`.
 

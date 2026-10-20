@@ -6,6 +6,18 @@ const EventEmitter = require('events');
 const SensorRegistry = require('../src/sensor-registry');
 const DahuaClient = require('../src/dahua-client');
 const { startSimulator } = require('../scripts/dahua-simulator');
+const { execSync, execFileSync } = require('child_process');
+
+const hasFfmpeg = (() => { try { execSync('ffmpeg -version', { stdio: 'ignore' }); return true } catch { return false } })();
+
+// Fake Express response for the proxy / MJPEG handlers
+const fakeRes = () => {
+  const r = { code: 200, headers: {}, body: null };
+  r.status = (c) => { r.code = c; return r };
+  r.setHeader = (k, v) => { r.headers[k.toLowerCase()] = v };
+  r.done = new Promise((resolve) => { r.end = (b) => { r.body = b; resolve(r) } });
+  return r;
+};
 
 const fakeStore = () => Object.assign(new EventEmitter(), {
   values: {}, update(k, v) { this.values[k] = v; this.emit('change', { key: k, value: v }) }, set(k, v) { this.update(k, v) },
@@ -97,4 +109,31 @@ test('Dahua: event parsing', () => {
   const { parts, rest } = splitParts(Buffer.from(`--b\r\nContent-Length: ${body.length}\r\n\r\n${body}\r\n--b\r\nContent-Length: 30\r\n\r\nCode=B;act`), 'b');
   assert.deepEqual(parts, [body], 'complete part taken without waiting for the next boundary');
   assert.match(rest.toString(), /Code=B/);
+});
+
+test('Dahua: scaled snapshots and Loxone addresses', { skip: !hasFfmpeg && 'ffmpeg not installed' }, async () => {
+  const sim = await startSimulator({ port: 0 });
+  sim.jpeg = execFileSync('ffmpeg', ['-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=1920x1080', '-frames:v', '1', '-f', 'image2', 'pipe:1']);
+  const store = fakeStore(), registry = new SensorRegistry(store, 'en');
+  const c = new DahuaClient({ dahua: { devices: [{ host: '127.0.0.1', port: sim.port, username: 'admin', password: 'admin123', events: false }] } }, store, registry);
+  try {
+    await c.start();
+    const res = fakeRes();
+    c.proxySnapshot(0, 1, res, { width: '320' });
+    await res.done;
+    assert.equal(res.headers['content-type'], 'image/jpeg');
+    const probe = execFileSync('ffprobe', ['-loglevel', 'error', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', '-i', 'pipe:0'], { input: res.body }).toString().trim();
+    assert.equal(probe, '320,180', 'scaled from 1920x1080 keeping the aspect ratio');
+
+    const missing = fakeRes();
+    c.serveMjpeg(0, 4, { query: {} }, missing);
+    assert.equal(missing.code, 404, 'unused channel has no stream');
+
+    const ch = c.status()[0].channels[0];
+    assert.equal(ch.mjpeg, '/api/dahua/mjpeg/0/1');
+    assert.equal(ch.snapshot, '/api/dahua/snapshot/0/1?width=640');
+  } finally {
+    c.stop();
+    await sim.close();
+  }
 });

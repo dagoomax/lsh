@@ -24,6 +24,7 @@ function startSimulator({ port = 8096, username = 'admin', password = 'admin123'
       { name: 'Garaż', connected: true },
       { name: 'Kanał 4', connected: false },
     ],
+    jpeg: null, // a real JPEG to serve as every snapshot (tests set one)
     calls: [],
     streams: new Set(),
     event(code, action, index, objectType) {
@@ -66,7 +67,7 @@ function startSimulator({ port = 8096, username = 'admin', password = 'admin123'
       const ch = Number(u.searchParams.get('channel'));
       if (!sim.channels[ch - 1]?.connected) { res.writeHead(500); return res.end('Error') }
       res.writeHead(200, { 'Content-Type': 'image/jpeg' });
-      return res.end(Buffer.from([0xff, 0xd8, 0xff, 0xe0, ch, 0xff, 0xd9]));
+      return res.end(sim.jpeg || Buffer.from([0xff, 0xd8, 0xff, 0xe0, ch, 0xff, 0xd9]));
     }
     if (u.pathname === '/cgi-bin/eventManager.cgi' && action === 'attach') {
       res.writeHead(200, { 'Content-Type': 'multipart/x-mixed-replace; boundary=myboundary' });

@@ -10,7 +10,14 @@ module.exports = function register(router, ctx) {
   // Snapshot proxy — keeps the NVR password server-side
   router.get('/dahua/snapshot/:idx/:ch', (req, res) => {
     if (!clients.dahua) return res.status(503).end();
-    clients.dahua.proxySnapshot(req.params.idx, req.params.ch, res);
+    clients.dahua.proxySnapshot(req.params.idx, req.params.ch, res, req.query);
+  });
+
+  // Live MJPEG (ffmpeg from the sub-stream while someone watches) — for the
+  // Loxone app's Intercom / Camera block: /api/dahua/mjpeg/0/1?token=<API token>
+  router.get('/dahua/mjpeg/:idx/:ch', (req, res) => {
+    if (!clients.dahua) return res.status(503).end();
+    clients.dahua.serveMjpeg(req.params.idx, req.params.ch, req, res);
   });
 
   router.get('/dahua/status', (req, res) => {

@@ -19,11 +19,19 @@
 // their own devices (dahua/<nvr>/<ch>/<kind>, one HomeKit motion sensor each)
 // the first time the NVR reports one — same as Reolink's AI categories.
 //
+// For the Loxone app (JPEG / MJPEG only, no H.264): live MJPEG per channel at
+// /api/dahua/mjpeg/<nvr>/<ch> — ffmpeg converts the sub-stream only while
+// someone watches, one ffmpeg per channel shared by all viewers
+// (src/mjpeg-relay.js) — and snapshots scaled down with ?width=.
+//
 // config.dahua = { devices: [{ name, host, port?, https?, username, password,
 //                  rtspPort?: 554, stream?: 'main'|'sub', channels?: [1,2,…],
-//                  events?: true }], holdSeconds: 10, pollSeconds: 60 }
+//                  events?: true }], holdSeconds: 10, pollSeconds: 60,
+//                  mjpeg: { fps: 10, width: 640, stream: 'sub' } }
 
+const { spawn }      = require('child_process');
 const digest         = require('./http-digest');
+const MjpegRelay     = require('./mjpeg-relay');
 const platformStatus = require('./platform-status');
 
 const EVENT_RETRY_MS = [5000, 15000, 60000];
@@ -90,11 +98,11 @@ function splitParts(buf, boundary) {
   return { parts, rest: buf.subarray(pos) };
 }
 
-function buildRtspUrl(dev, ch) {
+function buildRtspUrl(dev, ch, stream = dev.stream) {
   const auth = (dev.username || dev.password)
     ? `${encodeURIComponent(dev.username || '')}:${encodeURIComponent(dev.password || '')}@`
     : '';
-  const subtype = dev.stream === 'sub' ? 1 : 0;
+  const subtype = stream === 'sub' ? 1 : 0;
   return `rtsp://${auth}${dev.host}:${Number(dev.rtspPort) || 554}/cam/realmonitor?channel=${ch}&subtype=${subtype}`;
 }
 
@@ -129,6 +137,27 @@ async function cameraState(dev) {
   return out;
 }
 
+const clamp = (v, lo, hi, def) => { const n = parseInt(v, 10); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def };
+
+// JPEG → JPEG at most `width` px wide (Loxone on a phone doesn't need 4K stills)
+function scaleJpeg(buffer, width, ffmpegPath = 'ffmpeg') {
+  return new Promise((resolve, reject) => {
+    const p = spawn(ffmpegPath, ['-loglevel', 'error', '-f', 'image2pipe', '-i', 'pipe:0',
+      '-vf', `scale='min(${width},iw)':-2`, '-q:v', '4', '-f', 'image2', 'pipe:1'], { stdio: ['pipe', 'pipe', 'ignore'] });
+    const out = [];
+    const t = setTimeout(() => { p.kill('SIGKILL'); reject(new Error('ffmpeg timeout')) }, 10000);
+    p.stdout.on('data', (c) => out.push(c));
+    p.on('error', (e) => { clearTimeout(t); reject(e) });
+    p.on('close', (code) => {
+      clearTimeout(t);
+      const b = Buffer.concat(out);
+      code === 0 && b.length ? resolve(b) : reject(new Error(`ffmpeg exited ${code}`));
+    });
+    p.stdin.on('error', () => {});
+    p.stdin.end(buffer);
+  });
+}
+
 async function fetchSnapshot(dev, ch) {
   const r = await digest.request(dev, `/cgi-bin/snapshot.cgi?channel=${Number(ch) || 1}`, { timeout: 10000 });
   return { buffer: r.buffer, contentType: r.headers['content-type'] || 'image/jpeg' };
@@ -142,6 +171,13 @@ class DahuaClient {
     this.devices   = (cfg.devices || []).filter((d) => d && d.host).map((d) => ({ ...d, host: String(d.host).trim() }));
     this.hold      = Math.max(2, Number(cfg.holdSeconds) || 10) * 1000;
     this.pollMs    = Math.max(15, Number(cfg.pollSeconds) || 60) * 1000;
+    this.mjpeg     = {
+      fps:    clamp(cfg.mjpeg?.fps, 1, 25, 10),
+      width:  clamp(cfg.mjpeg?.width, 160, 1920, 640),
+      stream: cfg.mjpeg?.stream === 'main' ? 'main' : 'sub',
+    };
+    this.ffmpegPath = config.ffmpegRtsp?.ffmpegPath || 'ffmpeg';
+    this.relay     = new MjpegRelay({ ffmpegPath: this.ffmpegPath, label: 'Dahua' });
     this.nvrs      = this.devices.map(() => ({ ok: false, model: '', channels: [], kinds: new Set() }));
     this._timers   = new Map(); // deviceKey → clear timer for pulse detections
     this._streams  = [];
@@ -161,6 +197,7 @@ class DahuaClient {
     clearInterval(this._poll);
     for (const t of this._timers.values()) clearTimeout(t);
     for (const s of this._streams) s?.destroy?.();
+    this.relay.stop();
   }
 
   _key(i, ch, kind) { return `dahua/${i}/${ch}${kind ? '/' + kind : ''}` }
@@ -346,10 +383,18 @@ class DahuaClient {
     return out;
   }
 
-  proxySnapshot(i, ch, res) {
+  _channel(i, ch) {
     const dev = this.devices[Number(i)];
-    if (!dev || !this.nvrs[Number(i)].channels.some((c) => c.ch === Number(ch))) return res.status(404).end();
+    return dev && this.nvrs[Number(i)].channels.some((c) => c.ch === Number(ch)) ? dev : null;
+  }
+
+  // ?width= scales the NVR's (often 4K) snapshot down
+  proxySnapshot(i, ch, res, query = {}) {
+    const dev = this._channel(i, ch);
+    if (!dev) return res.status(404).end();
+    const width = query.width ? clamp(query.width, 160, 3840, 640) : 0;
     fetchSnapshot(dev, ch)
+      .then(async (snap) => (width ? { buffer: await scaleJpeg(snap.buffer, width, this.ffmpegPath), contentType: 'image/jpeg' } : snap))
       .then(({ buffer, contentType }) => {
         res.setHeader('Content-Type', contentType);
         res.setHeader('Cache-Control', 'no-cache');
@@ -358,15 +403,28 @@ class DahuaClient {
       .catch(() => res.status(502).end());
   }
 
+  // Live MJPEG for the Loxone app. ?fps=1..25&width=160..1920 override the defaults.
+  serveMjpeg(i, ch, req, res) {
+    const dev = this._channel(i, ch);
+    if (!dev) return res.status(404).end();
+    const fps = clamp(req.query?.fps, 1, 25, this.mjpeg.fps);
+    const width = clamp(req.query?.width, 160, 1920, this.mjpeg.width);
+    this.relay.serve(`${i}/${ch}@${fps}/${width}`, buildRtspUrl(dev, Number(ch), this.mjpeg.stream), { fps, width }, req, res);
+  }
+
   status() {
     return this.devices.map((dev, i) => ({
       name: dev.name || dev.host, host: dev.host, ok: this.nvrs[i].ok, model: this.nvrs[i].model,
-      events: !!this._streams[i], channels: this.nvrs[i].channels,
+      events: !!this._streams[i],
+      channels: this.nvrs[i].channels.map((c) => ({
+        ...c, snapshot: `/api/dahua/snapshot/${i}/${c.ch}?width=${this.mjpeg.width}`, mjpeg: `/api/dahua/mjpeg/${i}/${c.ch}`,
+      })),
+      viewers: this.relay.viewers().filter((v) => v.key.startsWith(`${i}/`)),
     }));
   }
 }
 
 DahuaClient.probe = probe;
 DahuaClient.fetchSnapshot = fetchSnapshot;
-DahuaClient._test = { parseKv, parseEvent, splitParts, buildRtspUrl };
+DahuaClient._test = { parseKv, parseEvent, splitParts, buildRtspUrl, scaleJpeg };
 module.exports = DahuaClient;

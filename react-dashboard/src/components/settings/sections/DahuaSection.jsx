@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SettingsCard, ListEditor, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { CameraIcon } from '../../Icons'
@@ -22,6 +22,12 @@ export default function DahuaSection({ config, reload }) {
   const save = useSettingsSave('/api/settings/dahua')
   const test = useSettingsSave('/api/settings/test-dahua')
   const [testingIdx, setTestingIdx] = useState(null)
+  const [nvrs, setNvrs] = useState([])
+  useEffect(() => {
+    fetch('/api/dahua/status').then(r => r.json()).then(j => setNvrs(j.success ? j.data : [])).catch(() => setNvrs([]))
+  }, [])
+  const cams = nvrs.flatMap(n => n.channels.map(c => ({ ...c, nvr: n.name })))
+  const full = (path) => `http://${window.location.host}${path}${path.includes('?') ? '&' : '?'}token=<API token>`
 
   return (
     <SettingsCard icon={CameraIcon} title={gt('s.dahua_title', 'Dahua NVR & Cameras')} badge={{ label: gt('common.optional', 'Optional') }}
@@ -37,6 +43,25 @@ export default function DahuaSection({ config, reload }) {
         <Button variant="primary" busy={save.busy} onClick={() => save.save({ devices }).then(reload)}>{gt('common.save', 'Save')}</Button>
         <ResultBanner result={save.result || test.result}/>
       </div>
+      {cams.length > 0 && (
+        <>
+          <label style={{ marginTop: 12 }}>{tr('For the Loxone app')}</label>
+          <p className="stg-hint" style={{ margin: '0 0 8px' }}>{tr('The Loxone app shows only JPEG or MJPEG. In Loxone Config add an Intercom (custom) block per camera: the live address as the video stream, the snapshot as the image. LSH converts the low-resolution stream only while someone watches. Replace the token placeholder with an API token.')}</p>
+          <div className="lox-media">
+            {cams.map(c => (
+              <div key={c.mjpeg} className="lox-media-row">
+                <img src={c.snapshot.replace(/width=\d+/, 'width=160')} alt="" width="64" height="36" style={{ borderRadius: 4, flex: 'none', objectFit: 'cover' }} />
+                <div className="lox-media-main">
+                  <b>{c.name}</b>
+                  <small>{tr('Live')}: <code>{full(c.mjpeg)}</code></small>
+                  <small>{tr('Snapshot')}: <code>{full(c.snapshot)}</code></small>
+                </div>
+                <button type="button" className="lox-media-btn" onClick={() => navigator.clipboard?.writeText(full(c.mjpeg))} title={tr('Copy')}>⧉</button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </SettingsCard>
   )
 }

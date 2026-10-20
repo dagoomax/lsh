@@ -850,7 +850,8 @@
       "when": "(config.dahua?.devices?.length)",
       "files": [
         "src/dahua-client.js",
-        "src/http-digest.js"
+        "src/http-digest.js",
+        "src/mjpeg-relay.js"
       ],
       "deps": {}
     },
