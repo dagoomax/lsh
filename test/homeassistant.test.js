@@ -163,3 +163,39 @@ test('Home Assistant export: MQTT Discovery configs, states and commands', async
   c.stop();
   assert.ok(published.some((p) => p.topic === 'lsh/lsh/status' && p.payload === 'offline'));
 });
+
+test('Home Assistant import: names and rooms from the device / entity / area registries, live renames', async () => {
+  const sim = await startSimulator({ port: 0 });
+  const store = fakeStore();
+  const registry = Object.assign(new EventEmitter(), fakeRegistry(), { overrides: {} });
+  registry.registerDevice = (d) => registry.devices.set(d.key, d);
+  const c = new HomeAssistantClient({ homeassistant: { url: `http://127.0.0.1:${sim.port}`, token: 'sim-token' } }, store, registry);
+  try {
+    await c.start();
+    await until(() => c.status.import.connected);
+    const cover = registry.devices.get('ha/cover.roller_shutter_3');
+    const power = registry.devices.get('ha/sensor.roller_shutter_3_electric_consumption_w');
+    assert.equal(cover.label, 'Roleta Jadalnia', 'main entity: the device name the user gave it');
+    assert.equal(power.label, 'Roleta Jadalnia Electric consumption [W]', 'device name + entity name');
+    assert.equal(power.sensors[0].label, 'Roleta Jadalnia Electric consumption [W]');
+    assert.equal(cover.room, 'Jadalnia', 'room from the device area');
+    assert.equal(registry.devices.get('ha/light.kitchen').label, 'Kitchen light', 'no registry device: friendly_name');
+    assert.equal(c.available.find((a) => a.entity_id === 'cover.roller_shutter_3').name, 'Roleta Jadalnia');
+
+    // A name set in LSH wins over HA's
+    registry.overrides['ha/sensor.roller_shutter_3_electric_consumption_w'] = { label: 'Pobór rolety' };
+    power.label = 'Pobór rolety';
+
+    let changed = 0;
+    registry.on('devices-changed', () => changed++);
+    sim.renameDevice('dev_roller', { name_by_user: 'Roleta Salon', area_id: 'salon' });
+    await until(() => cover.label === 'Roleta Salon', 5000);
+    assert.equal(cover.room, 'Salon');
+    assert.equal(power.label, 'Pobór rolety', 'user label in LSH kept');
+    assert.equal(power._origLabel, 'Roleta Salon Electric consumption [W]');
+    assert.ok(changed >= 1, 'dashboard told about the change');
+  } finally {
+    c.stop?.();
+    await sim.close();
+  }
+});
