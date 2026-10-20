@@ -54,6 +54,7 @@
     "src/routes/cameras.js",
     "src/routes/claude-code.js",
     "src/routes/css-themes.js",
+    "src/routes/dahua.js",
     "src/routes/device-customization.js",
     "src/routes/devices.js",
     "src/routes/domatiq.js",
@@ -840,6 +841,18 @@
       "deps": {
         "ecovacs-deebot": "^0.9.5"
       }
+    },
+    "dahua": {
+      "entry": "src/dahua-client.js",
+      "configKeys": [
+        "dahua"
+      ],
+      "when": "(config.dahua?.devices?.length)",
+      "files": [
+        "src/dahua-client.js",
+        "src/http-digest.js"
+      ],
+      "deps": {}
     },
     "waveshare-modbus": {
       "entry": "src/waveshare-modbus-client.js",

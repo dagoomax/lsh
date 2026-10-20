@@ -69,6 +69,7 @@ module.exports = function register(router, ctx) {
     if (Array.isArray(safe.reolink?.cameras)) safe.reolink.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.mobotix?.cameras)) safe.mobotix.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.axis?.cameras)) safe.axis.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
+    if (Array.isArray(safe.dahua?.devices)) safe.dahua.devices.forEach((d) => { if (d.password) d.password = '••••••••'; });
     if (Array.isArray(safe.tedee?.devices)) safe.tedee.devices.forEach((d) => { if (d.apiToken) d.apiToken = '••••••••'; });
     if (safe.yale?.password)        safe.yale.password        = '••••••••';
     if (Array.isArray(safe.cameras)) safe.cameras.forEach((c) => { if (c.onvif?.password) c.onvif.password = '••••••••'; });

@@ -2491,6 +2491,30 @@ Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standa
 
 ---
 
+### `dahua`
+
+```json
+"dahua": {
+  "devices": [
+    { "name": "dom", "host": "192.168.1.108", "username": "lsh", "password": "secret",
+      "port": 80, "https": false, "rtspPort": 554, "stream": "main", "events": true }
+  ],
+  "holdSeconds": 10, "pollSeconds": 60
+}
+```
+
+**Dahua NVRs and IP cameras** (and the OEM lines built on the same firmware: Imou, Amcrest, Lorex, …) over the local HTTP CGI API with HTTP Digest auth (`src/dahua-client.js`, no npm deps). Settings → Cameras → **Dahua NVR & Cameras**; **Test** shows the model and the connected channels. Create a separate user on the NVR for LSH.
+
+- **Cameras** — every *connected* channel of an NVR (unused inputs are skipped; set `channels: [1, 3]` to pick) becomes a camera tile named after the channel title. Snapshots are proxied at `/api/dahua/snapshot/<device>/<channel>` so the password never reaches the browser; the RTSP URL is `rtsp://user:pass@host:554/cam/realmonitor?channel=<n>&subtype=0` (`stream: "sub"` → `subtype=1`) for go2rtc / HomeKit / recording. `webrtcUrls: { "1": "http://go2rtc:1984/api/webrtc?src=brama" }` adds live view per channel.
+- **Events** — LSH keeps the NVR's `eventManager.cgi?action=attach` stream open (heartbeat every 5 s, reconnects with backoff). Each channel is a device `dahua/<device>/<channel>` with `motion` (VideoMotion start/stop, HomeKit motion sensor) and `online` (NVR channel state, VideoLoss). **Person / Vehicle** (SmartMotionHuman / SmartMotionVehicle, or the object type of an IVS rule) and **Line crossing / Intrusion** (CrossLineDetection / CrossRegionDetection) each become their own device `dahua/<device>/<channel>/<kind>` with `detected` the first time the NVR reports one — a separate HomeKit motion sensor each, like Reolink's AI categories. Pulse-type events stay on for `holdSeconds`. `events: false` turns the stream off.
+- `GET /api/dahua/status` — per device: reachable, model, event stream up, channels.
+
+Test without hardware: `node scripts/dahua-simulator.js 8096` (login `admin` / `admin123`, type events such as `CrossLineDetection Pulse 1 Human`) and add host `127.0.0.1`, port `8096`. `test/dahua.test.js`.
+
+**Not implemented**: PTZ, playback / recordings search, two-way audio, alarm outputs.
+
+---
+
 ### `objectDetection`
 
 ```json

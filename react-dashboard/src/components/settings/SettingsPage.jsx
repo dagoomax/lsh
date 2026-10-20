@@ -14,6 +14,7 @@ import KarcherSection from './sections/KarcherSection'
 import EcovacsSection from './sections/EcovacsSection'
 import MobotixSection from './sections/MobotixSection'
 import AxisSection from './sections/AxisSection'
+import DahuaSection from './sections/DahuaSection'
 import YaleSection from './sections/YaleSection'
 import AeotecSection from './sections/AeotecSection'
 import AiDetectionSection from './sections/AiDetectionSection'
@@ -84,6 +85,7 @@ const SECTION_COMPONENTS = {
   ecovacs: EcovacsSection,
   mobotix: MobotixSection,
   axis: AxisSection,
+  dahua: DahuaSection,
   yale: YaleSection,
   aeotec: AeotecSection,
   aidetect: AiDetectionSection,

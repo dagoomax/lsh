@@ -55,6 +55,7 @@ export const CATEGORIES = [
     { id: 'ezviz', title: 'EZVIZ', keywords: ['ezviz', 'hikvision', 'camera', 'doorbell', 'kamera', 'dzwonek'] },
     { id: 'mobotix', title: 'MOBOTIX', keywords: ['mobotix'] },
     { id: 'axis', title: 'Axis (VAPIX)', keywords: ['axis', 'vapix'] },
+    { id: 'dahua', title: 'Dahua NVR & Cameras', keywords: ['dahua', 'nvr', 'dvr', 'imou', 'amcrest', 'lorex', 'dmss', 'rejestrator', 'kamera'] },
     { id: 'yale', title: 'Yale Doorbell Cameras', keywords: ['yale', 'doorbell', 'august'] },
     { id: 'aeotec', title: 'Aeotec 360', keywords: ['aeotec', '360'] },
     { id: 'aidetect', title: 'AI Camera Detection', keywords: ['ai', 'detection', 'person', 'object', 'yolo', 'motion'] },

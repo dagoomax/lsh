@@ -52,6 +52,8 @@ module.exports = [
   { file: 'karcher-client', label: 'Karcher', expose: 'karcher', when: (config) => config.karcher?.email },
   // Ecovacs Deebot / yeedi robot vacuums — cloud-only, see src/ecovacs-client.js
   { file: 'ecovacs-client', label: 'Ecovacs', when: (config) => config.ecovacs?.email },
+  // Dahua NVRs / IP cameras — local CGI API; exposed for /api/cameras and /api/dahua/*
+  { file: 'dahua-client', label: 'Dahua', expose: 'dahua', when: (config) => config.dahua?.devices?.length },
   { file: 'waveshare-modbus-client', label: 'Waveshare', when: (config) => config.waveshare?.devices?.length },
   // Start Tedee Bridge client if configured — local REST API, no cloud
   { file: 'tedee-client', label: 'Tedee', when: (config) => config.tedee?.devices?.length },
