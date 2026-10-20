@@ -6,6 +6,9 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- **Yale: no more login hammering** — a rejected login (bad password, missing verification or token) now backs off 5 min, doubling up to 6 h, instead of retrying every poll (≈120 failed logins an hour, which risks an account lock); a successful login resets it.
+
 ### Added
 - **Home Assistant import: real names and rooms** — labels are built from HA's device / entity / area registries (device name you gave in HA + entity name, or the entity name you set), so Z-Wave entities no longer arrive as bare "Status" / "Battery level"; HA areas become LSH rooms. Renames and area changes in HA apply live (`*_registry_updated` events); names / rooms set in LSH win.
 - **Dahua cameras in the Loxone app** — live MJPEG per channel (`/api/dahua/mjpeg/<nvr>/<ch>`, ffmpeg from the sub-stream only while someone watches, one process per channel shared by all viewers — `src/mjpeg-relay.js`) and snapshots scaled with `?width=`. Settings → Dahua lists the live and snapshot address of every camera for Loxone's Intercom (custom) block. `test/mjpeg-relay.test.js`.
