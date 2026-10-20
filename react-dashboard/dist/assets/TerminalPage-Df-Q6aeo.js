@@ -1,4 +1,4 @@
-import{r as Ye,a6 as Yr,j as Y,y as jr}from"./index-RvqyxjAl.js";/* empty css                 *//**
+import{r as Ye,a6 as Yr,j as Y,y as jr}from"./index-RTonj-1i.js";/* empty css                 *//**
  * Copyright (c) 2014-2024 The xterm.js authors. All rights reserved.
  * @license MIT
  *

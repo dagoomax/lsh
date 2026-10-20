@@ -23,6 +23,7 @@
     "src/manuals.js",
     "src/mcp-bots.js",
     "src/media-spectrum.js",
+    "src/microcontroller-index-client.js",
     "src/mobotix-client.js",
     "src/mongo.js",
     "src/motion-log.js",
@@ -825,6 +826,19 @@
       ],
       "deps": {
         "jpeg-js": "^0.4.4"
+      }
+    },
+    "ecovacs": {
+      "entry": "src/ecovacs-client.js",
+      "configKeys": [
+        "ecovacs"
+      ],
+      "when": "(config.ecovacs?.email)",
+      "files": [
+        "src/ecovacs-client.js"
+      ],
+      "deps": {
+        "ecovacs-deebot": "^0.9.5"
       }
     },
     "waveshare-modbus": {

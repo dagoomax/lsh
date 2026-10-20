@@ -89,6 +89,7 @@ module.exports = function register(router, ctx) {
     }
     if (safe.roborock?.cloud?.password) safe.roborock.cloud.password = '••••••••';
     if (safe.karcher?.password) safe.karcher.password = '••••••••';
+    if (safe.ecovacs?.password) safe.ecovacs.password = '••••••••';
     if (safe.landroid?.password) safe.landroid.password = '••••••••';
     if (safe.sony?.psk) safe.sony.psk = '••••••••';
     if (safe.ezviz?.password) safe.ezviz.password = '••••••••';

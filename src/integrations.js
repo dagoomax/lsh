@@ -50,6 +50,8 @@ module.exports = [
   // Kärcher Home Robots (RCV5/RCV3/RCF5) — cloud-only, see src/karcher-client.js
   // exposed for /api/karcher/* (map), /api/cameras and the HomeKit bridge
   { file: 'karcher-client', label: 'Karcher', expose: 'karcher', when: (config) => config.karcher?.email },
+  // Ecovacs Deebot / yeedi robot vacuums — cloud-only, see src/ecovacs-client.js
+  { file: 'ecovacs-client', label: 'Ecovacs', when: (config) => config.ecovacs?.email },
   { file: 'waveshare-modbus-client', label: 'Waveshare', when: (config) => config.waveshare?.devices?.length },
   // Start Tedee Bridge client if configured — local REST API, no cloud
   { file: 'tedee-client', label: 'Tedee', when: (config) => config.tedee?.devices?.length },

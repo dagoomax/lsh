@@ -11,6 +11,7 @@ import SmartHomeSection from './sections/SmartHomeSection'
 import RoborockSection from './sections/RoborockSection'
 import DreameSection from './sections/DreameSection'
 import KarcherSection from './sections/KarcherSection'
+import EcovacsSection from './sections/EcovacsSection'
 import MobotixSection from './sections/MobotixSection'
 import AxisSection from './sections/AxisSection'
 import YaleSection from './sections/YaleSection'
@@ -80,6 +81,7 @@ const SECTION_COMPONENTS = {
   roborock: RoborockSection,
   dreame: DreameSection,
   karcher: KarcherSection,
+  ecovacs: EcovacsSection,
   mobotix: MobotixSection,
   axis: AxisSection,
   yale: YaleSection,

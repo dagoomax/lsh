@@ -36,6 +36,7 @@ export const CATEGORIES = [
     { id: 'roborock', title: 'Roborock', keywords: ['roborock', 'vacuum', 'xiaomi'] },
     { id: 'dreame', title: 'Dreame', keywords: ['dreame', 'vacuum', 'mower'] },
     { id: 'karcher', title: 'Kärcher Home Robots', keywords: ['karcher', 'kärcher', 'vacuum'] },
+    { id: 'ecovacs', title: 'Ecovacs Deebot', keywords: ['ecovacs', 'deebot', 'yeedi', 'vacuum', 'odkurzacz'] },
   ] },
   { id: 'lighting', label: 'Lighting & Switches', sections: [
     { id: 'shelly', title: 'Shelly', keywords: ['shelly', 'relay', 'dimmer'] },

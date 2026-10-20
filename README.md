@@ -2084,6 +2084,31 @@ Exposed to HomeKit the same way as Roborock above (`Fanv2` impersonation).
 
 ---
 
+### `ecovacs`
+
+```json
+"ecovacs": {
+  "email": "you@example.com",
+  "password": "",
+  "country": "PL",
+  "did": "",
+  "pollSeconds": 60
+}
+```
+
+Connects **Ecovacs Deebot** robot vacuums (and yeedi) — the same account as the Ecovacs Home app, cloud only (Ecovacs has no local API). Built on the [`ecovacs-deebot`](https://github.com/mrbungle64/ecovacs-deebot.js) library (npm dep, installed with the module; GPL-3.0), which handles the portal login and the per-robot MQTT session (XMPP for legacy models). Current JSON-protocol models (OZMO 920/950, T8, T9, T10, X1, N8, U2) are the best supported.
+
+- `email` / `password` — Ecovacs Home account. Settings → Appliances & Robots → **Ecovacs Deebot** has a Test Login button that lists the robots with their ids.
+- `country` — two-letter code of the country the account was registered in (default `PL`); it picks the Ecovacs region.
+- `did` — optional, limit to one robot on a multi-robot account.
+- `pollSeconds` — battery / clean / charge state is pushed by the robot and also re-requested this often (default 60, min 30).
+
+Each robot is a device `ecovacs/<did>`: `battery` (%), `status` (Cleaning / Returning / Charging / Paused / Idle / Error), `cleaning` (toggle — on starts an auto clean, off sends it to the dock; HomeKit switch), `error` (text, empty when fine), `charging`, `online`. `POST /api/device/ecovacs/<did>/command` also takes `stop`, `pause`, `resume` and `locate` through `_writeCapability`. A stable client id is kept in `persist/ecovacs.json`; a failed login is retried every 60 s.
+
+**Not implemented**: rooms / spot areas, maps, suction and water level, consumables.
+
+---
+
 ### `landroid`
 
 ```json
