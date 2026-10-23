@@ -6,6 +6,7 @@ import { EDIT_EMOJI } from '../emoji'
 import { useHistoryPoints, smoothPath } from '../historyChart'
 import { acView, AC_PATHS } from '../acModel'
 import AcPanel from './AcPanel'
+import { HKSlider, HKSwitch, HKRound, HKPresets, Glyph, sensorGlyph } from './HKControls'
 
 // ── Advanced device popup: full controls + history graphs ──────────────────
 // Design language: flat Homey sheet — big hero state, grouped control rows,
@@ -380,26 +381,6 @@ export function Chart({ deviceKey, sensor, accent = '#0a84ff', height = 190 }) {
 }
 
 // ── Controls ────────────────────────────────────────────────────────────────
-
-function BigToggle({ on, onChange }) {
-  // Home-Assistant-style large toggle: a big pill with a power glyph on the thumb.
-  const W = 116, H = 58, T = 48, pad = (H - T) / 2
-  return (
-    <button role="switch" aria-checked={on} onClick={() => onChange(!on)} style={{
-      width: W, height: H, borderRadius: 999, border: 'none', cursor: 'pointer', position: 'relative', padding: 0,
-      background: on ? 'var(--green)' : 'var(--white-18)',
-      transition: 'background .25s ease', flexShrink: 0,
-    }}>
-      <span style={{
-        position: 'absolute', top: pad, left: on ? (W - T - pad) : pad, width: T, height: T, borderRadius: '50%',
-        background: '#fff', boxShadow: '0 3px 8px rgba(0,0,0,0.15), 0 3px 1px rgba(0,0,0,0.06)',
-        transition: 'left .28s cubic-bezier(.34,1.4,.64,1)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: on ? 'var(--green)' : '#8e8e93', fontSize: 22, fontWeight: 700,
-      }}>⏻</span>
-    </button>
-  )
-}
 
 // Homey-style dimmer, laid horizontally: a wide rounded track with a white
 // inset block that grows from the left, "min" (empty circle) and "max"
@@ -841,6 +822,40 @@ function HeroState({ device, val, accent }) {
   )
 }
 
+// Split a device's controls into the HomeKit popup layout:
+//   items — up to 3 tall pills on the centred stage. Sliders win (brightness,
+//           colour temp, volume, position); a device with no sliders stages
+//           its on/off switches instead.
+//   round — Control-Center buttons: triggers, Somfy "My", and — when sliders
+//           hold the stage — the on/off toggles (e.g. power for a dimmer).
+//   rows  — overflow: extra sliders, extra toggles, free-text fields.
+const isSliderType = s => s.type === 'range' || s.type === 'color-temp'
+const isToggleType = s => !isSliderType(s) && s.type !== 'trigger' && s.type !== 'text' && s.path !== 'my'
+const isOnVal = v => v === 1 || v === true || v === 'on'
+const MAX_STAGE = 3, MAX_ROUND = 8
+function layoutControls(controls) {
+  const sliders = controls.filter(isSliderType)
+  const toggles = controls.filter(isToggleType)
+  const actions = controls.filter(s => s.type === 'trigger' || (s.path === 'my' && !isSliderType(s)))
+  const texts = controls.filter(s => s.type === 'text')
+  let kind, items, round, rows
+  if (sliders.length) {
+    kind = 'slider'
+    items = sliders.slice(0, MAX_STAGE)
+    round = [...toggles, ...actions]
+    rows = [...sliders.slice(MAX_STAGE)]
+  } else {
+    kind = 'switch'
+    items = toggles.slice(0, MAX_STAGE)
+    round = [...toggles.slice(MAX_STAGE), ...actions]
+    rows = []
+  }
+  rows = [...rows, ...round.slice(MAX_ROUND).filter(isToggleType), ...texts]
+  // actions past the round cap still need a home — keep them as round buttons
+  round = [...round.slice(0, MAX_ROUND), ...round.slice(MAX_ROUND).filter(s => !isToggleType(s))]
+  return { kind, items, round, rows }
+}
+
 export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) {
   const [selected, setSelected] = useState(null)
   const [localState, setLocalState] = useState({})
@@ -861,6 +876,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
   const ac = device ? acView(device, { ...r, ...Object.fromEntries(Object.entries(localState).map(([k, v]) => [k, { ...r[k], value: v }])) }) : null
   const controls = sensors.filter(s => s.controllable && s.type !== 'color' && !(ac && AC_PATHS.has(s.path)))
     .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) // pinned (e.g. Somfy slat presets) first
+  const stage = useMemo(() => layoutControls(controls), [controls.map(c => c.path).join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
   const graphable = sensors.filter(s => {
     const v = r[s.path]?.value
     if (ac && AC_PATHS.has(s.path) && !['targetTemp', 'temp'].includes(s.path)) return false // on/off, mode, fan: not chart material
@@ -952,7 +968,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               {editing && <EditPanel device={device} rooms={rooms} onClose={() => setEditing(false)}/>}
 
               {/* Homey-style hero: the device's headline state, big */}
-              {!editing && !ac && <HeroState device={device} val={val} accent={accent} />}
+              {!editing && !ac && stage.items.length === 0 && <HeroState device={device} val={val} accent={accent} />}
 
               {/* Air conditioner: set-point ring, mode, fan, swing */}
               {!editing && ac && <AcPanel ac={ac} send={cmd} />}
@@ -963,54 +979,72 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               {/* Roborock live map */}
               <RoborockMapView device={device} />
 
-              {/* Controls */}
-              {controls.length > 0 && (
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 8 }}>Controls</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {controls.map(s => {
+              {/* Controls — HomeKit-style: big vertical pills on a centred stage,
+                  round Control-Center buttons for secondary actions, compact
+                  rows for whatever's left over */}
+              {!editing && stage.items.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div className="hk-stage" data-count={stage.items.length}>
+                    {stage.items.map(s => {
                       const v = val(s.path)
-                      const isOn = v === 1 || v === true || v === 'on'
-                      return (
-                        <div key={s.path} style={{
-                          display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px',
-                          background: 'var(--white-06)', borderRadius: 16,
-                        }}>
-                          {s.type !== 'range' && s.type !== 'color-temp' && (
-                            <span style={{ fontSize: 13, fontWeight: 600, minWidth: 110, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {s.name || s.label || s.path}
-                            </span>
-                          )}
-                          {(s.type === 'range' || s.type === 'color-temp') && (
-                            <RangeControl sensor={s} value={typeof v === 'number' ? v : undefined}
-                              label={s.name || s.label || s.path}
-                              onCommit={nv => cmd(s.path, nv)} />
-                          )}
-                          {s.type === 'trigger' && (
-                            <button onClick={() => cmd(s.path, 1)} style={{
-                              marginLeft: 'auto', padding: '7px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                              background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 13,
-                            }}>▶ Run</button>
-                          )}
-                          {s.path === 'my' && s.type !== 'range' && (
-                            <button onClick={() => cmd('my', 1)} title="Move to favourite (My) position" style={{
-                              marginLeft: 'auto', padding: '6px 16px', borderRadius: 10, cursor: 'pointer',
-                              border: 'none', background: 'var(--white-10)',
-                              color: 'var(--text2)', display: 'flex', alignItems: 'center',
-                            }}><MyIcon size={18} /></button>
-                          )}
-                          {s.type === 'text' && (
-                            <TextControl value={typeof v === 'string' ? v : ''} onCommit={nv => cmd(s.path, nv)} />
-                          )}
-                          {s.type !== 'range' && s.type !== 'color-temp' && s.type !== 'trigger' && s.type !== 'text' && s.path !== 'my' && (
-                            <span style={{ marginLeft: 'auto' }}>
-                              <BigToggle on={isOn} onChange={on => cmd(s.path, on ? 1 : 0)} />
-                            </span>
-                          )}
-                        </div>
-                      )
+                      const label = s.name || s.label || s.path
+                      return stage.kind === 'slider'
+                        ? <HKSlider key={s.path} sensor={s} value={typeof v === 'number' ? v : undefined} label={label}
+                            kind={s.type === 'color-temp' ? 'temp' : 'fill'} onCommit={nv => cmd(s.path, nv)} />
+                        : <HKSwitch key={s.path} on={isOnVal(v)} label={label} glyph={sensorGlyph(s)}
+                            onChange={on => cmd(s.path, on ? 1 : 0)} />
                     })}
                   </div>
+                  {stage.kind === 'slider' && stage.items.map(s => (
+                    <HKPresets key={s.path} sensor={s} value={val(s.path)} onPick={nv => cmd(s.path, nv)} />
+                  ))}
+                </div>
+              )}
+
+              {!editing && stage.round.length > 0 && (
+                <div className="hk-strip">
+                  {stage.round.map(s => {
+                    const label = s.name || s.label || s.path
+                    if (s.path === 'my') return (
+                      <HKRound key={s.path} label={label} title="Move to favourite (My) position" onClick={() => cmd('my', 1)}>
+                        <MyIcon size={22} />
+                      </HKRound>
+                    )
+                    if (s.type === 'trigger') return (
+                      <HKRound key={s.path} label={label} onClick={() => cmd(s.path, 1)}><Glyph name="play" /></HKRound>
+                    )
+                    const on = isOnVal(val(s.path))
+                    return (
+                      <HKRound key={s.path} label={label} active={on} onClick={() => cmd(s.path, on ? 0 : 1)}>
+                        <Glyph name={sensorGlyph(s)} />
+                      </HKRound>
+                    )
+                  })}
+                </div>
+              )}
+
+              {stage.rows.length > 0 && (
+                <div className="hk-rows">
+                  {stage.rows.map(s => {
+                    const v = val(s.path)
+                    const label = s.name || s.label || s.path
+                    if (s.type === 'range' || s.type === 'color-temp') return (
+                      <div key={s.path} className="hk-row">
+                        <RangeControl sensor={s} value={typeof v === 'number' ? v : undefined} label={label}
+                          onCommit={nv => cmd(s.path, nv)} />
+                      </div>
+                    )
+                    return (
+                      <div key={s.path} className="hk-row">
+                        <span className="hk-row-label">{label}</span>
+                        {s.type === 'text'
+                          ? <TextControl value={typeof v === 'string' ? v : ''} onCommit={nv => cmd(s.path, nv)} />
+                          : <button type="button" role="switch" aria-checked={isOnVal(v)} aria-label={label}
+                              className="ios-switch" data-on={String(isOnVal(v))}
+                              onClick={() => cmd(s.path, isOnVal(v) ? 0 : 1)} />}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
 
