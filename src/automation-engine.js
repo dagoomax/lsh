@@ -95,6 +95,7 @@ class AutomationEngine {
 
     this.rules  = [];
     this.scenes = [];
+    this._sceneListeners = []; // onScenesChanged() — e.g. the HomeKit bridge's scene switches
     this.flows  = [];
     this.notifications = [];
 
@@ -784,12 +785,23 @@ class AutomationEngine {
     const idx = this.scenes.findIndex((s) => s.id === scene.id);
     if (idx >= 0) this.scenes[idx] = scene; else this.scenes.push(scene);
     this._save();
+    this._scenesChanged();
     return scene;
   }
 
   deleteScene(id) {
     this.scenes = this.scenes.filter((s) => s.id !== id);
     this._save();
+    this._scenesChanged();
+  }
+
+  // Called after any scene is added, edited or deleted (dashboard editor,
+  // REST API, a flow's Scene Generator node).
+  onScenesChanged(fn) { this._sceneListeners.push(fn); }
+  _scenesChanged() {
+    for (const fn of this._sceneListeners) {
+      try { fn(this.scenes); } catch (err) { console.error(`[Automation] Scene listener failed: ${err.message}`); }
+    }
   }
 
   async runScene(id) {

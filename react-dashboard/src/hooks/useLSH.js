@@ -121,6 +121,11 @@ export function useLSH() {
   const runScene = useCallback(async (id) => {
     await fetch(`/api/automation/scenes/${id}/run`, { method: 'POST', credentials: 'same-origin' })
   }, [])
+  // after the scene editor saves / deletes / toggles Apple Home
+  const reloadScenes = useCallback(async () => {
+    const scn = await apiFetch('/api/automation/scenes')
+    if (scn) setScenes(scn)
+  }, [])
 
   // OpenWeather's condition text arrives in English — show it in this
   // browser's language. `raw` keeps the English original for code that
@@ -134,5 +139,5 @@ export function useLSH() {
     return { ...d, readings: { ...d.readings, condition: { ...cond, raw, value: weatherText(raw, lang) } } }
   }), [devices, lang])
 
-  return { energy, devices: localizedDevices, connection, connected, lastUpdate, platforms, roomsMeta, toggleRelay, authRequired, setupRequired, onLogin, scenes, runScene }
+  return { energy, devices: localizedDevices, connection, connected, lastUpdate, platforms, roomsMeta, toggleRelay, authRequired, setupRequired, onLogin, scenes, runScene, reloadScenes }
 }

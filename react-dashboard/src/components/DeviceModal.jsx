@@ -6,6 +6,8 @@ import { EDIT_EMOJI } from '../emoji'
 import { useHistoryPoints, smoothPath } from '../historyChart'
 import { acView, AC_PATHS } from '../acModel'
 import AcPanel from './AcPanel'
+import HomeKitControl, { homeKitModel, statusText } from './HomeKitControl'
+import { useHomePrefs, toggleFav, isTileWide, setTileWide, toggleDeviceHidden } from '../homePrefs'
 
 // ── Advanced device popup: full controls + history graphs ──────────────────
 // Design language: flat Homey sheet — big hero state, grouped control rows,
@@ -686,6 +688,32 @@ function DetailsPanel({ sensors, readings }) {
 
 // ── Edit panel: room / icon / name, optionally locked with a PIN ─────────────
 
+// Home-view options for this device — local to this browser and applied at
+// once (no Save), unlike the server-side name/room/icon fields around them.
+function HomeViewSwitches({ device }) {
+  const deviceKey = device.key
+  const prefs = useHomePrefs()
+  const rows = [
+    { label: gt('home_show_in', 'Show in home view'), on: !prefs.hiddenDevices.includes(deviceKey), set: on => toggleDeviceHidden(deviceKey, !on) },
+    { label: gt('home_wide', 'Wide tile'), on: isTileWide(device, prefs), set: on => setTileWide(device, on) },
+  ]
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {rows.map(r => (
+        <div key={r.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: 13, padding: '4px 0' }}>
+          <span>{r.label}</span>
+          <div role="switch" aria-checked={r.on} aria-label={r.label} tabIndex={0}
+            onClick={() => r.set(!r.on)}
+            onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); r.set(!r.on) } }}
+            style={{ padding: 6, margin: -6, cursor: 'pointer' }}>
+            <div className="ios-switch" data-on={String(r.on)} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function EditPanel({ device, rooms, onClose }) {
   const [label, setLabel] = useState(device.label || '')
   const [room,  setRoom]  = useState(device.room || '')
@@ -768,6 +796,7 @@ function EditPanel({ device, rooms, onClose }) {
           ))}
         </div>
       </div>
+      <HomeViewSwitches device={device} />
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
         <input type="checkbox" checked={permanent} onChange={e => setPermanent(e.target.checked)}/>
         {gt('edit_permanent', 'Permanent on the network (counted in the microcontroller index)')}
@@ -845,6 +874,8 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
   const [selected, setSelected] = useState(null)
   const [localState, setLocalState] = useState({})
   const [editing, setEditing] = useState(false)
+  const homePrefs = useHomePrefs()
+  const isFav = !!device && homePrefs.favs.includes(device.key)
 
   useEffect(() => { setSelected(null); setLocalState({}); setEditing(false) }, [device?.key])
   useEffect(() => {
@@ -859,7 +890,10 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
   const sensors = useMemo(() => (device?.sensors || []).filter(s => !s.hidden), [device])
   // air conditioners get their own panel (AcPanel); its paths leave the generic controls
   const ac = device ? acView(device, { ...r, ...Object.fromEntries(Object.entries(localState).map(([k, v]) => [k, { ...r[k], value: v }])) }) : null
-  const controls = sensors.filter(s => s.controllable && s.type !== 'color' && !(ac && AC_PATHS.has(s.path)))
+  // Apple-Home-style hero control (switch / dimmer / cover / light colour);
+  // the sensors it drives leave the generic Controls list
+  const hk = useMemo(() => (device && !ac ? homeKitModel(device) : null), [device, !!ac])
+  const controls = sensors.filter(s => s.controllable && s.type !== 'color' && !(ac && AC_PATHS.has(s.path)) && !hk?.paths.has(s.path))
     .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) // pinned (e.g. Somfy slat presets) first
   const graphable = sensors.filter(s => {
     const v = r[s.path]?.value
@@ -901,7 +935,8 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
           className="dm-backdrop"
           style={{
             position: 'fixed', inset: 0, zIndex: 300,
-            background: 'rgba(0,0,0,0.45)',
+            background: 'var(--hk-backdrop)',
+            backdropFilter: 'blur(26px) saturate(1.5)', WebkitBackdropFilter: 'blur(26px) saturate(1.5)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18,
           }}>
           <motion.div key="card"
@@ -928,12 +963,21 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
                 <div className="modal-device-title" style={{
                   fontSize: 22, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>{device.label}</div>
+                {hk && !editing && <div className="hk-status">{statusText(hk, val)}</div>}
                 <div style={{ fontSize: 11, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span>{device.key}</span>
                   {device.room && <><span>·</span><span>{device.room}</span></>}
                   {freshestAgo && <><span>·</span><span>{gt('updated', 'Updated')} {freshestAgo}</span></>}
                 </div>
               </div>
+              <button onClick={() => toggleFav(device.key)} aria-pressed={isFav}
+                title={isFav ? gt('home_unfav', 'Remove from favourites') : gt('home_fav', 'Add to favourites')}
+                aria-label={isFav ? gt('home_unfav', 'Remove from favourites') : gt('home_fav', 'Add to favourites')} style={{
+                width: 34, height: 34, borderRadius: '50%', cursor: 'pointer', fontSize: 17, flexShrink: 0, lineHeight: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none',
+                background: isFav ? 'color-mix(in srgb, var(--gold) 22%, transparent)' : 'var(--white-10)',
+                color: isFav ? 'var(--gold)' : 'var(--text2)',
+              }}>{isFav ? '★' : '☆'}</button>
               <button onClick={() => setEditing(e => !e)} title={gt('edit', 'Edit')} aria-label={gt('edit', 'Edit')} style={{
                 width: 34, height: 34, borderRadius: '50%', cursor: 'pointer', fontSize: 14, flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none',
@@ -952,7 +996,10 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               {editing && <EditPanel device={device} rooms={rooms} onClose={() => setEditing(false)}/>}
 
               {/* Homey-style hero: the device's headline state, big */}
-              {!editing && !ac && <HeroState device={device} val={val} accent={accent} />}
+              {!editing && !ac && !hk && <HeroState device={device} val={val} accent={accent} />}
+
+              {/* Apple-Home-style tall slider / toggle pill */}
+              {!editing && hk && <HomeKitControl device={device} model={hk} val={val} cmd={cmd} Icon={resolveIcon(device)} />}
 
               {/* Air conditioner: set-point ring, mode, fan, swing */}
               {!editing && ac && <AcPanel ac={ac} send={cmd} />}
@@ -1050,7 +1097,7 @@ export default function DeviceModal({ device, onClose, onCommand, rooms = [] }) 
               {/* Read-only text/status fields not shown elsewhere */}
               <DetailsPanel sensors={extra} readings={r} />
 
-              {graphable.length === 0 && controls.length === 0 && extra.length === 0 && (
+              {graphable.length === 0 && controls.length === 0 && extra.length === 0 && !hk && (
                 <div style={{ color: 'var(--text2)', fontSize: 13, textAlign: 'center', padding: 24 }}>
                   This device has no numeric sensors or controls.
                 </div>

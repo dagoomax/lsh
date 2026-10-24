@@ -1666,10 +1666,16 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
   }
 
   // ── Scene switches (LSH automation scenes as momentary switches) ──────────
-  if (automation?.scenes?.length) {
+  // Apple Home has no API for creating its own scenes, so each LSH scene is
+  // published as a switch that runs it and springs back off: it shows up in
+  // the Home app, works with Siri ("turn on Movie night") and can be used
+  // inside Home-app scenes and automations. Kept in sync live — see syncScenes.
+  if (automation) {
+    const sceneNames = new Map(); // scene id → name it was published under
     const addScene = (scene) => {
       if (pool.excluded('scene', scene.id) || pool.has(`scene:${scene.id}`)) return;
       const name = `${scene.name}`;
+      sceneNames.set(scene.id, name);
       const acc  = new Accessory(name, makeUUID(`scene-${scene.id}`));
       acc.category = Categories.SWITCH;
       setInfo(acc, 'LSH Scene', name, `SCENE-${scene.id}`);
@@ -1691,6 +1697,31 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
     };
     for (const scene of automation.scenes) addScene(scene);
     adders.push(() => { for (const scene of automation.scenes || []) addScene(scene) });
+
+    // Scene added / renamed / deleted in LSH → mirror it on the bridge without
+    // a restart. A rename updates the published names in place (same UUID), so
+    // Apple Home keeps the accessory, its room and any Home-app scene using it.
+    pool.syncScenes = () => {
+      const live = new Map((automation.scenes || []).map((s) => [s.id, s]));
+      for (const key of [...(pool.byKey?.keys() || [])]) {
+        if (!key.startsWith('scene:')) continue;
+        const id = key.slice(6);
+        const scene = live.get(id);
+        if (!scene) { pool.remove(key); sceneNames.delete(id); console.log(`[HomeKit] Scene switch removed: ${id}`); continue; }
+        if (scene.name !== sceneNames.get(id)) {
+          const acc = pool.byKey.get(key).accessory;
+          acc.getService(Service.AccessoryInformation)?.getCharacteristic(Characteristic.Name).updateValue(scene.name);
+          acc.getService(Service.Switch)?.getCharacteristic(Characteristic.Name).updateValue(scene.name);
+          acc.displayName = scene.name;
+          sceneNames.set(id, scene.name);
+          console.log(`[HomeKit] Scene switch renamed: ${scene.name}`);
+        }
+      }
+      for (const scene of live.values()) addScene(scene);
+    };
+    automation.onScenesChanged?.(() => {
+      try { pool.syncScenes(); } catch (err) { console.error(`[HomeKit] Scene sync failed: ${err.message}`); }
+    });
   }
   pool.scenes = () => automation?.scenes || [];
   pool.relays = () => config.relays || [];
