@@ -2,10 +2,13 @@ import { useState } from 'react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import { gt } from '../i18n'
 import { resolveIcon } from './Icons'
+import { WALLPAPERS } from './AuroraBackdrop'
 import { useHomePrefs, setHomePrefs, resetHomePrefs, toggleSectionHidden, toggleFav, toggleDeviceHidden, orderSections } from '../homePrefs'
 
 // Apple-Home-style "Edit Home View" sheet: drag sections into order, switch
 // them on/off, reorder or remove favourites, and bring back hidden devices.
+
+const WALL_LABELS = { auto: 'Time of day', aurora: 'Aurora', sunset: 'Sunset', ocean: 'Ocean', forest: 'Forest', off: 'None' }
 
 function Handle({ controls }) {
   return (
@@ -86,6 +89,17 @@ export default function HomeEditor({ open, onClose, sections, devices }) {
             </div>
 
             <div className="he-body">
+              <div className="he-group-label">{gt('home_wallpaper', 'Wallpaper')}</div>
+              <div className="he-walls" role="radiogroup" aria-label={gt('home_wallpaper', 'Wallpaper')}>
+                {WALLPAPERS.map(w => (
+                  <button key={w} type="button" role="radio" aria-checked={prefs.wallpaper === w} className="he-wall"
+                    data-active={prefs.wallpaper === w || undefined} onClick={() => setHomePrefs({ wallpaper: w })}>
+                    <span className="he-wall-sw" data-pal={w} />
+                    {gt('wall_' + w, WALL_LABELS[w])}
+                  </button>
+                ))}
+              </div>
+
               <div className="he-group-label">{gt('home_sections', 'Sections')}</div>
               <Reorder.Group axis="y" values={order} onReorder={next => setHomePrefs({ order: next })} className="he-list">
                 {order.map(id => <SectionRow key={id} section={meta.get(id)} shown={!prefs.hidden.includes(id)} />)}

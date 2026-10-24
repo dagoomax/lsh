@@ -29,6 +29,10 @@ module.exports = [
   // persist/dyson-tokens.json, produced by scripts/dyson-auth.js)
   { file: 'dyson-client', label: 'Dyson', when: (config) => config.dyson?.enabled },
   { file: 'dirigera-client', label: 'Dirigera', when: (config) => config.dirigera?.host && config.dirigera?.token },
+  // Tuya / Smart Life — cloud project (Tuya IoT OpenAPI) and/or LAN (tuyapi); see src/tuya-client.js
+  { file: 'tuya-client', label: 'Tuya', expose: 'tuya', when: (config) => (config.tuya?.accessId && config.tuya?.accessSecret) || config.tuya?.devices?.length },
+  // Sonoff / eWeLink — CoolKit cloud and/or LAN (mDNS + /zeroconf); see src/ewelink-client.js
+  { file: 'ewelink-client', label: 'Sonoff', expose: 'sonoff', when: (config) => (config.sonoff?.appId && config.sonoff?.password) || config.sonoff?.devices?.length },
   { file: 'tradfri-client', label: 'Tradfri', hint: 'npm install node-tradfri-client', when: (config) => config.tradfri?.host },
   // Start ESPHome client if devices are configured
   { file: 'esphome-client', label: 'ESPHome', when: (config) => config.esphome?.devices?.length },

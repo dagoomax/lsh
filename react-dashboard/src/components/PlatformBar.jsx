@@ -33,6 +33,8 @@ const PLATFORMS = [
   { key: 'nippy',        label: 'nippy',       color: '#00a19a', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M10.5 22v-8.2a5.5 5.5 0 0111 0V22" stroke="#fff" strokeWidth="2.6" strokeLinecap="round"/><circle cx="16" cy="9" r="1.6" fill="#fff"/></svg> },
   { key: 'broadlink',    label: 'Broadlink',   color: '#00a0e9', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><circle cx="11" cy="21" r="2.2" fill="#fff"/><path d="M11 15a6 6 0 016 6M11 10.5a10.5 10.5 0 0110.5 10.5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/></svg> },
   { key: 'karcher',      label: 'Kärcher',     color: '#ffe600', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><circle cx="16" cy="16" r="8" fill="none" stroke="#1a1a1a" strokeWidth="2.2"/><path d="M12 13.5h8" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round"/><circle cx="16" cy="18.5" r="2" fill="#1a1a1a"/></svg> },
+  { key: 'tuya',         label: 'Tuya',        color: '#ff4800', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M10 11h12M16 11v11" stroke="#fff" strokeWidth="2.6" strokeLinecap="round"/></svg> },
+  { key: 'sonoff',       label: 'Sonoff',      color: '#1a9bd7', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M12 10.5a7 7 0 108 0" stroke="#fff" strokeWidth="2.4" strokeLinecap="round"/><path d="M16 8v8" stroke="#fff" strokeWidth="2.4" strokeLinecap="round"/></svg> },
   { key: 'dahua',        label: 'Dahua',       color: '#e60012', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><rect x="8" y="11" width="12" height="10" rx="2" stroke="#fff" strokeWidth="1.8"/><path d="M20 14.5l4.5-2.5v8L20 17.5" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round"/></svg> },
   { key: 'ecovacs',      label: 'Ecovacs',     color: '#1d4f91', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><circle cx="16" cy="16" r="8.5" stroke="#fff" strokeWidth="2"/><circle cx="16" cy="12" r="2" fill="#fff"/></svg> },
   { key: 'mc6',          label: 'MC6',         color: '#e8590c', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M14 18.2V9.5a2 2 0 014 0v8.7a4 4 0 11-4 0z" fill="none" stroke="#fff" strokeWidth="2"/><circle cx="16" cy="21.5" r="2" fill="#fff"/><path d="M16 20v-6" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg> },
@@ -62,7 +64,7 @@ const GROUPS = [
   { id: 'energy',     label: 'Energy',              keys: ['victron-mqtt', 'victron-vrm', 'solaredge', 'sofar', 'solaraccelerator', 'tauronTariff', 'ocpp', 'easee', 'wallbox', 'zaptec', 'goecharger', 'modbus', 'modbusEmu', 'zendure', 'ugreen', 'ankerSolix'] },
   { id: 'security',   label: 'Security & access',   keys: ['satel', 'dsc', 'unifiAccess', 'yale', 'sip'] },
   { id: 'cameras',    label: 'Cameras',             keys: ['reolink', 'axis', 'dahua', 'mobotix', 'tuya-ipc', 'objectDetection'] },
-  { id: 'control',    label: 'Lighting & control',  keys: ['loxone', 'loxoneOut', 'knx', 'fibaro', 'fibaroOut', 'boneio', 'grenton', 'nippy', 'ampio', 'wirenboard', 'shelly', 'wled', 'hue', 'tradfri', 'dirigera', 'somfy', 'suppla', 'smartbob', 'esphome', 'arduino', 'broadlink', 'can', 'lsh-ble'] },
+  { id: 'control',    label: 'Lighting & control',  keys: ['loxone', 'loxoneOut', 'knx', 'fibaro', 'fibaroOut', 'boneio', 'grenton', 'nippy', 'ampio', 'wirenboard', 'shelly', 'wled', 'hue', 'tradfri', 'tuya', 'sonoff', 'dirigera', 'somfy', 'suppla', 'smartbob', 'esphome', 'arduino', 'broadlink', 'can', 'lsh-ble'] },
   { id: 'climate',    label: 'Climate & weather',   keys: ['vitodens', 'auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo', 'dyson', 'vents', 'mc6', 'airly', 'loxoneWeather', 'zehnder'] },
   { id: 'outdoor',    label: 'Pool & garden',       keys: ['bayrol', 'smarttub', 'landroid', 'aquilo'] },
   { id: 'appliances', label: 'Appliances',          keys: ['lgthinq', 'homeconnect', 'miele', 'thermomix', 'roborock', 'dreame', 'karcher', 'ecovacs'] },
@@ -108,10 +110,7 @@ export default function PlatformBar({ platforms, devices }) {
   if (!groups.length) return null
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
-      padding: '6px 20px 0', flexShrink: 0,
-    }}>
+    <div className="platform-bar">
       {groups.map((g, gi) => (
         <div key={g.id} role="group" aria-label={gt('platform_group_' + g.id, g.label)}
           style={{ display: 'contents' }}>

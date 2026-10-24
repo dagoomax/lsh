@@ -295,9 +295,9 @@ export default function ScenesSection({ scenes, runScene, reloadScenes, devices 
 
   return (
     <div>
-      <div className="sc-head">
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text2)' }}>{gt('scenes', 'Scenes')}</span>
-        <span className="badge badge-gray">{shown.length}</span>
+      <div className="sc-head tile-sec-head">
+        <span className="tile-sec-title">{gt('scenes', 'Scenes')}</span>
+        <span className="tile-sec-count">{shown.length}</span>
         {shown.length > 0 && (
           <span className="sc-hk-status" title={gt('scene_hk_status', 'Scenes published to Apple Home')}>
             <HomeAppIcon size={13} /> {inHome}/{shown.length}

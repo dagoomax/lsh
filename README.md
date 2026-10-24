@@ -1584,6 +1584,86 @@ Support for **WLED** addressable-LED controllers (ESP8266 / ESP32) via the local
 
 ---
 
+### `mqttBroker`
+
+```json
+"mqttBroker": { "enabled": true, "port": 1883, "username": "", "password": "" }
+```
+
+A **built-in MQTT broker** (Aedes, module `mqtt-broker`) for ESP / Arduino boards, Button+, Tasmota, Shelly MQTT, Zigbee2MQTT and anything else that speaks MQTT — no Cerbo GX or separate Mosquitto needed. It listens on all interfaces; with `username` set every client must log in with it, otherwise it is open on the LAN like a default Mosquitto. Retained messages live in memory.
+
+LSH's own general-purpose MQTT clients — Arduino, BoneIO, Flows' MQTT nodes, the MQTT Explorer page — use it whenever their own host is left blank (`src/mqtt-target.js`); Victron keeps talking to `mqtt.host` (the GX). Settings → General → MQTT Broker shows whether it's running and who is connected; `GET /api/mqtt-broker/status`.
+
+---
+
+### `tuya`
+
+```json
+"tuya": {
+  "mode": "auto",
+  "region": "eu",
+  "accessId": "…",
+  "accessSecret": "…",
+  "uid": "",
+  "pollInterval": 30,
+  "devices": [
+    { "name": "Desk plug", "id": "bf12…", "key": "a1b2…", "ip": "192.168.1.60", "version": "3.4" }
+  ]
+}
+```
+
+**Tuya / Smart Life** devices (and the many brands built on Tuya — LSC, Nedis, BlitzWolf, Gosund, Moes, …): plugs and power strips, wall switches, bulbs and LED strips, dimmers, curtain motors, and temperature / humidity / door / motion / leak / smoke sensors. Module `tuya` (npm `tuyapi` for LAN control).
+
+| Field | Default | Description |
+|---|---|---|
+| `mode` | `auto` | `auto` = LAN for every device it can reach, cloud for the rest; `cloud`; `local` (no cloud at all) |
+| `region` | `eu` | Tuya data centre: `eu`, `eu-w`, `us`, `us-e`, `cn`, `in` |
+| `accessId` / `accessSecret` | — | Cloud project keys from [iot.tuya.com](https://iot.tuya.com) → Cloud → your project → Overview |
+| `uid` | all linked | Limit to one linked app account |
+| `pollInterval` | `30` | Cloud status poll (s) for devices without a LAN link |
+| `devices[]` | — | LAN devices: `id`, `key` (local key), `ip` (found by UDP broadcast if empty), `version` (`3.1`–`3.5`, detected if empty), `name`, optional `dps` map (`{ "20": "switch_led", "22": "bright_value_v2" }`) |
+
+**Cloud setup:** create a Cloud project (Smart Home, your data centre), subscribe it to *IoT Core*, then *Devices → Link App Account* and scan the QR code with the Smart Life / Tuya app. Every device of that account appears with its DP model and its **local key**, so in `auto` mode LSH then connects to each device on the LAN (port 6668) and only falls back to the cloud when the LAN link is down. **Local only:** list each device's `id` and `key` (from the cloud project, or tools like tinytuya's wizard); DPs follow the common Tuya layouts unless `dps` maps them.
+
+**Controls:** on/off per socket / gang / USB, brightness, colour temperature (2700–6500 K), colour (HSV), curtain open / close / stop / position. Readings: power, voltage, current, energy, temperature, humidity, battery, contact, motion, leak, smoke. Lights, switches, covers and sensors are bridged to HomeKit. `GET /api/tuya/status` shows each device's link (LAN / cloud, IP, protocol). Test without hardware: `node scripts/tuya-simulator.js` (cloud API), tests in `test/tuya-sonoff.test.js`.
+
+---
+
+### `sonoff`
+
+```json
+"sonoff": {
+  "mode": "auto",
+  "region": "eu",
+  "email": "you@example.com",
+  "password": "…",
+  "countryCode": "+48",
+  "appId": "…",
+  "appSecret": "…",
+  "pollInterval": 30,
+  "devices": [
+    { "name": "Garage relay", "id": "1000abcdef", "devicekey": "", "host": "192.168.1.70" }
+  ]
+}
+```
+
+**Sonoff / eWeLink** devices: BASIC / MINI / 4CH / DUALR3 relays, S26 / S40 plugs, POW / POWR3 metering, D1 and KING-M4 dimmers, B02 / B05 bulbs, TH temperature sensors, curtain motors, and Zigbee sensors behind a Sonoff bridge. Module `ewelink` (npm `multicast-dns` for LAN discovery).
+
+| Field | Default | Description |
+|---|---|---|
+| `mode` | `auto` | `auto` = LAN for devices that announce themselves, cloud for the rest; `cloud`; `local` |
+| `region` | `eu` | eWeLink account region: `eu`, `us`, `as`, `cn` (a wrong one is corrected at sign-in) |
+| `email` *or* `phoneNumber`, `password`, `countryCode` | — | eWeLink app account |
+| `appId` / `appSecret` | — | Your own app from [dev.ewelink.cc](https://dev.ewelink.cc) (CoolKit open platform) — the cloud API needs one |
+| `pollInterval` | `30` | Cloud status poll (s) |
+| `devices[]` | — | LAN / DIY devices: `id`, `devicekey` (empty for DIY mode), `host` (found over mDNS if empty), `name` |
+
+**How it works:** the cloud (CoolKit API v2) lists the account's devices with their params and each one's `devicekey`. Sonoff firmware announces itself on the LAN over mDNS (`_ewelink._tcp`) with its state in TXT records, AES-128-CBC encrypted with MD5(devicekey) — so in `auto` mode LSH reads those announcements and switches relays, plugs and the D1 dimmer with a POST to `http://<ip>:8081/zeroconf/…`, using the cloud only for devices it can't reach locally (and for bulbs, curtains and Zigbee sub-devices, which have no LAN API). Devices switched to **DIY mode** work with `mode: "local"` and no account at all.
+
+**Controls:** on/off per channel, brightness, colour (B05), curtain position / open / close / stop (uiid 11, DUALR3 motor mode). Readings: power, voltage, current, temperature, humidity, battery, door contact, motion. Everything is bridged to HomeKit. `GET /api/sonoff/status`. Test without hardware: `node scripts/ewelink-simulator.js` (cloud API + one LAN device on mDNS).
+
+---
+
 ### `zway`
 
 ```json

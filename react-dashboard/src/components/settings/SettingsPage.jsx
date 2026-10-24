@@ -15,6 +15,9 @@ import EcovacsSection from './sections/EcovacsSection'
 import MobotixSection from './sections/MobotixSection'
 import AxisSection from './sections/AxisSection'
 import DahuaSection from './sections/DahuaSection'
+import TuyaSection from './sections/TuyaSection'
+import MqttBrokerSection from './sections/MqttBrokerSection'
+import SonoffSection from './sections/SonoffSection'
 import YaleSection from './sections/YaleSection'
 import AeotecSection from './sections/AeotecSection'
 import AiDetectionSection from './sections/AiDetectionSection'
@@ -86,6 +89,9 @@ const SECTION_COMPONENTS = {
   mobotix: MobotixSection,
   axis: AxisSection,
   dahua: DahuaSection,
+  tuya: TuyaSection,
+  'mqtt-broker': MqttBrokerSection,
+  sonoff: SonoffSection,
   yale: YaleSection,
   aeotec: AeotecSection,
   aidetect: AiDetectionSection,

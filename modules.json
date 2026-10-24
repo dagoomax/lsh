@@ -28,6 +28,8 @@
     "src/mongo.js",
     "src/motion-log.js",
     "src/mqtt-client.js",
+    "src/mqtt-explorer.js",
+    "src/mqtt-target.js",
     "src/paging-messages.js",
     "src/platform-status.js",
     "src/private-events.js",
@@ -98,6 +100,7 @@
     "src/routes/modbus-emu.js",
     "src/routes/modules.js",
     "src/routes/mongodb.js",
+    "src/routes/mqtt-broker.js",
     "src/routes/mqtt-explorer.js",
     "src/routes/object-detection.js",
     "src/routes/openweather.js",
@@ -129,6 +132,7 @@
     "src/routes/terminal.js",
     "src/routes/thermomix.js",
     "src/routes/tidal.js",
+    "src/routes/tuya-sonoff.js",
     "src/routes/ui-preferences.js",
     "src/routes/unifi-protect.js",
     "src/routes/vclu.js",
@@ -152,6 +156,19 @@
     "src/wiring-links.js"
   ],
   "modules": {
+    "mqtt-broker": {
+      "entry": "src/mqtt-broker.js",
+      "configKeys": [
+        "mqttBroker"
+      ],
+      "when": "(config.mqttBroker?.enabled)",
+      "files": [
+        "src/mqtt-broker.js"
+      ],
+      "deps": {
+        "aedes": "^0.51.3"
+      }
+    },
     "satel": {
       "entry": "src/satel-client.js",
       "configKeys": [
@@ -195,17 +212,6 @@
       "when": "((config.yale?.username && config.yale?.password) || config.yale?.accessToken)",
       "files": [
         "src/yale-client.js"
-      ],
-      "deps": {}
-    },
-    "mqtt-explorer": {
-      "entry": "src/mqtt-explorer.js",
-      "configKeys": [
-        "mqtt"
-      ],
-      "when": "(config.mqtt?.host)",
-      "files": [
-        "src/mqtt-explorer.js"
       ],
       "deps": {}
     },
@@ -688,6 +694,32 @@
         "src/dirigera-client.js"
       ],
       "deps": {}
+    },
+    "tuya": {
+      "entry": "src/tuya-client.js",
+      "configKeys": [
+        "tuya"
+      ],
+      "when": "((config.tuya?.accessId && config.tuya?.accessSecret) || config.tuya?.devices?.length)",
+      "files": [
+        "src/tuya-client.js"
+      ],
+      "deps": {
+        "tuyapi": "^7.7.1"
+      }
+    },
+    "ewelink": {
+      "entry": "src/ewelink-client.js",
+      "configKeys": [
+        "sonoff"
+      ],
+      "when": "((config.sonoff?.appId && config.sonoff?.password) || config.sonoff?.devices?.length)",
+      "files": [
+        "src/ewelink-client.js"
+      ],
+      "deps": {
+        "multicast-dns": "^7.2.5"
+      }
     },
     "tradfri": {
       "entry": "src/tradfri-client.js",

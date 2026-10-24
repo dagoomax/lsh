@@ -25,6 +25,7 @@ import DashboardGrid, { hasCustomLayout, seedLayoutFromDevices, isWidgetPinned }
 import WeatherForecast from './WeatherForecast'
 import MusicHub from './MusicHub'
 import HomeHero from './HomeHero'
+import HomeModel3D from './HomeModel3D'
 import HomeEditor from './HomeEditor'
 import ScenesSection from './Scenes'
 import { useHomePrefs, orderSections, isTileWide } from '../homePrefs'
@@ -1342,6 +1343,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
     { id: 'hero',      label: gt('home_sec_hero', 'Summary') },
     { id: 'scenes',    label: gt('scenes', 'Scenes'), count: scenes.filter(s => s.enabled !== false).length },
     ...(energy ? [{ id: 'energy', label: gt('energy', 'Energy'), Icon: GridPowerIcon }] : []),
+    { id: 'model3d',   label: gt('home_sec_model', '3D model') },
     { id: 'music',     label: gt('home_sec_music', 'Music') },
     { id: 'weather',   label: gt('home_sec_weather', 'Weather forecast') },
     { id: 'doorbells', label: gt('home_sec_doorbells', 'Doorbells') },
@@ -1359,10 +1361,10 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
     const onN = items.filter(d => { const sw = d.readings?.switch?.value; return sw===1 || sw==='on' || sw===true }).length
     return (
       <div data-cat={key === 'favs' ? undefined : key}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, paddingBottom:8, borderBottom:'1px solid var(--sep)' }}>
-          {Icon && <Icon size={15} color={key === 'favs' ? 'var(--gold)' : 'var(--cat-c, var(--accent-lt))'} />}
-          <span style={{ fontSize:13, fontWeight:700, color:'var(--text2)' }}>{label}</span>
-          <span className="badge badge-gray">{items.length}</span>
+        <div className="tile-sec-head">
+          {Icon && <span className={`tile-sec-ic${key === 'favs' ? ' fav' : ''}`}><Icon size={15} color={key === 'favs' ? 'var(--gold)' : 'var(--cat-c, var(--accent-lt))'} /></span>}
+          <span className="tile-sec-title">{label}</span>
+          <span className="tile-sec-count">{items.length}</span>
           {onN > 0 && <span className="badge badge-yellow">{onN} {gt('b_on', 'on')}</span>}
         </div>
         <div className="device-grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:10 }}>
@@ -1615,6 +1617,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
                 </div>
               )}
             </div>) : null
+                case 'model3d':   return <HomeModel3D onOpenPlan={() => { setCat('Plan'); setRoomFilter(null) }} />
                 case 'music':     return hasCustomLayout() && isWidgetPinned('widget:media') ? null : <MusicHub />
                 case 'weather':   return <WeatherForecast />
                 case 'doorbells': return <YaleDoorbells devices={devices} />

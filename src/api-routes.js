@@ -37,6 +37,8 @@ const ROUTE_GROUPS = [
   require('./routes/mobotix'),
   require('./routes/axis'),
   require('./routes/dahua'),
+  require('./routes/tuya-sonoff'),
+  require('./routes/mqtt-broker'),
   require('./routes/solaredge'),
   require('./routes/solaraccelerator'),
   require('./routes/sofar'),

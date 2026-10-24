@@ -10,6 +10,7 @@ export const CATEGORIES = [
     { id: 'system-misc', title: 'Interface, Relays & Server', keywords: ['language', 'theme', 'port', 'relays', 'server', 'interface'] },
     { id: 'security-auth', title: 'Security & Authentication', keywords: ['users', 'password', 'login', 'mcp', 'bot', 'bots', 'ai', 'claude', 'gemini', 'chatgpt', 'openai', 'oauth', 'token', 'api token'] },
     { id: 'backup', title: 'Backup & Restore', keywords: ['backup', 'restore', 'export', 'import', 'config'] },
+    { id: 'mqtt-broker', title: 'MQTT Broker', keywords: ['mqtt', 'broker', 'mosquitto', 'aedes', 'tasmota', 'zigbee2mqtt', 'esp', 'button+'] },
     { id: 'modules', title: 'Integration Modules', keywords: ['install', 'github', 'plugins', 'update', 'modules'] },
   ] },
   { id: 'home', label: 'Home', sections: [
@@ -40,6 +41,8 @@ export const CATEGORIES = [
   ] },
   { id: 'lighting', label: 'Lighting & Switches', sections: [
     { id: 'shelly', title: 'Shelly', keywords: ['shelly', 'relay', 'dimmer'] },
+    { id: 'tuya', title: 'Tuya / Smart Life', keywords: ['tuya', 'smart life', 'smartlife', 'tuyapi', 'plug', 'gniazdko', 'bulb', 'curtain', 'lsc', 'nedis', 'blitzwolf', 'gosund', 'moes'] },
+    { id: 'sonoff', title: 'Sonoff / eWeLink', keywords: ['sonoff', 'ewelink', 'itead', 'coolkit', 'diy', 'relay', 'plug', 'zigbee', 'przekaźnik'] },
     { id: 'lighting-extra', title: 'IKEA Dirigera & Tradfri', keywords: ['ikea', 'dirigera', 'tradfri'] },
     { id: 'wled', title: 'WLED', keywords: ['wled', 'led strip', 'esp32'] },
   ] },

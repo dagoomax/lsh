@@ -8,7 +8,8 @@ import { useSyncExternalStore } from 'react'
 
 const KEY = 'lsh-home-prefs'
 // wide / narrow: per-device overrides of the default tile size (defaultWide)
-const EMPTY = { order: [], hidden: [], favs: [], hiddenDevices: [], wide: [], narrow: [] }
+// wallpaper: AuroraBackdrop palette ('auto' follows the time of day, 'off' = flat)
+const EMPTY = { order: [], hidden: [], favs: [], hiddenDevices: [], wide: [], narrow: [], wallpaper: 'auto' }
 
 let cache = load()
 const listeners = new Set()
@@ -18,7 +19,10 @@ function load() {
     const p = JSON.parse(localStorage.getItem(KEY) || 'null')
     if (p && typeof p === 'object') {
       const out = { ...EMPTY }
-      for (const k of Object.keys(EMPTY)) if (Array.isArray(p[k])) out[k] = p[k].filter(x => typeof x === 'string')
+      for (const k of Object.keys(EMPTY)) {
+        if (Array.isArray(EMPTY[k]) && Array.isArray(p[k])) out[k] = p[k].filter(x => typeof x === 'string')
+        else if (typeof EMPTY[k] === 'string' && typeof p[k] === 'string') out[k] = p[k]
+      }
       return out
     }
   } catch { /* storage blocked or bad JSON — defaults */ }

@@ -91,6 +91,12 @@ module.exports = function register(router, ctx) {
     if (safe.roborock?.cloud?.password) safe.roborock.cloud.password = '••••••••';
     if (safe.karcher?.password) safe.karcher.password = '••••••••';
     if (safe.ecovacs?.password) safe.ecovacs.password = '••••••••';
+    if (safe.mqttBroker?.password) safe.mqttBroker.password = '••••••••';
+    if (safe.tuya?.accessSecret) safe.tuya.accessSecret = '••••••••';
+    if (Array.isArray(safe.tuya?.devices)) safe.tuya.devices.forEach((d) => { if (d.key) d.key = '••••••••'; });
+    if (safe.sonoff?.password) safe.sonoff.password = '••••••••';
+    if (safe.sonoff?.appSecret) safe.sonoff.appSecret = '••••••••';
+    if (Array.isArray(safe.sonoff?.devices)) safe.sonoff.devices.forEach((d) => { if (d.devicekey) d.devicekey = '••••••••'; });
     if (safe.landroid?.password) safe.landroid.password = '••••••••';
     if (safe.sony?.psk) safe.sony.psk = '••••••••';
     if (safe.ezviz?.password) safe.ezviz.password = '••••••••';

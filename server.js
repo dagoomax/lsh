@@ -49,6 +49,13 @@ async function main() {
   const relayController = new RelayController(config, store);
   const sensorRegistry  = new SensorRegistry(store, config.language); // server-side label translation
 
+  // Built-in MQTT broker — up before any MQTT client below connects to it
+  let mqttBroker = null;
+  if (config.mqttBroker?.enabled) {
+    const MqttBroker = tryRequire('./src/mqtt-broker', 'npm install aedes@0.51');
+    if (MqttBroker) { mqttBroker = new MqttBroker(config); await mqttBroker.start(); }
+  }
+
   // Motion-detector events → agenda feed (src/motion-log.js). Generic across
   // platforms — indexes each device's motion-ish sensors once (on discovery,
   // not on every store change) so this doesn't care which integration
@@ -167,7 +174,7 @@ async function main() {
   }
 
   let mqttExplorer = null;
-  if (config.mqtt?.host) {
+  if (require('./src/mqtt-target').sharedBroker(config)) {
     const MqttExplorer = tryRequire('./src/mqtt-explorer');
     if (MqttExplorer) mqttExplorer = new MqttExplorer(config);
   }
@@ -405,7 +412,7 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient, mcpBots: new McpBots() };
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, mqttBroker, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient, mcpBots: new McpBots() };
 
   // MCP server — exposes devices/sensors as tools for an external Claude
   // (Desktop, Claude Code, claude.ai) to query/control. Opt-in: it's a

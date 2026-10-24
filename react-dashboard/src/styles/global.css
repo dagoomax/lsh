@@ -2495,3 +2495,170 @@ input[type="range"]::-moz-range-thumb {
 .sc-actions { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; margin-top: 18px; }
 .sc-del { color: var(--red); }
 .sc-del[data-confirm] { background: var(--red); color: #fff; border-color: transparent; }
+
+/* ── Aurora wallpaper + glass (AuroraBackdrop.jsx) ────────────────────────────
+   A slow-drifting aurora behind the dashboard, palette by time of day or the
+   one picked in Edit Home View. Only transforms animate (compositor-only);
+   surfaces inside the dashboard turn translucent so the light shows through.
+   The wallpaper is soft gradients already, so tiles skip backdrop-filter —
+   only the header and sidebar blur, which keeps phones and wall tablets fast. */
+.aurora { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--bg); --ao: .46; --bo: .32; }
+[data-theme="light"] .aurora { --ao: .30; --bo: .22; }
+.aurora i { position: absolute; display: block; border-radius: 50%; will-change: transform; }
+.aurora-b1 { width: 72vmax; height: 62vmax; left: -18vmax; top: -24vmax; opacity: var(--ao);
+  background: radial-gradient(closest-side, var(--a1), transparent); animation: aurora-d1 38s ease-in-out infinite alternate; }
+.aurora-b2 { width: 64vmax; height: 58vmax; right: -20vmax; top: -16vmax; opacity: var(--ao);
+  background: radial-gradient(closest-side, var(--a2), transparent); animation: aurora-d2 46s ease-in-out infinite alternate; }
+.aurora-b3 { width: 70vmax; height: 60vmax; left: 10vmax; bottom: -34vmax; opacity: calc(var(--ao) * .8);
+  background: radial-gradient(closest-side, var(--a3), transparent); animation: aurora-d3 54s ease-in-out infinite alternate; }
+/* the aurora curtain: a long, thin band of light that sways across the top */
+.aurora-b4 { width: 120vmax; height: 22vmax; left: -10vmax; top: 6vh; opacity: var(--bo); border-radius: 50%;
+  background: radial-gradient(closest-side, var(--a4), transparent); transform: rotate(-12deg);
+  animation: aurora-sway 30s ease-in-out infinite alternate; }
+/* keeps the lower half calm so tiles stay readable */
+.aurora-veil { inset: 0; border-radius: 0 !important;
+  background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--bg) 35%, transparent) 55%, color-mix(in srgb, var(--bg) 70%, transparent) 100%); }
+/* faint stars on the night sky */
+:root:not([data-theme="light"]) .aurora[data-pal="aurora"] .aurora-veil {
+  background:
+    radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.55), transparent 60%),
+    radial-gradient(1px 1px at 28% 8%, rgba(255,255,255,.4), transparent 60%),
+    radial-gradient(1.5px 1.5px at 46% 22%, rgba(255,255,255,.5), transparent 60%),
+    radial-gradient(1px 1px at 63% 12%, rgba(255,255,255,.45), transparent 60%),
+    radial-gradient(1px 1px at 79% 26%, rgba(255,255,255,.35), transparent 60%),
+    radial-gradient(1.5px 1.5px at 91% 9%, rgba(255,255,255,.5), transparent 60%),
+    radial-gradient(1px 1px at 36% 34%, rgba(255,255,255,.3), transparent 60%),
+    radial-gradient(1px 1px at 70% 38%, rgba(255,255,255,.3), transparent 60%),
+    linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--bg) 35%, transparent) 55%, color-mix(in srgb, var(--bg) 70%, transparent) 100%);
+}
+.aurora[data-pal="aurora"]  { --a1: #12c99a; --a2: #3557ff; --a3: #7c3aed; --a4: #2df5b8; }
+.aurora[data-pal="sunrise"] { --a1: #ff8a3d; --a2: #ff4f8b; --a3: #6a5cff; --a4: #ffc36b; }
+.aurora[data-pal="ocean"]   { --a1: #2f7dff; --a2: #18c8e8; --a3: #5b5cff; --a4: #3fe0c5; }
+.aurora[data-pal="sunset"]  { --a1: #ff5a36; --a2: #b83cff; --a3: #ff8f3d; --a4: #ff3d7f; }
+.aurora[data-pal="forest"]  { --a1: #22c55e; --a2: #0e9f9f; --a3: #84cc16; --a4: #34d399; }
+@keyframes aurora-d1 { to { transform: translate(14vw, 8vh) scale(1.18); } }
+@keyframes aurora-d2 { to { transform: translate(-12vw, 14vh) scale(.88); } }
+@keyframes aurora-d3 { to { transform: translate(-16vw, -10vh) scale(1.12); } }
+@keyframes aurora-sway { 0% { transform: translateX(-6vw) rotate(-14deg) scaleY(.8); } 100% { transform: translateX(8vw) rotate(-6deg) scaleY(1.25); } }
+@media (prefers-reduced-motion: reduce) { .aurora i { animation: none !important; } }
+
+.aurora-on {
+  --sidebar: rgba(14,14,18,0.46);
+  --glass-edge: inset 0 0 0 0.5px rgba(255,255,255,0.09), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+[data-theme="light"] .aurora-on {
+  --sidebar: rgba(250,250,252,0.55);
+  --glass-edge: inset 0 0 0 0.5px rgba(255,255,255,0.8), 0 1px 2px rgba(0,0,0,0.04), 0 6px 20px rgba(60,60,90,0.06);
+}
+/* Glass is scoped to the page content: popups and sheets keep solid surfaces */
+.aurora-on .dash-scroll {
+  --card: rgba(30,30,36,0.5);
+  --surface2: rgba(255,255,255,0.07);
+  --tile-off-bg: rgba(38,38,46,0.48);
+}
+[data-theme="light"] .aurora-on .dash-scroll {
+  --card: rgba(255,255,255,0.6);
+  --surface2: rgba(255,255,255,0.6);
+  --tile-off-bg: rgba(255,255,255,0.5);
+}
+.aurora-on .dash-scroll .card,
+.aurora-on .dash-scroll .device-tile:not([data-on="true"]),
+.aurora-on .dash-scroll .sc-tile:not(.sc-tile-new):not([data-running]),
+.aurora-on .dash-scroll .hero { box-shadow: var(--glass-edge); border-color: transparent; }
+.aurora-on .device-sidebar {
+  background: var(--sidebar) !important; border-right-color: transparent !important;
+  backdrop-filter: blur(30px) saturate(1.6); -webkit-backdrop-filter: blur(30px) saturate(1.6);
+}
+.aurora-on .mobile-cat-pills { border-bottom-color: transparent !important; }
+
+/* On tiles glow in their category colour, the icon most of all */
+.aurora-on .device-tile[data-on="true"] {
+  box-shadow: 0 0 0 0.5px rgba(255,255,255,0.6) inset, 0 12px 36px -12px color-mix(in srgb, var(--tile-accent) 75%, transparent);
+}
+.aurora-on .device-tile[data-on="true"] .tile-icon[data-on="true"] {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tile-accent) 18%, transparent), 0 4px 16px color-mix(in srgb, var(--tile-accent) 60%, transparent);
+}
+
+/* Hero: big type straight on the wallpaper, glass stat chips */
+.aurora-on .hero { background: linear-gradient(135deg, rgba(255,255,255,0.09), rgba(255,255,255,0.02)); padding: 28px 26px 22px; }
+[data-theme="light"] .aurora-on .hero { background: linear-gradient(135deg, rgba(255,255,255,0.75), rgba(255,255,255,0.4)); }
+.aurora-on .hero::before { opacity: .6; }
+.aurora-on .hero-hello h1 { font-size: clamp(32px, 4.2vw, 50px); letter-spacing: -0.035em; }
+.aurora-on .hero-wx b { font-size: 52px; font-weight: 200; }
+.aurora-on .hero-chip { background: rgba(255,255,255,0.07); box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.08); }
+[data-theme="light"] .aurora-on .hero-chip { background: rgba(255,255,255,0.7); box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.9), 0 1px 2px rgba(0,0,0,0.04); }
+.aurora-on .hero-chip-ico { box-shadow: 0 0 18px color-mix(in srgb, var(--tint) 30%, transparent); }
+@media (max-width: 520px) { .aurora-on .hero { padding: 22px 18px 16px; } .aurora-on .hero-wx b { font-size: 38px; } }
+
+/* Section headings: Apple-Home large titles instead of small grey labels */
+.tile-sec-head { display: flex; align-items: center; gap: 9px; margin: 8px 2px 12px; }
+.tile-sec-ic {
+  width: 28px; height: 28px; border-radius: 9px; flex: none; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--cat-c, var(--accent)) 20%, transparent);
+}
+.tile-sec-ic.fav { background: color-mix(in srgb, var(--gold) 20%, transparent); }
+.tile-sec-title { font-size: 21px; font-weight: 750; letter-spacing: -0.022em; color: var(--text); }
+.tile-sec-count { font-size: 13px; font-weight: 600; color: var(--text3); font-variant-numeric: tabular-nums; margin-right: 2px; }
+.sc-head.tile-sec-head { border-bottom: none; padding-bottom: 0; }
+
+/* Platform chips: one quiet scrolling line instead of two wrapped rows */
+.platform-bar {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+  padding: 6px 20px 2px; overflow-x: auto; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 48px), transparent);
+          mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 48px), transparent);
+}
+.platform-bar::-webkit-scrollbar { display: none; }
+.platform-bar .platform-chip { flex-shrink: 0; white-space: nowrap; }
+
+/* Wallpaper picker (Edit Home View) */
+.he-walls { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px; }
+.he-wall {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: none; background: none;
+  cursor: pointer; color: var(--text2); font: inherit; font-size: 12px; font-weight: 600;
+}
+.he-wall-sw {
+  width: 100%; aspect-ratio: 3 / 4; border-radius: 14px; position: relative; overflow: hidden;
+  background: #0b0b10; box-shadow: inset 0 0 0 0.5px var(--border); transition: box-shadow .2s ease, transform .2s ease;
+}
+[data-theme="light"] .he-wall-sw { background: #eef0f6; }
+.he-wall-sw::before, .he-wall-sw::after { content: ''; position: absolute; border-radius: 50%; }
+.he-wall-sw::before { width: 120%; height: 80%; left: -40%; top: -25%; background: radial-gradient(closest-side, var(--a1), transparent); opacity: .8; }
+.he-wall-sw::after  { width: 110%; height: 75%; right: -45%; bottom: -10%; background: radial-gradient(closest-side, var(--a2), transparent); opacity: .75; }
+.he-wall[data-active] { color: var(--text); }
+.he-wall[data-active] .he-wall-sw { box-shadow: 0 0 0 2px var(--modal-grad), 0 0 0 4px var(--accent); }
+.he-wall:active .he-wall-sw { transform: scale(.96); }
+.he-wall-sw[data-pal="auto"] { background: conic-gradient(from 200deg, #ff8a3d, #2f7dff, #ff5a36, #12c99a, #ff8a3d); opacity: .9; }
+.he-wall-sw[data-pal="auto"]::before, .he-wall-sw[data-pal="auto"]::after { display: none; }
+.he-wall-sw[data-pal="off"]::before, .he-wall-sw[data-pal="off"]::after { display: none; }
+.he-wall-sw[data-pal="off"] { background: var(--bg); }
+.he-wall-sw[data-pal="aurora"]  { --a1: #12c99a; --a2: #3557ff; }
+.he-wall-sw[data-pal="sunset"]  { --a1: #ff5a36; --a2: #b83cff; }
+.he-wall-sw[data-pal="ocean"]   { --a1: #2f7dff; --a2: #18c8e8; }
+.he-wall-sw[data-pal="forest"]  { --a1: #22c55e; --a2: #0e9f9f; }
+
+/* ── 3D floor-plan model card (HomeModel3D.jsx) ─────────────────────────── */
+.hm3d { position: relative; overflow: hidden; padding: 0; }
+.hm3d-head { position: absolute; z-index: 2; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 10px; padding: 14px 16px; pointer-events: none; }
+.hm3d-head > * { pointer-events: auto; }
+.hm3d-name { font-size: 12px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hm3d-btn {
+  width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; font-size: 15px; flex: none;
+  background: var(--white-10); color: var(--text); display: grid; place-items: center;
+}
+.hm3d-btn:hover { background: var(--white-14); }
+.hm3d-stage { height: clamp(300px, 46vh, 520px); cursor: grab; touch-action: none; }
+.hm3d-stage:active { cursor: grabbing; }
+/* soft floor glow under the model */
+.hm3d::after {
+  content: ''; position: absolute; left: 15%; right: 15%; bottom: 6%; height: 30%; pointer-events: none; z-index: 0;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 22%, transparent), transparent); filter: blur(10px);
+}
+.hm3d-stage canvas { position: relative; z-index: 1; }
+.hm3d-wait { height: 100%; display: grid; place-items: center; color: var(--text3); font-size: 13px; }
+.hm3d[data-full] {
+  position: fixed; inset: 12px; z-index: 250; border-radius: var(--sheet-radius);
+  background: var(--modal-grad); box-shadow: var(--shadow-2);
+}
+.hm3d[data-full] .hm3d-stage { height: 100%; }
+@media (max-width: 520px) { .hm3d-stage { height: 320px; } .hm3d-name { display: none; } }

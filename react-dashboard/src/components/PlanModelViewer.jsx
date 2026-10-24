@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { Canvas, useLoader } from '@react-three/fiber'
 import { OrbitControls, useGLTF, Bounds, Center } from '@react-three/drei'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
@@ -30,7 +30,10 @@ function Loading() {
   )
 }
 
-export default function PlanModelViewer({ model }) {
+// autoRotate turns the model slowly until someone grabs it (the home-view
+// card); transparent lets the dashboard wallpaper show behind it.
+export default function PlanModelViewer({ model, autoRotate = false, transparent = false, showHint = true }) {
+  const [spinning, setSpinning] = useState(autoRotate)
   if (!model?.url) return null
   const scale = model.scale ?? 1
   const rotation = [
@@ -41,8 +44,9 @@ export default function PlanModelViewer({ model }) {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <Canvas camera={{ position: [6, 6, 6], fov: 45 }} gl={{ antialias: true }} dpr={[1, 2]}>
-        <color attach="background" args={['#07070f']} />
+      <Canvas camera={{ position: [6, 6, 6], fov: 45 }} gl={{ antialias: true, alpha: transparent }} dpr={[1, 2]}>
+        {!transparent && <color attach="background" args={['#07070f']} />}
+        <hemisphereLight args={['#ffffff', '#3a3a4a', 0.5]} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[6, 10, 4]} intensity={1.2} color="#fff8f0" />
         <directionalLight position={[-6, 4, -4]} intensity={0.4} color="#0a84ff" />
@@ -55,15 +59,16 @@ export default function PlanModelViewer({ model }) {
             </Center>
           </Bounds>
         </Suspense>
-        <OrbitControls enableDamping dampingFactor={0.08} />
+        <OrbitControls makeDefault enableDamping dampingFactor={0.08} autoRotate={spinning} autoRotateSpeed={0.6}
+          onStart={() => setSpinning(false)} />
       </Canvas>
-      <div style={{
+      {showHint && <div style={{
         position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
         padding: '5px 14px', background: 'rgba(7,7,15,0.7)', border: '1px solid var(--border)',
         borderRadius: 20, fontSize: 11, color: 'var(--text3)', pointerEvents: 'none', backdropFilter: 'blur(8px)',
       }}>
         {gt('plan_model_hint', 'Drag to rotate · Scroll to zoom')}
-      </div>
+      </div>}
     </div>
   )
 }

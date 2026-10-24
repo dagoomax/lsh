@@ -174,11 +174,12 @@ class AutomationEngine {
 
   _ensureMqttClient() {
     if (this._mqtt) return this._mqtt;
-    if (!this._config?.mqtt?.host) return null;
+    const { sharedBroker, brokerUrl, authOpts } = require('./mqtt-target');
+    const target = sharedBroker(this._config || {});
+    if (!target) return null;
     let mqtt;
     try { mqtt = require('mqtt'); } catch { console.error('[Automation] mqtt package unavailable'); return null; }
-    const url = `mqtt://${this._config.mqtt.host}:${this._config.mqtt.port || 1883}`;
-    this._mqtt = mqtt.connect(url, { reconnectPeriod: 5000, connectTimeout: 8000 });
+    this._mqtt = mqtt.connect(brokerUrl(target), { reconnectPeriod: 5000, connectTimeout: 8000, ...authOpts(target) });
     this._mqtt.on('connect', () => { for (const t of this._mqttTopics) this._mqtt.subscribe(t); });
     this._mqtt.on('error', (e) => console.error(`[Automation] MQTT: ${e.message}`));
     this._mqtt.on('message', (topic, buf) => {
@@ -198,7 +199,7 @@ class AutomationEngine {
       return;
     }
     const client = this._ensureMqttClient();
-    if (!client) { console.warn('[Automation] MQTT node(s) present but no reachable config.mqtt — skipping'); return; }
+    if (!client) { console.warn('[Automation] MQTT node(s) present but no MQTT broker configured — skipping'); return; }
     for (const t of this._mqttTopics) if (!wantTopics.has(t)) client.unsubscribe(t);
     for (const t of wantTopics) if (!this._mqttTopics.has(t)) client.subscribe(t);
     this._mqttTopics = wantTopics;

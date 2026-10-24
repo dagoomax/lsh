@@ -13,6 +13,7 @@
 const mqtt           = require('mqtt');
 const EventEmitter   = require('events');
 const platformStatus = require('./platform-status');
+const { sharedBroker, authOpts } = require('./mqtt-target');
 
 // Home Assistant device_class → HomeKit type
 const DC_TO_HK = {
@@ -65,8 +66,10 @@ class BoneIOClient extends EventEmitter {
 
   start() {
     const cfg  = this._cfg.boneio || {};
-    const host = cfg.host || this._cfg.mqtt?.host || 'localhost';
-    const port = cfg.port || this._cfg.mqtt?.port || 1883;
+    // blank host → the built-in broker if enabled, else the main MQTT broker
+    const shared = cfg.host ? null : sharedBroker(this._cfg);
+    const host = cfg.host || shared?.host || 'localhost';
+    const port = (cfg.host && cfg.port) || shared?.port || cfg.port || 1883;
     const url  = `mqtt://${host}:${port}`;
 
     console.log(`[BoneIO] Connecting to ${url}`);
@@ -74,6 +77,7 @@ class BoneIOClient extends EventEmitter {
       clientId:        `lsh-boneio-${process.pid}`,
       connectTimeout:  10000,
       reconnectPeriod: 5000,
+      ...authOpts(shared),
     });
 
     this.client.on('connect', () => {

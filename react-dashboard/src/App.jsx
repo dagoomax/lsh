@@ -12,6 +12,8 @@ import { PagingPanel }       from './components/PagingWidget'
 import LockScreen            from './components/LockScreen'
 import LoginScreen           from './components/LoginScreen'
 import SetupScreen           from './components/SetupScreen'
+import AuroraBackdrop        from './components/AuroraBackdrop'
+import { useHomePrefs }      from './homePrefs'
 // Full-page views load on first open, so the dashboard itself starts faster
 // (wall tablets, phones on mobile data)
 const SettingsPage   = lazy(() => import('./components/settings/SettingsPage'))
@@ -53,6 +55,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop)
   }, [])
   const paging = usePaging()
+  const { wallpaper } = useHomePrefs()
   const [pagingOpen, setPagingOpen] = useState(false)
 
   // Re-render the whole tree when the language changes (gt() reads it live)
@@ -135,7 +138,9 @@ export default function App() {
   }
 
   return (
-    <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--bg)', overflow:'hidden' }}>
+    <div className={wallpaper !== 'off' ? 'aurora-on' : undefined}
+      style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--bg)', overflow:'hidden', isolation:'isolate' }}>
+      <AuroraBackdrop wallpaper={wallpaper} />
       <Toast />
       <IncomingCall />
       <MusicOverlay />
