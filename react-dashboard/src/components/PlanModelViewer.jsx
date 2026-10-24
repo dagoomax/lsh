@@ -65,6 +65,9 @@ function prepare(root, isObj) {
 function GlbModel({ url }) {
   const { scene } = useGLTF(url)
   const obj = useMemo(() => { const s = scene.clone(true); prepare(s, false); return s }, [scene])
+  // drop the parsed model (geometry, decoded textures) when the view closes —
+  // the file stays in the HTTP cache, so reopening is quick
+  useEffect(() => () => useGLTF.clear(url), [url])
   return <primitive object={obj} />
 }
 function ObjModel({ url }) {
@@ -111,6 +114,7 @@ function Placed({ model, onBounds, onSlots, cut, cutPos }) {
     onSlots?.(extractSlots(inner.current))
   }, [model.url, scale, rotation]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const invalidate = useThree((s) => s.invalidate)
   // vertical section plane across the long axis: keeps x < position
   useEffect(() => {
     gl.localClippingEnabled = true
@@ -126,7 +130,8 @@ function Placed({ model, onBounds, onSlots, cut, cutPos }) {
         m.needsUpdate = true
       }
     })
-  }, [cut, cutPos, box, gl, plane])
+    invalidate()
+  }, [cut, cutPos, box, gl, plane, invalidate])
 
   return (
     <group ref={wrap}>
@@ -138,7 +143,7 @@ function Placed({ model, onBounds, onSlots, cut, cutPos }) {
 }
 
 // Sun with a shadow frustum fitted to the model
-function Sun({ box }) {
+function Sun({ box, mapSize = 2048 }) {
   const ref = useRef()
   useEffect(() => {
     const l = ref.current
@@ -152,13 +157,14 @@ function Sun({ box }) {
     l.shadow.camera.updateProjectionMatrix()
   }, [box])
   return <directionalLight ref={ref} castShadow intensity={2.2} color="#fff4e2"
-    shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004} shadow-normalBias={0.02} shadow-radius={4} />
+    shadow-mapSize={[mapSize, mapSize]} shadow-bias={-0.0004} shadow-normalBias={0.02} shadow-radius={4} />
 }
 
 // Real devices on their slots: bulbs glow (and light the room) when the light
 // is on, category pins follow the filter, labels open the device popup.
 const MAX_LAMPS = 14
 function DeviceLayer({ slots, placed: allPlaced, filter, compact, assign, onSlot, onOpen, cutX }) {
+  const invalidate = useThree((s) => s.invalidate)
   // with the section on, whatever sits in the cut-away half has no label
   const kept = (s) => cutX == null || s.anchor.x <= cutX
   const placed = useMemo(() => allPlaced.filter((p) => kept(p.slot)), [allPlaced, cutX]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -178,6 +184,7 @@ function DeviceLayer({ slots, placed: allPlaced, filter, compact, assign, onSlot
         mat.emissiveIntensity = on ? 1.2 + 2.6 * Math.max(0.15, level) : p ? 0.15 : 0.4
       }
     }
+    invalidate() // rendering is on demand — redraw with the new state
   }) // every render: device state, filter and placement all feed it
 
   const lamps = placed.filter((p) => p.slot.bulbs.length && isOn(p.device) && shown('Lighting')).slice(0, MAX_LAMPS)
@@ -209,7 +216,7 @@ function DeviceLayer({ slots, placed: allPlaced, filter, compact, assign, onSlot
 
 // Flies the camera to a preset; any drag cancels the flight
 function CameraRig({ box, view, flight, controls }) {
-  const { camera, size: viewport } = useThree()
+  const { camera, size: viewport, invalidate } = useThree()
   const goal = useRef(null)
   useEffect(() => {
     if (!box) return
@@ -223,7 +230,8 @@ function CameraRig({ box, view, flight, controls }) {
     const dir = new THREE.Vector3(...VIEWS[view]).normalize()
     goal.current = { pos: center.clone().addScaledVector(dir, dist), target: center.clone().setY(view === 'top' ? 0 : size.y * 0.3) }
     camera.near = Math.max(0.01, dist / 200); camera.far = dist * 20; camera.updateProjectionMatrix()
-  }, [box, view, flight, camera, viewport.width, viewport.height])
+    invalidate()
+  }, [box, view, flight, camera, viewport.width, viewport.height, invalidate])
   useFrame((_, dt) => {
     const g = goal.current
     const c = controls.current
@@ -232,6 +240,7 @@ function CameraRig({ box, view, flight, controls }) {
     camera.position.lerp(g.pos, k)
     c.target.lerp(g.target, k)
     c.update()
+    invalidate() // on-demand rendering: keep frames coming until the flight lands
     if (camera.position.distanceTo(g.pos) < 0.01 && c.target.distanceTo(g.target) < 0.01) {
       camera.position.copy(g.pos); c.target.copy(g.target); c.update()
       goal.current = null
@@ -300,12 +309,14 @@ export default function PlanModelViewer({ model, autoRotate = false, transparent
 
   return (
     <div className="pmv" style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <Canvas shadows="soft" camera={{ position: [8, 7, 8], fov: 40 }} dpr={[1, 2]}
+      {/* only the idle spin needs a frame every vsync — otherwise draw on change */}
+      <Canvas shadows="soft" camera={{ position: [8, 7, 8], fov: 40 }} dpr={compact ? [1, 1.5] : [1, 2]}
+        frameloop={spinning ? 'always' : 'demand'}
         gl={{ antialias: true, alpha: transparent, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
         {!transparent && <color attach="background" args={['#0b0b12']} />}
         <StudioEnvironment />
         <hemisphereLight args={['#dfe9ff', '#3b3226', 0.35]} />
-        <Sun box={box} />
+        <Sun box={box} mapSize={compact ? 1024 : 2048} />
         <Suspense fallback={null}>
           <Placed model={model} onBounds={setBox} onSlots={setSlots} cut={cut} cutPos={cutPos} />
           {slots.length > 0 && (
@@ -322,7 +333,8 @@ export default function PlanModelViewer({ model, autoRotate = false, transparent
             {/* soft ambient-occlusion-like contact shadow; it can't be clipped, so only for the whole model */}
             {!cut && (
               <ContactShadows position={[0, -0.005, 0]} scale={box.getSize(new THREE.Vector3()).length() * 1.2}
-                opacity={0.45} blur={2.4} far={Math.max(0.5, box.max.y * 0.5)} resolution={1024} color="#1a1208" />
+                opacity={0.45} blur={2.4} far={Math.max(0.5, box.max.y * 0.5)} resolution={compact ? 512 : 1024}
+                frames={1} color="#1a1208" />
             )}
           </>}
         </Suspense>

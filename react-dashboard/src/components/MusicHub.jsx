@@ -345,7 +345,24 @@ function Visualizer({ color, active, live, url, delay = 0, around = null, onBass
     const c = canvas.current
     if (!c) return
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    let raf, freq = null, colorKey = '', hue = 210, sat = 75
+    let raf, idleTimer, freq = null, colorKey = '', hue = 210, sat = 75
+    // Draw only while the canvas is on screen and the tab is visible; with
+    // nothing playing and the bars settled, a few frames a second are enough.
+    let onScreen = true
+    const io = typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver((es) => { onScreen = es.some((e) => e.isIntersecting); if (onScreen) wake() })
+      : null
+    io?.observe(c)
+    const wake = () => { if (!raf && !idleTimer && onScreen && !document.hidden) raf = requestAnimationFrame(draw) }
+    const onVis = () => wake()
+    document.addEventListener('visibilitychange', onVis)
+    const schedule = (s) => {
+      raf = 0; idleTimer = 0
+      if (!onScreen || document.hidden) return // wake() restarts it
+      const settled = !s.active && !s.live && s.bars.every((v) => v < 0.01)
+      if (settled) idleTimer = setTimeout(() => { idleTimer = 0; raf = requestAnimationFrame(draw) }, 250)
+      else raf = requestAnimationFrame(draw)
+    }
     const draw = () => {
       const s = state.current
       const dpr = window.devicePixelRatio || 1
@@ -391,10 +408,10 @@ function Visualizer({ color, active, live, url, delay = 0, around = null, onBass
       if (s.mode === 'wave') drawWave(g, s, w, h, n, col)
       else if (s.mode === 'ring') drawRing(g, s, w, h, n, col, hue, sat)
       else drawBars(g, s, w, h, n, col)
-      raf = requestAnimationFrame(draw)
+      schedule(s)
     }
     raf = requestAnimationFrame(draw)
-    return () => cancelAnimationFrame(raf)
+    return () => { cancelAnimationFrame(raf); clearTimeout(idleTimer); io?.disconnect(); document.removeEventListener('visibilitychange', onVis) }
   }, [])
   return (
     <div className="hub-viz" title={live === 'local' ? T('vizLive') : live === 'server' && serverLive ? T('vizStation') : T('vizAnim')}>

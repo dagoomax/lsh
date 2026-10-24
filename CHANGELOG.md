@@ -7,6 +7,7 @@ All notable changes to this project are documented here.
 ## [Unreleased]
 
 ### Fixed
+- **Less memory, less idle work** — object detection loads TensorFlow (~45 MB) and its models (~140–190 MB each) only with the first frame a camera actually delivers, backs off cameras that keep failing (15 s → 10 min, one ffmpeg spawn per retry), switches itself off if no model can load, and polyfills `util.isNullOrUndefined` / `util.isArray` so tfjs-node works on Node 23+. Dashboard: the home-view 3D card drops its WebGL context and cached model when scrolled out of view, renders on demand instead of every frame once it stops spinning, and uses a smaller shadow map and pixel ratio in the card; the music visualizer pauses off screen / in a hidden tab and redraws at 4 fps when idle.
 - **Yale: no more login hammering** — a rejected login (bad password, missing verification or token) now backs off 5 min, doubling up to 6 h, instead of retrying every poll (≈120 failed logins an hour, which risks an account lock); a successful login resets it.
 
 ### Added

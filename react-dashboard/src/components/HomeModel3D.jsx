@@ -21,13 +21,16 @@ export default function HomeModel3D({ onOpenPlan, devices, groupOf, onOpen }) {
       .catch(() => setModel(null))
   }, [])
 
+  // The 3D view exists only while the card is on (or near) the screen: scrolled
+  // away, its WebGL context and textures are released (hundreds of MB of GPU
+  // memory on a wall tablet), and it's rebuilt from the browser cache on return.
   useEffect(() => {
-    if (!model || near || !ref.current) return
+    if (!model || !ref.current) return
     if (typeof IntersectionObserver === 'undefined') { setNear(true); return }
-    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) setNear(true) }, { rootMargin: '300px' })
+    const io = new IntersectionObserver((es) => setNear(es.some((e) => e.isIntersecting)), { rootMargin: '400px' })
     io.observe(ref.current)
     return () => io.disconnect()
-  }, [model, near])
+  }, [model])
 
   if (!model) return null
   return (
@@ -45,7 +48,7 @@ export default function HomeModel3D({ onOpenPlan, devices, groupOf, onOpen }) {
         )}
       </div>
       <div className="hm3d-stage">
-        {near
+        {near || full
           ? <Suspense fallback={<div className="hm3d-wait">{gt('loading', 'Loading…')}</div>}>
               <PlanModelViewer model={model} autoRotate transparent showHint={full}
                 devices={devices} groupOf={groupOf} onOpen={onOpen} compact={!full}
