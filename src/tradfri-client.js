@@ -127,8 +127,11 @@ class TradfriWrapper {
     if (type === TYPE_LIGHT && light) {
       add('switch', 'Power', 'on-off', 'light-rw',
         { controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off', capabilityId: 'switch' });
-      if (light.dimmer != null) add('level', 'Brightness', 'percent');
-      if (light.colorTemperature != null) add('colorTemperature', 'Color Temp', 'number');
+      // dashboard dimmer / colour-temp controls — _write() handles both capabilities
+      if (light.dimmer != null) add('level', 'Brightness', 'percent', null,
+        { controllable: true, type: 'range', min: 0, max: 100, unit: '%', capabilityId: 'switchLevel', writeCmd: 'setLevel' });
+      if (light.colorTemperature != null) add('colorTemperature', 'Color Temp', 'number', null,
+        { controllable: true, type: 'color-temp', min: 2202, max: 6202, step: 40, unit: 'K', capabilityId: 'colorTemperature', writeCmd: 'setColorTemperature' });
       // node-tradfri-client: hue/saturation only exist on RGB (CWS) bulbs;
       // light.color is a hex string, not an object
       if (light.spectrum === 'rgb') {
@@ -143,7 +146,8 @@ class TradfriWrapper {
     } else if (type === TYPE_BLIND && blind) {
       add('windowShade', 'Blinds', 'on-off', 'cover-rw',
         { controllable: true, type: 'toggle', writeOn: 'open', writeOff: 'close', capabilityId: 'windowShade' });
-      add('level', 'Position', 'percent');
+      add('level', 'Position', 'percent', null,
+        { controllable: true, type: 'range', min: 0, max: 100, unit: '%', capabilityId: 'windowShade', writeCmd: 'set' });
     } else if (type === TYPE_SENSOR && sensor) {
       add('motion', 'Motion', 'on-off', 'motion');
     }
