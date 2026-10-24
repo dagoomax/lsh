@@ -72,6 +72,31 @@ module.exports = function register(router) {
     res.json({ success: true, model: cfg.homePlan.model });
   });
 
+  // Which LSH device sits on which device slot of the model (PlanModelViewer:
+  // "<category>:<slot>", e.g. "lighting:light_kitchen", "blinds:win_bed2_e").
+  // Body: { bindings: { deviceKey: slotId | null } } — merged; null unassigns
+  // (and pins the device as "not on the model", so auto-placement leaves it).
+  router.post('/plan-model/bindings', (req, res) => {
+    if (!editPinOk(req)) return res.status(403).json({ success: false, error: 'PIN_REQUIRED' });
+    const cfg = readConfigFile();
+    if (!cfg.homePlan?.model) return res.status(400).json({ success: false, error: 'No model uploaded' });
+    const patch = req.body?.bindings;
+    if (!patch || typeof patch !== 'object') return res.status(400).json({ success: false, error: 'bindings object required' });
+    const bindings = { ...(cfg.homePlan.model.bindings || {}) };
+    for (const [key, slot] of Object.entries(patch)) {
+      if (typeof key !== 'string' || !key || key.length > 200) continue;
+      if (slot === null || slot === '') bindings[key] = null;
+      else if (typeof slot === 'string' && /^[a-z]+:[a-z0-9_]{1,80}$/.test(slot)) {
+        // a slot holds one device — whoever had it is moved off
+        for (const [k, v] of Object.entries(bindings)) if (v === slot && k !== key) delete bindings[k];
+        bindings[key] = slot;
+      }
+    }
+    cfg.homePlan.model = { ...cfg.homePlan.model, bindings };
+    writeConfigFile(cfg);
+    res.json({ success: true, model: cfg.homePlan.model });
+  });
+
   router.post('/plan-model/remove', (req, res) => {
     if (!editPinOk(req)) return res.status(403).json({ success: false, error: 'PIN_REQUIRED' });
     const cfg = readConfigFile();

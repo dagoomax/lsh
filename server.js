@@ -32,7 +32,12 @@ const mountMcpOAuth     = require('./src/routes/mcp-oauth');
 
 function tryRequire(mod, hint) {
   try { return require(mod); }
-  catch { console.warn(`[Server] Optional module unavailable: ${mod}${hint ? ' — ' + hint : ''}`); return null; }
+  catch (err) {
+    // the first line of the error says which package or file is actually missing
+    const why = String(err?.message || err).split('\n')[0];
+    console.warn(`[Server] Optional module unavailable: ${mod} (${why})${hint ? ' — ' + hint : ''}`);
+    return null;
+  }
 }
 
 async function main() {

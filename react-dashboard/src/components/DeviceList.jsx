@@ -1617,7 +1617,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
                 </div>
               )}
             </div>) : null
-                case 'model3d':   return <HomeModel3D onOpenPlan={() => { setCat('Plan'); setRoomFilter(null) }} />
+                case 'model3d':   return <HomeModel3D onOpenPlan={() => { setCat('Plan'); setRoomFilter(null) }} devices={devices} groupOf={getGroup} onOpen={setOpenKey} />
                 case 'music':     return hasCustomLayout() && isWidgetPinned('widget:media') ? null : <MusicHub />
                 case 'weather':   return <WeatherForecast />
                 case 'doorbells': return <YaleDoorbells devices={devices} />

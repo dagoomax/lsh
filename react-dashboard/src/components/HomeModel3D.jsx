@@ -8,7 +8,7 @@ import { gt } from '../i18n'
 // someone drags it; ⤢ makes it full screen, "Open plan" jumps to the Plan view.
 const PlanModelViewer = lazy(() => import('./PlanModelViewer'))
 
-export default function HomeModel3D({ onOpenPlan }) {
+export default function HomeModel3D({ onOpenPlan, devices, groupOf, onOpen }) {
   const [model, setModel] = useState(undefined) // undefined = loading, null = none imported
   const [near, setNear] = useState(false)
   const [full, setFull] = useState(false)
@@ -29,13 +29,6 @@ export default function HomeModel3D({ onOpenPlan }) {
     return () => io.disconnect()
   }, [model, near])
 
-  useEffect(() => {
-    if (!full) return
-    const onKey = (e) => { if (e.key === 'Escape') setFull(false) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [full])
-
   if (!model) return null
   return (
     <div className="card hm3d" ref={ref} data-full={full || undefined}>
@@ -46,15 +39,17 @@ export default function HomeModel3D({ onOpenPlan }) {
         {onOpenPlan && !full && (
           <button type="button" className="home-edit-btn" onClick={onOpenPlan}>{gt('plan_open', 'Open plan')}</button>
         )}
-        <button type="button" className="hm3d-btn" onClick={() => setFull((f) => !f)}
-          title={full ? gt('close', 'Close') : gt('fullscreen', 'Full screen')} aria-label={full ? gt('close', 'Close') : gt('fullscreen', 'Full screen')}>
-          {full ? '✕' : '⤢'}
-        </button>
+        {!full && (
+          <button type="button" className="hm3d-btn" onClick={() => setFull(true)}
+            title={gt('fullscreen', 'Full screen')} aria-label={gt('fullscreen', 'Full screen')}>⤢</button>
+        )}
       </div>
       <div className="hm3d-stage">
         {near
           ? <Suspense fallback={<div className="hm3d-wait">{gt('loading', 'Loading…')}</div>}>
-              <PlanModelViewer model={model} autoRotate transparent showHint={full} />
+              <PlanModelViewer model={model} autoRotate transparent showHint={full}
+                devices={devices} groupOf={groupOf} onOpen={onOpen} compact={!full}
+                onClose={full ? () => setFull(false) : undefined} />
             </Suspense>
           : <div className="hm3d-wait">{gt('loading', 'Loading…')}</div>}
       </div>
