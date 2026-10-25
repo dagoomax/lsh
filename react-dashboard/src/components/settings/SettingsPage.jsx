@@ -37,6 +37,7 @@ import KnxSection from './sections/KnxSection'
 import BoneioGrentonSection from './sections/BoneioGrentonSection'
 import SmartBobSection from './sections/SmartBobSection'
 import AquiloSection from './sections/AquiloSection'
+import AirbnbSection from './sections/AirbnbSection'
 import ZehnderSection from './sections/ZehnderSection'
 import { AirConditionersSection, BatteriesSection } from './sections/IntegrationsSection'
 import ArduinoSection from './sections/ArduinoSection'
@@ -111,6 +112,7 @@ const SECTION_COMPONENTS = {
   'boneio-grenton': BoneioGrentonSection,
   smartbob: SmartBobSection,
   aquilo: AquiloSection,
+  airbnb: AirbnbSection,
   zehnder: ZehnderSection,
   'air-conditioners': AirConditionersSection,
   'home-batteries': BatteriesSection,

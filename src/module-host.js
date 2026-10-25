@@ -58,7 +58,8 @@ class ModuleProcess {
     this._wanted = true;
     if (this.child) return;
     clearTimeout(this._restartTimer);
-    const { config, store } = this.host;
+    const { store } = this.host;
+    const config = this.host.freshConfig();
     const child = fork(WORKER, [this.id], {
       cwd: path.join(__dirname, '..'),
       stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
@@ -244,8 +245,9 @@ class ModuleProcess {
 }
 
 class ModuleHost {
-  constructor(config, store, sensorRegistry) {
+  constructor(config, store, sensorRegistry, { loadConfig } = {}) {
     this.config = config;
+    this.loadConfig = loadConfig;
     this.store = store;
     this.sensorRegistry = sensorRegistry;
     this.modules = new Map();
@@ -270,6 +272,27 @@ class ModuleHost {
     process.on('SIGINT', onSignal);
     process.on('SIGTERM', onSignal);
     process.on('exit', () => { for (const m of this.modules.values()) m.child?.kill('SIGKILL'); });
+  }
+
+  // config.json as it is now — a restarted module (watchdog or Settings)
+  // starts with the current settings, not the ones from server start
+  freshConfig() {
+    if (!this.loadConfig) return this.config;
+    try { return this.loadConfig(); } catch (err) {
+      console.error(`[Modules] Reading config failed, using the startup copy: ${err.message}`);
+      return this.config;
+    }
+  }
+
+  // After Settings saved a module's config: restart it, start it if it's
+  // newly configured, stop it if it no longer is.
+  async apply(it) {
+    const on = !!it.when(this.freshConfig());
+    const m = this.modules.get(it.file);
+    if (!on) { if (m) await m.stop(); return m?.info() || null; }
+    if (!m) return this.add(it).info();
+    await m.restart('settings saved');
+    return m.info();
   }
 
   add(it) {

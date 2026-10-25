@@ -17,6 +17,7 @@ export const CATEGORIES = [
     { id: 'homeplan', title: 'Home Plan', keywords: ['floor plan', 'rooms', 'plan'] },
     { id: 'virtual', title: 'Virtual Devices', keywords: ['virtual', 'dummy', 'variable'] },
     { id: 'google-calendar', title: 'Google Calendar', keywords: ['calendar', 'agenda', 'events', 'google'] },
+    { id: 'airbnb', title: 'Airbnb', keywords: ['airbnb', 'booking', 'vrbo', 'rental', 'wynajem', 'najem', 'guest', 'gość', 'reservation', 'rezerwacja', 'ical', 'check-in'] },
   ] },
   { id: 'energy', label: 'Energy', sections: [
     { id: 'connection', title: 'Victron (MQTT & VRM)', keywords: ['victron', 'venus', 'cerbo', 'mqtt', 'vrm', 'gx'] },

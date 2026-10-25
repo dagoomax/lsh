@@ -579,17 +579,16 @@ async function main() {
   // keeps single modules here.
   const isolate = config.modules?.isolate !== false;
   const inProcess = new Set(config.modules?.inProcess || []);
-  let moduleHost = null;
+  // always there when isolation is on, so Settings can start a module that
+  // gets configured later (moduleHost.apply) without a server restart
+  const moduleHost = isolate ? new ModuleHost(config, store, sensorRegistry, { loadConfig }) : null;
+  if (moduleHost) apiClients.moduleHost = moduleHost;
   for (const it of INTEGRATIONS) {
     if (!it.when(config)) continue;
     if (isolate && !it.expose && !inProcess.has(it.file) && !inProcess.has(it.label)) {
       if (!fs.existsSync(path.join(__dirname, 'src', `${it.file}.js`))) {
         console.warn(`[Server] Optional module unavailable: ./src/${it.file} (file not installed)`);
         continue;
-      }
-      if (!moduleHost) {
-        moduleHost = new ModuleHost(config, store, sensorRegistry);
-        apiClients.moduleHost = moduleHost;
       }
       moduleHost.add(it);
       continue;

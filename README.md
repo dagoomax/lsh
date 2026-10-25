@@ -4390,6 +4390,33 @@ Every AirPlay speaker and Chromecast / Google Home / Nest of the dashboard's med
 
 Every tank the receiver reports becomes device `aquilo/<id>` (tanks added later appear on the next poll): `fill` (%), `level` (cm), `overflow` (on at ≥ `overflowPct`), `stale` (on when the last transmission is older than `staleHours` — battery or radio died; the receiver keeps repeating the last reading), `lastRead`, and — when the receiver's firmware reports them — `battery` (%), `daysLeft`, `toFull` (cm), `lastEmptied`. HomeKit: fill as a level (humidity) sensor plus overflow as a leak sensor. API: `GET /api/aquilo/status`, `POST /api/aquilo/test {"host":"…"}`, `POST /api/settings/aquilo`. Test without hardware: `node scripts/aquilo-simulator.js 8095` and add gateway `127.0.0.1:8095`.
 
+### Airbnb (rental reservations)
+
+Reservations of short-term rental listings, from each listing's **calendar export link** (iCal). Airbnb has no public host API; in Airbnb go to Calendar → Availability → Connect calendars → **Export calendar**. Booking.com and VRBO export links work too (`src/airbnb-client.js`, no npm deps, runs in its own process). Settings → Home → **Airbnb**: add a listing with its link and your check-in and check-out times, **Test calendar link**, **Save**. Changes apply live.
+
+```json
+"airbnb": {
+  "listings": [{ "name": "Mieszkanie", "ical": "https://www.airbnb.com/calendar/ical/123.ics?s=…",
+                 "checkIn": "15:00", "checkOut": "11:00", "prepareHours": 3, "room": "Mieszkanie" }],
+  "pollMinutes": 30
+}
+```
+
+Each listing becomes a device `airbnb/<name>`. Its states change at the configured times, not only when the calendar is fetched:
+
+| Sensor | Meaning |
+|---|---|
+| `occupied` | A guest is between check-in and check-out time. Also a HomeKit occupancy sensor. |
+| `prepare` | The next check-in is within `prepareHours`. Use it to start heating or cooling. |
+| `checkInToday`, `checkOutToday`, `turnover` | Arrival today, departure today, or both on the same day. |
+| `guest`, `nextGuest` | Reservation code · …last 4 phone digits. Airbnb shares no names. |
+| `nextCheckIn`, `nextCheckOut`, `daysToNext` | The upcoming dates. |
+| `nights30`, `occupancy30` | Booked nights and % over the next 30 days. |
+| `reservations` | The next 10 stays (object). |
+
+- **Blocked dates:** "Airbnb (Not available)" and Booking's "CLOSED - Not available" are not counted as stays.
+- **The link is a secret:** anyone who has it can read the calendar. LSH never logs it.
+
 ### Zehnder ventilation (rekuperacja)
 
 Zehnder heat-recovery ventilation units (`src/zehnder-client.js` + `src/zehnder/*`, no npm deps). Settings → Climate & Appliances → **Zehnder Ventilation** (Find LAN C gateways, Test, Save — applied live). Three ways in, one device model:

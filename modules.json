@@ -38,6 +38,7 @@
     "src/relay-controller.js",
     "src/reolink-client.js",
     "src/routes/agenda.js",
+    "src/routes/airbnb.js",
     "src/routes/airly.js",
     "src/routes/airplay.js",
     "src/routes/announce.js",
@@ -1491,6 +1492,18 @@
       "deps": {
         "ws": "^7.5.11"
       }
+    },
+    "airbnb": {
+      "entry": "src/airbnb-client.js",
+      "configKeys": [
+        "airbnb"
+      ],
+      "when": "(config.airbnb?.listings?.length)",
+      "files": [
+        "src/airbnb-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
     },
     "aquilo": {
       "entry": "src/aquilo-client.js",
