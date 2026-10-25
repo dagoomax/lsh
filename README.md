@@ -1627,6 +1627,20 @@ LSH's own general-purpose MQTT clients — Arduino, BoneIO, Flows' MQTT nodes, t
 
 **Controls:** on/off per socket / gang / USB, brightness, colour temperature (2700–6500 K), colour (HSV), curtain open / close / stop / position. Readings: power, voltage, current, energy, temperature, humidity, battery, contact, motion, leak, smoke. Lights, switches, covers and sensors are bridged to HomeKit. `GET /api/tuya/status` shows each device's link (LAN / cloud, IP, protocol). Test without hardware: `node scripts/tuya-simulator.js` (cloud API), tests in `test/tuya-sonoff.test.js`.
 
+**TESLA Smart** (Tuya inside), added in the TESLA Smart or Smart Life app and linked to the cloud project:
+- **Wi-Fi plugs and power strips:** every socket and the USB block switch separately (`switch`, `switch_2`, …, `switch_usb1`), with metering where the plug has it. For example, the Power Strip 3+4 USB gives three sockets plus USB.
+- **Zigbee accessories on the TESLA Smart Zigbee Hub:** radiator heads, plugs, door, motion, gas and smoke sensors, and buttons. Any Tuya Zigbee gateway (`wg`/`wg2`) works the same way.
+  - Its sub-devices come from the cloud (`/v1.0/devices/<hub>/sub-devices`).
+  - In `auto` mode they're controlled locally through the hub's own LAN connection, addressed by their node id (tuyapi `cid`). The cloud is the fallback.
+  - A local-only sub-device is `{ "id", "gateway": "<hub id>", "cid": "<node id>", "dps": {…} }`.
+- **Radiator heads / thermostats (`wkf`):** `heatingSetpoint` (writable, from `temp_set` with its scale and range), `temperature` and `thermostatMode` (`auto` / `manual` / `holiday`, writable).
+- **Other sensors:** `gas`, `co`, `tamper`, `batteryLow` (from `battery_state`).
+- **Buttons:** `button<n>` (`single_click` / `double_click` / `long_press`), for flows.
+- **HomeKit:** Tuya motion, leak, smoke and CO sensors now reach HomeKit too; before, only contact sensors did.
+- **Zigbee without the hub:** TESLA Smart Zigbee devices can pair straight to LSH's own Zigbee USB stick instead (see `zigbee`). Their Tuya-based definitions come from the Zigbee2MQTT library.
+
+The simulator includes a TESLA Smart power strip and a Zigbee hub with a radiator head, a plug, a gas sensor and a button. Written against Tuya's documented API and the tuyapi `cid` option; not checked with a real TESLA Smart device.
+
 ---
 
 ### `sonoff`

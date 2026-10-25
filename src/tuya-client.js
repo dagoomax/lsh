@@ -2,6 +2,10 @@
 
 // Tuya / Smart Life devices (plugs, switches, bulbs, LED strips, dimmers,
 // curtain motors, climate and door/motion/leak sensors) — cloud, local, or both.
+// Tuya white-label brands work the same way — e.g. TESLA Smart (plugs, power
+// strips with switchable USB, and the Zigbee accessories on the TESLA Smart
+// Zigbee Hub), Moes, Lidl Silvercrest, Nous: add them to the Tuya Smart /
+// Smart Life app and link that account.
 //
 //   config.tuya = {
 //     mode: 'auto',            // auto | cloud | local
@@ -10,7 +14,12 @@
 //     uid: '',                 // optional — one linked app account; default: every account linked to the project
 //     pollInterval: 30,        // s — cloud status poll for devices not held by a local connection
 //     devices: [ { id, key, ip, version, name, dps } ]   // local devices / overrides
+//              (Zigbee sub-device of a hub: { id, gateway: '<hub id>', cid: '<node id>', name, dps })
 //   }
+//
+// Zigbee hubs (TESLA Smart Zigbee Hub and other Tuya gateways): their
+// sub-devices come from the cloud list; locally they're reached through the
+// hub's own LAN connection with the sub-device's node id (cid).
 //
 // Cloud: the Tuya IoT OpenAPI (iot.tuya.com → Cloud project, "Link Tuya App
 // Account" with the Smart Life app). It lists the devices, their data model
@@ -41,6 +50,8 @@ const REGIONS = {
 const LIGHT_CATEGORIES = new Set(['dj', 'dd', 'xdd', 'fwd', 'dc', 'tgq', 'tgkg', 'gyd', 'sxd', 'fsd', 'tyndj', 'xxj']);
 const COVER_CATEGORIES = new Set(['cl', 'clkg', 'mc', 'ckmkzq']);
 const SWITCH_RE = /^(switch(_led)?(_\d+)?|switch_usb\d+)$/;
+// Zigbee / BLE gateways — their sub-devices are listed per hub
+const GATEWAY_CATEGORIES = new Set(['wg', 'wg2', 'wg3', 'wgsxj', 'zigbee']);
 
 // ── Cloud: Tuya IoT OpenAPI ───────────────────────────────────────────────────
 class TuyaCloud {
@@ -138,6 +149,11 @@ class TuyaCloud {
       }
     }
     return [...byCode.values()];
+  }
+
+  // Sub-devices of a Zigbee hub: [{ id, node_id, name, category, online }]
+  async subDevices(gatewayId) {
+    return (await this.request('GET', `/v1.0/devices/${encodeURIComponent(gatewayId)}/sub-devices`)) || [];
   }
 
   async status(ids) {
@@ -366,15 +382,44 @@ function buildModel(props, category = '') {
     ['watersensor_state', 'leak', 'Leak', 'leak', (v) => v === 'alarm' || v === '1' || v === true],
     ['smoke_sensor_status', 'smoke', 'Smoke', 'smoke', (v) => v === 'alarm' || v === '1' || v === true],
     ['smoke_sensor_state', 'smoke', 'Smoke', 'smoke', (v) => v === 'alarm' || v === '1' || v === true],
+    ['gas_sensor_status', 'gas', 'Gas', null, (v) => v === 'alarm' || v === '1' || v === true],
+    ['gas_sensor_state', 'gas', 'Gas', null, (v) => v === 'alarm' || v === '1' || v === true],
+    ['co_status', 'co', 'Carbon monoxide', 'co', (v) => v === 'alarm' || v === '1' || v === true],
+    ['temper_alarm', 'tamper', 'Tamper', null, (v) => v === true || v === 'alarm'],
+    ['battery_state', 'batteryLow', 'Battery low', null, (v) => v === 'low'],
   ];
   roles.binary = {};
   for (const [code, path, name, hk, fn] of BINARY) {
     if (!has(code) || roles.binary[path]) continue;
     roles.binary[path] = { code, fn };
-    sensors.push({ path, name, format: 'on-off', homekit: hk });
-    if (hk === 'contact') homekit.push('contact');
+    sensors.push({ path, name, format: 'on-off', ...(hk ? { homekit: hk } : {}) });
+    if (hk) homekit.push(hk);
   }
-  const kind = isCover ? 'cover' : isLight ? 'light' : switches.length ? 'switch' : 'sensor';
+
+  // Thermostatic radiator heads / thermostats (category wkf — TESLA Smart TRVs)
+  const sp = has('temp_set') && byCode.get('temp_set').rw ? byCode.get('temp_set') : null;
+  if (sp && !isLight && !isCover) {
+    roles.setpoint = 'temp_set';
+    const k = 10 ** (sp.scale || 0);
+    sensors.push({ path: 'heatingSetpoint', name: 'Setpoint', unit: '°C', format: 'number', type: 'range', controllable: true,
+      min: (sp.min || 50) / k, max: (sp.max || 300) / k, step: (sp.step || 5) / k,
+      capabilityId: 'thermostatHeatingSetpoint', writeCmd: 'setHeatingSetpoint' });
+    const mode = byCode.get('mode');
+    if (mode?.type === 'enum') {
+      roles.tmode = 'mode';
+      sensors.push({ path: 'thermostatMode', name: 'Mode', type: mode.rw ? 'text' : 'label', controllable: !!mode.rw, range: mode.range,
+        capabilityId: 'thermostatMode', writeCmd: 'setThermostatMode' });
+    }
+  }
+  // Wireless buttons / scene switches: switch1_value = single_click / double_click / long_press
+  roles.labels = {};
+  for (const p of props.filter((x) => /^switch\d*_value$/.test(x.code) && x.type === 'enum')) {
+    const n = /(\d+)/.exec(p.code)?.[1] || '1';
+    const path = `button${n}`;
+    roles.labels[path] = p.code;
+    sensors.push({ path, name: `Button ${n}`, type: 'label' });
+  }
+  const kind = isCover ? 'cover' : isLight ? 'light' : switches.length ? 'switch' : roles.setpoint ? 'thermostat' : 'sensor';
   return { sensors, homekit, kind, roles, byCode };
 }
 function switchName(code) {
@@ -420,6 +465,7 @@ class TuyaClient {
       const known = this._devs.get(d.id);
       this._devs.set(d.id, { ...known, id: d.id, name: d.name || known?.name || `Tuya ${d.id.slice(-6)}`,
         localKey: d.key || known?.localKey, ip: d.ip || known?.ip, version: d.version || known?.version, dpsMap: d.dps,
+        ...(d.gateway && d.cid ? { gatewayId: d.gateway, cid: String(d.cid), sub: true } : {}),
         category: known?.category || '', props: known?.props || (d.dps ? propsFromMap(d.dps) : null) });
       if (!known && d.dps) this._register(this._devs.get(d.id));
     }
@@ -453,6 +499,16 @@ class TuyaClient {
       if (!d.registered) this._register(d);
       if (Array.isArray(c.status)) this._applyCodes(d, Object.fromEntries(c.status.map((s) => [s.code, s.value])));
       this._store.update(`tuya/${d.id}/online`, d.online ? 1 : 0);
+      if (c.sub) d.sub = true;
+    }
+    // which hub each Zigbee sub-device is on, and its node id there
+    for (const gw of [...this._devs.values()].filter((d) => GATEWAY_CATEGORIES.has(d.category))) {
+      try {
+        for (const s of await this._cloud.subDevices(gw.id)) {
+          const sub = this._devs.get(s.id);
+          if (sub && s.node_id) Object.assign(sub, { gatewayId: gw.id, cid: String(s.node_id), sub: true });
+        }
+      } catch (err) { console.error(`[Tuya] Sub-devices of ${gw.name}: ${err.message}`); }
     }
     this._cloudOk = true;
     this._updateStatus();
@@ -479,7 +535,8 @@ class TuyaClient {
     let TuyAPI;
     try { TuyAPI = require('tuyapi'); }
     catch { console.error('[Tuya] Local control needs tuyapi (npm install tuyapi) — using the cloud only'); return; }
-    const candidates = [...this._devs.values()].filter((d) => d.localKey);
+    // sub-devices have no LAN address of their own — they're reached through their hub's connection
+    const candidates = [...this._devs.values()].filter((d) => d.localKey && !d.sub);
     // find() binds the UDP broadcast ports, so devices without an IP look up one at a time
     (async () => {
       for (const d of candidates) {
@@ -497,14 +554,30 @@ class TuyaClient {
     const dev = new TuyAPI(opts);
     d.local = dev;
     const retry = (ms) => { clearTimeout(d.retry); d.retry = setTimeout(() => this._connectLocal(TuyAPI, d), ms); };
-    dev.on('connected', () => { d.localUp = true; d.backoff = 0; console.log(`[Tuya] ${d.name}: local link up (${dev.device.ip}, v${dev.device.version})`); this._updateStatus(); });
+    dev.on('connected', () => {
+      d.localUp = true; d.backoff = 0;
+      console.log(`[Tuya] ${d.name}: local link up (${dev.device.ip}, v${dev.device.version})`);
+      this._updateStatus();
+      this._readSubs(d);
+    });
     dev.on('disconnected', () => {
       if (d.localUp) console.log(`[Tuya] ${d.name}: local link down`);
-      d.localUp = false; this._updateStatus();
+      d.localUp = false;
+      for (const sub of this._subsOf(d)) sub.localUp = false;
+      this._updateStatus();
       if (!this._stopped && d.local === dev) retry(Math.min(300000, 10000 * 2 ** (d.backoff = (d.backoff || 0) + 1)));
     });
     dev.on('error', (err) => { if (!d.loggedErr) console.error(`[Tuya] ${d.name}: ${err.message || err}`); d.loggedErr = true; });
-    const onDps = (data) => { if (data?.dps) this._applyDps(d, data.dps); };
+    const onDps = (data) => {
+      if (!data?.dps) return;
+      if (data.cid) {
+        // a Zigbee sub-device reporting through this hub
+        const sub = this._subsOf(d).find((x) => x.cid === String(data.cid));
+        if (sub) { sub.localUp = true; this._applyDps(sub, data.dps); }
+        return;
+      }
+      this._applyDps(d, data.dps);
+    };
     dev.on('data', onDps);
     dev.on('dp-refresh', onDps);
     try {
@@ -517,6 +590,24 @@ class TuyaClient {
       d.loggedErr = true;
       if (!this._stopped) retry(Math.min(300000, 30000 * 2 ** (d.backoff = (d.backoff || 0) + 1)));
     }
+  }
+
+  _subsOf(gw) { return [...this._devs.values()].filter((x) => x.gatewayId === gw.id); }
+
+  // Ask the hub for each sub-device's DPs once its link is up
+  async _readSubs(gw) {
+    for (const sub of this._subsOf(gw)) {
+      if (this._stopped || !gw.localUp) return;
+      try {
+        const r = await gw.local.get({ cid: sub.cid, schema: true });
+        const dps = r?.dps || (r && typeof r === 'object' ? r : null);
+        if (dps) { sub.localUp = true; this._applyDps(sub, dps); }
+      } catch (err) {
+        if (!sub.loggedErr) console.error(`[Tuya] ${sub.name}: no answer through ${gw.name} (${err.message || err}) — using the cloud`);
+        sub.loggedErr = true;
+      }
+    }
+    this._updateStatus();
   }
 
   _applyDps(d, dps) {
@@ -545,7 +636,7 @@ class TuyaClient {
       label: d.name,
       type: 'tuya',
       model: d.product || d.category || 'Tuya',
-      icon: { light: '💡', cover: '🪟', sensor: '🌡️' }[m.kind] || '🔌',
+      icon: { light: '💡', cover: '🪟', sensor: '🌡️', thermostat: '🌡️' }[m.kind] || '🔌',
       sensors: m.sensors,
       homekit: m.homekit,
       _writeCapability: (capId, command, args = []) => this._write(d, capId, command, args),
@@ -578,6 +669,9 @@ class TuyaClient {
     }
     for (const [path, code] of Object.entries(roles.readings)) if (code in codes) set(path, scaled(codes[code], byCode.get(code)));
     for (const [path, { code, fn }] of Object.entries(roles.binary)) if (code in codes) set(path, fn(codes[code]) ? 1 : 0);
+    if (roles.setpoint && roles.setpoint in codes) set('heatingSetpoint', scaled(codes[roles.setpoint], byCode.get(roles.setpoint)));
+    if (roles.tmode && roles.tmode in codes) this._store.update(`${key}/thermostatMode`, String(codes[roles.tmode]));
+    for (const [path, code] of Object.entries(roles.labels || {})) if (code in codes && codes[code] != null) this._store.update(`${key}/${path}`, String(codes[code]));
   }
 
   // ── Control ──
@@ -618,6 +712,14 @@ class TuyaClient {
       if (roles.mode) cmds[roles.mode] = 'colour';
       cmds[roles.colour] = { h: Math.round(hue * 3.6), s: Math.round((saturation / 100) * smax), v: Math.max(1, Math.round((lvl / 100) * smax)) };
       if (mainSwitch) cmds[mainSwitch] = true;
+    } else if (capId === 'thermostatHeatingSetpoint' && roles.setpoint) {
+      const p = byCode.get(roles.setpoint);
+      const k = 10 ** (p.scale || 0);
+      cmds[roles.setpoint] = Math.max(p.min ?? 0, Math.min(p.max ?? 1000, Math.round(Number(v0) * k)));
+    } else if (capId === 'thermostatMode' && roles.tmode) {
+      const range = byCode.get(roles.tmode).range || [];
+      if (range.length && !range.includes(v0)) throw new Error(`Tuya: mode must be one of ${range.join(', ')}`);
+      cmds[roles.tmode] = v0;
     } else {
       const code = roles.switches[capId] || (kind === 'light' && capId === 'switch' ? mainSwitch : null);
       if (code) cmds[code] = command === 'on';
@@ -631,11 +733,13 @@ class TuyaClient {
   async _send(d, cmds) {
     // local needs every code's DP id — cloud-only model entries may lack one
     const entries = Object.entries(cmds);
-    const local = d.localUp && d.local && this._mode !== 'cloud' && entries.every(([code]) => d.m.byCode.get(code)?.dpId != null);
+    // a Zigbee sub-device goes through its hub's connection, addressed by cid
+    const link = d.gatewayId ? this._devs.get(d.gatewayId) : d;
+    const local = d.localUp && link?.localUp && link.local && this._mode !== 'cloud' && entries.every(([code]) => d.m.byCode.get(code)?.dpId != null);
     if (local) {
       const data = Object.fromEntries(entries.map(([code, v]) =>
         [d.m.byCode.get(code).dpId, typeof v === 'object' ? encodeColour(v, code, true) : v]));
-      try { await d.local.set({ multiple: true, data }); return; }
+      try { await link.local.set({ multiple: true, data, ...(d.cid ? { cid: d.cid } : {}) }); return; }
       catch (err) {
         if (!this._cloud) throw err;
         console.error(`[Tuya] ${d.name}: local write failed (${err.message}) — trying the cloud`);
@@ -654,6 +758,7 @@ class TuyaClient {
     return [...this._devs.values()].map((d) => ({
       id: d.id, name: d.name, category: d.category, product: d.product, online: !!d.online,
       local: !!d.localUp, ip: d.ip || null, version: d.version || null, registered: !!d.registered, kind: d.m?.kind || null,
+      gateway: d.gatewayId || null,
     }));
   }
 

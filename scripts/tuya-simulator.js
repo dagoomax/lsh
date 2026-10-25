@@ -3,7 +3,9 @@
 
 // Fake Tuya IoT OpenAPI — the endpoints src/tuya-client.js uses, with the
 // request signature checked, and four devices: a colour bulb, a 2-gang plug
-// with metering, a curtain motor and a temperature/humidity sensor.
+// with metering, a curtain motor and a temperature/humidity sensor — plus
+// TESLA Smart ones (Tuya inside): a Wi-Fi power strip 3+4 USB and a Zigbee
+// hub with a radiator head, a Zigbee plug, a gas sensor and a button on it.
 //   node scripts/tuya-simulator.js [port]     (default 8097, Access ID sim-id / Secret sim-secret)
 // Point LSH at it: config.tuya = { accessId: 'sim-id', accessSecret: 'sim-secret',
 //   mode: 'cloud', baseUrl: 'http://127.0.0.1:8097' }   (baseUrl is read by TuyaCloud)
@@ -39,6 +41,24 @@ const DEVICES = () => [
       ['battery_percentage', 4, 'ro', v(0, 100, 0, '%')],
     ],
     state: { va_temperature: 215, va_humidity: 58, battery_percentage: 87 } },
+  // TESLA Smart (Tuya white label)
+  { id: 'bf0tslstrip', name: 'Listwa TESLA', category: 'cz', product_name: 'TESLA Smart Power Strip 3+4 USB', local_key: 'k3y0strip0000000',
+    props: [['switch_1', 1, 'rw', { type: 'bool' }], ['switch_2', 2, 'rw', { type: 'bool' }], ['switch_3', 3, 'rw', { type: 'bool' }], ['switch_usb1', 7, 'rw', { type: 'bool' }]],
+    state: { switch_1: true, switch_2: false, switch_3: false, switch_usb1: true } },
+  { id: 'bf0tslhub00', name: 'TESLA Zigbee Hub', category: 'wg2', product_name: 'TESLA Smart Zigbee Hub', local_key: 'k3y0hub000000000',
+    props: [], state: {} },
+  { id: 'bf0tsltrv00', name: 'Głowica sypialnia', category: 'wkf', product_name: 'TESLA Smart Thermostatic Valve', local_key: 'k3y0hub000000000', sub: true, gateway: 'bf0tslhub00', node_id: 'a4c13800trv00001',
+    props: [['temp_set', 2, 'rw', v(50, 300, 1, '℃', 5)], ['temp_current', 3, 'ro', v(-100, 500, 1, '℃')],
+      ['mode', 4, 'rw', { type: 'enum', range: ['auto', 'manual', 'holiday'] }], ['battery_percentage', 13, 'ro', v(0, 100, 0, '%')]],
+    state: { temp_set: 210, temp_current: 195, mode: 'manual', battery_percentage: 76 } },
+  { id: 'bf0tslplugz', name: 'Gniazdko TESLA Zigbee', category: 'cz', product_name: 'TESLA Smart Plug Zigbee', local_key: 'k3y0hub000000000', sub: true, gateway: 'bf0tslhub00', node_id: 'a4c13800plug0001',
+    props: [['switch_1', 1, 'rw', { type: 'bool' }], ['cur_power', 19, 'ro', v(0, 50000, 1, 'W')]],
+    state: { switch_1: false, cur_power: 0 } },
+  { id: 'bf0tslgas00', name: 'Czujnik gazu', category: 'rqbj', product_name: 'TESLA Smart Sensor Gas', local_key: 'k3y0hub000000000', sub: true, gateway: 'bf0tslhub00', node_id: 'a4c13800gas00001',
+    props: [['gas_sensor_status', 1, 'ro', { type: 'enum', range: ['alarm', 'normal'] }]], state: { gas_sensor_status: 'normal' } },
+  { id: 'bf0tslbtn00', name: 'Przycisk', category: 'wxkg', product_name: 'TESLA Smart Button', local_key: 'k3y0hub000000000', sub: true, gateway: 'bf0tslhub00', node_id: 'a4c13800btn00001',
+    props: [['switch1_value', 1, 'ro', { type: 'enum', range: ['single_click', 'double_click', 'long_press'] }], ['battery_percentage', 10, 'ro', v(0, 100, 0, '%')]],
+    state: { switch1_value: 'single_click', battery_percentage: 100 } },
 ];
 
 const sign = (secret, str) => crypto.createHmac('sha256', secret).update(str).digest('hex').toUpperCase();
@@ -51,7 +71,7 @@ function startSimulator({ port = 8097, accessId = 'sim-id', accessSecret = 'sim-
   };
   const statusOf = (d) => Object.entries(d.state).map(([code, value]) => ({ code, value }));
   const listItem = (d) => ({ id: d.id, name: d.name, category: d.category, product_name: d.product_name, local_key: d.local_key,
-    online: true, ip: '203.0.113.7', status: statusOf(d), uid });
+    online: true, ip: '203.0.113.7', status: statusOf(d), uid, ...(d.sub ? { sub: true } : {}) });
 
   const server = http.createServer((req, res) => {
     let body = '';
@@ -81,6 +101,9 @@ function startSimulator({ port = 8097, accessId = 'sim-id', accessSecret = 'sim-
         if (!d) return send(null, false, 2001, 'device not found');
         const model = { modelId: 'sim', services: [{ code: '', properties: d.props.map(([code, dp, mode, ts]) => ({ abilityId: dp, code, accessMode: mode, typeSpec: ts })) }] };
         return send({ model: JSON.stringify(model) });
+      }
+      if ((m = /^\/v1\.0\/devices\/([^/]+)\/sub-devices$/.exec(u.pathname))) {
+        return send(devices.filter((d) => d.gateway === m[1]).map((d) => ({ id: d.id, name: d.name, node_id: d.node_id, category: d.category, online: true })));
       }
       if (u.pathname === '/v1.0/iot-03/devices/status') {
         const ids = (u.searchParams.get('device_ids') || '').split(',');

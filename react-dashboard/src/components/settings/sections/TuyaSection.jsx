@@ -37,6 +37,7 @@ export default function TuyaSection({ config, reload }) {
   return (
     <SettingsCard icon={SwitchOutletIcon} title={gt('s.tuya_title', 'Tuya / Smart Life')} badge={{ label: gt('common.optional', 'Optional') }}
       desc={tr('Tuya and Smart Life plugs, switches, bulbs, LED strips, curtain motors and sensors. The cloud project (iot.tuya.com → Cloud → your project, with the Smart Life app account linked) lists every device and its local key; Auto then talks to each device on the LAN and falls back to the cloud. Local-only devices need their ID and local key below.')}>
+      <p className="stg-hint">{tr('TESLA Smart works here too — it is Tuya inside: Wi-Fi plugs, power strips (each socket and the USB block switch separately), and the Zigbee accessories on the TESLA Smart Zigbee Hub (radiator heads, plugs, door, motion, gas and smoke sensors, buttons). Add them in the TESLA Smart or Smart Life app and link that account. Zigbee devices can also pair straight to a USB stick — see Z-Wave & Zigbee USB.')}</p>
       <Field label="Connection" type="select" value={mode} onChange={setMode} options={MODES}/>
       {cloud && <>
         <Field label="Data Centre" type="select" value={region} onChange={setRegion} options={REGIONS}/>
