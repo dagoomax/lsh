@@ -4555,6 +4555,25 @@ Every event is also published as `ajax/<account>/event` (`{ code, text, zone, zo
 
 **Testing:** to try it without a Hub, run `node scripts/sia-send.js 127.0.0.1:12128 A1B2 Nri1/BA005 [key]`.
 
+### Jablotron
+
+Jablotron JA-100 / JA-100+ with a LAN communicator reports to LSH over **SIA DC-09**, with LSH acting as the alarm receiving centre (ARC). It uses the same receiver as Ajax (`src/jablotron-client.js`, runs in its own process, default port **12129**, TCP and UDP).
+
+**It's read-only.** Setting and unsetting would need the JA-121T bus interface or the MyJABLOTRON cloud, and neither is used.
+
+**Setup:**
+1. In F-Link (service mode, usually done by the installer): Parameters → ARC → a channel with **SIA DC-09** over IP. Enter LSH's IP and port, the object number, optionally an AES key, and a periodic test.
+2. Enter the same values under Settings → Security & Access → **Jablotron**.
+
+```json
+"jablotron": { "port": 12129, "accounts": [{ "account": "0042", "name": "JA-100", "key": "…", "pingMinutes": 1,
+               "zones": { "3": "Hall PIR" }, "areas": { "1": "Dom", "2": "Garaż" } }] }
+```
+
+**The device `jablotron/<account>`** has the same sensors as Ajax. On top of that, every named section gets its own state (`area<n>`: Disarmed / Armed / Night / Partial). The panel `mode` is then Armed when all sections are set, Disarmed when none are, and Partial otherwise.
+
+Section names also work for Ajax (groups).
+
 ### Zehnder ventilation (rekuperacja)
 
 Zehnder heat-recovery ventilation units (`src/zehnder-client.js` + `src/zehnder/*`, no npm deps). Settings → Climate & Appliances → **Zehnder Ventilation** (Find LAN C gateways, Test, Save — applied live). Three ways in, one device model:

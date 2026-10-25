@@ -54,6 +54,7 @@ export const CATEGORIES = [
     { id: 'satel', title: 'Satel INTEGRA', keywords: ['satel', 'integra', 'alarm', 'ethm'] },
     { id: 'dsc', title: 'DSC PowerSeries Neo', keywords: ['dsc', 'neo', 'tl280', 'itv2', 'alarm', 'alarm panel'] },
     { id: 'ajax', title: 'Ajax', keywords: ['ajax', 'ajax systems', 'hub', 'alarm', 'alarm panel', 'sia', 'dc-09', 'monitoring station', 'alarm', 'czujka', 'centrala'] },
+    { id: 'jablotron', title: 'Jablotron', keywords: ['jablotron', 'ja-100', 'ja100', 'ja-100+', 'f-link', 'alarm', 'alarm panel', 'sia', 'dc-09', 'arc', 'centrala', 'sekcja'] },
     { id: 'tedee', title: 'Tedee Smart Lock', keywords: ['tedee', 'lock', 'door', 'keypad', 'pin', 'zamek'] },
     { id: 'nuki', title: 'Nuki', keywords: ['nuki', 'smart lock', 'opener', 'lock', 'door', 'keypad', 'pin', 'zamek', 'domofon'] },
     { id: 'ttlock', title: 'TTLock', keywords: ['ttlock', 'sciener', 'lock', 'smart lock', 'gateway', 'passcode', 'pin', 'zamek', 'door'] },

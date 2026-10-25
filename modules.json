@@ -1347,6 +1347,19 @@
       ],
       "deps": {}
     },
+    "jablotron": {
+      "entry": "src/jablotron-client.js",
+      "configKeys": [
+        "jablotron"
+      ],
+      "when": "(config.jablotron?.accounts?.length)",
+      "files": [
+        "src/ajax-client.js",
+        "src/jablotron-client.js",
+        "src/sia-dc09.js"
+      ],
+      "deps": {}
+    },
     "sinum": {
       "entry": "src/sinum-client.js",
       "configKeys": [

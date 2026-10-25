@@ -19,14 +19,23 @@
 // timestamp window are refused (replay protection, as pysiaalarm does).
 //
 // config.ajax = { port: 12128, accounts: [{ account: 'A1B2', name, key,
-//                 pingMinutes: 1, zones: { '5': 'Kuchnia – czujka' } }] }
+//                 pingMinutes: 1, zones: { '5': 'Kuchnia – czujka' },
+//                 areas: { '1': 'Dom', '2': 'Garaż' } }] }
+//
+// The same receiver serves Jablotron (src/jablotron-client.js) — any panel
+// that reports SIA DC-09 works; only names, port and device keys differ.
+// With areas named, each gets its own mode sensor (area<n>), since arming
+// is per area (Ajax groups, Jablotron sections).
 
 const net = require('net');
 const dgram = require('dgram');
 const platformStatus = require('./platform-status');
 const sia = require('./sia-dc09');
 
-const DEFAULT_PORT = 12128;
+const PROVIDERS = {
+  ajax: { configKey: 'ajax', prefix: 'ajax', statusKey: 'ajax', logTag: 'Ajax', label: 'Ajax', icon: '🛡️', port: 12128 },
+  jablotron: { configKey: 'jablotron', prefix: 'jablotron', statusKey: 'jablotron', logTag: 'Jablotron', label: 'Jablotron', icon: '🛡️', port: 12129 },
+};
 const WINDOW_BEFORE = 40_000;
 const WINDOW_AFTER = 20_000;
 
@@ -55,7 +64,8 @@ const TEXT = {
 const FLAG_KEYS = ['alarm', 'fire', 'water', 'gas', 'panic', 'tamper', 'powerTrouble', 'batteryLow'];
 
 class AjaxClient {
-  constructor(config, store, sensorRegistry) {
+  constructor(config, store, sensorRegistry, provider = PROVIDERS.ajax) {
+    this._p = provider;
     this._config = config;
     this._store = store;
     this._registry = sensorRegistry;
@@ -67,25 +77,26 @@ class AjaxClient {
   }
 
   async start() {
-    const cfg = this._config.ajax || {};
+    const cfg = this._config[this._p.configKey] || {};
+    const tag = `[${this._p.logTag}]`;
     for (const a of cfg.accounts || []) {
       const account = String(a.account || '').trim().toUpperCase();
-      if (!/^[0-9A-F]{3,16}$/.test(account)) { console.warn(`[Ajax] Skipping account "${a.account}" — 3-16 hex characters expected`); continue; }
+      if (!/^[0-9A-F]{3,16}$/.test(account)) { console.warn(`${tag} Skipping account "${a.account}" — 3-16 hex characters expected`); continue; }
       const key = a.key ? String(a.key) : undefined;
-      if (key && ![16, 24, 32].includes(Buffer.byteLength(key))) { console.warn(`[Ajax] ${account}: the key must be 16, 24 or 32 characters — ignoring it`); }
+      if (key && ![16, 24, 32].includes(Buffer.byteLength(key))) { console.warn(`${tag} ${account}: the key must be 16, 24 or 32 characters — ignoring it`); }
       this._accounts.set(account, { ...a, account, key: key && [16, 24, 32].includes(Buffer.byteLength(key)) ? key : undefined });
       this._register(this._accounts.get(account));
     }
     if (!this._accounts.size) return;
-    const port = Number(cfg.port) || DEFAULT_PORT;
+    const port = Number(cfg.port) || this._p.port;
 
     this._tcp = net.createServer((sock) => this._onSocket(sock));
-    this._tcp.on('error', (err) => console.error(`[Ajax] TCP ${port}: ${err.message}`));
+    this._tcp.on('error', (err) => console.error(`${tag} TCP ${port}: ${err.message}`));
     await new Promise((resolve) => this._tcp.listen(port, '0.0.0.0', resolve));
     this.port = this._tcp.address().port;
 
     this._udp = dgram.createSocket('udp4');
-    this._udp.on('error', (err) => console.error(`[Ajax] UDP ${port}: ${err.message}`));
+    this._udp.on('error', (err) => console.error(`${tag} UDP ${port}: ${err.message}`));
     this._udp.on('message', (buf, rinfo) => {
       for (const reply of this._onData(buf.toString('latin1'), `${rinfo.address}`)) this._udp.send(reply, rinfo.port, rinfo.address);
     });
@@ -94,7 +105,7 @@ class AjaxClient {
     this._timer = setInterval(() => this._checkOnline(), 15_000);
     this._timer.unref?.();
     this._checkOnline();
-    console.log(`[Ajax] SIA DC-09 receiver on TCP/UDP ${this.port} — account(s) ${[...this._accounts.keys()].join(', ')}`);
+    console.log(`${tag} SIA DC-09 receiver on TCP/UDP ${this.port} — account(s) ${[...this._accounts.keys()].join(', ')}`);
   }
 
   stop() {
@@ -103,13 +114,18 @@ class AjaxClient {
     try { this._udp?.close(); } catch { /* not bound */ }
   }
 
+  _key(acct) { return `${this._p.prefix}/${acct.account || acct}`; }
+  _tag() { return `[${this._p.logTag}]`; }
+
   _register(a) {
-    const key = `ajax/${a.account}`;
+    const key = this._key(a);
     if (this._registry.devices.has(key)) return;
+    const areas = Object.entries(a.areas || {}).filter(([n, name]) => /^\d+$/.test(n) && name);
     this._registry.registerDevice({
-      key, type: 'ajax', label: a.name || `Ajax ${a.account}`, icon: '🛡️',
+      key, type: this._p.prefix, label: a.name || `${this._p.label} ${a.account}`, icon: this._p.icon,
       sensors: [
         { path: 'mode', name: 'Mode', type: 'label' },
+        ...areas.map(([n, name]) => ({ path: `area${n}`, name, type: 'label' })),
         { path: 'armed', name: 'Armed', type: 'boolean' },
         { path: 'alarm', name: 'Intrusion alarm', type: 'boolean' },
         { path: 'fire', name: 'Fire', type: 'boolean' },
@@ -151,24 +167,24 @@ class AjaxClient {
       const msg = sia.parse(line, (acc) => this._accounts.get(acc)?.key);
       const acct = this._accounts.get(msg.account);
       if (msg.error) {
-        console.warn(`[Ajax] ${from}: ${msg.error}${msg.account ? ` (account ${msg.account})` : ''}`);
+        console.warn(`${this._tag()} ${from}: ${msg.error}${msg.account ? ` (account ${msg.account})` : ''}`);
         if (msg.error !== 'CRC mismatch' && msg.seq) replies.push(sia.nak(msg));
         continue;
       }
       if (!acct) {
-        console.warn(`[Ajax] ${from}: message for unknown account ${msg.account} — add it in Settings → Ajax`);
+        console.warn(`${this._tag()} ${from}: message for unknown account ${msg.account} — add it in Settings → ${this._p.label}`);
         replies.push(sia.nak(msg));
         continue;
       }
       if (acct.key && !msg.encrypted && msg.id !== 'NULL') {
-        console.warn(`[Ajax] ${msg.account}: unencrypted message, but a key is set — refused`);
+        console.warn(`${this._tag()} ${msg.account}: unencrypted message, but a key is set — refused`);
         replies.push(sia.nak(msg));
         continue;
       }
       if (msg.encrypted && msg.timestamp) {
         const d = Date.now() - msg.timestamp.getTime();
         if (d > WINDOW_BEFORE || d < -WINDOW_AFTER) {
-          console.warn(`[Ajax] ${msg.account}: timestamp ${msg.timestamp.toISOString()} outside the allowed window — refused (check the Hub's clock)`);
+          console.warn(`${this._tag()} ${msg.account}: timestamp ${msg.timestamp.toISOString()} outside the allowed window — refused (check the Hub's clock)`);
           replies.push(sia.nak(msg));
           continue;
         }
@@ -186,30 +202,34 @@ class AjaxClient {
   }
 
   _setOnline(acct, online) {
-    const key = `ajax/${acct.account}/online`;
+    const key = `${this._key(acct)}/online`;
     if (this._store.get(key) !== online) this._store.set(key, online);
-    platformStatus.set('ajax', [...this._accounts.keys()].some((a) => this._store.get(`ajax/${a}/online`) === true));
+    platformStatus.set(this._p.statusKey, [...this._accounts.keys()].some((a) => this._store.get(`${this._key(a)}/online`) === true));
   }
 
   _checkOnline() {
     for (const acct of this._accounts.values()) {
       const last = this._lastSeen.get(acct.account);
       const limit = 3 * Math.max(1, Number(acct.pingMinutes) || 1) * 60_000;
-      if (!last) { if (this._store.get(`ajax/${acct.account}/online`) === null) this._store.set(`ajax/${acct.account}/online`, false); continue; }
+      if (!last) { if (this._store.get(`${this._key(acct)}/online`) === null) this._store.set(`${this._key(acct)}/online`, false); continue; }
       if (Date.now() - last > limit) this._setOnline(acct, false);
     }
   }
 
   _apply(acct, ev) {
-    const key = `ajax/${acct.account}`;
+    const key = this._key(acct);
     const zoneName = ev.zone != null ? acct.zones?.[String(ev.zone)] : undefined;
     const text = TEXT[ev.code] || `Event ${ev.code}`;
+    const areaKey = ev.area != null && acct.areas?.[String(ev.area)] ? `${key}/area${ev.area}` : null;
     if (ARM[ev.code]) {
-      this._store.set(`${key}/mode`, ARM[ev.code]);
+      if (areaKey) this._store.set(areaKey, ARM[ev.code]);
+      this._store.set(`${key}/mode`, areaKey ? this._overall(acct) : ARM[ev.code]);
       this._store.set(`${key}/armed`, true);
     } else if (DISARM.has(ev.code)) {
-      this._store.set(`${key}/mode`, 'Disarmed');
-      this._store.set(`${key}/armed`, false);
+      if (areaKey) this._store.set(areaKey, 'Disarmed');
+      const overall = areaKey ? this._overall(acct) : 'Disarmed';
+      this._store.set(`${key}/mode`, overall);
+      this._store.set(`${key}/armed`, overall !== 'Disarmed');
       // disarming silences an alarm in progress
       for (const f of ['alarm', 'panic']) if (this._store.get(`${key}/${f}`)) this._store.set(`${key}/${f}`, false);
     }
@@ -221,8 +241,17 @@ class AjaxClient {
     const label = where ? `${text} · ${where}` : text;
     this._store.set(`${key}/lastEvent`, label);
     this._store.set(`${key}/event`, { code: ev.code, text, zone: ev.zone, zoneName: zoneName || null, area: ev.area, at: new Date().toISOString() });
-    if (ev.code !== 'RP') console.log(`[Ajax] ${acct.name || acct.account}: ${label} (${ev.code}${ev.area != null ? `, area ${ev.area}` : ''})`);
+    if (ev.code !== 'RP') console.log(`${this._tag()} ${acct.name || acct.account}: ${label} (${ev.code}${ev.area != null ? `, area ${ev.area}` : ''})`);
+  }
+
+  // With named areas: Disarmed only when every area is, Armed when all are, else Partial
+  _overall(acct) {
+    const modes = Object.keys(acct.areas || {}).map((n) => this._store.get(`${this._key(acct)}/area${n}`) || 'Disarmed');
+    if (modes.every((m) => m === 'Disarmed')) return 'Disarmed';
+    if (modes.every((m) => m === 'Armed')) return 'Armed';
+    return 'Partial';
   }
 }
 
 module.exports = AjaxClient;
+module.exports.PROVIDERS = PROVIDERS;

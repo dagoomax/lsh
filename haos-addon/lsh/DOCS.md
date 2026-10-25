@@ -62,6 +62,7 @@ Host networking is required for HomeKit, Tuya, Sonoff and AirPlay discovery over
 | 8554 | RTSP proxy (when `ffmpegRtsp` is on) |
 | 6066 | Loxone weather forecast (when enabled) |
 | 12128 | Ajax SIA DC-09 receiver, TCP and UDP (when configured) |
+| 12129 | Jablotron SIA DC-09 receiver, TCP and UDP (when configured) |
 
 ## Data, backups, updates
 

@@ -105,3 +105,32 @@ test('Ajax: unencrypted SIA and Contact ID over UDP, link test keeps it online',
     client.stop();
   }
 });
+
+test('Jablotron: own receiver and devices, per-section state rolls up to the panel mode', async () => {
+  const JablotronClient = require('../src/jablotron-client');
+  const store = new DataStore();
+  const registry = new SensorRegistry(store, 'en');
+  const client = new JablotronClient({ jablotron: { port: 0, accounts: [{ account: '0042', name: 'JA-100', areas: { 1: 'Dom', 2: 'Garaż' }, zones: { 3: 'Hall PIR' } }] } }, store, registry);
+  await client.start();
+  try {
+    const dev = registry.devices.get('jablotron/0042');
+    assert.equal(dev.type, 'jablotron');
+    assert.deepEqual(dev.sensors.filter((s) => /^area/.test(s.path)).map((s) => s.name), ['Dom', 'Garaż']);
+
+    await sendTcp(client.port, [sia.build({ account: '0042', data: 'Nri2/CL001', seq: 1 })]);
+    assert.equal(store.get('jablotron/0042/area2'), 'Armed');
+    assert.equal(store.get('jablotron/0042/mode'), 'Partial');
+    assert.equal(store.get('jablotron/0042/armed'), true);
+    await sendTcp(client.port, [sia.build({ account: '0042', data: 'Nri1/CL001', seq: 2 })]);
+    assert.equal(store.get('jablotron/0042/mode'), 'Armed');
+    await sendTcp(client.port, [sia.build({ account: '0042', data: 'Nri1/BA003', seq: 3 })]);
+    assert.equal(store.get('jablotron/0042/lastEvent'), 'Intrusion alarm · Hall PIR');
+    await sendTcp(client.port, [sia.build({ account: '0042', data: 'Nri1/OP001/ri2OP001', seq: 4 })]);
+    assert.equal(store.get('jablotron/0042/mode'), 'Disarmed');
+    assert.equal(store.get('jablotron/0042/armed'), false);
+    assert.equal(store.get('jablotron/0042/alarm'), false);
+    assert.equal(require('../src/platform-status').getAll().jablotron, true);
+  } finally {
+    client.stop();
+  }
+});

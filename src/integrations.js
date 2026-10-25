@@ -116,6 +116,8 @@ module.exports = [
   { file: 'dsc-client', label: 'DSC', expose: 'dsc', when: (config) => config.dsc?.enabled && (config.dsc?.type2Key || config.dsc?.type1Code) },
   // Ajax Systems Hub — LSH is the monitoring station it reports to over SIA DC-09 (local, read-only)
   { file: 'ajax-client', label: 'Ajax', when: (config) => config.ajax?.accounts?.length },
+  // Jablotron JA-100 / JA-100+ — the same SIA DC-09 receiver (src/jablotron-client.js)
+  { file: 'jablotron-client', label: 'Jablotron', when: (config) => config.jablotron?.accounts?.length },
   // TECH Sterowniki Sinum central — local REST API (token or login)
   { file: 'sinum-client', label: 'Sinum', expose: 'sinum', when: (config) => config.sinum?.host && (config.sinum?.token || (config.sinum?.username && config.sinum?.password)) },
   // vCLU (Virtual CLU) — devices + scenes through its MCP endpoint (bot token)
