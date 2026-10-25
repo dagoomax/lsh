@@ -143,6 +143,8 @@ module.exports = [
   { file: 'homeassistant-client', label: 'HomeAssistant', expose: 'homeassistant', when: (config) => (config.homeassistant?.url && config.homeassistant?.token) || config.homeassistant?.export?.enabled },
   // Airbnb / Booking / VRBO reservations — listing calendar export links (iCal); see src/airbnb-client.js
   { file: 'airbnb-client', label: 'Airbnb', when: (config) => config.airbnb?.listings?.length },
+  // Booking.com — the same engine, its own config / devices (src/booking-client.js)
+  { file: 'booking-client', label: 'Booking.com', when: (config) => config.booking?.listings?.length },
   // Aquilo liquid-level sensors (septic / rainwater tanks) — WiFi gateway's local /state endpoint
   { file: 'aquilo-client', label: 'Aquilo', expose: 'aquilo', when: (config) => config.aquilo?.gateways?.length },
   // Zehnder ventilation (rekuperacja) — ComfoConnect LAN C, ComfoConnect Pro (Modbus TCP), ComfoAir 350/550 (RS232)

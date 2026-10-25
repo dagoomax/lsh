@@ -4392,7 +4392,7 @@ Every tank the receiver reports becomes device `aquilo/<id>` (tanks added later 
 
 ### Airbnb (rental reservations)
 
-Reservations of short-term rental listings, from each listing's **calendar export link** (iCal). Airbnb has no public host API; in Airbnb go to Calendar → Availability → Connect calendars → **Export calendar**. Booking.com and VRBO export links work too (`src/airbnb-client.js`, no npm deps, runs in its own process). Settings → Home → **Airbnb**: add a listing with its link and your check-in and check-out times, **Test calendar link**, **Save**. Changes apply live.
+Reservations of short-term rental listings, from each listing's **calendar export link** (iCal). Airbnb has no public host API; in Airbnb go to Calendar → Availability → Connect calendars → **Export calendar**. VRBO links work too, and a Booking.com link added here is read with Booking's rules (below) (`src/airbnb-client.js`, no npm deps, runs in its own process). Settings → Home → **Airbnb**: add a listing with its link and your check-in and check-out times, **Test calendar link**, **Save**. Changes apply live.
 
 ```json
 "airbnb": {
@@ -4414,8 +4414,22 @@ Each listing becomes a device `airbnb/<name>`. Its states change at the configur
 | `nights30`, `occupancy30` | Booked nights and % over the next 30 days. |
 | `reservations` | The next 10 stays (object). |
 
-- **Blocked dates:** "Airbnb (Not available)" and Booking's "CLOSED - Not available" are not counted as stays.
+- **Blocked dates:** "Airbnb (Not available)" and VRBO's "Blocked" are not counted as stays.
 - **The link is a secret:** anyone who has it can read the calendar. LSH never logs it.
+
+### Booking.com (rental reservations)
+
+The same engine as Airbnb, with its own module, Settings section (Settings → Home → **Booking.com**), devices (`booking/<name>`) and platform-bar entry (`src/booking-client.js`). The link comes from the Extranet: Rates & Availability → Sync calendars → **Export calendar**.
+
+```json
+"booking": {
+  "listings": [{ "name": "Apartament", "ical": "https://ical.booking.com/v1/export?t=…",
+                 "checkIn": "15:00", "checkOut": "11:00", "prepareHours": 3, "closedAsStays": true }],
+  "pollMinutes": 30
+}
+```
+
+Booking.com exports every unavailable night as `CLOSED - Not available`, so a reservation and a date you closed yourself look the same. The export also has no reservation code or guest details. With `closedAsStays` (default on), every closed period counts as a stay and `guest` shows `Booking.com`. Turn it off only if you never close dates by hand and want closed periods ignored. The sensors are the same as Airbnb's (see the table above).
 
 ### Zehnder ventilation (rekuperacja)
 

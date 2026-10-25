@@ -148,3 +148,57 @@ test('saving settings starts, restarts and stops the module process', async () =
     srv.close();
   }
 });
+
+const BOOKING_ICS = [
+  'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//booking.com//Booking.com Calendar//EN',
+  'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20261027', 'DTEND;VALUE=DATE:20261029', 'UID:abc1@booking.com', 'SUMMARY:CLOSED - Not available', 'END:VEVENT',
+  'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20261101', 'DTEND;VALUE=DATE:20261104', 'UID:abc2@booking.com', 'SUMMARY:CLOSED - Not available', 'END:VEVENT',
+  'END:VCALENDAR',
+].join('\r\n');
+
+test('Booking.com: closed periods are stays for Booking links, blocks for others', () => {
+  const { sourceOf, closedAsStays } = AirbnbClient;
+  assert.equal(sourceOf('https://ical.booking.com/v1/export?t=x'), 'booking');
+  assert.equal(sourceOf('https://admin.booking.com/hotel/hoteladmin/ical.html?t=x'), 'booking');
+  assert.equal(sourceOf('https://www.airbnb.pl/calendar/ical/1.ics?s=x'), 'airbnb');
+  assert.equal(sourceOf('https://www.vrbo.com/icalendar/x.ics'), 'vrbo');
+  assert.equal(closedAsStays({ ical: 'https://ical.booking.com/v1/export?t=x' }), true);
+  assert.equal(closedAsStays({ ical: 'https://ical.booking.com/v1/export?t=x', closedAsStays: false }), false);
+
+  const ev = parseIcs(BOOKING_ICS);
+  const booking = { ...L, ical: 'https://ical.booking.com/v1/export?t=x' };
+  let s = computeState(ev, booking, at(2026, 10, 28, 9));
+  assert.equal(s.occupied, true);
+  assert.equal(s.guest, 'Booking.com');
+  assert.equal(s.nights30, 5 - 1); // from the 28th: one night left of the first stay + 3
+  s = computeState(ev, { ...booking, closedAsStays: false }, at(2026, 10, 28, 9));
+  assert.equal(s.occupied, false);
+  // an Airbnb listing carrying the same closed periods treats them as blocks
+  assert.equal(computeState(ev, { ...L, ical: 'https://www.airbnb.com/calendar/ical/1.ics' }, at(2026, 10, 28, 9)).occupied, false);
+});
+
+test('Booking.com module runs in its own process with its own devices', async () => {
+  const DataStore = require('../src/data-store');
+  const SensorRegistry = require('../src/sensor-registry');
+  const ModuleHost = require('../src/module-host');
+  const platformStatus = require('../src/platform-status');
+  const srv = http.createServer((req, res) => { res.writeHead(200); res.end(BOOKING_ICS); });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const config = { booking: { listings: [{ name: 'Apartament', ical: `http://127.0.0.1:${srv.address().port}/e`, closedAsStays: true, ...L }] } };
+  const store = new DataStore();
+  const registry = new SensorRegistry(store, 'en');
+  const host = new ModuleHost(config, store, registry);
+  const it = require('../src/integrations').find((x) => x.file === 'booking-client');
+  const end = Date.now() + 8000;
+  try {
+    host.add(it);
+    while (Date.now() < end && store.get('booking/apartament/reservations') === null) await new Promise((r) => setTimeout(r, 50));
+    const d = registry.devices.get('booking/apartament');
+    assert.equal(d.type, 'booking');
+    assert.equal(platformStatus.getAll().booking, true);
+    assert.ok(Array.isArray(store.get('booking/apartament/reservations')));
+  } finally {
+    await host.stopAll();
+    srv.close();
+  }
+});

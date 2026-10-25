@@ -14,9 +14,15 @@
 //    details/HMABCDEFGH\nPhone Number (Last 4 Digits): 1234
 //   END:VEVENT
 //
-// Dates the host blocked come as "Airbnb (Not available)" (Booking: "CLOSED -
-// Not available") and don't count as stays. No guest names — only the
-// reservation code and the phone number's last 4 digits.
+// Dates the host blocked come as "Airbnb (Not available)" and don't count as
+// stays. No guest names — only the reservation code and the phone number's
+// last 4 digits.
+//
+// Booking.com (src/booking-client.js, same engine, config.booking, devices
+// booking/<slug>) exports every unavailable night as "CLOSED - Not available"
+// — a reservation and a date the host closed look the same, with no code or
+// phone. For Booking links (detected by host, or listing.closedAsStays) closed
+// periods therefore count as stays. VRBO: "Reserved - …" / "Blocked".
 //
 // Each listing becomes a device (airbnb/<slug>) whose states flip at the
 // host's check-in / check-out times — occupied, prepare (N hours before the
@@ -115,14 +121,29 @@ const at = (date, [h, m]) => new Date(date[0], date[1] - 1, date[2], h, m);
 const dayKey = (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
+// Source of a calendar link, by host — decides how closed periods count.
+function sourceOf(url) {
+  let host = '';
+  try { host = new URL(url).hostname; } catch { /* not a URL */ }
+  if (/(^|\.)booking\.com$/.test(host)) return 'booking';
+  if (/(^|\.)airbnb\.[a-z.]+$/.test(host)) return 'airbnb';
+  if (/(^|\.)(vrbo|homeaway)\.[a-z.]+$/.test(host)) return 'vrbo';
+  return 'other';
+}
+const SOURCE_LABEL = { booking: 'Booking.com', airbnb: 'Airbnb', vrbo: 'VRBO', other: '' };
+// Booking marks reservations "CLOSED - Not available" — they must count
+const closedAsStays = (listing) => listing.closedAsStays ?? sourceOf(listing.ical) === 'booking';
+
 // events + listing settings + clock → everything the device shows
 function computeState(events, listing = {}, now = new Date(), language = 'en') {
   const cin = hhmm(listing.checkIn, [15, 0]);
   const cout = hhmm(listing.checkOut, [11, 0]);
   const prepareMs = Math.max(0, Number(listing.prepareHours ?? 3)) * 3600_000;
 
+  const keepClosed = closedAsStays(listing);
+  const source = SOURCE_LABEL[sourceOf(listing.ical)] || '';
   const stays = events
-    .filter((e) => !e.blocked)
+    .filter((e) => keepClosed || !e.blocked)
     .map((e) => {
       const start = e.start.at || at(e.start.date, cin);
       const end = e.end.at || at(e.end.date, cout);
@@ -150,7 +171,7 @@ function computeState(events, listing = {}, now = new Date(), language = 'en') {
   }
 
   const fmt = (d) => d.toLocaleString(language, { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  const who = (s) => (s ? [s.code, s.phone4 && `…${s.phone4}`].filter(Boolean).join(' · ') || 'guest' : '');
+  const who = (s) => (s ? [s.code, s.phone4 && `…${s.phone4}`].filter(Boolean).join(' · ') || source || 'guest' : '');
 
   return {
     occupied: !!current,
@@ -201,9 +222,17 @@ const SENSORS = [
   { path: 'occupancy30', name: 'Occupancy (30 d)', type: 'number', unit: '%' },
 ];
 
+// The same engine serves both modules; each has its own config section,
+// device keys, platform-bar entry and log prefix.
+const PROVIDERS = {
+  airbnb: { configKey: 'airbnb', prefix: 'airbnb', statusKey: 'airbnb', logTag: 'Airbnb', label: 'Airbnb', icon: '🏠' },
+  booking: { configKey: 'booking', prefix: 'booking', statusKey: 'booking', logTag: 'Booking', label: 'Booking.com', icon: '🛎️' },
+};
+
 class AirbnbClient extends PollingClient {
-  constructor(config, store, sensorRegistry) {
-    super({ statusKey: 'airbnb', logTag: 'Airbnb', maxBackoffMs: 2 * 3600_000 });
+  constructor(config, store, sensorRegistry, provider = PROVIDERS.airbnb) {
+    super({ statusKey: provider.statusKey, logTag: provider.logTag, maxBackoffMs: 2 * 3600_000 });
+    this._p = provider;
     this._config = config;
     this._store = store;
     this._registry = sensorRegistry;
@@ -212,15 +241,15 @@ class AirbnbClient extends PollingClient {
   }
 
   async start() {
-    const cfg = this._config.airbnb || {};
+    const cfg = this._config[this._p.configKey] || {};
     const listings = (cfg.listings || []).filter((l) => l?.ical);
     if (!listings.length) return;
     const ids = listingIds(listings);
-    this._listings = listings.map((l, i) => ({ ...l, id: ids[i], key: `airbnb/${ids[i]}`, events: null, last: {} }));
+    this._listings = listings.map((l, i) => ({ ...l, id: ids[i], key: `${this._p.prefix}/${ids[i]}`, events: null, last: {} }));
 
     for (const l of this._listings) {
       this._registry.registerDevice({
-        key: l.key, label: l.name || `Airbnb ${l.id}`, type: 'airbnb', icon: '🏠', room: l.room,
+        key: l.key, label: l.name || `${this._p.label} ${l.id}`, type: this._p.prefix, icon: this._p.icon, room: l.room,
         homekit: ['occupancy'],
         sensors: SENSORS.map((s) => ({ ...s })),
       });
@@ -229,7 +258,7 @@ class AirbnbClient extends PollingClient {
     this._clock = setInterval(() => this._publishAll(), 60_000);
     this._clock.unref?.();
     const minutes = Math.max(10, Number(cfg.pollMinutes) || 30);
-    console.log(`[Airbnb] Started — ${this._listings.length} listing(s), calendar every ${minutes} min`);
+    console.log(`[${this._p.logTag}] Started — ${this._listings.length} listing(s), calendar every ${minutes} min`);
     await this.startPolling(minutes * 60_000);
   }
 
@@ -247,7 +276,10 @@ class AirbnbClient extends PollingClient {
         const first = !l.events;
         l.events = events;
         this._store.update(`${l.key}/lastSync`, new Date().toISOString());
-        if (first) console.log(`[Airbnb] ${l.name || l.id}: ${events.filter((e) => !e.blocked).length} reservation(s)`);
+        if (first) {
+          const stays = closedAsStays(l) ? events.length : events.filter((e) => !e.blocked).length;
+          console.log(`[${this._p.logTag}] ${l.name || l.id}: ${stays} reservation(s)`);
+        }
       } catch (err) {
         // the last good calendar stays in use
         failed.push(`${l.name || l.id}: ${err.message}`);
@@ -278,3 +310,6 @@ module.exports.parseIcs = parseIcs;
 module.exports.fetchIcs = fetchIcs;
 module.exports.computeState = computeState;
 module.exports.listingIds = listingIds;
+module.exports.sourceOf = sourceOf;
+module.exports.closedAsStays = closedAsStays;
+module.exports.PROVIDERS = PROVIDERS;

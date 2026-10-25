@@ -1505,6 +1505,19 @@
       ],
       "deps": {}
     },
+    "booking": {
+      "entry": "src/booking-client.js",
+      "configKeys": [
+        "booking"
+      ],
+      "when": "(config.booking?.listings?.length)",
+      "files": [
+        "src/airbnb-client.js",
+        "src/booking-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
+    },
     "aquilo": {
       "entry": "src/aquilo-client.js",
       "configKeys": [
