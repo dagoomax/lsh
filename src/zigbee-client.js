@@ -271,6 +271,7 @@ class ZigbeeClient {
     const prev = this._devices.get(ieee);
     const entry = { device, definition, state: prev?.state || {}, key: `zigbee/${ieee.replace(/^0x/, '')}` };
     entry.model = buildModel(this._exposes(entry));
+    entry.fz = indexConverters(definition.fromZigbee);
     this._devices.set(ieee, entry);
 
     // reporting/binding — once per device (and again when the definition changes)
@@ -342,8 +343,8 @@ class ZigbeeClient {
     const payload = {};
     const publish = (p) => this._apply(entry, p);
     const meta = { state: entry.state, device: data.device, deviceExposesChanged: () => this._rebuild(entry) };
-    for (const c of definition.fromZigbee || []) {
-      if (c.cluster !== data.cluster) continue;
+    // converters indexed by cluster at setup — reports are the hot path
+    for (const c of entry.fz.get(data.cluster) || []) {
       if (Array.isArray(c.type) ? !c.type.includes(data.type) : c.type !== data.type) continue;
       try {
         const r = await c.convert(definition, data, publish, options, meta);
@@ -394,6 +395,16 @@ class ZigbeeClient {
     this._apply(entry, state); // optimistic — the device's own report follows
     return state;
   }
+}
+
+// fromZigbee converters by cluster
+function indexConverters(list = []) {
+  const byCluster = new Map();
+  for (const c of list) {
+    if (!byCluster.has(c.cluster)) byCluster.set(c.cluster, []);
+    byCluster.get(c.cluster).push(c);
+  }
+  return byCluster;
 }
 
 module.exports = ZigbeeClient;

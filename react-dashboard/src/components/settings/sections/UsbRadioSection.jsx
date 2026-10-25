@@ -37,7 +37,14 @@ export default function UsbRadioSection({ config, reload }) {
   const save = useSettingsSave('/api/settings/usb-radio')
 
   const loadStatus = () => api('/api/usb-radio/status').then((j) => j.success && setStatus(j.data)).catch(() => {})
-  useEffect(() => { loadStatus(); const t = setInterval(loadStatus, 5000); return () => clearInterval(t) }, [])
+  // poll only while a radio is set up — nothing changes otherwise
+  const active = !!(status?.zwave || status?.zigbee)
+  useEffect(() => { loadStatus() }, [])
+  useEffect(() => {
+    if (!active) return
+    const t = setInterval(loadStatus, 5000)
+    return () => clearInterval(t)
+  }, [active])
 
   const pickStick = (v) => {
     setStick(v)

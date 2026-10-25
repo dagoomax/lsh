@@ -158,15 +158,15 @@ async function probe(portPath, { baudRate = BAUD, rtscts = false, timeout = TIME
   }
 }
 
-async function scan({ skip = [] } = {}) {
+// Each port is its own UART, so they're probed side by side (a dual stick's
+// two ports take ~1–3 s together instead of one after the other)
+async function scan({ skip = [], ...opts } = {}) {
   const ports = await describe(listPorts());
-  const out = [];
-  for (const p of ports) {
-    if (skip.includes(p.path) || skip.includes(p.device)) { out.push({ ...p, radio: null, busy: true, inUse: true }); continue; }
-    try { out.push({ ...p, ...(await probe(p.path)), path: p.path }); }
-    catch (err) { if (err.needsModule) throw err; out.push({ ...p, radio: null, error: err.message }); }
-  }
-  return out;
+  return Promise.all(ports.map(async (p) => {
+    if (skip.includes(p.path) || skip.includes(p.device)) return { ...p, radio: null, busy: true, inUse: true };
+    try { return { ...p, ...(await probe(p.path, opts)), path: p.path }; }
+    catch (err) { if (err.needsModule) throw err; return { ...p, radio: null, error: err.message }; }
+  }));
 }
 
 module.exports = { STICKS, identify, listPorts, describe, probe, scan, parseZwave, parseAsh, ZW_GET_VERSION, ASH_RST };

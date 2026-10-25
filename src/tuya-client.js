@@ -446,6 +446,7 @@ class TuyaClient {
     this._mode = ['cloud', 'local'].includes(this._cfg.mode) ? this._cfg.mode : 'auto';
     this._cloud = this._cfg.accessId && this._cfg.accessSecret && this._mode !== 'local' ? new TuyaCloud(this._cfg) : null;
     this._devs = new Map(); // id → { id, name, category, model, props, local, localKey, ip, version, online }
+    this._subs = new Map(); // Zigbee hub id → Map(cid → sub-device)
     this._timers = [];
     this._stopped = false;
     this._cloudOk = false;
@@ -465,8 +466,8 @@ class TuyaClient {
       const known = this._devs.get(d.id);
       this._devs.set(d.id, { ...known, id: d.id, name: d.name || known?.name || `Tuya ${d.id.slice(-6)}`,
         localKey: d.key || known?.localKey, ip: d.ip || known?.ip, version: d.version || known?.version, dpsMap: d.dps,
-        ...(d.gateway && d.cid ? { gatewayId: d.gateway, cid: String(d.cid), sub: true } : {}),
         category: known?.category || '', props: known?.props || (d.dps ? propsFromMap(d.dps) : null) });
+      if (d.gateway && d.cid) this._linkSub(this._devs.get(d.id), d.gateway, d.cid);
       if (!known && d.dps) this._register(this._devs.get(d.id));
     }
     if (this._mode !== 'cloud') this._startLocal();
@@ -506,7 +507,7 @@ class TuyaClient {
       try {
         for (const s of await this._cloud.subDevices(gw.id)) {
           const sub = this._devs.get(s.id);
-          if (sub && s.node_id) Object.assign(sub, { gatewayId: gw.id, cid: String(s.node_id), sub: true });
+          if (sub && s.node_id) this._linkSub(sub, gw.id, s.node_id);
         }
       } catch (err) { console.error(`[Tuya] Sub-devices of ${gw.name}: ${err.message}`); }
     }
@@ -572,7 +573,7 @@ class TuyaClient {
       if (!data?.dps) return;
       if (data.cid) {
         // a Zigbee sub-device reporting through this hub
-        const sub = this._subsOf(d).find((x) => x.cid === String(data.cid));
+        const sub = this._subs.get(d.id)?.get(String(data.cid));
         if (sub) { sub.localUp = true; this._applyDps(sub, data.dps); }
         return;
       }
@@ -592,7 +593,14 @@ class TuyaClient {
     }
   }
 
-  _subsOf(gw) { return [...this._devs.values()].filter((x) => x.gatewayId === gw.id); }
+  // hub id → (cid → sub-device), so reports through a hub find their device directly
+  _linkSub(sub, gatewayId, cid) {
+    Object.assign(sub, { gatewayId, cid: String(cid), sub: true });
+    if (!this._subs.has(gatewayId)) this._subs.set(gatewayId, new Map());
+    this._subs.get(gatewayId).set(sub.cid, sub);
+  }
+
+  _subsOf(gw) { return [...(this._subs.get(gw.id)?.values() || [])]; }
 
   // Ask the hub for each sub-device's DPs once its link is up
   async _readSubs(gw) {
