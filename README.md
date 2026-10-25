@@ -4448,6 +4448,38 @@ The same engine again, with its own module, Settings section (Settings → Home 
 - **Blocks:** `Blocked` (your own blocks) doesn't count.
 - **Not checked against a live account:** this format is taken from VRBO's exports, not from a real VRBO calendar.
 
+### Guest portal (rental tenants)
+
+A guest link and a door PIN for every Airbnb, Booking.com or VRBO stay, valid only during the stay (`src/tenant-portal.js`, core, no npm deps). Set it up in Settings → Home → **Guest portal**: switch it on and give the **public address** guests will open (LSH must be reachable from the internet, e.g. through a reverse proxy or tunnel). Then add a property per listing:
+- the rental device;
+- the devices the guest may control;
+- Wi-Fi details, information and house rules;
+- the PIN mode;
+- how many hours before check-in and after check-out access lasts.
+
+```json
+"tenant": {
+  "enabled": true, "publicUrl": "https://lsh.example.com",
+  "properties": [{ "name": "Mieszkanie", "listing": "airbnb/mieszkanie", "devices": ["shelly/salon", "daikin/ac"],
+                   "wifi": { "ssid": "Guest", "password": "…" }, "info": "…", "rules": "…",
+                   "pin": { "mode": "phone4", "digits": 4 }, "earlyHours": 0, "lateHours": 1 }]
+}
+```
+
+- **Guest link `/guest/<token>`:**
+  - It needs no login and the page is in the guest's language: en, pl, de, fr, es, it or uk.
+  - Before the stay, it shows only the welcome and the dates. During the stay, it adds Wi-Fi, the door code and controls for the chosen devices. Afterwards it shows nothing.
+  - Guests can only send commands to the listed devices, and to sensors that can be controlled. Each link is limited to 60 commands per minute.
+- **The guest list:** Settings lists every current and upcoming stay with its link and PIN, ready to paste into the booking message.
+- **Door PIN:**
+  - It's the last 4 digits of the guest's phone (Airbnb) or a code generated for the stay (`mode: "random"`, 4–8 digits).
+  - The device `tenant/<property>` (`active`, `doorPin`, `guest`, `lastVisit`) feeds flows, for example to set a lock's code.
+  - A keypad checks a PIN with `POST /api/tenant/check-pin {"pin":"4321","property":"mieszkanie"}` using an API token. The response is `{valid, property, guest, until}`.
+- **How links work:**
+  - Links and generated PINs are HMACs of the stay, made with a secret in `persist/tenant-secret.json`. Nothing is stored per stay.
+  - **Reset all links** creates a new secret, which revokes every link at once.
+  - A guest who changes their dates gets a new link.
+
 ### Zehnder ventilation (rekuperacja)
 
 Zehnder heat-recovery ventilation units (`src/zehnder-client.js` + `src/zehnder/*`, no npm deps). Settings → Climate & Appliances → **Zehnder Ventilation** (Find LAN C gateways, Test, Save — applied live). Three ways in, one device model:

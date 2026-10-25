@@ -29,6 +29,7 @@ const setupWebSocket    = require('./src/websocket');
 const INTEGRATIONS      = require('./src/integrations');
 const McpBots           = require('./src/mcp-bots');
 const ModuleHost        = require('./src/module-host');
+const TenantPortal      = require('./src/tenant-portal');
 const mountMcpOAuth     = require('./src/routes/mcp-oauth');
 
 function tryRequire(mod, hint) {
@@ -262,6 +263,12 @@ async function main() {
   };
   app.get(Object.keys(LEGACY_PAGES), (req, res) => res.redirect(301, LEGACY_PAGES[req.path]));
 
+  // Guest portal for rental stays (Airbnb / Booking / VRBO) — public links
+  // carrying their own per-stay token, so mounted before the auth middleware
+  const tenantPortal = new TenantPortal(store, sensorRegistry);
+  app.use('/guest', tenantPortal.router());
+  tenantPortal.start();
+
   app.use(auth.middleware(isSecure));
   // Furniture-picture uploads for the home plan arrive as base64 JSON and
   // need a bigger body cap; every other endpoint keeps the ~100 kb default.
@@ -418,7 +425,7 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, mqttBroker, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient, mcpBots: new McpBots() };
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, mqttBroker, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient, mcpBots: new McpBots(), tenantPortal };
 
   // MCP server — exposes devices/sensors as tools for an external Claude
   // (Desktop, Claude Code, claude.ai) to query/control. Opt-in: it's a
