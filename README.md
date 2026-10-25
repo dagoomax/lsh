@@ -1639,7 +1639,9 @@ LSH's own general-purpose MQTT clients — Arduino, BoneIO, Flows' MQTT nodes, t
 - **HomeKit:** Tuya motion, leak, smoke and CO sensors now reach HomeKit too; before, only contact sensors did.
 - **Zigbee without the hub:** TESLA Smart Zigbee devices can pair straight to LSH's own Zigbee USB stick instead (see `zigbee`). Their Tuya-based definitions come from the Zigbee2MQTT library.
 
-The simulator includes a TESLA Smart power strip and a Zigbee hub with a radiator head, a plug, a gas sensor and a button. Written against Tuya's documented API and the tuyapi `cid` option; not checked with a real TESLA Smart device.
+**TechToy** (same company as TESLA Smart, also set up in the TESLA Smart app) — bulbs, table lamps, LED strips, Christmas lights, plugs — are Tuya devices too. They get their own Settings entry (Settings → **TechToy**): it lists the TechToy devices LSH found, above the shared Tuya connection (`config.tuya`). Devices are recognised from the cloud product name: device field `brand` is `TechToy` / `TESLA Smart`, also in `GET /api/tuya/status`. TechToy Zigbee bulbs work through the TESLA Smart Zigbee Hub or pair straight to the Zigbee USB stick (Zigbee2MQTT knows e.g. the Smart bulb RGB 9W E27).
+
+The simulator includes a TechToy bulb and plug, a TESLA Smart power strip, and a Zigbee hub with a radiator head, a plug, a gas sensor and a button. Written against Tuya's documented API and the tuyapi `cid` option; not checked with a real TESLA Smart device.
 
 ---
 

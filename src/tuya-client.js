@@ -2,7 +2,8 @@
 
 // Tuya / Smart Life devices (plugs, switches, bulbs, LED strips, dimmers,
 // curtain motors, climate and door/motion/leak sensors) — cloud, local, or both.
-// Tuya white-label brands work the same way — e.g. TESLA Smart (plugs, power
+// Tuya white-label brands work the same way — e.g. TechToy (bulbs, lamps, LED
+// strips, plugs — set up in the TESLA Smart app), TESLA Smart (plugs, power
 // strips with switchable USB, and the Zigbee accessories on the TESLA Smart
 // Zigbee Hub), Moes, Lidl Silvercrest, Nous: add them to the Tuya Smart /
 // Smart Life app and link that account.
@@ -50,6 +51,10 @@ const REGIONS = {
 const LIGHT_CATEGORIES = new Set(['dj', 'dd', 'xdd', 'fwd', 'dc', 'tgq', 'tgkg', 'gyd', 'sxd', 'fsd', 'tyndj', 'xxj']);
 const COVER_CATEGORIES = new Set(['cl', 'clkg', 'mc', 'ckmkzq']);
 const SWITCH_RE = /^(switch(_led)?(_\d+)?|switch_usb\d+)$/;
+// White-label brands recognised from the cloud product name (Settings lists them per brand)
+const BRANDS = [['TechToy', /tech\s*toy/i], ['TESLA Smart', /\btesla\b/i]];
+const brandOf = (d) => BRANDS.find(([, re]) => re.test(`${d.product || ''} ${d.cloudName || ''}`))?.[0] || null;
+
 // Zigbee / BLE gateways — their sub-devices are listed per hub
 const GATEWAY_CATEGORIES = new Set(['wg', 'wg2', 'wg3', 'wgsxj', 'zigbee']);
 
@@ -644,6 +649,7 @@ class TuyaClient {
       label: d.name,
       type: 'tuya',
       model: d.product || d.category || 'Tuya',
+      brand: brandOf(d) || 'Tuya',
       icon: { light: '💡', cover: '🪟', sensor: '🌡️', thermostat: '🌡️' }[m.kind] || '🔌',
       sensors: m.sensors,
       homekit: m.homekit,
@@ -766,7 +772,7 @@ class TuyaClient {
     return [...this._devs.values()].map((d) => ({
       id: d.id, name: d.name, category: d.category, product: d.product, online: !!d.online,
       local: !!d.localUp, ip: d.ip || null, version: d.version || null, registered: !!d.registered, kind: d.m?.kind || null,
-      gateway: d.gatewayId || null,
+      gateway: d.gatewayId || null, brand: brandOf(d),
     }));
   }
 
@@ -780,6 +786,6 @@ class TuyaClient {
 }
 
 TuyaClient.TuyaCloud = TuyaCloud;
-TuyaClient._test = { buildModel, guessProps, propsFromMap, parseColour, encodeColour, pctOf, fromPct, kelvinOf, fromKelvin };
+TuyaClient._test = { brandOf, buildModel, guessProps, propsFromMap, parseColour, encodeColour, pctOf, fromPct, kelvinOf, fromKelvin };
 
 module.exports = TuyaClient;

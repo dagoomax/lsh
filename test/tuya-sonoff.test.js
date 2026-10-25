@@ -103,7 +103,7 @@ test('Tuya probe lists the project devices with their local keys', async () => {
   const sim = await tuyaSim.startSimulator({ port: 0 });
   try {
     const list = await TuyaClient.probe({ accessId: 'sim-id', accessSecret: 'sim-secret', baseUrl: sim.url });
-    assert.equal(list.length, 10);
+    assert.equal(list.length, 12);
     assert.ok(list.every((d) => d.hasKey));
     await assert.rejects(TuyaClient.probe({ accessId: 'sim-id', accessSecret: 'wrong', baseUrl: sim.url }), /sign invalid/);
   } finally { await sim.close(); }
@@ -184,6 +184,33 @@ test('Tuya: Zigbee sub-devices are controlled locally through their hub (cid)', 
     client.stop();
     await sim.close();
     Module._load = orig;
+  }
+});
+
+test('TechToy (Tuya): bulb and metering plug, recognised as TechToy', async () => {
+  const sim = await tuyaSim.startSimulator({ port: 0 });
+  const store = fakeStore(), registry = new SensorRegistry(store, 'en');
+  const client = new TuyaClient({ tuya: { mode: 'cloud', accessId: 'sim-id', accessSecret: 'sim-secret', baseUrl: sim.url } }, store, registry);
+  try {
+    await client.start();
+    const v = store.values;
+    const bulb = registry.getDevices().find((d) => d.key === 'tuya/bf0ttybulb0');
+    assert.equal(bulb.brand, 'TechToy');
+    assert.ok(bulb.homekit.includes('light-rw'));
+    assert.equal(v['tuya/bf0ttybulb0/switch'], 0);
+    assert.equal(v['tuya/bf0ttybulb0/hue'], 67);
+    assert.equal(v['tuya/bf0ttybulb0/level'], 50); // colour mode: brightness from the colour
+    await registry.sendCommand('tuya/bf0ttybulb0', 'switch', 'on');
+    assert.equal(sim.state.bf0ttybulb0.switch_led, true);
+    assert.equal(v['tuya/bf0ttyplug0/power'], 65.5);
+    assert.equal(v['tuya/bf0ttyplug0/energy'], 0.42);
+    const st = client.status();
+    assert.deepEqual(st.filter((d) => d.brand === 'TechToy').map((d) => d.id).sort(), ['bf0ttybulb0', 'bf0ttyplug0']);
+    assert.equal(st.find((d) => d.id === 'bf0tslstrip').brand, 'TESLA Smart');
+    assert.equal(st.find((d) => d.id === 'bf0sim0bulb').brand, null);
+  } finally {
+    client.stop();
+    await sim.close();
   }
 });
 

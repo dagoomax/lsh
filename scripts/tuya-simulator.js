@@ -45,6 +45,16 @@ const DEVICES = () => [
   { id: 'bf0tslstrip', name: 'Listwa TESLA', category: 'cz', product_name: 'TESLA Smart Power Strip 3+4 USB', local_key: 'k3y0strip0000000',
     props: [['switch_1', 1, 'rw', { type: 'bool' }], ['switch_2', 2, 'rw', { type: 'bool' }], ['switch_3', 3, 'rw', { type: 'bool' }], ['switch_usb1', 7, 'rw', { type: 'bool' }]],
     state: { switch_1: true, switch_2: false, switch_3: false, switch_usb1: true } },
+  // TechToy (same company, also set up in the TESLA Smart app)
+  { id: 'bf0ttybulb0', name: 'Lampka biurko', category: 'dj', product_name: 'TechToy Smart Bulb RGB 9W E27', local_key: 'k3y0ttybulb00000',
+    props: [
+      ['switch_led', 20, 'rw', { type: 'bool' }], ['work_mode', 21, 'rw', { type: 'enum', range: ['white', 'colour', 'scene', 'music'] }],
+      ['bright_value_v2', 22, 'rw', v(10, 1000)], ['temp_value_v2', 23, 'rw', v(0, 1000)], ['colour_data_v2', 24, 'rw', { type: 'string' }],
+    ],
+    state: { switch_led: false, work_mode: 'colour', bright_value_v2: 1000, temp_value_v2: 0, colour_data_v2: '{"h":240,"s":1000,"v":500}' } },
+  { id: 'bf0ttyplug0', name: 'Gniazdko TechToy', category: 'cz', product_name: 'TechToy Smart Plug 16A', local_key: 'k3y0ttyplug00000',
+    props: [['switch_1', 1, 'rw', { type: 'bool' }], ['add_ele', 17, 'ro', v(0, 50000, 3, 'kwh')], ['cur_power', 19, 'ro', v(0, 50000, 1, 'W')]],
+    state: { switch_1: true, add_ele: 420, cur_power: 655 } },
   { id: 'bf0tslhub00', name: 'TESLA Zigbee Hub', category: 'wg2', product_name: 'TESLA Smart Zigbee Hub', local_key: 'k3y0hub000000000',
     props: [], state: {} },
   { id: 'bf0tsltrv00', name: 'Głowica sypialnia', category: 'wkf', product_name: 'TESLA Smart Thermostatic Valve', local_key: 'k3y0hub000000000', sub: true, gateway: 'bf0tslhub00', node_id: 'a4c13800trv00001',

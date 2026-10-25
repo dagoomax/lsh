@@ -45,6 +45,7 @@ export const CATEGORIES = [
   ] },
   { id: 'lighting', label: 'Lighting & Switches', sections: [
     { id: 'shelly', title: 'Shelly', keywords: ['shelly', 'relay', 'dimmer'] },
+    { id: 'techtoy', title: 'TechToy', keywords: ['techtoy', 'tech toy', 'tesla smart', 'bulb', 'żarówka', 'lamp', 'lampka', 'led strip', 'taśma led', 'christmas', 'choinka', 'plug', 'gniazdko', 'tuya'] },
     { id: 'tuya', title: 'Tuya / Smart Life', keywords: ['tuya', 'smart life', 'smartlife', 'tuyapi', 'plug', 'gniazdko', 'bulb', 'curtain', 'lsc', 'nedis', 'blitzwolf', 'gosund', 'moes', 'tesla', 'tesla smart', 'power strip', 'listwa', 'usb', 'zigbee hub', 'głowica', 'trv'] },
     { id: 'sonoff', title: 'Sonoff / eWeLink', keywords: ['sonoff', 'ewelink', 'itead', 'coolkit', 'diy', 'relay', 'plug', 'zigbee', 'przekaźnik'] },
     { id: 'lighting-extra', title: 'IKEA Dirigera & Tradfri', keywords: ['ikea', 'dirigera', 'tradfri'] },
