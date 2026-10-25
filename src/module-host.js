@@ -23,7 +23,7 @@ const readline = require('readline');
 const platformStatus = require('./platform-status');
 const { translateDevice } = require('./server-i18n');
 
-const WORKER = path.join(__dirname, 'module-worker.js');
+const WORKER = require('./module-worker').FILE;
 const PING_EVERY = 10_000;
 const HANG_AFTER = 30_000;
 const BACKOFF_MIN = 2_000;

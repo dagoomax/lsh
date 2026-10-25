@@ -25,6 +25,8 @@
     "src/media-spectrum.js",
     "src/microcontroller-index-client.js",
     "src/mobotix-client.js",
+    "src/module-host.js",
+    "src/module-worker.js",
     "src/mongo.js",
     "src/motion-log.js",
     "src/mqtt-client.js",

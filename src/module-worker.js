@@ -110,78 +110,85 @@ class WorkerRegistry extends EventEmitter {
   getAllReadings() { return this.getDevices().map((d) => this.getDeviceReadings(d.key)); }
 }
 
-let client = null;
-let store = null;
-let registry = null;
-let stopping = false;
+// Only when forked by the host — required, this file just exports its path
+// (and the stand-ins, for tests).
+function run() {
+  let client = null;
+  let store = null;
+  let registry = null;
+  let stopping = false;
 
-function shutdown(code = 0) {
-  if (stopping) return;
-  stopping = true;
-  try { const r = client?.stop?.(); if (r?.then) r.catch(() => {}); } catch { /* best effort */ }
-  setTimeout(() => process.exit(code), 300).unref();
+  function shutdown(code = 0) {
+    if (stopping) return;
+    stopping = true;
+    try { const r = client?.stop?.(); if (r?.then) r.catch(() => {}); } catch { /* best effort */ }
+    setTimeout(() => process.exit(code), 300).unref();
+  }
+
+  process.on('uncaughtException', (err) => {
+    console.error(`[Module] Uncaught exception: ${err?.stack || err}`);
+    // a crashed integration is restarted by the host's watchdog with a clean state
+    shutdown(1);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error(`[Module] Unhandled rejection: ${reason?.stack || reason}`);
+  });
+  process.on('SIGINT', () => shutdown(0));
+  process.on('SIGTERM', () => shutdown(0));
+  process.on('disconnect', () => shutdown(0)); // the server went away
+
+  process.on('message', async (msg) => {
+    if (!msg || typeof msg !== 'object') return;
+    switch (msg.t) {
+      case 'init': {
+        store = new WorkerStore(msg.snapshot);
+        registry = new WorkerRegistry(store, msg.config?.language);
+        process.title = `lsh:${msg.file}`;
+
+        // mirror this process's platform-status singleton into the server's
+        const platformStatus = require('./platform-status');
+        platformStatus.on('change', (all) => send({ t: 'ps', all }));
+
+        try {
+          const Client = require(path.resolve(__dirname, msg.file));
+          client = new Client(msg.config, store, registry);
+        } catch (err) {
+          console.error(`[${msg.label}] Load failed: ${String(err?.message || err).split('\n')[0]}`);
+          send({ t: 'fatal', error: String(err?.message || err) });
+          return shutdown(2);
+        }
+        send({ t: 'ready' });
+        setInterval(() => registry.resync(), 15_000).unref();
+        try { await client.start(); }
+        catch (err) { console.error(`[${msg.label}] Start failed: ${err?.message || err}`); }
+        registry.resync();
+        break;
+      }
+      case 'chg':
+        store?._remote(msg.k, msg.v, msg.ts);
+        break;
+      case 'write': {
+        const device = registry?.devices.get(msg.key);
+        try {
+          if (!device?._writeCapability) throw new Error('Device not found or not writable');
+          const value = await device._writeCapability(...(msg.args || []));
+          send({ t: 'res', id: msg.id, ok: true, value: plain(value) });
+        } catch (err) {
+          send({ t: 'res', id: msg.id, ok: false, error: err?.message || String(err) });
+        }
+        break;
+      }
+      case 'ping': {
+        const m = process.memoryUsage();
+        send({ t: 'pong', n: msg.n, rss: m.rss, heap: m.heapUsed });
+        break;
+      }
+      case 'stop':
+        shutdown(0);
+        break;
+    }
+  });
 }
 
-process.on('uncaughtException', (err) => {
-  console.error(`[Module] Uncaught exception: ${err?.stack || err}`);
-  // a crashed integration is restarted by the host's watchdog with a clean state
-  shutdown(1);
-});
-process.on('unhandledRejection', (reason) => {
-  console.error(`[Module] Unhandled rejection: ${reason?.stack || reason}`);
-});
-process.on('SIGINT', () => shutdown(0));
-process.on('SIGTERM', () => shutdown(0));
-process.on('disconnect', () => shutdown(0)); // the server went away
-
-process.on('message', async (msg) => {
-  if (!msg || typeof msg !== 'object') return;
-  switch (msg.t) {
-    case 'init': {
-      store = new WorkerStore(msg.snapshot);
-      registry = new WorkerRegistry(store, msg.config?.language);
-      process.title = `lsh:${msg.file}`;
-
-      // mirror this process's platform-status singleton into the server's
-      const platformStatus = require('./platform-status');
-      platformStatus.on('change', (all) => send({ t: 'ps', all }));
-
-      try {
-        const Client = require(path.resolve(__dirname, msg.file));
-        client = new Client(msg.config, store, registry);
-      } catch (err) {
-        console.error(`[${msg.label}] Load failed: ${String(err?.message || err).split('\n')[0]}`);
-        send({ t: 'fatal', error: String(err?.message || err) });
-        return shutdown(2);
-      }
-      send({ t: 'ready' });
-      setInterval(() => registry.resync(), 15_000).unref();
-      try { await client.start(); }
-      catch (err) { console.error(`[${msg.label}] Start failed: ${err?.message || err}`); }
-      registry.resync();
-      break;
-    }
-    case 'chg':
-      store?._remote(msg.k, msg.v, msg.ts);
-      break;
-    case 'write': {
-      const device = registry?.devices.get(msg.key);
-      try {
-        if (!device?._writeCapability) throw new Error('Device not found or not writable');
-        const value = await device._writeCapability(...(msg.args || []));
-        send({ t: 'res', id: msg.id, ok: true, value: plain(value) });
-      } catch (err) {
-        send({ t: 'res', id: msg.id, ok: false, error: err?.message || String(err) });
-      }
-      break;
-    }
-    case 'ping': {
-      const m = process.memoryUsage();
-      send({ t: 'pong', n: msg.n, rss: m.rss, heap: m.heapUsed });
-      break;
-    }
-    case 'stop':
-      shutdown(0);
-      break;
-  }
-});
+module.exports = { FILE: __filename, WorkerStore, WorkerRegistry };
+if (require.main === module) run();

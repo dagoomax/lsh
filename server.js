@@ -28,6 +28,7 @@ const createApiRoutes   = require('./src/api-routes');
 const setupWebSocket    = require('./src/websocket');
 const INTEGRATIONS      = require('./src/integrations');
 const McpBots           = require('./src/mcp-bots');
+const ModuleHost        = require('./src/module-host');
 const mountMcpOAuth     = require('./src/routes/mcp-oauth');
 
 function tryRequire(mod, hint) {
@@ -587,7 +588,6 @@ async function main() {
         continue;
       }
       if (!moduleHost) {
-        const ModuleHost = require('./src/module-host');
         moduleHost = new ModuleHost(config, store, sensorRegistry);
         apiClients.moduleHost = moduleHost;
       }
