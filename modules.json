@@ -105,6 +105,7 @@
     "src/routes/mongodb.js",
     "src/routes/mqtt-broker.js",
     "src/routes/mqtt-explorer.js",
+    "src/routes/nuki.js",
     "src/routes/object-detection.js",
     "src/routes/openweather.js",
     "src/routes/paging.js",
@@ -910,7 +911,21 @@
       ],
       "when": "(config.tedee?.devices?.length)",
       "files": [
+        "src/lock-codes.js",
         "src/tedee-client.js"
+      ],
+      "deps": {}
+    },
+    "nuki": {
+      "entry": "src/nuki-client.js",
+      "configKeys": [
+        "nuki"
+      ],
+      "when": "(config.nuki?.bridges?.length || config.nuki?.webToken)",
+      "files": [
+        "src/lock-codes.js",
+        "src/nuki-client.js",
+        "src/polling-client.js"
       ],
       "deps": {}
     },

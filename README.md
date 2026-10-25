@@ -4480,6 +4480,39 @@ A guest link and a door PIN for every Airbnb, Booking.com or VRBO stay, valid on
   - **Reset all links** creates a new secret, which revokes every link at once.
   - A guest who changes their dates gets a new link.
 
+### Nuki
+
+Nuki Smart Lock (1.0–4.0, Smart Door) and Nuki Opener (`src/nuki-client.js`, no npm deps, runs in its own process). Settings → Security & Access → **Nuki**.
+
+- **Local, through a Nuki Bridge:** turn on Developer mode in the Nuki app (Bridge → Manage Bridge), which also shows the token. Requests use the hashed token (`ts`, `rnr`, `hash`), so the token itself never goes over the LAN.
+- **Through Nuki Web:** an API token from web.nuki.io (Menu → API). It is used for state and control when there's no Bridge, and always for **keypad codes**.
+
+```json
+"nuki": { "bridges": [{ "host": "192.168.1.50", "port": 8080, "token": "…" }], "webToken": "…", "pollSeconds": 15 }
+```
+
+Each device is `nuki/<nukiId>`:
+- **Lock:** `lock` (HomeKit lock), `open` (unlatch), `status`, `battery`, `batteryCritical`, `door`, `keypadBatteryCritical`.
+- **Opener:** `ringToOpen`, `open`, `status`.
+
+**Not checked against real hardware:**
+- The Bridge part follows Nuki's Bridge HTTP API 1.13 as published; that doc page is no longer online.
+- The Web part follows Nuki Web API 4.23's swagger.
+- `node scripts/nuki-simulator.js` stands in for both.
+
+### Lock codes for guests (Nuki, Tedee)
+
+In the guest portal, set a property's **Lock for keypad codes**. Each current and upcoming stay's PIN then becomes a keypad code on that lock, limited to the stay's window. The guest portal publishes the wanted codes at `tenant/<property>/codes`. The lock's module creates and deletes them (`src/lock-codes.js`) and reports the result in `tenant/<property>/lockCodes`.
+
+- **Which codes:** only codes named `LSH-<id> …` are touched, so codes you set up in the lock's app stay.
+- **PIN format:** the PIN follows the lock's rules.
+  - Nuki: 6 digits from 1–9, not starting with 12.
+  - Tedee: 5–8 digits.
+
+  So Airbnb's phone last 4 digits are replaced by a generated code.
+- **Nuki codes** need Nuki Web; they are created as auth type 13, keypad code.
+- **Tedee codes** go through the Bridge's local `/lock/{id}/pin` API (Bridge API spec 1.19) and need a Tedee Keypad.
+
 ### Zehnder ventilation (rekuperacja)
 
 Zehnder heat-recovery ventilation units (`src/zehnder-client.js` + `src/zehnder/*`, no npm deps). Settings → Climate & Appliances → **Zehnder Ventilation** (Find LAN C gateways, Test, Save — applied live). Three ways in, one device model:

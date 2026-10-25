@@ -75,6 +75,7 @@ const ROUTE_GROUPS = [
   require('./routes/loxone'),
   require('./routes/waveshare'),
   require('./routes/tedee'),
+  require('./routes/nuki'),
   require('./routes/yale'),
   require('./routes/broadlink'),
   require('./routes/esphome'),

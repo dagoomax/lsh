@@ -116,6 +116,7 @@ function PropertyEditor({ p, rentals, devices, onChange, onRemove }) {
   const shown = controllable.filter((d) => p.devices.includes(d.key)
     || (q && `${d.label} ${d.room || ''} ${d.key}`.toLowerCase().includes(q.toLowerCase())))
   const toggleDev = (key) => onChange({ devices: p.devices.includes(key) ? p.devices.filter((k) => k !== key) : [...p.devices, key] })
+  const locks = devices.filter((d) => d.type === 'nuki' || d.type === 'tedee')
   const listingOptions = [
     ...rentals.map((d) => ({ value: d.key, label: `${d.label} (${d.type})`, raw: true })),
     ...(p.listing && !rentals.some((d) => d.key === p.listing) ? [{ value: p.listing, label: p.listing, raw: true }] : []),
@@ -128,6 +129,8 @@ function PropertyEditor({ p, rentals, devices, onChange, onRemove }) {
         <Field label="Listing" type="select" value={p.listing} onChange={(v) => onChange({ listing: v })} options={listingOptions}/>
         <Field label="Wi-Fi network" value={p.wifi?.ssid || ''} onChange={(v) => onChange({ wifi: { ...p.wifi, ssid: v } })}/>
         <Field label="Wi-Fi password" value={p.wifi?.password || ''} onChange={(v) => onChange({ wifi: { ...p.wifi, password: v } })}/>
+        <Field label="Lock for keypad codes" type="select" value={p.lock || ''} onChange={(v) => onChange({ lock: v })}
+          options={[{ value: '', label: 'None — PIN only shown and published' }, ...locks.map((d) => ({ value: d.key, label: `${d.label} (${d.type})`, raw: true }))]}/>
         <Field label="Door PIN" type="select" value={p.pin?.mode || 'phone4'} onChange={(v) => onChange({ pin: { ...p.pin, mode: v } })}
           options={[{ value: 'phone4', label: "Guest's phone last 4 digits (Airbnb), else generated" }, { value: 'random', label: 'Generated for each stay' }]}/>
         <Field label="Generated PIN length" type="number" min={4} max={8} value={p.pin?.digits ?? 4} onChange={(v) => onChange({ pin: { ...p.pin, digits: Number(v) } })}/>

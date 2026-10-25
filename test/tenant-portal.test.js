@@ -116,3 +116,22 @@ test('turning the portal off kills every link', async () => {
   assert.equal(portal.find(cur.token), null);
   assert.equal(portal.checkPin('4321').valid, false);
 });
+
+test('with a Nuki lock the PIN follows its keypad rules and codes are published for it', () => {
+  const { portal, store, config } = setup();
+  config.tenant.properties[0].lock = 'nuki/123';
+  const [prop] = portal.properties();
+  const stays = portal.stays(prop);
+  for (const s of stays) assert.match(s.pin, /^[1-9]{6}$/); // phone4 (4 digits) can't be a Nuki code
+  assert.ok(stays.every((s) => !s.pin.startsWith('12')));
+  portal.publish();
+  const codes = store.get('tenant/flat/codes');
+  assert.equal(codes.lock, 'nuki/123');
+  assert.equal(codes.codes.length, 2);
+  assert.match(codes.codes[0].name, /^LSH-[a-z0-9]{6} /);
+  assert.equal(codes.codes[0].pin, stays[0].pin);
+  // portal off → no codes wanted any more
+  config.tenant.enabled = false;
+  portal.publish();
+  assert.deepEqual(store.get('tenant/flat/codes').codes, []);
+});

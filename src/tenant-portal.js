@@ -13,6 +13,11 @@
 //     code derived for the stay — valid in the same window. Published on the
 //     property's device (tenant/<slug>: active, doorPin, guest) for flows and
 //     locks, and checkable by a keypad: POST /api/tenant/check-pin.
+//   - with property.lock set to a Nuki or Tedee lock (its device key), the
+//     PIN as a time-limited keypad code on that lock: the wanted codes are
+//     published at tenant/<slug>/codes and the lock module creates / deletes
+//     them (src/lock-codes.js). The PIN then follows the lock's rules — Nuki:
+//     6 digits 1-9, not starting with 12; Tedee: 5-8 digits.
 //
 // Tokens and derived PINs are HMACs of the stay (listing, start, end) with a
 // secret in persist/tenant-secret.json — nothing per stay is stored, and
@@ -21,7 +26,7 @@
 //
 // config.tenant = {
 //   enabled: true, publicUrl: 'https://lsh.example.com',
-//   properties: [{ name, listing: 'airbnb/mieszkanie', devices: ['shelly/…'],
+//   properties: [{ name, listing: 'airbnb/mieszkanie', devices: ['shelly/…'], lock: 'nuki/123',
 //                  wifi: { ssid, password }, info, rules,
 //                  pin: { mode: 'phone4' | 'random', digits: 4 },
 //                  earlyHours: 0, lateHours: 1 }] }
@@ -49,6 +54,15 @@ function propertyIds(props) {
   });
 }
 
+// What PINs a property's lock accepts
+const ANY = '0123456789';
+function pinRule(prop) {
+  const type = String(prop.lock || '').split('/')[0];
+  if (type === 'nuki') return { min: 6, max: 6, alphabet: '123456789', ok: (p) => /^[1-9]{6}$/.test(p) && !p.startsWith('12') };
+  if (type === 'tedee') return { min: 5, max: 8, alphabet: ANY, ok: (p) => /^\d{5,8}$/.test(p) };
+  return { min: 4, max: 8, alphabet: ANY, ok: () => true };
+}
+
 class TenantPortal {
   constructor(store, sensorRegistry, { secretFile = SECRET_FILE, readConfig = readConfigCached } = {}) {
     this.store = store;
@@ -60,6 +74,7 @@ class TenantPortal {
     this._registered = new Set();
     this._rate = new Map(); // token → [count, windowStart]
     this._lastVisit = new Map(); // property id → ISO
+    this._codeKeys = new Set();  // properties that published lock codes
   }
 
   get config() { return this._readConfig().tenant || {}; }
@@ -94,11 +109,25 @@ class TenantPortal {
   }
 
   pinFor(prop, stay) {
+    const rule = pinRule(prop);
     const mode = prop.pin?.mode || 'phone4';
-    const digits = Math.min(8, Math.max(4, Number(prop.pin?.digits) || 4));
-    if (mode === 'phone4' && /^\d{4}$/.test(stay.phone4 || '')) return stay.phone4;
-    const n = this._mac(`pin|${prop.listing}|${stay.start}|${stay.end}`).readUInt32BE(0) % 10 ** digits;
-    return String(n).padStart(digits, '0');
+    const digits = Math.min(rule.max, Math.max(rule.min, Number(prop.pin?.digits) || 4));
+    const phone = stay.phone4 || '';
+    if (mode === 'phone4' && /^\d{4}$/.test(phone) && rule.min <= 4 && rule.ok(phone)) return phone;
+    const bytes = this._mac(`pin|${prop.listing}|${stay.start}|${stay.end}`);
+    for (let shift = 0; shift < bytes.length - digits; shift++) {
+      let pin = '';
+      for (let i = 0; i < digits; i++) pin += rule.alphabet[bytes[shift + i] % rule.alphabet.length];
+      if (rule.ok(pin)) return pin;
+    }
+    return rule.alphabet[1].repeat(digits); // unreachable in practice
+  }
+
+  // Short id of a stay's code on a lock — part of the code's name there, so
+  // a changed stay or PIN is a new code and the old one gets removed
+  codeId(prop, stay, pin) {
+    return BigInt('0x' + this._mac(`code|${prop.listing}|${stay.start}|${stay.end}|${pin}`).subarray(0, 6).toString('hex'))
+      .toString(36).padStart(6, '0').slice(-6);
   }
 
   // ── Stays ───────────────────────────────────────────────────────────────
@@ -160,7 +189,9 @@ class TenantPortal {
   stop() { clearInterval(this._timer); this._timer = null; }
 
   publish() {
+    const seen = new Set();
     for (const prop of this.properties()) {
+      seen.add(prop.key);
       if (!this._registered.has(prop.key)) {
         this._registered.add(prop.key);
         this.registry.registerDevice({
@@ -170,6 +201,7 @@ class TenantPortal {
             { path: 'doorPin', name: 'Door PIN', type: 'label' },
             { path: 'guest', name: 'Guest', type: 'label' },
             { path: 'lastVisit', name: 'Guest portal opened', type: 'label' },
+            { path: 'lockCodes', name: 'Lock codes', type: 'label' },
           ],
         });
       }
@@ -178,7 +210,33 @@ class TenantPortal {
       this._set(`${prop.key}/doorPin`, cur ? cur.pin : '');
       this._set(`${prop.key}/guest`, cur ? cur.guest || '—' : '');
       this._set(`${prop.key}/lastVisit`, this._lastVisit.get(prop.id) || '');
+      this._publishCodes(prop);
     }
+    // a property removed or the portal switched off: its lock codes go too
+    for (const key of this._codeKeys) {
+      if (seen.has(key)) continue;
+      const old = this.store.get(`${key}/codes`);
+      if (old?.codes?.length) this.store.set(`${key}/codes`, { lock: old.lock, codes: [] });
+    }
+  }
+
+  // Wanted keypad codes for the property's lock — the lock module syncs them
+  _publishCodes(prop) {
+    const key = `${prop.key}/codes`;
+    const old = this.store.get(key);
+    if (!prop.lock) {
+      if (old?.codes?.length) this.store.set(key, { lock: old.lock, codes: [] });
+      return;
+    }
+    this._codeKeys.add(prop.key);
+    const codes = this.stays(prop).filter((s) => s.status !== 'ended').map((s) => {
+      const id = this.codeId(prop, s, s.pin);
+      let name = `LSH-${id} ${s.guest || prop.name || ''}`.trim();
+      while (Buffer.byteLength(name) > 32) name = name.slice(0, -1); // Tedee: 32 bytes, Nuki: 32 chars
+      return { id, name, pin: s.pin, from: s.from, to: s.to };
+    });
+    const value = { lock: prop.lock, codes };
+    if (JSON.stringify(old) !== JSON.stringify(value)) this.store.set(key, value);
   }
 
   _set(key, value) { if (this.store.get(key) !== value) this.store.set(key, value); }
@@ -355,3 +413,4 @@ load();setInterval(()=>{if(!document.hidden)load()},10000);
 
 module.exports = TenantPortal;
 module.exports.propertyIds = propertyIds;
+module.exports.pinRule = pinRule;

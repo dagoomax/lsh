@@ -53,7 +53,8 @@ export const CATEGORIES = [
   { id: 'security', label: 'Security & Access', sections: [
     { id: 'satel', title: 'Satel INTEGRA', keywords: ['satel', 'integra', 'alarm', 'ethm'] },
     { id: 'dsc', title: 'DSC PowerSeries Neo', keywords: ['dsc', 'neo', 'tl280', 'itv2', 'alarm', 'alarm panel'] },
-    { id: 'tedee', title: 'Tedee Smart Lock', keywords: ['tedee', 'lock', 'door'] },
+    { id: 'tedee', title: 'Tedee Smart Lock', keywords: ['tedee', 'lock', 'door', 'keypad', 'pin', 'zamek'] },
+    { id: 'nuki', title: 'Nuki', keywords: ['nuki', 'smart lock', 'opener', 'lock', 'door', 'keypad', 'pin', 'zamek', 'domofon'] },
   ] },
   { id: 'cameras', label: 'Cameras', sections: [
     { id: 'manualcams', title: 'Cameras', keywords: ['rtsp', 'onvif', 'camera', 'stream'] },

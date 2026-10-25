@@ -39,6 +39,12 @@ module.exports = function register(router, ctx) {
     sanitized.forEach((d, i) => { if (d.apiToken === undefined) d.apiToken = prev[i]?.apiToken || ''; });
     try {
       writeConfigFile({ ...current, tedee: { devices: sanitized.filter(d => d.apiToken) } });
+      // Tedee runs in its own process: restart it with the new settings
+      const it = require('../integrations').find((x) => x.file === 'tedee-client');
+      if (ctx.clients?.moduleHost && it) {
+        ctx.clients.moduleHost.apply(it).catch((err) => console.error(`[Tedee] Apply failed: ${err.message}`));
+        return res.json({ success: true, message: `${sanitized.length} bridge(s) saved and applied.` });
+      }
       res.json({ success: true, message: `${sanitized.length} bridge(s) saved. Restart to apply.` });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });

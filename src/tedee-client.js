@@ -17,12 +17,19 @@
  * paired to it — `GET /lock` returns all of them in a single call, and each
  * becomes its own device in the sensor registry.
  *
+ * Keypad PINs for guest stays (guest portal, src/tenant-portal.js) are kept
+ * on the lock through the same local API — GET/POST /lock/{id}/pin,
+ * DELETE /lock/{id}/pin/{pinId} (5-8 digit `pin`, `alias` ≤ 32 bytes,
+ * `startDate`/`endDate` as Unix seconds), per the Bridge API spec 1.19.
+ * Only PINs named "LSH-…" are touched (src/lock-codes.js).
+ *
  * Untested against real hardware from this codebase — ported faithfully
  * from Tedee's documented wire protocol, but nobody has run this specific
  * file against a real Bridge yet.
  */
 
 const platformStatus = require('./platform-status');
+const { watchLockCodes, diffCodes } = require('./lock-codes');
 
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
 const MIN_POLL_INTERVAL_MS     = 2_000;
@@ -40,7 +47,7 @@ const STATE = {
 const DOOR_STATE = { 0: 'Not paired', 1: 'Disconnected', 2: 'Opened', 3: 'Closed', 4: 'Uncalibrated' };
 
 /** One request against a Bridge's local REST API. */
-async function request(host, apiToken, path, method = 'GET') {
+async function request(host, apiToken, path, method = 'GET', body) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -48,13 +55,19 @@ async function request(host, apiToken, path, method = 'GET') {
       method,
       headers: {
         api_token: apiToken,
-        ...(method !== 'GET' ? { 'Content-Length': '0' } : {}),
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : method !== 'GET' ? { 'Content-Length': '0' } : {}),
       },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       signal: controller.signal,
     });
     if (res.status === 401) throw new Error('invalid API token');
     if (res.status === 404) throw new Error('lock not found on this bridge');
     if (res.status === 405) throw new Error('lock is disconnected from the bridge');
+    if (res.status === 409) throw Object.assign(new Error('another PIN operation is in progress'), { busy: true });
+    if (res.status === 400) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(`bridge refused the request${body?.['error-description'] ? `: ${body['error-description']}` : ''}`);
+    }
     if (res.status === 406) {
       const body = await res.json().catch(() => ({}));
       throw new Error(`lock rejected the command${body?.errorCode ? ` (BLE error ${body.errorCode})` : ''}`);
@@ -95,6 +108,17 @@ class TedeeBridgeDevice {
     return request(this.host, this.apiToken, `/lock/${deviceId}/${action}`, 'POST');
   }
 
+  // PIN operations go over BLE one at a time: 409 = busy, wait and retry
+  async pinRequest(path, method = 'GET', body) {
+    for (let attempt = 0; ; attempt++) {
+      try { return await request(this.host, this.apiToken, path, method, body); }
+      catch (err) {
+        if (!err.busy || attempt >= 4) throw err;
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+      }
+    }
+  }
+
   async _poll() {
     try {
       const locks = await request(this.host, this.apiToken, '/lock');
@@ -115,6 +139,8 @@ class TedeeClient {
     this._store    = store;
     this._registry = sensorRegistry;
     this._bridges  = [];
+    this._lockBridge = new Map(); // lock id → bridge
+    this._codes    = null;
   }
 
   async start() {
@@ -123,11 +149,34 @@ class TedeeClient {
       if (!cfg.host || !cfg.apiToken) continue;
       this._addBridge(cfg);
     }
+    if (this._bridges.length) {
+      this._codes = watchLockCodes(this._store, 'tedee', (lockKey, codes) => this._syncPins(lockKey, codes), { log: 'Tedee' });
+    }
+  }
+
+  // Make the lock's LSH PINs match the guest portal's wanted codes
+  async _syncPins(lockKey, codes) {
+    const lockId = lockKey.split('/')[1];
+    const bridge = this._lockBridge.get(String(lockId));
+    if (!bridge) throw new Error('lock not seen on any configured bridge yet');
+    const list = await bridge.pinRequest(`/lock/${lockId}/pin`);
+    const existing = (list?.pins || []).map((p) => ({ id: p.id, name: p.alias }));
+    const { remove, add } = diffCodes(existing, codes);
+    for (const r of remove) await bridge.pinRequest(`/lock/${lockId}/pin/${r.id}`, 'DELETE');
+    for (const c of add) {
+      if (!/^\d{5,8}$/.test(c.pin)) throw new Error(`PIN for ${c.name} isn't 5-8 digits`);
+      await bridge.pinRequest(`/lock/${lockId}/pin`, 'POST', {
+        pin: c.pin, alias: c.name,
+        startDate: Math.floor(Date.parse(c.from) / 1000), endDate: Math.floor(Date.parse(c.to) / 1000), weekdays: 127,
+      });
+    }
+    return { added: add.length, removed: remove.length };
   }
 
   stop() {
     for (const bridge of this._bridges) bridge.stop();
     this._bridges = [];
+    this._codes?.stop();
   }
 
   _addBridge(cfg) {
@@ -141,6 +190,7 @@ class TedeeClient {
 
   _syncLock(bridge, lock) {
     const key = `tedee/${lock.id}`;
+    this._lockBridge.set(String(lock.id), bridge);
 
     if (!this._registry.devices.has(key)) {
       this._registry.registerDevice({
