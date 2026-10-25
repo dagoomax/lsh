@@ -1,8 +1,8 @@
 'use strict';
 
-// Airbnb and Booking.com reservations — status, calendar link test and
-// settings, the same routes for both (/airbnb/…, /booking/…). The clients
-// (src/airbnb-client.js, src/booking-client.js) run in their own processes,
+// Airbnb, Booking.com and VRBO reservations — status, calendar link test and
+// settings, the same routes for each (/airbnb/…, /booking/…, /vrbo/…). The clients
+// (src/airbnb-client.js, booking-client.js, vrbo-client.js) run in their own processes,
 // so status comes from the store and a save restarts that process.
 const fs = require('fs');
 const path = require('path');
@@ -17,6 +17,7 @@ const TIME = /^\d{1,2}:\d{2}$/;
 const PROVIDERS = [
   { id: 'airbnb', file: 'airbnb-client', closedDefault: undefined },
   { id: 'booking', file: 'booking-client', closedDefault: true },
+  { id: 'vrbo', file: 'vrbo-client', closedDefault: undefined },
 ];
 
 module.exports = function register(router, ctx) {

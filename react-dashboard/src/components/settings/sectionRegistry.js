@@ -19,6 +19,7 @@ export const CATEGORIES = [
     { id: 'google-calendar', title: 'Google Calendar', keywords: ['calendar', 'agenda', 'events', 'google'] },
     { id: 'airbnb', title: 'Airbnb', keywords: ['airbnb', 'booking', 'vrbo', 'rental', 'wynajem', 'najem', 'guest', 'gość', 'reservation', 'rezerwacja', 'ical', 'check-in'] },
     { id: 'booking', title: 'Booking.com', keywords: ['booking', 'booking.com', 'extranet', 'rental', 'wynajem', 'najem', 'hotel', 'apartament', 'reservation', 'rezerwacja', 'ical', 'check-in'] },
+    { id: 'vrbo', title: 'VRBO', keywords: ['vrbo', 'homeaway', 'expedia', 'rental', 'wynajem', 'najem', 'vacation', 'reservation', 'rezerwacja', 'ical', 'check-in'] },
   ] },
   { id: 'energy', label: 'Energy', sections: [
     { id: 'connection', title: 'Victron (MQTT & VRM)', keywords: ['victron', 'venus', 'cerbo', 'mqtt', 'vrm', 'gx'] },

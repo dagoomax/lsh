@@ -202,3 +202,40 @@ test('Booking.com module runs in its own process with its own devices', async ()
     srv.close();
   }
 });
+
+test('VRBO: guest names from "Reserved - …", "Blocked" is not a stay, own module and devices', async () => {
+  const VRBO_ICS = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//HomeAway.com\\, Inc.//EN',
+    'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20261027', 'DTEND;VALUE=DATE:20261030', 'UID:1@vrbo.com', 'SUMMARY:Reserved - Jane Doe', 'END:VEVENT',
+    'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20261101', 'DTEND;VALUE=DATE:20261103', 'UID:2@vrbo.com', 'SUMMARY:Blocked', 'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+  const ev = parseIcs(VRBO_ICS);
+  assert.equal(ev[0].guestName, 'Jane Doe');
+  assert.equal(ev[1].blocked, true);
+  const listing = { ...L, ical: 'https://www.vrbo.com/icalendar/x.ics' };
+  let s = computeState(ev, listing, at(2026, 10, 28, 9));
+  assert.equal(s.occupied, true);
+  assert.equal(s.guest, 'Jane Doe');
+  s = computeState(ev, listing, at(2026, 11, 1, 18));
+  assert.equal(s.occupied, false);
+
+  const DataStore = require('../src/data-store');
+  const SensorRegistry = require('../src/sensor-registry');
+  const ModuleHost = require('../src/module-host');
+  const srv = http.createServer((req, res) => { res.writeHead(200); res.end(VRBO_ICS); });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const store = new DataStore();
+  const registry = new SensorRegistry(store, 'en');
+  const host = new ModuleHost({ vrbo: { listings: [{ name: 'Cabin', ical: `http://127.0.0.1:${srv.address().port}/v`, ...L }] } }, store, registry);
+  const end = Date.now() + 8000;
+  try {
+    host.add(require('../src/integrations').find((x) => x.file === 'vrbo-client'));
+    while (Date.now() < end && store.get('vrbo/cabin/reservations') === null) await new Promise((r) => setTimeout(r, 50));
+    assert.equal(registry.devices.get('vrbo/cabin').type, 'vrbo');
+    assert.equal(require('../src/platform-status').getAll().vrbo, true);
+  } finally {
+    await host.stopAll();
+    srv.close();
+  }
+});

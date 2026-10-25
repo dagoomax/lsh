@@ -1518,6 +1518,19 @@
       ],
       "deps": {}
     },
+    "vrbo": {
+      "entry": "src/vrbo-client.js",
+      "configKeys": [
+        "vrbo"
+      ],
+      "when": "(config.vrbo?.listings?.length)",
+      "files": [
+        "src/airbnb-client.js",
+        "src/polling-client.js",
+        "src/vrbo-client.js"
+      ],
+      "deps": {}
+    },
     "aquilo": {
       "entry": "src/aquilo-client.js",
       "configKeys": [

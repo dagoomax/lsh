@@ -4415,6 +4415,7 @@ Each listing becomes a device `airbnb/<name>`. Its states change at the configur
 | `reservations` | The next 10 stays (object). |
 
 - **Blocked dates:** "Airbnb (Not available)" and VRBO's "Blocked" are not counted as stays.
+- **Guest names:** VRBO's "Reserved - <name>" puts the guest's name in `guest` / `nextGuest`.
 - **The link is a secret:** anyone who has it can read the calendar. LSH never logs it.
 
 ### Booking.com (rental reservations)
@@ -4430,6 +4431,22 @@ The same engine as Airbnb, with its own module, Settings section (Settings → H
 ```
 
 Booking.com exports every unavailable night as `CLOSED - Not available`, so a reservation and a date you closed yourself look the same. The export also has no reservation code or guest details. With `closedAsStays` (default on), every closed period counts as a stay and `guest` shows `Booking.com`. Turn it off only if you never close dates by hand and want closed periods ignored. The sensors are the same as Airbnb's (see the table above).
+
+### VRBO (rental reservations)
+
+The same engine again, with its own module, Settings section (Settings → Home → **VRBO**), devices (`vrbo/<name>`) and platform-bar entry (`src/vrbo-client.js`). The link comes from VRBO: Calendar → Import/Export → **Export calendar**.
+
+```json
+"vrbo": {
+  "listings": [{ "name": "Domek", "ical": "https://www.vrbo.com/icalendar/….ics?nonTentative",
+                 "checkIn": "16:00", "checkOut": "10:00", "prepareHours": 3 }],
+  "pollMinutes": 30
+}
+```
+
+- **Stays:** `Reserved - <guest name>` counts as a stay, and the name shows in `guest` / `nextGuest`.
+- **Blocks:** `Blocked` (your own blocks) doesn't count.
+- **Not checked against a live account:** this format is taken from VRBO's exports, not from a real VRBO calendar.
 
 ### Zehnder ventilation (rekuperacja)
 

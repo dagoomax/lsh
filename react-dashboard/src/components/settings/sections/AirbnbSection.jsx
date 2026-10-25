@@ -12,15 +12,16 @@ const listingFields = (placeholder) => [
 ]
 
 const AIRBNB_FIELDS = listingFields('https://www.airbnb.com/calendar/ical/….ics?s=…')
+const VRBO_FIELDS = listingFields('https://www.vrbo.com/icalendar/….ics?nonTentative')
 const BOOKING_FIELDS = [
   ...listingFields('https://ical.booking.com/v1/export?t=…'),
   { key: 'closedAsStays', label: 'Closed dates are stays', type: 'checkbox', default: true },
 ]
 
 
-// Airbnb and Booking.com reservations from each listing's calendar export
-// link. Server: src/airbnb-client.js / src/booking-client.js (each in its own
-// process), src/routes/airbnb.js.
+// Airbnb, Booking.com and VRBO reservations from each listing's calendar
+// export link. Server: src/airbnb-client.js / booking-client.js / vrbo-client.js
+// (each in its own process), src/routes/airbnb.js.
 export default function AirbnbSection(props) {
   return <RentalSection {...props} id="airbnb" title="Airbnb" 
     desc="Reservations of your rental listings, read from each listing's calendar export link — in Airbnb: Calendar → Availability → Connect calendars → Export calendar (Booking.com and VRBO export links work too). Every listing becomes a device whose states change at your check-in and check-out times: Occupied, Guest arriving soon, Check-in today, Check-out today, Turnover day — use them in flows to heat or cool before a guest arrives, or to switch to an eco scene after check-out. Airbnb shares only dates, the reservation code and the last 4 digits of the guest's phone. Treat the link like a password." fields={AIRBNB_FIELDS}/>
@@ -29,6 +30,11 @@ export default function AirbnbSection(props) {
 export function BookingSection(props) {
   return <RentalSection {...props} id="booking" title="Booking.com" 
     desc="Reservations of your Booking.com properties, read from the calendar export link — in the Extranet: Rates & Availability → Sync calendars → Export calendar. Every property becomes a device whose states change at your check-in and check-out times: Occupied, Guest arriving soon, Check-in today, Check-out today, Turnover day — use them in flows. Booking.com exports every unavailable night as “CLOSED - Not available”, so a reservation and a date you closed yourself look the same and there are no guest details; with “Closed dates are stays” on, every closed period counts as a stay. Treat the link like a password." fields={BOOKING_FIELDS}/>
+}
+
+export function VrboSection(props) {
+  return <RentalSection {...props} id="vrbo" title="VRBO" fields={VRBO_FIELDS}
+    desc="Reservations of your VRBO properties, read from the calendar export link — in VRBO: Calendar → Import/Export → Export calendar. Every property becomes a device whose states change at your check-in and check-out times: Occupied, Guest arriving soon, Check-in today, Check-out today, Turnover day — use them in flows. VRBO marks stays “Reserved - guest name” and your own blocks “Blocked”, which don't count as stays. Treat the link like a password."/>
 }
 
 function RentalSection({ config, reload, id, title, desc, fields }) {

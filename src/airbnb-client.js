@@ -22,7 +22,13 @@
 // booking/<slug>) exports every unavailable night as "CLOSED - Not available"
 // — a reservation and a date the host closed look the same, with no code or
 // phone. For Booking links (detected by host, or listing.closedAsStays) closed
-// periods therefore count as stays. VRBO: "Reserved - …" / "Blocked".
+// periods therefore count as stays.
+//
+// VRBO (src/vrbo-client.js, config.vrbo, devices vrbo/<slug>) exports
+// "Reserved - <guest name>" for stays and "Blocked" for owner blocks; the
+// guest's name is shown in place of a reservation code. (Format as VRBO's
+// exports are documented and commonly seen — not checked against a live
+// VRBO account here.)
 //
 // Each listing becomes a device (airbnb/<slug>) whose states flip at the
 // host's check-in / check-out times — occupied, prepare (N hours before the
@@ -91,6 +97,7 @@ function parseIcs(text) {
     e.code = /reservations\/details\/([A-Z0-9]+)/i.exec(desc)?.[1] || null;
     e.phone4 = /Last 4 Digits\)?:\s*(\d{4})/i.exec(desc)?.[1] || null;
     e.blocked = BLOCKED.test(e.summary || '');
+    e.guestName = /^Reserved\s*[-–:]\s*(.+)$/i.exec((e.summary || '').trim())?.[1]?.trim() || null;
   }
   return events;
 }
@@ -148,7 +155,7 @@ function computeState(events, listing = {}, now = new Date(), language = 'en') {
       const start = e.start.at || at(e.start.date, cin);
       const end = e.end.at || at(e.end.date, cout);
       const nights = Math.max(1, Math.round((midnight(end) - midnight(start)) / DAY));
-      return { start, end, code: e.code, phone4: e.phone4, nights };
+      return { start, end, code: e.code, phone4: e.phone4, name: e.guestName, nights };
     })
     .filter((s) => s.end > s.start)
     .sort((a, b) => a.start - b.start);
@@ -171,7 +178,7 @@ function computeState(events, listing = {}, now = new Date(), language = 'en') {
   }
 
   const fmt = (d) => d.toLocaleString(language, { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  const who = (s) => (s ? [s.code, s.phone4 && `…${s.phone4}`].filter(Boolean).join(' · ') || source || 'guest' : '');
+  const who = (s) => (s ? [s.name, s.code, s.phone4 && `…${s.phone4}`].filter(Boolean).join(' · ') || source || 'guest' : '');
 
   return {
     occupied: !!current,
@@ -187,7 +194,7 @@ function computeState(events, listing = {}, now = new Date(), language = 'en') {
     nights30,
     occupancy30: Math.round((nights30 / 30) * 100),
     reservations: stays.filter((s) => s.end > t).slice(0, 10).map((s) => ({
-      start: s.start.toISOString(), end: s.end.toISOString(), code: s.code, phone4: s.phone4, nights: s.nights,
+      start: s.start.toISOString(), end: s.end.toISOString(), code: s.code, phone4: s.phone4, name: s.name, nights: s.nights,
     })),
   };
 }
@@ -227,6 +234,7 @@ const SENSORS = [
 const PROVIDERS = {
   airbnb: { configKey: 'airbnb', prefix: 'airbnb', statusKey: 'airbnb', logTag: 'Airbnb', label: 'Airbnb', icon: '🏠' },
   booking: { configKey: 'booking', prefix: 'booking', statusKey: 'booking', logTag: 'Booking', label: 'Booking.com', icon: '🛎️' },
+  vrbo: { configKey: 'vrbo', prefix: 'vrbo', statusKey: 'vrbo', logTag: 'VRBO', label: 'VRBO', icon: '🏡' },
 };
 
 class AirbnbClient extends PollingClient {
