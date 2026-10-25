@@ -1,5 +1,5 @@
 name: "LSH"
-version: "1.0.9"
+version: "1.0.10"
 slug: "lsh"
 description: "Smart-home hub (~55 integrations: Victron, Loxone, KNX, Shelly, Tuya, Sonoff, IKEA, Sonos…) with its own dashboard, HomeKit and Home Assistant bridge"
 url: "https://github.com/dagoomax/lsh"
@@ -24,3 +24,8 @@ watchdog: "tcp://[HOST]:3000"
 # which Supervisor keeps across restarts, updates, and backups automatically
 # — see run.sh for how it's wired to the paths LSH's own code expects. No
 # `map:` entry needed: /data is provided to every app without one.
+# Z-Wave / Zigbee USB sticks (Aeotec Z-Stick 10 Pro, Z-Wave.Me Z-Station, …):
+# uart maps every USB serial port (/dev/ttyUSB*, /dev/ttyACM*, and the stable
+# /dev/serial/by-id names) into the container. Stop the Z-Wave JS / Zigbee2MQTT
+# apps that use the same stick — a port can only be open in one place.
+uart: true

@@ -26,6 +26,8 @@ const PLATFORMS = [
   { key: 'lgthinq',      label: 'LG ThinQ',    color: '#a50034', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><text x="16" y="21" textAnchor="middle" fontFamily="Arial,sans-serif" fontWeight="bold" fontSize="11" fill="#fff">LG</text></svg> },
   { key: 'zway',         label: 'Z-Way',       color: '#7d59a5', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M10 11h12l-12 10h12" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg> },
   { key: 'zwaveJs',      label: 'Z-Wave JS',   color: '#1a8fe3', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M10 11h12l-12 10h12" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg> },
+  { key: 'zwaveUsb',     label: 'Z-Wave USB',  color: '#1a8fe3', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M10 11h12l-12 10h12" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg> },
+  { key: 'zigbee',       label: 'Zigbee',      color: '#eb0443', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M9 10h14L9 22h14" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg> },
   { key: 'wirenboard',   label: 'WirenBoard',  color: '#4caf50', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><rect x="9" y="9" width="14" height="14" rx="2" fill="none" stroke="#fff" strokeWidth="2"/><path d="M12 13v6M16 13v6M20 13v6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/></svg> },
   { key: 'tuya-ipc',     label: 'Tuya',        color: '#ff4800', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><path d="M9.5 11.5h13M16 11.5v10.5" stroke="#fff" strokeWidth="3.2" strokeLinecap="round"/><circle cx="22" cy="21" r="2" fill="#fff"/></svg> },
   { key: 'denon',        label: 'Denon',       color: '#4a4a4c', svg: <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" fill="currentColor"/><text x="16" y="18.6" textAnchor="middle" fontFamily="Georgia,serif" fontWeight="bold" fontSize="5.8" letterSpacing="0.2" fill="#fff">DENON</text></svg> },
@@ -69,7 +71,7 @@ const GROUPS = [
   { id: 'outdoor',    label: 'Pool & garden',       keys: ['bayrol', 'smarttub', 'landroid', 'aquilo'] },
   { id: 'appliances', label: 'Appliances',          keys: ['lgthinq', 'homeconnect', 'miele', 'thermomix', 'roborock', 'dreame', 'karcher', 'ecovacs'] },
   { id: 'media',      label: 'Media',               keys: ['sonos', 'radio', 'lgwebos', 'denon', 'beosound', 'sony', 'googletv', 'googlehome'] },
-  { id: 'hubs',       label: 'Hubs & ecosystems',   keys: ['smartthings', 'homeassistant', 'homey', 'vera', 'zway', 'zwaveJs', 'aqara', 'matter-bridge', 'matter-controller', 'virtual'] },
+  { id: 'hubs',       label: 'Hubs & ecosystems',   keys: ['smartthings', 'homeassistant', 'homey', 'vera', 'zway', 'zwaveJs', 'zwaveUsb', 'zigbee', 'aqara', 'matter-bridge', 'matter-controller', 'virtual'] },
   { id: 'system',     label: 'Network & system',    keys: ['unifi', 'mqtt-explorer', 'systemMetrics', 'google-calendar'] },
 ]
 const GROUPED = new Set(GROUPS.flatMap(g => g.keys))

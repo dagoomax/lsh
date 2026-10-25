@@ -85,6 +85,7 @@ export const CATEGORIES = [
   { id: 'platforms', label: 'Platforms & Hubs', sections: [
     { id: 'homekit', title: 'HomeKit', keywords: ['homekit', 'apple', 'siri', 'home app', 'pairing', 'qr'] },
     { id: 'matter', title: 'Matter & Thread', keywords: ['matter', 'thread', 'border router'] },
+    { id: 'usb-radio', title: 'Z-Wave & Zigbee USB', keywords: ['z-wave', 'zwave', 'zigbee', 'usb', 'stick', 'dongle', 'aeotec', 'z-stick', 'z-stick 10 pro', 'z-wave.me', 'z-station', 'zst39', 'zbt', 'skyconnect', 'sonoff', 'zbdongle', 'conbee', 'coordinator', 'koordynator', 'parowanie', 'pairing', 'zwave-js', 'zigbee2mqtt'] },
     { id: 'homeassistant', title: 'Home Assistant', keywords: ['home assistant', 'hass', 'ha', 'mqtt discovery'] },
     { id: 'smartthings', title: 'Samsung SmartThings', keywords: ['samsung', 'smartthings'] },
     { id: 'smarthome-extra', title: 'Homey, Fibaro, Somfy & more', keywords: ['homey', 'athom', 'somfy', 'tahoma', 'landroid', 'worx', 'mower', 'suppla', 'supla', 'fibaro', 'home center', 'sinum', 'tech', 'tech sterowniki', 'eh-01', 'thermostat', 'vclu', 'virtual clu', 'grenton', 'mcp'] },

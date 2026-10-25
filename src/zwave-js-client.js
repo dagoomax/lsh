@@ -16,6 +16,14 @@ const platformStatus   = require('./platform-status');
 
 const RECONNECT_MS = 5000;
 
+// External Z-Wave JS Server (config.zwaveJs.host), else the one LSH runs for
+// its own USB stick (src/zwave-usb-client.js, config.zwaveUsb.port)
+function target(config) {
+  if (config.zwaveJs?.host) return { host: config.zwaveJs.host, port: config.zwaveJs.port || 3000, usb: false };
+  if (config.zwaveUsb?.port) return { host: '127.0.0.1', port: Number(config.zwaveUsb.serverPort) || 3010, usb: true };
+  return null;
+}
+
 // Z-Wave CommandClass ids we understand → how to turn a value into an LSH
 // sensor descriptor. Anything else falls back to a generic read-only sensor
 // (same "don't drop it, just don't specialise it" behaviour as Domatiq's
@@ -60,14 +68,16 @@ class ZwaveJsClient {
   }
 
   async start() {
-    const cfg = this._config.zwaveJs;
-    if (!cfg?.host) return;
-    console.log(`[Z-Wave JS] Starting — ${cfg.host}:${cfg.port || 3000}`);
+    const t = target(this._config);
+    if (!t) return;
+    this._stopped = false;
+    console.log(`[Z-Wave JS] Starting — ${t.usb ? 'USB stick, ' : ''}${t.host}:${t.port}`);
     platformStatus.set('zwaveJs', false);
     this._connect();
   }
 
   stop() {
+    this._stopped = true;
     clearTimeout(this._timer);
     this._timer = null;
     this._ws?.removeAllListeners();
@@ -78,8 +88,10 @@ class ZwaveJsClient {
   // ── Connection ──────────────────────────────────────────────────────────
 
   _connect() {
-    const cfg = this._config.zwaveJs;
-    const url = `ws://${cfg.host}:${cfg.port || 3000}`;
+    const t = target(this._config);
+    if (!t || this._stopped) return;
+    this.usb = t.usb;
+    const url = `ws://${t.host}:${t.port}`;
     const ws  = new WebSocket(url);
     this._ws  = ws;
 
@@ -91,7 +103,8 @@ class ZwaveJsClient {
       this._onMessage(msg).catch((err) => console.error(`[Z-Wave JS] Message error: ${err.message}`));
     });
 
-    ws.on('error', (err) => console.error(`[Z-Wave JS] Socket error: ${err.message}`));
+    // the local USB server comes up a few seconds after LSH — don't log every refused attempt
+    ws.on('error', (err) => { if (!(t.usb && err.code === 'ECONNREFUSED')) console.error(`[Z-Wave JS] Socket error: ${err.message}`) });
 
     ws.on('close', () => {
       platformStatus.set('zwaveJs', false);
@@ -390,3 +403,4 @@ function sanitize(s) {
 }
 
 module.exports = ZwaveJsClient;
+module.exports.target = target;

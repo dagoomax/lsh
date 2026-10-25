@@ -113,6 +113,7 @@ const ROUTE_GROUPS = [
   require('./routes/announce'),
   require('./routes/aquilo'),
   require('./routes/airbnb'),
+  require('./routes/usb-radio'),
   require('./routes/tenant'),
   require('./routes/zehnder'),
   require('./routes/integration-settings'),

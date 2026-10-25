@@ -11,6 +11,7 @@
 
 const DICT = {
   pl: {
+    'Pairing': 'Parowanie', 'Pairing time left': 'Pozostały czas parowania', 'Devices': 'Urządzenia', 'Channel': 'Kanał', 'Firmware': 'Oprogramowanie', 'Last joined': 'Ostatnio dołączone', 'Remove device': 'Usuń urządzenie', 'Devices in the network': 'Urządzenia w sieci', 'Link quality': 'Jakość łącza', 'Presence': 'Obecność', 'Leak': 'Zalanie', 'Carbon monoxide': 'Tlenek węgla', 'Vibration': 'Wibracje', 'Pressure': 'Ciśnienie', 'Soil moisture': 'Wilgotność gleby', 'Formaldehyde': 'Formaldehyd', 'Running': 'Praca', 'Color': 'Kolor',
     'Intrusion alarm': 'Alarm włamaniowy', 'Fire': 'Pożar', 'Water leak': 'Zalanie', 'Gas': 'Gaz', 'Panic': 'Napad', 'Mains power lost': 'Brak zasilania', 'Online': 'Połączony', 'Last event': 'Ostatnie zdarzenie', 'Armed': 'Uzbrojony',
     'Unlatch': 'Otwórz zatrzask', 'Ring to Open': 'Ring to Open', 'Battery low': 'Słaba bateria', 'Keypad battery low': 'Słaba bateria klawiatury', 'Lock codes': 'Kody na zamku', 'Door': 'Drzwi',
     'Guest access active': 'Dostęp gościa aktywny', 'Door PIN': 'PIN do drzwi', 'Guest portal opened': 'Portal gościa otwarty',
@@ -43,6 +44,7 @@ const DICT = {
     'Grid': 'Sieć', 'Consumption': 'Zużycie', 'Dimmer': 'Ściemniacz', 'Pump': 'Pompa',
   },
   de: {
+    'Pairing': 'Anlernen', 'Pairing time left': 'Restzeit Anlernen', 'Devices': 'Geräte', 'Channel': 'Kanal', 'Firmware': 'Firmware', 'Last joined': 'Zuletzt beigetreten', 'Remove device': 'Gerät entfernen', 'Devices in the network': 'Geräte im Netz', 'Link quality': 'Verbindungsqualität', 'Presence': 'Anwesenheit', 'Leak': 'Leck', 'Carbon monoxide': 'Kohlenmonoxid', 'Vibration': 'Vibration', 'Pressure': 'Luftdruck', 'Soil moisture': 'Bodenfeuchte', 'Formaldehyde': 'Formaldehyd', 'Running': 'Betrieb', 'Color': 'Farbe',
     'Intrusion alarm': 'Einbruchalarm', 'Fire': 'Feuer', 'Water leak': 'Wasserleck', 'Gas': 'Gas', 'Panic': 'Panik', 'Mains power lost': 'Netzausfall', 'Online': 'Online', 'Last event': 'Letztes Ereignis',
     'Unlatch': 'Falle öffnen', 'Battery low': 'Batterie schwach', 'Keypad battery low': 'Keypad-Batterie schwach', 'Lock codes': 'Schloss-Codes',
     'Guest access active': 'Gastzugang aktiv', 'Door PIN': 'Tür-PIN', 'Guest portal opened': 'Gastportal geöffnet',
@@ -60,6 +62,7 @@ const DICT = {
     'pH Dosing': 'pH-Dosierung', 'Chlorine Dosing': 'Chlor-Dosierung', 'Heat Mode': 'Heizmodus',
   },
   fr: {
+    'Pairing': 'Appairage', 'Pairing time left': 'Temps d’appairage restant', 'Devices': 'Appareils', 'Channel': 'Canal', 'Firmware': 'Micrologiciel', 'Last joined': 'Dernier ajouté', 'Remove device': 'Retirer l’appareil', 'Devices in the network': 'Appareils du réseau', 'Link quality': 'Qualité du lien', 'Presence': 'Présence', 'Leak': 'Fuite', 'Carbon monoxide': 'Monoxyde de carbone', 'Vibration': 'Vibration', 'Pressure': 'Pression', 'Soil moisture': 'Humidité du sol', 'Formaldehyde': 'Formaldéhyde', 'Running': 'Fonctionnement', 'Color': 'Couleur',
     'Intrusion alarm': 'Alarme intrusion', 'Fire': 'Incendie', 'Water leak': 'Fuite d’eau', 'Gas': 'Gaz', 'Panic': 'Panique', 'Mains power lost': 'Coupure secteur', 'Online': 'En ligne', 'Last event': 'Dernier événement',
     'Unlatch': 'Ouvrir le pêne', 'Battery low': 'Batterie faible', 'Keypad battery low': 'Batterie du clavier faible', 'Lock codes': 'Codes de la serrure',
     'Guest access active': 'Accès voyageur actif', 'Door PIN': 'Code de la porte', 'Guest portal opened': 'Portail voyageur ouvert',
@@ -77,6 +80,7 @@ const DICT = {
     'Chlorine Dosing': 'Dosage chlore', 'Heat Mode': 'Mode chauffage',
   },
   es: {
+    'Pairing': 'Emparejamiento', 'Pairing time left': 'Tiempo de emparejamiento restante', 'Devices': 'Dispositivos', 'Channel': 'Canal', 'Firmware': 'Firmware', 'Last joined': 'Último unido', 'Remove device': 'Quitar dispositivo', 'Devices in the network': 'Dispositivos en la red', 'Link quality': 'Calidad del enlace', 'Presence': 'Presencia', 'Leak': 'Fuga', 'Carbon monoxide': 'Monóxido de carbono', 'Vibration': 'Vibración', 'Pressure': 'Presión', 'Soil moisture': 'Humedad del suelo', 'Formaldehyde': 'Formaldehído', 'Running': 'Funcionamiento', 'Color': 'Color',
     'Intrusion alarm': 'Alarma de intrusión', 'Fire': 'Incendio', 'Water leak': 'Fuga de agua', 'Gas': 'Gas', 'Panic': 'Pánico', 'Mains power lost': 'Sin red eléctrica', 'Online': 'En línea', 'Last event': 'Último evento',
     'Unlatch': 'Abrir pestillo', 'Battery low': 'Batería baja', 'Keypad battery low': 'Batería del teclado baja', 'Lock codes': 'Códigos de la cerradura',
     'Guest access active': 'Acceso de huésped activo', 'Door PIN': 'PIN de la puerta', 'Guest portal opened': 'Portal de huésped abierto',
@@ -94,6 +98,7 @@ const DICT = {
     'Chlorine Dosing': 'Dosificación cloro', 'Heat Mode': 'Modo calefacción',
   },
   it: {
+    'Pairing': 'Associazione', 'Pairing time left': 'Tempo di associazione rimasto', 'Devices': 'Dispositivi', 'Channel': 'Canale', 'Firmware': 'Firmware', 'Last joined': 'Ultimo aggiunto', 'Remove device': 'Rimuovi dispositivo', 'Devices in the network': 'Dispositivi nella rete', 'Link quality': 'Qualità del collegamento', 'Presence': 'Presenza', 'Leak': 'Perdita', 'Carbon monoxide': 'Monossido di carbonio', 'Vibration': 'Vibrazione', 'Pressure': 'Pressione', 'Soil moisture': 'Umidità del terreno', 'Formaldehyde': 'Formaldeide', 'Running': 'Funzionamento', 'Color': 'Colore',
     'Intrusion alarm': 'Allarme intrusione', 'Fire': 'Incendio', 'Water leak': 'Perdita d’acqua', 'Gas': 'Gas', 'Panic': 'Panico', 'Mains power lost': 'Mancanza rete', 'Online': 'Online', 'Last event': 'Ultimo evento',
     'Unlatch': 'Apri scrocco', 'Battery low': 'Batteria scarica', 'Keypad battery low': 'Batteria tastierino scarica', 'Lock codes': 'Codici della serratura',
     'Guest access active': 'Accesso ospite attivo', 'Door PIN': 'PIN della porta', 'Guest portal opened': 'Portale ospite aperto',
@@ -111,6 +116,7 @@ const DICT = {
     'pH Dosing': 'Dosaggio pH', 'Chlorine Dosing': 'Dosaggio cloro', 'Heat Mode': 'Modo riscaldamento',
   },
   ua: {
+    'Pairing': 'Спарювання', 'Pairing time left': 'Залишок часу спарювання', 'Devices': 'Пристрої', 'Channel': 'Канал', 'Firmware': 'Прошивка', 'Last joined': 'Останній доданий', 'Remove device': 'Видалити пристрій', 'Devices in the network': 'Пристрої в мережі', 'Link quality': 'Якість зв’язку', 'Presence': 'Присутність', 'Leak': 'Протікання', 'Carbon monoxide': 'Чадний газ', 'Vibration': 'Вібрація', 'Pressure': 'Тиск', 'Soil moisture': 'Вологість ґрунту', 'Formaldehyde': 'Формальдегід', 'Running': 'Робота', 'Color': 'Колір',
     'Intrusion alarm': 'Тривога проникнення', 'Fire': 'Пожежа', 'Water leak': 'Протікання', 'Gas': 'Газ', 'Panic': 'Паніка', 'Mains power lost': 'Немає живлення', 'Online': 'Онлайн', 'Last event': 'Остання подія',
     'Unlatch': 'Відкрити засувку', 'Battery low': 'Низький заряд', 'Keypad battery low': 'Низький заряд клавіатури', 'Lock codes': 'Коди замка',
     'Guest access active': 'Доступ гостя активний', 'Door PIN': 'PIN дверей', 'Guest portal opened': 'Портал гостя відкрито',

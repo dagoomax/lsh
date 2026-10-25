@@ -97,7 +97,12 @@ module.exports = [
   { file: 'zway-client', label: 'Z-Way', when: (config) => config.zway?.host },
   // Start Z-Wave JS client if configured (Z-Wave JS Server / Z-Wave JS UI —
   // distinct from the Z-Way/RaZberry REST integration above)
-  { file: 'zwave-js-client', label: 'Z-Wave JS', expose: 'zwaveJs', when: (config) => config.zwaveJs?.host },
+  { file: 'zwave-js-client', label: 'Z-Wave JS', expose: 'zwaveJs', when: (config) => config.zwaveJs?.host || config.zwaveUsb?.port },
+  // Z-Wave / Zigbee USB sticks (Aeotec Z-Stick 10 Pro, Z-Wave.Me Z-Station, …):
+  // zwave-js + Z-Wave JS Server on 127.0.0.1 for the client above, and
+  // zigbee-herdsman with the Zigbee2MQTT device definitions
+  { file: 'zwave-usb-client', label: 'Z-Wave USB', when: (config) => config.zwaveUsb?.port },
+  { file: 'zigbee-client', label: 'Zigbee', when: (config) => config.zigbee?.port },
   { file: 'vera-client', label: 'Vera', when: (config) => config.vera?.host },
   { file: 'knx-client', label: 'KNX', hint: 'npm install knx', when: (config) => config.knx?.host },
   { file: 'fibaro-client', label: 'Fibaro', when: (config) => config.fibaro?.host },

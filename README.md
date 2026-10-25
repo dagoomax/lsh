@@ -1697,6 +1697,63 @@ Connects to a **Z-Wave JS Server** (the WebSocket JSON-RPC server bundled with [
 
 Live updates arrive as `value updated` events over the same socket; writes go through `node.set_value`.
 
+### `zwaveUsb` / `zigbee` — Z-Wave and Zigbee USB sticks
+
+LSH can run its own Z-Wave and Zigbee networks on a USB stick, with no Z-Wave JS UI, Zigbee2MQTT or MQTT broker. Set it up in Settings → Platforms & Hubs → **Z-Wave & Zigbee USB**: pick the stick, **Find ports**, then Save. Changes apply live.
+
+```json
+"zwaveUsb": { "port": "/dev/serial/by-id/usb-Silicon_Labs_CP2105_Dual_USB_to_UART_Bridge_Controller_00F4C829-if01-port0", "region": "Europe" },
+"zigbee":   { "port": "/dev/serial/by-id/usb-Silicon_Labs_CP2105_Dual_USB_to_UART_Bridge_Controller_00F4C829-if00-port0",
+              "adapter": "ember", "channel": 15, "rtscts": false, "names": { "0x00158d0001a2b3c4": "Czujnik salon" } }
+```
+
+**Sticks:**
+
+| Stick | Z-Wave | Zigbee | Notes |
+|---|---|---|---|
+| Aeotec Z-Stick 10 Pro (ZWA060) | EFR32ZG23, 800 series, Long Range | EFR32MG21, `ember` | Zigbee firmware **7.4.3+** is needed (older is EZSP 8). Z-Wave 7.23.2 recommended. |
+| Z-Wave.Me Z-Station | ZGM130S, 700 series | EFR32MG21P, `ember` | Needs the Zigbee NCP firmware, **2024.04.22+**. |
+| Single-radio | Aeotec Z-Stick 7, Zooz ZST10/ZST39, HA Connect ZWA-2 | HA Connect ZBT-1/2, Sonoff ZBDongle-E (`ember`), ZBDongle-P (`zstack`), ConBee (`deconz`) | |
+
+Both dual sticks are one Silicon Labs CP2105 chip with two UARTs, so they have the same USB ids. Which port is Z-Wave and which is Zigbee (`if00`/`if01`, `ttyUSB0`/`1`) differs between units. **Find ports** (tool module `usb-radio`, `src/usb-radio-scan.js`) asks each free port directly: a Z-Wave Serial API `GET_VERSION`, then an EmberZNet ASH reset. It only reads; nothing is changed on the radios. A `port` can also be `tcp://host:port` (ser2net, network coordinators).
+
+**Z-Wave** (`src/zwave-usb-client.js`, its own process):
+- Runs the zwave-js driver on the stick and the Z-Wave JS Server on `127.0.0.1:3010` (`serverPort`).
+- The regular `zwaveJs` client connects to that, so devices, commands and inclusion (S2 PIN, exclusion) work exactly like with an external Z-Wave JS UI.
+- If `zwaveJs.host` is also set, that external server is used instead.
+- Network security keys (S0, S2, Long Range) are generated on first start in `persist/zwave/keys.json` (mode 600). The driver cache is in `persist/zwave/cache`. **Back up `persist/zwave`**: securely included devices only talk to these keys.
+
+**Zigbee** (`src/zigbee-client.js` + `src/zigbee-map.js`, its own process):
+- Uses zigbee-herdsman with zigbee-herdsman-converters, the device library Zigbee2MQTT uses.
+- Each device becomes `zigbee/<ieee>` with the usual LSH sensor paths:
+
+  | Device | Sensors |
+  |---|---|
+  | Light | `switch`, `level`, `colorTemperature`, `hue`/`saturation`/`color` (HomeKit light) |
+  | Plug / relay | `switch`, `switch_<endpoint>` |
+  | Cover | `windowShade`, `level` |
+  | Lock | `lock` |
+  | Thermostat | `heatingSetpoint`, `temperature`, `thermostatMode` |
+  | Readings | temperature, humidity, battery, contact (1 = open), motion, presence, leak, smoke, illuminance, power, energy, `linkquality`, `action`, … |
+
+- Device settings (Zigbee2MQTT's `config` category) are left out.
+- `zigbee/coordinator` holds `permitJoin` (pairing, 4 min), the channel, PAN ID, firmware and device count.
+- `POST /api/usb-radio/zigbee/permit` and `/remove` drive it from Settings.
+- The network (PAN ID, extended PAN ID, network key) is created on first start in `persist/zigbee/network.json`. The device database and coordinator backup are kept next to it.
+- **Coming from Zigbee2MQTT:** put its `pan_id`, `ext_pan_id` and `network_key` into `network.json` (same names; arrays or hex) before the first start, and use the same `channel`. Paired devices then stay paired. Stop Zigbee2MQTT first: a port can only be open in one program.
+
+**npm packages:** the modules install zwave-js and @zwave-js/server (`zwave-usb`), and zigbee-herdsman with zigbee-herdsman-converters (`zigbee`), on demand. They're large: about 130 MB together on disk. Measured RAM: about 170 MB for the Z-Wave process and 95 MB for Zigbee.
+
+**API:**
+- `GET /api/usb-radio/status`
+- `GET /api/usb-radio/ports`
+- `POST /api/usb-radio/probe`
+- `POST /api/settings/usb-radio`
+
+**Testing:** done without a real stick. The Z-Wave side is tested end to end against zwave-js's own mock controller (`test/usb-radio.test.js`, when zwave-js is installed). The Zigbee side is tested with Zigbee2MQTT's real definitions and converters on a stand-in coordinator (`test/zigbee.test.js`).
+
+**Docker:** pass the stick through (`devices: ["/dev/serial/by-id/…:/dev/serial/by-id/…"]`). The Home Assistant add-on maps USB serial ports (`uart: true`).
+
 ### `vera`
 
 ```json

@@ -12,7 +12,7 @@ LSH is a smart-home hub with ~55 integrations: Victron, Loxone, KNX, Shelly, Tuy
    - 10–25 min on Green or a Raspberry Pi.
 
    The device needs access to `github.com` and `registry.npmjs.org` while it builds.
-3. **Start it:** enable **Start on boot** and **Watchdog**, then **Start**. The first log line shows the build, e.g. `LSH add-on 1.0.9 · main @ 66ce10a · built 2026-10-25`. LSH is ready at `[Automation] Started`.
+3. **Start it:** enable **Start on boot** and **Watchdog**, then **Start**. The first log line shows the build, e.g. `LSH add-on 1.0.10 · main @ 66ce10a · built 2026-10-25`. LSH is ready at `[Automation] Started`.
 4. **Sign in:** open `http://<home-assistant-ip>:3000`, create the admin account (separate from Home Assistant's users), and configure integrations in LSH's **Settings**.
 
 Never use **Uninstall** to start over: it deletes `/data`, which holds the settings, accounts, flows, scenes, the 3D model and the HomeKit pairing.
@@ -64,12 +64,18 @@ Host networking is required for HomeKit, Tuya, Sonoff and AirPlay discovery over
 | 12128 | Ajax SIA DC-09 receiver, TCP and UDP (when configured) |
 | 12129 | Jablotron SIA DC-09 receiver, TCP and UDP (when configured) |
 
+## Z-Wave and Zigbee USB sticks
+
+LSH can run Z-Wave and Zigbee on a USB stick plugged into the Home Assistant machine (Aeotec Z-Stick 10 Pro, Z-Wave.Me Z-Station, or single-radio sticks). The add-on can see USB serial ports. Set it up in LSH: Settings → **Z-Wave & Zigbee USB** → **Find ports**.
+
+A port can only be used by one program. Before switching, stop whatever is using the stick now: the Z-Wave JS app, Zigbee2MQTT, or ZHA. Devices paired with Z-Wave JS UI stay paired only if you also move its network keys; otherwise include the devices again. To move a Zigbee2MQTT network, see the hint in that Settings page.
+
 ## Data, backups, updates
 
 Everything LSH saves lives in the add-on's `/data`, which is kept across restarts and updates and included in Home Assistant backups:
 - `config.json`
 - `automations.json`
-- `persist/`: users, API tokens, HomeKit pairing, the 3D model, history
+- `persist/`: users, API tokens, HomeKit pairing, the 3D model, history, Z-Wave / Zigbee network keys
 - `certs/`
 
 **To update:** Add-on Store → ⋮ → **Check for updates** → LSH → **Update**. The image is rebuilt, and the old version keeps running until the new one is built. Take a partial backup of LSH first.

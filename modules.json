@@ -142,6 +142,7 @@
     "src/routes/tuya-sonoff.js",
     "src/routes/ui-preferences.js",
     "src/routes/unifi-protect.js",
+    "src/routes/usb-radio.js",
     "src/routes/vclu.js",
     "src/routes/vitodens.js",
     "src/routes/vrm.js",
@@ -1187,14 +1188,44 @@
     "zwave-js": {
       "entry": "src/zwave-js-client.js",
       "configKeys": [
-        "zwaveJs"
+        "zwaveJs",
+        "zwaveUsb"
       ],
-      "when": "(config.zwaveJs?.host)",
+      "when": "(config.zwaveJs?.host || config.zwaveUsb?.port)",
       "files": [
         "src/zwave-js-client.js"
       ],
       "deps": {
         "ws": "^7.5.11"
+      }
+    },
+    "zwave-usb": {
+      "entry": "src/zwave-usb-client.js",
+      "configKeys": [
+        "zwaveUsb"
+      ],
+      "when": "(config.zwaveUsb?.port)",
+      "files": [
+        "src/zwave-usb-client.js"
+      ],
+      "deps": {
+        "zwave-js": "^15.31.2",
+        "@zwave-js/server": "^3.11.0"
+      }
+    },
+    "zigbee": {
+      "entry": "src/zigbee-client.js",
+      "configKeys": [
+        "zigbee"
+      ],
+      "when": "(config.zigbee?.port)",
+      "files": [
+        "src/zigbee-client.js",
+        "src/zigbee-map.js"
+      ],
+      "deps": {
+        "zigbee-herdsman": "^11.1.1",
+        "zigbee-herdsman-converters": "^26.124.0"
       }
     },
     "vera": {
@@ -1648,6 +1679,18 @@
       "tool": true,
       "files": [
         "src/lsh-modbus-scan.js"
+      ],
+      "deps": {
+        "serialport": "^13.0.0"
+      }
+    },
+    "usb-radio": {
+      "entry": "src/usb-radio-scan.js",
+      "configKeys": [],
+      "when": null,
+      "tool": true,
+      "files": [
+        "src/usb-radio-scan.js"
       ],
       "deps": {
         "serialport": "^13.0.0"
