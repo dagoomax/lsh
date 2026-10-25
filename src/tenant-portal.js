@@ -17,7 +17,7 @@
 //     PIN as a time-limited keypad code on that lock: the wanted codes are
 //     published at tenant/<slug>/codes and the lock module creates / deletes
 //     them (src/lock-codes.js). The PIN then follows the lock's rules — Nuki:
-//     6 digits 1-9, not starting with 12; Tedee: 5-8 digits.
+//     6 digits 1-9, not starting with 12; Tedee: 5-8 digits; TTLock: 4-9.
 //
 // Tokens and derived PINs are HMACs of the stay (listing, start, end) with a
 // secret in persist/tenant-secret.json — nothing per stay is stored, and
@@ -60,6 +60,7 @@ function pinRule(prop) {
   const type = String(prop.lock || '').split('/')[0];
   if (type === 'nuki') return { min: 6, max: 6, alphabet: '123456789', ok: (p) => /^[1-9]{6}$/.test(p) && !p.startsWith('12') };
   if (type === 'tedee') return { min: 5, max: 8, alphabet: ANY, ok: (p) => /^\d{5,8}$/.test(p) };
+  if (type === 'ttlock') return { min: 4, max: 9, alphabet: ANY, ok: (p) => /^\d{4,9}$/.test(p) };
   return { min: 4, max: 8, alphabet: ANY, ok: () => true };
 }
 

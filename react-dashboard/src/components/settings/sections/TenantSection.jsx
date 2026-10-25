@@ -116,7 +116,7 @@ function PropertyEditor({ p, rentals, devices, onChange, onRemove }) {
   const shown = controllable.filter((d) => p.devices.includes(d.key)
     || (q && `${d.label} ${d.room || ''} ${d.key}`.toLowerCase().includes(q.toLowerCase())))
   const toggleDev = (key) => onChange({ devices: p.devices.includes(key) ? p.devices.filter((k) => k !== key) : [...p.devices, key] })
-  const locks = devices.filter((d) => d.type === 'nuki' || d.type === 'tedee')
+  const locks = devices.filter((d) => ['nuki', 'tedee', 'ttlock'].includes(d.type))
   const listingOptions = [
     ...rentals.map((d) => ({ value: d.key, label: `${d.label} (${d.type})`, raw: true })),
     ...(p.listing && !rentals.some((d) => d.key === p.listing) ? [{ value: p.listing, label: p.listing, raw: true }] : []),

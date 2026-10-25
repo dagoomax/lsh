@@ -137,6 +137,7 @@
     "src/routes/terminal.js",
     "src/routes/thermomix.js",
     "src/routes/tidal.js",
+    "src/routes/ttlock.js",
     "src/routes/tuya-sonoff.js",
     "src/routes/ui-preferences.js",
     "src/routes/unifi-protect.js",
@@ -926,6 +927,19 @@
         "src/lock-codes.js",
         "src/nuki-client.js",
         "src/polling-client.js"
+      ],
+      "deps": {}
+    },
+    "ttlock": {
+      "entry": "src/ttlock-client.js",
+      "configKeys": [
+        "ttlock"
+      ],
+      "when": "(config.ttlock?.clientId && config.ttlock?.username && config.ttlock?.password)",
+      "files": [
+        "src/lock-codes.js",
+        "src/polling-client.js",
+        "src/ttlock-client.js"
       ],
       "deps": {}
     },

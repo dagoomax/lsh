@@ -55,6 +55,7 @@ export const CATEGORIES = [
     { id: 'dsc', title: 'DSC PowerSeries Neo', keywords: ['dsc', 'neo', 'tl280', 'itv2', 'alarm', 'alarm panel'] },
     { id: 'tedee', title: 'Tedee Smart Lock', keywords: ['tedee', 'lock', 'door', 'keypad', 'pin', 'zamek'] },
     { id: 'nuki', title: 'Nuki', keywords: ['nuki', 'smart lock', 'opener', 'lock', 'door', 'keypad', 'pin', 'zamek', 'domofon'] },
+    { id: 'ttlock', title: 'TTLock', keywords: ['ttlock', 'sciener', 'lock', 'smart lock', 'gateway', 'passcode', 'pin', 'zamek', 'door'] },
   ] },
   { id: 'cameras', label: 'Cameras', sections: [
     { id: 'manualcams', title: 'Cameras', keywords: ['rtsp', 'onvif', 'camera', 'stream'] },

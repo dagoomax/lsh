@@ -73,6 +73,8 @@ module.exports = function register(router, ctx) {
     if (Array.isArray(safe.tedee?.devices)) safe.tedee.devices.forEach((d) => { if (d.apiToken) d.apiToken = '••••••••'; });
     if (Array.isArray(safe.nuki?.bridges)) safe.nuki.bridges.forEach((b) => { if (b.token) b.token = '••••••••'; });
     if (safe.nuki?.webToken)        safe.nuki.webToken        = '••••••••';
+    if (safe.ttlock?.clientSecret)  safe.ttlock.clientSecret  = '••••••••';
+    if (safe.ttlock?.password)      safe.ttlock.password      = '••••••••';
     if (safe.yale?.password)        safe.yale.password        = '••••••••';
     if (Array.isArray(safe.cameras)) safe.cameras.forEach((c) => { if (c.onvif?.password) c.onvif.password = '••••••••'; });
     if (safe.somfy?.token)          safe.somfy.token          = '••••••••';

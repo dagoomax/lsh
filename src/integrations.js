@@ -63,6 +63,8 @@ module.exports = [
   { file: 'tedee-client', label: 'Tedee', when: (config) => config.tedee?.devices?.length },
   // Nuki smart locks / Opener — local Bridge API and/or Nuki Web (keypad codes for the guest portal)
   { file: 'nuki-client', label: 'Nuki', when: (config) => config.nuki?.bridges?.length || config.nuki?.webToken },
+  // TTLock (and Sciener-based brands) — TTLock Open Platform cloud; passcodes for the guest portal
+  { file: 'ttlock-client', label: 'TTLock', when: (config) => config.ttlock?.clientId && config.ttlock?.username && config.ttlock?.password },
   // Start Home Connect client if configured — Bosch/Siemens/Gaggenau/Neff
   // (OAuth device flow via scripts/homeconnect-auth.js; tokens persisted + auto-refreshed)
   { file: 'homeconnect-client', label: 'HomeConnect', when: (config) => config.homeConnect },

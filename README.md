@@ -4500,7 +4500,21 @@ Each device is `nuki/<nukiId>`:
 - The Web part follows Nuki Web API 4.23's swagger.
 - `node scripts/nuki-simulator.js` stands in for both.
 
-### Lock codes for guests (Nuki, Tedee)
+### TTLock
+
+Locks used with the TTLock app (many brands are TTLock inside) through the TTLock Open Platform cloud (`src/ttlock-client.js`, no npm deps, runs in its own process). Settings → Security & Access → **TTLock**: enter the client ID and secret of an application registered on the TTLock open platform, plus the TTLock app account the locks are in.
+
+```json
+"ttlock": { "clientId": "…", "clientSecret": "…", "username": "you@example.com", "password": "…", "region": "eu", "pollSeconds": 60 }
+```
+
+- **Login:** OAuth with the password MD5-hashed. The token is kept in `persist/ttlock-token.json` and refreshed automatically.
+- **Devices:** each lock is `ttlock/<lockId>` with `lock` (HomeKit lock), `status`, `battery`, `door` (door sensor) and `gateway`.
+- **Gateway needed:** state, lock/unlock and passcodes need the lock connected to a TTLock gateway (G2/G3/G4).
+- **Guest PINs:** stays become period passcodes, 4–9 digits, so Airbnb's phone last 4 digits work.
+- **Not checked against a real lock:** TTLock's documentation site no longer serves its API pages. The calls follow the Home Assistant TTLock integration, and `node scripts/ttlock-simulator.js` stands in for the cloud.
+
+### Lock codes for guests (Nuki, Tedee, TTLock)
 
 In the guest portal, set a property's **Lock for keypad codes**. Each current and upcoming stay's PIN then becomes a keypad code on that lock, limited to the stay's window. The guest portal publishes the wanted codes at `tenant/<property>/codes`. The lock's module creates and deletes them (`src/lock-codes.js`) and reports the result in `tenant/<property>/lockCodes`.
 
@@ -4508,8 +4522,9 @@ In the guest portal, set a property's **Lock for keypad codes**. Each current an
 - **PIN format:** the PIN follows the lock's rules.
   - Nuki: 6 digits from 1–9, not starting with 12.
   - Tedee: 5–8 digits.
+  - TTLock: 4–9 digits.
 
-  So Airbnb's phone last 4 digits are replaced by a generated code.
+  So with Nuki or Tedee, Airbnb's phone last 4 digits are replaced by a generated code.
 - **Nuki codes** need Nuki Web; they are created as auth type 13, keypad code.
 - **Tedee codes** go through the Bridge's local `/lock/{id}/pin` API (Bridge API spec 1.19) and need a Tedee Keypad.
 

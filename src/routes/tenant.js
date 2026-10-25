@@ -59,7 +59,7 @@ module.exports = function register(router, ctx) {
       name: str(p?.name, 100),
       listing: str(p?.listing, 200),
       devices: [...new Set((Array.isArray(p?.devices) ? p.devices : []).map((d) => str(d, 200)).filter(Boolean))],
-      ...(/^(nuki|tedee)\/[\w-]+$/.test(str(p?.lock, 100)) ? { lock: str(p.lock, 100) } : {}),
+      ...(/^(nuki|tedee|ttlock)\/[\w-]+$/.test(str(p?.lock, 100)) ? { lock: str(p.lock, 100) } : {}),
       wifi: { ssid: str(p?.wifi?.ssid, 64), password: str(p?.wifi?.password, 128) },
       info: str(p?.info),
       rules: str(p?.rules),
