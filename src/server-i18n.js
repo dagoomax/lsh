@@ -11,6 +11,7 @@
 
 const DICT = {
   pl: {
+    'Intrusion alarm': 'Alarm włamaniowy', 'Fire': 'Pożar', 'Water leak': 'Zalanie', 'Gas': 'Gaz', 'Panic': 'Napad', 'Mains power lost': 'Brak zasilania', 'Online': 'Połączony', 'Last event': 'Ostatnie zdarzenie', 'Armed': 'Uzbrojony',
     'Unlatch': 'Otwórz zatrzask', 'Ring to Open': 'Ring to Open', 'Battery low': 'Słaba bateria', 'Keypad battery low': 'Słaba bateria klawiatury', 'Lock codes': 'Kody na zamku', 'Door': 'Drzwi',
     'Guest access active': 'Dostęp gościa aktywny', 'Door PIN': 'PIN do drzwi', 'Guest portal opened': 'Portal gościa otwarty',
     'Occupied': 'Zajęte', 'Guest arriving soon': 'Gość wkrótce przyjeżdża', 'Check-in today': 'Zameldowanie dziś', 'Check-out today': 'Wymeldowanie dziś', 'Turnover day': 'Dzień zmiany gości', 'Guest': 'Gość', 'Next guest': 'Następny gość', 'Next check-in': 'Następne zameldowanie', 'Next check-out': 'Następne wymeldowanie', 'Days to next guest': 'Dni do następnego gościa', 'Booked nights (30 d)': 'Zarezerwowane noce (30 dni)', 'Occupancy (30 d)': 'Obłożenie (30 dni)',
@@ -42,6 +43,7 @@ const DICT = {
     'Grid': 'Sieć', 'Consumption': 'Zużycie', 'Dimmer': 'Ściemniacz', 'Pump': 'Pompa',
   },
   de: {
+    'Intrusion alarm': 'Einbruchalarm', 'Fire': 'Feuer', 'Water leak': 'Wasserleck', 'Gas': 'Gas', 'Panic': 'Panik', 'Mains power lost': 'Netzausfall', 'Online': 'Online', 'Last event': 'Letztes Ereignis',
     'Unlatch': 'Falle öffnen', 'Battery low': 'Batterie schwach', 'Keypad battery low': 'Keypad-Batterie schwach', 'Lock codes': 'Schloss-Codes',
     'Guest access active': 'Gastzugang aktiv', 'Door PIN': 'Tür-PIN', 'Guest portal opened': 'Gastportal geöffnet',
     'Occupied': 'Belegt', 'Guest arriving soon': 'Gast kommt bald', 'Check-in today': 'Check-in heute', 'Check-out today': 'Check-out heute', 'Turnover day': 'Gästewechsel', 'Guest': 'Gast', 'Next guest': 'Nächster Gast', 'Next check-in': 'Nächster Check-in', 'Next check-out': 'Nächster Check-out', 'Days to next guest': 'Tage bis zum nächsten Gast', 'Booked nights (30 d)': 'Gebuchte Nächte (30 T.)', 'Occupancy (30 d)': 'Belegung (30 T.)',
@@ -58,6 +60,7 @@ const DICT = {
     'pH Dosing': 'pH-Dosierung', 'Chlorine Dosing': 'Chlor-Dosierung', 'Heat Mode': 'Heizmodus',
   },
   fr: {
+    'Intrusion alarm': 'Alarme intrusion', 'Fire': 'Incendie', 'Water leak': 'Fuite d’eau', 'Gas': 'Gaz', 'Panic': 'Panique', 'Mains power lost': 'Coupure secteur', 'Online': 'En ligne', 'Last event': 'Dernier événement',
     'Unlatch': 'Ouvrir le pêne', 'Battery low': 'Batterie faible', 'Keypad battery low': 'Batterie du clavier faible', 'Lock codes': 'Codes de la serrure',
     'Guest access active': 'Accès voyageur actif', 'Door PIN': 'Code de la porte', 'Guest portal opened': 'Portail voyageur ouvert',
     'Occupied': 'Occupé', 'Guest arriving soon': 'Voyageur bientôt là', 'Check-in today': 'Arrivée aujourd’hui', 'Check-out today': 'Départ aujourd’hui', 'Turnover day': 'Jour de rotation', 'Guest': 'Voyageur', 'Next guest': 'Prochain voyageur', 'Next check-in': 'Prochaine arrivée', 'Next check-out': 'Prochain départ', 'Days to next guest': 'Jours avant le prochain voyageur', 'Booked nights (30 d)': 'Nuits réservées (30 j)', 'Occupancy (30 d)': 'Occupation (30 j)',
@@ -74,6 +77,7 @@ const DICT = {
     'Chlorine Dosing': 'Dosage chlore', 'Heat Mode': 'Mode chauffage',
   },
   es: {
+    'Intrusion alarm': 'Alarma de intrusión', 'Fire': 'Incendio', 'Water leak': 'Fuga de agua', 'Gas': 'Gas', 'Panic': 'Pánico', 'Mains power lost': 'Sin red eléctrica', 'Online': 'En línea', 'Last event': 'Último evento',
     'Unlatch': 'Abrir pestillo', 'Battery low': 'Batería baja', 'Keypad battery low': 'Batería del teclado baja', 'Lock codes': 'Códigos de la cerradura',
     'Guest access active': 'Acceso de huésped activo', 'Door PIN': 'PIN de la puerta', 'Guest portal opened': 'Portal de huésped abierto',
     'Occupied': 'Ocupado', 'Guest arriving soon': 'Huésped llega pronto', 'Check-in today': 'Entrada hoy', 'Check-out today': 'Salida hoy', 'Turnover day': 'Día de cambio', 'Guest': 'Huésped', 'Next guest': 'Próximo huésped', 'Next check-in': 'Próxima entrada', 'Next check-out': 'Próxima salida', 'Days to next guest': 'Días hasta el próximo huésped', 'Booked nights (30 d)': 'Noches reservadas (30 d)', 'Occupancy (30 d)': 'Ocupación (30 d)',
@@ -90,6 +94,7 @@ const DICT = {
     'Chlorine Dosing': 'Dosificación cloro', 'Heat Mode': 'Modo calefacción',
   },
   it: {
+    'Intrusion alarm': 'Allarme intrusione', 'Fire': 'Incendio', 'Water leak': 'Perdita d’acqua', 'Gas': 'Gas', 'Panic': 'Panico', 'Mains power lost': 'Mancanza rete', 'Online': 'Online', 'Last event': 'Ultimo evento',
     'Unlatch': 'Apri scrocco', 'Battery low': 'Batteria scarica', 'Keypad battery low': 'Batteria tastierino scarica', 'Lock codes': 'Codici della serratura',
     'Guest access active': 'Accesso ospite attivo', 'Door PIN': 'PIN della porta', 'Guest portal opened': 'Portale ospite aperto',
     'Occupied': 'Occupato', 'Guest arriving soon': 'Ospite in arrivo', 'Check-in today': 'Check-in oggi', 'Check-out today': 'Check-out oggi', 'Turnover day': 'Giorno di cambio', 'Guest': 'Ospite', 'Next guest': 'Prossimo ospite', 'Next check-in': 'Prossimo check-in', 'Next check-out': 'Prossimo check-out', 'Days to next guest': 'Giorni al prossimo ospite', 'Booked nights (30 d)': 'Notti prenotate (30 g)', 'Occupancy (30 d)': 'Occupazione (30 g)',
@@ -106,6 +111,7 @@ const DICT = {
     'pH Dosing': 'Dosaggio pH', 'Chlorine Dosing': 'Dosaggio cloro', 'Heat Mode': 'Modo riscaldamento',
   },
   ua: {
+    'Intrusion alarm': 'Тривога проникнення', 'Fire': 'Пожежа', 'Water leak': 'Протікання', 'Gas': 'Газ', 'Panic': 'Паніка', 'Mains power lost': 'Немає живлення', 'Online': 'Онлайн', 'Last event': 'Остання подія',
     'Unlatch': 'Відкрити засувку', 'Battery low': 'Низький заряд', 'Keypad battery low': 'Низький заряд клавіатури', 'Lock codes': 'Коди замка',
     'Guest access active': 'Доступ гостя активний', 'Door PIN': 'PIN дверей', 'Guest portal opened': 'Портал гостя відкрито',
     'Occupied': 'Зайнято', 'Guest arriving soon': 'Гість скоро приїде', 'Check-in today': 'Заїзд сьогодні', 'Check-out today': 'Виїзд сьогодні', 'Turnover day': 'День зміни гостей', 'Guest': 'Гість', 'Next guest': 'Наступний гість', 'Next check-in': 'Наступний заїзд', 'Next check-out': 'Наступний виїзд', 'Days to next guest': 'Днів до наступного гостя', 'Booked nights (30 d)': 'Заброньовані ночі (30 дн.)', 'Occupancy (30 d)': 'Заповненість (30 дн.)',

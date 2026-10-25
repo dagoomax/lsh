@@ -77,6 +77,7 @@ const ROUTE_GROUPS = [
   require('./routes/tedee'),
   require('./routes/nuki'),
   require('./routes/ttlock'),
+  require('./routes/ajax'),
   require('./routes/yale'),
   require('./routes/broadlink'),
   require('./routes/esphome'),

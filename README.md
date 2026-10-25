@@ -4528,6 +4528,33 @@ In the guest portal, set a property's **Lock for keypad codes**. Each current an
 - **Nuki codes** need Nuki Web; they are created as auth type 13, keypad code.
 - **Tedee codes** go through the Bridge's local `/lock/{id}/pin` API (Bridge API spec 1.19) and need a Tedee Keypad.
 
+### Ajax Systems
+
+An Ajax alarm (Hub, Hub Plus, Hub 2 / 2 Plus, Hub Hybrid) reports to LSH over **SIA DC-09**, with LSH acting as the monitoring station (`src/ajax-client.js` + `src/sia-dc09.js`, no npm deps, runs in its own process). It works on the LAN, with no Ajax cloud.
+
+**It's read-only.** Arming and disarming would need Ajax's Enterprise API, which is only for certified partners.
+
+**Setup:**
+1. In the Ajax app: Hub → Settings → Monitoring Station → **SIA DC-09**.
+2. Enter LSH's IP and port (default **12128**, TCP and UDP), an object number (account), and optionally an encryption key (16/24/32 characters).
+3. Enter the same values under Settings → Security & Access → **Ajax**. Changes apply live.
+
+```json
+"ajax": { "port": 12128, "accounts": [{ "account": "A1B2", "name": "Dom", "key": "…16 chars…", "pingMinutes": 1, "zones": { "5": "Kuchnia – zalanie" } }] }
+```
+
+**The device `ajax/<account>` shows:**
+- `mode`: Disarmed / Armed / Night / Partial, plus `armed`.
+- `alarm` (intrusion), `fire`, `water`, `gas`, `panic`, `tamper`, `powerTrouble` and `batteryLow`. Disarming clears `alarm` and `panic`.
+- `online`: a message or link test arrived within 3 ping intervals.
+- `lastEvent`, for example "Intrusion alarm · Kuchnia".
+
+Every event is also published as `ajax/<account>/event` (`{ code, text, zone, zoneName, area, at }`) for flows. LSH understands both SIA-DCS and Contact ID (ADM-CID) and acknowledges every message, so the Hub doesn't retry.
+
+**Security:** with a key set, unencrypted messages are refused. Encrypted messages with a timestamp outside −40 s…+20 s are refused as replays, as pysiaalarm does. The framing and CRC are checked against pysiaalarm's test vectors.
+
+**Testing:** to try it without a Hub, run `node scripts/sia-send.js 127.0.0.1:12128 A1B2 Nri1/BA005 [key]`.
+
 ### Zehnder ventilation (rekuperacja)
 
 Zehnder heat-recovery ventilation units (`src/zehnder-client.js` + `src/zehnder/*`, no npm deps). Settings → Climate & Appliances → **Zehnder Ventilation** (Find LAN C gateways, Test, Save — applied live). Three ways in, one device model:

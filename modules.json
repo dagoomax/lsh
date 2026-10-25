@@ -41,6 +41,7 @@
     "src/routes/airbnb.js",
     "src/routes/airly.js",
     "src/routes/airplay.js",
+    "src/routes/ajax.js",
     "src/routes/announce.js",
     "src/routes/apple-music.js",
     "src/routes/aquilo.js",
@@ -1331,6 +1332,18 @@
       "files": [
         "src/dsc-client.js",
         "src/dsc-itv2.js"
+      ],
+      "deps": {}
+    },
+    "ajax": {
+      "entry": "src/ajax-client.js",
+      "configKeys": [
+        "ajax"
+      ],
+      "when": "(config.ajax?.accounts?.length)",
+      "files": [
+        "src/ajax-client.js",
+        "src/sia-dc09.js"
       ],
       "deps": {}
     },

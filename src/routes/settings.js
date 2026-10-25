@@ -75,6 +75,7 @@ module.exports = function register(router, ctx) {
     if (safe.nuki?.webToken)        safe.nuki.webToken        = '••••••••';
     if (safe.ttlock?.clientSecret)  safe.ttlock.clientSecret  = '••••••••';
     if (safe.ttlock?.password)      safe.ttlock.password      = '••••••••';
+    if (Array.isArray(safe.ajax?.accounts)) safe.ajax.accounts.forEach((a) => { if (a.key) a.key = '••••••••'; });
     if (safe.yale?.password)        safe.yale.password        = '••••••••';
     if (Array.isArray(safe.cameras)) safe.cameras.forEach((c) => { if (c.onvif?.password) c.onvif.password = '••••••••'; });
     if (safe.somfy?.token)          safe.somfy.token          = '••••••••';
