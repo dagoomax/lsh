@@ -569,8 +569,31 @@ async function main() {
   // Integrations whose whole wiring is construct-and-start — listed in
   // src/integrations.js. Anything needing more (extra constructor args,
   // setIo, a reference held here) stays written out inline above/below.
+  //
+  // Each one runs in its own child process (src/module-host.js), restarted by
+  // a watchdog when it crashes, hangs or outgrows its memory limit. Modules
+  // with an `expose` stay in this process: their REST routes call into the
+  // client object directly. config.modules.isolate: false runs everything
+  // in-process as before; config.modules.inProcess: ['shelly-client', …]
+  // keeps single modules here.
+  const isolate = config.modules?.isolate !== false;
+  const inProcess = new Set(config.modules?.inProcess || []);
+  let moduleHost = null;
   for (const it of INTEGRATIONS) {
     if (!it.when(config)) continue;
+    if (isolate && !it.expose && !inProcess.has(it.file) && !inProcess.has(it.label)) {
+      if (!fs.existsSync(path.join(__dirname, 'src', `${it.file}.js`))) {
+        console.warn(`[Server] Optional module unavailable: ./src/${it.file} (file not installed)`);
+        continue;
+      }
+      if (!moduleHost) {
+        const ModuleHost = require('./src/module-host');
+        moduleHost = new ModuleHost(config, store, sensorRegistry);
+        apiClients.moduleHost = moduleHost;
+      }
+      moduleHost.add(it);
+      continue;
+    }
     const Client = tryRequire(`./src/${it.file}`, it.hint);
     if (!Client) continue;
     const client = new Client(config, store, sensorRegistry);

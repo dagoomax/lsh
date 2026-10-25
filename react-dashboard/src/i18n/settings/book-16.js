@@ -58,5 +58,22 @@ export const P16 = {
   'Western America': ['Ameryka Zachodnia', 'Westliches Amerika', 'Amérique de l’Ouest', 'América del Oeste', 'America occidentale', 'Західна Америка'],
   'Western Europe': ['Europa Zachodnia', 'Westeuropa', 'Europe de l’Ouest', 'Europa occidental', 'Europa occidentale', 'Західна Європа'],
   'eWeLink Email or Phone': ['E-mail lub telefon eWeLink', 'eWeLink-E-Mail oder -Telefon', 'E-mail ou téléphone eWeLink', 'Correo o teléfono de eWeLink', 'Email o telefono eWeLink', 'E-mail або телефон eWeLink'],
+  'Module processes': ['Procesy modułów', 'Modulprozesse', 'Processus des modules', 'Procesos de módulos', 'Processi dei moduli', 'Процеси модулів'],
+  'Each integration runs in its own process. If one crashes, stops responding for 30 seconds or uses too much memory, the watchdog restarts it without affecting the rest of LSH.': [
+    'Każda integracja działa we własnym procesie. Jeśli któraś się zawiesi, przestanie odpowiadać na 30 sekund albo zużyje za dużo pamięci, watchdog uruchomi ją ponownie bez wpływu na resztę LSH.',
+    'Jede Integration läuft in einem eigenen Prozess. Stürzt eine ab, reagiert 30 Sekunden lang nicht oder braucht zu viel Speicher, startet der Watchdog sie neu, ohne den Rest von LSH zu beeinträchtigen.',
+    'Chaque intégration tourne dans son propre processus. Si l’une plante, ne répond plus pendant 30 secondes ou consomme trop de mémoire, le watchdog la redémarre sans toucher au reste de LSH.',
+    'Cada integración se ejecuta en su propio proceso. Si una falla, deja de responder durante 30 segundos o usa demasiada memoria, el watchdog la reinicia sin afectar al resto de LSH.',
+    'Ogni integrazione gira in un proprio processo. Se una si blocca, non risponde per 30 secondi o usa troppa memoria, il watchdog la riavvia senza toccare il resto di LSH.',
+    'Кожна інтеграція працює у власному процесі. Якщо якась аварійно завершиться, не відповідатиме 30 секунд або займе забагато пам’яті, watchdog перезапустить її, не зачіпаючи решту LSH.'],
+  'Total memory:': ['Pamięć łącznie:', 'Speicher gesamt:', 'Mémoire totale :', 'Memoria total:', 'Memoria totale:', 'Пам’ять загалом:'],
+  'Restart': ['Uruchom ponownie', 'Neu starten', 'Redémarrer', 'Reiniciar', 'Riavvia', 'Перезапустити'],
+  'last exit:': ['ostatnie zakończenie:', 'letztes Ende:', 'dernier arrêt :', 'última salida:', 'ultima uscita:', 'останнє завершення:'],
+  'restarts: {n}': ['restarty: {n}', 'Neustarts: {n}', 'redémarrages : {n}', 'reinicios: {n}', 'riavvii: {n}', 'перезапуски: {n}'],
+  'PID {pid} · {mb} MB · up {up} · devices: {devices}': ['PID {pid} · {mb} MB · działa {up} · urządzenia: {devices}', 'PID {pid} · {mb} MB · läuft seit {up} · Geräte: {devices}', 'PID {pid} · {mb} Mo · actif depuis {up} · appareils : {devices}', 'PID {pid} · {mb} MB · activo {up} · dispositivos: {devices}', 'PID {pid} · {mb} MB · attivo da {up} · dispositivi: {devices}', 'PID {pid} · {mb} МБ · працює {up} · пристрої: {devices}'],
+  'starting': ['uruchamianie', 'startet', 'démarrage', 'iniciando', 'avvio', 'запуск'],
+  'restarting': ['restart', 'Neustart', 'redémarrage', 'reiniciando', 'riavvio', 'перезапуск'],
+  'failed': ['błąd', 'fehlgeschlagen', 'échec', 'error', 'errore', 'помилка'],
+  'stopped': ['zatrzymany', 'gestoppt', 'arrêté', 'detenido', 'fermato', 'зупинено'],
 }
 export const S16 = ['MQTT Broker', '(auto) 3.3', '(dev.ewelink.cc)', 'Sonoff / eWeLink', 'Tuya / Smart Life']

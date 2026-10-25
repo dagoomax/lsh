@@ -50,6 +50,8 @@ export default function ModulesSection() {
   const installedCount = mods?.filter((m) => m.installed).length ?? 0
 
   return (
+    <>
+    <ModuleProcesses />
     <SettingsCard title={gt('s.modules_title', 'Integration Modules')}
       badge={mods ? `${installedCount}/${mods.length}` : null}
       desc="Integrations are downloaded from GitHub when you need them. Anything configured in config.json is installed automatically at startup; install here to get one ready before configuring it. Restart LSH after installing.">
@@ -91,6 +93,78 @@ export default function ModulesSection() {
           </div>
         </>
       )}
+    </SettingsCard>
+    </>
+  )
+}
+
+// Integrations running in their own processes (src/module-host.js): the
+// watchdog restarts one that crashes, hangs or outgrows its memory limit.
+const fmtUp = (ms) => {
+  const s = Math.floor(ms / 1000)
+  if (s < 60) return `${s} s`
+  if (s < 3600) return `${Math.floor(s / 60)} min`
+  if (s < 86400) return `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`
+  return `${Math.floor(s / 86400)} d ${Math.floor((s % 86400) / 3600)} h`
+}
+const STATE_CHIP = { running: 'ok', starting: 'warn', restarting: 'warn', failed: 'err', stopped: '' }
+
+function ModuleProcesses() {
+  const [data, setData] = useState(null)
+  const [busy, setBusy] = useState(null)
+
+  const load = () =>
+    fetch('/api/modules/processes', { credentials: 'same-origin' })
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setData(j.data) })
+      .catch(() => {})
+
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [])
+
+  const restart = async (id) => {
+    setBusy(id)
+    try {
+      await fetch(`/api/modules/processes/${encodeURIComponent(id)}/restart`, { method: 'POST', credentials: 'same-origin' })
+      await load()
+    } finally { setBusy(null) }
+  }
+
+  if (!data?.isolated) return null
+  const stateLabel = {
+    running: tr('running'), starting: tr('starting'), restarting: tr('restarting'), failed: tr('failed'), stopped: tr('stopped'),
+  }
+  const list = data.processes
+  const total = list.reduce((n, p) => n + (p.rss || 0), 0)
+  return (
+    <SettingsCard title="Module processes" badge={`${list.filter((p) => p.state === 'running').length}/${list.length}`}
+      desc="Each integration runs in its own process. If one crashes, stops responding for 30 seconds or uses too much memory, the watchdog restarts it without affecting the rest of LSH.">
+      <div className="stg-hint">{tr('Total memory:')} {Math.round(total / 1048576)} MB</div>
+      <div className="stg-mod-list">
+        {list.map((p) => (
+          <div key={p.id} className="stg-mod-row">
+            <div className="stg-mod-main">
+              <div className="stg-mod-name">
+                {p.label}
+                <span className={`stg-mod-chip ${STATE_CHIP[p.state] ?? ''}`}>{stateLabel[p.state] || p.state}</span>
+                {p.restarts > 0 && <span className="stg-mod-chip warn">{tr('restarts: {n}', { n: p.restarts })}</span>}
+              </div>
+              <div className="stg-hint stg-mod-meta">
+                {p.pid ? tr('PID {pid} · {mb} MB · up {up} · devices: {devices}', { pid: p.pid, mb: Math.round((p.rss || 0) / 1048576), up: fmtUp(p.uptime), devices: p.devices }) : '—'}
+                {p.lastExit && <> · {tr('last exit:')} {p.lastExit.reason}, {new Date(p.lastExit.at).toLocaleString()}</>}
+              </div>
+              {p.error && <div className="stg-banner err">✗ {p.error.split('\n')[0]}</div>}
+            </div>
+            <Button variant="secondary" busy={busy === p.id} disabled={busy !== null && busy !== p.id}
+              onClick={() => restart(p.id)}>
+              {tr('Restart')}
+            </Button>
+          </div>
+        ))}
+      </div>
     </SettingsCard>
   )
 }
