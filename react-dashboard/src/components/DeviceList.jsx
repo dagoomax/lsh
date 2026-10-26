@@ -28,6 +28,7 @@ import HomeHero from './HomeHero'
 import HomeModel3D from './HomeModel3D'
 import HomeEditor from './HomeEditor'
 import ScenesSection from './Scenes'
+import CityGuideCard, { CityGuidePage, useGuide } from './CityGuide'
 import { useHomePrefs, orderSections, isTileWide } from '../homePrefs'
 
 const FIBARO_SENSOR_ICON = {
@@ -227,7 +228,9 @@ export function getGroup(d) {
   return 'Other'
 }
 
-const CATS = ['All','Victron','Lighting','Switches','Blinds','Climate','Media','Security','Sensors','Other','Plan','Graphs']
+const CATS = ['All','Victron','Lighting','Switches','Blinds','Climate','Media','Security','Sensors','Other','Plan','Graphs','Guide']
+// views that aren't a device category
+const VIEW_CATS = ['All','Plan','Graphs','Guide']
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 function Toggle({ on, onChange }) {
@@ -1333,6 +1336,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
   }
 
   // ── Customisable home view (the "All" tab) ──
+  const guide = useGuide()
   const homePrefs = useHomePrefs()
   const [homeEditing, setHomeEditing] = useState(false)
   const hiddenDevSet = new Set(homePrefs.hiddenDevices)
@@ -1341,6 +1345,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
   const favDevices = homePrefs.favs.map(k => devByKey.get(k)).filter(Boolean)
   const homeSections = [
     { id: 'hero',      label: gt('home_sec_hero', 'Summary') },
+    ...(guide ? [{ id: 'guide', label: gt('home_sec_guide', 'Welcome guide') }] : []),
     { id: 'scenes',    label: gt('scenes', 'Scenes'), count: scenes.filter(s => s.enabled !== false).length },
     ...(energy ? [{ id: 'energy', label: gt('energy', 'Energy'), Icon: GridPowerIcon }] : []),
     { id: 'model3d',   label: gt('home_sec_model', '3D model') },
@@ -1351,7 +1356,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
     { id: 'mcu',       label: gt('home_sec_mcu', 'Microcontroller index') },
     { id: 'cameras',   label: gt('home_sec_cameras', 'Cameras') },
     { id: 'favs',      label: gt('home_favs', 'Favourites'), Icon: StarIcon, count: favDevices.length },
-    ...CATS.filter(c => !['All','Plan','Graphs'].includes(c) && counts[c])
+    ...CATS.filter(c => !VIEW_CATS.includes(c) && counts[c])
       .map(c => ({ id: 'cat:' + c, label: gt('cat_' + c.toLowerCase(), c), Icon: CAT_ICON_COMPONENT[c], count: counts[c] })),
   ]
   const homeOrder = orderSections(homeSections.map(x => x.id), homePrefs.order)
@@ -1394,14 +1399,14 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
           {gt('rooms_cats', 'Rooms & Categories')}
         </div>
 
-        {CATS.filter(c => c==='All' || c==='Graphs' || c==='Plan' || counts[c]).map(c => {
-          const cnt    = c==='All' ? devices.length : c==='Graphs' ? '📊' : c==='Plan' ? '🗺' : (counts[c]||0)
+        {CATS.filter(c => c==='All' || c==='Graphs' || c==='Plan' || (c==='Guide' && guide) || counts[c]).map(c => {
+          const cnt    = c==='All' ? devices.length : c==='Graphs' ? '📊' : c==='Plan' ? '🗺' : c==='Guide' ? '📍' : (counts[c]||0)
           const active = cat === c
           const CatIcon = CAT_ICON_COMPONENT[c]
           return (
             <button key={c} onClick={() => { setCat(c); setRoomFilter(null) }} className="side-btn" data-active={String(active)} data-cat={c}>
               <CatIcon size={16} color={active ? 'var(--cat-c, var(--accent-lt))' : 'var(--text3)'} />
-              <span style={{ flex:1 }}>{c === 'Graphs' ? gt('tab', 'Graphs') : gt('cat_' + c.toLowerCase(), c)}</span>
+              <span style={{ flex:1 }}>{c === 'Graphs' ? gt('tab', 'Graphs') : c === 'Guide' ? gt('cat_guide', 'Guide') : gt('cat_' + c.toLowerCase(), c)}</span>
               <span style={{
                 fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:8,
                 background: active ? 'color-mix(in srgb, var(--cat-c, var(--accent)) 28%, transparent)' : 'var(--white-06)',
@@ -1514,7 +1519,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
           scrollbarWidth:'none',
           WebkitOverflowScrolling:'touch',
         }}>
-          {CATS.filter(c => c==='All' || c==='Graphs' || c==='Plan' || counts[c]).map(c => {
+          {CATS.filter(c => c==='All' || c==='Graphs' || c==='Plan' || (c==='Guide' && guide) || counts[c]).map(c => {
             const active = cat === c
             const CatIcon = CAT_ICON_COMPONENT[c]
             return (
@@ -1535,7 +1540,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
         <div className="desktop-grid-header" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px 10px', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             {(() => { const I = CAT_ICON_COMPONENT[cat]; return <I size={18} color="var(--accent-lt)"/>})()}
-            <span style={{ fontSize:15, fontWeight:700 }}>{cat === 'Graphs' ? gt('tab', 'Graphs') : gt('cat_' + cat.toLowerCase(), cat)}</span>
+            <span style={{ fontSize:15, fontWeight:700 }}>{cat === 'Graphs' ? gt('tab', 'Graphs') : cat === 'Guide' ? gt('cat_guide', 'Guide') : gt('cat_' + cat.toLowerCase(), cat)}</span>
           </div>
           <div style={{ display:'flex', gap:6 }}>
             {onCount>0 && <span className="badge badge-yellow">{onCount} {gt('b_on', 'on')}</span>}
@@ -1551,13 +1556,14 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
           {cat === 'Plan' && (
             <HomePlan devices={devices} roomsMeta={roomsMeta} groupOf={getGroup} onOpen={setOpenKey} energy={energy} />
           )}
+          {cat === 'Guide' && <CityGuidePage />}
           {cat === 'Media' && <MusicHub />}
-          {cat !== 'Graphs' && cat !== 'Plan' && cat !== 'All' && visible.length === 0 && (
+          {!VIEW_CATS.includes(cat) && visible.length === 0 && (
             <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>
               {gt('no_devices', 'No devices in this category')}
             </div>
           )}
-          {cat !== 'All' && cat !== 'Graphs' && cat !== 'Plan' && <div className="device-grid" style={{
+          {!VIEW_CATS.includes(cat) && <div className="device-grid" style={{
             display:'grid',
             gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
             gap:10,
@@ -1619,6 +1625,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
             </div>) : null
                 case 'model3d':   return <HomeModel3D onOpenPlan={() => { setCat('Plan'); setRoomFilter(null) }} devices={devices} groupOf={getGroup} onOpen={setOpenKey} />
                 case 'music':     return hasCustomLayout() && isWidgetPinned('widget:media') ? null : <MusicHub />
+                case 'guide':     return <CityGuideCard onOpen={() => { setCat('Guide'); setRoomFilter(null) }} />
                 case 'weather':   return <WeatherForecast />
                 case 'doorbells': return <YaleDoorbells devices={devices} />
                 case 'system':    return <SystemMetrics devices={devices} />

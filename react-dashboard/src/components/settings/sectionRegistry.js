@@ -18,6 +18,7 @@ export const CATEGORIES = [
     { id: 'homeplan', title: 'Home Plan', keywords: ['floor plan', 'rooms', 'plan'] },
     { id: 'virtual', title: 'Virtual Devices', keywords: ['virtual', 'dummy', 'variable'] },
     { id: 'google-calendar', title: 'Google Calendar', keywords: ['calendar', 'agenda', 'events', 'google'] },
+    { id: 'onboarding', title: 'Onboarding', keywords: ['onboarding', 'welcome', 'powitanie', 'guide', 'przewodnik', 'city', 'miasto', 'katowice', 'restaurant', 'restauracje', 'transport', 'komunikacja', 'attractions', 'atrakcje', 'guest', 'gość', 'claude'] },
     { id: 'airbnb', title: 'Airbnb', keywords: ['airbnb', 'booking', 'vrbo', 'rental', 'wynajem', 'najem', 'guest', 'gość', 'reservation', 'rezerwacja', 'ical', 'check-in'] },
     { id: 'booking', title: 'Booking.com', keywords: ['booking', 'booking.com', 'extranet', 'rental', 'wynajem', 'najem', 'hotel', 'apartament', 'reservation', 'rezerwacja', 'ical', 'check-in'] },
     { id: 'vrbo', title: 'VRBO', keywords: ['vrbo', 'homeaway', 'expedia', 'rental', 'wynajem', 'najem', 'vacation', 'reservation', 'rezerwacja', 'ical', 'check-in'] },

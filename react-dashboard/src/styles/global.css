@@ -2760,3 +2760,39 @@ input[type="range"]::-moz-range-thumb {
   position: fixed; inset: 12px; z-index: 250; overflow: hidden;
   border-radius: var(--sheet-radius); background: #0b0b12; box-shadow: var(--shadow-2);
 }
+
+/* ── Onboarding city guide (CityGuide.jsx) ── */
+.guide-card { padding: 16px 18px; display: grid; gap: 10px; }
+.guide-open { margin-left: auto; background: var(--white-06); border: 0; color: var(--accent-lt); font-weight: 650; font-size: 13px; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.guide-open:hover { background: var(--white-10, rgba(255,255,255,0.1)); }
+.guide-welcome { margin: 0; color: var(--text2); font-size: 14px; line-height: 1.5; max-width: 70ch; }
+.guide-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.guide-col { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.guide-col-title, .guide-eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text3); }
+.guide-mini { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--white-04); color: var(--text); text-decoration: none; font-size: 13.5px; min-width: 0; }
+.guide-mini:hover { background: var(--white-07); }
+.guide-mini-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.guide-mini-dist { flex: none; color: var(--text3); font-variant-numeric: tabular-nums; font-size: 12.5px; }
+.guide-page { display: grid; gap: 14px; padding-top: 4px; }
+.guide-hero { padding: 18px 20px; display: grid; gap: 8px; }
+.guide-eyebrow { font-size: 12px; color: var(--teal); }
+.guide-hero .guide-welcome { font-size: 16px; color: var(--text); }
+.guide-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.guide-tab { border: 1px solid var(--border); background: var(--card); color: var(--text2); padding: 8px 14px; border-radius: 999px; font-weight: 650; font-size: 13.5px; cursor: pointer; }
+.guide-tab[data-active="true"] { background: var(--card-on); color: #000; border-color: transparent; }
+.guide-tab-n { opacity: .55; font-variant-numeric: tabular-nums; margin-left: 4px; }
+.guide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.guide-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+[data-theme="light"] .guide-item { border-color: transparent; }
+.guide-item-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.guide-emoji { font-size: 18px; }
+.guide-name { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; min-width: 0; overflow-wrap: anywhere; }
+.guide-price { margin-left: auto; color: var(--text3); font-weight: 700; font-size: 13px; }
+.guide-meta { color: var(--text3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.guide-text { margin: 0; color: var(--text2); font-size: 14px; line-height: 1.45; }
+.guide-addr { color: var(--text3); font-size: 12.5px; }
+.guide-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.guide-link { font-size: 13px; font-weight: 650; color: var(--accent-lt); text-decoration: none; padding: 5px 11px; border-radius: 999px; background: var(--accent-dim); }
+.guide-link:hover { filter: brightness(1.15); }
+.guide-sources { color: var(--text3); font-size: 12px; }
+.guide-sources a { color: var(--text2); }

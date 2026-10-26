@@ -300,6 +300,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `satel` | No | Satel INTEGRA alarm panel |
 | `unifi` | No | UniFi Protect cameras and NVR |
 | `unifiAccess` | No | UniFi Access doors (unlock / lock now, lock rules, doorbell, lockdown / evacuation, live events) |
+| `onboarding` | No | Welcome city guide on the dashboard (Katowice built in, other cities written by Claude) |
 | `helvar` | No | Helvar lighting routers (HelvarNet): groups, scenes, DALI loads, multisensors |
 | `unifiPlay` | No | UniFi Play audio (PowerAmp, PoE Audio Port): volume, input, now playing |
 | `shelly` | No | Shelly Gen1 / Gen2 devices |
@@ -753,6 +754,24 @@ With an **`apiKey`** LSH also uses the rest of the Protect 6.x public API (`src/
 | **Alarm Manager** | `POST /api/unifi/alarm/<triggerId>` fires a Protect Alarm Manager webhook trigger (for flows / Loxone). |
 
 Sirens and relays are marked **sensitive**: MCP bots can only switch them with *Allow locks, alarm, gates and doors*. Tested against `node scripts/unifi-protect-simulator.js 7443` (`"host": "127.0.0.1:7443", "apiKey": "simkey"`; `test/unifi-protect.test.js`) — not yet against a real console.
+
+### `onboarding` (welcome city guide)
+
+```json
+"onboarding": {
+  "enabled": true,
+  "city": "katowice",
+  "welcome": "Hi! Trams stop 3 minutes away…",
+  "lat": 50.2268, "lon": 18.9897,
+  "sections": { "transport": true, "restaurants": true, "places": true },
+  "extras": [{ "name": "Piekarnia", "category": "restaurant", "note": "Breakfast", "lat": 50.227, "lon": 18.99 }]
+}
+```
+
+A welcome guide on the dashboard for guests and new residents: a card on the home view (the nearest few of each) and a **Guide** view in the dashboard menu, with getting around, restaurants and places to visit, nearest first, each with a Google Maps route link and a walking time for anything within 3 km. Settings → **Onboarding** (`src/routes/guide.js`). Distances are measured from `lat`/`lon`, or the weather location (`openweather.lat/lon`) when those are empty. `extras` are the host's own tips, shown first.
+
+- **Katowice** ships as a checked guide (`src/city-guides/katowice.js`, October 2026): Transport GZM tickets and apps, the AP airport line, trains, Metrorower, taxis; the four MICHELIN Guide 2026 restaurants in Katowice; 11 sights with OpenStreetMap coordinates. It's in Polish and English (other languages get English).
+- **Generate with Claude** writes a guide for any other city. LSH's Claude (the Anthropic API key from Settings → Claude Code) researches it with web search and returns structured JSON (`src/guide-generator.js`). Before it's kept in `persist/city-guides/gen-<city>.json`, the result is checked: links are http(s) only, coordinates must be within 60 km of the centre, text lengths are capped and control characters removed. The job runs in the background (`POST /api/guide/generate`, `GET /api/guide/generate/:job`).
 
 ### Managed Instances (several LSH sites from one)
 

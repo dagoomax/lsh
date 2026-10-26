@@ -1233,6 +1233,16 @@ export function SparkIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+// city guide (onboarding) — a map pin
+export function MapPinIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/>
+      <circle cx="12" cy="9.5" r="2.6"/>
+    </svg>
+  )
+}
+
 export const CAT_ICON_COMPONENT = {
   All:      HomeIcon,
   Victron:  GridPowerIcon,
@@ -1246,4 +1256,5 @@ export const CAT_ICON_COMPONENT = {
   Other:    RouterIcon,
   Plan:     PlanIcon,
   Graphs:   ChartIcon,
+  Guide:    MapPinIcon,
 }
