@@ -3083,3 +3083,7 @@ button.gd-mini { border: 0; width: 100%; text-align: left; font: inherit; cursor
 .gd-near-txt b { font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gd-near-txt span { font-size: 12px; color: var(--text3); }
 .gd-close-wide { justify-self: stretch; justify-content: center; padding: 11px; font-size: 14px; }
+.gd-edit { position: absolute; top: 16px; right: 16px; z-index: 2; display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px;
+  font-size: 13px; font-weight: 700; color: #fff; text-decoration: none; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: background .2s, transform .2s; }
+.gd-edit:hover { background: rgba(255,255,255,0.18); transform: translateY(-1px); }
