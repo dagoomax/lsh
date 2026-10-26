@@ -327,8 +327,34 @@ function PlacePopup({ g, cat, it, t }) {
           {it.url && <button className="gd-btn gd-btn-ghost" onClick={() => openPopup({ kind: 'site', url: it.url, title: it.name, back: { kind: 'place', cat, it } })}>{gt('guide_site', 'Website')}</button>}
         </div>
         <Qr url={route || placeUrl(it)} text={gt('guide_qr_route', 'Scan to take the route to this place on your phone.')}/>
+        <Nearby g={g} cat={cat} it={it}/>
+        <button className="gd-btn gd-btn-ghost gd-close-wide" onClick={closePopup}>{gt('close', 'Close')}</button>
       </div>
     </>
+  )
+}
+
+// what else is close to this place — sights, food, transport, nearest first
+function Nearby({ g, cat, it }) {
+  if (it.lat == null) return null
+  const near = ORDER.flatMap(k => (g[k] || []).filter(x => x.lat != null && !(k === cat && x.id === it.id)).map(x => ({ k, x, d: kmBetween(it, x) })))
+    .filter(n => n.d <= 3).sort((a, b) => a.d - b.d).slice(0, 6)
+  if (!near.length) return null
+  return (
+    <div className="gd-nearby">
+      <div className="gd-col-title" style={{ '--c': 'var(--text3)' }}>{gt('guide_nearby', 'Close by')}</div>
+      <div className="gd-nearby-grid">
+        {near.map(({ k, x, d }) => (
+          <button key={`${k}:${x.id}`} className="gd-near" style={{ '--c': CAT[k].color }} onClick={() => openPopup({ kind: 'place', cat: k, it: x, back: { kind: 'place', cat, it } })}>
+            {x.image ? <img src={x.image.src} alt="" loading="lazy" referrerPolicy="no-referrer"/> : <span className="gd-near-ic"><Ico cat={k} it={x} size={18}/></span>}
+            <span className="gd-near-txt">
+              <b>{x.name}</b>
+              <span className="gd-tnum">{d < 1 ? `${Math.round(d * 1000)} m` : `${dec(Math.round(d * 10) / 10)} km`} · {d <= 2 ? gt('guide_walk', '{n} min walk', { n: Math.max(1, Math.round((d * 1.3 / 4.8) * 60)) }) : CAT[k].label().toLowerCase()}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
