@@ -754,26 +754,28 @@ With an **`apiKey`** LSH also uses the rest of the Protect 6.x public API (`src/
 
 Sirens and relays are marked **sensitive**: MCP bots can only switch them with *Allow locks, alarm, gates and doors*. Tested against `node scripts/unifi-protect-simulator.js 7443` (`"host": "127.0.0.1:7443", "apiKey": "simkey"`; `test/unifi-protect.test.js`) — not yet against a real console.
 
-### Locations (managing several LSH sites)
+### Managed Instances (several LSH sites from one)
 
-Settings → **Locations** manages other LSH installations from this one (a hub), each through its own REST API (`src/locations.js`, `src/routes/locations.js`). No `config.json` section: the list lives in `persist/locations.json` (mode 600, tokens in plain text like `persist/api-tokens.json`, never returned by the API); `siteName` in `config.json` names this site for the hubs that manage it.
+Settings → **Managed Instances** manages other LSH instances from this site, each through its own REST API (`src/locations.js`, `src/routes/locations.js`). No `config.json` section: the list lives in `persist/locations.json` (mode 600, tokens in plain text like `persist/api-tokens.json`, never returned by the API); `siteName` in `config.json` names this site for the instances and panels that manage it.
 
-- **Pairing:** give the location's admin login once. The hub signs in, asks the location for an API token named `LSH hub: <this site>`, keeps only that token and signs out. Or paste an API token made on the location (Settings → Security → API tokens).
-- **Inherited role:** the hub's own users act on every location with their role here. Viewers can read (`GET`), admins can also send commands. **Open** gets a one-time link (60 s) from the location that signs the browser in to its dashboard as `<user>@<hub>` with that role, for 12 h, without the location's password.
-- **Overview:** online / offline / token rejected, version, uptime, device count and platforms that are down, from each location's `GET /api/site/summary` (older LSH: the device count only).
-- **Devices:** each location's devices with on/off switches, through the hub.
-- **Removing** a location also revokes the hub's token on it.
-- **Nesting:** a location can be a hub too.
+- **Pairing:** give the instance's admin login once. This site signs in, asks the instance for an API token named `LSH hub: <this site>`, keeps only that token and signs out. Or paste an API token made on the instance (Settings → Security → API tokens).
+- **Inherited role:** this site's users act on every managed instance with their role here. Viewers can read (`GET`), admins can also send commands. **Open** gets a one-time link (60 s) from the instance that signs the browser in to its dashboard as `<user>@<hub>` with that role, for 12 h, without the location's password.
+- **Overview:** online / offline / token rejected, version, uptime, device count and platforms that are down, from each instance's `GET /api/site/summary` (older LSH: the device count only).
+- **Devices:** each instance's devices with on/off switches, through the hub.
+- **Removing** an instance also revokes this site's token on it.
+- **Nesting:** an instance can manage instances of its own.
 
-| Hub endpoint | |
+| Endpoint (API paths keep the `locations` name) | |
 |---|---|
 | `GET /api/locations`, `GET /api/locations/overview` | the list (no tokens), live summaries |
 | `POST /api/locations` | `{ name, url, insecure, username, password }` (pairing) or `{ name, url, insecure, token }` |
 | `PATCH /api/locations/:id`, `DELETE /api/locations/:id?revoke=1` | edit, remove (and revoke) |
-| `POST /api/locations/:id/open` | one-time sign-in link to the location's dashboard |
-| `ALL /api/locations/:id/api/<path>` | the location's `/api/<path>` with the hub's token. Account, token, terminal and Claude Code endpoints are blocked |
+| `POST /api/locations/:id/open` | one-time sign-in link to the instance's dashboard |
+| `ALL /api/locations/:id/api/<path>` | the instance's `/api/<path>` with this site's token. Account, token, terminal and Claude Code endpoints are blocked |
 
-Every LSH also answers `GET /api/site/summary`, `POST /api/auth/handoff` (a hub's API token only) and `GET /api/auth/handoff/:code` (public, single use).
+Every LSH also answers `GET /api/site/summary`, `POST /api/auth/handoff` (a managing site's API token only) and `GET /api/auth/handoff/:code` (public, single use).
+
+The standalone **Managed Instances** panel (private repo `dagoomax/lsh-panel`) is an LSH client for the same API: sign in with your LSH user on a site and manage it and its instances from one page.
 
 ### `helvar`
 

@@ -3,7 +3,7 @@ import { SettingsCard, Field, Toggle, Button, ResultBanner } from '../primitives
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { gt, tr } from '../../../i18n'
 
-// Settings → Locations: other LSH sites managed from this one through their
+// Settings → Managed Instances: other LSH instances managed from this site through their
 // REST API. Server: src/locations.js, src/routes/locations.js.
 
 const api = (url, opts = {}) => fetch(url, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts })
@@ -29,8 +29,8 @@ export default function LocationsSection() {
 
   return (
     <>
-      <SettingsCard title="Locations" badge={{ label: gt('common.optional', 'Optional') }}
-        desc="Manage other LSH sites from this one — each through its own REST API. Pair a location with its admin login: it then issues this hub its own API token (the password isn't kept), or paste an API token made on the location. What you may do here carries over: viewers can look, admins can also switch devices, and Open signs you in to the location's dashboard as yourself, with the same role, without its password. A location can manage its own locations too.">
+      <SettingsCard title="Managed Instances" badge={{ label: gt('common.optional', 'Optional') }}
+        desc="Manage other LSH instances from this site — each through its own REST API. Pair an instance with its admin login: it then issues this site its own API token (the password isn't kept), or paste an API token made on the instance. What you may do here carries over: viewers can look, admins can also switch devices, and Open signs you in to the instance's dashboard as yourself, with the same role, without its password. An instance can manage instances of its own too.">
         <Field label="This site's name" placeholder="Casablanca" value={site} onChange={setSite}/>
         <div className="stg-actions">
           <Button variant="secondary" busy={siteSave.busy} onClick={() => siteSave.save({ name: site }).catch(() => {})}>{gt('common.save', 'Save')}</Button>
@@ -38,7 +38,7 @@ export default function LocationsSection() {
         </div>
 
         {list === null ? null : list.length === 0
-          ? <p className="stg-hint">{tr('No locations yet.')}</p>
+          ? <p className="stg-hint">{tr('No managed instances yet.')}</p>
           : (
             <div className="stg-mod-list">
               {list.map((l) => (
@@ -168,12 +168,12 @@ function AddLocation({ reload }) {
   const submit = () => add.save(mode === 'login' ? { name, url, insecure, username, password } : { name, url, insecure, token })
     .then(() => { setPass(''); setToken(''); setName(''); setUrl(''); reload() }).catch(() => {})
   return (
-    <SettingsCard title="Add a location">
+    <SettingsCard title="Add an instance">
       <Field label="Name" placeholder="Wrocław" value={name} onChange={setName}/>
       <Field label="Address" placeholder="https://qlsh21.example.ts.net or http://192.168.1.49:3000" value={url} onChange={setUrl}/>
       <Field label="Connect with" type="select" value={mode} onChange={setMode} options={[
-        { value: 'login', label: 'Admin login — the location issues this hub a token' },
-        { value: 'token', label: 'API token from the location' },
+        { value: 'login', label: 'Admin login — the instance issues this site a token' },
+        { value: 'token', label: 'API token from the instance' },
       ]}/>
       {mode === 'login' ? <>
         <Field label="User name" value={username} onChange={setUser} autoComplete="off"/>
@@ -182,7 +182,7 @@ function AddLocation({ reload }) {
       </> : <Field label="API token" type="password" value={token} onChange={setToken} autoComplete="off"/>}
       <Toggle label="Accept a self-signed certificate" checked={insecure} onChange={setInsecure}/>
       <div className="stg-actions">
-        <Button variant="primary" busy={add.busy} onClick={submit}>{tr('Add location')}</Button>
+        <Button variant="primary" busy={add.busy} onClick={submit}>{tr('Add instance')}</Button>
         <ResultBanner result={add.result}/>
       </div>
     </SettingsCard>
