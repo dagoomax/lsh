@@ -332,37 +332,57 @@ function PlacePopup({ g, cat, it, t }) {
   )
 }
 
-function SitePopup({ url, title, it }) {
+// A website inside the popup — straight in a frame when the site allows it,
+// else through LSH's sandboxed copy (/api/guide/page). Links inside it keep
+// navigating here; pages on other sites show their address and a QR code.
+function SitePopup({ url: start, title, back }) {
+  const [hist, setHist] = useState([start])
   const [canFrame, setCanFrame] = useState(null)
+  const [outside, setOutside] = useState(null)
+  const frame = useRef(null)
+  const url = hist[hist.length - 1]
   useEffect(() => {
     let live = true
-    fetch(`/api/guide/frameable?url=${encodeURIComponent(url)}`, { credentials: 'same-origin' }).then(r => r.json())
+    fetch(`/api/guide/frameable?url=${encodeURIComponent(start)}`, { credentials: 'same-origin' }).then(r => r.json())
       .then(j => { if (live) setCanFrame(!!j.data?.frameable) }).catch(() => { if (live) setCanFrame(false) })
     return () => { live = false }
-  }, [url])
+  }, [start])
+  useEffect(() => {
+    const onMsg = (e) => {
+      if (!frame.current || e.source !== frame.current.contentWindow || e.data?.lshGuide !== 'nav') return
+      let next
+      try { next = new URL(e.data.href) } catch { return }
+      const bare = (h) => h.replace(/^www\./, '')
+      if (next.protocol === 'https:' && bare(next.hostname) === bare(new URL(start).hostname)) { setOutside(null); setHist(h => [...h, next.href]) }
+      else setOutside(next.href)
+    }
+    window.addEventListener('message', onMsg)
+    return () => window.removeEventListener('message', onMsg)
+  }, [start])
   const host = (() => { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return url } })()
+  const src = canFrame ? url : `/api/guide/page?url=${encodeURIComponent(url)}&lang=${getLang()}`
   return (
-    <div className="gd-pop-body">
-      <h2 className="gd-pop-title">{title}</h2>
-      {canFrame === null && <div className="gd-site gd-site-wait"><span className="gd-spin"/></div>}
-      {canFrame === true && (
-        <div className="gd-site">
-          <iframe title={title} src={url} sandbox="allow-scripts allow-same-origin allow-forms" referrerPolicy="no-referrer" loading="lazy"/>
+    <div className="gd-pop-body gd-site-body">
+      <div className="gd-browser">
+        <button className="gd-pop-btn gd-pop-btn-sm" disabled={hist.length < 2 && !back}
+          onClick={() => { setOutside(null); if (hist.length < 2) openPopup(back); else setHist(h => h.slice(0, -1)) }} aria-label={gt('back', 'Back')}>←</button>
+        <div className="gd-browser-url"><span className="gd-browser-lock">🔒</span> <b>{host}</b><span className="gd-browser-path">{(() => { try { const u = new URL(url); return u.pathname + u.search } catch { return '' } })()}</span></div>
+      </div>
+      <h2 className="gd-pop-title gd-sr">{title}</h2>
+      <div className="gd-site">
+        {canFrame === null
+          ? <div className="gd-site-wait"><span className="gd-spin"/></div>
+          : <iframe key={src} ref={frame} title={title} src={src} referrerPolicy="no-referrer"
+              sandbox={canFrame ? 'allow-scripts allow-same-origin allow-forms' : 'allow-scripts'}/>}
+      </div>
+      {outside && (
+        <div className="gd-outside">
+          <span>{gt('guide_outside', 'That link leads to another website:')}</span>
+          <span className="gd-site-url">{outside}</span>
+          <button className="gd-pop-btn gd-pop-btn-sm" onClick={() => setOutside(null)} aria-label="✕">✕</button>
         </div>
       )}
-      {canFrame === false && (
-        <div className="gd-site-card" style={it?.image ? { '--img': `url("${it.image.src}")` } : undefined}>
-          <div className="gd-site-card-in">
-            <img className="gd-site-qr" src={qrSrc(url)} alt={gt('guide_qr_alt', 'QR code')} width="220" height="220"/>
-            <div>
-              <div className="gd-site-host">{host}</div>
-              <p>{gt('guide_site_phone', 'This website can’t be shown here. Scan the code with your phone’s camera to open it there.')}</p>
-              <div className="gd-site-url">{url}</div>
-            </div>
-          </div>
-        </div>
-      )}
-      {canFrame === true && <><div className="gd-site-url gd-tnum">{url}</div><Qr url={url} text={gt('guide_qr_site', 'Scan to open it on your phone.')}/></>}
+      <Qr url={hist.length === 1 ? start : null} text={gt('guide_qr_site', 'Scan to open it on your phone.')}/>
     </div>
   )
 }
@@ -414,13 +434,13 @@ function GuidePopups({ g }) {
             initial={reduce ? false : { opacity: 0, y: 30, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}>
             <div className="gd-pop-bar">
-              {p.back && <button className="gd-pop-btn" onClick={() => openPopup(p.back)} aria-label="←">←</button>}
+              {p.back && p.kind !== 'site' && <button className="gd-pop-btn" onClick={() => openPopup(p.back)} aria-label={gt('back', 'Back')}>←</button>}
               <span style={{ flex: 1 }}/>
               <button className="gd-pop-btn" onClick={closePopup} aria-label={gt('close', 'Close')}>✕</button>
             </div>
             <div className="gd-pop-scroll">
               {p.kind === 'place' && <PlacePopup g={g} cat={p.cat} it={p.it} t={t}/>}
-              {p.kind === 'site' && <SitePopup url={p.url} title={p.title} it={p.back?.it}/>}
+              {p.kind === 'site' && <SitePopup key={p.url} url={p.url} title={p.title} back={p.back}/>}
               {p.kind === 'photo' && <PhotoPopup it={p.it}/>}
               {p.kind === 'trip' && <TripPopup g={g} t={t}/>}
             </div>

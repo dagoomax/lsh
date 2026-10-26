@@ -77,6 +77,24 @@ function view(item, lang, home, cityName) {
   return out;
 }
 
+// The page proxy never reaches the LAN, loopback or link-local addresses
+async function assertPublicHost(host) {
+  const { lookup } = require('dns').promises;
+  const addrs = await lookup(host, { all: true });
+  for (const { address } of addrs) {
+    const v4 = address.replace(/^::ffff:/, '');
+    if (/^(10\.|127\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(v4) || /^(::1|fc|fd|fe80)/i.test(address)) {
+      throw new Error('Address not allowed');
+    }
+  }
+}
+
+function pageError(res, msg, url) {
+  const esc = (t) => String(t || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  res.status(200).set({ 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'" })
+    .send(`<!doctype html><meta charset="utf-8"><body style="margin:0;font:15px system-ui;background:#0a1020;color:#e8eefc;display:grid;place-items:center;height:100vh;text-align:center"><div><div style="font-size:40px">🌐</div><p>${esc(msg)}</p><p style="opacity:.6;font-size:12px;word-break:break-all">${esc(url)}</p></div>`);
+}
+
 // every link the current guide shows — the only other URLs the QR code endpoint encodes
 function guideUrls(cfg) {
   const o = cfg.onboarding || {};
@@ -223,6 +241,46 @@ module.exports = function register(router, ctx) {
     } catch { ok = false; }
     frameable.set(url, { ok, at: Date.now() });
     res.json({ success: true, data: { frameable: ok } });
+  });
+
+  // A guide website that refuses to be framed, shown in the popup anyway:
+  // LSH fetches the page and serves it with <base href> to the real site,
+  // its framing headers dropped and a CSP sandbox that gives it an opaque
+  // origin — its scripts can't reach LSH, its cookies or its API. Only https
+  // pages on the hosts of the guide's own links, never private addresses.
+  router.get('/guide/page', async (req, res) => {
+    const bare = (h) => String(h).toLowerCase().replace(/^www\./, '');
+    const hosts = new Set([...guideUrls(readConfigFile())].map((u) => { try { return bare(new URL(u).hostname); } catch { return null; } }).filter(Boolean));
+    let url;
+    try { url = new URL(String(req.query.url || '')); } catch { return pageError(res, 'Not a link'); }
+    try {
+      for (let hop = 0; hop < 4; hop++) {
+        if (url.protocol !== 'https:' || !hosts.has(bare(url.hostname))) return pageError(res, 'Only the guide’s own websites open here', url.href);
+        await assertPublicHost(url.hostname);
+        const r = await fetch(url, { redirect: 'manual', headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15', 'Accept-Language': String(req.query.lang || 'pl').slice(0, 2) }, signal: AbortSignal.timeout(10000) });
+        if (r.status >= 300 && r.status < 400 && r.headers.get('location')) { url = new URL(r.headers.get('location'), url); r.body?.cancel?.(); continue; }
+        if (!/text\/html/i.test(r.headers.get('content-type') || '')) { r.body?.cancel?.(); return pageError(res, 'Not a web page', url.href); }
+        const buf = Buffer.from(await r.arrayBuffer());
+        if (buf.length > 4 * 1024 * 1024) return pageError(res, 'The page is too large', url.href);
+        let html = buf.toString('utf8');
+        html = html.replace(/<meta[^>]+http-equiv=["']?(content-security-policy|x-frame-options|refresh)["']?[^>]*>/gi, '').replace(/<base\b[^>]*>/gi, '');
+        // the sandbox has no storage or cookies — pages that use them get in-memory stand-ins
+        const shim = "function M(){var d={};return{getItem:function(k){return k in d?d[k]:null},setItem:function(k,v){d[k]=String(v)},removeItem:function(k){delete d[k]},clear:function(){d={}},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}"
+          + "try{Object.defineProperty(window,'localStorage',{value:M(),configurable:true})}catch(e){}try{Object.defineProperty(window,'sessionStorage',{value:M(),configurable:true})}catch(e){}"
+          + "try{var c='';Object.defineProperty(document,'cookie',{get:function(){return c},set:function(v){c=(c?c+'; ':'')+String(v).split(';')[0]},configurable:true})}catch(e){}";
+        const inject = `<base href="${url.href.replace(/"/g, '&quot;')}"><script>${shim}</script><script>(function(){document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.href;if(!/^https?:/.test(h))return;e.preventDefault();parent.postMessage({lshGuide:'nav',href:h},'*');},true);document.addEventListener('submit',function(e){e.preventDefault();},true);window.open=function(u){if(u)parent.postMessage({lshGuide:'nav',href:new URL(u,location.href).href},'*');return null;};})();</script>`;
+        html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + inject) : inject + html;
+        res.set({
+          'Content-Type': 'text/html; charset=utf-8',
+          'Content-Security-Policy': 'sandbox allow-scripts; frame-ancestors \'self\'',
+          'Cache-Control': 'private, max-age=300', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff',
+        });
+        return res.send(html);
+      }
+      return pageError(res, 'Too many redirects', url.href);
+    } catch (err) {
+      return pageError(res, err.message, url?.href);
+    }
   });
 
   // QR code of a trip or one of the guide's links, so a guest takes it to their phone

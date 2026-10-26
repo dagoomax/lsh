@@ -75,6 +75,12 @@ test('GET /guide: off, then sorted by distance from home, own tips first, langua
     // the guide's own links pass, anything else doesn't (QR and the embed check)
     assert.equal((await fetch(`${s.url}/api/guide/qr?url=${encodeURIComponent('https://www.nospr.org.pl/en')}`)).status, 200);
     assert.equal((await fetch(`${s.url}/api/guide/frameable?url=${encodeURIComponent('http://169.254.169.254/latest')}`)).status, 400);
+    // the page proxy: only https pages on the guide's own sites, served sandboxed
+    for (const bad of ['https://evil.example/', 'http://www.nospr.org.pl/en', 'https://127.0.0.1/']) {
+      const r = await fetch(`${s.url}/api/guide/page?url=${encodeURIComponent(bad)}`);
+      assert.match(await r.text(), /Only the guide’s own websites/, bad);
+      assert.match(r.headers.get('content-security-policy'), /^sandbox;/, 'error page fully sandboxed');
+    }
 
     cfg.onboarding.sections = { transport: false, restaurants: true, places: true };
     g = (await (await fetch(`${s.url}/api/guide`)).json()).data;
