@@ -49,6 +49,7 @@ export const CATEGORIES = [
     { id: 'tuya', title: 'Tuya / Smart Life', keywords: ['tuya', 'smart life', 'smartlife', 'tuyapi', 'plug', 'gniazdko', 'bulb', 'curtain', 'lsc', 'nedis', 'blitzwolf', 'gosund', 'moes', 'tesla', 'tesla smart', 'power strip', 'listwa', 'usb', 'zigbee hub', 'głowica', 'trv'] },
     { id: 'sonoff', title: 'Sonoff / eWeLink', keywords: ['sonoff', 'ewelink', 'itead', 'coolkit', 'diy', 'relay', 'plug', 'zigbee', 'przekaźnik'] },
     { id: 'lighting-extra', title: 'IKEA Dirigera & Tradfri', keywords: ['ikea', 'dirigera', 'tradfri'] },
+    { id: 'helvar', title: 'Helvar', keywords: ['helvar', 'helvarnet', 'dali', 'digidim', 'imagine', 'router', '910', '920', '950', 'lighting', 'oświetlenie', 'scene', 'scena', 'ballast', 'dimmer', 'ściemniacz'] },
     { id: 'wled', title: 'WLED', keywords: ['wled', 'led strip', 'esp32'] },
   ] },
   { id: 'security', label: 'Security & Access', sections: [

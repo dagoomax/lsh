@@ -75,6 +75,7 @@
     "src/routes/google-calendar.js",
     "src/routes/grenton.js",
     "src/routes/helpers.js",
+    "src/routes/helvar.js",
     "src/routes/history.js",
     "src/routes/home-plan.js",
     "src/routes/homeassistant.js",
@@ -883,6 +884,17 @@
         "src/dahua-client.js",
         "src/http-digest.js",
         "src/mjpeg-relay.js"
+      ],
+      "deps": {}
+    },
+    "helvar": {
+      "entry": "src/helvar-client.js",
+      "configKeys": [
+        "helvar"
+      ],
+      "when": "(config.helvar?.host)",
+      "files": [
+        "src/helvar-client.js"
       ],
       "deps": {}
     },

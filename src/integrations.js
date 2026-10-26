@@ -58,6 +58,8 @@ module.exports = [
   { file: 'ecovacs-client', label: 'Ecovacs', when: (config) => config.ecovacs?.email },
   // Dahua NVRs / IP cameras — local CGI API; exposed for /api/cameras and /api/dahua/*
   { file: 'dahua-client', label: 'Dahua', expose: 'dahua', when: (config) => config.dahua?.devices?.length },
+  // Helvar lighting routers (HelvarNet, TCP 50000) — see src/helvar-client.js
+  { file: 'helvar-client', label: 'Helvar', when: (config) => config.helvar?.host },
   // UniFi Access doors (local Developer API, port 12445) — see src/unifi-access-client.js
   { file: 'unifi-access-client', label: 'UniFi Access', when: (config) => config.unifiAccess?.host && config.unifiAccess?.apiKey },
   // UniFi Play audio (PowerAmp, PoE Audio Port) — console Play app + per-speaker MQTT; see src/unifi-play-client.js

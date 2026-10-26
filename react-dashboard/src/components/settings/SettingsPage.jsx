@@ -39,6 +39,7 @@ import SmartBobSection from './sections/SmartBobSection'
 import AquiloSection from './sections/AquiloSection'
 import AirbnbSection, { BookingSection, VrboSection } from './sections/AirbnbSection'
 import UnifiAccessSection, { UnifiPlaySection } from './sections/UnifiAccessSection'
+import HelvarSection from './sections/HelvarSection'
 import TenantSection from './sections/TenantSection'
 import NukiSection from './sections/NukiSection'
 import TtlockSection from './sections/TtlockSection'
@@ -122,6 +123,7 @@ const SECTION_COMPONENTS = {
   airbnb: AirbnbSection,
   'unifi-access': UnifiAccessSection,
   'unifi-play': UnifiPlaySection,
+  helvar: HelvarSection,
   booking: BookingSection,
   vrbo: VrboSection,
   tenant: TenantSection,

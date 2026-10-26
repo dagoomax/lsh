@@ -128,7 +128,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect (incl. SuperLink sensors), UniFi Access, UniFi Play, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), generic Modbus TCP/RTU, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, Tedee smart locks, Sofar Solar inverters, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Google Home / Nest speakers and displays, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect (incl. SuperLink sensors), UniFi Access, UniFi Play, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, Helvar (DALI / Digidim), LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), generic Modbus TCP/RTU, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, Tedee smart locks, Sofar Solar inverters, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Google Home / Nest speakers and displays, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -300,6 +300,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `satel` | No | Satel INTEGRA alarm panel |
 | `unifi` | No | UniFi Protect cameras and NVR |
 | `unifiAccess` | No | UniFi Access doors (unlock / lock now, lock rules, doorbell, lockdown / evacuation, live events) |
+| `helvar` | No | Helvar lighting routers (HelvarNet): groups, scenes, DALI loads, multisensors |
 | `unifiPlay` | No | UniFi Play audio (PowerAmp, PoE Audio Port): volume, input, now playing |
 | `shelly` | No | Shelly Gen1 / Gen2 devices |
 | `boneio` | No | BoneIO relay boards (MQTT auto-discovery) |
@@ -752,6 +753,31 @@ With an **`apiKey`** LSH also uses the rest of the Protect 6.x public API (`src/
 | **Alarm Manager** | `POST /api/unifi/alarm/<triggerId>` fires a Protect Alarm Manager webhook trigger (for flows / Loxone). |
 
 Sirens and relays are marked **sensitive**: MCP bots can only switch them with *Allow locks, alarm, gates and doors*. Tested against `node scripts/unifi-protect-simulator.js 7443` (`"host": "127.0.0.1:7443", "apiKey": "simkey"`; `test/unifi-protect.test.js`) — not yet against a real console.
+
+### `helvar`
+
+```json
+"helvar": {
+  "host": "10.254.1.1",
+  "port": 50000,
+  "fade": 1,
+  "pollSeconds": 30,
+  "sensorSeconds": 5
+}
+```
+
+**Helvar** lighting (DALI, Digidim, Imagine) through a Helvar router (905, 910, 920, 950) and **HelvarNet**, the router's Ethernet I/O protocol: TCP port 50000, ASCII messages (`>V:2,C:13,G:17,L:60,F:9000#`). No login. Settings → **Helvar** tests the connection, saves and starts the module live (`src/helvar-client.js`, its own process).
+
+LSH discovers what's programmed in Designer: the workgroup's routers (`C:108`), every subnet's devices (`C:100`), groups (`C:165` / `C:164`) and scene names (`C:166`).
+
+| Device | Sensors |
+|---|---|
+| `helvar/group-<n>` | `switch`, `level` (Direct Level, `C:13`), `scene` (recall by `3`, `2.5` = block 2 scene 5, or the scene's name, `C:11`), `lastScene` (`C:109`), `power` (W, `C:161`). HomeKit light |
+| `helvar/<c>_<r>_<s>_<d>` (ballasts, dimmers, relays) | `switch`, `level` (`C:14`), `power` (W), `fault` (lamp failure / missing / faulty from the device state). HomeKit light |
+| Multisensors (312, 320, 321) | `motion` (`C:151`), `lux` (light level %, `C:150`). HomeKit motion |
+| 444 Mini Input Unit | `input1` … `input8` |
+
+Panels, buttons and IR receivers aren't shown. `fade` is the fade time in seconds for LSH's commands (sent in 1/100 s). Cluster and router come from the 3rd and 4th octets of each router's IP (`cluster` / `router` override them). Changes made from panels, sensors and schedules arrive at once when **Push Messages** is True in Designer (root node → HelvarNet); without it LSH sees them on the next poll (loads and groups every `pollSeconds`, sensors every `sensorSeconds`). Tested against `node scripts/helvar-simulator.js` (`test/helvar.test.js`), not yet against a real router.
 
 ### `unifiAccess`
 
