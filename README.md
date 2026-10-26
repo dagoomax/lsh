@@ -754,6 +754,27 @@ With an **`apiKey`** LSH also uses the rest of the Protect 6.x public API (`src/
 
 Sirens and relays are marked **sensitive**: MCP bots can only switch them with *Allow locks, alarm, gates and doors*. Tested against `node scripts/unifi-protect-simulator.js 7443` (`"host": "127.0.0.1:7443", "apiKey": "simkey"`; `test/unifi-protect.test.js`) — not yet against a real console.
 
+### Locations (managing several LSH sites)
+
+Settings → **Locations** manages other LSH installations from this one (a hub), each through its own REST API (`src/locations.js`, `src/routes/locations.js`). No `config.json` section: the list lives in `persist/locations.json` (mode 600, tokens in plain text like `persist/api-tokens.json`, never returned by the API); `siteName` in `config.json` names this site for the hubs that manage it.
+
+- **Pairing:** give the location's admin login once. The hub signs in, asks the location for an API token named `LSH hub: <this site>`, keeps only that token and signs out. Or paste an API token made on the location (Settings → Security → API tokens).
+- **Inherited role:** the hub's own users act on every location with their role here. Viewers can read (`GET`), admins can also send commands. **Open** gets a one-time link (60 s) from the location that signs the browser in to its dashboard as `<user>@<hub>` with that role, for 12 h, without the location's password.
+- **Overview:** online / offline / token rejected, version, uptime, device count and platforms that are down, from each location's `GET /api/site/summary` (older LSH: the device count only).
+- **Devices:** each location's devices with on/off switches, through the hub.
+- **Removing** a location also revokes the hub's token on it.
+- **Nesting:** a location can be a hub too.
+
+| Hub endpoint | |
+|---|---|
+| `GET /api/locations`, `GET /api/locations/overview` | the list (no tokens), live summaries |
+| `POST /api/locations` | `{ name, url, insecure, username, password }` (pairing) or `{ name, url, insecure, token }` |
+| `PATCH /api/locations/:id`, `DELETE /api/locations/:id?revoke=1` | edit, remove (and revoke) |
+| `POST /api/locations/:id/open` | one-time sign-in link to the location's dashboard |
+| `ALL /api/locations/:id/api/<path>` | the location's `/api/<path>` with the hub's token. Account, token, terminal and Claude Code endpoints are blocked |
+
+Every LSH also answers `GET /api/site/summary`, `POST /api/auth/handoff` (a hub's API token only) and `GET /api/auth/handoff/:code` (public, single use).
+
 ### `helvar`
 
 ```json

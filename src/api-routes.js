@@ -5,6 +5,7 @@ const { readConfigFile, dedupeVirtualDevices } = require('./routes/helpers');
 // it). Each exports register(router, ctx); ctx is built in createApiRoutes().
 const ROUTE_GROUPS = [
   require('./routes/auth'),
+  require('./routes/locations'),
   require('./routes/devices'),
   require('./routes/history'),
   require('./routes/device-customization'),
