@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { AnimatePresence } from 'framer-motion'
 import { motion, useReducedMotion } from 'framer-motion'
 import { gt, getLang } from '../i18n'
 import { MapPinIcon } from './Icons'
@@ -65,6 +67,73 @@ const Ico = ({ cat, it, size = 20 }) => <svg width={size} height={size} viewBox=
 const dec = (n) => String(n).replace('.', getLang() === 'pl' ? ',' : '.')
 const kmText = (it) => (it.km == null ? null : it.km < 1 ? `${Math.round(it.km * 1000)} m` : `${dec(it.km)} km`)
 const walkText = (it) => (it.walkMin != null ? gt('guide_walk', '{n} min walk', { n: it.walkMin }) : null)
+
+// ── trip: places picked for a visit, in order ──────────────
+// Kept in this browser (localStorage); Google allows 9 waypoints in a link,
+// so a trip holds up to 10 stops.
+const TRIP_KEY = 'lsh-guide-trip'
+const MAX_STOPS = 10
+let trip = (() => { try { const t = JSON.parse(localStorage.getItem(TRIP_KEY) || '{}'); return { stops: Array.isArray(t.stops) ? t.stops : [], mode: t.mode || 'walking' } } catch { return { stops: [], mode: 'walking' } } })()
+const tripListeners = new Set()
+function setTrip(next) {
+  trip = typeof next === 'function' ? next(trip) : next
+  try { localStorage.setItem(TRIP_KEY, JSON.stringify(trip)) } catch { /* private mode */ }
+  tripListeners.forEach(f => f(trip))
+}
+function useTrip() {
+  const [t, setT] = useState(trip)
+  useEffect(() => { tripListeners.add(setT); return () => tripListeners.delete(setT) }, [])
+  return t
+}
+const stopKey = (cat, it) => `${cat}:${it.id}`
+const toggleStop = (cat, it) => setTrip(t => {
+  const key = stopKey(cat, it)
+  if (t.stops.some(x => x.key === key)) return { ...t, stops: t.stops.filter(x => x.key !== key) }
+  if (t.stops.length >= MAX_STOPS || it.lat == null) return t
+  return { ...t, stops: [...t.stops, { key, cat, name: it.name, lat: it.lat, lon: it.lon }] }
+})
+const ll = (p) => `${(+p.lat).toFixed(6)},${(+p.lon).toFixed(6)}`
+function kmBetween(a, b) {
+  const R = 6371, r = (d) => (d * Math.PI) / 180
+  const h = Math.sin(r(b.lat - a.lat) / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(r(b.lon - a.lon) / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(h))
+}
+// nearest stop next, starting at the home
+function optimise(home, stops) {
+  const left = [...stops], out = []
+  let at = home
+  while (left.length) {
+    let bi = 0
+    left.forEach((s, i) => { if (kmBetween(at, s) < kmBetween(at, left[bi])) bi = i })
+    at = left.splice(bi, 1)[0]; out.push(at)
+  }
+  return out
+}
+const MODES = { walking: { g: 'walking', legacy: 'w' }, transit: { g: 'transit', legacy: 'r' }, driving: { g: 'driving', legacy: 'd' } }
+// Google Maps app / website: home → stops (the last is the destination)
+function routeUrl(home, stops, mode) {
+  if (!stops.length) return null
+  const dest = stops[stops.length - 1]
+  const way = stops.slice(0, -1).map(ll).join('|')
+  return `https://www.google.com/maps/dir/?api=1&origin=${ll(home)}&destination=${ll(dest)}${way ? `&waypoints=${encodeURIComponent(way)}` : ''}&travelmode=${MODES[mode].g}`
+}
+// the on-screen map: Maps Embed API with a key, else Google's keyless embed
+function embedUrl({ home, stops, mode, focus, key, lang }) {
+  const hl = lang === 'pl' ? 'pl' : 'en'
+  if (stops.length) {
+    // Google can't route public transport through waypoints — walk them instead
+    const m = mode === 'transit' && stops.length > 1 ? 'walking' : mode
+    if (key) {
+      const dest = stops[stops.length - 1]
+      const way = stops.slice(0, -1).map(ll).join('|')
+      return `https://www.google.com/maps/embed/v1/directions?key=${encodeURIComponent(key)}&origin=${ll(home)}&destination=${ll(dest)}${way ? `&waypoints=${encodeURIComponent(way)}` : ''}&mode=${MODES[m].g}&language=${hl}`
+    }
+    return `https://maps.google.com/maps?saddr=${ll(home)}&daddr=${stops.map(ll).join('+to:')}&dirflg=${MODES[m].legacy}&hl=${hl}&output=embed`
+  }
+  const at = focus || home
+  if (key) return `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(key)}&q=${ll(at)}&zoom=${focus ? 16 : 14}&language=${hl}`
+  return `https://maps.google.com/maps?q=${ll(at)}&z=${focus ? 16 : 14}&hl=${hl}&output=embed`
+}
 
 function useClock() {
   const [now, setNow] = useState(() => new Date())
@@ -194,9 +263,178 @@ function Hero({ g, compact = false, onOpen }) {
   )
 }
 
+// ── popups: nothing opens a new tab — places, routes, websites and photos
+// show here, with a QR code to take them to a phone ─────────
+
+let popup = null
+const popupListeners = new Set()
+const openPopup = (p) => { popup = p; popupListeners.forEach(f => f(p)) }
+const closePopup = () => openPopup(null)
+function usePopup() {
+  const [p, setP] = useState(popup)
+  useEffect(() => { popupListeners.add(setP); return () => popupListeners.delete(setP) }, [])
+  return p
+}
+const qrSrc = (url) => `/api/guide/qr?url=${encodeURIComponent(url)}`
+const placeUrl = (it) => (it.lat != null ? `https://www.google.com/maps/search/?api=1&query=${it.lat},${it.lon}` : null)
+
+function Qr({ url, text }) {
+  const [ok, setOk] = useState(true)
+  if (!url || !ok) return null
+  return (
+    <div className="gd-qr">
+      <img src={qrSrc(url)} alt={gt('guide_qr_alt', 'QR code')} width="132" height="132" onError={() => setOk(false)}/>
+      <span>{text || gt('guide_qr_text', 'Scan with your phone’s camera to take it along.')}</span>
+    </div>
+  )
+}
+
+function PlacePopup({ g, cat, it, t }) {
+  const inTrip = t.stops.some(x => x.key === stopKey(cat, it))
+  const route = g.home && it.lat != null ? routeUrl(g.home, [it], it.km != null && it.km <= 2 ? 'walking' : 'transit') : null
+  return (
+    <>
+      {it.image && (
+        <div className="gd-pop-hero">
+          <img src={it.image.src} alt={it.name} referrerPolicy="no-referrer"/>
+          <button className="gd-pop-credit" onClick={() => openPopup({ kind: 'photo', cat, it, back: { kind: 'place', cat, it } })}>
+            {[it.image.author, it.image.license].filter(Boolean).join(' · ') || 'Wikimedia Commons'}
+          </button>
+        </div>
+      )}
+      <div className="gd-pop-body" style={{ '--c': CAT[cat]?.color }}>
+        <div className="gd-pop-head">
+          <span className="gd-card-ic"><Ico cat={cat in CAT ? cat : 'places'} it={it}/></span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h2 className="gd-pop-title">{it.name}</h2>
+            <div className="gd-card-sub">{[it.kind, typeof it.tag === 'string' ? it.tag : null, it.price].filter(Boolean).join(' · ')}</div>
+          </div>
+          {it.km != null && <div className="gd-dist"><b className="gd-tnum">{kmText(it)}</b>{walkText(it) && <span>{walkText(it)}</span>}</div>}
+        </div>
+        {it.text && <p className="gd-card-text">{it.text}</p>}
+        {it.address && <div className="gd-addr">📍 {it.address}</div>}
+        {g.home && it.lat != null && (
+          <div className="gd-gmap gd-gmap-pop">
+            <iframe title={it.name} src={embedUrl({ home: g.home, stops: [it], mode: it.km != null && it.km <= 2 ? 'walking' : 'transit', key: g.mapsKey, lang: getLang() })} loading="lazy" referrerPolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin"/>
+          </div>
+        )}
+        <div className="gd-trip-actions">
+          {it.lat != null && (
+            <button className={`gd-btn gd-btn-trip${inTrip ? ' on' : ''}`} disabled={!inTrip && t.stops.length >= MAX_STOPS} onClick={() => toggleStop(cat, it)}>
+              {inTrip ? `✓ ${gt('guide_in_trip', 'In the trip')}` : `+ ${gt('guide_add_trip', 'Add to trip')}`}
+            </button>
+          )}
+          {it.url && <button className="gd-btn gd-btn-ghost" onClick={() => openPopup({ kind: 'site', url: it.url, title: it.name, back: { kind: 'place', cat, it } })}>{gt('guide_site', 'Website')}</button>}
+        </div>
+        <Qr url={route || placeUrl(it)} text={gt('guide_qr_route', 'Scan to take the route to this place on your phone.')}/>
+      </div>
+    </>
+  )
+}
+
+function SitePopup({ url, title, it }) {
+  const [canFrame, setCanFrame] = useState(null)
+  useEffect(() => {
+    let live = true
+    fetch(`/api/guide/frameable?url=${encodeURIComponent(url)}`, { credentials: 'same-origin' }).then(r => r.json())
+      .then(j => { if (live) setCanFrame(!!j.data?.frameable) }).catch(() => { if (live) setCanFrame(false) })
+    return () => { live = false }
+  }, [url])
+  const host = (() => { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return url } })()
+  return (
+    <div className="gd-pop-body">
+      <h2 className="gd-pop-title">{title}</h2>
+      {canFrame === null && <div className="gd-site gd-site-wait"><span className="gd-spin"/></div>}
+      {canFrame === true && (
+        <div className="gd-site">
+          <iframe title={title} src={url} sandbox="allow-scripts allow-same-origin allow-forms" referrerPolicy="no-referrer" loading="lazy"/>
+        </div>
+      )}
+      {canFrame === false && (
+        <div className="gd-site-card" style={it?.image ? { '--img': `url("${it.image.src}")` } : undefined}>
+          <div className="gd-site-card-in">
+            <img className="gd-site-qr" src={qrSrc(url)} alt={gt('guide_qr_alt', 'QR code')} width="220" height="220"/>
+            <div>
+              <div className="gd-site-host">{host}</div>
+              <p>{gt('guide_site_phone', 'This website can’t be shown here. Scan the code with your phone’s camera to open it there.')}</p>
+              <div className="gd-site-url">{url}</div>
+            </div>
+          </div>
+        </div>
+      )}
+      {canFrame === true && <><div className="gd-site-url gd-tnum">{url}</div><Qr url={url} text={gt('guide_qr_site', 'Scan to open it on your phone.')}/></>}
+    </div>
+  )
+}
+
+function PhotoPopup({ it }) {
+  return (
+    <div className="gd-pop-photo">
+      <img src={it.image.src} alt={it.name} referrerPolicy="no-referrer"/>
+      <div className="gd-pop-body">
+        <h2 className="gd-pop-title">{it.name}</h2>
+        <div className="gd-card-text">{gt('guide_photo_by', 'Photo: {who}', { who: it.image.author || '—' })} · {it.image.license} · Wikimedia Commons</div>
+        {it.image.page && <div className="gd-site-url">{decodeURIComponent(it.image.page)}</div>}
+        {it.image.page && <Qr url={it.image.page} text={gt('guide_qr_photo', 'Scan to see the photo and its licence on Wikimedia Commons.')}/>}
+      </div>
+    </div>
+  )
+}
+
+function TripPopup({ g, t }) {
+  const url = routeUrl(g.home, t.stops, t.mode)
+  return (
+    <div className="gd-pop-body">
+      <h2 className="gd-pop-title">{gt('guide_trip', 'Your trip')}</h2>
+      <div className="gd-card-sub">{t.stops.map((s, i) => `${i + 1}. ${s.name}`).join('  →  ')}</div>
+      <div className="gd-gmap gd-gmap-pop gd-gmap-tall">
+        <iframe title={gt('guide_trip', 'Your trip')} src={embedUrl({ home: g.home, stops: t.stops, mode: t.mode, key: g.mapsKey, lang: getLang() })} loading="lazy" referrerPolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin"/>
+      </div>
+      <Qr url={url} text={gt('guide_qr_text', 'Scan with your phone’s camera to take the route along.')}/>
+    </div>
+  )
+}
+
+function GuidePopups({ g }) {
+  const p = usePopup()
+  const t = useTrip()
+  const reduce = useReducedMotion()
+  useEffect(() => {
+    if (!p) return
+    const onKey = (e) => { if (e.key === 'Escape') closePopup() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [p])
+  useEffect(() => () => closePopup(), [])
+  return createPortal(
+    <AnimatePresence>
+      {p && (
+        <motion.div className="gd-pop-wrap" onClick={closePopup} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className={`gd-pop gd-pop-${p.kind}`} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
+            initial={reduce ? false : { opacity: 0, y: 30, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}>
+            <div className="gd-pop-bar">
+              {p.back && <button className="gd-pop-btn" onClick={() => openPopup(p.back)} aria-label="←">←</button>}
+              <span style={{ flex: 1 }}/>
+              <button className="gd-pop-btn" onClick={closePopup} aria-label={gt('close', 'Close')}>✕</button>
+            </div>
+            <div className="gd-pop-scroll">
+              {p.kind === 'place' && <PlacePopup g={g} cat={p.cat} it={p.it} t={t}/>}
+              {p.kind === 'site' && <SitePopup url={p.url} title={p.title} it={p.back?.it}/>}
+              {p.kind === 'photo' && <PhotoPopup it={p.it}/>}
+              {p.kind === 'trip' && <TripPopup g={g} t={t}/>}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
+  )
+}
+
 // ── radar ───────────────────────────────────────────────────
 
-function Radar({ g, active, hover, setHover, onPick, size = 'full' }) {
+function Radar({ g, active, hover, setHover, onPick, size = 'full', tripStops }) {
   const reduce = useReducedMotion()
   const R = 88
   const pts = useMemo(() => {
@@ -213,6 +451,7 @@ function Radar({ g, active, hover, setHover, onPick, size = 'full' }) {
   const cand = [0.5, 1, 2, 3, 5, 10, 20].filter(d => d < pts.maxKm * 0.95)
   const rings = cand.length > 2 ? [cand[Math.floor(cand.length / 2) - 1], cand[cand.length - 1]] : cand
   const hov = pts.list.find(p => `${p.cat}:${p.id}` === hover)
+  const stops = (tripStops || []).map(s => pts.list.find(p => `${p.cat}:${p.id}` === s.key)).filter(Boolean)
   return (
     <div className={`gd-radar gd-radar-${size}`}>
       <div className="gd-radar-sweep" aria-hidden="true"/>
@@ -245,6 +484,14 @@ function Radar({ g, active, hover, setHover, onPick, size = 'full' }) {
             </g>
           )
         })}
+        {stops.length > 0 && (
+          <polyline className="gd-route" points={[{ x: 0, y: 0 }, ...stops].map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}/>
+        )}
+        {stops.map((p, n) => (
+          <g key={`n-${p.cat}:${p.id}`} transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`} className="gd-stop-n" style={{ '--c': CAT[p.cat].color }}>
+            <circle r="5.4"/><text y="2.1" textAnchor="middle">{n + 1}</text>
+          </g>
+        ))}
         <g className="gd-home">
           <circle r="7" className="gd-home-pulse"/>
           <circle r="4.2" className="gd-home-dot"/>
@@ -267,7 +514,20 @@ function Radar({ g, active, hover, setHover, onPick, size = 'full' }) {
 
 // ── cards ───────────────────────────────────────────────────
 
-function Card({ it, cat, hovered, setHover, refCb, index }) {
+function Photo({ image, alt, onOpen, onCredit }) {
+  const [ok, setOk] = useState(true)
+  if (!image || !ok) return null
+  return (
+    <figure className="gd-photo">
+      <img src={image.src} alt={alt} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setOk(false)} onClick={onOpen}/>
+      <figcaption>
+        <button onClick={onCredit}>{[image.author, image.license].filter(Boolean).join(' · ') || 'Wikimedia Commons'}</button>
+      </figcaption>
+    </figure>
+  )
+}
+
+function Card({ it, cat, hovered, setHover, refCb, index, inTrip, stopNo, tripFull }) {
   const reduce = useReducedMotion()
   const key = `${cat}:${it.id}`
   const go = it.directions || it.map
@@ -276,10 +536,12 @@ function Card({ it, cat, hovered, setHover, refCb, index }) {
       initial={reduce ? false : { opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 320, damping: 26, delay: reduce ? 0 : Math.min(index, 12) * 0.045 }}
       onMouseEnter={() => setHover(key)} onMouseLeave={() => setHover(null)}>
+      <Photo image={it.image} alt={it.name} onOpen={() => openPopup({ kind: 'place', cat, it })} onCredit={() => openPopup({ kind: 'photo', cat, it })}/>
+      {stopNo && <span className="gd-card-stop">{stopNo}</span>}
       <div className="gd-card-top">
         <span className="gd-card-ic"><Ico cat={cat} it={it}/></span>
         <div className="gd-card-head">
-          <h3>{it.name}</h3>
+          <h3><button className="gd-linkish" onClick={() => openPopup({ kind: 'place', cat, it })}>{it.name}</button></h3>
           <div className="gd-card-sub">{[it.kind, typeof it.tag === 'string' ? it.tag : null].filter(Boolean).join(' · ')}</div>
         </div>
         {it.km != null && (
@@ -295,8 +557,14 @@ function Card({ it, cat, hovered, setHover, refCb, index }) {
         {it.address && <span className="gd-addr">{it.address}</span>}
         {it.price && <span className="gd-price">{it.price}</span>}
         <span className="gd-grow"/>
-        {it.url && <a className="gd-btn gd-btn-ghost" href={it.url} target="_blank" rel="noopener noreferrer">{gt('guide_site', 'Website')}</a>}
-        {go && <a className="gd-btn" href={go} target="_blank" rel="noopener noreferrer">{it.directions ? gt('guide_route', 'Route') : gt('guide_map', 'Map')} <span aria-hidden="true">↗</span></a>}
+        {it.url && <button className="gd-btn gd-btn-ghost" onClick={() => openPopup({ kind: 'site', url: it.url, title: it.name, back: { kind: 'place', cat, it } })}>{gt('guide_site', 'Website')}</button>}
+        {it.lat != null && (
+          <button className={`gd-btn gd-btn-trip${inTrip ? ' on' : ''}`} disabled={!inTrip && tripFull} onClick={() => toggleStop(cat, it)}
+            title={!inTrip && tripFull ? gt('guide_trip_full', 'A trip holds up to {n} stops', { n: MAX_STOPS }) : undefined}>
+            {inTrip ? `✓ ${gt('guide_in_trip', 'In the trip')}` : `+ ${gt('guide_add_trip', 'Add to trip')}`}
+          </button>
+        )}
+        {go && <button className="gd-btn" onClick={() => openPopup({ kind: 'place', cat, it })}>{it.directions ? gt('guide_route', 'Route') : gt('guide_map', 'Map')}</button>}
       </div>
     </motion.article>
   )
@@ -304,11 +572,126 @@ function Card({ it, cat, hovered, setHover, refCb, index }) {
 
 // ── the full guide (dashboard menu → Guide) ─────────────────
 
+function GoogleMap({ g, stops, mode, focus }) {
+  const src = embedUrl({ home: g.home, stops, mode, focus, key: g.mapsKey, lang: getLang() })
+  return (
+    <div className="gd-gmap">
+      <iframe key={src} title={gt('guide_map_label', 'Map of places around your stay')} src={src} loading="lazy" referrerPolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin"/>
+    </div>
+  )
+}
+
+function PlaceSearch() {
+  const [q, setQ] = useState('')
+  const [res, setRes] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const t = useRef(null)
+  const run = (v) => {
+    setQ(v); clearTimeout(t.current)
+    if (v.trim().length < 3) { setRes(null); return }
+    t.current = setTimeout(async () => {
+      setBusy(true)
+      try { const j = await (await fetch(`/api/guide/search?q=${encodeURIComponent(v.trim())}&lang=${getLang()}`, { credentials: 'same-origin' })).json(); setRes(j.data || []) }
+      catch { setRes([]) }
+      setBusy(false)
+    }, 600)
+  }
+  return (
+    <div className="gd-search">
+      <input className="gd-input" value={q} onChange={e => run(e.target.value)} placeholder={gt('guide_search_ph', 'Add any place: a café, a street, a museum…')} aria-label={gt('guide_search_ph', 'Add any place')}/>
+      {busy && <div className="gd-search-note">{gt('guide_searching', 'Searching OpenStreetMap…')}</div>}
+      {res && !busy && res.length === 0 && <div className="gd-search-note">{gt('guide_no_results', 'Nothing found nearby')}</div>}
+      {res && res.length > 0 && (
+        <div className="gd-results">
+          {res.map(r => (
+            <button key={r.id} className="gd-result" onClick={() => { toggleStop('search', r); setRes(null); setQ('') }}>
+              <span className="gd-result-name">{r.name}</span>
+              <span className="gd-result-meta">{[r.address, r.km != null ? `${dec(r.km)} km` : null].filter(Boolean).join(' · ')}</span>
+              <span className="gd-result-add">+</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TripPanel({ g, t }) {
+  const [qr, setQr] = useState(false)
+  const url = routeUrl(g.home, t.stops, t.mode)
+  const move = (i, d) => setTrip(x => { const s = [...x.stops]; const j = i + d; if (j < 0 || j >= s.length) return x; [s[i], s[j]] = [s[j], s[i]]; return { ...x, stops: s } })
+  let total = 0
+  t.stops.forEach((s, i) => { total += kmBetween(i ? t.stops[i - 1] : g.home, s) })
+  return (
+    <div className="gd-trip">
+      <div className="gd-trip-head">
+        <div>
+          <div className="gd-trip-title">{gt('guide_trip', 'Your trip')}</div>
+          <div className="gd-trip-sub">{t.stops.length ? gt('guide_trip_sum', '{n} stops · about {km} km in a line', { n: t.stops.length, km: dec(Math.round(total * 10) / 10) }) : gt('guide_trip_empty', 'Pick places with “+ Add to trip” — several become a route with stops.')}</div>
+        </div>
+        <div className="gd-modes" role="group">
+          {Object.keys(MODES).map(m => (
+            <button key={m} className="gd-mode" data-active={String(t.mode === m)} onClick={() => setTrip(x => ({ ...x, mode: m }))} title={gt(`guide_mode_${m}`, m)}>
+              {m === 'walking' ? '🚶' : m === 'transit' ? '🚋' : '🚗'}
+            </button>
+          ))}
+        </div>
+      </div>
+      {t.stops.length > 0 && (
+        <ol className="gd-stops">
+          <li className="gd-stop gd-stop-home"><span className="gd-stop-n0">⌂</span><span className="gd-stop-name">{gt('guide_start', 'Start: your stay')}</span></li>
+          {t.stops.map((s, i) => (
+            <li key={s.key} className="gd-stop" style={{ '--c': CAT[s.cat]?.color || 'var(--gd-violet, #b18cff)' }}>
+              <span className="gd-stop-num">{i + 1}</span>
+              <span className="gd-stop-name">{s.name}</span>
+              <span className="gd-stop-km gd-tnum">{dec(Math.round(kmBetween(i ? t.stops[i - 1] : g.home, s) * 10) / 10)} km</span>
+              <span className="gd-stop-ctl">
+                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="▲">▲</button>
+                <button onClick={() => move(i, 1)} disabled={i === t.stops.length - 1} aria-label="▼">▼</button>
+                <button onClick={() => setTrip(x => ({ ...x, stops: x.stops.filter(z => z.key !== s.key) }))} aria-label="✕">✕</button>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {t.mode === 'transit' && t.stops.length > 1 && <div className="gd-search-note">{gt('guide_transit_note', 'Google routes public transport to one destination at a time — the map shows the stops on foot; Google Maps plans each leg.')}</div>}
+      <PlaceSearch/>
+      {t.stops.length > 0 && (
+        <div className="gd-trip-actions">
+          <button className="gd-btn gd-btn-go" onClick={() => openPopup({ kind: 'trip' })}>{gt('guide_show_route', 'Show the route')}</button>
+          {t.stops.length > 2 && <button className="gd-btn gd-btn-ghost" onClick={() => setTrip(x => ({ ...x, stops: optimise(g.home, x.stops) }))}>{gt('guide_optimise', 'Shortest order')}</button>}
+          <button className="gd-btn gd-btn-ghost" onClick={() => setQr(!qr)}>{gt('guide_to_phone', 'To phone')}</button>
+          <button className="gd-btn gd-btn-ghost" onClick={() => setTrip(x => ({ ...x, stops: [] }))}>{gt('guide_clear', 'Clear')}</button>
+        </div>
+      )}
+      {qr && url && (
+        <div className="gd-qr">
+          <img src={`/api/guide/qr?url=${encodeURIComponent(url)}`} alt={gt('guide_qr_alt', 'QR code of the route')} width="168" height="168"/>
+          <span>{gt('guide_qr_text', 'Scan with your phone’s camera to take the route along.')}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// the place a card points at, for the map when there's no trip yet
+function focusOf(g, key) {
+  if (!key) return null
+  const [cat, id] = key.split(':')
+  const it = (g[cat] || []).find(x => x.id === id)
+  return it?.lat != null ? it : null
+}
+
 export function CityGuidePage() {
   const g = useGuide()
+  const t = useTrip()
   const [tab, setTab] = useState('places')
   const [hover, setHover] = useState(null)
+  const [view, setView] = useState(() => (trip.stops.length ? 'map' : 'radar'))
   const refs = useRef({})
+  const prevCount = useRef(t.stops.length)
+  const [hoverStick, setHoverStick] = useState(null) // the map follows the last card you pointed at
+  useEffect(() => { if (t.stops.length > prevCount.current) setView('map'); prevCount.current = t.stops.length }, [t.stops.length])
   if (!g) return <div className="gd-off">{gt('guide_off', 'The guide is off — turn it on in Settings → Onboarding.')}</div>
   const tabs = ORDER.filter(k => g[k]?.length)
   const cur = g[tab]?.length ? tab : tabs[0]
@@ -319,10 +702,20 @@ export function CityGuidePage() {
   }
   return (
     <div className="gd">
+      <GuidePopups g={g}/>
       <Hero g={g}/>
       <div className="gd-main">
         <aside className="gd-side">
-          <Radar g={g} active={cur} hover={hover} setHover={setHover} onPick={pick}/>
+          {g.home && (
+            <div className="gd-views" role="tablist">
+              <button role="tab" className="gd-view" data-active={String(view === 'radar')} onClick={() => setView('radar')}>{gt('guide_radar', 'Radar')}</button>
+              <button role="tab" className="gd-view" data-active={String(view === 'map')} onClick={() => setView('map')}>{gt('guide_gmap', 'Google map')}</button>
+            </div>
+          )}
+          {view === 'map' && g.home
+            ? <GoogleMap g={g} stops={t.stops} mode={t.mode} focus={!t.stops.length ? focusOf(g, hoverStick) : null}/>
+            : <Radar g={g} active={cur} hover={hover} setHover={setHover} onPick={pick} tripStops={t.stops}/>}
+          {g.home && <TripPanel g={g} t={t}/>}
         </aside>
         <div className="gd-list">
           <div className="gd-tabs" role="tablist" style={{ '--n': tabs.length, '--i': idx, '--c': CAT[cur]?.color }}>
@@ -335,14 +728,15 @@ export function CityGuidePage() {
           </div>
           <div className="gd-cards" key={cur}>
             {(g[cur] || []).map((it, i) => (
-              <Card key={it.id} it={it} cat={cur} index={i} hovered={hover === `${cur}:${it.id}`} setHover={setHover}
-                refCb={(el) => { refs.current[`${cur}:${it.id}`] = el }}/>
+              <Card key={it.id} it={it} cat={cur} index={i} hovered={hover === `${cur}:${it.id}`} setHover={(k) => { setHover(k); if (k) setHoverStick(k) }}
+                inTrip={t.stops.some(s => s.key === `${cur}:${it.id}`)} stopNo={(t.stops.findIndex(s => s.key === `${cur}:${it.id}`) + 1) || null}
+                tripFull={t.stops.length >= MAX_STOPS} refCb={(el) => { refs.current[`${cur}:${it.id}`] = el }}/>
             ))}
           </div>
           {g.sources?.length > 0 && (
             <div className="gd-sources">
               {gt('guide_sources', 'Sources')}: {g.sources.map((s, i) => (
-                <span key={s.url}>{i > 0 && ' · '}<a href={s.url} target="_blank" rel="noopener noreferrer">{s.name}</a></span>
+                <span key={s.url}>{i > 0 && ' · '}<button className="gd-linkish gd-src" onClick={() => openPopup({ kind: 'site', url: s.url, title: s.name })}>{s.name}</button></span>
               ))}
               {g.generated && <> · {gt('guide_generated', 'written by Claude on {date} — check opening hours before you go', { date: new Date(g.generated.at).toLocaleDateString(getLang()) })}</>}
             </div>
@@ -357,25 +751,29 @@ export function CityGuidePage() {
 
 export default function CityGuideCard({ onOpen }) {
   const g = useGuide()
+  const tripNow = useTrip()
   const [hover, setHover] = useState(null)
   if (!g) return null
   const col = (k, n) => g[k]?.length > 0 && (
     <div className="gd-col" style={{ '--c': CAT[k].color }}>
       <div className="gd-col-title"><Ico cat={k} it={{ icon: 'tram' }} size={14}/> {CAT[k].label()}</div>
       {g[k].slice(0, n).map(it => (
-        <a key={it.id} className={`gd-mini${hover === `${k}:${it.id}` ? ' gd-mini-hov' : ''}`} href={it.directions || it.map || it.url || undefined} target="_blank" rel="noopener noreferrer"
+        <button key={it.id} className={`gd-mini${hover === `${k}:${it.id}` ? ' gd-mini-hov' : ''}`} onClick={() => openPopup({ kind: 'place', cat: k, it })}
           onMouseEnter={() => setHover(`${k}:${it.id}`)} onMouseLeave={() => setHover(null)}>
+          {it.image && <img className="gd-mini-img" src={it.image.src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = 'none' }}/>}
           <span className="gd-mini-name">{it.name}</span>
           {kmText(it) && <span className="gd-mini-dist gd-tnum">{kmText(it)}</span>}
-        </a>
+        </button>
       ))}
     </div>
   )
   return (
     <div className="gd gd-home-card">
+      <GuidePopups g={g}/>
       <Hero g={g} compact onOpen={onOpen}/>
       <div className="gd-home-body">
-        <Radar g={g} hover={hover} setHover={setHover} size="mini" onPick={() => onOpen?.()}/>
+        <Radar g={g} hover={hover} setHover={setHover} size="mini" tripStops={tripNow.stops}
+          onPick={(cat, key) => { const it = (g[cat] || []).find(x => `${cat}:${x.id}` === key); if (it) openPopup({ kind: 'place', cat, it }) }}/>
         <div className="gd-cols">
           {col('places', 3)}
           {col('restaurants', 3)}

@@ -61,6 +61,21 @@ test('GET /guide: off, then sorted by distance from home, own tips first, langua
     g = (await (await fetch(`${s.url}/api/guide?lang=de`)).json()).data;
     assert.equal(g.title, 'Welcome to Katowice', 'other languages get English');
 
+    const spodek = g.places.find((x) => x.id === 'spodek');
+    assert.match(spodek.image.src, /^https:\/\/upload\.wikimedia\.org\//, 'Wikimedia photo');
+    assert.equal(spodek.image.license, 'CC BY 4.0');
+    assert.equal(typeof spodek.lat, 'number', 'coordinates for the map');
+
+    // trip QR: Google Maps route links only
+    const ok = await fetch(`${s.url}/api/guide/qr?url=${encodeURIComponent('https://www.google.com/maps/dir/?api=1&origin=50.2,19&destination=50.26,19.02&travelmode=walking')}`);
+    assert.equal(ok.status, 200);
+    assert.match(ok.headers.get('content-type'), /svg/);
+    assert.match(await ok.text(), /<svg/);
+    assert.equal((await fetch(`${s.url}/api/guide/qr?url=${encodeURIComponent('https://evil.example/x')}`)).status, 400);
+    // the guide's own links pass, anything else doesn't (QR and the embed check)
+    assert.equal((await fetch(`${s.url}/api/guide/qr?url=${encodeURIComponent('https://www.nospr.org.pl/en')}`)).status, 200);
+    assert.equal((await fetch(`${s.url}/api/guide/frameable?url=${encodeURIComponent('http://169.254.169.254/latest')}`)).status, 400);
+
     cfg.onboarding.sections = { transport: false, restaurants: true, places: true };
     g = (await (await fetch(`${s.url}/api/guide`)).json()).data;
     assert.equal(g.transport, null);

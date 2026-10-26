@@ -148,6 +148,65 @@ async function generate({ city, lat, lon }, { client, onProgress = () => {} } = 
   return { ...guide, generated: { at: new Date().toISOString(), model: final.model || cc.model, searches, city: name } };
 }
 
+// ── photos ──────────────────────────────────────────────────
+// Each place's Wikipedia lead image from Wikimedia Commons — kept only with
+// a free licence (CC, CC0, public domain), shown with author and licence.
+
+const WIKI_UA = { 'User-Agent': 'LSH smart home - onboarding guide (https://github.com/dagoomax/lsh)' };
+const FREE = /^(CC0|CC BY(-SA)? [\d.]+|Public domain|PD.*)$/i;
+const plain = (h) => String(h || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+
+const words = (t) => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').split(/[^a-z0-9]+/).filter((w) => w.length > 3);
+
+// the article about the place itself — its title shares a word with the
+// place's name and isn't just the city
+async function wikiFile(name, city, lang) {
+  const want = new Set(words(name).filter((w) => !words(city).includes(w)));
+  if (!want.size) return null;
+  for (const q of [name, `${name} ${city}`]) {
+    const u = `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrlimit=4&gsrsearch=${encodeURIComponent(q)}&prop=pageimages&piprop=name`;
+    const j = await (await fetch(u, { headers: WIKI_UA, signal: AbortSignal.timeout(8000) })).json();
+    const hit = Object.values(j.query?.pages || {}).sort((a, b) => a.index - b.index)
+      .find((pg) => pg.pageimage && words(pg.title).some((w) => want.has(w)));
+    if (hit) return hit.pageimage;
+  }
+  return null;
+}
+
+async function addImages(guide) {
+  const city = guide.name?.en || guide.generated?.city || '';
+  const items = [...guide.places, ...guide.transport.filter((t) => t.lat != null)];
+  const files = new Map();
+  for (const it of items) {
+    for (const lang of ['pl', 'en']) {
+      try { const f = await wikiFile(it.name[lang] || it.name.en, city, lang); if (f) { files.set(it, f); break; } } catch { /* no photo */ }
+    }
+    await new Promise((r) => setTimeout(r, 250)); // be gentle with Wikipedia
+  }
+  const names = [...new Set(files.values())];
+  if (!names.length) return guide;
+  const info = {};
+  for (let i = 0; i < names.length; i += 20) {
+    const u = `https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=960&titles=${encodeURIComponent(names.slice(i, i + 20).map((n) => `File:${n}`).join('|'))}`;
+    try {
+      const j = await (await fetch(u, { headers: WIKI_UA, signal: AbortSignal.timeout(10000) })).json();
+      const norm = Object.fromEntries((j.query?.normalized || []).map((n) => [n.to, n.from]));
+      for (const pg of Object.values(j.query?.pages || {})) {
+        const ii = pg.imageinfo?.[0]; if (!ii) continue;
+        info[(norm[pg.title] || pg.title).replace(/^File:/, '')] = ii;
+      }
+    } catch { /* keep going without */ }
+  }
+  for (const [it, f] of files) {
+    const ii = info[f] || info[f.replace(/_/g, ' ')];
+    const m = ii?.extmetadata || {};
+    const license = plain(m.LicenseShortName?.value);
+    if (!ii?.thumburl || !FREE.test(license)) continue;
+    it.image = { src: ii.thumburl.split('?')[0].replace('//thumb.wikimedia.org/', '//upload.wikimedia.org/'), page: ii.descriptionurl, author: plain(m.Artist?.value).replace(/^This (image|file) is a work by .*?user /i, '').split(/\. |When reusing/)[0].slice(0, 100), license };
+  }
+  return guide;
+}
+
 // ── storage ─────────────────────────────────────────────────
 
 function save(guide, dir = DIR) {
@@ -177,4 +236,4 @@ function remove(id, dir = DIR) {
   try { fs.unlinkSync(path.join(dir, `${id}.json`)); return true; } catch { return false; }
 }
 
-module.exports = { generate, sanitize, extractJson, save, list, load, remove, DIR, SYSTEM };
+module.exports = { generate, addImages, sanitize, extractJson, save, list, load, remove, DIR, SYSTEM };

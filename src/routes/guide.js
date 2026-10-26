@@ -60,6 +60,10 @@ function view(item, lang, home, cityName) {
     id: item.id, name: t(item.name), text: t(item.text || item.note), kind: t(item.kind), tag: t(item.tag) || item.tag || null,
     address: item.address || null, price: item.price || null, url: item.url || null, icon: item.icon || null, custom: !!item.custom,
   };
+  // photos: https only (Wikimedia Commons), with their credit
+  if (item.image?.src && /^https:\/\//.test(item.image.src)) {
+    out.image = { src: item.image.src, page: /^https:\/\//.test(item.image.page || '') ? item.image.page : null, author: String(item.image.author || '').slice(0, 120), license: String(item.image.license || '').slice(0, 40) };
+  }
   const has = num(item.lat) != null && num(item.lon) != null;
   const where = has ? `${item.lat},${item.lon}` : item.address ? `${item.address}, ${cityName}` : null;
   if (where) out.map = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(has ? where : `${t(item.name)}, ${where}`)}`;
@@ -70,6 +74,17 @@ function view(item, lang, home, cityName) {
     out.walkMin = d <= 3 ? Math.max(1, Math.round((d * 1.3 / 4.8) * 60)) : null; // streets ≈ 1.3 × straight line, 4.8 km/h
     out.directions = `https://www.google.com/maps/dir/?api=1&origin=${home.lat},${home.lon}&destination=${item.lat},${item.lon}&travelmode=${d <= 2 ? 'walking' : 'transit'}`;
   }
+  return out;
+}
+
+// every link the current guide shows — the only other URLs the QR code endpoint encodes
+function guideUrls(cfg) {
+  const o = cfg.onboarding || {};
+  const city = loadCity(o.city || 'katowice');
+  const out = new Set();
+  for (const k of SECTIONS) for (const it of city?.[k] || []) { if (it.url) out.add(it.url); if (it.image?.page) out.add(it.image.page); }
+  for (const x of city?.sources || []) if (x.url) out.add(x.url);
+  for (const e of o.extras || []) if (e.url) out.add(e.url);
   return out;
 }
 
@@ -96,7 +111,7 @@ module.exports = function register(router, ctx) {
     jobs.set(jobId, job);
     for (const [k, j] of jobs) if (Date.now() - j.at > 3600_000) jobs.delete(k);
     gen().generate({ city, lat: home?.lat, lon: home?.lon }, { onProgress: (p) => { job.searches = p.searches; } })
-      .then((guide) => { job.guideId = gen().save(guide); job.state = 'done'; job.counts = { transport: guide.transport.length, restaurants: guide.restaurants.length, places: guide.places.length }; console.log(`[Guide] Claude wrote a guide for ${city} (${job.searches} searches)`); })
+      .then(async (guide) => { job.state = 'running'; job.step = 'photos'; await gen().addImages(guide).catch(() => {}); job.guideId = gen().save(guide); job.state = 'done'; job.counts = { transport: guide.transport.length, restaurants: guide.restaurants.length, places: guide.places.length }; console.log(`[Guide] Claude wrote a guide for ${city} (${job.searches} searches)`); })
       .catch((err) => { job.state = 'error'; job.error = err.message; console.error(`[Guide] Generating ${city}: ${err.message}`); });
     res.json({ success: true, data: { job: jobId } });
   });
@@ -104,7 +119,7 @@ module.exports = function register(router, ctx) {
   router.get('/guide/generate/:job', requireAdmin, (req, res) => {
     const j = jobs.get(req.params.job);
     if (!j) return res.status(404).json({ success: false, error: 'No such job' });
-    res.json({ success: true, data: { state: j.state, city: j.city, searches: j.searches, guideId: j.guideId || null, counts: j.counts || null, error: j.error || null, seconds: Math.round((Date.now() - j.at) / 1000) } });
+    res.json({ success: true, data: { state: j.state, step: j.step || null, city: j.city, searches: j.searches, guideId: j.guideId || null, counts: j.counts || null, error: j.error || null, seconds: Math.round((Date.now() - j.at) / 1000) } });
   });
 
   router.delete('/guide/cities/:id', requireAdmin, (req, res) => {
@@ -147,8 +162,78 @@ module.exports = function register(router, ctx) {
         places: section('places', true),
         sources: city.sources,
         generated: city.generated || null,
+        // optional Google Maps Embed API key — embed keys are meant to be public (restrict it to this host)
+        mapsKey: o.mapsKey || null,
       },
     });
+  });
+
+  // "Add a place": OpenStreetMap search around the city (Nominatim — at most one request a second)
+  let lastSearch = 0;
+  router.get('/guide/search', async (req, res) => {
+    const q = String(req.query.q || '').trim().slice(0, 100);
+    if (q.length < 3) return res.json({ success: true, data: [] });
+    const cfg = readConfigFile();
+    const city = loadCity(cfg.onboarding?.city || 'katowice');
+    const home = homeOf(cfg);
+    const c = city?.center || (home ? [home.lat, home.lon] : null);
+    const wait = 1100 - (Date.now() - lastSearch);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    lastSearch = Date.now();
+    const params = new URLSearchParams({ format: 'jsonv2', q, limit: '6', addressdetails: '1', 'accept-language': String(req.query.lang || 'pl').slice(0, 2) });
+    if (c) { params.set('viewbox', `${c[1] - 0.45},${c[0] + 0.3},${c[1] + 0.45},${c[0] - 0.3}`); params.set('bounded', '1'); }
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+        headers: { 'User-Agent': 'LSH smart home - onboarding guide (https://github.com/dagoomax/lsh)' }, signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) throw new Error(`OpenStreetMap search: HTTP ${r.status}`);
+      const list = await r.json();
+      res.json({
+        success: true,
+        data: list.map((x, i) => {
+          const a = x.address || {};
+          const name = x.name || String(x.display_name || '').split(',')[0];
+          const lat = Number(x.lat), lon = Number(x.lon);
+          return {
+            id: `osm-${x.osm_type || 'x'}${x.osm_id || i}`, name,
+            address: [[a.road, a.house_number].filter(Boolean).join(' '), a.suburb || a.city_district, a.city || a.town || a.village].filter(Boolean).join(', '),
+            kind: x.type && x.type !== 'yes' ? String(x.type).replace(/_/g, ' ') : null, lat, lon,
+            km: home ? Math.round(km([home.lat, home.lon], [lat, lon]) * 10) / 10 : null,
+          };
+        }),
+      });
+    } catch (err) { res.status(502).json({ success: false, error: err.message }); }
+  });
+
+  // Can one of the guide's links show inside the popup? (X-Frame-Options /
+  // CSP frame-ancestors) — remembered for a day
+  const frameable = new Map();
+  router.get('/guide/frameable', async (req, res) => {
+    const url = String(req.query.url || '');
+    if (!guideUrls(readConfigFile()).has(url)) return res.status(400).json({ success: false, error: 'Not one of the guide’s links' });
+    const hit = frameable.get(url);
+    if (hit && Date.now() - hit.at < 86_400_000) return res.json({ success: true, data: { frameable: hit.ok } });
+    let ok = false;
+    try {
+      const r = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (LSH guide)' }, signal: AbortSignal.timeout(6000) });
+      const xfo = String(r.headers.get('x-frame-options') || '').toLowerCase();
+      const fa = /frame-ancestors([^;]*)/i.exec(r.headers.get('content-security-policy') || '')?.[1]?.trim() || '';
+      ok = r.ok && !xfo && (!fa || /(^|\s)\*(\s|$)/.test(fa));
+      r.body?.cancel?.();
+    } catch { ok = false; }
+    frameable.set(url, { ok, at: Date.now() });
+    res.json({ success: true, data: { frameable: ok } });
+  });
+
+  // QR code of a trip or one of the guide's links, so a guest takes it to their phone
+  router.get('/guide/qr', async (req, res) => {
+    const url = String(req.query.url || '');
+    const route = /^https:\/\/www\.google\.com\/maps\/(dir|search)\/\?api=1&[^\s<>"]{1,1800}$/.test(url);
+    if (!route && !guideUrls(readConfigFile()).has(url)) return res.status(400).json({ success: false, error: 'Only Google Maps links and the guide’s own links' });
+    try {
+      const svg = await require('qrcode').toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#0a1020', light: '#ffffff' } });
+      res.type('image/svg+xml').set('Cache-Control', 'private, max-age=600').send(svg);
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
   });
 
   router.post('/settings/onboarding', requireAdmin, (req, res) => {
@@ -177,6 +262,7 @@ module.exports = function register(router, ctx) {
       ...(lat != null ? { lat, lon } : {}),
       sections: Object.fromEntries(SECTIONS.map((k) => [k, b.sections?.[k] !== false])),
       ...(extras.length ? { extras } : {}),
+      ...(/^[A-Za-z0-9_-]{20,60}$/.test(String(b.mapsKey || '').trim()) ? { mapsKey: String(b.mapsKey).trim() } : {}),
     };
     try { writeConfigFile({ ...readConfigFile(), onboarding }); }
     catch (err) { return res.status(500).json({ success: false, error: err.message }); }

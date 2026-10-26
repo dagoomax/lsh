@@ -7,6 +7,8 @@
 //               metropoliagzm.pl (airport line AP), Metrorower
 //   restaurants MICHELIN Guide Poland 2026, Katowice: all four listed places
 //   places      the city's main sights; coordinates from OpenStreetMap
+//   images      Wikimedia Commons (free licences — author and licence shown
+//               on each photo, linked to its file page)
 // Fares, timetables and opening hours change — the card links to the sources
 // instead of quoting prices.
 //
@@ -44,6 +46,7 @@ module.exports = {
     },
     {
       id: 'airport', icon: 'plane', lat: 50.46999, lon: 19.0713,
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Pyrzowice_Katowice_Airport_noc.JPG/960px-Pyrzowice_Katowice_Airport_noc.JPG', page: 'https://commons.wikimedia.org/wiki/File:Pyrzowice_Katowice_Airport_noc.JPG', author: 'Frees', license: 'CC BY-SA 3.0' },
       name: { pl: 'Lotnisko Katowice (Pyrzowice)', en: 'Katowice Airport (Pyrzowice)' },
       text: {
         pl: 'Linia AP jedzie z Katowic Dworca (stanowisko AP) na lotnisko w ok. 45–60 min, co godzinę od rana do wieczora. Wystarczy zwykły bilet ZTM — najbezpieczniej 120-minutowy.',
@@ -53,6 +56,7 @@ module.exports = {
     },
     {
       id: 'train', icon: 'train', lat: 50.25961, lon: 19.01753,
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Katowice_stacja_bud._dworcowy.JPG/960px-Katowice_stacja_bud._dworcowy.JPG', page: 'https://commons.wikimedia.org/wiki/File:Katowice_stacja_bud._dworcowy.JPG', author: 'Marek Mróz', license: 'CC BY-SA 4.0' },
       name: { pl: 'Dworzec Katowice (pociągi)', en: 'Katowice station (trains)' },
       text: {
         pl: 'Koleje Śląskie po regionie, PKP Intercity do Krakowa (~1 h), Warszawy i Wrocławia. Dworzec jest w samym centrum, przy Galerii Katowickiej.',
@@ -126,6 +130,7 @@ module.exports = {
   places: [
     {
       id: 'strefa', lat: 50.26401, lon: 19.03398, tag: { pl: 'muzeum', en: 'museum' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Muzeum_%C5%9Al%C4%85skie_-_szyb_Warszawa.jpg/960px-Muzeum_%C5%9Al%C4%85skie_-_szyb_Warszawa.jpg', page: 'https://commons.wikimedia.org/wiki/File:Muzeum_%C5%9Al%C4%85skie_-_szyb_Warszawa.jpg', author: 'EwkaC', license: 'CC BY-SA 4.0' },
       name: { pl: 'Muzeum Śląskie (Strefa Kultury)', en: 'Silesian Museum (Culture Zone)' },
       text: {
         pl: 'Nowoczesne muzeum w dawnej kopalni Katowice, w dużej części pod ziemią: historia Górnego Śląska i polskie malarstwo. Wieża szybowa z punktem widokowym.',
@@ -135,6 +140,7 @@ module.exports = {
     },
     {
       id: 'nospr', lat: 50.2639, lon: 19.02867, tag: { pl: 'koncerty', en: 'concerts' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/010_NOSPR_Narodowa_Orkiestra_Symfoniczna_Polskiego_Radia_-_koncert_w_Katowicach.jpg/960px-010_NOSPR_Narodowa_Orkiestra_Symfoniczna_Polskiego_Radia_-_koncert_w_Katowicach.jpg', page: 'https://commons.wikimedia.org/wiki/File:010_NOSPR_Narodowa_Orkiestra_Symfoniczna_Polskiego_Radia_-_koncert_w_Katowicach.jpg', author: 'Marek Ślusarczyk (Tupungato)', license: 'CC BY 3.0' },
       name: { pl: 'NOSPR', en: 'NOSPR concert hall' },
       text: {
         pl: 'Siedziba Narodowej Orkiestry Symfonicznej Polskiego Radia, słynąca z akustyki. Bilety na weekend warto kupić wcześniej.',
@@ -144,6 +150,7 @@ module.exports = {
     },
     {
       id: 'spodek', lat: 50.26611, lon: 19.02533, tag: { pl: 'architektura', en: 'architecture' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Exterior_of_Spodek%2C_20240808.jpg/960px-Exterior_of_Spodek%2C_20240808.jpg', page: 'https://commons.wikimedia.org/wiki/File:Exterior_of_Spodek,_20240808.jpg', author: 'Abzeronow', license: 'CC BY 4.0' },
       name: { pl: 'Spodek i MCK', en: 'Spodek and the ICC' },
       text: {
         pl: 'Ikona miasta z lat 70. — hala w kształcie latającego spodka — obok Międzynarodowego Centrum Kongresowego z zielonym dachem, po którym można spacerować.',
@@ -153,6 +160,7 @@ module.exports = {
     },
     {
       id: 'nikiszowiec', lat: 50.24349, lon: 19.08169, tag: { pl: 'zabytek', en: 'heritage' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Nikiszowiec_Katowice_Danieluk.jpg/960px-Nikiszowiec_Katowice_Danieluk.jpg', page: 'https://commons.wikimedia.org/wiki/File:Nikiszowiec_Katowice_Danieluk.jpg', author: 'Robert Danieluk', license: 'CC BY-SA 4.0' },
       name: { pl: 'Nikiszowiec', en: 'Nikiszowiec' },
       text: {
         pl: 'Osiedle górnicze z początku XX w. z czerwonej cegły — zabytek historii. Obok Galeria Szyb Wilson w dawnej łaźni kopalnianej.',
@@ -162,6 +170,7 @@ module.exports = {
     },
     {
       id: 'mariacka', lat: 50.25739, lon: 19.02711, tag: { pl: 'wieczorem', en: 'evenings' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/At_Katowice_2024_078.jpg/960px-At_Katowice_2024_078.jpg', page: 'https://commons.wikimedia.org/wiki/File:At_Katowice_2024_078.jpg', author: 'Mike Peel (mikepeel.net)', license: 'CC BY-SA 4.0' },
       name: { pl: 'Ulica Mariacka i Rynek', en: 'Mariacka Street and the Market Square' },
       text: {
         pl: 'Deptak z kawiarniami i barami, najżywszy wieczorem, kilka minut od Rynku z fontanną i tramwajami.',
@@ -170,6 +179,7 @@ module.exports = {
     },
     {
       id: 'dolina', lat: 50.24775, lon: 19.04722, tag: { pl: 'natura', en: 'outdoors' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/KATOWICE%2C_AB._286.JPG/960px-KATOWICE%2C_AB._286.JPG', page: 'https://commons.wikimedia.org/wiki/File:KATOWICE,_AB._286.JPG', author: 'Antekbojar', license: 'CC0' },
       name: { pl: 'Dolina Trzech Stawów', en: 'Valley of Three Ponds' },
       text: {
         pl: 'Duży park ze stawami, ścieżkami rowerowymi i rolkowymi, latem miejsce koncertów i festiwali.',
@@ -178,6 +188,7 @@ module.exports = {
     },
     {
       id: 'parkslaski', lat: 50.28657, lon: 18.98707, tag: { pl: 'park', en: 'park' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Park_%C5%9Al%C4%85ski_-_Elka_-_09.08.2024_14-17-18.jpg/960px-Park_%C5%9Al%C4%85ski_-_Elka_-_09.08.2024_14-17-18.jpg', page: 'https://commons.wikimedia.org/wiki/File:Park_%C5%9Al%C4%85ski_-_Elka_-_09.08.2024_14-17-18.jpg', author: 'Zwiadowca21', license: 'CC BY-SA 4.0' },
       name: { pl: 'Park Śląski (Chorzów)', en: 'Silesian Park (Chorzów)' },
       text: {
         pl: 'Jeden z największych parków miejskich w Europie: kolejka linowa Elka, Śląski Ogród Zoologiczny, Planetarium Śląskie i Stadion Śląski. Tramwajem z centrum.',
@@ -187,6 +198,7 @@ module.exports = {
     },
     {
       id: 'planetarium', lat: 50.29073, lon: 18.993, tag: { pl: 'nauka', en: 'science' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Planetarium_%C5%9Alaski_Park_Nauki.jpg/960px-Planetarium_%C5%9Alaski_Park_Nauki.jpg', page: 'https://commons.wikimedia.org/wiki/File:Planetarium_%C5%9Alaski_Park_Nauki.jpg', author: 'Fotoomnia', license: 'CC BY-SA 4.0' },
       name: { pl: 'Planetarium Śląskie', en: 'Silesian Planetarium' },
       text: {
         pl: 'Największe planetarium w Polsce, po modernizacji — seanse pod kopułą i obserwatorium. W Parku Śląskim.',
@@ -196,6 +208,7 @@ module.exports = {
     },
     {
       id: 'katedra', lat: 50.25161, lon: 19.01911, tag: { pl: 'architektura', en: 'architecture' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Katowice_Archikatedra_Chrystusa_Kr%C3%B3la_fasada_2026.jpg/960px-Katowice_Archikatedra_Chrystusa_Kr%C3%B3la_fasada_2026.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_Archikatedra_Chrystusa_Kr%C3%B3la_fasada_2026.jpg', author: 'Adrian Tync', license: 'CC BY-SA 4.0' },
       name: { pl: 'Archikatedra Chrystusa Króla', en: 'Cathedral of Christ the King' },
       text: {
         pl: 'Jedna z największych katedr w Polsce, z monumentalną kopułą, kilka przystanków od centrum.',
@@ -204,6 +217,7 @@ module.exports = {
     },
     {
       id: 'michal', lat: 50.24096, lon: 19.0048, tag: { pl: 'zabytek', en: 'heritage' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Katowice_ko%C5%9Bci%C3%B3%C5%82_%C5%9Bw._Micha%C5%82a_Archanio%C5%82a_2026_%282%29.jpg/960px-Katowice_ko%C5%9Bci%C3%B3%C5%82_%C5%9Bw._Micha%C5%82a_Archanio%C5%82a_2026_%282%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_ko%C5%9Bci%C3%B3%C5%82_%C5%9Bw._Micha%C5%82a_Archanio%C5%82a_2026_(2).jpg', author: 'Adrian Tync', license: 'CC BY-SA 4.0' },
       name: { pl: 'Drewniany kościół św. Michała', en: 'Wooden Church of St Michael' },
       text: {
         pl: 'XVI-wieczny drewniany kościółek przeniesiony do Parku Kościuszki — dobry cel spaceru po parku.',
@@ -212,6 +226,7 @@ module.exports = {
     },
     {
       id: 'giszowiec', lat: 50.22167, lon: 19.06547, tag: { pl: 'zabytek', en: 'heritage' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Giszowiec_collage.jpg/960px-Giszowiec_collage.jpg', page: 'https://commons.wikimedia.org/wiki/File:Giszowiec_collage.jpg', author: 'Marek Mróz, Christophorus ex Silesia, Durski, Klaumich49', license: 'CC BY-SA 4.0' },
       name: { pl: 'Giszowiec', en: 'Giszowiec' },
       text: {
         pl: 'Osiedle-ogród dla górników z 1906–1910 r., z domkami wśród zieleni — spokojniejszy brat Nikiszowca.',

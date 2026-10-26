@@ -32,6 +32,7 @@ export default function OnboardingSection({ config, reload }) {
   const [lon, setLon] = useState(o.lon ?? '')
   const [sections, setSections] = useState({ transport: true, restaurants: true, places: true, ...(o.sections || {}) })
   const [extras, setExtras] = useState(o.extras || [])
+  const [mapsKey, setMapsKey] = useState(o.mapsKey || '')
   const [cities, setCities] = useState([])
   const save = useSettingsSave('/api/settings/onboarding')
 
@@ -39,7 +40,7 @@ export default function OnboardingSection({ config, reload }) {
   useEffect(() => { loadCities() }, [])
 
   const weather = config.openweather?.lat != null ? `${config.openweather.lat.toFixed?.(4) ?? config.openweather.lat}, ${config.openweather.lon.toFixed?.(4) ?? config.openweather.lon}` : null
-  const doSave = () => save.save({ enabled, city, welcome, lat, lon, sections, extras }).then(() => reload?.()).catch(() => {})
+  const doSave = () => save.save({ enabled, city, welcome, lat, lon, sections, extras, mapsKey }).then(() => reload?.()).catch(() => {})
   const cityLabel = (c) => c.generated ? tr('{name} — written by Claude, {date}', { name: c.name, date: new Date(c.generated.at).toLocaleDateString() }) : tr('{name} — checked guide', { name: c.name })
 
   return (
@@ -56,6 +57,8 @@ export default function OnboardingSection({ config, reload }) {
           <Field label="Home longitude" placeholder={config.openweather?.lon != null ? String(config.openweather.lon) : '19.0217'} value={lon} onChange={setLon}/>
         </div>
         <p className="stg-hint">{weather ? tr('Empty: distances are measured from the weather location ({x}).', { x: weather }) : tr('Set the home’s location to sort places by distance.')}</p>
+        <Field label="Google Maps Embed API key" hint="(optional)" value={mapsKey} onChange={setMapsKey} placeholder="AIza…"/>
+        <p className="stg-hint">{tr('The guide shows a Google map with your trip without a key. With a Maps Embed API key (free, Google Cloud Console — restrict it to this site’s address) the map and routes use Google’s official embed.')}</p>
         <h4 className="stg-subheading">{tr('Sections')}</h4>
         <Toggle label="Getting around" checked={sections.transport} onChange={(v) => setSections({ ...sections, transport: v })}/>
         <Toggle label="Restaurants" checked={sections.restaurants} onChange={(v) => setSections({ ...sections, restaurants: v })}/>
