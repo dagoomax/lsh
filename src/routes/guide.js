@@ -63,6 +63,7 @@ function view(item, lang, home, cityName) {
   const has = num(item.lat) != null && num(item.lon) != null;
   const where = has ? `${item.lat},${item.lon}` : item.address ? `${item.address}, ${cityName}` : null;
   if (where) out.map = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(has ? where : `${t(item.name)}, ${where}`)}`;
+  if (has) { out.lat = Number(item.lat); out.lon = Number(item.lon); }
   if (has && home) {
     const d = km([home.lat, home.lon], [Number(item.lat), Number(item.lon)]);
     out.km = Math.round(d * 10) / 10;
@@ -137,6 +138,8 @@ module.exports = function register(router, ctx) {
       data: {
         city: city.id, cityName,
         title: (city.title && (city.title[lang] || city.title.en)) || null,
+        skyline: city.skyline || null,
+        center: city.center,
         welcome: String(o.welcome || '').trim() || city.welcome[lang] || city.welcome.en,
         home: home ? { lat: home.lat, lon: home.lon, source: home.source, centreKm: Math.round(km([home.lat, home.lon], city.center) * 10) / 10 } : null,
         transport: section('transport', false),

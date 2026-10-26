@@ -17,6 +17,7 @@ module.exports = {
   name: { pl: 'Katowice', en: 'Katowice' },
   center: [50.2597, 19.0217], // Rynek
   title: { pl: 'Witaj w Katowicach', en: 'Welcome to Katowice' },
+  skyline: 'katowice', // the hero's drawn skyline (CityGuide.jsx)
   welcome: {
     pl: 'Witaj w Katowicach — stolicy Górnośląsko-Zagłębiowskiej Metropolii. Poniżej: jak się poruszać, gdzie zjeść i co zobaczyć w pobliżu.',
     en: 'Welcome to Katowice, the heart of the Upper Silesian–Zagłębie Metropolis. Below: getting around, where to eat and what to see nearby.',
