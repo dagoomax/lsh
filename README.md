@@ -128,7 +128,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), generic Modbus TCP/RTU, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, Tedee smart locks, Sofar Solar inverters, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Google Home / Nest speakers and displays, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect (incl. SuperLink sensors), UniFi Access, UniFi Play, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), generic Modbus TCP/RTU, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, Tedee smart locks, Sofar Solar inverters, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Google Home / Nest speakers and displays, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -299,7 +299,8 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `loxone` | No | Loxone Miniserver local API |
 | `satel` | No | Satel INTEGRA alarm panel |
 | `unifi` | No | UniFi Protect cameras and NVR |
-| `unifiAccess` | No | UniFi Access door controllers (lock/unlock, door status) |
+| `unifiAccess` | No | UniFi Access doors (unlock / lock now, lock rules, doorbell, lockdown / evacuation, live events) |
+| `unifiPlay` | No | UniFi Play audio (PowerAmp, PoE Audio Port): volume, input, now playing |
 | `shelly` | No | Shelly Gen1 / Gen2 devices |
 | `boneio` | No | BoneIO relay boards (MQTT auto-discovery) |
 | `dreame` | No | Dreame robot vacuums and air purifiers |
@@ -744,6 +745,7 @@ With an **`apiKey`** LSH also uses the rest of the Protect 6.x public API (`src/
 | **Live video** | Reads each camera's RTSPS stream (`/cameras/{id}/rtsps-stream`) and gives it to HomeKit and the RTSP proxy — UniFi cameras get live view, not just snapshots. A missing stream is created on the console (quality `streamQuality`, default `high`); `"createStreams": false` never changes the console. Protect's `?enableSrtp` suffix is dropped for ffmpeg. |
 | **Live device state** | `/subscribe/devices` WebSocket: sensor temperature / humidity / light / battery / open-close, floodlight and siren state update immediately (the 30 s poll stays as a safety net). Both WebSockets send a ping every 3 min — the console's proxy drops idle tunnels after 10 min. |
 | **Smart detections** | `smartDetectZone` / `smartDetectLine` events → per-camera `person`, `vehicle`, `animal`, `package` sensors (for each type the camera supports), back to 0 when the event ends (or after 60 s). |
+| **SuperLink sensors** | USL Entry, Motion, Environmental, glass break… paired to a SuperLink Gateway are ordinary `/sensors` (`"type": "USL-…"`). Besides the UP Sense readings they get `leak` (mount type *leak*, or a leak timestamp; `sensorWaterLeak` events; HomeKit leak sensor), `tamper` (`sensorTamper`) and `signal` (dBm). A leak-mounted Environmental reports no temperature / humidity / light, so those aren't registered. |
 | **Floodlights** | `/lights` → device with `switch` (forces the light on / off) and PIR `motion`; HomeKit light + motion sensor. |
 | **Sirens** | `/sirens` → `siren` toggle (play for `sirenDuration` s — 5, 10, 20 or 30, default 10 — / stop). |
 | **Relays** | `/relays` → one toggle per output (`output<n>`). |
@@ -760,9 +762,41 @@ Sirens and relays are marked **sensitive**: MCP bots can only switch them with *
 }
 ```
 
-Connects to **UniFi Access**'s local "Developer API" (a separate product/token from UniFi Protect above, even on the same console) — fixed port `12445`, authenticated with a single Bearer token. Generate one in the Access console: **Settings → Security → Advanced → API Token**.
+Connects to **UniFi Access**'s local Developer API (a separate token from UniFi Protect above, even on the same console): port `12445`, one Bearer token. Create it in the Access app: **Settings → General → Advanced → API Token** (older versions: Settings → Security → Advanced), with the door, device and system-log permissions. Settings → **UniFi Access** saves it and starts the module live (`src/unifi-access-client.js`, its own process).
 
-Discovers every door and registers it as a device with two sensors: `contact` (door position: open/closed) and `lock` (current lock state, controllable — exposed to HomeKit as a lock). Only **unlock** is a real remote action; UniFi Access doors re-lock themselves on their own configured schedule/timeout, so there is no "lock now" call in the Developer API — sending `lock` is a no-op and the next poll (30 s) reconciles the dashboard back to the door's true state.
+Every door becomes a device `unifiAccess/<door id>`:
+
+| Sensor | What it does |
+|---|---|
+| `contact` | Door position sensor (DPS) open / closed; empty when the door has none |
+| `lock` | Lock relay. **unlock** = one remote unlock (logged as actor "LSH"), **lock** = `lock_now` (ends a temporary unlock and the unlock schedule). HomeKit lock |
+| `doorbell` | 1 while an intercom / reader on that door is ringing (`access.remote_view`), back to 0 when it's answered, declined or times out |
+| `keepUnlocked` / `keepLocked` | Lock rules `keep_unlock` / `keep_lock`; off = `reset` |
+| `unlockFor` | Unlock for N minutes (1–480, lock rule `custom`) |
+| `setRule` | Any lock rule by name: `keep_lock`, `keep_unlock`, `custom:15`, `reset`, `lock_early`, `lock_now` |
+| `lockRule`, `lockRuleEnds` | The current rule (`schedule`, `custom`, …) and when it ends |
+| `lastAccess` | Who opened it last and how ("Anna · nfc") |
+
+`unifiAccess/system` has `lockdown` and `evacuation` (all doors at once — turning one on releases the other), `doors`, `openDoors` and `readers`. Doors and the system device are **sensitive** (MCP bots need *Allow locks, alarm, gates and doors*). Rings, door position and lock changes, access logs and emergency changes arrive over the notifications WebSocket (`/api/v1/developer/devices/notifications`, Access 1.20.11+); a 30 s poll reconciles everything. Lock rules and emergency need Access 1.24.6+. Tested against `node scripts/unifi-access-simulator.js` (`"host": "127.0.0.1:12445", "apiKey": "simtoken"`; `test/unifi-access.test.js`), not yet against a real console.
+
+### `unifiPlay`
+
+```json
+"unifiPlay": {
+  "host": "192.168.1.1",
+  "apiKey": "",
+  "devices": [{ "host": "192.168.1.60", "name": "Patio" }],
+  "mqtt": { "certFile": "/home/lsh/unifi-play/client.crt", "keyFile": "/home/lsh/unifi-play/client.key" },
+  "pollSeconds": 30
+}
+```
+
+**UniFi Play**: Ubiquiti's audio line (PowerAmp `UPL-AMP`, PoE Audio Port `UPL-PORT`). Ubiquiti publishes no API for it. LSH uses the two channels the Play app itself uses (protocol as documented by the MIT-licensed ha-unifiplay project):
+
+- **Console** (`host` + `apiKey`: the UniFi OS API key, Control Plane → Integrations): `GET /proxy/apollo/api/v1/devices` gives each device's name, model, firmware, volume, input, streaming service and now playing. Read-only, polled every `pollSeconds`.
+- **Each device's MQTT broker** (TLS, port 8883): live state and control: `volume` (0–100), `muted` (volume 0 / restore), `source` (`streaming`, `speakers` = HDMI eARC, `lineIn`, and on the Port also `spdif`, `usb`), `player` (`play`, `pause`, `next`, `prev`) and `locate`. The broker accepts only a client certificate signed by Ubiquiti's CA. **LSH does not ship one**: `mqtt.certFile` / `mqtt.keyFile` point at the files you provide. Without them the devices are read-only. `devices` adds speakers by IP (no console, or a Port the console lists without an address); they need the certificate.
+
+Devices are `unifiPlay/<mac>` with `online`, `playing`, `volume`, `muted`, `source`, `service`, `title`, `artist`, `album`. To play announcements or chimes on them, add them as AirPlay speakers (`airplay`). Tested with a fake console and MQTT broker (`test/unifi-play.test.js`), not on real hardware; a firmware update can change the protocol.
 
 ### `shelly`
 

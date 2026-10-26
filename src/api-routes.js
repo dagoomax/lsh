@@ -46,6 +46,7 @@ const ROUTE_GROUPS = [
   require('./routes/smartthings'),
   require('./routes/satel-settings'),
   require('./routes/unifi-protect'),
+  require('./routes/unifi-access'),
   require('./routes/vrm'),
   require('./routes/backup'),
   require('./routes/homekit'),

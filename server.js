@@ -110,14 +110,6 @@ async function main() {
     }
   }
 
-  if (config.unifiAccess?.host && config.unifiAccess?.apiKey) {
-    const UnifiAccessClient = tryRequire('./src/unifi-access-client');
-    if (UnifiAccessClient) {
-      const unifiAccess = new UnifiAccessClient(config, store, sensorRegistry);
-      unifiAccess.start().catch((err) => console.error(`[UniFi Access] Start failed: ${err.message}`));
-    }
-  }
-
   // Always construct — the client reads cameras from config.json on demand, so
   // cameras added via Settings apply live without a restart. AI object
   // detection (start()) is a no-op until there's at least one camera.

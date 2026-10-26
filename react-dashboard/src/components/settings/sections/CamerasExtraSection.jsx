@@ -29,6 +29,7 @@ function UniFiCard({ unifi, reload }) {
       <Field label={gt('s.unifi_apikey', 'API Key')} hint={gt('s.unifi_apikey_hint', '(preferred — UniFi OS → Control Plane → API Keys)')} type="password" value={apiKey} onChange={setApiKey}/>
       <Field label={gt('s.unifi_user', 'Username')} hint={gt('s.unifi_user_hint', '(fallback when no API key)')} value={username} onChange={setUsername}/>
       <Field label={gt('s.unifi_pass', 'Password')} type="password" value={password} onChange={setPassword}/>
+      <p className="stg-hint">{tr('SuperLink sensors (entry, motion, environmental and leak, glass break) paired to a SuperLink Gateway appear like the other Protect sensors: open/closed, motion, leak, temperature, humidity, light, battery, tamper and signal.')}</p>
       <div className="stg-actions">
         <Button variant="secondary" busy={test.busy} onClick={() => test.save(payload())}>{gt('common.test', 'Test Connection')}</Button>
         <Button variant="primary" busy={save.busy} onClick={() => save.save(payload()).then(reload)}>{gt('common.save', 'Save')}</Button>

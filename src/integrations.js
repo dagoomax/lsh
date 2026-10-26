@@ -58,6 +58,10 @@ module.exports = [
   { file: 'ecovacs-client', label: 'Ecovacs', when: (config) => config.ecovacs?.email },
   // Dahua NVRs / IP cameras — local CGI API; exposed for /api/cameras and /api/dahua/*
   { file: 'dahua-client', label: 'Dahua', expose: 'dahua', when: (config) => config.dahua?.devices?.length },
+  // UniFi Access doors (local Developer API, port 12445) — see src/unifi-access-client.js
+  { file: 'unifi-access-client', label: 'UniFi Access', when: (config) => config.unifiAccess?.host && config.unifiAccess?.apiKey },
+  // UniFi Play audio (PowerAmp, PoE Audio Port) — console Play app + per-speaker MQTT; see src/unifi-play-client.js
+  { file: 'unifi-play-client', label: 'UniFi Play', when: (config) => (config.unifiPlay?.host && config.unifiPlay?.apiKey) || config.unifiPlay?.devices?.length },
   { file: 'waveshare-modbus-client', label: 'Waveshare', when: (config) => config.waveshare?.devices?.length },
   // Start Tedee Bridge client if configured — local REST API, no cloud
   { file: 'tedee-client', label: 'Tedee', when: (config) => config.tedee?.devices?.length },

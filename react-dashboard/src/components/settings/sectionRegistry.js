@@ -58,11 +58,12 @@ export const CATEGORIES = [
     { id: 'jablotron', title: 'Jablotron', keywords: ['jablotron', 'ja-100', 'ja100', 'ja-100+', 'f-link', 'alarm', 'alarm panel', 'sia', 'dc-09', 'arc', 'centrala', 'sekcja'] },
     { id: 'tedee', title: 'Tedee Smart Lock', keywords: ['tedee', 'lock', 'door', 'keypad', 'pin', 'zamek'] },
     { id: 'nuki', title: 'Nuki', keywords: ['nuki', 'smart lock', 'opener', 'lock', 'door', 'keypad', 'pin', 'zamek', 'domofon'] },
+    { id: 'unifi-access', title: 'UniFi Access', keywords: ['unifi', 'access', 'ubiquiti', 'ua hub', 'intercom', 'reader', 'door', 'drzwi', 'lock', 'zamek', 'domofon', 'lockdown', 'evacuation'] },
     { id: 'ttlock', title: 'TTLock', keywords: ['ttlock', 'sciener', 'lock', 'smart lock', 'gateway', 'passcode', 'pin', 'zamek', 'door'] },
   ] },
   { id: 'cameras', label: 'Cameras', sections: [
     { id: 'manualcams', title: 'Cameras', keywords: ['rtsp', 'onvif', 'camera', 'stream'] },
-    { id: 'cameras-extra', title: 'UniFi Protect & FFmpeg RTSP', keywords: ['unifi', 'protect', 'ffmpeg', 'rtsp'] },
+    { id: 'cameras-extra', title: 'UniFi Protect & FFmpeg RTSP', keywords: ['unifi', 'protect', 'ffmpeg', 'rtsp', 'superlink', 'usl', 'sensor', 'czujnik', 'leak', 'zalanie'] },
     { id: 'reolink', title: 'Reolink', keywords: ['reolink'] },
     { id: 'ezviz', title: 'EZVIZ', keywords: ['ezviz', 'hikvision', 'camera', 'doorbell', 'kamera', 'dzwonek'] },
     { id: 'mobotix', title: 'MOBOTIX', keywords: ['mobotix'] },
@@ -74,6 +75,7 @@ export const CATEGORIES = [
   ] },
   { id: 'media', label: 'Media & Intercom', sections: [
     { id: 'media-all', title: 'Denon, Sony, Sonos & Google Home', keywords: ['denon', 'marantz', 'sony', 'bravia', 'tv', 'sonos', 'google home', 'chromecast', 'nest'] },
+    { id: 'unifi-play', title: 'UniFi Play', keywords: ['unifi', 'play', 'ubiquiti', 'poweramp', 'power amp', 'poe audio port', 'audio', 'speaker', 'głośnik', 'amplifier', 'wzmacniacz', 'multiroom'] },
     { id: 'airplay', title: 'AirPlay Speakers', keywords: ['airplay', 'homepod', 'apple tv', 'speaker'] },
     { id: 'lgwebos', title: 'LG webOS TVs', keywords: ['lg', 'webos', 'tv', 'television', 'telewizor', 'remote'] },
     { id: 'spotify', title: 'Spotify', keywords: ['spotify', 'music', 'playlist', 'playback'] },

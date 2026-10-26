@@ -71,6 +71,26 @@ test('UniFi Protect: smart detections, live device stream, ring', { skip: !hasOp
   } finally { c.stop(); await sim.close() }
 });
 
+test('UniFi Protect: SuperLink sensors (leak, tamper, signal)', { skip: !hasOpenssl && 'needs openssl' }, async () => {
+  const { sim, c, v, dev } = await setup();
+  try {
+    assert.deepEqual(dev('usl-bath').sensors.map((s) => s.path), ['leak', 'battery', 'tamper', 'signal'], 'leak mount: no climate readings');
+    assert.ok(dev('usl-bath').homekit.includes('leak'));
+    assert.equal(dev('usl-bath').model, 'USL Environmental');
+    assert.deepEqual(dev('usl-door').sensors.map((s) => s.path), ['contact', 'battery', 'tamper', 'signal']);
+    assert.equal(v('usl-bath/leak'), 0);
+    assert.equal(v('usl-bath/signal'), -38);
+    sim.event({ type: 'add', item: { id: 'w1', type: 'sensorWaterLeak', device: 'usl-bath', start: 1 } });
+    await until(() => v('usl-bath/leak') === 1);
+    sim.device({ type: 'update', item: { id: 'usl-bath', modelKey: 'sensor', leakDetectedAt: null } });
+    await until(() => v('usl-bath/leak') === 0);
+    sim.device({ type: 'update', item: { id: 'usl-door', modelKey: 'sensor', tamperingDetectedAt: 1758158543073, isOpened: true } });
+    await until(() => v('usl-door/tamper') === 1 && v('usl-door/contact') === 1);
+    sim.event({ type: 'add', item: { id: 't1', type: 'sensorTamper', device: 'usl-door', start: 1, end: 2 } });
+    await until(() => v('usl-door/tamper') === 0);
+  } finally { c.stop(); await sim.close() }
+});
+
 test('UniFi Protect: floodlights, sirens, relays, Alarm Manager webhook', { skip: !hasOpenssl && 'needs openssl' }, async () => {
   const { sim, registry, c, v, dev } = await setup({ sirenDuration: 20 });
   try {

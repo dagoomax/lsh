@@ -141,6 +141,7 @@
     "src/routes/ttlock.js",
     "src/routes/tuya-sonoff.js",
     "src/routes/ui-preferences.js",
+    "src/routes/unifi-access.js",
     "src/routes/unifi-protect.js",
     "src/routes/usb-radio.js",
     "src/routes/vclu.js",
@@ -201,17 +202,6 @@
       "deps": {
         "ws": "^7.5.11"
       }
-    },
-    "unifi-access": {
-      "entry": "src/unifi-access-client.js",
-      "configKeys": [
-        "unifiAccess"
-      ],
-      "when": "(config.unifiAccess?.host && config.unifiAccess?.apiKey)",
-      "files": [
-        "src/unifi-access-client.js"
-      ],
-      "deps": {}
     },
     "yale": {
       "entry": "src/yale-client.js",
@@ -893,6 +883,32 @@
         "src/dahua-client.js",
         "src/http-digest.js",
         "src/mjpeg-relay.js"
+      ],
+      "deps": {}
+    },
+    "unifi-access": {
+      "entry": "src/unifi-access-client.js",
+      "configKeys": [
+        "unifiAccess"
+      ],
+      "when": "(config.unifiAccess?.host && config.unifiAccess?.apiKey)",
+      "files": [
+        "src/polling-client.js",
+        "src/unifi-access-client.js"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
+    },
+    "unifi-play": {
+      "entry": "src/unifi-play-client.js",
+      "configKeys": [
+        "unifiPlay"
+      ],
+      "when": "((config.unifiPlay?.host && config.unifiPlay?.apiKey) || config.unifiPlay?.devices?.length)",
+      "files": [
+        "src/polling-client.js",
+        "src/unifi-play-client.js"
       ],
       "deps": {}
     },

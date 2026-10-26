@@ -31,6 +31,8 @@ const SIREN_DURATIONS = [5, 10, 20, 30];
  *    `url` HomeKit / the RTSP proxy use; created on the console when missing
  *    unless `unifi.createStreams === false` (quality `unifi.streamQuality`, default high)
  *  - `/subscribe/devices` WebSocket — sensor / light / siren / relay state live
+ *  - SuperLink sensors (USL-*, via the SuperLink Gateway) are ordinary Protect
+ *    sensors here: contact / motion / leak / climate / tamper / signal
  *  - smart detections (`smartDetectZone` / `smartDetectLine` events) → per-camera
  *    `person`, `vehicle`, `animal`, `package` sensors
  *  - floodlights (`/lights`, on/off), sirens (`/sirens`, play / stop) and relay
@@ -328,6 +330,12 @@ class UnifiProtectClient extends EventEmitter {
       case 'sensorAlarm':
         if (known) this.store.update(`${k}/alarm`, ev.end ? 0 : 1);
         break;
+      case 'sensorWaterLeak':
+        if (known) this.store.update(`${k}/leak`, ev.end ? 0 : 1);
+        break;
+      case 'sensorTamper':
+        if (known) this.store.update(`${k}/tamper`, ev.end ? 0 : 1);
+        break;
       case 'smartDetectZone':
       case 'smartDetectLine':
         if (!known) return;
@@ -512,38 +520,50 @@ class UnifiProtectClient extends EventEmitter {
     });
   }
 
+  // UP Sense (Bluetooth) and SuperLink sensors (USL-Entry, USL-Motion,
+  // USL-Environmental, glass break, all-in-one… — "type": "USL-…", same
+  // modelKey "sensor", behind a SuperLink Gateway) share one shape. Which
+  // readings a sensor has depends on its model and mountType: "leak" turns an
+  // Environmental into a water sensor (temperature/humidity/light then stop
+  // reporting), door/window/garage make it a contact.
   async _discoverSensors() {
     const sensors = await this._get('/sensors');
     for (const s of sensors) {
       const sensorDefs = [];
       const hkTypes    = [];
+      const add = (def, hk) => { sensorDefs.push(def); if (hk) hkTypes.push(hk); };
+      const superlink = _isSuperLink(s);
+      const leakMount = s.mountType === 'leak';
 
-      if ((s.mountType && s.mountType !== 'none') || s.isOpened !== undefined) {
-        sensorDefs.push({ path: 'contact',     name: 'Contact',     format: 'on-off',      homekit: 'contact' });
-        hkTypes.push('contact');
+      if (CONTACT_MOUNTS.includes(s.mountType) || typeof s.isOpened === 'boolean') {
+        add({ path: 'contact',     name: 'Contact',     format: 'on-off',      homekit: 'contact' }, 'contact');
       }
-      if (s.isMotionDetected !== undefined) {
-        sensorDefs.push({ path: 'motion',      name: 'Motion',      format: 'on-off',      homekit: 'motion' });
-        hkTypes.push('motion');
+      if (s.isMotionDetected !== undefined && !leakMount) {
+        add({ path: 'motion',      name: 'Motion',      format: 'on-off',      homekit: 'motion' }, 'motion');
       }
-      if (s.stats?.temperature != null) {
-        sensorDefs.push({ path: 'temperature', name: 'Temperature', format: 'temperature', homekit: 'temperature' });
-        hkTypes.push('temperature');
+      if (leakMount || s.leakDetectedAt != null || s.externalLeakDetectedAt != null) {
+        add({ path: 'leak',        name: 'Leak',        format: 'on-off',      homekit: 'leak' }, 'leak');
       }
-      if (s.stats?.humidity != null) {
-        sensorDefs.push({ path: 'humidity',    name: 'Humidity',    format: 'percent',     homekit: 'humidity' });
-        hkTypes.push('humidity');
+      if (s.stats?.temperature != null && !leakMount) {
+        add({ path: 'temperature', name: 'Temperature', format: 'temperature', homekit: 'temperature' }, 'temperature');
       }
-      if (s.stats?.light != null) {
-        sensorDefs.push({ path: 'lux',         name: 'Light',       format: 'number' });
+      if (s.stats?.humidity != null && !leakMount) {
+        add({ path: 'humidity',    name: 'Humidity',    format: 'percent',     homekit: 'humidity' }, 'humidity');
+      }
+      if (s.stats?.light != null && !leakMount) {
+        add({ path: 'lux',         name: 'Light',       format: 'number' });
       }
       if (this._battery(s) != null) {
-        sensorDefs.push({ path: 'battery',     name: 'Battery',     format: 'percent',     homekit: 'battery-level' });
-        hkTypes.push('battery-level');
+        add({ path: 'battery',     name: 'Battery',     format: 'percent',     homekit: 'battery-level' }, 'battery-level');
       }
       if (s.alarmSettings) {
-        sensorDefs.push({ path: 'alarm',       name: 'Alarm',       format: 'alarm',       homekit: 'smoke' });
-        hkTypes.push('smoke');
+        add({ path: 'alarm',       name: 'Alarm',       format: 'alarm',       homekit: 'smoke' }, 'smoke');
+      }
+      if (superlink || s.tamperingDetectedAt !== undefined) {
+        add({ path: 'tamper',      name: 'Tamper',      format: 'on-off' });
+      }
+      if (superlink && _signal(s) != null) {
+        add({ path: 'signal',      name: 'Signal',      format: 'number', unit: 'dBm' });
       }
 
       if (sensorDefs.length === 0) continue;
@@ -553,11 +573,13 @@ class UnifiProtectClient extends EventEmitter {
         type:     'unifi',
         instance: s.id,
         label:    s.name || s.id,
+        model:    s.marketName || s.type || undefined,
         icon:     _sensorIcon(s),
         color:    'blue',
         sensors:  sensorDefs,
         homekit:  hkTypes,
       };
+      if (superlink) device.superlink = true;
       this.devices.push(device);
       this.sensorRegistry.registerDevice(device);
     }
@@ -591,6 +613,13 @@ class UnifiProtectClient extends EventEmitter {
     if (s.stats?.light?.value       != null)   this.store.update(`${k}/lux`,         s.stats.light.value);
     if (this._battery(s)            != null)   this.store.update(`${k}/battery`,     this._battery(s));
     if (s.alarmSettings)                       this.store.update(`${k}/alarm`,       s.alarmTriggeredAt ? 1 : 0);
+    const has = (p) => this.devices.some(d => d.instance === s.id && d.sensors.some(x => x.path === p));
+    // Leak / tamper are timestamps of the last detection — cleared (null) once dry / closed again
+    if ((s.leakDetectedAt !== undefined || s.externalLeakDetectedAt !== undefined) && has('leak')) {
+      this.store.update(`${k}/leak`, s.leakDetectedAt || s.externalLeakDetectedAt ? 1 : 0);
+    }
+    if (s.tamperingDetectedAt !== undefined && has('tamper')) this.store.update(`${k}/tamper`, s.tamperingDetectedAt ? 1 : 0);
+    if (_signal(s) != null && has('signal')) this.store.update(`${k}/signal`, _signal(s));
   }
 
   _battery(s) {
@@ -657,7 +686,18 @@ class UnifiProtectClient extends EventEmitter {
   }
 }
 
+const CONTACT_MOUNTS = ['door', 'window', 'garage'];
+
+const _isSuperLink = (s) => /^USL[-_]/i.test(s.type || '') || /SuperLink|^USL /i.test(s.marketName || '');
+
+// SuperLink sensors report their radio link in the same field as the UP Sense's Bluetooth one
+function _signal(s) {
+  const v = s.bluetoothConnectionState?.signalStrength;
+  return typeof v === 'number' ? v : null;
+}
+
 function _sensorIcon(s) {
+  if (s.mountType === 'leak')              return '💧';
   if (s.mountType === 'door')              return '🚪';
   if (s.mountType === 'window')            return '🪟';
   if (s.stats?.temperature != null)        return '🌡';
