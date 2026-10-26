@@ -141,7 +141,7 @@ function RemoteDevices({ id, isAdmin }) {
               <div className="stg-mod-main" style={{ minWidth: 0 }}>
                 <div className="stg-mod-name">{d.label}</div>
                 <div className="stg-hint stg-mod-meta" style={{ overflowWrap: 'anywhere' }}>
-                  {[d.room, ...values.map((x) => `${x.name || x.label || x.path}: ${x.value}${x.unit ? ` ${x.unit}` : ''}`)].filter(Boolean).join(' · ') || d.key}
+                  {[d.room, ...values.map((x) => `${x.name || x.label || x.path}: ${typeof x.value === 'number' ? +x.value.toFixed(2) : x.value}${x.unit ? ` ${x.unit}` : ''}`)].filter(Boolean).join(' · ') || d.key}
                 </div>
               </div>
               {sw && (isAdmin
