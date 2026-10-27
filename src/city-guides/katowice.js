@@ -265,6 +265,7 @@ module.exports = {
     // bars: OSM coordinates, websites checked Oct 2026
     {
       id: 'browariat', bar: true, lat: 50.25612, lon: 19.0276, address: 'ul. Francuska 11', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Katowice_Francuska_11.jpg/960px-Katowice_Francuska_11.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_Francuska_11.jpg', author: 'Michał Bulsa', license: 'CC BY-SA 4.0', caption: { pl: 'kamienica przy Francuskiej 11', en: 'the building at Francuska 11' } },
       name: { pl: 'Browariat', en: 'Browariat' },
       kind: { pl: 'piwo kraftowe', en: 'craft beer' },
       text: {
@@ -275,6 +276,7 @@ module.exports = {
     },
     {
       id: 'bialamalpa', bar: true, lat: 50.25939, lon: 19.01644, address: 'ul. 3 Maja 38', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Katowice_3_Maja_38_2024.jpg/960px-Katowice_3_Maja_38_2024.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_3_Maja_38_2024.jpg', author: 'Adrian Tync', license: 'CC BY-SA 4.0', caption: { pl: 'kamienica przy 3 Maja 38', en: 'the building at 3 Maja 38' } },
       name: { pl: 'Biała Małpa', en: 'Biała Małpa' },
       kind: { pl: 'multitap', en: 'multitap' },
       text: {
@@ -285,6 +287,7 @@ module.exports = {
     },
     {
       id: 'upojeni', bar: true, lat: 50.25824, lon: 19.02197, address: 'ul. Świętego Jana 10', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Szklana_Kamienica_Katowice_04.JPG/960px-Szklana_Kamienica_Katowice_04.JPG', page: 'https://commons.wikimedia.org/wiki/File:Szklana_Kamienica_Katowice_04.JPG', author: 'W_Brula', license: 'CC BY-SA 4.0', caption: { pl: 'kamienica przy Św. Jana 10', en: 'the building at Św. Jana 10' } },
       name: { pl: 'Upojeni', en: 'Upojeni' },
       kind: { pl: 'multitap', en: 'multitap' },
       text: {
@@ -295,6 +298,7 @@ module.exports = {
     },
     {
       id: 'absurdalna', bar: true, lat: 50.25842, lon: 19.02293, address: 'ul. Staromiejska 9', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Staromiejska_Street_in_Katowice%2C_2024_%2801%29.jpg/960px-Staromiejska_Street_in_Katowice%2C_2024_%2801%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:Staromiejska_Street_in_Katowice,_2024_(01).jpg', author: 'Bahnfrend', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Staromiejska', en: 'Staromiejska Street' } },
       name: { pl: 'Absurdalna', en: 'Absurdalna' },
       kind: { pl: 'multitap i kuchnia', en: 'multitap and kitchen' },
       text: {
@@ -305,6 +309,7 @@ module.exports = {
     },
     {
       id: 'oldcuban', bar: true, lat: 50.2562, lon: 19.02435, address: 'ul. Wojewódzka 26', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Katowice%2C_Wojew%C3%B3dzka_26_-_fotopolska.eu_%28329092%29.jpg/960px-Katowice%2C_Wojew%C3%B3dzka_26_-_fotopolska.eu_%28329092%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice,_Wojew%C3%B3dzka_26_-_fotopolska.eu_(329092).jpg', author: 'kodens79', license: 'CC BY-SA 2.0', caption: { pl: 'kamienica przy Wojewódzkiej 26', en: 'the building at Wojewódzka 26' } },
       name: { pl: 'Old Cuban', en: 'Old Cuban' },
       kind: { pl: 'bar koktajlowy, rum', en: 'cocktail bar, rum' },
       text: {
@@ -315,6 +320,7 @@ module.exports = {
     },
     {
       id: 'punkt', bar: true, lat: 50.2575, lon: 19.0269, address: 'ul. Mariacka 16', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Katowice_Mariacka_noc%C4%85_2026.jpg/960px-Katowice_Mariacka_noc%C4%85_2026.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_Mariacka_noc%C4%85_2026.jpg', author: 'Adrian Tync', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Mariacka nocą', en: 'Mariacka Street at night' } },
       name: { pl: 'Pünkt Widzenia', en: 'Pünkt Widzenia' },
       kind: { pl: 'bar koktajlowy z ogródkiem', en: 'cocktail bar with a garden' },
       text: {
