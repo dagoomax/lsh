@@ -9,7 +9,7 @@
 //               then local favourites from Katowice food guides
 //   places      the city's main sights; coordinates from OpenStreetMap
 //   activities  things to do nearby (theme park, zoo, cable car, mines, a match)
-//   shopping    malls, tourist information, and the Sunday trading rule
+//   shopping    malls, independent shops, tourist information, the Sunday trading rule
 //   images      Wikimedia Commons (free licences — author and licence shown
 //               on each photo, linked to its file page); where Commons has no
 //               photo of a restaurant itself, its street, with a caption saying so
@@ -470,6 +470,45 @@ module.exports = {
         en: 'A modern mall in the south of the city, with a cinema and a food court.',
       },
       url: 'https://liberokatowice.pl/',
+    },
+    // independent shops: OSM coordinates; checked Oct 2026
+    {
+      id: 'lepshe', lat: 50.25795, lon: 19.02167, address: 'ul. Świętego Jana 14', tag: { pl: 'niezależny', en: 'independent' },
+      name: { pl: 'Lepshe Concept Store', en: 'Lepshe Concept Store' },
+      kind: { pl: 'concept store, polskie marki', en: 'concept store, Polish brands' },
+      text: {
+        pl: 'Przy Rynku: wybrane polskie marki — torebki, biżuteria, kosmetyki, świece i ceramika. Dobre miejsce na prezent.',
+        en: 'Just off the Rynek: hand-picked Polish brands, from bags and jewellery to cosmetics, candles and ceramics. A good place for a gift.',
+      },
+      url: 'https://lepshe.pl/',
+    },
+    {
+      id: 'listopad51', lat: 50.25579, lon: 19.02640, address: 'ul. Wojewódzka 25', tag: { pl: 'niezależny', en: 'independent' },
+      name: { pl: 'Listopad51', en: 'Listopad51' },
+      kind: { pl: 'sklep płytowy', en: 'record shop' },
+      text: {
+        pl: 'Rodzinny sklep z płytami: głównie winyle i CD, są też kasety. Właściciele organizują giełdy płytowe w całej Polsce.',
+        en: 'A family-run record shop: mostly vinyl and CDs, cassettes too. The owners run record fairs across Poland.',
+      },
+      url: 'https://portalwinylowy.pl/sklepy-plytowe/listopad51',
+    },
+    {
+      id: 'komis-plytowy', lat: 50.26029, lon: 19.01728, address: 'ul. 3 Maja 19', tag: { pl: 'niezależny', en: 'independent' },
+      name: { pl: 'Komis Płytowy', en: 'Komis Płytowy' },
+      kind: { pl: 'płyty z drugiej ręki', en: 'second-hand records' },
+      text: {
+        pl: 'Tysiące używanych winyli i trochę nowych, single i pocztówki dźwiękowe — sklep do przekopania na spokojnie.',
+        en: 'Thousands of used records and some new ones, singles and flexi-disc postcards: a shop for a long dig.',
+      },
+    },
+    {
+      id: 'lumpiary', lat: 50.25539, lon: 19.01946, address: 'ul. Kochanowskiego 11', tag: { pl: 'niezależny', en: 'independent' },
+      name: { pl: 'Śląskie Lumpiary', en: 'Śląskie Lumpiary' },
+      kind: { pl: 'vintage i second hand', en: 'vintage and second-hand' },
+      text: {
+        pl: 'Odzież vintage i z drugiej ręki, kilka minut od Rynku.',
+        en: 'Vintage and second-hand clothes, a few minutes from the Rynek.',
+      },
     },
     {
       id: 'cit', lat: 50.25865, lon: 19.02129, address: 'Rynek 11', tag: { pl: 'informacja', en: 'information' },
