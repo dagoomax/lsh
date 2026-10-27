@@ -18,3 +18,6 @@ macos-client/build/
 # Not for the repo: this has held third-party confidential material.
 Claude outputs/
 config.json.bak*
+
+# camera clips (src/camera-recorder.js)
+recordings/

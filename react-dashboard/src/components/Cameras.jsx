@@ -246,6 +246,72 @@ function CameraCard({ cam, onOpen }) {
   )
 }
 
+// ── Recordings (src/camera-recorder.js): day chips, clip thumbnails, inline player ──
+function CameraRecordings({ slug }) {
+  const [days, setDays] = useState([])
+  const [day, setDay] = useState('')
+  const [clips, setClips] = useState([])
+  const [playing, setPlaying] = useState(null)
+  const [msg, setMsg] = useState('')
+  const base = `/api/recordings/${encodeURIComponent(slug)}`
+  const loadDays = useCallback(() => fetch(base, { credentials: 'include' }).then(r => r.json())
+    .then(j => { const d = j.data || []; setDays(d); setDay(cur => (cur && d.includes(cur) ? cur : d[0] || '')) }).catch(() => {}), [base])
+  const loadClips = useCallback(() => { if (day) fetch(`${base}/${day}`, { credentials: 'include' }).then(r => r.json()).then(j => setClips(j.data || [])).catch(() => {}) }, [base, day])
+  useEffect(() => { loadDays(); const t = setInterval(loadDays, 15000); return () => clearInterval(t) }, [loadDays])
+  useEffect(() => { loadClips(); const t = setInterval(loadClips, 15000); return () => clearInterval(t) }, [loadClips])
+
+  const post = async (url, opts) => {
+    setMsg('')
+    const r = await fetch(url, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts }).catch(() => null)
+    const j = await r?.json().catch(() => ({}))
+    if (!r?.ok || j?.success === false) { setMsg(j?.error || gt('cam_rec_failed', 'That didn’t work')); return false }
+    return true
+  }
+  const recordNow = async () => { if (await post(`${base}/record`, { method: 'POST', body: JSON.stringify({ seconds: 30 }) })) { setMsg(gt('cam_rec_started', 'Recording 30 s…')); setTimeout(() => { loadDays(); loadClips() }, 1500) } }
+  const remove = async (c) => { if (await post(`${base}/${c.day}/${c.id}`, { method: 'DELETE' })) { setPlaying(null); loadClips(); loadDays() } }
+  const hhmm = (c) => `${c.id.slice(0, 2)}:${c.id.slice(2, 4)}`
+  const dur = (c) => c.recording ? '●' : c.seconds != null ? (c.seconds >= 60 ? `${Math.floor(c.seconds / 60)}:${String(c.seconds % 60).padStart(2, '0')}` : `${c.seconds} s`) : ''
+  const label = { fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }
+  const chip = (on) => ({ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9, cursor: 'pointer', border: '1px solid var(--border)', background: on ? 'var(--accent)' : 'var(--white-05)', color: on ? '#fff' : 'var(--text2)' })
+
+  return (
+    <div style={{ margin: '10px 18px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={label}>{gt('cam_recordings', 'Recordings')}</span>
+        {days.slice(0, 7).map(d => <button key={d} onClick={() => { setDay(d); setPlaying(null) }} style={chip(d === day)}>{d.slice(5).split('-').reverse().join('.')}</button>)}
+        <button onClick={recordNow} style={{ ...chip(false), marginLeft: 'auto' }}>⏺ {gt('cam_rec_now', 'Record 30 s')}</button>
+      </div>
+      {msg && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{msg}</div>}
+      {playing && (
+        <div style={{ marginTop: 8 }}>
+          <video key={playing.video} src={playing.video} controls autoPlay playsInline style={{ width: '100%', maxHeight: 360, borderRadius: 10, background: '#000', display: 'block' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, fontSize: 11, color: 'var(--text3)' }}>
+            <span>{playing.day} {hhmm(playing)} · {dur(playing)}{playing.trigger ? ` · ${gt(`cam_rec_${playing.trigger}`, playing.trigger)}` : ''}</span>
+            <a href={playing.video} download={`${slug}-${playing.day}-${playing.id}.mp4`} style={{ marginLeft: 'auto', color: 'var(--accent)' }}>{gt('cam_rec_download', 'Download')}</a>
+            <button onClick={() => remove(playing)} style={chip(false)}>{gt('cam_rec_delete', 'Delete')}</button>
+          </div>
+        </div>
+      )}
+      {!days.length ? (
+        <span style={{ fontSize: 11, color: 'var(--text3)', display: 'block', padding: '8px 0' }}>{gt('cam_rec_none', 'No recordings yet — a clip starts when motion is detected')}</span>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '6px 0 2px' }}>
+          {clips.map(c => (
+            <button key={c.id} onClick={() => !c.recording && setPlaying(c)} disabled={c.recording}
+              style={{ flexShrink: 0, width: 112, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: c.recording ? 'default' : 'pointer', opacity: playing?.id === c.id ? 0.55 : 1 }}>
+              <div style={{ width: 112, height: 63, borderRadius: 8, border: '1px solid var(--border)', background: '#05060a', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {c.thumb ? <img src={c.thumb} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  : <span style={{ fontSize: 10, color: c.recording ? '#ef4444' : 'var(--text3)' }}>{c.recording ? `● ${gt('cam_rec_live', 'Recording…')}` : '▶'}</span>}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{hhmm(c)} · {dur(c)}</div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── PTZ pad — continuous move: op fires on press, 'stop' fires on release ──
 // Glass joystick disc (4 chevrons around a center hub) plus a separate
 // zoom pill, mirroring the Ring/Nest-style camera control convention.
@@ -740,6 +806,8 @@ function CameraModal({ cam, onClose }) {
                 )}
               </div>
             )}
+
+            {cam?.recordings && <CameraRecordings slug={cam.recordings} />}
 
             {/* event log */}
             <div style={{ margin: '12px 18px 18px', padding: '10px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>

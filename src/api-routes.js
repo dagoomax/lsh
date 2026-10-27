@@ -30,6 +30,7 @@ const ROUTE_GROUPS = [
   require('./routes/sonos'),
   require('./routes/simulators'),
   require('./routes/camera-ptz'),
+  require('./routes/recordings'),
   require('./routes/camera-ptz-presets'),
   require('./routes/camera-patrol'),
   require('./routes/camera-siren'),

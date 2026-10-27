@@ -794,6 +794,19 @@ const DICT = {
 // dashboard widget names (the custom grid's "Add widget" list)
 for (const [l, v] of Object.entries({ pl: 'Odtwarzacz', de: 'Mediaplayer', fr: 'Lecteur multimédia', es: 'Reproductor', it: 'Lettore multimediale', uk: 'Медіаплеєр' })) DICT[l].media_player = v
 
+// camera recordings (Cameras.jsx CameraRecordings)
+for (const [k, v] of Object.entries({
+  cam_recordings: ['Nagrania', 'Aufnahmen', 'Enregistrements', 'Grabaciones', 'Registrazioni', 'Записи'],
+  cam_rec_now: ['Nagraj 30 s', '30 s aufnehmen', 'Enregistrer 30 s', 'Grabar 30 s', 'Registra 30 s', 'Записати 30 с'],
+  cam_rec_started: ['Nagrywam 30 s…', 'Nehme 30 s auf…', 'Enregistrement de 30 s…', 'Grabando 30 s…', 'Registro 30 s…', 'Записую 30 с…'],
+  cam_rec_live: ['Nagrywa…', 'Nimmt auf…', 'Enregistre…', 'Grabando…', 'Registra…', 'Записує…'],
+  cam_rec_none: ['Brak nagrań — klip zaczyna się, gdy wykryty zostanie ruch', 'Noch keine Aufnahmen — ein Clip startet, wenn Bewegung erkannt wird', 'Aucun enregistrement — un clip démarre quand un mouvement est détecté', 'Aún no hay grabaciones — un clip empieza al detectar movimiento', 'Nessuna registrazione — una clip parte quando viene rilevato un movimento', 'Записів ще немає — кліп починається, коли виявлено рух'],
+  cam_rec_motion: ['ruch', 'Bewegung', 'mouvement', 'movimiento', 'movimento', 'рух'],
+  cam_rec_manual: ['ręcznie', 'manuell', 'manuel', 'manual', 'manuale', 'вручну'],
+  cam_rec_download: ['Pobierz', 'Herunterladen', 'Télécharger', 'Descargar', 'Scarica', 'Завантажити'],
+  cam_rec_delete: ['Usuń', 'Löschen', 'Supprimer', 'Eliminar', 'Elimina', 'Видалити'],
+  cam_rec_failed: ['Nie udało się', 'Hat nicht geklappt', 'Échec', 'No ha funcionado', 'Non è riuscito', 'Не вдалося'],
+})) ['pl', 'de', 'fr', 'es', 'it', 'uk'].forEach((l, i) => { DICT[l][k] = v[i] })
 // onboarding city guide (CityGuide.jsx)
 for (const [k, v] of Object.entries({"guide_clubs": ["Kluby", "Clubs", "Clubs", "Discotecas", "Club", "Клуби"]})) ['pl', 'de', 'fr', 'es', 'it', 'uk'].forEach((l, i) => { DICT[l][k] = v[i] })
 for (const [k, v] of Object.entries({"guide_bars": ["Bary", "Bars", "Bars", "Bares", "Bar", "Бари"]})) ['pl', 'de', 'fr', 'es', 'it', 'uk'].forEach((l, i) => { DICT[l][k] = v[i] })

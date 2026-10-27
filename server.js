@@ -417,7 +417,17 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, mqttBroker, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient, mcpBots: new McpBots(), tenantPortal };
+  // Motion-triggered clips for cameras with `record` (src/camera-recorder.js)
+  let recorder = null;
+  if ((config.cameras || []).some((c) => c?.record && c.url)) {
+    const CameraRecorder = tryRequire('./src/camera-recorder');
+    if (CameraRecorder) {
+      recorder = new CameraRecorder(config, store, sensorRegistry);
+      try { recorder.start(); } catch (err) { console.error(`[Recorder] Start failed: ${err.message}`); }
+    }
+  }
+
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, mqttBroker, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, recorder, airplayClient, mcpBots: new McpBots(), tenantPortal };
 
   // MCP server — exposes devices/sensors as tools for an external Claude
   // (Desktop, Claude Code, claude.ai) to query/control. Opt-in: it's a

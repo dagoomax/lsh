@@ -2725,6 +2725,25 @@ Tuya / Smart Life cameras get the same pad with `"tuyaPtz": { "deviceId": "bf03�
 
 In HomeKit, a camera with `onvif` or `tuyaPtz` gets four switches, **Left / Right / Up / Down**: turning one on moves the camera for `ptzStepMs` (default 1000, 200–5000), stops it, and the switch turns itself off again.
 
+### Camera recordings (`cameras[].record`)
+
+```json
+{ "name": "Wejście", "url": "rtsp://localhost:8554/Wejście", "record": { "days": 7, "maxMB": 2000, "postSeconds": 20, "maxMinutes": 10 } }
+```
+
+Motion-triggered clips for any manual camera with an RTSP `url`, also ones whose own cloud or SD storage LSH can't reach (Tuya). When [`objectDetection`](#objectdetection) sees something on the camera (the same `objectdetect/<slug>/any/detected` signal HKSV uses; `motionSource` names the detection camera if the names differ), ffmpeg copies the stream into an MP4 and keeps going while motion lasts, then `postSeconds` more, at most `maxMinutes` per clip. Video is copied as-is and audio becomes AAC. Each clip gets a thumbnail. Clips older than `days` are deleted, and the oldest go first once the camera's folder passes `maxMB`. They're stored in `recordings/<camera>/<YYYY-MM-DD>/<HHMMSS>.mp4` (top-level `recordingsDir` changes where).
+
+The camera window on the dashboard lists them by day: thumbnails, an inline player, **Download**, **Delete** and **Record 30 s**. There is no pre-roll: a clip starts when motion is reported, and object detection checks every `pollInterval` seconds. Each camera also gets a `recorder/<camera>` device (`recording`, `clips`, `last`) for flows.
+
+```
+GET    /api/recordings                       cameras that record
+GET    /api/recordings/:cam                  days with clips
+GET    /api/recordings/:cam/:day             that day's clips
+GET    /api/recordings/:cam/:day/:id.mp4     a clip (range requests) — :id.jpg its thumbnail
+DELETE /api/recordings/:cam/:day/:id         delete a clip (admin)
+POST   /api/recordings/:cam/record           { "seconds": 30 } record now (admin)
+```
+
 ### `reolink`
 
 ```json

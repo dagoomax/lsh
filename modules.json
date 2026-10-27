@@ -119,6 +119,7 @@
     "src/routes/plan-decor.js",
     "src/routes/plan-model.js",
     "src/routes/private-events.js",
+    "src/routes/recordings.js",
     "src/routes/reolink.js",
     "src/routes/roborock.js",
     "src/routes/satel-settings.js",
@@ -352,6 +353,17 @@
         "@tensorflow-models/mobilenet": "^2.1.1",
         "jpeg-js": "^0.4.4"
       }
+    },
+    "camera-recorder": {
+      "entry": "src/camera-recorder.js",
+      "configKeys": [
+        "cameras"
+      ],
+      "when": "((config.cameras || []).some((c) => c?.record && c.url))",
+      "files": [
+        "src/camera-recorder.js"
+      ],
+      "deps": {}
     },
     "mcp-server": {
       "entry": "src/mcp-server.js",
