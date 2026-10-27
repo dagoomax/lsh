@@ -157,7 +157,7 @@ module.exports = {
       },
     },
     {
-      id: 'byfyj', lat: 50.24344, lon: 19.08121, address: 'ul. Krawczyka 5, Nikiszowiec', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      id: 'byfyj', cafe: true, lat: 50.24344, lon: 19.08121, address: 'ul. Krawczyka 5, Nikiszowiec', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
       image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/2024-06_Katowice_bebok_Michalino_%282%29.jpg/960px-2024-06_Katowice_bebok_Michalino_%282%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:2024-06_Katowice_bebok_Michalino_(2).jpg', author: 'Marek Mróz', license: 'CC BY 4.0', caption: { pl: 'ul. Krawczyka, Nikiszowiec — beboczka Michalino', en: 'Krawczyka Street, Nikiszowiec — the Michalino bebok' } },
       name: { pl: 'Cafe Byfyj', en: 'Cafe Byfyj' },
       kind: { pl: 'kawiarnia i bistro, piekarnia Michalski', en: 'café and bistro, Michalski bakery' },
@@ -179,7 +179,7 @@ module.exports = {
       url: 'https://www.wegebar.com/',
     },
     {
-      id: 'kafej', lat: 50.26537, lon: 19.02178, address: 'ul. Chorzowska 5', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      id: 'kafej', cafe: true, lat: 50.26537, lon: 19.02178, address: 'ul. Chorzowska 5', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
       image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Chorzowska_Katowice_2024-08-08_05.jpg/960px-Chorzowska_Katowice_2024-08-08_05.jpg', page: 'https://commons.wikimedia.org/wiki/File:Chorzowska_Katowice_2024-08-08_05.jpg', author: 'Leonhard Lenz', license: 'CC0', caption: { pl: 'ul. Chorzowska', en: 'Chorzowska Street' } },
       name: { pl: 'Kafej', en: 'Kafej' },
       kind: { pl: 'śniadania i kawa', en: 'breakfast and coffee' },
@@ -221,6 +221,46 @@ module.exports = {
         en: 'A kiosk behind Mariacka: chicken gyros pita and lamb souvlaki. Quick food before or after the bars.',
       },
       url: 'https://www.kalimerastreetfood.pl/',
+    },
+    // cafés: OSM coordinates, addresses checked on their own sites / OSM, Oct 2026
+    {
+      id: 'proper', cafe: true, lat: 50.25839, lon: 19.02453, address: 'ul. Staromiejska 14', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Proper Coffee', en: 'Proper Coffee' },
+      kind: { pl: 'kawiarnia specialty, własna palarnia', en: 'specialty café, own roastery' },
+      text: {
+        pl: 'Kawiarnia katowickiej palarni Proper, tuż przy Rynku: kawy z różnych regionów świata, espresso i przelewy, do tego ciasta.',
+        en: 'The café of Katowice’s Proper roastery, just off the Rynek: coffees from around the world, espresso and filter, and cakes.',
+      },
+      url: 'https://proper.coffee/',
+    },
+    {
+      id: 'bezcukru', cafe: true, lat: 50.25915, lon: 19.01958, address: 'ul. Wawelska 1', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: '#bezcukru', en: '#bezcukru' },
+      kind: { pl: 'kawiarnia i palarnia specialty', en: 'specialty café and roastery' },
+      text: {
+        pl: 'Palarnia z kawiarnią kilka kroków od dworca — szeroki wybór kaw specialty. Druga kawiarnia działa przy Chrobrego 2.',
+        en: 'A roastery with a café a few steps from the station, with a wide choice of specialty coffee. A second café is at Chrobrego 2.',
+      },
+      url: 'https://kawiarniabezcukru.pl/',
+    },
+    {
+      id: 'blackwoolf', cafe: true, lat: 50.25980, lon: 19.01607, address: 'ul. 3 Maja 25', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Black Woolf Coffee & Books', en: 'Black Woolf Coffee & Books' },
+      kind: { pl: 'księgarnio-kawiarnia', en: 'bookshop café' },
+      text: {
+        pl: 'Kawa wśród książek po angielsku — księgarnia z literaturą anglojęzyczną i kawiarnia w jednym. Dobre miejsce na deszczowe popołudnie.',
+        en: 'Coffee among English-language books: a bookshop for literature in English and a café in one. Good for a rainy afternoon.',
+      },
+      url: 'https://www.blackwoolf.eu/',
+    },
+    {
+      id: 'kattowitz', cafe: true, lat: 50.25820, lon: 19.02152, address: 'ul. Świętego Jana 7', price: '€€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Cafe Kattowitz', en: 'Cafe Kattowitz' },
+      kind: { pl: 'kawiarnia, kuchnia polska i śląska', en: 'café, Polish and Silesian food' },
+      text: {
+        pl: 'Kawiarnia w zabytkowej kamienicy przy Rynku; obok kawy i ciast także polskie i śląskie dania.',
+        en: 'A café in a historic tenement by the Rynek; besides coffee and cakes, Polish and Silesian dishes.',
+      },
     },
     {
       id: 'taj', lat: 50.25732, lon: 19.02359, address: 'ul. Dworcowa 4', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },

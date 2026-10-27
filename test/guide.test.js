@@ -93,6 +93,7 @@ test('GET /guide: off, then sorted by distance from home, own tips first, langua
     for (const w of g.walks) for (const key of w.stops) { const [k, id] = key.split(':'); assert.ok(g[k].some((x) => x.id === id && x.lat != null), key); }
     assert.equal(g.phrases.find((p) => p.sl === 'Pyrsk!').meaning, 'Hi!');
     assert.equal(g.restaurants.find((r) => r.id === 'falla').veg, true);
+    assert.ok(g.restaurants.filter((r) => r.cafe).length >= 6, 'cafés flagged for their filter');
     assert.equal(g.restaurants.find((r) => r.id === 'tatiana').veg, undefined);
 
     cfg.onboarding.sections = { transport: false, restaurants: true, places: true };

@@ -62,6 +62,7 @@ function view(item, lang, home, cityName) {
     address: item.address || null, price: item.price || null, url: item.url || null, icon: item.icon || null, custom: !!item.custom,
   };
   if (item.veg) out.veg = true;
+  if (item.cafe) out.cafe = true;
   if (item.tip) out.tip = true;
   // photos: https only (Wikimedia Commons), with their credit
   if (item.image?.src && /^https:\/\//.test(item.image.src)) {

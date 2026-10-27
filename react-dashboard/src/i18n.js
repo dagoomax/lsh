@@ -795,6 +795,7 @@ const DICT = {
 for (const [l, v] of Object.entries({ pl: 'Odtwarzacz', de: 'Mediaplayer', fr: 'Lecteur multimédia', es: 'Reproductor', it: 'Lettore multimediale', uk: 'Медіаплеєр' })) DICT[l].media_player = v
 
 // onboarding city guide (CityGuide.jsx)
+for (const [k, v] of Object.entries({"guide_cafes": ["Kawiarnie", "Cafés", "Cafés", "Cafeterías", "Caffè", "Кав’ярні"]})) ['pl', 'de', 'fr', 'es', 'it', 'uk'].forEach((l, i) => { DICT[l][k] = v[i] })
 for (const [k, v] of Object.entries({"guide_photo_shows": ["Na zdjęciu: {what}", "Auf dem Foto: {what}", "Sur la photo : {what}", "En la foto: {what}", "Nella foto: {what}", "На фото: {what}"]})) ['pl', 'de', 'fr', 'es', 'it', 'uk'].forEach((l, i) => { DICT[l][k] = v[i] })
 for (const [k, v] of Object.entries({"guide_shopping": ["Zakupy", "Einkaufen", "Shopping", "Compras", "Shopping", "Покупки"]})) ['pl', 'de', 'fr', 'es', 'it', 'uk'].forEach((l, i) => { DICT[l][k] = v[i] })
 for (const [k, v] of Object.entries({"guide_activities": ["Atrakcje", "Aktivitäten", "Activités", "Actividades", "Attività", "Розваги"]})) ['pl', 'de', 'fr', 'es', 'it', 'uk'].forEach((l, i) => { DICT[l][k] = v[i] })
