@@ -487,6 +487,46 @@ module.exports = {
         en: 'A 1906–1910 garden village for miners, with cottages among the trees: Nikiszowiec’s quieter sibling.',
       },
     },
+    {
+      id: 'sejm', lat: 50.25343, lon: 19.02499, tag: { pl: 'modernizm', en: 'modernism' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_Sejm_%C5%9Al%C4%85ski_%2812%29.jpg/960px-Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_Sejm_%C5%9Al%C4%85ski_%2812%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_Sejm_%C5%9Al%C4%85ski_(12).jpg', author: 'Marek Mróz', license: 'CC BY-SA 4.0' },
+      name: { pl: 'Gmach Sejmu Śląskiego', en: 'Silesian Parliament building' },
+      text: {
+        pl: 'Monumentalny gmach z lat 1925–1929 przy ul. Jagiellońskiej 25, siedziba autonomicznego Sejmu Śląskiego, dziś urzędu wojewódzkiego. Początek Szlaku Moderny.',
+        en: 'A monumental 1925–1929 building at ul. Jagiellońska 25, seat of the autonomous Silesian Parliament and today the voivodeship office. Start of the Modernism Trail.',
+      },
+      url: 'https://slaskie.travel/touristoffer/1007119/szlak-moderny-w-katowicach',
+    },
+    {
+      id: 'radio', lat: 50.25303, lon: 19.02106, tag: { pl: 'modernizm', en: 'modernism' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Polskie_Radio_Katowice_siedziba.jpg/960px-Polskie_Radio_Katowice_siedziba.jpg', page: 'https://commons.wikimedia.org/wiki/File:Polskie_Radio_Katowice_siedziba.jpg', author: 'Michozord', license: 'CC BY-SA 4.0' },
+      name: { pl: 'Polskie Radio Katowice', en: 'Polish Radio Katowice' },
+      text: {
+        pl: 'Funkcjonalistyczny gmach rozgłośni z lat 30. przy ul. Ligonia 29 — do dziś nadaje stąd Radio Katowice.',
+        en: 'A 1930s functionalist broadcasting house at ul. Ligonia 29; Radio Katowice still broadcasts from here.',
+      },
+      url: 'https://slaskie.travel/touristoffer/1007119/szlak-moderny-w-katowicach',
+    },
+    {
+      id: 'garnizonowy', lat: 50.25469, lon: 19.01518, tag: { pl: 'modernizm', en: 'modernism' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Katowice_ko%C5%9Bci%C3%B3%C5%82_garnizonowy_%C5%9Bw_Kazimierza_DSC_7862.jpg/960px-Katowice_ko%C5%9Bci%C3%B3%C5%82_garnizonowy_%C5%9Bw_Kazimierza_DSC_7862.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_ko%C5%9Bci%C3%B3%C5%82_garnizonowy_%C5%9Bw_Kazimierza_DSC_7862.jpg', author: 'Tomasz Górny (Nemo5576)', license: 'CC BY-SA 3.0 PL' },
+      name: { pl: 'Kościół garnizonowy św. Kazimierza', en: 'Garrison Church of St Casimir' },
+      text: {
+        pl: 'Modernistyczny kościół z lat 1930–1933 przy ul. Skłodowskiej-Curie 20, wciśnięty w pierzeję jak kamienica.',
+        en: 'A 1930–1933 modernist church at ul. Skłodowskiej-Curie 20, slotted into the street front like a townhouse.',
+      },
+      url: 'https://slaskie.travel/touristoffer/1007119/szlak-moderny-w-katowicach',
+    },
+    {
+      id: 'drapacz', lat: 50.25437, lon: 19.01414, tag: { pl: 'modernizm', en: 'modernism' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Katowice_-_Drapacz_Chmur_01.jpg/960px-Katowice_-_Drapacz_Chmur_01.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_-_Drapacz_Chmur_01.jpg', author: 'Lestat (Jan Mehlich)', license: 'CC BY-SA 3.0' },
+      name: { pl: 'Drapacz Chmur', en: 'Drapacz Chmur skyscraper' },
+      text: {
+        pl: 'Stalowy „drapacz chmur” z lat 30. przy ul. Żwirki i Wigury 15 — jeden z pierwszych wieżowców w Polsce, ikona katowickiego modernizmu.',
+        en: 'A 1930s steel-frame “skyscraper” at ul. Żwirki i Wigury 15: one of Poland’s first high-rises and the icon of Katowice modernism.',
+      },
+      url: 'https://slaskie.travel/touristoffer/1007119/szlak-moderny-w-katowicach',
+    },
   ],
 
   // Things to do: what you book or join, not just look at — OSM coordinates,
@@ -678,6 +718,15 @@ module.exports = {
         en: 'Modernism and the Culture Zone, ending on the bar street with a gyros. About 2.5 km, 2–3 hours with visits.',
       },
       stops: ['places:spodek', 'places:nospr', 'places:strefa', 'places:mariacka', 'restaurants:kalimera'],
+    },
+    {
+      id: 'moderna', mode: 'walking', icon: '🏢',
+      name: { pl: 'Szlak Moderny', en: 'The Modernism Trail' },
+      text: {
+        pl: 'Międzywojenne Katowice: Sejm Śląski, Radio, kościół garnizonowy i Drapacz Chmur, na koniec żur w Żurowni. Ok. 1,5 km, półtorej godziny. Cały szlak to 5,5 km i kilkanaście budynków.',
+        en: 'Interwar Katowice: the Silesian Parliament, the radio house, the garrison church and the Drapacz Chmur, ending with żur at Żurownia. About 1.5 km, an hour and a half. The full trail is 5.5 km and over a dozen buildings.',
+      },
+      stops: ['places:sejm', 'places:radio', 'places:garnizonowy', 'places:drapacz', 'restaurants:zurownia'],
     },
     {
       id: 'mining', mode: 'transit', icon: '⛏️',
