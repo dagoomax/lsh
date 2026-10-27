@@ -5,6 +5,7 @@ import { tr } from '../../../i18n'
 
 export default function LoxoneXmlSection() {
   const [devices, setDevices] = useState([])
+  const [scenes, setScenes] = useState([])
   const [tokens, setTokens] = useState([])
   const [selectedTypes, setSelectedTypes] = useState(new Set())
   const [namedOnly, setNamedOnly] = useState(false)
@@ -17,8 +18,10 @@ export default function LoxoneXmlSection() {
     Promise.all([
       fetch('/api/devices', { credentials: 'include' }).then(r => r.json()),
       fetch('/api/auth/tokens', { credentials: 'include' }).then(r => r.json()),
-    ]).then(([devRes, tokRes]) => {
+      fetch('/api/automation/scenes', { credentials: 'include' }).then(r => r.json()).catch(() => ({})),
+    ]).then(([devRes, tokRes, sceneRes]) => {
       setDevices(devRes.data || [])
+      setScenes(sceneRes.data || [])
       const toks = tokRes.data || []
       setTokens(toks)
       if (toks.length) setTokenId(toks[0].id)
@@ -107,6 +110,15 @@ export default function LoxoneXmlSection() {
             <Button onClick={() => download('inputs', 'media.zip', false)}>{tr('⬇ Media player — all (ZIP)')}</Button>
             <Button onClick={() => download('outputs', 'mediaout.xml', false)}>{tr('⬇ Media outputs.xml ({countCount})', { countCount: mediaCount(isOutput) })}</Button>
             <Button onClick={() => download('inputs', 'mediain.xml', false)}>{tr('⬇ Media inputs.xml ({countCount})', { countCount: mediaCount(isInput) })}</Button>
+          </div>
+        </div>
+      )}
+      {scenes.length > 0 && (
+        <div className="stg-field">
+          <label>{tr('Scenes')}{' '}<span className="stg-hint">{tr('(one Virtual Output with a pulse command per scene — wire a push button, Mood or Logic output to it and LSH runs the scene)')}</span></label>
+          <div className="stg-hint" style={{ margin: '2px 0 6px' }}>{scenes.map(s => s.name || s.id).join(' · ')}</div>
+          <div className="stg-actions">
+            <Button onClick={() => download('outputs', 'scenes.xml', false)}>{tr('⬇ Scenes outputs.xml ({countCount})', { countCount: scenes.length })}</Button>
           </div>
         </div>
       )}

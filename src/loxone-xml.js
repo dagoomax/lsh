@@ -165,4 +165,25 @@ function buildOutputsXml(devices, { host, token, title: blockTitle } = {}) {
   });
 }
 
-module.exports = { buildInputsXml, buildOutputsXml };
+// LSH scenes as pulse commands: Loxone fires CmdOn on a rising edge (a push
+// button, a Mood, a Logic output) and LSH runs the scene. No off command and
+// no feedback — a scene is an action, not a state.
+function buildScenesXml(scenes, { host, token, title: blockTitle } = {}) {
+  const cmds = scenes.map((scene) => {
+    const url = `/api/automation/scenes/${encodeURIComponent(scene.id)}/run?token=${token}`;
+    return `\t<VirtualOutCmd Comment="${xmlEsc(`scene ${scene.id}`)}" Title="${xmlEsc(scene.name || scene.id)}" RepeatRate="0" Repeat="0" ` +
+      `Analog="false" CmdOffPost="" CmdOffHTTP="" CmdOff="" CmdOnPost="" CmdOnHTTP="" ` +
+      `CmdOn="${xmlEsc(url)}" CmdOffMethod="GET" CmdOnMethod="GET"/>`;
+  });
+  if (!cmds.length) return [];
+  const groups = chunk(cmds, MAX_CMDS);
+  return groups.map((g, i) => {
+    const suffix = groups.length > 1 ? ` ${i + 1}/${groups.length}` : '';
+    return `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<VirtualOut CmdSep="" CloseAfterSend="true" CmdInit="" Address="http://${xmlEsc(host)}" ` +
+      `Comment="Run LSH scenes via the REST API" Title="${xmlEsc(blockTitle || 'LSH Scenes')}${suffix}">\n` +
+      `${g.join('\n')}\n</VirtualOut>\n`;
+  });
+}
+
+module.exports = { buildInputsXml, buildOutputsXml, buildScenesXml };

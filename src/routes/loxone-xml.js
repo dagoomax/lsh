@@ -151,6 +151,27 @@ module.exports = function register(router, ctx) {
       res.type('image/jpeg').send(jpg);
     } catch (err) { res.status(500).json({ success: false, error: `Couldn’t make the image: ${err.message}` }) }
   });
+  // LSH scenes as one Virtual Output, a pulse command per scene (?ids=a,b picks some);
+  // more than Loxone's per-block limit → a ZIP of blocks
+  router.get('/loxone/scenes.xml', (req, res) => {
+    const automation = ctx.clients?.automation;
+    if (!automation) return res.status(503).json({ success: false, error: 'Automation unavailable' });
+    const ids = req.query.ids ? new Set(String(req.query.ids).split(',').map((x) => x.trim()).filter(Boolean)) : null;
+    const scenes = automation.scenes.filter((s) => !ids || ids.has(String(s.id)));
+    if (!scenes.length) return res.status(404).json({ success: false, error: 'No scenes yet — create one in the dashboard’s Scenes section' });
+    let embedToken = req.query.token;
+    if (!embedToken && req.query.tokenId && auth) embedToken = auth.getApiTokenValue(req.query.tokenId);
+    const parts = require('../loxone-xml').buildScenesXml(scenes, { host: req.query.host || req.get('host'), token: embedToken || 'YOUR_API_TOKEN' });
+    if (parts.length === 1) {
+      res.set('Content-Type', 'application/xml; charset=utf-8');
+      res.set('Content-Disposition', 'attachment; filename="lsh-loxone-scenes.xml"');
+      return res.send(parts[0]);
+    }
+    const { zipStore } = require('../zip');
+    res.set('Content-Type', 'application/zip');
+    res.set('Content-Disposition', 'attachment; filename="lsh-loxone-scenes.zip"');
+    res.send(zipStore(parts.map((data, i) => ({ name: `lsh-loxone-scenes-${i + 1}.xml`, data }))));
+  });
   router.get('/loxone/inputs.xml',  loxoneXmlHandler('inputs'));
   router.get('/loxone/outputs.xml', loxoneXmlHandler('outputs'));
   // Friendly fixed alias for the SIP doorbell's one controllable action

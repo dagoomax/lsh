@@ -3734,6 +3734,8 @@ Rules are edge-triggered: a comparison rule fires once when the condition become
 
 Named action groups run manually — one tap from the **scene strip** shown above all dashboard tabs, or from the Automation tab. Same action types as rules.
 
+**Loxone:** Settings → Loxone XML Templates → **Scenes outputs.xml**, or `GET /api/loxone/scenes.xml` (`?tokenId=` / `?token=`, `?host=`, `?ids=a,b` for some scenes only): one Virtual Output *LSH Scenes* with a pulse command per scene, ready for Loxone Config's template import. Wire a push button, a Mood or a Logic output to a command and LSH runs that scene. More than 40 scenes come as a ZIP of blocks. Each command calls `GET /api/automation/scenes/:id/run?token=…`, the GET form of the run endpoint.
+
 ### Notifications
 
 `notify` actions append to an in-memory log (last 200) shown on the Automation tab, push a real-time toast to all connected browsers (via the `notification` socket.io event), and log to the server console.
@@ -3745,7 +3747,7 @@ Rules and scenes persist to `automations.json` in the project root (gitignored).
 ```
 GET/POST  /api/automation/rules          DELETE /api/automation/rules/:id
 GET/POST  /api/automation/scenes         DELETE /api/automation/scenes/:id
-POST      /api/automation/scenes/:id/run
+POST      /api/automation/scenes/:id/run   (GET too, for Loxone)
 GET       /api/automation/notifications  DELETE /api/automation/notifications
 ```
 

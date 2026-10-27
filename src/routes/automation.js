@@ -42,10 +42,13 @@ module.exports = function register(router, ctx) {
       automation.deleteScene(req.params.id);
       res.json({ success: true });
     });
-    router.post('/automation/scenes/:id/run', async (req, res) => {
+    const runScene = async (req, res) => {
       try { res.json({ success: true, data: await automation.runScene(req.params.id) }); }
       catch (err) { res.status(400).json({ success: false, error: err.message }); }
-    });
+    };
+    router.post('/automation/scenes/:id/run', runScene);
+    // GET too: Loxone Virtual Outputs send GET (/api/loxone/scenes.xml embeds it with ?token=)
+    router.get('/automation/scenes/:id/run', runScene);
     // Show / hide one scene in Apple Home — the same config.homekit.exclude.scenes
     // list Settings → HomeKit edits, applied to the running bridge at once.
     router.post('/automation/scenes/:id/homekit', requireAdmin, (req, res) => {

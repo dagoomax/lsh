@@ -30,3 +30,14 @@ test('loxone-xml: a controllable non-text sensor is still included', () => {
   const xml = buildOutputsXml([device], { host: '1.2.3.4', token: 'tok' }).join('\n');
   assert.match(xml, /sensor=level/, 'other controllable sensors must be unaffected by the text exclusion');
 });
+
+test('buildScenesXml: one pulse command per scene, GET run URL with the token', () => {
+  const { buildScenesXml } = require('../src/loxone-xml');
+  const [xml, more] = buildScenesXml([{ id: 'a b', name: 'Movie & dinner' }, { id: 'x1', name: 'Night' }], { host: 'lsh.local:3000', token: 'TOK' });
+  assert.equal(more, undefined);
+  assert.match(xml, /<VirtualOut [^>]*Address="http:\/\/lsh\.local:3000"[^>]*Title="LSH Scenes"/);
+  assert.match(xml, /Title="Movie &amp; dinner"[^>]*Analog="false"[^>]*CmdOff=""[^>]*CmdOn="\/api\/automation\/scenes\/a%20b\/run\?token=TOK" CmdOffMethod="GET" CmdOnMethod="GET"/);
+  assert.equal((xml.match(/<VirtualOutCmd /g) || []).length, 2);
+  assert.equal(buildScenesXml(Array.from({ length: 45 }, (_, i) => ({ id: `s${i}` })), { host: 'h', token: 't' }).length, 2, 'split at 40 per block');
+  assert.deepEqual(buildScenesXml([], { host: 'h', token: 't' }), []);
+});
