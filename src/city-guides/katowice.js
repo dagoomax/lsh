@@ -358,6 +358,17 @@ module.exports = {
         en: 'A gig and club venue in the old Porcelain Factory in Bogucice. Check what’s on before you go.',
       },
     },
+    // address and coordinates from its own site (sezonovo.com.pl), Oct 2026
+    {
+      id: 'sezonovo', bar: true, lat: 50.23307, lon: 19.02790, address: 'ul. Francuska 180', price: '€€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Sezonovo', en: 'Sezonovo' },
+      kind: { pl: 'ogród kulinarny, wina naturalne', en: 'garden restaurant, natural wine' },
+      text: {
+        pl: 'Kulinarny ogród w środku katowickiego parku: pizza, naturalne wina (także z kranu), piwo i desery na świeżym powietrzu. Działa sezonowo — przed wizytą sprawdź, czy jest otwarte.',
+        en: 'A culinary garden in the middle of a Katowice park: pizza, natural wine (some on tap), beer and desserts outdoors. Open seasonally; check it’s open before you go.',
+      },
+      url: 'https://sezonovo.com.pl/',
+    },
     {
       id: 'taj', lat: 50.25732, lon: 19.02359, address: 'ul. Dworcowa 4', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
       image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/2023-07_Katowice_ul._Dworcowa_%284%29.jpg/960px-2023-07_Katowice_ul._Dworcowa_%284%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:2023-07_Katowice_ul._Dworcowa_(4).jpg', author: 'Marek Mróz', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Dworcowa — stary dworzec', en: 'Dworcowa Street — the old station' } },
