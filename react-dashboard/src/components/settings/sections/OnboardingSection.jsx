@@ -11,7 +11,7 @@ import { gt, tr } from '../../../i18n'
 const EXTRA_FIELDS = [
   { key: 'name', label: 'Name', placeholder: 'Café Kattowitz' },
   { key: 'category', label: 'Category', type: 'select', default: 'restaurant', options: [
-    { value: 'restaurant', label: 'Restaurant' }, { value: 'place', label: 'Place to visit' }, { value: 'activity', label: 'Thing to do' }, { value: 'transport', label: 'Getting around' },
+    { value: 'restaurant', label: 'Restaurant' }, { value: 'place', label: 'Place to visit' }, { value: 'activity', label: 'Thing to do' }, { value: 'shop', label: 'Shop' }, { value: 'transport', label: 'Getting around' },
   ] },
   { key: 'note', label: 'Note', placeholder: 'Our favourite breakfast, 5 minutes away' },
   { key: 'address', label: 'Address', placeholder: 'ul. Mariacka 1' },
@@ -30,7 +30,7 @@ export default function OnboardingSection({ config, reload }) {
   const [welcome, setWelcome] = useState(o.welcome || '')
   const [lat, setLat] = useState(o.lat ?? '')
   const [lon, setLon] = useState(o.lon ?? '')
-  const [sections, setSections] = useState({ transport: true, restaurants: true, places: true, activities: true, ...(o.sections || {}) })
+  const [sections, setSections] = useState({ transport: true, restaurants: true, places: true, activities: true, shopping: true, ...(o.sections || {}) })
   const [extras, setExtras] = useState(o.extras || [])
   const [mapsKey, setMapsKey] = useState(o.mapsKey || '')
   const [cities, setCities] = useState([])
@@ -46,7 +46,7 @@ export default function OnboardingSection({ config, reload }) {
   return (
     <>
       <SettingsCard title="Onboarding" badge={{ label: gt('common.optional', 'Optional') }}
-        desc="A welcome guide on the dashboard for guests and new residents: a card on the home view and a Guide view in the menu, with getting around, restaurants, places to visit and things to do, nearest first, each with a route link. Katowice has a checked guide; Claude can write one for any other city.">
+        desc="A welcome guide on the dashboard for guests and new residents: a card on the home view and a Guide view in the menu, with getting around, restaurants, places to visit, things to do and shopping, nearest first, each with a route link. Katowice has a checked guide; Claude can write one for any other city.">
         <Toggle label="Show the guide on the dashboard" checked={enabled} onChange={setEnabled}/>
         <Field label="City" type="select" value={city} onChange={setCity}
           options={cities.length ? cities.map((c) => ({ value: c.id, label: cityLabel(c), raw: true })) : [{ value: 'katowice', label: 'Katowice', raw: true }]}/>
@@ -64,6 +64,7 @@ export default function OnboardingSection({ config, reload }) {
         <Toggle label="Restaurants" checked={sections.restaurants} onChange={(v) => setSections({ ...sections, restaurants: v })}/>
         <Toggle label="Places to visit" checked={sections.places} onChange={(v) => setSections({ ...sections, places: v })}/>
         <Toggle label="Things to do" checked={sections.activities} onChange={(v) => setSections({ ...sections, activities: v })}/>
+        <Toggle label="Shopping" checked={sections.shopping} onChange={(v) => setSections({ ...sections, shopping: v })}/>
         <h4 className="stg-subheading">{tr('Your own tips')}</h4>
         <p className="stg-hint">{tr('Shown first, marked as your pick. With latitude and longitude they get a distance and a route link.')}</p>
         <ListEditor rows={extras} onChange={setExtras} fields={EXTRA_FIELDS} addLabel="Add a tip"/>

@@ -44,16 +44,19 @@ export function useGuide() {
 const CAT = {
   places:      { color: 'var(--gd-places)', label: () => gt('guide_places', 'Places to visit') },
   activities:  { color: 'var(--gd-fun)', label: () => gt('guide_activities', 'Things to do') },
+  shopping:    { color: 'var(--gd-shop)', label: () => gt('guide_shopping', 'Shopping') },
   restaurants: { color: 'var(--gd-food)', label: () => gt('guide_food', 'Restaurants') },
   transport:   { color: 'var(--gd-move)', label: () => gt('guide_transport', 'Getting around') },
 }
-const ORDER = ['places', 'activities', 'restaurants', 'transport']
+const ORDER = ['places', 'activities', 'restaurants', 'shopping', 'transport']
 
 const P = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' }
 const ICONS = {
   places: <><path {...P} d="M3 21h18M5 21V10M19 21V10M9 21v-7M15 21v-7"/><path {...P} d="M2.5 10 12 4l9.5 6z"/></>,
   restaurants: <><path {...P} d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10"/><path {...P} d="M17 21V3c-2 1.5-3 4-3 7 0 1.5 1 2.5 3 2.5"/></>,
   activities: <><path {...P} d="M4 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h16v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H4z"/><path {...P} d="M14 6v2M14 11v2M14 16v2"/></>,
+  shopping: <><path {...P} d="M5 8h14l-1 13H6z"/><path {...P} d="M9 10V6a3 3 0 0 1 6 0v4"/></>,
+  clock: <><circle {...P} cx="12" cy="12" r="9"/><path {...P} d="M12 7v5l3 2"/></>,
   tram: <><rect {...P} x="6" y="5" width="12" height="13" rx="3"/><path {...P} d="M9 2h6M12 2v3M6 12h12M9 18l-2 3M15 18l2 3"/><circle cx="9" cy="15" r=".8" fill="currentColor"/><circle cx="15" cy="15" r=".8" fill="currentColor"/></>,
   train: <><rect {...P} x="5" y="3" width="14" height="14" rx="4"/><path {...P} d="M5 10h14M8 21l2-4M16 21l-2-4"/><circle cx="9" cy="13.5" r=".8" fill="currentColor"/><circle cx="15" cy="13.5" r=".8" fill="currentColor"/></>,
   plane: <path {...P} d="M10.5 20 12 15l6.5 3.5 1-1.5-6-6 .5-6.5c0-1-.5-1.5-1-1.5s-1 .5-1 1.5l-.5 6.5-6 6 1 1.5L12 15"/>,
@@ -61,7 +64,7 @@ const ICONS = {
   car: <><path {...P} d="M4 16V12l2-5h12l2 5v4z"/><path {...P} d="M4 12h16"/><circle {...P} cx="7.5" cy="16.5" r="1.5"/><circle {...P} cx="16.5" cy="16.5" r="1.5"/></>,
   route: <><circle {...P} cx="6" cy="18" r="2.5"/><circle {...P} cx="18" cy="6" r="2.5"/><path {...P} d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></>,
 }
-const iconFor = (cat, it) => (cat === 'transport' ? ICONS[it.icon] || ICONS.route : ICONS[cat])
+const iconFor = (cat, it) => (cat === 'transport' ? ICONS[it.icon] || ICONS.route : (it.tip && ICONS[it.icon]) || ICONS[cat])
 const Ico = ({ cat, it, size = 20 }) => <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">{iconFor(cat, it)}</svg>
 
 // ── helpers ─────────────────────────────────────────────────
@@ -791,7 +794,8 @@ function filtersOf(items) {
 }
 
 // a random pick, nearby first (within 5 km when there are enough)
-function surprise(items) {
+function surprise(all) {
+  const items = all.filter(it => !it.tip)
   const near = items.filter(it => it.km == null || it.km <= 5)
   const pool = near.length >= 3 ? near : items
   return pool[Math.floor(Math.random() * pool.length)] || null

@@ -12,16 +12,16 @@
 //   enabled: true, city: 'katowice',
 //   welcome: 'host's own words (optional, replaces the city's)',
 //   lat, lon,                    // the home; default: openweather.lat/lon
-//   sections: { transport: true, restaurants: true, places: true, activities: true },
-//   extras: [{ name, category: 'restaurant' | 'place' | 'activity' | 'transport', note, address, lat, lon, url }],
+//   sections: { transport: true, restaurants: true, places: true, activities: true, shopping: true },
+//   extras: [{ name, category: 'restaurant' | 'place' | 'activity' | 'shop' | 'transport', note, address, lat, lon, url }],
 // }
 //
 // City data: src/city-guides/<city>.js ({ pl, en } texts, coordinates).
 const { readConfigFile } = require('./helpers');
 const { writeConfigFile } = require('../config-file-cache');
 
-const SECTIONS = ['transport', 'restaurants', 'places', 'activities'];
-const CATEGORY = { transport: 'transport', restaurant: 'restaurants', place: 'places', activity: 'activities' };
+const SECTIONS = ['transport', 'restaurants', 'places', 'activities', 'shopping'];
+const CATEGORY = { transport: 'transport', restaurant: 'restaurants', place: 'places', activity: 'activities', shop: 'shopping' };
 
 const gen = () => require('../guide-generator');
 
@@ -62,6 +62,7 @@ function view(item, lang, home, cityName) {
     address: item.address || null, price: item.price || null, url: item.url || null, icon: item.icon || null, custom: !!item.custom,
   };
   if (item.veg) out.veg = true;
+  if (item.tip) out.tip = true;
   // photos: https only (Wikimedia Commons), with their credit
   if (item.image?.src && /^https:\/\//.test(item.image.src)) {
     out.image = { src: item.image.src, page: /^https:\/\//.test(item.image.page || '') ? item.image.page : null, author: String(item.image.author || '').slice(0, 120), license: String(item.image.license || '').slice(0, 40) };
@@ -167,7 +168,8 @@ module.exports = function register(router, ctx) {
         ...extras.filter((e) => CATEGORY[e.category] === k).map((e, i) => view({ ...e, id: `extra-${i}`, custom: true }, lang, home, cityName)),
         ...(city[k] || []).map((it) => view(it, lang, home, cityName)),
       ];
-      return sort ? items.sort((a, b) => (b.custom - a.custom) || byDistance(a, b)) : items;
+      // own tips, then the city's general tips (no place), then nearest first
+      return sort ? items.sort((a, b) => (b.custom - a.custom) || (!!b.tip - !!a.tip) || byDistance(a, b)) : items;
     };
     res.json({
       success: true,
@@ -182,6 +184,7 @@ module.exports = function register(router, ctx) {
         restaurants: section('restaurants', true),
         places: section('places', true),
         activities: section('activities', true),
+        shopping: section('shopping', true),
         // ready-made walks (stops that are on the page) and a Silesian phrasebook
         walks: (city.walks || []).map((w) => {
           const stops = (w.stops || []).filter((key) => { const [k, id] = String(key).split(':'); return on(k) && city[k]?.some((it) => it.id === id && it.lat != null); });

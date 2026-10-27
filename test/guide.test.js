@@ -24,7 +24,7 @@ function app() {
 }
 
 test('Katowice guide: both languages, real coordinates, links', () => {
-  for (const k of ['transport', 'restaurants', 'places', 'activities']) {
+  for (const k of ['transport', 'restaurants', 'places', 'activities', 'shopping']) {
     assert.ok(katowice[k].length >= 4, k);
     for (const it of katowice[k]) {
       assert.ok(it.name.pl && it.name.en && it.text.pl && it.text.en, `${k}/${it.id} texts`);
@@ -86,6 +86,8 @@ test('GET /guide: off, then sorted by distance from home, own tips first, langua
 
     // walks point at stops on the page; phrasebook in the viewer's language; vegetarian flag
     assert.ok(g.activities.length >= 5, 'things to do');
+    assert.equal(g.shopping[0].id, 'sundays', 'the Sunday-closing tip first');
+    assert.ok(g.shopping.slice(1).every((a, i, all) => !i || all[i - 1].km <= a.km), 'shops nearest first');
     assert.ok(g.activities.every((a, i, all) => !i || all[i - 1].km <= a.km), 'activities nearest first');
     assert.ok(g.walks.length >= 3);
     for (const w of g.walks) for (const key of w.stops) { const [k, id] = key.split(':'); assert.ok(g[k].some((x) => x.id === id && x.lat != null), key); }

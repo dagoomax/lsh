@@ -9,6 +9,7 @@
 //               then local favourites from Katowice food guides
 //   places      the city's main sights; coordinates from OpenStreetMap
 //   activities  things to do nearby (theme park, zoo, cable car, mines, a match)
+//   shopping    malls, tourist information, and the Sunday trading rule
 //   images      Wikimedia Commons (free licences — author and licence shown
 //               on each photo, linked to its file page)
 // Fares, timetables and opening hours change — the card links to the sources
@@ -393,6 +394,72 @@ module.exports = {
         en: 'GKS’s footballers play at the new Arena Katowice (opened in 2025, about 15,000 seats). Fixtures and tickets are on the club’s site.',
       },
       url: 'https://www.gkskatowice.eu/',
+    },
+  ],
+
+  // Shopping: malls, the station gallery, tourist information — OSM coordinates,
+  // websites checked Oct 2026; the first item is a tip, not a place
+  shopping: [
+    {
+      id: 'sundays', icon: 'clock', tip: true,
+      name: { pl: 'Niedziele i drobne zakupy', en: 'Sundays and small shopping' },
+      text: {
+        pl: 'W Polsce większość sklepów i galerii jest zamknięta w niedziele, poza kilkoma niedzielami handlowymi w roku. Żabki i stacje benzynowe działają codziennie — Żabki zwykle do późna.',
+        en: 'In Poland most shops and malls are closed on Sundays, apart from a few trading Sundays a year. Żabka convenience stores and petrol stations open every day; Żabkas usually until late.',
+      },
+    },
+    {
+      id: 'galeria', lat: 50.25887, lon: 19.01691, address: 'ul. 3 Maja 30', tag: { pl: 'galeria handlowa', en: 'mall' },
+      name: { pl: 'Galeria Katowicka', en: 'Galeria Katowicka' },
+      text: {
+        pl: 'Galeria połączona z dworcem kolejowym i autobusowym, w samym centrum — sklepy, restauracje i supermarket.',
+        en: 'A mall joined to the railway and bus station, right in the centre: shops, places to eat and a supermarket.',
+      },
+      url: 'https://galeriakatowicka.eu/',
+    },
+    {
+      id: 'supersam', lat: 50.26212, lon: 19.01904, address: 'ul. ks. P. Skargi 6', tag: { pl: 'galeria handlowa', en: 'mall' },
+      name: { pl: 'Supersam', en: 'Supersam' },
+      text: {
+        pl: 'Kameralna galeria w centrum, na miejscu dawnego modernistycznego Supersamu — supermarket, drogeria i kawiarnie.',
+        en: 'A small mall in the centre, on the site of the old modernist Supersam: a supermarket, a chemist’s and cafés.',
+      },
+      url: 'https://supersam-katowice.pl/',
+    },
+    {
+      id: 'scc', lat: 50.27072, lon: 19.00387, address: 'ul. Chorzowska 107', tag: { pl: 'galeria handlowa', en: 'mall' },
+      name: { pl: 'Silesia City Center', en: 'Silesia City Center' },
+      text: {
+        pl: 'Jedna z największych galerii w regionie, na terenie dawnej kopalni — kino, setki sklepów. Tramwajem z centrum w kilka minut.',
+        en: 'One of the region’s biggest malls, on a former coal-mine site: a cinema and hundreds of shops. A few minutes by tram from the centre.',
+      },
+      url: 'https://www.silesiacitycenter.com.pl/',
+    },
+    {
+      id: '3stawy', lat: 50.24312, lon: 19.03782, address: 'ul. gen. K. Pułaskiego 60', tag: { pl: 'galeria handlowa', en: 'mall' },
+      name: { pl: 'Centrum Handlowe 3 Stawy', en: '3 Stawy shopping centre' },
+      text: {
+        pl: 'Centrum handlowe z dużym hipermarketem przy Dolinie Trzech Stawów — wygodne na większe zakupy autem.',
+        en: 'A shopping centre with a large hypermarket by the Valley of Three Ponds; handy for a bigger shop by car.',
+      },
+      url: 'https://3stawy.pl/',
+    },
+    {
+      id: 'libero', lat: 50.22416, lon: 18.98685, address: 'ul. T. Kościuszki 229', tag: { pl: 'galeria handlowa', en: 'mall' },
+      name: { pl: 'Libero Katowice', en: 'Libero Katowice' },
+      text: {
+        pl: 'Nowoczesna galeria na południu miasta, z kinem i strefą restauracji.',
+        en: 'A modern mall in the south of the city, with a cinema and a food court.',
+      },
+      url: 'https://liberokatowice.pl/',
+    },
+    {
+      id: 'cit', lat: 50.25865, lon: 19.02129, address: 'Rynek 11', tag: { pl: 'informacja', en: 'information' },
+      name: { pl: 'Centrum Informacji Turystycznej', en: 'Tourist Information Centre' },
+      text: {
+        pl: 'Na Rynku: mapy, informacje o wydarzeniach i pamiątki z Katowic.',
+        en: 'On the Rynek: maps, what’s on, and souvenirs from Katowice.',
+      },
     },
   ],
 
