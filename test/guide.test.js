@@ -32,7 +32,9 @@ test('Katowice guide: both languages, real coordinates, links', () => {
       if (it.url) assert.match(it.url, /^https:\/\//);
     }
   }
-  assert.equal(katowice.restaurants.length, 4, 'the four MICHELIN-listed places');
+  assert.equal(katowice.restaurants.filter((r) => /MICHELIN|Bib/.test(r.tag)).length, 4, 'the four MICHELIN-listed places');
+  assert.ok(katowice.restaurants.length >= 12, 'plus local favourites');
+  assert.equal(new Set(katowice.restaurants.map((r) => r.id)).size, katowice.restaurants.length, 'unique ids');
 });
 
 test('GET /guide: off, then sorted by distance from home, own tips first, language', async () => {

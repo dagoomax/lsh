@@ -5,7 +5,8 @@
 //   transport   metropoliaztm.pl (Transport GZM: tickets, apps, no tickets from
 //               drivers since 1 Jan 2026, contactless cards on board),
 //               metropoliagzm.pl (airport line AP), Metrorower
-//   restaurants MICHELIN Guide Poland 2026, Katowice: all four listed places
+//   restaurants MICHELIN Guide Poland 2026, Katowice: all four listed places,
+//               then local favourites from Katowice food guides
 //   places      the city's main sights; coordinates from OpenStreetMap
 //   images      Wikimedia Commons (free licences — author and licence shown
 //               on each photo, linked to its file page)
@@ -83,7 +84,7 @@ module.exports = {
     },
   ],
 
-  // MICHELIN Guide Poland 2026 — Katowice (all four listed restaurants)
+  // MICHELIN Guide Poland 2026 — Katowice (all four listed restaurants), then local favourites
   restaurants: [
     {
       id: 'krzywa', lat: 50.25545, lon: 19.01574, address: 'ul. Krzywa 9', price: '€', tag: 'Bib Gourmand',
@@ -124,6 +125,97 @@ module.exports = {
         en: 'A family-run brasserie with a terrace in Panewniki: clean flavours, Mediterranean touches and local dishes such as herring.',
       },
       url: 'https://guide.michelin.com/at/en/silesia/katowice_2377909/restaurant/mlodnik',
+    },
+
+    // Local favourites: places that recur in Katowice food guides (Kukbuk,
+    // Twój Styl, Tripadvisor 2026); OSM coordinates, websites checked Oct 2026
+    {
+      id: 'tatiana', lat: 50.25849, lon: 19.02256, address: 'ul. Staromiejska 5', price: '€€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Tatiana', en: 'Tatiana' },
+      kind: { pl: 'kuchnia śląska i polska', en: 'Silesian and Polish' },
+      text: {
+        pl: 'Kameralna restauracja tuż przy Rynku, ulubiona przez mieszkańców na śląską roladę, żur i domowe pierogi.',
+        en: 'A small restaurant just off the Rynek, a local go-to for Silesian beef roulade, żur soup and home-made pierogi.',
+      },
+      url: 'https://www.restauracjatatiana.pl/',
+    },
+    {
+      id: 'zurownia', lat: 50.25350, lon: 19.01905, address: 'ul. Ligonia 16', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Żurownia', en: 'Żurownia' },
+      kind: { pl: 'śląski street food', en: 'Silesian street food' },
+      text: {
+        pl: 'Śląskie jedzenie w wersji ulicznej: żurek (także wegański), pizza na zakwasie żurkowym, kulebele i braty. Tanio i szybko.',
+        en: 'Silesian food done as street food: żurek soup (vegan too), pizza on żur sourdough, kulebele and sausages. Cheap and quick.',
+      },
+    },
+    {
+      id: 'byfyj', lat: 50.24344, lon: 19.08121, address: 'ul. Krawczyka 5, Nikiszowiec', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Cafe Byfyj', en: 'Cafe Byfyj' },
+      kind: { pl: 'kawiarnia i bistro, piekarnia Michalski', en: 'café and bistro, Michalski bakery' },
+      text: {
+        pl: 'Kawiarnia na Nikiszowcu: śniadania, chałka, jagodzianki i sezonowe tarty, w południe śląskie obiady.',
+        en: 'A café in Nikiszowiec: breakfasts, challah, blueberry buns and seasonal tarts, with Silesian lunches at midday.',
+      },
+      url: 'https://piekarniamichalski.pl/',
+    },
+    {
+      id: 'zloty-osiol', lat: 50.25726, lon: 19.02457, address: 'ul. Mariacka 1', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Złoty Osioł', en: 'Złoty Osioł' },
+      kind: { pl: 'wegańska jadłodajnia', en: 'vegan canteen' },
+      text: {
+        pl: 'Kultowy wegebar na Mariackiej: lasagne, curry, pierogi ruskie i wegańskie śniadania. Dużo opcji bezglutenowych.',
+        en: 'A cult vegan bar on Mariacka: lasagne, curry, pierogi ruskie and vegan breakfasts. Plenty of gluten-free options.',
+      },
+      url: 'https://www.wegebar.com/',
+    },
+    {
+      id: 'kafej', lat: 50.26537, lon: 19.02178, address: 'ul. Chorzowska 5', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Kafej', en: 'Kafej' },
+      kind: { pl: 'śniadania i kawa', en: 'breakfast and coffee' },
+      text: {
+        pl: 'Przy Spodku: kawa z polskich palarni, bajgle, omlety i pancakes — dobre miejsce na śniadanie przed Strefą Kultury.',
+        en: 'By the Spodek: coffee from Polish roasters, bagels, omelettes and pancakes. A good breakfast before the Culture Zone.',
+      },
+      url: 'https://kafej.pl/',
+    },
+    {
+      id: 'falla', lat: 50.25490, lon: 19.02128, address: 'ul. Plebiscytowa 10', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Falla', en: 'Falla' },
+      kind: { pl: 'wegetariańska, bliskowschodnia', en: 'vegetarian, Middle Eastern' },
+      text: {
+        pl: 'W pełni wegetariańska: hummus, falafel, pikle i pita na wspólnym talerzu, a do tego burgery i shake’i.',
+        en: 'Fully vegetarian: hummus, falafel, pickles and pita on a sharing platter, plus burgers and milkshakes.',
+      },
+      url: 'https://fallakatowice.pl/',
+    },
+    {
+      id: 'madara', lat: 50.26072, lon: 19.02445, address: 'ul. Moniuszki 12', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Madara Ramen', en: 'Madara Ramen' },
+      kind: { pl: 'ramen', en: 'ramen' },
+      text: {
+        pl: 'Ramen na lekkich i gęstych bulionach; chwalony za yuzu shio.',
+        en: 'Ramen on light and rich broths; the yuzu shio gets the praise.',
+      },
+      url: 'https://www.madararamen.pl/',
+    },
+    {
+      id: 'kalimera', lat: 50.25711, lon: 19.02621, address: 'ul. Tylna Mariacka 13a', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Kalimera Street Food', en: 'Kalimera Street Food' },
+      kind: { pl: 'grecki street food', en: 'Greek street food' },
+      text: {
+        pl: 'Budka za Mariacką: pita z gyrosem i souvlaki z jagnięciny — na szybko, wieczorem przed lub po barach.',
+        en: 'A kiosk behind Mariacka: chicken gyros pita and lamb souvlaki. Quick food before or after the bars.',
+      },
+      url: 'https://www.kalimerastreetfood.pl/',
+    },
+    {
+      id: 'taj', lat: 50.25732, lon: 19.02359, address: 'ul. Dworcowa 4', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Taj', en: 'Taj' },
+      kind: { pl: 'kuchnia tajska', en: 'Thai' },
+      text: {
+        pl: 'Tajskie jedzenie uliczne blisko dworca: curry w trzech kolorach, morning glory, sałatka z kiełbaską naem.',
+        en: 'Thai street food near the station: curries in three colours, morning glory and naem sausage salad.',
+      },
     },
   ],
 
