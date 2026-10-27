@@ -159,7 +159,7 @@ module.exports = {
       url: 'https://piekarniamichalski.pl/',
     },
     {
-      id: 'zloty-osiol', lat: 50.25726, lon: 19.02457, address: 'ul. Mariacka 1', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      id: 'zloty-osiol', veg: true, lat: 50.25726, lon: 19.02457, address: 'ul. Mariacka 1', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
       name: { pl: 'Złoty Osioł', en: 'Złoty Osioł' },
       kind: { pl: 'wegańska jadłodajnia', en: 'vegan canteen' },
       text: {
@@ -179,7 +179,7 @@ module.exports = {
       url: 'https://kafej.pl/',
     },
     {
-      id: 'falla', lat: 50.25490, lon: 19.02128, address: 'ul. Plebiscytowa 10', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      id: 'falla', veg: true, lat: 50.25490, lon: 19.02128, address: 'ul. Plebiscytowa 10', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
       name: { pl: 'Falla', en: 'Falla' },
       kind: { pl: 'wegetariańska, bliskowschodnia', en: 'vegetarian, Middle Eastern' },
       text: {
@@ -325,6 +325,57 @@ module.exports = {
         en: 'A 1906–1910 garden village for miners, with cottages among the trees: Nikiszowiec’s quieter sibling.',
       },
     },
+  ],
+
+  // Ready-made walks: one tap loads the stops into the trip (keys: section:id)
+  walks: [
+    {
+      id: 'centre', mode: 'walking', icon: '🏛️',
+      name: { pl: 'Od Spodka do Mariackiej', en: 'From the Spodek to Mariacka' },
+      text: {
+        pl: 'Modernizm i Strefa Kultury, na koniec ulica barów i gyros. Ok. 2,5 km, 2–3 godziny ze zwiedzaniem.',
+        en: 'Modernism and the Culture Zone, ending on the bar street with a gyros. About 2.5 km, 2–3 hours with visits.',
+      },
+      stops: ['places:spodek', 'places:nospr', 'places:strefa', 'places:mariacka', 'restaurants:kalimera'],
+    },
+    {
+      id: 'mining', mode: 'transit', icon: '⛏️',
+      name: { pl: 'Śląskie osiedla górnicze', en: 'Silesian mining estates' },
+      text: {
+        pl: 'Czerwone familoki Nikiszowca, kawa w Byfyju, obiad w Prohibicji, potem leśny Giszowiec. Pół dnia; autobusy z centrum.',
+        en: 'Nikiszowiec’s red-brick familoki, coffee at Byfyj, lunch at Prohibicja, then the garden town of Giszowiec. Half a day; buses from the centre.',
+      },
+      stops: ['places:nikiszowiec', 'restaurants:byfyj', 'restaurants:prohibicja', 'places:giszowiec'],
+    },
+    {
+      id: 'churches', mode: 'walking', icon: '⛪',
+      name: { pl: 'Wino, katedra i drewniany kościół', en: 'Wine, a cathedral and a wooden church' },
+      text: {
+        pl: 'Lunch w KRZYWEJ, największa katedra w Polsce i XVI-wieczny drewniany kościół w Parku Kościuszki. Ok. 2,5 km.',
+        en: 'Lunch at KRZYWA, Poland’s largest cathedral and a 16th-century wooden church in Kościuszko Park. About 2.5 km.',
+      },
+      stops: ['restaurants:krzywa', 'places:katedra', 'places:michal'],
+    },
+  ],
+
+  // Po śląsku: a few words guests will hear (Silesian → Polish / English)
+  phrases: [
+    { sl: 'Pyrsk!', pl: 'Cześć!', en: 'Hi!' },
+    { sl: 'Jak sie mosz?', pl: 'Jak się masz?', en: 'How are you?' },
+    { sl: 'Jo', pl: 'Tak', en: 'Yes' },
+    { sl: 'Kaj?', pl: 'Gdzie?', en: 'Where?' },
+    { sl: 'Gryfnie', pl: 'Ładnie, fajnie', en: 'Nice, lovely' },
+    { sl: 'Fest', pl: 'Bardzo, mocno', en: 'Very, a lot' },
+    { sl: 'Szpacyr', pl: 'Spacer', en: 'A walk' },
+    { sl: 'Gruba', pl: 'Kopalnia', en: 'Coal mine' },
+    { sl: 'Hajer', pl: 'Górnik', en: 'Miner' },
+    { sl: 'Familok', pl: 'Robotniczy dom wielorodzinny', en: 'Miners’ tenement house' },
+    { sl: 'Bajtel', pl: 'Dziecko', en: 'Kid' },
+    { sl: 'Szolka', pl: 'Filiżanka', en: 'Cup' },
+    { sl: 'Kołocz', pl: 'Śląskie ciasto drożdżowe', en: 'Silesian yeast cake' },
+    { sl: 'Modro kapusta', pl: 'Czerwona kapusta', en: 'Red cabbage' },
+    { sl: 'Gyszynk', pl: 'Prezent', en: 'Gift' },
+    { sl: 'Wihajster', pl: 'To coś, ustrojstwo', en: 'Thingamajig' },
   ],
 
   sources: [

@@ -3,7 +3,8 @@
 // Dashboard onboarding: a welcome card with a city guide — getting around,
 // restaurants and places to visit, sorted by distance from the home.
 //
-//   GET  /guide?lang=pl          the guide (only when config.onboarding.enabled)
+//   GET  /guide?lang=pl          the guide (only when config.onboarding.enabled),
+//                                with the city's ready-made walks and phrasebook
 //   GET  /guide/cities           the cities there's a guide for
 //   POST /settings/onboarding    { enabled, city, welcome, lat, lon, sections, extras }
 //
@@ -60,6 +61,7 @@ function view(item, lang, home, cityName) {
     id: item.id, name: t(item.name), text: t(item.text || item.note), kind: t(item.kind), tag: t(item.tag) || item.tag || null,
     address: item.address || null, price: item.price || null, url: item.url || null, icon: item.icon || null, custom: !!item.custom,
   };
+  if (item.veg) out.veg = true;
   // photos: https only (Wikimedia Commons), with their credit
   if (item.image?.src && /^https:\/\//.test(item.image.src)) {
     out.image = { src: item.image.src, page: /^https:\/\//.test(item.image.page || '') ? item.image.page : null, author: String(item.image.author || '').slice(0, 120), license: String(item.image.license || '').slice(0, 40) };
@@ -155,6 +157,7 @@ module.exports = function register(router, ctx) {
     const lang = String(req.query.lang || 'en').slice(0, 2) === 'pl' ? 'pl' : 'en';
     const home = homeOf(cfg);
     const cityName = city.name[lang] || city.name.en;
+    const t = (v) => (v && typeof v === 'object' ? v[lang] || v.en || '' : v || '');
     const on = (k) => o.sections?.[k] !== false;
     const extras = (Array.isArray(o.extras) ? o.extras : []).filter((e) => e?.name);
     const byDistance = (a, b) => (a.km ?? 1e9) - (b.km ?? 1e9);
@@ -178,6 +181,12 @@ module.exports = function register(router, ctx) {
         transport: section('transport', false),
         restaurants: section('restaurants', true),
         places: section('places', true),
+        // ready-made walks (stops that are on the page) and a Silesian phrasebook
+        walks: (city.walks || []).map((w) => {
+          const stops = (w.stops || []).filter((key) => { const [k, id] = String(key).split(':'); return on(k) && city[k]?.some((it) => it.id === id && it.lat != null); });
+          return stops.length >= 2 ? { id: w.id, icon: w.icon || null, mode: w.mode || 'walking', name: t(w.name), text: t(w.text), stops } : null;
+        }).filter(Boolean),
+        phrases: (city.phrases || []).map((p) => ({ sl: p.sl, meaning: p[lang] || p.en })),
         sources: city.sources,
         generated: city.generated || null,
         // optional Google Maps Embed API key — embed keys are meant to be public (restrict it to this host)

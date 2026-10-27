@@ -3087,3 +3087,37 @@ button.gd-mini { border: 0; width: 100%; text-align: left; font: inherit; cursor
   font-size: 13px; font-weight: 700; color: #fff; text-decoration: none; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: background .2s, transform .2s; }
 .gd-edit:hover { background: rgba(255,255,255,0.18); transform: translateY(-1px); }
+
+/* city guide: filters, surprise, walks, Silesian phrasebook */
+.gd-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 2px; }
+.gd-filter { border: 1px solid var(--border); background: var(--card); color: var(--text2); font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 12px; border-radius: 999px; cursor: pointer; transition: background .2s, color .2s, transform .2s; }
+.gd-filter span { opacity: .6; margin-left: 2px; }
+.gd-filter:hover { transform: translateY(-1px); }
+.gd-filter[data-active="true"] { background: var(--c, var(--gd-food)); border-color: transparent; color: var(--gd-on, #fff); }
+[data-theme="light"] .gd-filter { border-color: rgba(0,0,0,0.08); }
+.gd-dice { margin-left: auto; }
+.gd-dice span { opacity: 1; display: inline-block; transition: transform .5s; }
+.gd-dice:hover span { transform: rotate(200deg); }
+.gd-walks { margin-top: 12px; display: grid; gap: 10px; padding: 16px; border-radius: 22px; background: var(--card); border: 1px solid var(--border); }
+[data-theme="light"] .gd-walks { border-color: transparent; }
+.gd-walk { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; padding: 12px; border-radius: 16px; background: var(--white-05); }
+[data-theme="light"] .gd-walk { background: rgba(0,0,0,0.035); }
+.gd-walk[data-on="true"] { outline: 2px solid color-mix(in srgb, var(--gd-move) 55%, transparent); }
+.gd-walk-ic { font-size: 22px; line-height: 1; padding-top: 2px; }
+.gd-walk-name { font-weight: 800; font-size: 14.5px; }
+.gd-walk-text { font-size: 12.5px; color: var(--text3); margin-top: 2px; }
+.gd-walk-stops { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: 12px; color: var(--text2); }
+.gd-walk-stops b { display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; font-size: 10.5px; color: #fff; background: var(--c, var(--gd-move)); margin-right: 2px; }
+.gd-walk .gd-btn { grid-column: 2; justify-self: start; margin-top: 4px; }
+.gd-walk .gd-btn:disabled { cursor: default; transform: none; }
+.gd-phrases { display: grid; gap: 10px; padding: 16px; border-radius: 22px; background: var(--card); border: 1px solid var(--border); }
+[data-theme="light"] .gd-phrases { border-color: transparent; }
+.gd-phrase-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.gd-phrase { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border-radius: 14px; border: 0; cursor: pointer; font: inherit; color: var(--text);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--gd-places) 16%, transparent), color-mix(in srgb, var(--gd-food) 12%, transparent)); transition: transform .25s; }
+.gd-phrase:hover { transform: translateY(-2px); }
+.gd-phrase-sl { font-weight: 800; font-size: 14.5px; }
+.gd-phrase-m { font-size: 12.5px; color: var(--text3); min-height: 1.3em; }
+.gd-phrase[data-open="true"] .gd-phrase-m { color: var(--text); animation: gd-reveal .35s ease; }
+@keyframes gd-reveal { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .gd-phrase, .gd-filter, .gd-dice span { transition: none; } .gd-phrase[data-open="true"] .gd-phrase-m { animation: none; } }

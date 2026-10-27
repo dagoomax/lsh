@@ -84,9 +84,19 @@ test('GET /guide: off, then sorted by distance from home, own tips first, langua
       assert.match(r.headers.get('content-security-policy'), /^sandbox;/, 'error page fully sandboxed');
     }
 
+    // walks point at stops on the page; phrasebook in the viewer's language; vegetarian flag
+    assert.ok(g.walks.length >= 3);
+    for (const w of g.walks) for (const key of w.stops) { const [k, id] = key.split(':'); assert.ok(g[k].some((x) => x.id === id && x.lat != null), key); }
+    assert.equal(g.phrases.find((p) => p.sl === 'Pyrsk!').meaning, 'Hi!');
+    assert.equal(g.restaurants.find((r) => r.id === 'falla').veg, true);
+    assert.equal(g.restaurants.find((r) => r.id === 'tatiana').veg, undefined);
+
     cfg.onboarding.sections = { transport: false, restaurants: true, places: true };
     g = (await (await fetch(`${s.url}/api/guide`)).json()).data;
     assert.equal(g.transport, null);
+    cfg.onboarding.sections = { transport: true, restaurants: false, places: true };
+    g = (await (await fetch(`${s.url}/api/guide`)).json()).data;
+    assert.ok(g.walks.every((w) => w.stops.every((k) => k.startsWith('places:'))), 'walks drop stops in hidden sections');
   } finally { s.close() }
 });
 

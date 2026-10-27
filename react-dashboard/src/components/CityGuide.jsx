@@ -274,6 +274,7 @@ function Hero({ g, compact = false, onOpen }) {
           <span className="gd-chip"><b className="gd-tnum">{now.toLocaleTimeString(getLang(), { hour: '2-digit', minute: '2-digit' })}</b> {now.toLocaleDateString(getLang(), { weekday: 'long' })}</span>
           {temp != null && <span className="gd-chip"><span aria-hidden="true">{today?.now?.icon || today?.icon}</span> <b className="gd-tnum">{Math.round(temp)}°</b></span>}
           {g.home && <span className="gd-chip"><b className="gd-tnum">{dec(g.home.centreKm)} km</b> {gt('guide_to_centre', 'to the centre')}</span>}
+          {g.phrases?.length > 0 && (() => { const p = g.phrases[dayIndex(g.phrases.length)]; return <span className="gd-chip" title={gt('guide_word_day', 'Silesian word of the day')}><span aria-hidden="true">💬</span> <b>{p.sl}</b> = {p.meaning}</span> })()}
           {!compact && counts.map(({ k, n }) => <span key={k} className="gd-chip" style={{ '--c': CAT[k].color }}><i className="gd-dot"/> <b className="gd-tnum">{n}</b> {CAT[k].label().toLowerCase()}</span>)}
         </div>
         {compact && onOpen && <button className="gd-cta" onClick={onOpen}>{gt('guide_open', 'Full guide')} <span aria-hidden="true">→</span></button>}
@@ -739,6 +740,86 @@ function TripPanel({ g, t }) {
   )
 }
 
+// ── ready-made walks: one tap fills the trip ────────────────
+
+const walkStops = (g, w) => w.stops.map((key) => {
+  const [cat, id] = key.split(':')
+  const it = (g[cat] || []).find(x => x.id === id)
+  return it?.lat != null ? { key, cat, name: it.name, lat: it.lat, lon: it.lon } : null
+}).filter(Boolean)
+
+function Walks({ g, t }) {
+  const current = t.stops.map(s => s.key).join('|')
+  return (
+    <div className="gd-walks">
+      <div className="gd-trip-title">{gt('guide_walks', 'Ready-made walks')}</div>
+      {g.walks.map(w => {
+        const stops = walkStops(g, w)
+        const loaded = current === stops.map(s => s.key).join('|')
+        return (
+          <div key={w.id} className="gd-walk" data-on={String(loaded)}>
+            <span className="gd-walk-ic" aria-hidden="true">{w.icon || '🚶'}</span>
+            <div className="gd-walk-body">
+              <div className="gd-walk-name">{w.name}</div>
+              <div className="gd-walk-text">{w.text}</div>
+              <div className="gd-walk-stops">{stops.map((s, i) => <span key={s.key} style={{ '--c': CAT[s.cat]?.color }}><b>{i + 1}</b> {s.name}</span>)}</div>
+            </div>
+            <button className={`gd-btn${loaded ? ' gd-btn-ghost' : ' gd-btn-go'}`} disabled={loaded}
+              onClick={() => setTrip({ mode: w.mode, stops })} title={gt(`guide_mode_${w.mode}`, w.mode)}>
+              {loaded ? `✓ ${gt('guide_walk_loaded', 'In your trip')}` : `${w.mode === 'transit' ? '🚋' : '🚶'} ${gt('guide_walk_go', 'Take this walk')}`}
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── filters for a tab: its tags, vegetarian, cheap, the host's picks ──
+
+function filtersOf(items) {
+  const out = []
+  const tags = [...new Set(items.map(it => (typeof it.tag === 'string' ? it.tag : null)).filter(Boolean))]
+  if (items.some(it => it.custom)) out.push({ id: 'custom', label: `★ ${gt('guide_host_pick', 'Host’s pick')}`, test: it => it.custom })
+  if (tags.length > 1) for (const tag of tags) out.push({ id: `tag:${tag}`, label: tag, test: it => it.tag === tag })
+  if (items.some(it => it.veg)) out.push({ id: 'veg', label: `🌱 ${gt('guide_veg', 'Vegetarian')}`, test: it => it.veg })
+  const cheap = items.filter(it => it.price === '€').length
+  if (cheap && cheap < items.length) out.push({ id: 'cheap', label: `€ ${gt('guide_cheap', 'Cheap eats')}`, test: it => it.price === '€' })
+  return out.map(f => ({ ...f, n: items.filter(f.test).length })).filter(f => f.n > 0 && f.n < items.length)
+}
+
+// a random pick, nearby first (within 5 km when there are enough)
+function surprise(items) {
+  const near = items.filter(it => it.km == null || it.km <= 5)
+  const pool = near.length >= 3 ? near : items
+  return pool[Math.floor(Math.random() * pool.length)] || null
+}
+
+// ── Po śląsku: tap a word for its meaning ───────────────────
+
+const dayIndex = (n) => { const d = new Date(); return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000) % n }
+
+function Phrasebook({ phrases }) {
+  const [open, setOpen] = useState(() => new Set())
+  const flip = (i) => setOpen(o => { const n = new Set(o); n.has(i) ? n.delete(i) : n.add(i); return n })
+  return (
+    <section className="gd-phrases">
+      <div className="gd-phrases-head">
+        <div className="gd-trip-title">{gt('guide_phrases', 'Speak Silesian')}</div>
+        <div className="gd-trip-sub">{gt('guide_phrases_hint', 'Words you’ll hear around here. Tap one for its meaning.')}</div>
+      </div>
+      <div className="gd-phrase-grid">
+        {phrases.map((p, i) => (
+          <button key={p.sl} className="gd-phrase" data-open={String(open.has(i))} onClick={() => flip(i)} aria-expanded={open.has(i)}>
+            <span className="gd-phrase-sl">{p.sl}</span>
+            <span className="gd-phrase-m">{open.has(i) ? p.meaning : '···'}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 // the place a card points at, for the map when there's no trip yet
 function focusOf(g, key) {
   if (!key) return null
@@ -751,6 +832,7 @@ export function CityGuidePage() {
   const g = useGuide()
   const t = useTrip()
   const [tab, setTab] = useState('places')
+  const [filter, setFilter] = useState(null)
   const [hover, setHover] = useState(null)
   const [view, setView] = useState(() => (trip.stops.length ? 'map' : 'radar'))
   const refs = useRef({})
@@ -761,7 +843,12 @@ export function CityGuidePage() {
   const tabs = ORDER.filter(k => g[k]?.length)
   const cur = g[tab]?.length ? tab : tabs[0]
   const idx = tabs.indexOf(cur)
+  const filters = filtersOf(g[cur] || [])
+  const active = filters.find(f => f.id === filter)
+  const shown = (g[cur] || []).filter(it => !active || active.test(it))
+  const showTab = (k) => { setTab(k); setFilter(null) }
   const pick = (cat, key) => {
+    if (cat !== cur) setFilter(null)
     setTab(cat); setHover(key)
     setTimeout(() => refs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 120)
   }
@@ -781,23 +868,41 @@ export function CityGuidePage() {
             ? <GoogleMap g={g} stops={t.stops} mode={t.mode} focus={!t.stops.length ? focusOf(g, hoverStick) : null}/>
             : <Radar g={g} active={cur} hover={hover} setHover={setHover} onPick={pick} tripStops={t.stops}/>}
           {g.home && <TripPanel g={g} t={t}/>}
+          {g.home && g.walks?.length > 0 && <Walks g={g} t={t}/>}
         </aside>
         <div className="gd-list">
           <div className="gd-tabs" role="tablist" style={{ '--n': tabs.length, '--i': idx, '--c': CAT[cur]?.color }}>
             <span className="gd-tab-ind" aria-hidden="true"/>
             {tabs.map(k => (
-              <button key={k} role="tab" aria-selected={cur === k} className="gd-tab" data-active={String(cur === k)} onClick={() => setTab(k)}>
+              <button key={k} role="tab" aria-selected={cur === k} className="gd-tab" data-active={String(cur === k)} onClick={() => showTab(k)}>
                 <Ico cat={k} it={{ icon: 'tram' }} size={16}/> <span className="gd-tab-label">{CAT[k].label()}</span> <span className="gd-tab-n gd-tnum">{g[k].length}</span>
               </button>
             ))}
           </div>
-          <div className="gd-cards" key={cur}>
-            {(g[cur] || []).map((it, i) => (
+          {(filters.length > 0 || cur !== 'transport') && (
+            <div className="gd-filters" role="group" style={{ '--c': CAT[cur]?.color }}>
+              {filters.length > 0 && <button className="gd-filter" data-active={String(!active)} onClick={() => setFilter(null)}>{gt('guide_all', 'All')}</button>}
+              {filters.map(f => (
+                <button key={f.id} className="gd-filter" data-active={String(active?.id === f.id)} onClick={() => setFilter(active?.id === f.id ? null : f.id)}>
+                  {f.label} <span className="gd-tnum">{f.n}</span>
+                </button>
+              ))}
+              {cur !== 'transport' && shown.length > 1 && (
+                <button className="gd-filter gd-dice" onClick={() => { const it = surprise(shown); if (it) { setHover(`${cur}:${it.id}`); openPopup({ kind: 'place', cat: cur, it }) } }}
+                  title={gt('guide_surprise_hint', 'Can’t decide? Pick one for me')}>
+                  <span aria-hidden="true">🎲</span> {gt('guide_surprise', 'Surprise me')}
+                </button>
+              )}
+            </div>
+          )}
+          <div className="gd-cards" key={`${cur}|${filter || ''}`}>
+            {shown.map((it, i) => (
               <Card key={it.id} it={it} cat={cur} index={i} hovered={hover === `${cur}:${it.id}`} setHover={(k) => { setHover(k); if (k) setHoverStick(k) }}
                 inTrip={t.stops.some(s => s.key === `${cur}:${it.id}`)} stopNo={(t.stops.findIndex(s => s.key === `${cur}:${it.id}`) + 1) || null}
                 tripFull={t.stops.length >= MAX_STOPS} refCb={(el) => { refs.current[`${cur}:${it.id}`] = el }}/>
             ))}
           </div>
+          {g.phrases?.length > 0 && <Phrasebook phrases={g.phrases}/>}
           {g.sources?.length > 0 && (
             <div className="gd-sources">
               {gt('guide_sources', 'Sources')}: {g.sources.map((s, i) => (
