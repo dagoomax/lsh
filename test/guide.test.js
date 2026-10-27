@@ -94,6 +94,7 @@ test('GET /guide: off, then sorted by distance from home, own tips first, langua
     assert.equal(g.phrases.find((p) => p.sl === 'Pyrsk!').meaning, 'Hi!');
     assert.equal(g.restaurants.find((r) => r.id === 'falla').veg, true);
     assert.ok(g.restaurants.filter((r) => r.cafe).length >= 6, 'cafés flagged for their filter');
+    assert.ok(g.restaurants.filter((r) => r.bar).length >= 5, 'bars flagged for their filter');
     assert.equal(g.restaurants.find((r) => r.id === 'tatiana').veg, undefined);
 
     cfg.onboarding.sections = { transport: false, restaurants: true, places: true };

@@ -262,6 +262,66 @@ module.exports = {
         en: 'A café in a historic tenement by the Rynek; besides coffee and cakes, Polish and Silesian dishes.',
       },
     },
+    // bars: OSM coordinates, websites checked Oct 2026
+    {
+      id: 'browariat', bar: true, lat: 50.25612, lon: 19.0276, address: 'ul. Francuska 11', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Browariat', en: 'Browariat' },
+      kind: { pl: 'piwo kraftowe', en: 'craft beer' },
+      text: {
+        pl: 'Jeden z najbardziej cenionych pubów z piwem kraftowym w Katowicach — wiele kranów i polskie browary rzemieślnicze.',
+        en: 'One of Katowice’s best-loved craft beer pubs: plenty of taps and Polish craft breweries.',
+      },
+      url: 'https://browariat.com/',
+    },
+    {
+      id: 'bialamalpa', bar: true, lat: 50.25939, lon: 19.01644, address: 'ul. 3 Maja 38', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Biała Małpa', en: 'Biała Małpa' },
+      kind: { pl: 'multitap', en: 'multitap' },
+      text: {
+        pl: 'Multitap przy 3 Maja: 20 kranów i 4 pompy z piwem rzemieślniczym, blisko dworca.',
+        en: 'A multitap on 3 Maja: 20 taps and 4 hand pumps of craft beer, close to the station.',
+      },
+      url: 'https://bialamalpa.pl/',
+    },
+    {
+      id: 'upojeni', bar: true, lat: 50.25824, lon: 19.02197, address: 'ul. Świętego Jana 10', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Upojeni', en: 'Upojeni' },
+      kind: { pl: 'multitap', en: 'multitap' },
+      text: {
+        pl: 'Multitap tuż przy Rynku, z rotującą listą piw rzemieślniczych.',
+        en: 'A multitap right by the Rynek with a rotating list of craft beers.',
+      },
+      url: 'https://upojeni.pl/',
+    },
+    {
+      id: 'absurdalna', bar: true, lat: 50.25842, lon: 19.02293, address: 'ul. Staromiejska 9', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Absurdalna', en: 'Absurdalna' },
+      kind: { pl: 'multitap i kuchnia', en: 'multitap and kitchen' },
+      text: {
+        pl: 'Duży multitap 50 m od Rynku, w stronę Mariackiej — łatwiej o stolik niż na samej Mariackiej.',
+        en: 'A big multitap 50 m from the Rynek towards Mariacka; easier to find a table than on Mariacka itself.',
+      },
+      url: 'https://absurdalna.pl/',
+    },
+    {
+      id: 'oldcuban', bar: true, lat: 50.2562, lon: 19.02435, address: 'ul. Wojewódzka 26', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Old Cuban', en: 'Old Cuban' },
+      kind: { pl: 'bar koktajlowy, rum', en: 'cocktail bar, rum' },
+      text: {
+        pl: 'Bar koktajlowy w karaibskim klimacie, od 2015 r. — specjalnością są koktajle na rumie.',
+        en: 'A Caribbean-style cocktail bar running since 2015; rum cocktails are the speciality.',
+      },
+      url: 'https://oldcuban.pl/',
+    },
+    {
+      id: 'punkt', bar: true, lat: 50.2575, lon: 19.0269, address: 'ul. Mariacka 16', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Pünkt Widzenia', en: 'Pünkt Widzenia' },
+      kind: { pl: 'bar koktajlowy z ogródkiem', en: 'cocktail bar with a garden' },
+      text: {
+        pl: 'Bar koktajlowy na Mariackiej z ładnym wnętrzem i dużym ogródkiem — dobry start wieczoru na ulicy barów.',
+        en: 'A cocktail bar on Mariacka with a lovely interior and a big garden; a good start to an evening on the bar street.',
+      },
+    },
     {
       id: 'taj', lat: 50.25732, lon: 19.02359, address: 'ul. Dworcowa 4', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
       image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/2023-07_Katowice_ul._Dworcowa_%284%29.jpg/960px-2023-07_Katowice_ul._Dworcowa_%284%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:2023-07_Katowice_ul._Dworcowa_(4).jpg', author: 'Marek Mróz', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Dworcowa — stary dworzec', en: 'Dworcowa Street — the old station' } },
