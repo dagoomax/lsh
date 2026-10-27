@@ -110,7 +110,9 @@ module.exports = [
   { file: 'zwave-usb-client', label: 'Z-Wave USB', when: (config) => config.zwaveUsb?.port },
   { file: 'zigbee-client', label: 'Zigbee', when: (config) => config.zigbee?.port },
   { file: 'vera-client', label: 'Vera', when: (config) => config.vera?.host },
-  { file: 'knx-client', label: 'KNX', hint: 'npm install knx', when: (config) => config.knx?.host },
+  // exposed (in-process): its LSH bridge (knx.lshBridge) serves every device's
+  // ETS group addresses, so it needs the real registry and the scenes
+  { file: 'knx-client', label: 'KNX', expose: 'knx', hint: 'npm install knx', when: (config) => config.knx?.host },
   { file: 'fibaro-client', label: 'Fibaro', when: (config) => config.fibaro?.host },
   { file: 'can-client', label: 'CAN', when: (config) => config.can?.transport || config.can?.interface || config.can?.serialPort },
   { file: 'modbus-client', label: 'Modbus', when: (config) => config.modbus?.devices?.length },

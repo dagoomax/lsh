@@ -608,6 +608,8 @@ async function main() {
     if (it.expose) apiClients[it.expose] = client;
     client.start().catch((err) => console.error(`[${it.label}] Start failed: ${err.message}`));
   }
+  // KNX bridge: LSH scenes on the bus (knx.lshBridge)
+  if (apiClients.knx && automation) apiClients.knx.setAutomation(automation);
 
   // Music — one player (Loxone / dashboards) with a Spotify / Apple Music
   // source selector. Needs the live apiClients map, so it's wired here.

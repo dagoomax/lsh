@@ -1293,7 +1293,8 @@
       ],
       "when": "(config.knx?.host)",
       "files": [
-        "src/knx-client.js"
+        "src/knx-client.js",
+        "src/knx-ets.js"
       ],
       "deps": {
         "knx": "^2.5.4"

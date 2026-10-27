@@ -1,5 +1,6 @@
 const EventEmitter = require('events');
 const platformStatus = require('./platform-status');
+const ets = require('./knx-ets');
 
 // KNX 2-byte float decode (DPT9)
 function decodeDPT9(b0, b1) {
@@ -67,6 +68,15 @@ class KNXClient extends EventEmitter {
     this._store = store;
     this._reg   = sensorRegistry;
     this._conn  = null;
+    this._automation = null;
+    this._bridge = null;   // { byCmd: Map<ga, entry>, byStatus: Map<ga, entry>, byKey: Map<storeKey, entry> }
+  }
+
+  // server.js hands over the automation engine, so scene triggers can run scenes
+  setAutomation(automation) {
+    this._automation = automation;
+    automation?.onScenesChanged?.(() => this._scheduleBridge());
+    this._scheduleBridge();
   }
 
   async start() {
@@ -93,6 +103,7 @@ class KNXClient extends EventEmitter {
           console.log(`[KNX] Connected to ${cfg.host}:${cfg.port || 3671}`);
           platformStatus.set('knx', true);
           this._registerDevice(deviceKey, gas);
+          this._startBridge();
           gas.forEach(ga => {
             if (ga.readable !== false) {
               try { this._conn.read(ga.address); } catch {}
@@ -101,6 +112,7 @@ class KNXClient extends EventEmitter {
         },
 
         event: (evt, src, dest, rawValue) => {
+          if (this._bridge && this._onBridgeEvent(evt, dest, rawValue)) return;
           if (evt !== 'GroupValue_Write' && evt !== 'GroupValue_Response') return;
           const ga = gas.find(g => g.address === dest);
           if (!ga) return;
@@ -122,7 +134,87 @@ class KNXClient extends EventEmitter {
     });
   }
 
+  // ── LSH → KNX bridge (knx.lshBridge) ───────────────────────────────────
+  // Serves the group addresses of the ETS export (src/knx-ets.js) on the
+  // bus: a write to a command address drives the LSH device or runs the
+  // scene, status/value addresses follow the device (sent on change,
+  // answered on read). Only addresses already handed out by an export are
+  // served — a device added since appears after the next export.
+
+  _startBridge() {
+    if (!this._cfg.lshBridge || this._bridgeOn) return;
+    this._bridgeOn = true;
+    this._reg.on?.('device-discovered', () => this._scheduleBridge());
+    this._store.on('change', ({ key, value, changed }) => {
+      if (changed === false || !this._bridge || !this._conn) return;
+      const e = this._bridge.byKey.get(key);
+      if (e?.status) this._send('write', e.status, value, e);
+    });
+    this._buildBridge();
+  }
+
+  _scheduleBridge() {
+    if (!this._bridgeOn) return;
+    clearTimeout(this._bridgeTimer);
+    this._bridgeTimer = setTimeout(() => this._buildBridge(), 2000);
+    this._bridgeTimer.unref?.();
+  }
+
+  _buildBridge() {
+    const { entries } = ets.allocate(this._reg.getDevices(), ets.loadMap(), {
+      mainGroup: this._cfg.ets?.mainGroup ?? 20,
+      getValue: (k) => this._store.get(k),
+      scenes: this._automation?.scenes || [],
+      readOnly: true,
+    });
+    const byCmd = new Map(), byStatus = new Map(), byKey = new Map();
+    for (const e of entries) {
+      if (e.cmd) byCmd.set(e.cmd, e);
+      if (e.status) byStatus.set(e.status, e);
+      byKey.set(e.key, e);
+    }
+    const first = !this._bridge;
+    this._bridge = { byCmd, byStatus, byKey };
+    if (first) console.log(`[KNX] LSH bridge: ${byCmd.size} command, ${byStatus.size} status address(es)`);
+  }
+
+  // true when the telegram was for a bridged address
+  _onBridgeEvent(evt, dest, raw) {
+    const { byCmd, byStatus } = this._bridge;
+    if (evt === 'GroupValue_Read') {
+      const e = byStatus.get(dest);
+      if (!e) return false;
+      const value = this._store.get(e.key);
+      if (value != null) this._send('respond', dest, value, e);
+      return true;
+    }
+    if (evt !== 'GroupValue_Write') return false;
+    const e = byCmd.get(dest);
+    if (!e) return !!byStatus.get(dest);
+    let value = parseValue(raw, e.dpt);
+    if (e.dpt === 'DPT5.001' && value != null) value = Math.round(value * 100 / 255);
+    if (e.kind === 'scene') {
+      if (value && this._automation) this._automation.runScene(e.sceneId).catch((err) => console.error(`[KNX] Scene ${e.sceneId}: ${err.message}`));
+      return true;
+    }
+    // DPT 1.017 trigger: either telegram value fires the button
+    if (e.dpt === 'DPT1.017') value = true;
+    this._reg.sendCommand(e.deviceKey, e.path, value)
+      .catch((err) => console.error(`[KNX] ${dest} → ${e.key}: ${err.message}`));
+    return true;
+  }
+
+  _send(how, addr, value, e) {
+    let v = value;
+    if (e.dpt.startsWith('DPT1.')) v = value === true || value === 1 || value === 'on' || value === '1' || value === 'true';
+    else if (typeof v !== 'number') { v = Number(v); if (!Number.isFinite(v)) return; }
+    if (e.dpt === 'DPT5.001') v = Math.max(0, Math.min(100, v));
+    try { this._conn[how](addr, v, e.dpt); }
+    catch (err) { console.error(`[KNX] ${how} ${addr} failed: ${err.message}`); }
+  }
+
   stop() {
+    clearTimeout(this._bridgeTimer);
     try { this._conn?.Disconnect(); } catch {}
     this._conn = null;
     platformStatus.set('knx', false);

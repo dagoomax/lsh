@@ -1320,6 +1320,24 @@ Outbound counterpart of `domatiq`, the same idea as `loxoneOut`/`fibaroOut`: pus
 
 Connects to a KNXnet/IP gateway or IP router. Requires `npm install knx`.
 
+**Export to ETS.** Settings → KNX → *Export to ETS* (or `GET /api/knx/ets.xml`, admin) downloads every LSH device and scene as KNX group addresses, in ETS's group-address exchange XML — in ETS 5/6: *Group Addresses → Import… → XML*. Devices of type `knx` are left out (they're already on the bus); text and colour sensors have no KNX form.
+
+| Main group | Contents | DPT |
+|---|---|---|
+| `M` Switching | `M/0-3/x` command, `M/4-7/x` status (same `x`) | 1.001, momentary buttons 1.017 (no status) |
+| `M+1` Dimming | same split | 5.001 for 0-100 ranges, else 5.010 / 14 |
+| `M+2` Values | read-only measurements | 9.001 °C, 9.004 lx, 9.007 humidity, 5.001 %, 9.024 kW, 14.056 W, 14.027 V, 14.019 A, else 14 |
+| `M+3` States | read-only booleans | 1.001 |
+| `M+4` Scenes | one trigger per LSH scene | 1.017 |
+
+`M` is `knx.ets.mainGroup` (default `20`, 0-27). Addresses are kept in `persist/knx-ets.json`: a device keeps its address in every later export and new devices take the next free one, so links made in ETS stay valid. `?type=shelly,netatmo` limits the devices, `?scenes=0` leaves scenes out; `GET /api/knx/ets` returns the same as JSON.
+
+With `"lshBridge": true` (Settings → *LSH bridge on the bus*) the KNX client serves those addresses through the gateway: a write to a command address drives the LSH device (or runs the scene), status and value addresses are sent when the LSH value changes and answered on a group read. Only addresses handed out by an export are served — export again after adding devices, and import the new file in ETS.
+
+```json
+"knx": { "host": "192.168.1.100", "lshBridge": true, "ets": { "mainGroup": 20 } }
+```
+
 **Group address fields:**
 
 | Field | Required | Description |
@@ -4954,6 +4972,9 @@ curl -b cookies.txt -X POST http://localhost:3001/api/auth/tokens \
 | `POST` | `/api/settings/import` | Restore config from a JSON file upload |
 | `POST` | `/api/settings/test-knx` | Test TCP connectivity to KNX gateway `{ host, port }` |
 | `POST` | `/api/settings/knx` | Save KNX gateway + group address list |
+| `GET` | `/api/knx/ets.xml` | LSH devices and scenes as an ETS group-address import file (`?type`, `?scenes=0`, `?mainGroup`; admin) |
+| `GET` | `/api/knx/ets` | The same addresses as JSON (admin) |
+| `POST` | `/api/settings/knx-ets` | Save `{ mainGroup, lshBridge }` (admin) |
 | `POST` | `/api/settings/test-esphome` | Test ESPHome device reachability `{ host, port, password }` |
 | `POST` | `/api/settings/esphome` | Save ESPHome device list |
 | `GET` | `/api/settings/lgthinq` | Account country, whether a token is saved, the appliances found |
