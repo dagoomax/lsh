@@ -8,6 +8,7 @@
 //   restaurants MICHELIN Guide Poland 2026, Katowice: all four listed places,
 //               then local favourites from Katowice food guides
 //   places      the city's main sights; coordinates from OpenStreetMap
+//   activities  things to do nearby (theme park, zoo, cable car, mines, a match)
 //   images      Wikimedia Commons (free licences — author and licence shown
 //               on each photo, linked to its file page)
 // Fares, timetables and opening hours change — the card links to the sources
@@ -327,6 +328,74 @@ module.exports = {
     },
   ],
 
+  // Things to do: what you book or join, not just look at — OSM coordinates,
+  // websites checked Oct 2026; seasons and timetables are on their pages
+  activities: [
+    {
+      id: 'legendia', lat: 50.27602, lon: 18.99200, address: 'ul. Złota, Chorzów', tag: { pl: 'park rozrywki', en: 'theme park' },
+      name: { pl: 'Legendia — Śląskie Wesołe Miasteczko', en: 'Legendia theme park' },
+      text: {
+        pl: 'Park rozrywki w Parku Śląskim: rollercoastery (m.in. Lech Coaster) i strefa dla dzieci. Działa sezonowo — terminy w kalendarzu na stronie.',
+        en: 'A theme park in Silesian Park: rollercoasters (Lech Coaster among them) and a kids’ area. Open seasonally; dates are in the calendar on its site.',
+      },
+      url: 'https://www.legendia.pl/',
+    },
+    {
+      id: 'zoo', lat: 50.28225, lon: 18.99415, address: 'ul. Promenada gen. J. Ziętka 7, Chorzów', tag: { pl: 'z dziećmi', en: 'with kids' },
+      name: { pl: 'Śląski Ogród Zoologiczny', en: 'Silesian Zoo' },
+      text: {
+        pl: 'Duże zoo w Parku Śląskim, z Kotliną Dinozaurów — naturalnej wielkości modelami w lesie.',
+        en: 'A large zoo in Silesian Park, with the Dinosaur Valley: life-size models among the trees.',
+      },
+      url: 'https://slaskiezoo.pl/',
+    },
+    {
+      id: 'elka', lat: 50.28269, lon: 18.98564, address: 'Park Śląski, Chorzów', tag: { pl: 'widoki', en: 'views' },
+      name: { pl: 'Kolej linowa Elka', en: 'Elka cable car' },
+      text: {
+        pl: 'Gondole i krzesełka nad Parkiem Śląskim, między Stadionem Śląskim, Legendią i Planetarium. Widok na cały park i miasto.',
+        en: 'Gondolas and chairs over Silesian Park, linking the Silesian Stadium, Legendia and the Planetarium. Views over the park and the city.',
+      },
+      url: 'https://elka.parkslaski.pl/',
+    },
+    {
+      id: 'guido', lat: 50.28959, lon: 18.79178, address: 'ul. 3 Maja 93, Zabrze', tag: { pl: 'pod ziemią', en: 'underground' },
+      name: { pl: 'Zabytkowa Kopalnia Guido (Zabrze)', en: 'Guido historic coal mine (Zabrze)' },
+      text: {
+        pl: 'Zjazd klatką szybową pod ziemię i trasa z przewodnikiem po dawnej kopalni węgla. Zabrze: ok. 30 min pociągiem lub autem.',
+        en: 'Ride the cage down the shaft and follow a guide through a former coal mine. Zabrze is about 30 min by train or car.',
+      },
+      url: 'https://kopalniaguido.pl/',
+    },
+    {
+      id: 'luiza', lat: 50.29631, lon: 18.80706, address: 'ul. Wolności 410, Zabrze', tag: { pl: 'pod ziemią', en: 'underground' },
+      name: { pl: 'Sztolnia Królowa Luiza (Zabrze)', en: 'Queen Louise Adit (Zabrze)' },
+      text: {
+        pl: 'XIX-wieczna kopalnia i sztolnia odwadniająca: podziemna trasa pieszo, kolejką i łodziami elektrycznymi. Dłuższe warianty trwają kilka godzin.',
+        en: 'A 19th-century mine and drainage adit: an underground route on foot, by mine train and in electric boats. The longer tours take several hours.',
+      },
+      url: 'https://muzeumgornictwa.pl/',
+    },
+    {
+      id: 'wilson', lat: 50.25060, lon: 19.08350, address: 'ul. Oswobodzenia 1', tag: { pl: 'sztuka', en: 'art' },
+      name: { pl: 'Galeria Szyb Wilson', en: 'Szyb Wilson gallery' },
+      text: {
+        pl: 'Sztuka współczesna w dawnej łaźni górniczej, kilka minut od Nikiszowca — dobre uzupełnienie spaceru po osiedlu.',
+        en: 'Contemporary art in a former miners’ bathhouse a few minutes from Nikiszowiec. Pairs well with a walk around the estate.',
+      },
+      url: 'https://www.szybwilson.org/',
+    },
+    {
+      id: 'gks', lat: 50.25134, lon: 18.97418, address: 'ul. Nowa Bukowa 1', tag: { pl: 'sport', en: 'sport' },
+      name: { pl: 'Mecz GKS Katowice (Arena Katowice)', en: 'A GKS Katowice match (Arena Katowice)' },
+      text: {
+        pl: 'Piłkarski GKS gra na nowej Arenie Katowice (otwartej w 2025 r., ok. 15 tys. miejsc). Terminarz i bilety na stronie klubu.',
+        en: 'GKS’s footballers play at the new Arena Katowice (opened in 2025, about 15,000 seats). Fixtures and tickets are on the club’s site.',
+      },
+      url: 'https://www.gkskatowice.eu/',
+    },
+  ],
+
   // Ready-made walks: one tap loads the stops into the trip (keys: section:id)
   walks: [
     {
@@ -346,6 +415,15 @@ module.exports = {
         en: 'Nikiszowiec’s red-brick familoki, coffee at Byfyj, lunch at Prohibicja, then the garden town of Giszowiec. Half a day; buses from the centre.',
       },
       stops: ['places:nikiszowiec', 'restaurants:byfyj', 'restaurants:prohibicja', 'places:giszowiec'],
+    },
+    {
+      id: 'parkslaski', mode: 'walking', icon: '🎢',
+      name: { pl: 'Dzień w Parku Śląskim', en: 'A day in Silesian Park' },
+      text: {
+        pl: 'Zoo z dinozaurami, Elką nad parkiem do Legendii, na koniec gwiazdy w Planetarium. Cały dzień, świetny z dziećmi.',
+        en: 'The zoo and its dinosaurs, the Elka cable car over the park to Legendia, then the stars at the Planetarium. A full day, great with kids.',
+      },
+      stops: ['activities:zoo', 'activities:elka', 'activities:legendia', 'places:planetarium'],
     },
     {
       id: 'churches', mode: 'walking', icon: '⛪',

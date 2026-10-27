@@ -12,16 +12,16 @@
 //   enabled: true, city: 'katowice',
 //   welcome: 'host's own words (optional, replaces the city's)',
 //   lat, lon,                    // the home; default: openweather.lat/lon
-//   sections: { transport: true, restaurants: true, places: true },
-//   extras: [{ name, category: 'restaurant' | 'place' | 'transport', note, address, lat, lon, url }],
+//   sections: { transport: true, restaurants: true, places: true, activities: true },
+//   extras: [{ name, category: 'restaurant' | 'place' | 'activity' | 'transport', note, address, lat, lon, url }],
 // }
 //
 // City data: src/city-guides/<city>.js ({ pl, en } texts, coordinates).
 const { readConfigFile } = require('./helpers');
 const { writeConfigFile } = require('../config-file-cache');
 
-const SECTIONS = ['transport', 'restaurants', 'places'];
-const CATEGORY = { transport: 'transport', restaurant: 'restaurants', place: 'places' };
+const SECTIONS = ['transport', 'restaurants', 'places', 'activities'];
+const CATEGORY = { transport: 'transport', restaurant: 'restaurants', place: 'places', activity: 'activities' };
 
 const gen = () => require('../guide-generator');
 
@@ -165,7 +165,7 @@ module.exports = function register(router, ctx) {
       if (!on(k)) return null;
       const items = [
         ...extras.filter((e) => CATEGORY[e.category] === k).map((e, i) => view({ ...e, id: `extra-${i}`, custom: true }, lang, home, cityName)),
-        ...city[k].map((it) => view(it, lang, home, cityName)),
+        ...(city[k] || []).map((it) => view(it, lang, home, cityName)),
       ];
       return sort ? items.sort((a, b) => (b.custom - a.custom) || byDistance(a, b)) : items;
     };
@@ -181,6 +181,7 @@ module.exports = function register(router, ctx) {
         transport: section('transport', false),
         restaurants: section('restaurants', true),
         places: section('places', true),
+        activities: section('activities', true),
         // ready-made walks (stops that are on the page) and a Silesian phrasebook
         walks: (city.walks || []).map((w) => {
           const stops = (w.stops || []).filter((key) => { const [k, id] = String(key).split(':'); return on(k) && city[k]?.some((it) => it.id === id && it.lat != null); });

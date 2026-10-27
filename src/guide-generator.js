@@ -40,9 +40,10 @@ Answer with ONE JSON object and nothing else, in a \`\`\`json block, with this s
   "transport": [{"id": "...", "icon": "tram|route|plane|train|bike|car|bus|boat|metro", "name": {"pl","en"}, "text": {"pl","en"}, "url": "https://...", "lat": 0, "lon": 0}],
   "restaurants": [{"id": "...", "name": {"pl","en"}, "kind": {"pl","en"}, "text": {"pl","en"}, "address": "street and number", "lat": 0, "lon": 0, "price": "€|€€|€€€", "tag": "short label", "url": "https://..."}],
   "places": [{"id": "...", "name": {"pl","en"}, "tag": {"pl","en"}, "text": {"pl","en"}, "lat": 0, "lon": 0, "url": "https://..."}],
+  "activities": [{"id": "...", "name": {"pl","en"}, "tag": {"pl","en"}, "text": {"pl","en"}, "address": "street and number", "lat": 0, "lon": 0, "url": "https://..."}],
   "sources": [{"name": "...", "url": "https://..."}]
 }
-Rules: 4–7 transport items (public transport and tickets/apps, airport, main station, bikes, taxis), 4–8 restaurants, 6–12 places. Texts: one or two short plain sentences each, the Polish one in natural Polish. Coordinates to 5 decimals, of the actual venue; lat/lon optional only for transport items that are not a place. "url" only when you saw the page. Ids: short lowercase latin words.`;
+Rules: 4–7 transport items (public transport and tickets/apps, airport, main station, bikes, taxis), 4–8 restaurants, 6–12 places, 3–8 activities (things to do or book: tours, theme parks, zoos, boat trips, matches, workshops — not the sights already in places). Texts: one or two short plain sentences each, the Polish one in natural Polish. Coordinates to 5 decimals, of the actual venue; lat/lon optional only for transport items that are not a place. "url" only when you saw the page. Ids: short lowercase latin words.`;
 
 function userPrompt({ city, lat, lon }) {
   return `City: ${city}.${lat != null ? ` The home is at ${lat}, ${lon} — favour what's reasonably near it, but include the city's main sights.` : ''} Today is ${new Date().toISOString().slice(0, 10)}.`;
@@ -98,6 +99,7 @@ function sanitize(raw, fallbackName) {
     transport: list('transport', 8),
     restaurants: list('restaurants', 10),
     places: list('places', 14),
+    activities: list('activities', 10),
     sources: (Array.isArray(raw.sources) ? raw.sources : []).slice(0, 12).map((s) => ({ name: str(s?.name, 80), url: link(s?.url) })).filter((s) => s.name && s.url),
   };
   if (!guide.places.length && !guide.restaurants.length) throw new Error('The guide came back empty');
@@ -175,7 +177,7 @@ async function wikiFile(name, city, lang) {
 
 async function addImages(guide) {
   const city = guide.name?.en || guide.generated?.city || '';
-  const items = [...guide.places, ...guide.transport.filter((t) => t.lat != null)];
+  const items = [...guide.places, ...(guide.activities || []), ...guide.transport.filter((t) => t.lat != null)];
   const files = new Map();
   for (const it of items) {
     for (const lang of ['pl', 'en']) {

@@ -43,15 +43,17 @@ export function useGuide() {
 
 const CAT = {
   places:      { color: 'var(--gd-places)', label: () => gt('guide_places', 'Places to visit') },
+  activities:  { color: 'var(--gd-fun)', label: () => gt('guide_activities', 'Things to do') },
   restaurants: { color: 'var(--gd-food)', label: () => gt('guide_food', 'Restaurants') },
   transport:   { color: 'var(--gd-move)', label: () => gt('guide_transport', 'Getting around') },
 }
-const ORDER = ['places', 'restaurants', 'transport']
+const ORDER = ['places', 'activities', 'restaurants', 'transport']
 
 const P = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' }
 const ICONS = {
   places: <><path {...P} d="M3 21h18M5 21V10M19 21V10M9 21v-7M15 21v-7"/><path {...P} d="M2.5 10 12 4l9.5 6z"/></>,
   restaurants: <><path {...P} d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10"/><path {...P} d="M17 21V3c-2 1.5-3 4-3 7 0 1.5 1 2.5 3 2.5"/></>,
+  activities: <><path {...P} d="M4 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h16v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H4z"/><path {...P} d="M14 6v2M14 11v2M14 16v2"/></>,
   tram: <><rect {...P} x="6" y="5" width="12" height="13" rx="3"/><path {...P} d="M9 2h6M12 2v3M6 12h12M9 18l-2 3M15 18l2 3"/><circle cx="9" cy="15" r=".8" fill="currentColor"/><circle cx="15" cy="15" r=".8" fill="currentColor"/></>,
   train: <><rect {...P} x="5" y="3" width="14" height="14" rx="4"/><path {...P} d="M5 10h14M8 21l2-4M16 21l-2-4"/><circle cx="9" cy="13.5" r=".8" fill="currentColor"/><circle cx="15" cy="13.5" r=".8" fill="currentColor"/></>,
   plane: <path {...P} d="M10.5 20 12 15l6.5 3.5 1-1.5-6-6 .5-6.5c0-1-.5-1.5-1-1.5s-1 .5-1 1.5l-.5 6.5-6 6 1 1.5L12 15"/>,
@@ -946,6 +948,7 @@ export default function CityGuideCard({ onOpen }) {
           onPick={(cat, key) => { const it = (g[cat] || []).find(x => `${cat}:${x.id}` === key); if (it) openPopup({ kind: 'place', cat, it }) }}/>
         <div className="gd-cols">
           {col('places', 3)}
+          {col('activities', 3)}
           {col('restaurants', 3)}
           {col('transport', 3)}
         </div>

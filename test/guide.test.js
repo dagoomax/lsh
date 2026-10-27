@@ -24,7 +24,7 @@ function app() {
 }
 
 test('Katowice guide: both languages, real coordinates, links', () => {
-  for (const k of ['transport', 'restaurants', 'places']) {
+  for (const k of ['transport', 'restaurants', 'places', 'activities']) {
     assert.ok(katowice[k].length >= 4, k);
     for (const it of katowice[k]) {
       assert.ok(it.name.pl && it.name.en && it.text.pl && it.text.en, `${k}/${it.id} texts`);
@@ -85,6 +85,8 @@ test('GET /guide: off, then sorted by distance from home, own tips first, langua
     }
 
     // walks point at stops on the page; phrasebook in the viewer's language; vegetarian flag
+    assert.ok(g.activities.length >= 5, 'things to do');
+    assert.ok(g.activities.every((a, i, all) => !i || all[i - 1].km <= a.km), 'activities nearest first');
     assert.ok(g.walks.length >= 3);
     for (const w of g.walks) for (const key of w.stops) { const [k, id] = key.split(':'); assert.ok(g[k].some((x) => x.id === id && x.lat != null), key); }
     assert.equal(g.phrases.find((p) => p.sl === 'Pyrsk!').meaning, 'Hi!');
@@ -96,7 +98,7 @@ test('GET /guide: off, then sorted by distance from home, own tips first, langua
     assert.equal(g.transport, null);
     cfg.onboarding.sections = { transport: true, restaurants: false, places: true };
     g = (await (await fetch(`${s.url}/api/guide`)).json()).data;
-    assert.ok(g.walks.every((w) => w.stops.every((k) => k.startsWith('places:'))), 'walks drop stops in hidden sections');
+    assert.ok(g.walks.every((w) => w.stops.every((k) => !k.startsWith('restaurants:'))), 'walks drop stops in hidden sections');
   } finally { s.close() }
 });
 
