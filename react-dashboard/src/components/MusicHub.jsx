@@ -315,6 +315,14 @@ function Visualizer({ color, active, live, url, delay = 0, around = null, onBass
   Object.assign(state.current, { color, active, live, delay, mode, around, onBass, canvasEl: canvas })
   const pickMode = (m) => { setMode(m); store.set('lsh-viz-mode', m) }
   const [serverLive, setServerLive] = useState(false)
+  // this screen's analyser really has data (WebKit can give only silence, see readSpectrum)
+  const [localLive, setLocalLive] = useState(false)
+  useEffect(() => {
+    if (live !== 'local') return
+    const st = state.current
+    const watch = setInterval(() => setLocalLive(performance.now() - (st.heardAt || 0) < 2500), 1000)
+    return () => { clearInterval(watch); setLocalLive(false) }
+  }, [live])
   // spectrum of a station on a speaker, from LSH — frames queued, shown `delay` ms later.
   // Only while this page is on screen: LSH downloads and decodes the station for it,
   // and a tab left in the background would keep that going for good.
@@ -414,9 +422,9 @@ function Visualizer({ color, active, live, url, delay = 0, around = null, onBass
     return () => { cancelAnimationFrame(raf); clearTimeout(idleTimer); io?.disconnect(); document.removeEventListener('visibilitychange', onVis) }
   }, [])
   return (
-    <div className="hub-viz" title={live === 'local' ? T('vizLive') : live === 'server' && serverLive ? T('vizStation') : T('vizAnim')}>
+    <div className="hub-viz" title={live === 'local' ? T(localLive ? 'vizLive' : 'vizNoData') : live === 'server' && serverLive ? T('vizStation') : T('vizAnim')}>
       <canvas ref={canvas} aria-hidden="true" />
-      {(live === 'local' || (live === 'server' && serverLive)) && <span className="hub-viz-badge">● {T('liveSpectrum')}</span>}
+      {((live === 'local' && localLive) || (live === 'server' && serverLive)) && <span className="hub-viz-badge">● {T('liveSpectrum')}</span>}
       <div className="hub-viz-modes" role="radiogroup" aria-label={T('vizStyle')}>
         {VIZ_MODES.map((m) => (
           <button key={m} type="button" role="radio" aria-checked={mode === m} title={T(`viz_${m}`)} onClick={() => pickMode(m)}>
@@ -433,10 +441,16 @@ function Visualizer({ color, active, live, url, delay = 0, around = null, onBass
 // n levels 0…1: from LSH's frames (a station on a speaker), this screen's analyser, or an animation
 function readSpectrum(s, n, freq, keepFreq) {
   const out = new Array(n)
-  const an = s.live === 'local' ? localAudio.analyser() : null
+  let an = s.live === 'local' ? localAudio.analyser() : null
   if (an) {
     if (!freq || freq.length !== an.frequencyBinCount) { freq = new Uint8Array(an.frequencyBinCount); keepFreq(freq) }
     an.getByteFrequencyData(freq)
+    // WebKit (Safari, the macOS app) plays a live stream but its element source
+    // feeds Web Audio only silence: after 1.5 s of nothing, animate instead
+    let peak = 0
+    for (let k = 0; k < freq.length; k++) if (freq[k] > peak) peak = freq[k]
+    if (peak) s.heardAt = performance.now()
+    else if (performance.now() - (s.heardAt || 0) > 1500) an = null
   }
   let srv = null
   if (s.live === 'server' && s.frames.length) {
@@ -984,7 +998,7 @@ const TX = {
     amLoading: 'Loading Apple Music…', amSetup: 'Apple Music isn’t set up', amWhy: 'An admin adds the MusicKit key in Settings → Media → Apple Music. Music then plays right here.', amPick: 'Pick something below', amPreview: 'Sign in to play full tracks — without it you get 30-second previews', amSignIn: 'Sign in', amSignOut: 'Sign out', amHere: 'Plays on this screen', amSearch: 'Search Apple Music', recent: 'Recently played', amEmpty: 'Nothing in your library yet', position: 'Position',
     eqOn: 'Equalizer on', eqOff: 'Equalizer off', p_flat: 'Flat', p_bass: 'Bass boost', p_vocal: 'Vocal', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Electronic', p_night: 'Night',
     eqWhere: 'Applies live to radio on this screen, and to AirPlay speakers from the next station you start. Chromecast, Spotify and Apple Music play elsewhere or protected, so they can’t be equalized here. Double-click a slider to reset it.',
-    liveSpectrum: 'live spectrum', vizLive: 'Spectrum of the audio playing on this screen', vizAnim: 'Animation — Spotify and Apple Music audio is protected, so its spectrum can’t be read' },
+    liveSpectrum: 'live spectrum', vizNoData: 'Animation — this browser doesn’t let the page read this stream’s spectrum', vizLive: 'Spectrum of the audio playing on this screen', vizAnim: 'Animation — Spotify and Apple Music audio is protected, so its spectrum can’t be read' },
   pl: { vizFill: 'Wizualizacja na cały ekran', vizBand: 'Wizualizacja na dole',
     fullScreen: 'Pełny ekran', close: 'Zamknij', thisScreen: 'Na tym ekranie', radioOn: 'Radio na', vol: 'Głośność',
     vizStyle: 'Styl wizualizacji', viz_bars: 'Słupki', viz_wave: 'Fala', viz_ring: 'Pierścień',
@@ -994,7 +1008,7 @@ const TX = {
     amLoading: 'Wczytywanie Apple Music…', amSetup: 'Apple Music nie jest skonfigurowane', amWhy: 'Admin dodaje klucz MusicKit w Ustawienia → Multimedia → Apple Music. Muzyka gra wtedy tutaj.', amPick: 'Wybierz coś poniżej', amPreview: 'Zaloguj się, aby słuchać całych utworów — bez tego 30-sekundowe fragmenty', amSignIn: 'Zaloguj', amSignOut: 'Wyloguj', amHere: 'Gra na tym ekranie', amSearch: 'Szukaj w Apple Music', recent: 'Ostatnio odtwarzane', amEmpty: 'Biblioteka jest pusta', position: 'Pozycja',
     eqOn: 'Korektor włączony', eqOff: 'Korektor wyłączony', p_flat: 'Płasko', p_bass: 'Więcej basu', p_vocal: 'Wokal', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Elektronika', p_night: 'Noc',
     eqWhere: 'Działa na żywo dla radia na tym ekranie oraz dla głośników AirPlay od następnej uruchomionej stacji. Chromecast, Spotify i Apple Music grają gdzie indziej lub są chronione, więc nie da się ich tu korygować. Kliknij dwukrotnie suwak, aby go wyzerować.',
-    liveSpectrum: 'widmo na żywo', vizLive: 'Widmo dźwięku grającego na tym ekranie', vizAnim: 'Animacja — dźwięk Spotify i Apple Music jest chroniony, więc nie da się odczytać jego widma' },
+    liveSpectrum: 'widmo na żywo', vizNoData: 'Animacja — ta przeglądarka nie pozwala odczytać widma tego strumienia', vizLive: 'Widmo dźwięku grającego na tym ekranie', vizAnim: 'Animacja — dźwięk Spotify i Apple Music jest chroniony, więc nie da się odczytać jego widma' },
   de: { vizFill: 'Visualisierung über den ganzen Bildschirm', vizBand: 'Visualisierung unten',
     fullScreen: 'Vollbild', close: 'Schließen', thisScreen: 'Auf diesem Bildschirm', radioOn: 'Radio auf', vol: 'Lautstärke',
     vizStyle: 'Visualisierung', viz_bars: 'Balken', viz_wave: 'Welle', viz_ring: 'Ring',
@@ -1004,7 +1018,7 @@ const TX = {
     amLoading: 'Apple Music wird geladen…', amSetup: 'Apple Music ist nicht eingerichtet', amWhy: 'Ein Admin fügt den MusicKit-Schlüssel unter Einstellungen → Medien → Apple Music hinzu. Die Musik spielt dann hier.', amPick: 'Unten etwas wählen', amPreview: 'Anmelden für ganze Titel — sonst 30-Sekunden-Vorschauen', amSignIn: 'Anmelden', amSignOut: 'Abmelden', amHere: 'Spielt auf diesem Bildschirm', amSearch: 'In Apple Music suchen', recent: 'Zuletzt gespielt', amEmpty: 'Noch nichts in der Mediathek', position: 'Position',
     eqOn: 'Equalizer an', eqOff: 'Equalizer aus', p_flat: 'Neutral', p_bass: 'Bass-Boost', p_vocal: 'Gesang', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Elektronisch', p_night: 'Nacht',
     eqWhere: 'Wirkt sofort auf Radio auf diesem Bildschirm und auf AirPlay-Lautsprecher ab dem nächsten gestarteten Sender. Chromecast, Spotify und Apple Music spielen anderswo oder geschützt und lassen sich hier nicht entzerren. Doppelklick auf einen Regler setzt ihn zurück.',
-    liveSpectrum: 'Live-Spektrum', vizLive: 'Spektrum des Tons auf diesem Bildschirm', vizAnim: 'Animation — der Ton spielt auf einem Lautsprecher oder ist geschützt, daher kann diese Seite sein Spektrum nicht lesen' },
+    liveSpectrum: 'Live-Spektrum', vizNoData: 'Animation — dieser Browser lässt die Seite das Spektrum dieses Streams nicht lesen', vizLive: 'Spektrum des Tons auf diesem Bildschirm', vizAnim: 'Animation — der Ton spielt auf einem Lautsprecher oder ist geschützt, daher kann diese Seite sein Spektrum nicht lesen' },
   fr: { vizFill: 'Visualisation sur tout l’écran', vizBand: 'Visualisation en bas',
     fullScreen: 'Plein écran', close: 'Fermer', thisScreen: 'Sur cet écran', radioOn: 'Radio sur', vol: 'Volume',
     vizStyle: 'Style de visualisation', viz_bars: 'Barres', viz_wave: 'Onde', viz_ring: 'Anneau',
@@ -1014,7 +1028,7 @@ const TX = {
     amLoading: 'Chargement d’Apple Music…', amSetup: 'Apple Music n’est pas configuré', amWhy: 'Un admin ajoute la clé MusicKit dans Réglages → Médias → Apple Music. La musique joue alors ici.', amPick: 'Choisissez quelque chose ci-dessous', amPreview: 'Connectez-vous pour les titres complets — sinon extraits de 30 secondes', amSignIn: 'Se connecter', amSignOut: 'Se déconnecter', amHere: 'Joue sur cet écran', amSearch: 'Rechercher sur Apple Music', recent: 'Écoutés récemment', amEmpty: 'Rien dans votre bibliothèque', position: 'Position',
     eqOn: 'Égaliseur activé', eqOff: 'Égaliseur désactivé', p_flat: 'Plat', p_bass: 'Basses', p_vocal: 'Voix', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Électro', p_night: 'Nuit',
     eqWhere: 'S’applique en direct à la radio sur cet écran, et aux enceintes AirPlay à partir de la prochaine station lancée. Chromecast, Spotify et Apple Music jouent ailleurs ou sont protégés et ne peuvent pas être égalisés ici. Double-cliquez sur un curseur pour le remettre à zéro.',
-    liveSpectrum: 'spectre en direct', vizLive: 'Spectre du son joué sur cet écran', vizAnim: 'Animation — le son joue sur une enceinte ou est protégé, cette page ne peut donc pas lire son spectre' },
+    liveSpectrum: 'spectre en direct', vizNoData: 'Animation — ce navigateur ne laisse pas la page lire le spectre de ce flux', vizLive: 'Spectre du son joué sur cet écran', vizAnim: 'Animation — le son joue sur une enceinte ou est protégé, cette page ne peut donc pas lire son spectre' },
   es: { vizFill: 'Visualización en toda la pantalla', vizBand: 'Visualización abajo',
     fullScreen: 'Pantalla completa', close: 'Cerrar', thisScreen: 'En esta pantalla', radioOn: 'Radio en', vol: 'Volumen',
     vizStyle: 'Estilo de visualización', viz_bars: 'Barras', viz_wave: 'Onda', viz_ring: 'Anillo',
@@ -1024,7 +1038,7 @@ const TX = {
     amLoading: 'Cargando Apple Music…', amSetup: 'Apple Music no está configurado', amWhy: 'Un admin añade la clave MusicKit en Ajustes → Multimedia → Apple Music. La música suena aquí.', amPick: 'Elige algo abajo', amPreview: 'Inicia sesión para canciones completas — si no, fragmentos de 30 segundos', amSignIn: 'Iniciar sesión', amSignOut: 'Cerrar sesión', amHere: 'Suena en esta pantalla', amSearch: 'Buscar en Apple Music', recent: 'Escuchado recientemente', amEmpty: 'Tu biblioteca está vacía', position: 'Posición',
     eqOn: 'Ecualizador activado', eqOff: 'Ecualizador desactivado', p_flat: 'Plano', p_bass: 'Graves', p_vocal: 'Voz', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Electrónica', p_night: 'Noche',
     eqWhere: 'Se aplica en directo a la radio en esta pantalla y a los altavoces AirPlay desde la próxima emisora que inicies. Chromecast, Spotify y Apple Music suenan en otro sitio o están protegidos, así que aquí no se pueden ecualizar. Doble clic en un control para restablecerlo.',
-    liveSpectrum: 'espectro en directo', vizLive: 'Espectro del audio que suena en esta pantalla', vizAnim: 'Animación — el audio suena en un altavoz o está protegido, así que esta página no puede leer su espectro' },
+    liveSpectrum: 'espectro en directo', vizNoData: 'Animación — este navegador no deja que la página lea el espectro de esta emisión', vizLive: 'Espectro del audio que suena en esta pantalla', vizAnim: 'Animación — el audio suena en un altavoz o está protegido, así que esta página no puede leer su espectro' },
   it: { vizFill: 'Visualizzazione a tutto schermo', vizBand: 'Visualizzazione in basso',
     fullScreen: 'Schermo intero', close: 'Chiudi', thisScreen: 'Su questo schermo', radioOn: 'Radio su', vol: 'Volume',
     vizStyle: 'Stile di visualizzazione', viz_bars: 'Barre', viz_wave: 'Onda', viz_ring: 'Anello',
@@ -1034,7 +1048,7 @@ const TX = {
     amLoading: 'Caricamento di Apple Music…', amSetup: 'Apple Music non è configurato', amWhy: 'Un admin aggiunge la chiave MusicKit in Impostazioni → Media → Apple Music. La musica suona qui.', amPick: 'Scegli qualcosa qui sotto', amPreview: 'Accedi per i brani completi — altrimenti anteprime di 30 secondi', amSignIn: 'Accedi', amSignOut: 'Esci', amHere: 'Suona su questo schermo', amSearch: 'Cerca su Apple Music', recent: 'Ascoltati di recente', amEmpty: 'Libreria vuota', position: 'Posizione',
     eqOn: 'Equalizzatore attivo', eqOff: 'Equalizzatore spento', p_flat: 'Piatto', p_bass: 'Bassi', p_vocal: 'Voce', p_rock: 'Rock', p_jazz: 'Jazz', p_electronic: 'Elettronica', p_night: 'Notte',
     eqWhere: 'Si applica subito alla radio su questo schermo e agli altoparlanti AirPlay dalla prossima stazione avviata. Chromecast, Spotify e Apple Music suonano altrove o sono protetti, quindi qui non si possono equalizzare. Doppio clic su un cursore per azzerarlo.',
-    liveSpectrum: 'spettro dal vivo', vizLive: 'Spettro dell’audio su questo schermo', vizAnim: 'Animazione — l’audio suona su un altoparlante o è protetto, quindi questa pagina non può leggerne lo spettro' },
+    liveSpectrum: 'spettro dal vivo', vizNoData: 'Animazione — questo browser non lascia leggere alla pagina lo spettro di questo stream', vizLive: 'Spettro dell’audio su questo schermo', vizAnim: 'Animazione — l’audio suona su un altoparlante o è protetto, quindi questa pagina non può leggerne lo spettro' },
   uk: { vizFill: 'Візуалізація на весь екран', vizBand: 'Візуалізація внизу',
     fullScreen: 'На весь екран', close: 'Закрити', thisScreen: 'На цьому екрані', radioOn: 'Радіо на', vol: 'Гучність',
     vizStyle: 'Стиль візуалізації', viz_bars: 'Стовпці', viz_wave: 'Хвиля', viz_ring: 'Кільце',
@@ -1044,7 +1058,7 @@ const TX = {
     amLoading: 'Завантаження Apple Music…', amSetup: 'Apple Music не налаштовано', amWhy: 'Адміністратор додає ключ MusicKit у Налаштування → Медіа → Apple Music. Тоді музика грає тут.', amPick: 'Оберіть щось нижче', amPreview: 'Увійдіть для повних треків — інакше 30-секундні фрагменти', amSignIn: 'Увійти', amSignOut: 'Вийти', amHere: 'Грає на цьому екрані', amSearch: 'Пошук в Apple Music', recent: 'Нещодавно слухали', amEmpty: 'Медіатека порожня', position: 'Позиція',
     eqOn: 'Еквалайзер увімкнено', eqOff: 'Еквалайзер вимкнено', p_flat: 'Рівно', p_bass: 'Більше басу', p_vocal: 'Вокал', p_rock: 'Рок', p_jazz: 'Джаз', p_electronic: 'Електроніка', p_night: 'Ніч',
     eqWhere: 'Діє одразу на радіо на цьому екрані та на динаміки AirPlay з наступної запущеної станції. Chromecast, Spotify і Apple Music грають деінде або захищені, тож їх тут не можна еквалізувати. Двічі клацніть повзунок, щоб скинути його.',
-    liveSpectrum: 'спектр наживо', vizLive: 'Спектр звуку на цьому екрані', vizAnim: 'Анімація — звук грає на динаміку або захищений, тож ця сторінка не може прочитати його спектр' },
+    liveSpectrum: 'спектр наживо', vizNoData: 'Анімація — цей браузер не дає сторінці прочитати спектр цього потоку', vizLive: 'Спектр звуку на цьому екрані', vizAnim: 'Анімація — звук грає на динаміку або захищений, тож ця сторінка не може прочитати його спектр' },
 }
 function T(k, vars) {
   let s = (TX[getLang()] || TX.en)[k] || TX.en[k] || k
