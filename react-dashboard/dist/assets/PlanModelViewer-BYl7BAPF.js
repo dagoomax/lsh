@@ -1,4 +1,4 @@
-import{r as ce,at as BA,j as Oe,au as IA,g as fn}from"./index-DuZxq9Li.js";/**
+import{r as ce,at as BA,j as Oe,au as IA,g as fn}from"./index-Bona7S-6.js";/**
  * @license
  * Copyright 2010-2024 Three.js Authors
  * SPDX-License-Identifier: MIT

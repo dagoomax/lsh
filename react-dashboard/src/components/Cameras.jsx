@@ -238,7 +238,9 @@ function CameraCard({ cam, onOpen }) {
           fontSize:13, fontWeight:700, color:'#fff',
           whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
           textShadow:'0 1px 3px rgba(0,0,0,0.6)', pointerEvents:'none',
+          ...(cam.ptzUrl ? { paddingRight: cam.ptzZoom === false ? 80 : 110 } : {}),
         }}>{cam.name}</div>
+        <PtzPad ptzUrl={cam.ptzUrl} zoom={cam.ptzZoom !== false} compact />
       </div>
     </div>
   )
@@ -258,7 +260,8 @@ const PTZ_ZOOM = [
   { op: 'zoomout', Icon: MinusIcon },
 ]
 
-function PtzPad({ ptzUrl, zoom = true }) {
+// compact: the smaller pad on a dashboard camera tile (clicks don't open the camera)
+function PtzPad({ ptzUrl, zoom = true, compact = false }) {
   const activeRef = useRef(false)
   const [pressed, setPressed] = useState(null)
   const send = useCallback(async (op) => {
@@ -278,7 +281,9 @@ function PtzPad({ ptzUrl, zoom = true }) {
   const release = () => { if (activeRef.current) { activeRef.current = false; setPressed(null); send('stop') } }
 
   return (
-    <div style={{ position: 'absolute', right: 12, bottom: 12, display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+    <div onClick={e => e.stopPropagation()}
+      style={{ position: 'absolute', right: compact ? 6 : 12, bottom: compact ? 6 : 12, display: 'flex', alignItems: 'flex-end', gap: 8,
+        ...(compact ? { transform: 'scale(0.72)', transformOrigin: 'bottom right' } : {}) }}>
       {zoom && <div style={{
         display: 'flex', flexDirection: 'column', borderRadius: 12, overflow: 'hidden',
         background: 'rgba(10,14,20,0.55)', border: '1px solid rgba(255,255,255,0.08)',
