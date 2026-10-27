@@ -2721,6 +2721,10 @@ Priority order for the live preview: `webrtcUrl` → `mjpegUrl` → `snapshotUrl
 
 Any manual camera with an `"onvif": { "host": "192.168.1.x", "port": 80, "username": "", "password": "" }` section gets a press-and-hold **PTZ pad** in the camera modal (pan/tilt/zoom over ONVIF `ContinuousMove`; also see `ptz: true` for Reolink and `onvif` per KENIK channel).
 
+Tuya / Smart Life cameras get the same pad with `"tuyaPtz": { "deviceId": "bf03…", "via": "smartlife" }`: commands go through the Smart Life web player's PTZ endpoints, signed in with the login `tuya-ipc-terminal` keeps in `~/tuya-ipc-terminal/.tuya-data` (`session` points elsewhere: a `user_*.json` file or its folder), so no Tuya IoT project is needed. Pan and tilt only; the zoom buttons are hidden. Without `via`, `tuyaPtz` uses the IoT project in `tuyaCloud` (`accessId`, `accessSecret`, `region`) instead.
+
+In HomeKit, a camera with `onvif` or `tuyaPtz` gets four switches, **Left / Right / Up / Down**: turning one on moves the camera for `ptzStepMs` (default 1000, 200–5000), stops it, and the switch turns itself off again.
+
 ### `reolink`
 
 ```json

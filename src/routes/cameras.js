@@ -49,7 +49,7 @@ module.exports = function register(router, ctx) {
         presetUrl: `/api/camera/preset/${idx}`,
         irUrl:     `/api/camera/ir/${idx}`,
       } : {}),
-      ...(c.tuyaPtz ? { ptzUrl: `/api/camera/ptz/${idx}` } : {}),
+      ...(c.tuyaPtz ? { ptzUrl: `/api/camera/ptz/${idx}`, ptzZoom: require('../tuya-cloud-ptz').hasZoom(c.tuyaPtz) } : {}),
       ...(c.url && !c.snapshotUrl && !c.mjpegUrl ? { snapshotUrl: `/api/camera/snapshot/${idx}` } : {}),
     }));
     res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...yaleCams, ...stCams, ...karcherCams, ...dahuaCams, ...haCams] });

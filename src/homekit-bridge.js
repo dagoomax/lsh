@@ -1451,6 +1451,29 @@ function buildDimmerAccessory(device, sensor, store) {
 
 // ── Camera accessory builder ───────────────────────────────────────────────
 
+// PTZ as momentary switches — HomeKit has no pan/tilt service. Turning one on
+// moves the camera for cam.ptzStepMs (default 1 s), stops it, and the switch
+// flips back off. cam.ptz(op) takes the dashboard's ops (left/right/up/down/stop).
+const PTZ_SWITCHES = [['left', 'Left'], ['right', 'Right'], ['up', 'Up'], ['down', 'Down']];
+function addPtzSwitches(acc, cam) {
+  const step = Math.min(5000, Math.max(200, Number(cam.ptzStepMs) || 1000));
+  let busy = false;
+  for (const [op, label] of PTZ_SWITCHES) {
+    const svc = acc.addService(Service.Switch, `${cam.name} ${label}`, `ptz-${op}`);
+    const on = svc.getCharacteristic(Characteristic.On);
+    on.onGet(() => false).onSet((value) => {
+      if (!value) return;
+      const done = () => setTimeout(() => on.updateValue(false), 300);
+      if (busy) return done();
+      busy = true;
+      Promise.resolve(cam.ptz(op))
+        .then(() => new Promise((r) => setTimeout(r, step)))
+        .catch((err) => console.error(`[HomeKit] PTZ ${op} failed (${cam.name}): ${err.message}`))
+        .finally(() => Promise.resolve(cam.ptz('stop')).catch(() => {}).finally(() => { busy = false; done(); }));
+    });
+  }
+}
+
 function addCameraToBridge(cam, pool, store) {
   pool.cameras?.set(cam.name, { cam, store });
   if (pool.excluded?.('camera', cam.name) || pool.has(`camera:${cam.name}`)) return;
@@ -1478,6 +1501,7 @@ function addCameraToBridge(cam, pool, store) {
   delegate.controller = controller;
 
   acc.configureController(controller);
+  if (typeof cam.ptz === 'function') addPtzSwitches(acc, cam);
   // HKSV cameras must be standalone (see BridgePool.publishStandalone);
   // cam.standalone forces it for any camera (also better streaming).
   if (cam.hksv || cam.standalone) {
@@ -1487,7 +1511,7 @@ function addCameraToBridge(cam, pool, store) {
     pool.publishStandalone(acc, `camera-${cam.name}`, Categories.CAMERA);
   } else pool.add(acc, `camera:${cam.name}`);
   const streamType = cam.url ? 'snapshot+stream' : 'snapshot';
-  console.log(`[HomeKit] Camera: ${cam.name} (${streamType})${cam.hksv ? ' +HKSV' : ''}`);
+  console.log(`[HomeKit] Camera: ${cam.name} (${streamType})${cam.hksv ? ' +HKSV' : ''}${typeof cam.ptz === 'function' ? ' +PTZ' : ''}`);
 
   // Recording only starts once HomeKit sees the built-in Motion sensor
   // trip. Drive it from object-detection.js's per-camera aggregate
@@ -1586,6 +1610,9 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
         cam.fetchSnapshot = () =>
           require('./rtsp-snapshot').grabFrame(cam.url, config.ffmpegRtsp?.ffmpegPath || 'ffmpeg');
       }
+      // same PTZ as the dashboard's pad (src/routes/camera-ptz.js)
+      if (cam.tuyaPtz) cam.ptz = (op) => require('./tuya-cloud-ptz').ptz(config.tuyaCloud, cam.tuyaPtz, op);
+      else if (cam.onvif?.host) cam.ptz = (op) => require('./onvif-ptz').ptz(cam.onvif, op);
       try { addCameraToBridge(cam, pool, store); } catch (err) {
         console.error(`[HomeKit] Camera failed (${cam.name}): ${err.message}`);
       }

@@ -258,7 +258,7 @@ const PTZ_ZOOM = [
   { op: 'zoomout', Icon: MinusIcon },
 ]
 
-function PtzPad({ ptzUrl }) {
+function PtzPad({ ptzUrl, zoom = true }) {
   const activeRef = useRef(false)
   const [pressed, setPressed] = useState(null)
   const send = useCallback(async (op) => {
@@ -279,7 +279,7 @@ function PtzPad({ ptzUrl }) {
 
   return (
     <div style={{ position: 'absolute', right: 12, bottom: 12, display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-      <div style={{
+      {zoom && <div style={{
         display: 'flex', flexDirection: 'column', borderRadius: 12, overflow: 'hidden',
         background: 'rgba(10,14,20,0.55)', border: '1px solid rgba(255,255,255,0.08)',
         backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
@@ -296,7 +296,7 @@ function PtzPad({ ptzUrl }) {
             <Icon size={15} />
           </button>
         ))}
-      </div>
+      </div>}
 
       <div style={{
         position: 'relative', width: 92, height: 92, borderRadius: '50%',
@@ -646,7 +646,7 @@ function CameraModal({ cam, onClose }) {
                 </div>
               )}
               <DetectionBoxesOverlay containerRef={previewRef} boxes={boxes} />
-              <PtzPad ptzUrl={cam?.ptzUrl} />
+              <PtzPad ptzUrl={cam?.ptzUrl} zoom={cam?.ptzZoom !== false} />
               <CameraPresets deviceId={cam?._smartthings ? cam._deviceId : null} />
               {canTalk && (
                 <button className="mini-btn"
