@@ -2,9 +2,13 @@
 
 // Settings → Onboarding → "Generate with Claude": LSH's own Claude (the
 // Anthropic API key from Settings → Claude Code) researches a city with web
-// search and writes a guide in the shape of src/city-guides/katowice.js —
-// getting around, restaurants, places to visit, in Polish and English, with
-// coordinates and source links. The result is checked here before it's kept
+// search and writes a guide with the Katowice guide (src/city-guides/
+// katowice.js) as its template — the same sections and mix: getting around;
+// restaurants with cafés, bars, clubs and vegetarian places; places to visit;
+// things to do; shopping with independent shops and the local shopping rules;
+// ready-made walks and a phrasebook — in Polish and English, with coordinates
+// and source links. A trimmed copy of the Katowice guide goes into the prompt
+// as the worked example. The result is checked here before it's kept
 // (persist/city-guides/<id>.json): text lengths, links (http/https only),
 // coordinates near the city; anything that doesn't pass is dropped.
 //
@@ -29,6 +33,26 @@ function claudeConfig() {
 const slug = (s) => String(s || '').toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '')
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
 
+// The Katowice guide, trimmed to a worked example: a few of each kind of
+// item (photos left out — they're added afterwards from Wikimedia Commons).
+function template() {
+  const k = require('./city-guides/katowice');
+  const strip = ({ image, ...it }) => it;
+  const pick = (list, tests) => [...new Set(tests.map((t) => list.find(t)).filter(Boolean))].map(strip);
+  const r = k.restaurants;
+  return {
+    name: k.name, title: k.title, center: k.center, welcome: k.welcome,
+    transport: pick(k.transport, [(x) => x.id === 'ztm', (x) => x.id === 'airport']),
+    restaurants: pick(r, [(x) => /MICHELIN|Bib/.test(x.tag), (x) => x.id === 'zurownia', (x) => x.cafe, (x) => x.bar, (x) => x.club, (x) => x.veg]),
+    places: pick(k.places, [(x) => x.id === 'nikiszowiec', (x) => x.id === 'spodek']),
+    activities: pick(k.activities, [(x) => x.id === 'elka']),
+    shopping: pick(k.shopping, [(x) => x.tip, (x) => x.tag?.en === 'mall', (x) => x.tag?.en === 'independent']),
+    walks: k.walks.slice(0, 1),
+    phrases: k.phrases.slice(0, 5),
+    sources: k.sources?.slice(0, 2),
+  };
+}
+
 const SYSTEM = `You write city guides for guests staying in a home. Use web search to check every fact you include against current sources (official city, transport operator and venue sites; the MICHELIN Guide or other reputable guides for restaurants). Include only places that exist and operate now. Prefer fewer, verified items over many guesses. Never invent prices, phone numbers or opening hours; mention a closing day only if a source states it.
 
 Answer with ONE JSON object and nothing else, in a \`\`\`json block, with this shape:
@@ -38,13 +62,27 @@ Answer with ONE JSON object and nothing else, in a \`\`\`json block, with this s
   "center": [lat, lon],
   "welcome": {"pl": "...", "en": "..."},
   "transport": [{"id": "...", "icon": "tram|route|plane|train|bike|car|bus|boat|metro", "name": {"pl","en"}, "text": {"pl","en"}, "url": "https://...", "lat": 0, "lon": 0}],
-  "restaurants": [{"id": "...", "name": {"pl","en"}, "kind": {"pl","en"}, "text": {"pl","en"}, "address": "street and number", "lat": 0, "lon": 0, "price": "€|€€|€€€", "tag": "short label", "url": "https://..."}],
+  "restaurants": [{"id": "...", "name": {"pl","en"}, "kind": {"pl","en"}, "text": {"pl","en"}, "address": "street and number", "lat": 0, "lon": 0, "price": "€|€€|€€€", "tag": {"pl","en"}, "url": "https://...", "cafe": true, "bar": true, "club": true, "veg": true}],
   "places": [{"id": "...", "name": {"pl","en"}, "tag": {"pl","en"}, "text": {"pl","en"}, "lat": 0, "lon": 0, "url": "https://..."}],
-  "shopping": [{"id": "...", "name": {"pl","en"}, "tag": {"pl","en"}, "text": {"pl","en"}, "address": "street and number", "lat": 0, "lon": 0, "url": "https://..."}],
+  "shopping": [{"id": "...", "name": {"pl","en"}, "kind": {"pl","en"}, "tag": {"pl","en"}, "text": {"pl","en"}, "address": "street and number", "lat": 0, "lon": 0, "url": "https://..."}],
   "activities": [{"id": "...", "name": {"pl","en"}, "tag": {"pl","en"}, "text": {"pl","en"}, "address": "street and number", "lat": 0, "lon": 0, "url": "https://..."}],
+  "walks": [{"id": "...", "icon": "one emoji", "mode": "walking|transit", "name": {"pl","en"}, "text": {"pl","en"}, "stops": ["places:<id>", "restaurants:<id>", "activities:<id>", "shopping:<id>"]}],
+  "phrases": [{"sl": "a local word or phrase", "pl": "its meaning in Polish", "en": "its meaning in English"}],
   "sources": [{"name": "...", "url": "https://..."}]
 }
-Rules: 4–7 transport items (public transport and tickets/apps, airport, main station, bikes, taxis), 4–8 restaurants, 6–12 places, 3–8 activities (things to do or book: tours, theme parks, zoos, boat trips, matches, workshops — not the sights already in places), 3–7 shopping items (main malls and markets, a local souvenir or food shop, and one item without lat/lon on shop opening rules such as Sunday closing, if the country has them). Texts: one or two short plain sentences each, the Polish one in natural Polish. Coordinates to 5 decimals, of the actual venue; lat/lon optional only for transport items and the shopping tip that are not a place. "url" only when you saw the page. Ids: short lowercase latin words.`;
+Rules:
+- transport: 4–7 items (public transport and tickets/apps, airport, main station, bikes, taxis).
+- restaurants: the city's eating and drinking, 14–24 items — 4–6 restaurants (local cuisine first; the MICHELIN Guide's picks if the city has any, tagged "MICHELIN" or "Bib Gourmand"; otherwise tag them {"pl":"polecane lokalnie","en":"local favourite"}), 3–5 cafés ("cafe": true, specialty coffee and classic cafés), 3–5 bars ("bar": true: craft beer, cocktails, the bar street if there is one), 2–3 clubs ("club": true: music clubs, nightclubs), and at least one fully vegetarian place ("veg": true). Flags only when true.
+- places: 6–12 sights. activities: 3–8 things to do or book (tours, theme parks, zoos, boat trips, matches, workshops — not the sights already in places).
+- shopping: 5–10 items — the main malls and markets ("tag": mall), 2–4 independent shops (concept stores, record shops, vintage, local design or food; tag {"pl":"niezależny","en":"independent"}, "kind" says what they sell), and first, without lat/lon or address, one tip on shop opening rules (Sunday closing, siesta, late-night shops) if the country has them.
+- walks: 2–4 ready-made routes of 3–6 stops, each stop an item above as "<section>:<id>", with the walk's length or time in the text.
+- phrases: 10–16 words a guest will hear: the local dialect if the city has one (as Silesian in Katowice), otherwise basics of the local language; "sl" is the local word.
+Texts: one or two short plain sentences each, the Polish one in natural Polish. Coordinates to 5 decimals, of the actual venue; lat/lon optional only for transport items and the shopping tip that are not a place. "url" only when you saw the page. Ids: short lowercase latin words.
+
+A finished guide for Katowice, trimmed to a few items of each kind — follow its tone, depth and mix (your guide has the full counts above):
+\`\`\`json
+${JSON.stringify(template())}
+\`\`\``;
 
 function userPrompt({ city, lat, lon }) {
   return `City: ${city}.${lat != null ? ` The home is at ${lat}, ${lon} — favour what's reasonably near it, but include the city's main sights.` : ''} Today is ${new Date().toISOString().slice(0, 10)}.`;
@@ -90,8 +128,11 @@ function sanitize(raw, fallbackName) {
     if (/^[a-z]{2,8}$/.test(String(it.icon || ''))) out.icon = it.icon;
     const u = link(it.url); if (u) out.url = u;
     if (kind === 'shopping' && out.lat == null && !out.address) out.tip = true; // a general tip, shown first
+    if (kind === 'restaurants') for (const f of ['cafe', 'bar', 'club', 'veg']) if (it[f] === true) out[f] = true;
+    if (it.id) given.set(`${kind}:${String(it.id)}`, `${kind}:${out.id}`);
     return out;
   };
+  const given = new Map(); // Claude's "<section>:<id>" → the id kept, for the walks
   const list = (k, max) => (Array.isArray(raw[k]) ? raw[k] : []).slice(0, max).map((it, i) => place(it, i, k)).filter(Boolean);
   const guide = {
     name: text2(raw.name, 60) || { pl: fallbackName, en: fallbackName },
@@ -99,13 +140,24 @@ function sanitize(raw, fallbackName) {
     center,
     welcome: text2(raw.welcome, 500) || { pl: '', en: '' },
     transport: list('transport', 8),
-    restaurants: list('restaurants', 10),
+    restaurants: list('restaurants', 26),
     places: list('places', 14),
     activities: list('activities', 10),
-    shopping: list('shopping', 8),
+    shopping: list('shopping', 12),
     sources: (Array.isArray(raw.sources) ? raw.sources : []).slice(0, 12).map((s) => ({ name: str(s?.name, 80), url: link(s?.url) })).filter((s) => s.name && s.url),
   };
   if (!guide.places.length && !guide.restaurants.length) throw new Error('The guide came back empty');
+  // walks: only stops that made it into the guide, with coordinates
+  const located = new Set(['restaurants', 'places', 'activities', 'shopping'].flatMap((k) => guide[k].filter((x) => x.lat != null).map((x) => `${k}:${x.id}`)));
+  guide.walks = (Array.isArray(raw.walks) ? raw.walks : []).slice(0, 5).map((w, i) => {
+    const name = text2(w?.name, 80);
+    const stops = [...new Set((Array.isArray(w?.stops) ? w.stops : []).map((x) => given.get(String(x)) || String(x)).filter((x) => located.has(x)))].slice(0, 8);
+    if (!name || stops.length < 2) return null;
+    return { id: id(w.id || name.en, i, 'walk'), icon: str(w.icon, 8) || null, mode: w.mode === 'transit' ? 'transit' : 'walking', name, text: text2(w.text, 300) || { pl: '', en: '' }, stops };
+  }).filter(Boolean);
+  guide.phrases = (Array.isArray(raw.phrases) ? raw.phrases : []).slice(0, 20)
+    .map((x) => ({ sl: str(x?.sl, 40), pl: str(x?.pl, 80), en: str(x?.en, 80) })).filter((x) => x.sl && (x.pl || x.en))
+    .map((x) => ({ sl: x.sl, pl: x.pl || x.en, en: x.en || x.pl }));
   return guide;
 }
 
@@ -127,14 +179,14 @@ async function generate({ city, lat, lon }, { client, onProgress = () => {} } = 
     client = new Anthropic({ apiKey: cc.apiKey, ...(cc.workspaceId ? { defaultHeaders: { 'anthropic-workspace-id': cc.workspaceId } } : {}) });
   }
   const messages = [{ role: 'user', content: userPrompt({ city: name, lat, lon }) }];
-  const tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 12 }];
+  const tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 24 }];
   let searches = 0;
   let final = null;
   // a server tool turn can pause; continue it until Claude ends its turn
-  for (let round = 0; round < 6; round++) {
+  for (let round = 0; round < 10; round++) {
     let msg;
     try {
-      msg = await client.messages.create({ model: cc.model, max_tokens: 16000, system: SYSTEM, tools, messages });
+      msg = await client.messages.create({ model: cc.model, max_tokens: 32000, system: SYSTEM, tools, messages });
     } catch (err) {
       if (err.status === 401) throw new Error('The Anthropic API key was rejected — check it in Settings → Claude Code');
       if (err.status === 429) throw new Error('Anthropic rate limit or credit limit reached — try again later');
@@ -180,7 +232,7 @@ async function wikiFile(name, city, lang) {
 
 async function addImages(guide) {
   const city = guide.name?.en || guide.generated?.city || '';
-  const items = [...guide.places, ...(guide.activities || []), ...guide.transport.filter((t) => t.lat != null)];
+  const items = [...guide.places, ...(guide.activities || []), ...(guide.shopping || []).filter((x) => !x.tip), ...guide.restaurants, ...guide.transport.filter((t) => t.lat != null)];
   const files = new Map();
   for (const it of items) {
     for (const lang of ['pl', 'en']) {

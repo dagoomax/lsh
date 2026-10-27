@@ -43,7 +43,7 @@ test('GET /guide: off, then sorted by distance from home, own tips first, langua
     cfg = {};
     assert.equal((await (await fetch(`${s.url}/api/guide`)).json()).data, null);
 
-    // home in Ligota (the weather location) — Młodnik in Panewniki is the nearest restaurant
+    // home in Ligota (the weather location) — Sezonovo, then Młodnik in Panewniki, are the nearest restaurants
     cfg = { openweather: { lat: 50.2268, lon: 18.9897 }, onboarding: { enabled: true, city: 'katowice',
       extras: [{ name: 'Piekarnia', category: 'restaurant', note: 'Rano', lat: 50.227, lon: 18.99 }, { name: 'No coords', category: 'place', address: 'Mariacka 1' }] } };
     let g = (await (await fetch(`${s.url}/api/guide?lang=pl`)).json()).data;
@@ -51,10 +51,11 @@ test('GET /guide: off, then sorted by distance from home, own tips first, langua
     assert.equal(g.home.source, 'weather');
     assert.equal(g.restaurants[0].name, 'Piekarnia', 'own tip first');
     assert.equal(g.restaurants[0].custom, true);
-    assert.equal(g.restaurants[1].name, 'Młodnik');
+    assert.equal(g.restaurants[1].name, 'Sezonovo');
+    const mlodnik = g.restaurants.find((r) => r.name === 'Młodnik');
     const kms = g.restaurants.slice(1).map((r) => r.km);
     assert.deepEqual(kms, [...kms].sort((a, b) => a - b), 'nearest first');
-    assert.match(g.restaurants[1].directions, /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&origin=50\.2268,18\.9897&destination=50\.23049,18\.94138/);
+    assert.match(mlodnik.directions, /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&origin=50\.2268,18\.9897&destination=50\.23049,18\.94138/);
     const noCoords = g.places.find((p) => p.name === 'No coords');
     assert.equal(noCoords.km, undefined);
     assert.match(noCoords.map, /query=No%20coords%2C%20Mariacka%201%2C%20Katowice/);
@@ -112,11 +113,16 @@ test('generator: Claude’s guide is checked before it is kept', async () => {
     welcome: { pl: 'Cześć', en: 'Hi' },
     transport: [{ id: 'ztm', icon: 'tram', name: { pl: 'Tramwaj', en: 'Tram' }, text: 'GZM', url: 'javascript:alert(1)' }],
     restaurants: [
-      { id: 'a', name: { pl: 'A', en: 'A' }, kind: { pl: 'x', en: 'x' }, text: { pl: 'ok\u0007', en: 'ok' }, lat: 50.29, lon: 18.67, price: '€€', url: 'https://a.example' },
+      { id: 'a', name: { pl: 'A', en: 'A' }, kind: { pl: 'x', en: 'x' }, text: { pl: 'ok\u0007', en: 'ok' }, lat: 50.29, lon: 18.67, price: '€€', url: 'https://a.example', bar: true, cafe: 'yes' },
       { id: 'far', name: { en: 'Far' }, lat: 52.23, lon: 21.01, price: 'cheap' },
       { name: '' },
     ],
     places: [{ id: 'a', name: { pl: 'Radiostacja', en: 'Radio Tower' }, lat: 50.3135, lon: 18.6886 }],
+    walks: [
+      { id: 'w', icon: '📻', name: { pl: 'Spacer', en: 'Walk' }, stops: ['places:a', 'restaurants:a', 'restaurants:far', 'places:nope'] },
+      { name: { en: 'Too short' }, stops: ['places:a'] },
+    ],
+    phrases: [{ sl: 'Pyrsk', pl: 'Cześć', en: 'Hi' }, { sl: 'x' }],
     sources: [{ name: 'GZM', url: 'https://metropoliaztm.pl' }, { name: 'bad', url: 'file:///etc/passwd' }],
   };
   const g = gen.sanitize(raw, 'Gliwice');
@@ -128,6 +134,16 @@ test('generator: Claude’s guide is checked before it is kept', async () => {
   assert.equal(g.restaurants[1].price, undefined);
   assert.notEqual(g.places[0].id, g.restaurants[0].id, 'ids unique');
   assert.deepEqual(g.sources.map((x) => x.name), ['GZM']);
+  assert.equal(g.restaurants[0].bar, true);
+  assert.equal(g.restaurants[0].cafe, undefined, 'flags only when true');
+  assert.deepEqual(g.walks.map((w) => w.stops), [[`places:${g.places[0].id}`, 'restaurants:a']], 'walks keep stops that exist and have coordinates; short walks dropped');
+  assert.deepEqual(g.phrases, [{ sl: 'Pyrsk', pl: 'Cześć', en: 'Hi' }]);
+  // Katowice is the worked example in the prompt
+  const example = JSON.parse(/```json\n([\s\S]*)\n```$/.exec(gen.SYSTEM)[1]);
+  assert.equal(example.name.en, 'Katowice');
+  assert.ok(['cafe', 'bar', 'club', 'veg'].every((f) => example.restaurants.some((r) => r[f])), 'the example shows cafés, bars, clubs, vegetarian');
+  assert.ok(example.shopping.some((x) => x.tip) && example.walks.length && example.phrases.length);
+  assert.ok(!JSON.stringify(example).includes('upload.wikimedia.org'), 'no photos in the prompt');
   assert.throws(() => gen.sanitize({ ...raw, center: null }, 'X'), /centre/);
   assert.throws(() => gen.extractJson('no json here'), /JSON/);
 
