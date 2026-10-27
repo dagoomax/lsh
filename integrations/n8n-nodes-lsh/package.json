@@ -1,0 +1,18 @@
+{
+  "name": "n8n-nodes-lsh",
+  "version": "0.1.0",
+  "description": "n8n nodes for LSH (Lightweight Smart Home): read devices, send commands, run scenes and flows, and trigger workflows on device changes.",
+  "keywords": ["n8n-community-node-package", "lsh", "smart home", "home automation"],
+  "license": "MIT",
+  "homepage": "https://github.com/dagoomax/lsh/tree/main/integrations/n8n-nodes-lsh",
+  "repository": { "type": "git", "url": "git+https://github.com/dagoomax/lsh.git", "directory": "integrations/n8n-nodes-lsh" },
+  "main": "index.js",
+  "files": ["index.js", "credentials", "nodes", "README.md"],
+  "scripts": { "test": "node --test test/" },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": ["credentials/LshApi.credentials.js"],
+    "nodes": ["nodes/Lsh/Lsh.node.js", "nodes/LshTrigger/LshTrigger.node.js"]
+  },
+  "peerDependencies": { "n8n-workflow": "*" }
+}

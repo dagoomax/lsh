@@ -10,6 +10,7 @@ export const CATEGORIES = [
     { id: 'system-misc', title: 'Interface, Relays & Server', keywords: ['language', 'theme', 'port', 'relays', 'server', 'interface'] },
     { id: 'security-auth', title: 'Security & Authentication', keywords: ['users', 'password', 'login', 'mcp', 'bot', 'bots', 'ai', 'claude', 'gemini', 'chatgpt', 'openai', 'oauth', 'token', 'api token'] },
     { id: 'locations', title: 'Managed Instances', keywords: ['managed instances', 'instances', 'instancje', 'site', 'locations', 'lokalizacje', 'sites', 'multi-site', 'hub', 'remote', 'lsh', 'rest api', 'token', 'qlsh21', 'casablanca'] },
+    { id: 'webhooks', title: 'n8n & Webhooks', keywords: ['n8n', 'webhook', 'webhooks', 'make', 'zapier', 'integromat', 'node-red', 'workflow', 'automation', 'automatyzacja', 'trigger', 'hmac', 'api'] },
     { id: 'backup', title: 'Backup & Restore', keywords: ['backup', 'restore', 'export', 'import', 'config'] },
     { id: 'mqtt-broker', title: 'MQTT Broker', keywords: ['mqtt', 'broker', 'mosquitto', 'aedes', 'tasmota', 'zigbee2mqtt', 'esp', 'button+'] },
     { id: 'modules', title: 'Integration Modules', keywords: ['install', 'github', 'plugins', 'update', 'modules'] },

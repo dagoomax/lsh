@@ -50,6 +50,7 @@ const ROUTE_GROUPS = [
   require('./routes/unifi-access'),
   require('./routes/helvar'),
   require('./routes/guide'),
+  require('./routes/webhooks'),
   require('./routes/vrm'),
   require('./routes/backup'),
   require('./routes/homekit'),
