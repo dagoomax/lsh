@@ -64,6 +64,7 @@ function view(item, lang, home, cityName) {
   if (item.veg) out.veg = true;
   if (item.cafe) out.cafe = true;
   if (item.bar) out.bar = true;
+  if (item.club) out.club = true;
   if (item.tip) out.tip = true;
   // photos: https only (Wikimedia Commons), with their credit
   if (item.image?.src && /^https:\/\//.test(item.image.src)) {

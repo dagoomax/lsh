@@ -328,6 +328,36 @@ module.exports = {
         en: 'A cocktail bar on Mariacka with a lovely interior and a big garden; a good start to an evening on the bar street.',
       },
     },
+    // clubs: OSM coordinates, websites checked Oct 2026 — line-ups and dates on their pages
+    {
+      id: 'hipnoza', club: true, lat: 50.25295, lon: 19.02312, address: 'ul. Ligonia (pl. Sejmu Śląskiego)', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Jazz Club Hipnoza', en: 'Jazz Club Hipnoza' },
+      kind: { pl: 'klub jazzowy i elektronika', en: 'jazz and electronic club' },
+      text: {
+        pl: 'Kultowy klub przy placu Sejmu Śląskiego: koncerty jazzowe, a w weekendy także noce z muzyką elektroniczną.',
+        en: 'A cult club by Sejm Śląski Square: jazz concerts, and electronic nights at weekends too.',
+      },
+      url: 'https://hipnoza.pl/',
+    },
+    {
+      id: 'energy2000', club: true, lat: 50.25589, lon: 19.02087, address: 'ul. Plebiscytowa 3', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'Energy 2000 Katowice', en: 'Energy 2000 Katowice' },
+      kind: { pl: 'klub nocny', en: 'nightclub' },
+      text: {
+        pl: 'Duży klub w dawnym kinie Capitol, w centrum — imprezy z DJ-ami i muzyką klubową.',
+        en: 'A big club in the former Capitol cinema in the centre: DJ nights and club music.',
+      },
+      url: 'https://katowice.energy2000.pl/',
+    },
+    {
+      id: 'p23', club: true, lat: 50.25467, lon: 19.06119, address: 'ul. Porcelanowa 23 (Fabryka Porcelany)', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      name: { pl: 'P23', en: 'P23' },
+      kind: { pl: 'koncerty i imprezy', en: 'gigs and parties' },
+      text: {
+        pl: 'Sala koncertowa i klubowa w dawnej Fabryce Porcelany w Bogucicach. Sprawdź program przed wyjściem.',
+        en: 'A gig and club venue in the old Porcelain Factory in Bogucice. Check what’s on before you go.',
+      },
+    },
     {
       id: 'taj', lat: 50.25732, lon: 19.02359, address: 'ul. Dworcowa 4', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
       image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/2023-07_Katowice_ul._Dworcowa_%284%29.jpg/960px-2023-07_Katowice_ul._Dworcowa_%284%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:2023-07_Katowice_ul._Dworcowa_(4).jpg', author: 'Marek Mróz', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Dworcowa — stary dworzec', en: 'Dworcowa Street — the old station' } },

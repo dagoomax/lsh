@@ -58,6 +58,7 @@ const ICONS = {
   shopping: <><path {...P} d="M5 8h14l-1 13H6z"/><path {...P} d="M9 10V6a3 3 0 0 1 6 0v4"/></>,
   cafe: <><path {...P} d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path {...P} d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16M8 3c-.7 1 .7 2 0 3M12 3c-.7 1 .7 2 0 3"/></>,
   bar: <><path {...P} d="M5 4h14l-7 8z"/><path {...P} d="M12 12v8M8 20h8"/></>,
+  club: <><circle {...P} cx="12" cy="13" r="7"/><path {...P} d="M12 3v3M5 13h14M12 6c-2.5 2-2.5 12 0 14M12 6c2.5 2 2.5 12 0 14"/></>,
   clock: <><circle {...P} cx="12" cy="12" r="9"/><path {...P} d="M12 7v5l3 2"/></>,
   tram: <><rect {...P} x="6" y="5" width="12" height="13" rx="3"/><path {...P} d="M9 2h6M12 2v3M6 12h12M9 18l-2 3M15 18l2 3"/><circle cx="9" cy="15" r=".8" fill="currentColor"/><circle cx="15" cy="15" r=".8" fill="currentColor"/></>,
   train: <><rect {...P} x="5" y="3" width="14" height="14" rx="4"/><path {...P} d="M5 10h14M8 21l2-4M16 21l-2-4"/><circle cx="9" cy="13.5" r=".8" fill="currentColor"/><circle cx="15" cy="13.5" r=".8" fill="currentColor"/></>,
@@ -66,7 +67,7 @@ const ICONS = {
   car: <><path {...P} d="M4 16V12l2-5h12l2 5v4z"/><path {...P} d="M4 12h16"/><circle {...P} cx="7.5" cy="16.5" r="1.5"/><circle {...P} cx="16.5" cy="16.5" r="1.5"/></>,
   route: <><circle {...P} cx="6" cy="18" r="2.5"/><circle {...P} cx="18" cy="6" r="2.5"/><path {...P} d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></>,
 }
-const iconFor = (cat, it) => (cat === 'transport' ? ICONS[it.icon] || ICONS.route : (it.tip && ICONS[it.icon]) || (it.cafe && ICONS.cafe) || (it.bar && ICONS.bar) || ICONS[cat])
+const iconFor = (cat, it) => (cat === 'transport' ? ICONS[it.icon] || ICONS.route : (it.tip && ICONS[it.icon]) || (it.cafe && ICONS.cafe) || (it.bar && ICONS.bar) || (it.club && ICONS.club) || ICONS[cat])
 const Ico = ({ cat, it, size = 20 }) => <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">{iconFor(cat, it)}</svg>
 
 // ── helpers ─────────────────────────────────────────────────
@@ -791,6 +792,7 @@ function filtersOf(items) {
   const tags = [...new Set(items.map(it => (typeof it.tag === 'string' ? it.tag : null)).filter(Boolean))]
   if (items.some(it => it.custom)) out.push({ id: 'custom', label: `★ ${gt('guide_host_pick', 'Host’s pick')}`, test: it => it.custom })
   if (tags.length > 1) for (const tag of tags) out.push({ id: `tag:${tag}`, label: tag, test: it => it.tag === tag })
+  if (items.some(it => it.club)) out.push({ id: 'club', label: `🪩 ${gt('guide_clubs', 'Clubs')}`, test: it => it.club })
   if (items.some(it => it.bar)) out.push({ id: 'bar', label: `🍸 ${gt('guide_bars', 'Bars')}`, test: it => it.bar })
   if (items.some(it => it.cafe)) out.push({ id: 'cafe', label: `☕ ${gt('guide_cafes', 'Cafés')}`, test: it => it.cafe })
   if (items.some(it => it.veg)) out.push({ id: 'veg', label: `🌱 ${gt('guide_veg', 'Vegetarian')}`, test: it => it.veg })
