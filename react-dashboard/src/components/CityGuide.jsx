@@ -143,18 +143,6 @@ function embedUrl({ home, stops, mode, focus, key, lang }) {
   return `https://maps.google.com/maps?q=${ll(at)}&z=${focus ? 16 : 14}&hl=${hl}&output=embed`
 }
 
-// admins get an Edit button that opens Settings → Onboarding
-let adminCache = null
-function useIsAdmin() {
-  const [admin, setAdmin] = useState(adminCache ?? false)
-  useEffect(() => {
-    if (adminCache != null) return
-    fetch('/api/auth/me', { credentials: 'same-origin' }).then(r => r.json())
-      .then(j => { adminCache = j.data?.role === 'admin'; setAdmin(adminCache) }).catch(() => {})
-  }, [])
-  return admin
-}
-
 function useClock() {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30_000); return () => clearInterval(t) }, [])
@@ -258,7 +246,6 @@ function Skyline({ city }) {
 
 function Hero({ g, compact = false, onOpen }) {
   const now = useClock()
-  const admin = useIsAdmin()
   const days = useForecast()
   const today = days?.[0]
   const temp = today?.now?.temp ?? today?.tempMax
@@ -268,12 +255,6 @@ function Hero({ g, compact = false, onOpen }) {
       <div className="gd-aurora" aria-hidden="true"><i/><i/><i/></div>
       <div className="gd-dots" aria-hidden="true"/>
       <Skyline city={g.skyline || g.city}/>
-      {admin && (
-        <a className="gd-edit" href="/react/settings/onboarding" title={gt('guide_edit_hint', 'City, welcome message, your own tips, sections')}>
-          <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-          {gt('guide_edit', 'Edit')}
-        </a>
-      )}
       <div className="gd-hero-body">
         <div className="gd-eyebrow"><MapPinIcon size={14} color="currentColor"/> {g.cityName}</div>
         <h2 className="gd-title">{g.title || gt('guide_welcome_to', 'Welcome to {city}', { city: g.cityName })}</h2>
