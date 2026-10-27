@@ -11,7 +11,8 @@
 //   activities  things to do nearby (theme park, zoo, cable car, mines, a match)
 //   shopping    malls, tourist information, and the Sunday trading rule
 //   images      Wikimedia Commons (free licences — author and licence shown
-//               on each photo, linked to its file page)
+//               on each photo, linked to its file page); where Commons has no
+//               photo of a restaurant itself, its street, with a caption saying so
 // Fares, timetables and opening hours change — the card links to the sources
 // instead of quoting prices.
 //
@@ -90,6 +91,7 @@ module.exports = {
   restaurants: [
     {
       id: 'krzywa', lat: 50.25545, lon: 19.01574, address: 'ul. Krzywa 9', price: '€', tag: 'Bib Gourmand',
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_ul._Krzywa_%282%29.jpg/960px-Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_ul._Krzywa_%282%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_ul._Krzywa_(2).jpg', author: 'Marek Mróz', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Krzywa', en: 'Krzywa Street' } },
       name: { pl: 'KRZYWA Sztuka Wina', en: 'KRZYWA Sztuka Wina' },
       kind: { pl: 'kuchnia regionalna, bar winny', en: 'regional cuisine, wine bar' },
       text: {
@@ -100,6 +102,7 @@ module.exports = {
     },
     {
       id: 'amfora', lat: 50.25793, lon: 19.02828, address: 'ul. Francuska 1a', price: '€', tag: 'MICHELIN',
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Katowice_Francuska_1_wej%C5%9Bcie_2026.jpg/960px-Katowice_Francuska_1_wej%C5%9Bcie_2026.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_Francuska_1_wej%C5%9Bcie_2026.jpg', author: 'Adrian Tync', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Francuska', en: 'Francuska Street' } },
       name: { pl: 'Amfora', en: 'Amfora' },
       kind: { pl: 'kuchnia bliskowschodnia i śródziemnomorska', en: 'Middle Eastern, Mediterranean' },
       text: {
@@ -110,6 +113,7 @@ module.exports = {
     },
     {
       id: 'prohibicja', lat: 50.24358, lon: 19.08017, address: 'ul. Krawczyka 1, Nikiszowiec', price: '€€', tag: 'MICHELIN',
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Jan%C3%B3w-Nikiszowiec_II_078.jpg/960px-Jan%C3%B3w-Nikiszowiec_II_078.jpg', page: 'https://commons.wikimedia.org/wiki/File:Jan%C3%B3w-Nikiszowiec_II_078.jpg', author: 'Marek Mróz', license: 'CC BY-SA 4.0' },
       name: { pl: 'Śląska Prohibicja', en: 'Śląska Prohibicja' },
       kind: { pl: 'kuchnia śląska i polska', en: 'Silesian and Polish' },
       text: {
@@ -133,6 +137,7 @@ module.exports = {
     // Twój Styl, Tripadvisor 2026); OSM coordinates, websites checked Oct 2026
     {
       id: 'tatiana', lat: 50.25849, lon: 19.02256, address: 'ul. Staromiejska 5', price: '€€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Katowice%2C_ul._Staromiejska_6_%28kamienica%29.jpg/960px-Katowice%2C_ul._Staromiejska_6_%28kamienica%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice,_ul._Staromiejska_6_(kamienica).jpg', author: 'Piotrus', license: 'CC BY-SA 3.0', caption: { pl: 'ul. Staromiejska', en: 'Staromiejska Street' } },
       name: { pl: 'Tatiana', en: 'Tatiana' },
       kind: { pl: 'kuchnia śląska i polska', en: 'Silesian and Polish' },
       text: {
@@ -143,6 +148,7 @@ module.exports = {
     },
     {
       id: 'zurownia', lat: 50.25350, lon: 19.01905, address: 'ul. Ligonia 16', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_ul._Lompy_%2816%29.jpg/960px-Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_ul._Lompy_%2816%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_ul._Lompy_(16).jpg', author: 'Marek Mróz', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Ligonia', en: 'Ligonia Street' } },
       name: { pl: 'Żurownia', en: 'Żurownia' },
       kind: { pl: 'śląski street food', en: 'Silesian street food' },
       text: {
@@ -152,6 +158,7 @@ module.exports = {
     },
     {
       id: 'byfyj', lat: 50.24344, lon: 19.08121, address: 'ul. Krawczyka 5, Nikiszowiec', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/2024-06_Katowice_bebok_Michalino_%282%29.jpg/960px-2024-06_Katowice_bebok_Michalino_%282%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:2024-06_Katowice_bebok_Michalino_(2).jpg', author: 'Marek Mróz', license: 'CC BY 4.0', caption: { pl: 'ul. Krawczyka, Nikiszowiec — beboczka Michalino', en: 'Krawczyka Street, Nikiszowiec — the Michalino bebok' } },
       name: { pl: 'Cafe Byfyj', en: 'Cafe Byfyj' },
       kind: { pl: 'kawiarnia i bistro, piekarnia Michalski', en: 'café and bistro, Michalski bakery' },
       text: {
@@ -162,6 +169,7 @@ module.exports = {
     },
     {
       id: 'zloty-osiol', veg: true, lat: 50.25726, lon: 19.02457, address: 'ul. Mariacka 1', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Fa%C3%A7ade_of_7_Mariacka%2C_Katowice_%282024%29-L1005796.jpg/960px-Fa%C3%A7ade_of_7_Mariacka%2C_Katowice_%282024%29-L1005796.jpg', page: 'https://commons.wikimedia.org/wiki/File:Fa%C3%A7ade_of_7_Mariacka,_Katowice_(2024)-L1005796.jpg', author: 'Frank Schulenburg', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Mariacka', en: 'Mariacka Street' } },
       name: { pl: 'Złoty Osioł', en: 'Złoty Osioł' },
       kind: { pl: 'wegańska jadłodajnia', en: 'vegan canteen' },
       text: {
@@ -172,6 +180,7 @@ module.exports = {
     },
     {
       id: 'kafej', lat: 50.26537, lon: 19.02178, address: 'ul. Chorzowska 5', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Chorzowska_Katowice_2024-08-08_05.jpg/960px-Chorzowska_Katowice_2024-08-08_05.jpg', page: 'https://commons.wikimedia.org/wiki/File:Chorzowska_Katowice_2024-08-08_05.jpg', author: 'Leonhard Lenz', license: 'CC0', caption: { pl: 'ul. Chorzowska', en: 'Chorzowska Street' } },
       name: { pl: 'Kafej', en: 'Kafej' },
       kind: { pl: 'śniadania i kawa', en: 'breakfast and coffee' },
       text: {
@@ -182,6 +191,7 @@ module.exports = {
     },
     {
       id: 'falla', veg: true, lat: 50.25490, lon: 19.02128, address: 'ul. Plebiscytowa 10', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_ul._Plebiscytowa_%281%29.jpg/960px-Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_ul._Plebiscytowa_%281%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice-%C5%9Ar%C3%B3dmie%C5%9Bcie_S_-_ul._Plebiscytowa_(1).jpg', author: 'Marek Mróz', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Plebiscytowa', en: 'Plebiscytowa Street' } },
       name: { pl: 'Falla', en: 'Falla' },
       kind: { pl: 'wegetariańska, bliskowschodnia', en: 'vegetarian, Middle Eastern' },
       text: {
@@ -192,6 +202,7 @@ module.exports = {
     },
     {
       id: 'madara', lat: 50.26072, lon: 19.02445, address: 'ul. Moniuszki 12', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Katowice_Moniuszki_4_2024.jpg/960px-Katowice_Moniuszki_4_2024.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_Moniuszki_4_2024.jpg', author: 'Adrian Tync', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Moniuszki', en: 'Moniuszki Street' } },
       name: { pl: 'Madara Ramen', en: 'Madara Ramen' },
       kind: { pl: 'ramen', en: 'ramen' },
       text: {
@@ -202,6 +213,7 @@ module.exports = {
     },
     {
       id: 'kalimera', lat: 50.25711, lon: 19.02621, address: 'ul. Tylna Mariacka 13a', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Katowice_Tylna_Mariacka_murpentra%C4%B5o_hompartoj.jpg/960px-Katowice_Tylna_Mariacka_murpentra%C4%B5o_hompartoj.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_Tylna_Mariacka_murpentra%C4%B5o_hompartoj.jpg', author: 'Kastanoto', license: 'CC0', caption: { pl: 'Tylna Mariacka — mural', en: 'Tylna Mariacka — a mural' } },
       name: { pl: 'Kalimera Street Food', en: 'Kalimera Street Food' },
       kind: { pl: 'grecki street food', en: 'Greek street food' },
       text: {
@@ -212,6 +224,7 @@ module.exports = {
     },
     {
       id: 'taj', lat: 50.25732, lon: 19.02359, address: 'ul. Dworcowa 4', price: '€', tag: { pl: 'polecane lokalnie', en: 'local favourite' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/2023-07_Katowice_ul._Dworcowa_%284%29.jpg/960px-2023-07_Katowice_ul._Dworcowa_%284%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:2023-07_Katowice_ul._Dworcowa_(4).jpg', author: 'Marek Mróz', license: 'CC BY-SA 4.0', caption: { pl: 'ul. Dworcowa — stary dworzec', en: 'Dworcowa Street — the old station' } },
       name: { pl: 'Taj', en: 'Taj' },
       kind: { pl: 'kuchnia tajska', en: 'Thai' },
       text: {
@@ -410,6 +423,7 @@ module.exports = {
     },
     {
       id: 'galeria', lat: 50.25887, lon: 19.01691, address: 'ul. 3 Maja 30', tag: { pl: 'galeria handlowa', en: 'mall' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Galeria_Katowicka%2C_kielichy.jpg/960px-Galeria_Katowicka%2C_kielichy.jpg', page: 'https://commons.wikimedia.org/wiki/File:Galeria_Katowicka,_kielichy.jpg', author: 'Kamil Czaiński', license: 'CC BY-SA 4.0' },
       name: { pl: 'Galeria Katowicka', en: 'Galeria Katowicka' },
       text: {
         pl: 'Galeria połączona z dworcem kolejowym i autobusowym, w samym centrum — sklepy, restauracje i supermarket.',
@@ -419,6 +433,7 @@ module.exports = {
     },
     {
       id: 'supersam', lat: 50.26212, lon: 19.01904, address: 'ul. ks. P. Skargi 6', tag: { pl: 'galeria handlowa', en: 'mall' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/Supersam_in_Katowice%2C_Silesian_Voivodeship%2C_Poland%2C_May_2022.jpg/960px-Supersam_in_Katowice%2C_Silesian_Voivodeship%2C_Poland%2C_May_2022.jpg', page: 'https://commons.wikimedia.org/wiki/File:Supersam_in_Katowice,_Silesian_Voivodeship,_Poland,_May_2022.jpg', author: 'MichalPL', license: 'CC BY-SA 4.0' },
       name: { pl: 'Supersam', en: 'Supersam' },
       text: {
         pl: 'Kameralna galeria w centrum, na miejscu dawnego modernistycznego Supersamu — supermarket, drogeria i kawiarnie.',
@@ -428,6 +443,7 @@ module.exports = {
     },
     {
       id: 'scc', lat: 50.27072, lon: 19.00387, address: 'ul. Chorzowska 107', tag: { pl: 'galeria handlowa', en: 'mall' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Katowice_-_Silesia_City_Center_%282%29.jpg/960px-Katowice_-_Silesia_City_Center_%282%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_-_Silesia_City_Center_(2).jpg', author: 'Lestat (Jan Mehlich)', license: 'CC BY-SA 3.0' },
       name: { pl: 'Silesia City Center', en: 'Silesia City Center' },
       text: {
         pl: 'Jedna z największych galerii w regionie, na terenie dawnej kopalni — kino, setki sklepów. Tramwajem z centrum w kilka minut.',
@@ -437,6 +453,7 @@ module.exports = {
     },
     {
       id: '3stawy', lat: 50.24312, lon: 19.03782, address: 'ul. gen. K. Pułaskiego 60', tag: { pl: 'galeria handlowa', en: 'mall' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Katowice_-_3_Stawy_%281%29.jpg/960px-Katowice_-_3_Stawy_%281%29.jpg', page: 'https://commons.wikimedia.org/wiki/File:Katowice_-_3_Stawy_(1).jpg', author: 'Michał Bulsa', license: 'CC0' },
       name: { pl: 'Centrum Handlowe 3 Stawy', en: '3 Stawy shopping centre' },
       text: {
         pl: 'Centrum handlowe z dużym hipermarketem przy Dolinie Trzech Stawów — wygodne na większe zakupy autem.',
@@ -446,6 +463,7 @@ module.exports = {
     },
     {
       id: 'libero', lat: 50.22416, lon: 18.98685, address: 'ul. T. Kościuszki 229', tag: { pl: 'galeria handlowa', en: 'mall' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Galeria_Libero.jpg/960px-Galeria_Libero.jpg', page: 'https://commons.wikimedia.org/wiki/File:Galeria_Libero.jpg', author: 'KamilSikoora', license: 'CC BY-SA 4.0' },
       name: { pl: 'Libero Katowice', en: 'Libero Katowice' },
       text: {
         pl: 'Nowoczesna galeria na południu miasta, z kinem i strefą restauracji.',
@@ -455,6 +473,7 @@ module.exports = {
     },
     {
       id: 'cit', lat: 50.25865, lon: 19.02129, address: 'Rynek 11', tag: { pl: 'informacja', en: 'information' },
+      image: { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Rynek_Katowice_2024-08-11.jpg/960px-Rynek_Katowice_2024-08-11.jpg', page: 'https://commons.wikimedia.org/wiki/File:Rynek_Katowice_2024-08-11.jpg', author: 'Z thomas', license: 'CC BY 4.0', caption: { pl: 'Rynek', en: 'Rynek (market square)' } },
       name: { pl: 'Centrum Informacji Turystycznej', en: 'Tourist Information Centre' },
       text: {
         pl: 'Na Rynku: mapy, informacje o wydarzeniach i pamiątki z Katowic.',

@@ -66,6 +66,8 @@ function view(item, lang, home, cityName) {
   // photos: https only (Wikimedia Commons), with their credit
   if (item.image?.src && /^https:\/\//.test(item.image.src)) {
     out.image = { src: item.image.src, page: /^https:\/\//.test(item.image.page || '') ? item.image.page : null, author: String(item.image.author || '').slice(0, 120), license: String(item.image.license || '').slice(0, 40) };
+    // not the place itself (its street, say): the caption says what it shows
+    if (item.image.caption) out.image.caption = String(t(item.image.caption)).slice(0, 120);
   }
   const has = num(item.lat) != null && num(item.lon) != null;
   const where = has ? `${item.lat},${item.lon}` : item.address ? `${item.address}, ${cityName}` : null;

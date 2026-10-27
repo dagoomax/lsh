@@ -3121,3 +3121,7 @@ button.gd-mini { border: 0; width: 100%; text-align: left; font: inherit; cursor
 .gd-phrase[data-open="true"] .gd-phrase-m { color: var(--text); animation: gd-reveal .35s ease; }
 @keyframes gd-reveal { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .gd-phrase, .gd-filter, .gd-dice span { transition: none; } .gd-phrase[data-open="true"] .gd-phrase-m { animation: none; } }
+/* a photo of the street, not the place: the caption says so */
+.gd-photo figcaption:has(.gd-photo-cap) { left: 8px; display: flex; align-items: center; gap: 8px; max-width: none; }
+.gd-photo-cap { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #fff; text-shadow: none; background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); }
+.gd-photo figcaption:has(.gd-photo-cap) button { margin-left: auto; flex: none; }

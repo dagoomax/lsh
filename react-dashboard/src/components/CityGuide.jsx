@@ -323,7 +323,7 @@ function PlacePopup({ g, cat, it, t }) {
         <div className="gd-pop-hero">
           <img src={it.image.src} alt={it.name} referrerPolicy="no-referrer"/>
           <button className="gd-pop-credit" onClick={() => openPopup({ kind: 'photo', cat, it, back: { kind: 'place', cat, it } })}>
-            {[it.image.author, it.image.license].filter(Boolean).join(' · ') || 'Wikimedia Commons'}
+            {[it.image.caption && `📍 ${it.image.caption}`, it.image.author, it.image.license].filter(Boolean).join(' · ') || 'Wikimedia Commons'}
           </button>
         </div>
       )}
@@ -444,6 +444,7 @@ function PhotoPopup({ it }) {
       <img src={it.image.src} alt={it.name} referrerPolicy="no-referrer"/>
       <div className="gd-pop-body">
         <h2 className="gd-pop-title">{it.name}</h2>
+        {it.image.caption && <div className="gd-card-text">📍 {gt('guide_photo_shows', 'The photo shows: {what}', { what: it.image.caption })}</div>}
         <div className="gd-card-text">{gt('guide_photo_by', 'Photo: {who}', { who: it.image.author || '—' })} · {it.image.license} · Wikimedia Commons</div>
         {it.image.page && <div className="gd-site-url">{decodeURIComponent(it.image.page)}</div>}
         {it.image.page && <Qr url={it.image.page} text={gt('guide_qr_photo', 'Scan to see the photo and its licence on Wikimedia Commons.')}/>}
@@ -592,6 +593,7 @@ function Photo({ image, alt, onOpen, onCredit }) {
     <figure className="gd-photo">
       <img src={image.src} alt={alt} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setOk(false)} onClick={onOpen}/>
       <figcaption>
+        {image.caption && <span className="gd-photo-cap">📍 {image.caption}</span>}
         <button onClick={onCredit}>{[image.author, image.license].filter(Boolean).join(' · ') || 'Wikimedia Commons'}</button>
       </figcaption>
     </figure>
