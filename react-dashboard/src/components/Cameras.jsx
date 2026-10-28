@@ -350,6 +350,83 @@ function CameraRecordings({ slug }) {
   )
 }
 
+// ── Waypoints (src/ptz-waypoints.js): saved views a pan/tilt camera goes back to ──
+function CameraWaypoints({ slug }) {
+  const [list, setList] = useState([])
+  const [moving, setMoving] = useState(null)   // id being gone to
+  const [naming, setNaming] = useState(null)   // '' while typing a new name
+  const [armed, setArmed] = useState(null)     // id whose ✕ was pressed once
+  const [msg, setMsg] = useState('')
+  const base = `/api/camera/waypoints/${encodeURIComponent(slug)}`
+  const load = useCallback(() => fetch(base, { credentials: 'include' }).then(r => r.json()).then(j => { if (j.success) setList(j.data.waypoints || []) }).catch(() => {}), [base])
+  useEffect(() => { load() }, [load])
+
+  const call = async (url, opts = {}) => {
+    const r = await fetch(url, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts }).catch(() => null)
+    const j = await r?.json().catch(() => ({}))
+    return { ok: !!r?.ok && j?.success !== false, j: j || {} }
+  }
+  const save = async () => {
+    setMsg(gt('cam_wp_saving', 'Saving this view…'))
+    const { ok, j } = await call(base, { method: 'POST', body: JSON.stringify({ name: naming }) })
+    setNaming(null); setMsg(ok ? '' : (j.error || gt('cam_rec_failed', 'That didn’t work'))); load()
+  }
+  const go = async (w) => {
+    if (moving) return
+    setMoving(w.id); setMsg(gt('cam_wp_going', 'Going to {name}… (up to a minute)').replace('{name}', w.name))
+    const { ok, j } = await call(`${base}/${w.id}/goto`, { method: 'POST' })
+    setMoving(null)
+    setMsg(ok ? gt('cam_wp_arrived', 'At {name}').replace('{name}', w.name) : (j.error || gt('cam_rec_failed', 'That didn’t work')))
+  }
+  const remove = async (w) => {
+    if (armed !== w.id) { setArmed(w.id); setTimeout(() => setArmed(a => (a === w.id ? null : a)), 3000); return }
+    setArmed(null); await call(`${base}/${w.id}`, { method: 'DELETE' }); load()
+  }
+  const label = { fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }
+  const chip = { fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--white-05)', color: 'var(--text2)' }
+
+  return (
+    <div style={{ margin: '10px 18px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={label}>{gt('cam_waypoints', 'Waypoints')}</span>
+        {naming === null ? (
+          <button onClick={() => setNaming('')} style={{ ...chip, marginLeft: 'auto' }}>📍 {gt('cam_wp_save', 'Save this view')}</button>
+        ) : (
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+            <input autoFocus value={naming} onChange={e => setNaming(e.target.value)} placeholder={gt('cam_wp_name', 'Name, e.g. Door')} maxLength={60}
+              onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') save(); if (e.key === 'Escape') setNaming(null) }}
+              style={{ fontSize: 12, padding: '3px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white-05)', color: 'var(--text)', width: 150 }} />
+            <button onClick={save} style={{ ...chip, background: 'var(--accent)', color: '#fff' }}>{gt('save', 'Save')}</button>
+            <button onClick={() => setNaming(null)} style={chip}>✕</button>
+          </span>
+        )}
+      </div>
+      {msg && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{msg}</div>}
+      {!list.length ? (
+        <span style={{ fontSize: 11, color: 'var(--text3)', display: 'block', padding: '8px 0' }}>{gt('cam_wp_none', 'No waypoints yet — aim the camera and save the view; the camera finds its way back by the picture')}</span>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '6px 0 2px' }}>
+          {list.map(w => (
+            <div key={w.id} style={{ position: 'relative', flexShrink: 0, width: 112 }}>
+              <button onClick={() => go(w)} disabled={!!moving} title={gt('cam_wp_goto', 'Go to this view')}
+                style={{ display: 'block', width: 112, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: moving ? 'default' : 'pointer', opacity: moving && moving !== w.id ? 0.5 : 1 }}>
+                <div style={{ position: 'relative', width: 112, height: 63, borderRadius: 8, border: `1px solid ${moving === w.id ? 'var(--accent)' : 'var(--border)'}`, background: '#05060a', overflow: 'hidden' }}>
+                  <img src={`${base}/${w.id}.jpg`} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  {moving === w.id && <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 16 }}>⌖</span>}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{w.name}</div>
+              </button>
+              <button onClick={() => remove(w)} title={gt('cam_rec_delete', 'Delete')} aria-label={gt('cam_rec_delete', 'Delete')}
+                style={{ position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 10, lineHeight: '20px', padding: 0,
+                  color: '#fff', background: armed === w.id ? '#dc2626' : 'rgba(10,14,20,0.6)' }}>{armed === w.id ? '?' : '✕'}</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── PTZ pad — continuous move: op fires on press, 'stop' fires on release ──
 // Glass joystick disc (4 chevrons around a center hub) plus a separate
 // zoom pill, mirroring the Ring/Nest-style camera control convention.
@@ -889,6 +966,7 @@ function CameraModal({ cam, onClose, startFull = false }) {
               </div>
             )}
 
+            {cam?.waypoints && <CameraWaypoints slug={cam.waypoints} />}
             {cam?.recordings && <CameraRecordings slug={cam.recordings} />}
 
             {/* event log */}

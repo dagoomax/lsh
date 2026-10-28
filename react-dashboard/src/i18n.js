@@ -797,6 +797,14 @@ for (const [l, v] of Object.entries({ pl: 'Odtwarzacz', de: 'Mediaplayer', fr: '
 // camera recordings (Cameras.jsx CameraRecordings)
 for (const [k, v] of Object.entries({
   cam_recordings: ['Nagrania', 'Aufnahmen', 'Enregistrements', 'Grabaciones', 'Registrazioni', 'Записи'],
+  cam_waypoints: ['Punkty widoku', 'Wegpunkte', 'Points de vue', 'Puntos de vista', 'Punti di vista', 'Точки огляду'],
+  cam_wp_save: ['Zapisz ten widok', 'Diese Ansicht speichern', 'Enregistrer cette vue', 'Guardar esta vista', 'Salva questa vista', 'Зберегти цей вигляд'],
+  cam_wp_name: ['Nazwa, np. Drzwi', 'Name, z. B. Tür', 'Nom, p. ex. Porte', 'Nombre, p. ej. Puerta', 'Nome, es. Porta', 'Назва, напр. Двері'],
+  cam_wp_saving: ['Zapisuję ten widok…', 'Speichere diese Ansicht…', 'Enregistrement de la vue…', 'Guardando esta vista…', 'Salvo questa vista…', 'Зберігаю цей вигляд…'],
+  cam_wp_going: ['Jadę do: {name}… (do minuty)', 'Fahre zu {name}… (bis zu einer Minute)', 'Vers {name}… (jusqu’à une minute)', 'Yendo a {name}… (hasta un minuto)', 'Verso {name}… (fino a un minuto)', 'Повертаю до {name}… (до хвилини)'],
+  cam_wp_arrived: ['Widok: {name}', 'Bei {name}', 'Sur {name}', 'En {name}', 'Su {name}', 'На {name}'],
+  cam_wp_goto: ['Przejdź do tego widoku', 'Zu dieser Ansicht', 'Aller à cette vue', 'Ir a esta vista', 'Vai a questa vista', 'Перейти до цього вигляду'],
+  cam_wp_none: ['Brak punktów — ustaw kamerę i zapisz widok; kamera wraca do niego po obrazie', 'Noch keine Wegpunkte — Kamera ausrichten und Ansicht speichern; sie findet per Bild zurück', 'Aucun point — orientez la caméra et enregistrez la vue ; elle y revient grâce à l’image', 'Aún no hay puntos — orienta la cámara y guarda la vista; vuelve a ella por la imagen', 'Nessun punto — orienta la telecamera e salva la vista; ci torna guardando l’immagine', 'Точок ще немає — наведіть камеру й збережіть вигляд; вона повернеться за зображенням'],
   cam_fullscreen: ['Pełny ekran', 'Vollbild', 'Plein écran', 'Pantalla completa', 'Schermo intero', 'На весь екран'],
   cam_exit_fullscreen: ['Zamknij pełny ekran', 'Vollbild beenden', 'Quitter le plein écran', 'Salir de pantalla completa', 'Esci da schermo intero', 'Вийти з повноекранного режиму'],
   cam_rec_now: ['Nagraj 30 s', '30 s aufnehmen', 'Enregistrer 30 s', 'Grabar 30 s', 'Registra 30 s', 'Записати 30 с'],

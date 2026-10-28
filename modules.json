@@ -60,6 +60,7 @@
     "src/routes/camera-ptz-presets.js",
     "src/routes/camera-ptz.js",
     "src/routes/camera-siren.js",
+    "src/routes/camera-waypoints.js",
     "src/routes/cameras.js",
     "src/routes/claude-code.js",
     "src/routes/css-themes.js",
@@ -365,6 +366,23 @@
         "src/camera-recorder.js"
       ],
       "deps": {}
+    },
+    "ptz-waypoints": {
+      "entry": "src/ptz-waypoints.js",
+      "configKeys": [
+        "cameras"
+      ],
+      "when": "((config.cameras || []).some((c) => c && c.waypoints !== false && (c.tuyaPtz || c.onvif?.host)))",
+      "files": [
+        "src/onvif-ptz.js",
+        "src/onvif-soap.js",
+        "src/ptz-waypoints.js",
+        "src/rtsp-snapshot.js",
+        "src/tuya-cloud-ptz.js"
+      ],
+      "deps": {
+        "jpeg-js": "^0.4.4"
+      }
     },
     "mcp-server": {
       "entry": "src/mcp-server.js",

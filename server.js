@@ -427,7 +427,17 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, mqttBroker, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, recorder, airplayClient, mcpBots: new McpBots(), tenantPortal };
+  // Visual waypoints for pan/tilt cameras without presets (src/ptz-waypoints.js)
+  let waypoints = null;
+  if ((config.cameras || []).some((c) => c && c.waypoints !== false && (c.tuyaPtz || c.onvif?.host))) {
+    const PtzWaypoints = tryRequire('./src/ptz-waypoints');
+    if (PtzWaypoints) {
+      waypoints = PtzWaypoints.fromConfig(config, store, sensorRegistry);
+      try { waypoints.start(); } catch (err) { console.error(`[Waypoints] Start failed: ${err.message}`); }
+    }
+  }
+
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, mqttBroker, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, recorder, waypoints, airplayClient, mcpBots: new McpBots(), tenantPortal };
 
   // MCP server — exposes devices/sensors as tools for an external Claude
   // (Desktop, Claude Code, claude.ai) to query/control. Opt-in: it's a

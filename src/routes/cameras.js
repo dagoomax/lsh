@@ -52,6 +52,7 @@ module.exports = function register(router, ctx) {
       ...(c.tuyaPtz ? { ptzUrl: `/api/camera/ptz/${idx}`, ptzZoom: require('../tuya-cloud-ptz').hasZoom(c.tuyaPtz) } : {}),
       ...(c.url && !c.snapshotUrl && !c.mjpegUrl ? { snapshotUrl: `/api/camera/snapshot/${idx}` } : {}),
       ...(c.record && c.url && clients.recorder ? { recordings: require('../camera-recorder').slugify(c.name) } : {}),
+      ...(clients.waypoints?.cams.has(require('../ptz-waypoints').slugify(c.name)) ? { waypoints: require('../ptz-waypoints').slugify(c.name) } : {}),
     }));
     res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...yaleCams, ...stCams, ...karcherCams, ...dahuaCams, ...haCams] });
   });

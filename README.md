@@ -2743,6 +2743,28 @@ Tuya / Smart Life cameras get the same pad with `"tuyaPtz": { "deviceId": "bf03�
 
 In HomeKit, a camera with `onvif` or `tuyaPtz` gets four switches, **Left / Right / Up / Down**: turning one on moves the camera for `ptzStepMs` (default 1000, 200–5000), stops it, and the switch turns itself off again.
 
+**Waypoints.** Every camera with `tuyaPtz` or `onvif` gets **Waypoints** in its camera window (`src/ptz-waypoints.js`). To make one, aim the camera and press *Save this view*; click a saved view's thumbnail to go back to it.
+
+A waypoint is a picture, not a timed move. On Tuya cameras a quarter-second press already turns about 15°, and the cloud delays both start and stop, so timed moves don't land in the same place twice. To go to a waypoint, LSH compares the live frame with the saved one, measures how far the view is off, presses the PTZ in proportion, and looks again until the view lines up:
+- Matching uses edge images, so the hall light being on or off, or day and night (infrared), matters little.
+- When the saved view isn't in the picture, it pans in steps to find it, turning back at an end stop.
+- From each press it measures what the camera actually did, and learns the direction, the smallest step and the speed. That goes in `persist/ptz-waypoints.json`; the pictures go in `persist/ptz-waypoints/<camera>/`.
+
+On Wejście it took one correction (8 s) from 25° away, and about a minute from the far side of the room in infrared. It lands within about half a "tap", around 3°.
+
+Frames come from go2rtc's frame API when `webrtcUrl` is a go2rtc URL. Otherwise they come from `snapshotUrl`, or as one RTSP grab, which is slow through a cloud relay.
+
+To turn waypoints off for a camera, set `"waypoints": false`. To tune them, set `"waypoints": { "settleMs": 3500, "maxSteps": 16, "tolerancePx": 3 }`; `settleMs` is the wait after each press, to cover the stream's delay.
+
+In flows, device `ptz/<camera>` has a **Go to …** trigger per waypoint, plus `waypoint` (the last one reached) and `moving`.
+
+API:
+- `GET /api/camera/waypoints/:cam`
+- `POST /api/camera/waypoints/:cam {name}`
+- `PATCH|DELETE /api/camera/waypoints/:cam/:id`
+- `POST /api/camera/waypoints/:cam/:id/goto` (answers when it's there or gave up)
+- `GET /api/camera/waypoints/:cam/:id.jpg`
+
 ### Camera recordings (`cameras[].record`)
 
 ```json
