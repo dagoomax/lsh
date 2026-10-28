@@ -31,7 +31,7 @@ test('smartlife PTZ: start with the direction word, end on stop, session cookies
     await ptz(undefined, cfg, 'stop');
   } finally { f.restore(); }
   assert.equal(f.calls[0].url, 'https://protect-eu.example/api/jarvis/ptz/start');
-  assert.deepEqual(f.calls[0].body, { devId: 'dev1', direction: 'right' });
+  assert.deepEqual(f.calls[0].body, { devId: 'dev1', direction: 'RIGHT' }, 'upper case, as the Smart Life web player sends it');
   assert.equal(f.calls[0].opts.headers.Cookie, 'a=1; b=2');
   assert.equal(f.calls[1].url, 'https://protect-eu.example/api/jarvis/ptz/end');
   assert.deepEqual(f.calls[1].body, { devId: 'dev1' });

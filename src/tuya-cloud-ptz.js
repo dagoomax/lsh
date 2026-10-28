@@ -123,7 +123,9 @@ function smartLifePtz(tuyaPtz, op) {
   const devId = tuyaPtz.deviceId;
   if (op === 'stop') return smartLife(tuyaPtz, '/api/jarvis/ptz/end', { devId });
   if (!DIR[op]) throw new Error('Smart Life PTZ has no zoom');
-  return smartLife(tuyaPtz, '/api/jarvis/ptz/start', { devId, direction: op });
+  // UP / RIGHT / DOWN / LEFT, as the web player sends them — lower case moved
+  // the pan but left the tilt unreliable (checked on Wejście, 2026-10-28)
+  return smartLife(tuyaPtz, '/api/jarvis/ptz/start', { devId, direction: op.toUpperCase() });
 }
 
 /** Continuous move on press, `stop` on release — same contract as onvif-ptz. */
