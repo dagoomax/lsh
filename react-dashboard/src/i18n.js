@@ -797,6 +797,8 @@ for (const [l, v] of Object.entries({ pl: 'Odtwarzacz', de: 'Mediaplayer', fr: '
 // camera recordings (Cameras.jsx CameraRecordings)
 for (const [k, v] of Object.entries({
   cam_recordings: ['Nagrania', 'Aufnahmen', 'Enregistrements', 'Grabaciones', 'Registrazioni', 'Записи'],
+  cam_fullscreen: ['Pełny ekran', 'Vollbild', 'Plein écran', 'Pantalla completa', 'Schermo intero', 'На весь екран'],
+  cam_exit_fullscreen: ['Zamknij pełny ekran', 'Vollbild beenden', 'Quitter le plein écran', 'Salir de pantalla completa', 'Esci da schermo intero', 'Вийти з повноекранного режиму'],
   cam_rec_now: ['Nagraj 30 s', '30 s aufnehmen', 'Enregistrer 30 s', 'Grabar 30 s', 'Registra 30 s', 'Записати 30 с'],
   cam_rec_started: ['Nagrywam 30 s…', 'Nehme 30 s auf…', 'Enregistrement de 30 s…', 'Grabando 30 s…', 'Registro 30 s…', 'Записую 30 с…'],
   cam_rec_live: ['Nagrywa…', 'Nimmt auf…', 'Enregistre…', 'Grabando…', 'Registra…', 'Записує…'],

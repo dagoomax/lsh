@@ -193,6 +193,39 @@ async function startWebRTC(videoEl, whepUrl, twoWay) {
 }
 
 // ── Grid card ────────────────────────────────────────────────────────────
+const FullIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+  </svg>
+)
+const ExitFullIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7" />
+  </svg>
+)
+
+// Browser full screen where there is one (Chrome, Safari on macOS / iPad —
+// webkit-prefixed there); null otherwise (iPhone, the macOS app's
+// WKWebView), where the camera fills the window instead.
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement || null
+function requestFs(el) {
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen
+  if (!fn) return null
+  try { return Promise.resolve(fn.call(el)) } catch (err) { return Promise.reject(err) }
+}
+function exitFs() {
+  const fn = document.exitFullscreen || document.webkitExitFullscreen
+  if (fn && fsElement()) { try { return Promise.resolve(fn.call(document)).catch(() => {}) } catch { /* already out */ } }
+  return Promise.resolve()
+}
+
+const fsBtnStyle = {
+  position: 'absolute', top: 10, right: 10, zIndex: 3, width: 34, height: 34, borderRadius: 10,
+  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+  border: 'none', color: '#fff', background: 'rgba(10,14,20,0.6)',
+  backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+}
+
 function CameraCard({ cam, onOpen }) {
   const hasMjpeg    = !!(cam.mjpegUrl    && cam.mjpegUrl.trim())
   const hasSnapshot = !!(cam.snapshotUrl && cam.snapshotUrl.trim())
@@ -241,6 +274,11 @@ function CameraCard({ cam, onOpen }) {
           ...(cam.ptzUrl ? { paddingRight: cam.ptzZoom === false ? 80 : 110 } : {}),
         }}>{cam.name}</div>
         <PtzPad ptzUrl={cam.ptzUrl} zoom={cam.ptzZoom !== false} compact />
+        <button type="button" className="cam-fs-btn" title={gt('cam_fullscreen', 'Full screen')} aria-label={gt('cam_fullscreen', 'Full screen')}
+          onClick={(e) => { e.stopPropagation(); onOpen(cam, { full: true }) }}
+          style={{ ...fsBtnStyle, top: 6, right: 6, width: 30, height: 30, borderRadius: 9 }}>
+          <FullIcon size={14} />
+        </button>
       </div>
     </div>
   )
@@ -489,7 +527,7 @@ function CameraPresets({ deviceId }) {
 }
 
 // ── Modal ────────────────────────────────────────────────────────────────
-function CameraModal({ cam, onClose }) {
+function CameraModal({ cam, onClose, startFull = false }) {
   const videoRef      = useRef(null)
   const imgRef        = useRef(null)
   const pcRef         = useRef(null)
@@ -508,6 +546,38 @@ function CameraModal({ cam, onClose }) {
   const [lightboxIndex, setLightboxIndex] = useState(null)
   const [classFilter, setClassFilter] = useState('all')
   const previewRef            = useRef(null)
+  // full screen: 'native' (Fullscreen API) | 'window' (fills the window) | null
+  const [full, setFull]       = useState(null)
+
+  const enterFull = useCallback(() => {
+    const el = previewRef.current
+    if (!el) return
+    const req = requestFs(el)
+    if (!req) { setFull('window'); return }
+    setFull('native')
+    req.catch(() => setFull('window'))
+  }, [])
+  const exitFull = useCallback(() => { setFull(null); exitFs() }, [])
+  const toggleFull = useCallback(() => (full ? exitFull() : enterFull()), [full, enterFull, exitFull])
+
+  // leaving native full screen with the browser's own Esc / gesture
+  useEffect(() => {
+    const onChange = () => { if (!fsElement()) setFull((f) => (f === 'native' ? null : f)) }
+    document.addEventListener('fullscreenchange', onChange)
+    document.addEventListener('webkitfullscreenchange', onChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange)
+      document.removeEventListener('webkitfullscreenchange', onChange)
+    }
+  }, [])
+  // closing the window or switching camera leaves full screen
+  useEffect(() => { if (!cam) exitFull() }, [cam, exitFull])
+  useEffect(() => {
+    if (!cam || !startFull) return
+    // after the open animation has laid the preview out
+    const t = setTimeout(enterFull, 60)
+    return () => clearTimeout(t)
+  }, [cam, startFull, enterFull])
 
   const timelineClasses = useMemo(() => {
     if (!timeline) return []
@@ -639,11 +709,12 @@ function CameraModal({ cam, onClose }) {
         else if (e.key === 'ArrowRight') setLightboxIndex(i => Math.min((filteredTimeline?.length || 1) - 1, i + 1))
         return
       }
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') { if (full) exitFull(); else onClose() }
+      else if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) toggleFull()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose, lightboxIndex, filteredTimeline])
+  }, [onClose, lightboxIndex, filteredTimeline, full, exitFull, toggleFull])
 
   const talkStart = e => {
     if (!micTrackRef.current) return
@@ -676,6 +747,7 @@ function CameraModal({ cam, onClose }) {
             onClick={e => e.stopPropagation()}
             className="device-modal-glow"
             style={{
+              ...(full === 'window' ? { transform: 'none' } : {}),
               position: 'relative', width: 'min(1520px, 96vw)', maxHeight: '90vh',
               display: 'flex', flexDirection: 'column',
               background: 'var(--modal-grad)',
@@ -704,7 +776,10 @@ function CameraModal({ cam, onClose }) {
             </div>
 
             {/* video/preview area */}
-            <div ref={previewRef} style={{ position: 'relative', margin: '0 18px', borderRadius: 14, overflow: 'hidden', background: '#000', aspectRatio: '16/9' }}>
+            <div ref={previewRef} className={full ? 'cam-full' : undefined} onDoubleClick={toggleFull}
+              style={full
+                ? { position: full === 'window' ? 'fixed' : 'relative', inset: 0, zIndex: 1000, width: full === 'window' ? '100vw' : '100%', height: full === 'window' ? '100dvh' : '100%', background: '#000', overflow: 'hidden' }
+                : { position: 'relative', margin: '0 18px', borderRadius: 14, overflow: 'hidden', background: '#000', aspectRatio: '16/9' }}>
               <video ref={videoRef} autoPlay playsInline muted
                 style={{ width: '100%', height: '100%', objectFit: 'contain', display: showVideo ? 'block' : 'none' }} />
               {!showVideo && imgSrc && (
@@ -719,6 +794,13 @@ function CameraModal({ cam, onClose }) {
               <DetectionBoxesOverlay containerRef={previewRef} boxes={boxes} />
               <PtzPad ptzUrl={cam?.ptzUrl} zoom={cam?.ptzZoom !== false} />
               <CameraPresets deviceId={cam?._smartthings ? cam._deviceId : null} />
+              <button type="button" onClick={(e) => { e.stopPropagation(); toggleFull() }} onDoubleClick={(e) => e.stopPropagation()}
+                title={gt(full ? 'cam_exit_fullscreen' : 'cam_fullscreen', full ? 'Exit full screen' : 'Full screen')}
+                aria-label={gt(full ? 'cam_exit_fullscreen' : 'cam_fullscreen', full ? 'Exit full screen' : 'Full screen')}
+                style={{ ...fsBtnStyle, ...(full ? { top: 'max(14px, env(safe-area-inset-top))', right: 'max(14px, env(safe-area-inset-right))', width: 42, height: 42, borderRadius: 12 } : {}) }}>
+                {full ? <ExitFullIcon size={20} /> : <FullIcon size={16} />}
+              </button>
+              {full && <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', maxWidth: '60%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', top: 'max(20px, env(safe-area-inset-top))', zIndex: 2, color: '#fff', fontSize: 15, fontWeight: 700, textShadow: '0 1px 4px rgba(0,0,0,0.7)', pointerEvents: 'none' }}>{cam?.name}</div>}
               {canTalk && (
                 <button className="mini-btn"
                   onPointerDown={talkStart} onPointerUp={talkStop} onPointerLeave={talkStop} onPointerCancel={talkStop}
@@ -898,6 +980,7 @@ function CameraModal({ cam, onClose }) {
 export default function Cameras() {
   const [cameras, setCameras] = useState([])
   const [openCam, setOpenCam] = useState(null)
+  const [openFull, setOpenFull] = useState(false)
   const [hidden, setHidden]   = useState(() => localStorage.getItem('lsh-cameras-hidden') === '1')
 
   useEffect(() => {
@@ -938,10 +1021,10 @@ export default function Cameras() {
              phone, two-up on a tablet, more on desktop. */
           gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12,
         }}>
-          {cameras.map(cam => <CameraCard key={cam.name} cam={cam} onOpen={setOpenCam} />)}
+          {cameras.map(cam => <CameraCard key={cam.name} cam={cam} onOpen={(c, o) => { setOpenFull(!!o?.full); setOpenCam(c) }} />)}
         </div>
       )}
-      <CameraModal cam={openCam} onClose={() => setOpenCam(null)} />
+      <CameraModal cam={openCam} startFull={openFull} onClose={() => setOpenCam(null)} />
     </div>
   )
 }
