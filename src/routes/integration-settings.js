@@ -25,6 +25,7 @@ const SPECS = {
   midea: { file: 'midea-client', prefix: 'midea/', status: 'midea', list: { host: 'host', id: 'str', token: 'secret', key: 'secret', name: 'str', beep: 'bool' }, top: { pollInterval: 'num' }, rowRequired: ['id'] },
   melcloud: { file: 'melcloud-client', prefix: 'melcloud/', status: 'melcloud', top: { email: 'str', password: 'secret', pollInterval: 'num' } },
   sensibo: { file: 'sensibo-client', prefix: 'sensibo/', status: 'sensibo', top: { apiKey: 'secret', pollInterval: 'num' } },
+  tado: { file: 'tado-client', prefix: 'tado/', status: 'tado', top: { enabled: 'bool', pollInterval: 'num', dailyLimit: 'num', overlay: 'str' } },
   zendure: { file: 'zendure-client', prefix: 'zendure/', status: 'zendure', list: { host: 'host', name: 'str' }, top: { pollInterval: 'num' } },
   ugreen: { file: 'ugreen-client', prefix: 'ugreen/', status: 'ugreen', top: { email: 'str', password: 'secret' } },
   ankerSolix: { file: 'anker-solix-client', prefix: 'anker/', status: 'ankerSolix', list: { host: 'host', port: 'num', unitId: 'num', name: 'str' }, top: { pollInterval: 'num' } },
@@ -68,6 +69,26 @@ function cleanConfig(spec, body, current = {}) {
 }
 
 const integration = (id) => INTEGRATIONS.find((it) => it.file === SPECS[id].file);
+
+// Apply a saved config live: stop the running client, drop its devices,
+// start again if configured. → whether it runs now.
+async function apply(ctx, id, config) {
+  const { clients, store, sensorRegistry } = ctx;
+  const s = SPECS[id], it = integration(id);
+  try { clients[it.expose]?.stop() } catch {}
+  delete clients[it.expose];
+  for (const key of [...sensorRegistry.devices.keys()]) if (key.startsWith(s.prefix)) sensorRegistry.devices.delete(key);
+  platformStatus.set(s.status, false);
+  const running = !!it.when(config);
+  if (running) {
+    const Client = require(`../${s.file}`);
+    const c = new Client(config, store, sensorRegistry);
+    clients[it.expose] = c;
+    await Promise.race([c.start(), new Promise((r) => setTimeout(r, 20000))]);
+  }
+  sensorRegistry.emit('devices-changed');
+  return running;
+}
 
 module.exports = function register(router, ctx) {
   const { clients, requireAdmin, store, sensorRegistry } = ctx;
@@ -120,21 +141,10 @@ module.exports = function register(router, ctx) {
     } catch (err) {
       return res.status(err.message.includes('required') || err.message.includes('host') ? 400 : 500).json({ success: false, error: err.message });
     }
-    // apply: stop the running client, drop its devices, start again if configured
     try {
       const config = { ...current, [it.expose]: { ...(current[it.expose] || {}), ...cfg } };
-      try { clients[it.expose]?.stop() } catch {}
-      delete clients[it.expose];
-      for (const d of devicesOf(s)) sensorRegistry.devices.delete(d.key);
-      platformStatus.set(s.status, false);
-      if (it.when(config)) {
-        const Client = require(`../${s.file}`);
-        const c = new Client(config, store, sensorRegistry);
-        clients[it.expose] = c;
-        await Promise.race([c.start(), new Promise((r) => setTimeout(r, 20000))]);
-      }
-      sensorRegistry.emit('devices-changed');
-      res.json({ success: true, message: it.when(config) ? 'Saved and applied.' : 'Saved — not configured, so not running.', data: { devices: devicesOf(s), connected: platformStatus.getAll()[s.status] ?? null } });
+      const running = await apply(ctx, req.params.id, config);
+      res.json({ success: true, message: running ? 'Saved and applied.' : 'Saved — not configured, so not running.', data: { devices: devicesOf(s), connected: platformStatus.getAll()[s.status] ?? null } });
     } catch (err) {
       res.json({ success: true, message: `Saved; restart LSH to apply (${err.message}).` });
     }
@@ -144,3 +154,4 @@ module.exports = function register(router, ctx) {
 module.exports.SPECS = SPECS;
 module.exports.cleanConfig = cleanConfig;
 module.exports.MASK = MASK;
+module.exports.apply = apply;

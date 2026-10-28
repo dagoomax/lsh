@@ -34,7 +34,7 @@ const AC = [
       { key: 'password', label: 'Password', type: 'password' },
       { key: 'pollInterval', label: 'Poll interval', hint: '(seconds, min 30)', type: 'number', placeholder: '60' },
     ] },
-  { id: 'sensibo', title: 'Sensibo', desc: 'Sensibo Sky / Air / Air Pro / Elements through the official Sensibo API — the way to control any air conditioner with an IR remote (Fujitsu, Panasonic, Toshiba, Hitachi, Haier…). Create an API key at home.sensibo.com/me/api.',
+  { id: 'sensibo', title: 'Sensibo', desc: 'Sensibo Sky / Air / Air Pro through the official Sensibo API — the way to control any air conditioner with an IR remote (Fujitsu, Panasonic, Toshiba, Hitachi, Haier…) — with Climate React on/off, CO₂ and TVOC on the Air Pro and the filter-cleaning alert. Sensibo Pure purifiers, Elements air-quality monitors and Room Sensors (motion) come in too, each as a HomeKit sensor. Create an API key at home.sensibo.com/me/api.',
     top: [
       { key: 'apiKey', label: 'API key', type: 'password' },
       { key: 'pollInterval', label: 'Poll interval', hint: '(seconds, min 30)', type: 'number', placeholder: '60' },

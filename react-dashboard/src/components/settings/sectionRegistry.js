@@ -34,7 +34,8 @@ export const CATEGORIES = [
   ] },
   { id: 'climate', label: 'Climate & Water', sections: [
     { id: 'zehnder', title: 'Zehnder Ventilation', keywords: ['zehnder', 'rekuperacja', 'rekuperator', 'recuperation', 'heat recovery', 'mvhr', 'hrv', 'wtw', 'comfoair', 'comfoconnect', 'lan c', 'whr930', 'ca350', 'ventilation', 'wentylacja'] },
-    { id: 'air-conditioners', title: 'Air Conditioners', keywords: ['air conditioner', 'ac', 'aircon', 'klimatyzacja', 'klimatyzator', 'daikin', 'gree', 'sinclair', 'cooper', 'hunter', 'tosot', 'midea', 'comfee', 'carrier', 'toshiba', 'electrolux', 'mitsubishi', 'melcloud', 'sensibo', 'fujitsu', 'panasonic'] },
+    { id: 'tado', title: 'tado°', keywords: ['tado', 'thermostat', 'termostat', 'radiator', 'grzejnik', 'głowica', 'heating', 'ogrzewanie', 'hot water', 'ciepła woda', 'smart ac'] },
+    { id: 'air-conditioners', title: 'Air Conditioners', keywords: ['air conditioner', 'ac', 'aircon', 'klimatyzacja', 'klimatyzator', 'daikin', 'gree', 'sinclair', 'cooper', 'hunter', 'tosot', 'midea', 'comfee', 'carrier', 'toshiba', 'electrolux', 'mitsubishi', 'melcloud', 'sensibo', 'fujitsu', 'panasonic', 'purifier', 'oczyszczacz', 'air quality'] },
     { id: 'lgthinq', title: 'LG ThinQ', keywords: ['lg', 'thinq', 'air conditioner', 'ac'] },
     { id: 'climate-extra', title: 'AuxAir, Dyson, ViCare & more', keywords: ['auxair', 'aux', 'air conditioner', 'ac', 'bayrol', 'pool', 'openweather', 'weather', 'airly', 'air quality', 'vicare', 'viessmann', 'vitodens', 'boiler', 'thermomix', 'dyson', 'purifier'] },
     { id: 'aquilo', title: 'Aquilo Tank Sensors', keywords: ['aquilo', 'tank', 'septic', 'szambo', 'rainwater', 'deszczówka', 'well', 'studnia', 'liquid level', 'poziom cieczy'] },

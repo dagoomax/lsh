@@ -138,6 +138,7 @@
     "src/routes/sonos.js",
     "src/routes/spotify.js",
     "src/routes/suppla.js",
+    "src/routes/tado.js",
     "src/routes/tariff.js",
     "src/routes/tauron-tariff.js",
     "src/routes/tedee.js",
@@ -1562,6 +1563,19 @@
         "src/ac-common.js",
         "src/melcloud-client.js",
         "src/polling-client.js"
+      ],
+      "deps": {}
+    },
+    "tado": {
+      "entry": "src/tado-client.js",
+      "configKeys": [
+        "tado"
+      ],
+      "when": "(config.tado?.enabled)",
+      "files": [
+        "src/ac-common.js",
+        "src/polling-client.js",
+        "src/tado-client.js"
       ],
       "deps": {}
     },

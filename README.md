@@ -4608,6 +4608,65 @@ Every AirPlay speaker and Chromecast / Google Home / Nest of the dashboard's med
 
 Every tank the receiver reports becomes device `aquilo/<id>` (tanks added later appear on the next poll): `fill` (%), `level` (cm), `overflow` (on at ≥ `overflowPct`), `stale` (on when the last transmission is older than `staleHours` — battery or radio died; the receiver keeps repeating the last reading), `lastRead`, and — when the receiver's firmware reports them — `battery` (%), `daysLeft`, `toFull` (cm), `lastEmptied`. HomeKit: fill as a level (humidity) sensor plus overflow as a leak sensor. API: `GET /api/aquilo/status`, `POST /api/aquilo/test {"host":"…"}`, `POST /api/settings/aquilo`. Test without hardware: `node scripts/aquilo-simulator.js 8095` and add gateway `127.0.0.1:8095`.
 
+### tado°
+
+tado° smart thermostats, radiator valves, hot water and Smart AC Control (V3+ and earlier) through the tado cloud, `my.tado.com/api/v2` (`src/tado-client.js`, no npm deps). tado X, the 2024 line, uses a different API and is not covered. Settings → Climate & Water → **tado°** → **Sign in to tado**. LSH shows a tado link and a code; confirm it there and LSH saves the tokens to `persist/tado-tokens.json` (mode 600). It then turns `tado.enabled` on and starts, with no restart. This is tado's OAuth device-code flow, the only sign-in tado has allowed since March 2025. The refresh token rotates on every use and lapses after 30 days unused, so a long-stopped LSH has to sign in again.
+
+```json
+"tado": { "enabled": true, "dailyLimit": 100, "overlay": "next" }
+```
+
+| Key | Default | |
+|---|---|---|
+| `pollInterval` | auto | Seconds, at least 60. Unset or `0` keeps a day's polls within 80 % of the API quota. |
+| `dailyLimit` | `100` | tado's daily API quota: 100 without Auto-Assist, 20000 with it. When tado sends a `ratelimit-policy` header, that is used instead. |
+| `overlay` | `next` | How long a change made in LSH lasts: `next` (until the next schedule block), `manual` (until changed again), or a number of minutes. |
+
+At 100 calls a day, LSH reads about every 23 minutes. It fetches all zones in one call per poll and presence every fourth poll.
+
+**Devices:**
+- `tado/<home>-<zone>`, depending on the zone type:
+  - **Heating** is a HomeKit Thermostat:
+    - `power`
+    - `targetTemp` (5–25 °C)
+    - `temperature`, `humidity`
+    - `heatingPower` (%)
+    - `modeText` (schedule / manual / off / away / open window)
+    - `openWindow`, `batteryLow`
+    - `resumeSchedule` (deletes the manual overlay)
+
+    In HomeKit, *off* turns the zone off, *heat* is manual and *auto* resumes the schedule.
+  - **Hot water:** `power`, plus `targetTemp` where the boiler takes one, and `resumeSchedule`.
+  - **AC:** the shared air-conditioner model (`power`, `mode`, `targetTemp`, `fan`, `swing`), kept within the unit's capabilities, plus `resumeSchedule`.
+- `tado/<home>`:
+  - `home`, someone home (HomeKit occupancy)
+  - `away`, which forces away or home (presence lock)
+  - `presenceAuto`, which goes back to geofencing
+  - `apiRemaining`, API calls left today
+
+**API:** `GET /api/tado/auth`, `POST /api/tado/auth/start`, `POST /api/tado/auth/logout`, and options through `POST /api/settings/integration/tado`.
+
+**Without an account:** run `node scripts/tado-simulator.js 8905`, then set `"tado": { "apiBase": "http://127.0.0.1:8905/api/v2", "authBase": "http://127.0.0.1:8905/oauth2" }` and sign in from Settings. The simulator confirms the code by itself.
+
+### Sensibo
+
+Sensibo pods through the official API, `home.sensibo.com/api/v2` (`src/sensibo-client.js`). Configure it in Settings → Climate & Water → Air Conditioners → **Sensibo**, with an API key from home.sensibo.com/me/api.
+
+```json
+"sensibo": { "apiKey": "…", "pollInterval": 60 }
+```
+
+**Devices:**
+- **Sky / Air / Air Pro:** `sensibo/<pod>`, the shared air-conditioner model, kept within the remote's capabilities. It also has:
+  - `climateReact`, Climate React on/off
+  - `filterClean`
+  - on the Air Pro, `carbonDioxide` and `tvocLevel` (HomeKit CO₂ sensor)
+- **Pure purifier:** `power`, and `fan` (0 auto, 1 low, 2 high). `pm25Index` is 1 good, 2 moderate or 3 bad, shown as HomeKit air quality. It also has `filterClean`.
+- **Elements:** `temperature`, `humidity`, `carbonDioxide`, `tvocLevel` and `fineDustLevel` (PM2.5 µg/m³). In HomeKit it is an air-quality sensor and a CO₂ sensor.
+- **Room Sensor:** `sensibo/<sensor>`, with `motion` (HomeKit), `temperature` and `humidity`.
+
+**Without hardware:** `node scripts/sensibo-simulator.js 8903` serves a Sky with a Room Sensor, a Pure and an Elements. The Pure, Elements and Room Sensor fields follow Sensibo's API documentation and have not been checked on real devices.
+
 ### Airbnb (rental reservations)
 
 Reservations of short-term rental listings, from each listing's **calendar export link** (iCal). Airbnb has no public host API; in Airbnb go to Calendar → Availability → Connect calendars → **Export calendar**. VRBO links work too, and a Booking.com link added here is read with Booking's rules (below) (`src/airbnb-client.js`, no npm deps, runs in its own process). Settings → Home → **Airbnb**: add a listing with its link and your check-in and check-out times, **Test calendar link**, **Save**. Changes apply live.

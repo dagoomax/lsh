@@ -50,7 +50,7 @@ function EtsExport({ config, reload }) {
         <Button variant="secondary" onClick={load}>{tr('Preview')}</Button>
         <Button variant="primary" onClick={() => { window.location.href = `/api/knx/ets.xml?${query()}` }}>{tr('⬇ Group addresses for ETS (XML)')}</Button>
         <Button busy={save.busy} onClick={() => save.save({ mainGroup, lshBridge: bridge }).then(reload)}>{gt('common.save', 'Save')}</Button>
-        <ResultBanner result={save.result || (error ? { success: false, error } : null)}/>
+        <ResultBanner result={save.result || (error ? { ok: false, message: error } : null)}/>
       </div>
       {preview && <>
         <p className="stg-hint">

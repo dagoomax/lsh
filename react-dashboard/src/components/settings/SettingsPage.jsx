@@ -50,6 +50,7 @@ import UsbRadioSection from './sections/UsbRadioSection'
 import AjaxSection, { JablotronSection } from './sections/AjaxSection'
 import ZehnderSection from './sections/ZehnderSection'
 import { AirConditionersSection, BatteriesSection } from './sections/IntegrationsSection'
+import TadoSection from './sections/TadoSection'
 import ArduinoSection from './sections/ArduinoSection'
 import EsphomeSection from './sections/EsphomeSection'
 import BroadlinkSection from './sections/BroadlinkSection'
@@ -140,6 +141,7 @@ const SECTION_COMPONENTS = {
   jablotron: JablotronSection,
   zehnder: ZehnderSection,
   'air-conditioners': AirConditionersSection,
+  tado: TadoSection,
   'home-batteries': BatteriesSection,
   arduino: ArduinoSection,
   esphome: EsphomeSection,

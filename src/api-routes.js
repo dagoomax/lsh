@@ -118,6 +118,7 @@ const ROUTE_GROUPS = [
   require('./routes/apple-music'),
   require('./routes/announce'),
   require('./routes/aquilo'),
+  require('./routes/tado'),
   require('./routes/airbnb'),
   require('./routes/usb-radio'),
   require('./routes/tenant'),

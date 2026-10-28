@@ -153,6 +153,9 @@ module.exports = [
   // Mitsubishi Electric — MELCloud (app account)
   { file: 'melcloud-client', label: 'MELCloud', expose: 'melcloud', when: (config) => config.melcloud?.email && config.melcloud?.password },
   // Sensibo — official cloud API (any IR air conditioner)
+  // tado° heating / hot water / Smart AC + presence (cloud; sign-in via Settings,
+  // tokens in persist/tado-tokens.json); exposed for its Settings sign-in / apply
+  { file: 'tado-client', label: 'tado', expose: 'tado', when: (config) => config.tado?.enabled },
   { file: 'sensibo-client', label: 'Sensibo', expose: 'sensibo', when: (config) => config.sensibo?.apiKey },
   // Spotify Web API — playback control (OAuth PKCE, only a Client ID needed)
   { file: 'spotify-client', label: 'Spotify', expose: 'spotify', when: (config) => config.spotify?.clientId },

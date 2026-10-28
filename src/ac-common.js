@@ -48,12 +48,16 @@ function acSensors({ swing = true, outdoor = false, humidity = false, minTemp = 
 }
 
 // Register one AC. opts: { key, label, type, model?, features (acSensors opts), set(patch) }
-function registerAc(registry, { key, label, type, model, features = {}, set }) {
+// A brand's own controls and readings beyond the shared model go in
+// extraSensors (writes to their capabilityIds reach extraWrite(cap, cmd, args)),
+// extra HomeKit services in homekit (e.g. 'co2-sensor').
+function registerAc(registry, { key, label, type, model, features = {}, set, extraSensors = [], extraWrite, homekit = [] }) {
   const f = { minTemp: 16, maxTemp: 30, step: 0.5, ...features };
+  const extraCaps = new Set(extraSensors.map((s) => s.capabilityId).filter(Boolean));
   registry.registerDevice({
     key, label, type, category: 'climate', icon: '❄️', ...(model ? { model } : {}),
-    sensors: acSensors(f), homekit: ['thermostat'],
-    _writeCapability: async (cap, cmd, args = []) => set(acPatch(cap, cmd, args, f)),
+    sensors: [...acSensors(f), ...extraSensors], homekit: ['thermostat', ...homekit],
+    _writeCapability: async (cap, cmd, args = []) => (extraCaps.has(cap) && extraWrite ? extraWrite(cap, cmd, args) : set(acPatch(cap, cmd, args, f))),
   });
 }
 

@@ -37,3 +37,44 @@ test('Sensibo: pods, acStates within the remote capabilities', async () => {
     await assert.rejects(registry.sendCommand(key, 'mode', 0), /no auto mode/);
   } finally { c.stop(); await sim.close() }
 });
+
+test('Sensibo: Climate React, Air Pro-style readings, Room Sensor, Pure, Elements', async () => {
+  const sim = await startSimulator({ port: 0 });
+  sim.pod.measurements.co2 = 640; sim.pod.measurements.tvoc = 90;
+  const store = fakeStore(), registry = new SensorRegistry(store, 'en');
+  const c = new SensiboClient({ sensibo: { apiKey: sim.apiKey, apiBase: `http://127.0.0.1:${sim.port}` } }, store, registry);
+  const v = (k) => store.values[k];
+  try {
+    await c.start();
+    const sky = registry.devices.get(`sensibo/${sim.pod.id}`);
+    assert.deepEqual(sky.homekit, ['thermostat', 'co2-sensor']);
+    assert.equal(v(`sensibo/${sim.pod.id}/climateReact`), 0);
+    assert.equal(v(`sensibo/${sim.pod.id}/carbonDioxide`), 640);
+    assert.equal(v(`sensibo/${sim.pod.id}/filterClean`), 1);
+    await registry.sendCommand(`sensibo/${sim.pod.id}`, 'climateReact', true);
+    assert.equal(sim.pod.smartMode.enabled, true);
+    assert.equal(v(`sensibo/${sim.pod.id}/climateReact`), 1);
+
+    const room = registry.devices.get('sensibo/ms01');
+    assert.deepEqual(room.homekit, ['motion']);
+    assert.equal(v('sensibo/ms01/motion'), 1);
+    assert.equal(v('sensibo/ms01/temperature'), 22.1);
+
+    const pure = registry.devices.get('sensibo/PuRe0001');
+    assert.equal(pure.model, 'Sensibo Pure');
+    assert.equal(v('sensibo/PuRe0001/pm25Index'), 2);
+    assert.equal(v('sensibo/PuRe0001/airQuality'), 75);
+    await registry.sendCommand('sensibo/PuRe0001', 'fan', 2);
+    assert.deepEqual(sim.pure.acState, { on: true, mode: 'fan', fanLevel: 'high' });
+    await registry.sendCommand('sensibo/PuRe0001', 'power', false);
+    assert.equal(sim.pure.acState.on, false);
+    assert.equal(v('sensibo/PuRe0001/power'), 0);
+
+    const el = registry.devices.get('sensibo/ElEm0001');
+    assert.deepEqual(el.homekit, ['air-quality', 'co2-sensor']);
+    assert.equal(v('sensibo/ElEm0001/carbonDioxide'), 812);
+    assert.equal(v('sensibo/ElEm0001/fineDustLevel'), 9);
+    assert.equal(v('sensibo/ElEm0001/airQuality'), 25);
+    assert.equal(registry.devices.has('sensibo/ElEm0001') && !registry.devices.get('sensibo/ElEm0001')._writeCapability, true, 'a monitor has nothing to set');
+  } finally { c.stop(); await sim.close() }
+});
