@@ -351,15 +351,17 @@ function CameraRecordings({ slug }) {
 }
 
 // ── Waypoints (src/ptz-waypoints.js): saved views a pan/tilt camera goes back to ──
-function CameraWaypoints({ slug }) {
+// One state per camera window, shared by the strip under the picture and the
+// buttons on it.
+function useWaypoints(slug) {
   const [list, setList] = useState([])
   const [moving, setMoving] = useState(null)   // id being gone to
   const [naming, setNaming] = useState(null)   // '' while typing a new name
   const [armed, setArmed] = useState(null)     // id whose ✕ was pressed once
   const [msg, setMsg] = useState('')
-  const base = `/api/camera/waypoints/${encodeURIComponent(slug)}`
-  const load = useCallback(() => fetch(base, { credentials: 'include' }).then(r => r.json()).then(j => { if (j.success) setList(j.data.waypoints || []) }).catch(() => {}), [base])
-  useEffect(() => { load() }, [load])
+  const base = slug ? `/api/camera/waypoints/${encodeURIComponent(slug)}` : null
+  const load = useCallback(() => { if (base) fetch(base, { credentials: 'include' }).then(r => r.json()).then(j => { if (j.success) setList(j.data.waypoints || []) }).catch(() => {}) }, [base])
+  useEffect(() => { setList([]); setMsg(''); setNaming(null); load() }, [load])
 
   const call = async (url, opts = {}) => {
     const r = await fetch(url, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts }).catch(() => null)
@@ -382,22 +384,36 @@ function CameraWaypoints({ slug }) {
     if (armed !== w.id) { setArmed(w.id); setTimeout(() => setArmed(a => (a === w.id ? null : a)), 3000); return }
     setArmed(null); await call(`${base}/${w.id}`, { method: 'DELETE' }); load()
   }
+  const img = (w) => `${base}/${w.id}.jpg`
+  return { slug, list, moving, naming, setNaming, armed, msg, save, go, remove, img }
+}
+
+// name field for a new waypoint; keys stay out of the window's shortcuts (Esc, F)
+function WaypointNameInput({ wp, large }) {
+  return (
+    <input autoFocus value={wp.naming} onChange={e => wp.setNaming(e.target.value)} placeholder={gt('cam_wp_name', 'Name, e.g. Door')} maxLength={60}
+      onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') wp.save(); if (e.key === 'Escape') wp.setNaming(null) }}
+      onClick={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}
+      style={{ fontSize: large ? 16 : 12, padding: large ? '8px 12px' : '3px 8px', borderRadius: large ? 12 : 8, border: '1px solid var(--border)', background: large ? 'rgba(10,14,20,0.75)' : 'var(--white-05)', color: large ? '#fff' : 'var(--text)', width: large ? 220 : 150 }} />
+  )
+}
+
+function CameraWaypoints({ wp }) {
   const label = { fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }
   const chip = { fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--white-05)', color: 'var(--text2)' }
+  const { list, moving, naming, armed, msg } = wp
 
   return (
     <div style={{ margin: '10px 18px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={label}>{gt('cam_waypoints', 'Waypoints')}</span>
         {naming === null ? (
-          <button onClick={() => setNaming('')} style={{ ...chip, marginLeft: 'auto' }}>📍 {gt('cam_wp_save', 'Save this view')}</button>
+          <button onClick={() => wp.setNaming('')} style={{ ...chip, marginLeft: 'auto' }}>📍 {gt('cam_wp_save', 'Save this view')}</button>
         ) : (
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-            <input autoFocus value={naming} onChange={e => setNaming(e.target.value)} placeholder={gt('cam_wp_name', 'Name, e.g. Door')} maxLength={60}
-              onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') save(); if (e.key === 'Escape') setNaming(null) }}
-              style={{ fontSize: 12, padding: '3px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white-05)', color: 'var(--text)', width: 150 }} />
-            <button onClick={save} style={{ ...chip, background: 'var(--accent)', color: '#fff' }}>{gt('save', 'Save')}</button>
-            <button onClick={() => setNaming(null)} style={chip}>✕</button>
+            <WaypointNameInput wp={wp} />
+            <button onClick={wp.save} style={{ ...chip, background: 'var(--accent)', color: '#fff' }}>{gt('save', 'Save')}</button>
+            <button onClick={() => wp.setNaming(null)} style={chip}>✕</button>
           </span>
         )}
       </div>
@@ -408,21 +424,72 @@ function CameraWaypoints({ slug }) {
         <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '6px 0 2px' }}>
           {list.map(w => (
             <div key={w.id} style={{ position: 'relative', flexShrink: 0, width: 112 }}>
-              <button onClick={() => go(w)} disabled={!!moving} title={gt('cam_wp_goto', 'Go to this view')}
+              <button onClick={() => wp.go(w)} disabled={!!moving} title={gt('cam_wp_goto', 'Go to this view')}
                 style={{ display: 'block', width: 112, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: moving ? 'default' : 'pointer', opacity: moving && moving !== w.id ? 0.5 : 1 }}>
                 <div style={{ position: 'relative', width: 112, height: 63, borderRadius: 8, border: `1px solid ${moving === w.id ? 'var(--accent)' : 'var(--border)'}`, background: '#05060a', overflow: 'hidden' }}>
-                  <img src={`${base}/${w.id}.jpg`} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  <img src={wp.img(w)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   {moving === w.id && <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 16 }}>⌖</span>}
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--text2)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{w.name}</div>
               </button>
-              <button onClick={() => remove(w)} title={gt('cam_rec_delete', 'Delete')} aria-label={gt('cam_rec_delete', 'Delete')}
+              <button onClick={() => wp.remove(w)} title={gt('cam_rec_delete', 'Delete')} aria-label={gt('cam_rec_delete', 'Delete')}
                 style={{ position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 10, lineHeight: '20px', padding: 0,
                   color: '#fff', background: armed === w.id ? '#dc2626' : 'rgba(10,14,20,0.6)' }}>{armed === w.id ? '?' : '✕'}</button>
             </div>
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// The waypoints as buttons on the picture (bottom centre, between the talk
+// button and the PTZ pad); larger in full screen, with "save this view" there too.
+function WaypointsOnPicture({ wp, large }) {
+  // narrow screens: the row goes under the camera name, clear of the PTZ pad
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 760)
+  useEffect(() => {
+    const on = () => setNarrow(window.innerWidth < 760)
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  if (!wp.list.length && !large) return null
+  const stop = e => e.stopPropagation()
+  const pill = (on) => ({
+    flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: large ? 10 : 6, cursor: wp.moving ? 'default' : 'pointer',
+    padding: large ? '6px 14px 6px 6px' : '3px 9px 3px 3px', borderRadius: large ? 14 : 10,
+    border: `1px solid ${on ? 'var(--accent)' : 'rgba(255,255,255,0.12)'}`,
+    background: on ? 'color-mix(in srgb, var(--accent) 45%, rgba(10,14,20,0.7))' : 'rgba(10,14,20,0.62)',
+    backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+    color: '#fff', fontSize: large ? 16 : 11, fontWeight: 700, whiteSpace: 'nowrap',
+  })
+  const tw = large ? 72 : 40, th = large ? 40 : 22
+  return (
+    <div onClick={stop} onDoubleClick={stop}
+      style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', zIndex: 2, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6,
+        ...(narrow
+          ? { top: large ? 'max(72px, calc(env(safe-area-inset-top) + 56px))' : 10, maxWidth: 'calc(100% - 24px)', flexDirection: 'column-reverse' }
+          : { bottom: large ? 'max(28px, env(safe-area-inset-bottom))' : 12, maxWidth: large ? 'calc(100% - 480px)' : 'calc(100% - 320px)', flexDirection: 'column' }) }}>
+      {wp.msg && <div style={{ fontSize: large ? 14 : 11, color: '#fff', padding: large ? '5px 12px' : '2px 8px', borderRadius: 8, background: 'rgba(10,14,20,0.6)', textShadow: '0 1px 2px rgba(0,0,0,0.6)', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wp.msg}</div>}
+      <div style={{ display: 'flex', gap: large ? 10 : 6, overflowX: 'auto', maxWidth: '100%', scrollbarWidth: 'none' }}>
+        {wp.list.map(w => (
+          <button key={w.id} onClick={() => wp.go(w)} disabled={!!wp.moving} title={gt('cam_wp_goto', 'Go to this view')}
+            style={{ ...pill(wp.moving === w.id), opacity: wp.moving && wp.moving !== w.id ? 0.55 : 1 }}>
+            <span style={{ position: 'relative', width: tw, height: th, borderRadius: large ? 8 : 6, overflow: 'hidden', background: '#05060a', flexShrink: 0 }}>
+              <img src={wp.img(w)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              {wp.moving === w.id && <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', fontSize: large ? 20 : 12 }}>⌖</span>}
+            </span>
+            {w.name}
+          </button>
+        ))}
+        {large && (wp.naming === null
+          ? <button onClick={() => wp.setNaming('')} title={gt('cam_wp_save', 'Save this view')} style={{ ...pill(false), padding: '6px 14px' }}>📍 {gt('cam_wp_save', 'Save this view')}</button>
+          : <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+              <WaypointNameInput wp={wp} large />
+              <button onClick={wp.save} style={{ ...pill(true), padding: '8px 14px' }}>{gt('save', 'Save')}</button>
+              <button onClick={() => wp.setNaming(null)} style={{ ...pill(false), padding: '8px 12px' }}>✕</button>
+            </span>)}
+      </div>
     </div>
   )
 }
@@ -442,7 +509,7 @@ const PTZ_ZOOM = [
 ]
 
 // compact: the smaller pad on a dashboard camera tile (clicks don't open the camera)
-function PtzPad({ ptzUrl, zoom = true, compact = false }) {
+function PtzPad({ ptzUrl, zoom = true, compact = false, large = false }) {
   const activeRef = useRef(false)
   const [pressed, setPressed] = useState(null)
   const send = useCallback(async (op) => {
@@ -463,8 +530,11 @@ function PtzPad({ ptzUrl, zoom = true, compact = false }) {
 
   return (
     <div onClick={e => e.stopPropagation()}
-      style={{ position: 'absolute', right: compact ? 6 : 12, bottom: compact ? 6 : 12, display: 'flex', alignItems: 'flex-end', gap: 8,
-        ...(compact ? { transform: 'scale(0.72)', transformOrigin: 'bottom right' } : {}) }}>
+      style={{ position: 'absolute', zIndex: 2, display: 'flex', alignItems: 'flex-end', gap: 8,
+        ...(large
+          // full screen: half again as big, clear of the screen edge
+          ? { right: 'max(28px, env(safe-area-inset-right))', bottom: 'max(28px, env(safe-area-inset-bottom))', transform: 'scale(1.6)', transformOrigin: 'bottom right' }
+          : { right: compact ? 6 : 12, bottom: compact ? 6 : 12, ...(compact ? { transform: 'scale(0.72)', transformOrigin: 'bottom right' } : {}) }) }}>
       {zoom && <div style={{
         display: 'flex', flexDirection: 'column', borderRadius: 12, overflow: 'hidden',
         background: 'rgba(10,14,20,0.55)', border: '1px solid rgba(255,255,255,0.08)',
@@ -623,6 +693,7 @@ function CameraModal({ cam, onClose, startFull = false }) {
   const [lightboxIndex, setLightboxIndex] = useState(null)
   const [classFilter, setClassFilter] = useState('all')
   const previewRef            = useRef(null)
+  const wp                    = useWaypoints(cam?.waypoints || null)
   // full screen: 'native' (Fullscreen API) | 'window' (fills the window) | null
   const [full, setFull]       = useState(null)
 
@@ -869,20 +940,24 @@ function CameraModal({ cam, onClose, startFull = false }) {
                 </div>
               )}
               <DetectionBoxesOverlay containerRef={previewRef} boxes={boxes} />
-              <PtzPad ptzUrl={cam?.ptzUrl} zoom={cam?.ptzZoom !== false} />
+              <PtzPad ptzUrl={cam?.ptzUrl} zoom={cam?.ptzZoom !== false} large={!!full} />
+              {cam?.waypoints && <WaypointsOnPicture wp={wp} large={!!full} />}
               <CameraPresets deviceId={cam?._smartthings ? cam._deviceId : null} />
               <button type="button" onClick={(e) => { e.stopPropagation(); toggleFull() }} onDoubleClick={(e) => e.stopPropagation()}
                 title={gt(full ? 'cam_exit_fullscreen' : 'cam_fullscreen', full ? 'Exit full screen' : 'Full screen')}
                 aria-label={gt(full ? 'cam_exit_fullscreen' : 'cam_fullscreen', full ? 'Exit full screen' : 'Full screen')}
-                style={{ ...fsBtnStyle, ...(full ? { top: 'max(14px, env(safe-area-inset-top))', right: 'max(14px, env(safe-area-inset-right))', width: 42, height: 42, borderRadius: 12 } : {}) }}>
-                {full ? <ExitFullIcon size={20} /> : <FullIcon size={16} />}
+                style={{ ...fsBtnStyle, ...(full ? { top: 'max(20px, env(safe-area-inset-top))', right: 'max(20px, env(safe-area-inset-right))', width: 56, height: 56, borderRadius: 16 } : {}) }}>
+                {full ? <ExitFullIcon size={26} /> : <FullIcon size={16} />}
               </button>
-              {full && <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', maxWidth: '60%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', top: 'max(20px, env(safe-area-inset-top))', zIndex: 2, color: '#fff', fontSize: 15, fontWeight: 700, textShadow: '0 1px 4px rgba(0,0,0,0.7)', pointerEvents: 'none' }}>{cam?.name}</div>}
+              {full && <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', maxWidth: '60%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', top: 'max(30px, env(safe-area-inset-top))', zIndex: 2, color: '#fff', fontSize: 20, fontWeight: 700, textShadow: '0 1px 4px rgba(0,0,0,0.7)', pointerEvents: 'none' }}>{cam?.name}</div>}
               {canTalk && (
                 <button className="mini-btn"
                   onPointerDown={talkStart} onPointerUp={talkStop} onPointerLeave={talkStop} onPointerCancel={talkStop}
                   style={{
-                    position: 'absolute', left: 12, bottom: 12, padding: '7px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                    position: 'absolute', zIndex: 2, fontWeight: 700,
+                    ...(full
+                      ? { left: 'max(28px, env(safe-area-inset-left))', bottom: 'max(28px, env(safe-area-inset-bottom))', padding: '14px 22px', borderRadius: 16, fontSize: 18 }
+                      : { left: 12, bottom: 12, padding: '7px 12px', borderRadius: 10, fontSize: 12 }),
                     color: talking ? '#fff' : '#e9eef5',
                     background: talking ? 'color-mix(in srgb, var(--accent) 75%, transparent)' : 'rgba(10,14,20,0.65)',
                     WebkitUserSelect: 'none', userSelect: 'none', touchAction: 'none',
@@ -966,7 +1041,7 @@ function CameraModal({ cam, onClose, startFull = false }) {
               </div>
             )}
 
-            {cam?.waypoints && <CameraWaypoints slug={cam.waypoints} />}
+            {cam?.waypoints && <CameraWaypoints wp={wp} />}
             {cam?.recordings && <CameraRecordings slug={cam.recordings} />}
 
             {/* event log */}
