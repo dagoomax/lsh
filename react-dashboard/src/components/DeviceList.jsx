@@ -10,6 +10,7 @@ const loadModal = () => import('./DeviceModal')
 const DeviceModal = lazy(loadModal)
 const StatsView   = lazy(() => import('./StatsView'))
 import { gt }      from '../i18n'
+import { flowTemperature, curveParams } from '../heatingCurve'
 import { acView, acSummary, acText, fmtTemp, MODE_COLOR } from '../acModel'
 import { EDIT_EMOJI } from '../emoji'
 import EnergyFlow from './EnergyFlow'
@@ -213,6 +214,7 @@ export function getGroup(d) {
   if (['auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo'].includes(d.type)) return 'Climate'
   if (d.type === 'zehnder' || d.category === 'ventilation') return 'Climate'
   if (d.type === 'smarttub') return 'Climate'
+  if (d.type === 'heatingcurve') return 'Climate'
   if (d.type === 'sonos' || d.type === 'radio')  return 'Media'
   if (d.type === 'googlehome' || d.type === 'googletv' || d.type === 'sony') return 'Media'
   if (d.type === 'denon' || d.type === 'lgwebos')  return 'Media'
@@ -231,6 +233,45 @@ export function getGroup(d) {
 const CATS = ['All','Victron','Lighting','Switches','Blinds','Climate','Media','Security','Sensors','Other','Plan','Graphs','Guide']
 // views that aren't a device category
 const VIEW_CATS = ['All','Plan','Graphs','Guide']
+
+// ── Heating curve tile body ─────────────────────────────────────────────────
+// The curve over outdoor −20…+20 °C with the current point (outdoor →
+// flow, room correction included), and slope −/+ in 0.1 steps.
+function HeatingCurveTile({ device, merged, cmd }) {
+  const r = device.readings || {}
+  const v = (p) => { const x = merged[p]?.value ?? r[p]?.value; return x == null ? null : Number(x) }
+  const p = curveParams({ room: v('room'), slope: v('slope'), shift: v('shift'), minFlow: device.minFlow, maxFlow: device.maxFlow })
+  const outdoor = v('outdoorTemperature'), flow = v('flowTemperature'), rooms = v('roomTemperature')
+  const W = 220, H = 64, lo = Math.min(20, p.minFlow), hi = Math.max(p.maxFlow, lo + 10)
+  const x = (o) => ((Math.min(20, Math.max(-20, o)) + 20) / 40) * W
+  const y = (f) => H - 4 - ((f - lo) / (hi - lo)) * (H - 8)
+  const pts = []
+  for (let o = -20; o <= 20; o += 2) pts.push(`${x(o).toFixed(1)},${y(flowTemperature(o, p)).toFixed(1)}`)
+  const step = (d) => (e) => { e.stopPropagation(); cmd('slope', Math.round(Math.min(3.5, Math.max(0.2, p.slope + d)) * 10) / 10) }
+  return (
+    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: 56, display: 'block' }} aria-hidden="true">
+        <line x1={x(0)} x2={x(0)} y1="0" y2={H} stroke="var(--border)" strokeWidth="1" vectorEffect="non-scaling-stroke"/>
+        <polyline points={pts.join(' ')} fill="none" stroke="var(--orange)" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>
+        {outdoor != null && flow != null && (
+          <circle cx={x(outdoor)} cy={y(flow)} r="4" fill="var(--orange)" stroke="var(--bg, #fff)" strokeWidth="1.5" vectorEffect="non-scaling-stroke"/>
+        )}
+      </svg>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text2)' }}>
+        <button className="mini-btn" onClick={step(-0.1)} title={gt('heating_curve_slope', 'Slope')}
+          style={{ width: 22, height: 22, borderRadius: 6, color: 'var(--text)', fontSize: 14 }}>−</button>
+        <span style={{ fontWeight: 700, color: 'var(--text)', minWidth: 64, textAlign: 'center' }}>
+          {gt('heating_curve_slope', 'Slope')} {p.slope.toFixed(1)}
+        </span>
+        <button className="mini-btn" onClick={step(0.1)} title={gt('heating_curve_slope', 'Slope')}
+          style={{ width: 22, height: 22, borderRadius: 6, color: 'var(--text)', fontSize: 14 }}>+</button>
+        {rooms != null && (
+          <span style={{ marginLeft: 'auto' }}>{gt('heating_curve_rooms', 'Rooms')} {rooms.toFixed(1)}°C / {p.room.toFixed(1)}°C</span>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 function Toggle({ on, onChange }) {
@@ -393,6 +434,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const isTv     = device.type === 'lgwebos'
   const isDenon  = device.type === 'denon' || isTv
   const isSpa    = device.type === 'smarttub'
+  const isCurve  = device.type === 'heatingcurve'
   // Bento-style: media players and dimmable lights earn a wider card (room for
   // now-playing/transport, or a full-width brightness slider) the way Homey
   // features them, instead of a cramped 1×1 tile.
@@ -525,6 +567,13 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
       if (fibaroSwitches.length) parts.push(`${fibaroOnCount}/${fibaroSwitches.length} on`)
       if (fibaroTemps.length)    parts.push(`${Number(fibaroTemps[0].value).toFixed(1)}°C`)
       return parts.join(' · ') || `${fibaroSensors.length} sensors`
+    }
+    if (isCurve) {
+      const v = (p) => merged[p]?.value ?? r[p]?.value
+      const parts = []
+      if (v('flowTemperature') != null)    parts.push(`→ ${Number(v('flowTemperature')).toFixed(1)}°C`)
+      if (v('outdoorTemperature') != null) parts.push(`${Number(v('outdoorTemperature')).toFixed(1)}°C ${gt('heating_curve_outside', 'outside')}`)
+      return parts.join(' · ') || '—'
     }
     if (isSpa) {
       if (!spaOnline) return 'Offline'
@@ -740,6 +789,8 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
           )}
         </div>
       )}
+
+      {isCurve && <HeatingCurveTile device={device} merged={merged} cmd={cmd}/>}
 
       {/* SmartTub controls: heat mode pills + set temp */}
       {isSpa && spaOnline && (

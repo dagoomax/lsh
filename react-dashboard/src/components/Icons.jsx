@@ -1038,6 +1038,7 @@ export function resolveIcon(device) {
   if (custom) return custom
 
   // Per-device specifics — kind and role, not just integration type
+  if (device.type === 'heatingcurve') return ThermometerIcon
   if (device.type === 'ezviz' && device.kind === 'smart plug') return SwitchOutletIcon
   if (device.type === 'satel') {
     const key = device.key || ''

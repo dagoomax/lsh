@@ -794,6 +794,13 @@ const DICT = {
 // dashboard widget names (the custom grid's "Add widget" list)
 for (const [l, v] of Object.entries({ pl: 'Odtwarzacz', de: 'Mediaplayer', fr: 'Lecteur multimédia', es: 'Reproductor', it: 'Lettore multimediale', uk: 'Медіаплеєр' })) DICT[l].media_player = v
 
+// heating curve tile (DeviceList.jsx HeatingCurveTile)
+for (const [k, v] of Object.entries({
+  heating_curve_outside: ['na zewnątrz', 'außen', 'dehors', 'fuera', 'fuori', 'надворі'],
+  heating_curve_slope: ['Nachylenie', 'Neigung', 'Pente', 'Pendiente', 'Pendenza', 'Нахил'],
+  heating_curve_rooms: ['Pokoje', 'Räume', 'Pièces', 'Estancias', 'Stanze', 'Кімнати'],
+})) ['pl', 'de', 'fr', 'es', 'it', 'uk'].forEach((l, i) => { DICT[l][k] = v[i] })
+
 // camera recordings (Cameras.jsx CameraRecordings)
 for (const [k, v] of Object.entries({
   cam_recordings: ['Nagrania', 'Aufnahmen', 'Enregistrements', 'Grabaciones', 'Registrazioni', 'Записи'],

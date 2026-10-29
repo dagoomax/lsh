@@ -2,20 +2,7 @@ import { useEffect, useState } from 'react'
 import { SettingsCard, ListEditor, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { gt, tr } from '../../../i18n'
-
-// Same formula as src/heating-curve-client.js (Viessmann's heating curve);
-// the chart draws it without the room correction.
-function flowTemperature(outdoor, { room, slope, shift, minFlow, maxFlow }) {
-  const dar = outdoor - room
-  const flow = room + shift - slope * dar * (1.4347 + 0.021 * dar + 247.9e-6 * dar * dar)
-  return Math.min(maxFlow, Math.max(minFlow, flow))
-}
-
-const num = (v, d) => (v === '' || v == null || !Number.isFinite(Number(v)) ? d : Number(v))
-const params = (c) => ({
-  room: num(c.room, 20), slope: num(c.slope, 1.4), shift: num(c.shift, 0),
-  minFlow: num(c.minFlow, 20), maxFlow: num(c.maxFlow, 75),
-})
+import { flowTemperature, curveParams as params } from '../../../heatingCurve'
 
 const COLORS = ['var(--orange)', 'var(--blue)', 'var(--green)', 'var(--red)', 'var(--teal)', 'var(--yellow)']
 const randomId = () => Math.random().toString(36).slice(2, 10)

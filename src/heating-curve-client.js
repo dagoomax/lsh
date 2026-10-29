@@ -102,6 +102,7 @@ class HeatingCurveClient {
     const key = `heatingcurve/${c.id}`;
     this._registry.registerDevice({
       key, label: c.name, type: 'heatingcurve', icon: '🌡️', homekit: ['temperature'],
+      minFlow: c.minFlow, maxFlow: c.maxFlow, // the dashboard tile draws the curve with them
       sensors: [
         { path: 'flowTemperature', name: 'Flow temperature', type: 'number', unit: '°C', homekit: 'temperature', hkName: 'Flow' },
         { path: 'outdoorTemperature', name: 'Outdoor temperature', type: 'number', unit: '°C', homekit: 'temperature', hkName: 'Outdoor' },
