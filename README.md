@@ -2035,6 +2035,7 @@ Switches, dimmers, sensors, text values, and buttons with **no real hardware beh
   "curves": [
     { "id": "hk1", "name": "Radiators", "slope": 1.4, "shift": 0, "room": 20, "minFlow": 20, "maxFlow": 75,
       "outdoorKey": "openweather/weather/temperature",
+      "roomKeys": ["tado/1007202-1/temperature", "tado/1007202-2/temperature"], "roomFactor": 3,
       "targetDevice": "virtual/e5f6a7b8", "targetPath": "value" }
   ]
 }
@@ -2042,7 +2043,7 @@ Switches, dimmers, sensors, text values, and buttons with **no real hardware beh
 
 Heating curves (krzywa grzewcza / Heizkurve) — weather-compensated flow temperature. Each curve turns an outdoor temperature (any store key; OpenWeather by default) into a flow-temperature setpoint using Viessmann's curve formula: `flow = room + shift − slope · DAR · (1.4347 + 0.021·DAR + 247.9e-6·DAR²)`, `DAR = outdoor − room`, clamped to `minFlow`…`maxFlow`.
 
-Every curve is a device `heatingcurve/<id>` with `flowTemperature` and `outdoorTemperature` readings, so flows, Loxone and the API can use it. `slope` (0.2–3.5), `shift` (K, −15…40) and `room` (°C) are controllable on the device and saved back to `config.json`. With `targetDevice` + `targetPath`, the result is also written (in 0.5 °C steps) to that controllable setpoint: a boiler, a heat pump, or a virtual sensor that Loxone reads. Manage from Settings → Climate & Water → Heating Curves (with a live chart of the curves); new or changed curves need a restart.
+Every curve is a device `heatingcurve/<id>` with `flowTemperature` and `outdoorTemperature` readings, so flows, Loxone and the API can use it. `roomKeys` (optional) are room temperatures whose average corrects the flow by `roomFactor` K per K the rooms are below the `room` setpoint (or minus, above it; default 3, `0` = off); the average is the `roomTemperature` reading. `slope` (0.2–3.5), `shift` (K, −15…40), `room` (°C) and `roomFactor` (0–10) are controllable on the device and saved back to `config.json`. Flow, outdoor and room temperatures appear in HomeKit as temperature sensors. With `targetDevice` + `targetPath`, the result is also written (in 0.5 °C steps) to that controllable setpoint: a boiler, a heat pump, or a virtual sensor that Loxone reads. Manage from Settings → Climate & Water → Heating Curves (with a live chart of the curves); new or changed curves need a restart.
 
 ### `openweather`
 

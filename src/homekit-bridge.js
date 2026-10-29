@@ -205,8 +205,8 @@ function buildTracked(store, build) {
  * Adds a TemperatureSensor service.
  * storePath: full MQTT path like 'solarcharger/0/Temperature'
  */
-function addTemperatureService(accessory, name, storePath, store) {
-  const svc = accessory.addService(Service.TemperatureSensor, name);
+function addTemperatureService(accessory, name, storePath, store, subtype) {
+  const svc = accessory.addService(Service.TemperatureSensor, name, subtype);
 
   svc.getCharacteristic(Characteristic.CurrentTemperature)
     .setProps({ minValue: -100, maxValue: 100 })
@@ -1240,8 +1240,16 @@ function buildDeviceAccessory(device, store) {
     }
 
     if (hkType === 'temperature') {
-      const s = device.sensors.find((s) => s.homekit === 'temperature');
-      if (s) addTemperatureService(acc, `${device.label} Temperature`, `${device.key}/${s.path}`, store);
+      // The first one keeps its plain service (existing pairings). Further
+      // ones get their own service only when they're named (hkName, e.g. a
+      // heating curve's flow + outdoor) — several unnamed ones can share a
+      // path (Shelly's tmp + sensor.temperature), and a duplicate subtype
+      // would crash HAP.
+      device.sensors.filter((s) => s.homekit === 'temperature').forEach((s, i) => {
+        if (i && !s.hkName) return;
+        const name = `${device.label} ${s.hkName || 'Temperature'}`;
+        addTemperatureService(acc, name, `${device.key}/${s.path}`, store, i ? s.path : undefined);
+      });
     }
 
     if (hkType === 'humidity') {

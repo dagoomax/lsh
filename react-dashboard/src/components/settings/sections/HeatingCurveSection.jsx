@@ -3,7 +3,8 @@ import { SettingsCard, ListEditor, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { gt, tr } from '../../../i18n'
 
-// Same formula as src/heating-curve-client.js (Viessmann's heating curve).
+// Same formula as src/heating-curve-client.js (Viessmann's heating curve);
+// the chart draws it without the room correction.
 function flowTemperature(outdoor, { room, slope, shift, minFlow, maxFlow }) {
   const dar = outdoor - room
   const flow = room + shift - slope * dar * (1.4347 + 0.021 * dar + 247.9e-6 * dar * dar)
@@ -52,22 +53,29 @@ export default function HeatingCurveSection({ config, reload }) {
     ...c, target: c.targetDevice && c.targetPath ? `${c.targetDevice}|${c.targetPath}` : '',
   })))
   const [targets, setTargets] = useState([])
+  const [temps, setTemps] = useState([]) // every °C reading: outdoor + room sources
   const save = useSettingsSave('/api/settings/heating-curves')
 
   // Any controllable number setpoint can take the curve's result.
   useEffect(() => {
     fetch('/api/devices', { credentials: 'include' }).then((r) => r.json()).then((d) => {
-      const opts = []
+      const opts = [], tempOpts = []
       for (const dev of d.data || []) {
         if (dev.key.startsWith('heatingcurve/')) continue
         for (const s of dev.sensors || []) {
+          const label = `${dev.label} — ${s.name || s.label || s.path}`
           if (s.controllable && s.type === 'range' && s.unit !== '%') {
-            opts.push({ value: `${dev.key}|${s.path}`, label: `${dev.label} — ${s.name || s.path}`, raw: true })
+            opts.push({ value: `${dev.key}|${s.path}`, label, raw: true })
+          } else if (s.unit === '°C') {
+            const v = dev.readings?.[s.path]
+            const val = typeof v === 'object' && v ? v.value : v
+            tempOpts.push({ value: `${dev.key}/${s.path}`, label: Number.isFinite(Number(val)) && val != null ? `${label} (${Number(val).toFixed(1)} °C)` : label, raw: true })
           }
         }
       }
-      opts.sort((a, b) => a.label.localeCompare(b.label))
-      setTargets(opts)
+      const byLabel = (a, b) => a.label.localeCompare(b.label)
+      setTargets(opts.sort(byLabel))
+      setTemps(tempOpts.sort(byLabel))
     }).catch(() => {})
   }, [])
 
@@ -78,10 +86,18 @@ export default function HeatingCurveSection({ config, reload }) {
     { key: 'room', label: 'Room °C', placeholder: '20', default: '20' },
     { key: 'minFlow', label: 'Min flow °C', placeholder: '20', default: '20' },
     { key: 'maxFlow', label: 'Max flow °C', placeholder: '75', default: '75' },
-    { key: 'outdoorKey', label: 'Outdoor temperature key', placeholder: 'openweather/weather/temperature' },
+    { key: 'outdoorKey', label: 'Outdoor temperature', type: 'select', default: 'openweather/weather/temperature',
+      options: temps.length ? temps : [{ value: 'openweather/weather/temperature', label: 'OpenWeather' }] },
+    { key: 'roomFactor', label: 'Room influence (K/K)', placeholder: '3', default: '3' },
     { key: 'target', label: 'Write flow temperature to', type: 'select', default: '',
       options: [{ value: '', label: '— none (value only) —' }, ...targets] },
   ]
+
+  const toggleRoom = (i, key) => setCurves(curves.map((c, idx) => {
+    if (idx !== i) return c
+    const keys = c.roomKeys || []
+    return { ...c, roomKeys: keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key] }
+  }))
 
   const onSave = () => save.save(curves.filter((c) => c.name).map(({ target, ...c }) => {
     const [targetDevice = '', targetPath = ''] = (target || '').split('|')
@@ -93,6 +109,21 @@ export default function HeatingCurveSection({ config, reload }) {
       desc="Weather-compensated flow temperature: the colder it is outside, the warmer the water sent to the radiators or floor. Each curve becomes a device with its computed flow temperature (for flows, Loxone, the API) and can write it straight to a boiler or heat-pump setpoint. Slope, shift and room temperature can also be changed live on the device.">
       {curves.length > 0 && <CurveChart curves={curves}/>}
       <ListEditor rows={curves} onChange={setCurves} fields={fields} addLabel="+ Add Heating Curve"/>
+      {curves.map((c, i) => c.name && temps.length > 0 && (
+        <details key={c.id || i} className="stg-list-row" style={{ display: 'block', marginTop: 10 }}>
+          <summary style={{ cursor: 'pointer' }}>
+            {tr('Room sensors for {name}', { name: c.name })} ({(c.roomKeys || []).length})
+          </summary>
+          <p className="stg-card-desc">{tr('Their average corrects the flow: colder rooms than the room setpoint raise it, warmer ones lower it, by the room influence per degree.')}</p>
+          {temps.map((t) => (
+            <label key={t.value} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '3px 0', fontSize: 13 }}>
+              <input type="checkbox" className="stg-checkbox" checked={(c.roomKeys || []).includes(t.value)}
+                onChange={() => toggleRoom(i, t.value)}/>
+              {t.label}
+            </label>
+          ))}
+        </details>
+      ))}
       <div className="stg-actions">
         <Button variant="primary" busy={save.busy} onClick={onSave}>{tr('Save Heating Curves')}</Button>
         <ResultBanner result={save.result}/>

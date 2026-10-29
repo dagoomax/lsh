@@ -14,13 +14,17 @@ const { readConfigCached, writeConfigFile } = require('./config-file-cache');
  *
  * config.heatingCurves.curves[]:
  *   { id, name, outdoorKey?, room?, slope?, shift?, minFlow?, maxFlow?,
- *     targetDevice?, targetPath? }
+ *     roomKeys?, roomFactor?, targetDevice?, targetPath? }
  *   outdoorKey  store key of the outdoor temperature (default
  *               'openweather/weather/temperature')
  *   room        desired room temperature, °C (default 20)
  *   slope       curve slope / Neigung / nachylenie (default 1.4, 0.2–3.5)
  *   shift       parallel shift / Niveau / przesunięcie, K (default 0)
  *   minFlow/maxFlow  clamp of the result, °C (default 20 / 75)
+ *   roomKeys    optional store keys of room temperatures; their average
+ *               corrects the flow: + roomFactor K per K the rooms are below
+ *               `room`, − when above (room influence / Raumeinfluss)
+ *   roomFactor  K of flow per K of room deviation (default 3, 0 = off)
  *   targetDevice + targetPath  optional controllable sensor to write to
  *
  * Slope, shift and room are also controllable on the device itself
@@ -28,16 +32,18 @@ const { readConfigCached, writeConfigFile } = require('./config-file-cache');
  * config.json so they survive a restart.
  */
 
-const DEFAULTS = { outdoorKey: 'openweather/weather/temperature', room: 20, slope: 1.4, shift: 0, minFlow: 20, maxFlow: 75 };
+const DEFAULTS = { outdoorKey: 'openweather/weather/temperature', room: 20, slope: 1.4, shift: 0, minFlow: 20, maxFlow: 75, roomFactor: 3 };
 
 const num = (v, d) => (v === '' || v == null || !Number.isFinite(Number(v)) ? d : Number(v));
 
 // Viessmann's published heating-curve formula (the de-facto standard most
 // controllers follow): DAR = outdoor − room, and
-// flow = room + shift − slope · DAR · (1.4347 + 0.021·DAR + 247.9e-6·DAR²)
-function flowTemperature(outdoor, { room, slope, shift, minFlow, maxFlow }) {
+// flow = room + shift − slope · DAR · (1.4347 + 0.021·DAR + 247.9e-6·DAR²),
+// plus the room correction when a measured room temperature is given.
+function flowTemperature(outdoor, { room, slope, shift, minFlow, maxFlow, roomFactor = 0 }, roomActual) {
   const dar = outdoor - room;
-  const flow = room + shift - slope * dar * (1.4347 + 0.021 * dar + 247.9e-6 * dar * dar);
+  let flow = room + shift - slope * dar * (1.4347 + 0.021 * dar + 247.9e-6 * dar * dar);
+  if (Number.isFinite(roomActual)) flow += roomFactor * (room - roomActual);
   return Math.min(maxFlow, Math.max(minFlow, flow));
 }
 
@@ -51,6 +57,8 @@ function normalizeCurve(c) {
     shift: num(c.shift, DEFAULTS.shift),
     minFlow: num(c.minFlow, DEFAULTS.minFlow),
     maxFlow: num(c.maxFlow, DEFAULTS.maxFlow),
+    roomKeys: (Array.isArray(c.roomKeys) ? c.roomKeys : []).filter(Boolean).map(String),
+    roomFactor: num(c.roomFactor, DEFAULTS.roomFactor),
     targetDevice: c.targetDevice || '',
     targetPath: c.targetPath || '',
   };
@@ -60,7 +68,10 @@ const PARAMS = {
   slope: { name: 'Slope', min: 0.2, max: 3.5 },
   shift: { name: 'Shift', unit: 'K', min: -15, max: 40 },
   room:  { name: 'Room setpoint', unit: '°C', min: 10, max: 30 },
+  roomFactor: { name: 'Room influence', unit: 'K/K', min: 0, max: 10 },
 };
+
+const numeric = (raw) => (raw == null || raw === '' ? NaN : Number(raw));
 
 class HeatingCurveClient {
   constructor(config, store, sensorRegistry) {
@@ -90,10 +101,11 @@ class HeatingCurveClient {
   _registerDevice(c) {
     const key = `heatingcurve/${c.id}`;
     this._registry.registerDevice({
-      key, label: c.name, type: 'heatingcurve', icon: '🌡️', homekit: [],
+      key, label: c.name, type: 'heatingcurve', icon: '🌡️', homekit: ['temperature'],
       sensors: [
-        { path: 'flowTemperature', name: 'Flow temperature', type: 'number', unit: '°C' },
-        { path: 'outdoorTemperature', name: 'Outdoor temperature', type: 'number', unit: '°C' },
+        { path: 'flowTemperature', name: 'Flow temperature', type: 'number', unit: '°C', homekit: 'temperature', hkName: 'Flow' },
+        { path: 'outdoorTemperature', name: 'Outdoor temperature', type: 'number', unit: '°C', homekit: 'temperature', hkName: 'Outdoor' },
+        ...(c.roomKeys.length ? [{ path: 'roomTemperature', name: 'Room temperature', type: 'number', unit: '°C', homekit: 'temperature', hkName: 'Rooms' }] : []),
         ...Object.entries(PARAMS).map(([path, p]) => ({
           path, name: p.name, type: 'range', unit: p.unit || '', min: p.min, max: p.max,
           controllable: true, capabilityId: path, writeCmd: 'set',
@@ -105,18 +117,20 @@ class HeatingCurveClient {
   }
 
   _onChange({ key }) {
-    for (const c of this._curves) if (key === c.outdoorKey) this._compute(c);
+    for (const c of this._curves) if (key === c.outdoorKey || c.roomKeys.includes(key)) this._compute(c);
   }
 
   _compute(c) {
     // No reading yet must not count as 0 °C (Number(null) === 0) — that would
     // push a full-winter flow temperature to the boiler at every startup.
-    const raw = this._store.get(c.outdoorKey);
-    const outdoor = raw == null || raw === '' ? NaN : Number(raw);
+    const outdoor = numeric(this._store.get(c.outdoorKey));
     if (!Number.isFinite(outdoor)) return;
     const key = `heatingcurve/${c.id}`;
-    const flow = Math.round(flowTemperature(outdoor, c) * 10) / 10;
+    const rooms = c.roomKeys.map((k) => numeric(this._store.get(k))).filter(Number.isFinite);
+    const roomActual = rooms.length ? Math.round(rooms.reduce((a, b) => a + b, 0) / rooms.length * 10) / 10 : NaN;
+    const flow = Math.round(flowTemperature(outdoor, c, roomActual) * 10) / 10;
     this._store.update(`${key}/outdoorTemperature`, outdoor);
+    if (Number.isFinite(roomActual)) this._store.update(`${key}/roomTemperature`, roomActual);
     this._store.update(`${key}/flowTemperature`, flow);
     this._push(c, flow);
   }
@@ -155,7 +169,7 @@ class HeatingCurveClient {
       const current = readConfigCached();
       const curves = (current.heatingCurves?.curves || []).map((saved) => {
         const live = this._curves.find((c) => c.id === String(saved.id));
-        return live ? { ...saved, slope: live.slope, shift: live.shift, room: live.room } : saved;
+        return live ? { ...saved, slope: live.slope, shift: live.shift, room: live.room, roomFactor: live.roomFactor } : saved;
       });
       writeConfigFile({ ...current, heatingCurves: { ...current.heatingCurves, curves } });
     } catch (err) {

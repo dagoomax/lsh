@@ -28,3 +28,12 @@ test('normalizeCurve fills defaults and coerces numbers from form strings', () =
     { id: c.id, slope: c.slope, shift: c.shift, room: c.room, outdoorKey: c.outdoorKey },
     { id: '1', slope: 0.6, shift: 0, room: 21, outdoorKey: 'openweather/weather/temperature' });
 });
+
+test('room compensation raises flow when rooms are cold, lowers when warm', () => {
+  const c = curve({ roomFactor: 3 });
+  const base = flowTemperature(0, c);
+  assert.ok(Math.abs(flowTemperature(0, c, 19) - (base + 3)) < 1e-9);
+  assert.ok(Math.abs(flowTemperature(0, c, 22) - (base - 6)) < 1e-9);
+  assert.strictEqual(flowTemperature(0, c, NaN), base); // no room reading → plain curve
+  assert.strictEqual(flowTemperature(0, curve({ roomFactor: 0 }), 15), base);
+});

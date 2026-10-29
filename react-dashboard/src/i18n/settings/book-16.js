@@ -1,12 +1,15 @@
 // Settings phrase book, part 16 — Tuya / Smart Life, Sonoff / eWeLink
 export const P16 = {
   // Heating curves
+  'Outdoor temperature': ['Temperatura zewnętrzna', 'Außentemperatur', 'Température extérieure', 'Temperatura exterior', 'Temperatura esterna', 'Зовнішня температура'],
+  'Room influence (K/K)': ['Wpływ pomieszczenia (K/K)', 'Raumeinfluss (K/K)', 'Influence de la pièce (K/K)', 'Influencia de la estancia (K/K)', 'Influenza ambiente (K/K)', 'Вплив приміщення (K/K)'],
+  'Room sensors for {name}': ['Czujniki pomieszczeń dla {name}', 'Raumfühler für {name}', 'Sondes de pièce pour {name}', 'Sensores de estancia para {name}', 'Sensori ambiente per {name}', 'Датчики приміщень для {name}'],
+  'Their average corrects the flow: colder rooms than the room setpoint raise it, warmer ones lower it, by the room influence per degree.': ['Ich średnia koryguje zasilanie: pomieszczenia chłodniejsze niż nastawa je podnoszą, cieplejsze obniżają — o wpływ pomieszczenia na każdy stopień.', 'Ihr Mittelwert korrigiert den Vorlauf: Räume kälter als der Raumsollwert heben ihn an, wärmere senken ihn — um den Raumeinfluss pro Grad.', 'Leur moyenne corrige le départ : des pièces plus froides que la consigne l’augmentent, plus chaudes le baissent, de l’influence de la pièce par degré.', 'Su media corrige la impulsión: estancias más frías que la consigna la suben, más cálidas la bajan, según la influencia de la estancia por grado.', 'La loro media corregge la mandata: ambienti più freddi del setpoint la alzano, più caldi la abbassano, dell’influenza ambiente per grado.', 'Їхнє середнє коригує подачу: приміщення, холодніші за уставку, підвищують її, тепліші — знижують, на вплив приміщення за кожен градус.'],
   '+ Add Heating Curve': ['+ Dodaj krzywą grzewczą', '+ Heizkurve hinzufügen', '+ Ajouter une courbe de chauffe', '+ Añadir curva de calefacción', '+ Aggiungi curva climatica', '+ Додати криву опалення'],
   'Heating Curves': ['Krzywe grzewcze', 'Heizkurven', 'Courbes de chauffe', 'Curvas de calefacción', 'Curve climatiche', 'Криві опалення'],
   'Heating curve preview': ['Podgląd krzywej grzewczej', 'Vorschau der Heizkurve', 'Aperçu de la courbe de chauffe', 'Vista previa de la curva de calefacción', 'Anteprima della curva climatica', 'Попередній перегляд кривої опалення'],
   'Max flow °C': ['Maks. zasilanie °C', 'Max. Vorlauf °C', 'Départ max. °C', 'Impulsión máx. °C', 'Mandata max °C', 'Макс. подача °C'],
   'Min flow °C': ['Min. zasilanie °C', 'Min. Vorlauf °C', 'Départ min. °C', 'Impulsión mín. °C', 'Mandata min °C', 'Мін. подача °C'],
-  'Outdoor temperature key': ['Klucz temperatury zewnętrznej', 'Schlüssel der Außentemperatur', 'Clé de température extérieure', 'Clave de temperatura exterior', 'Chiave temperatura esterna', 'Ключ зовнішньої температури'],
   'Room °C': ['Pomieszczenie °C', 'Raum °C', 'Pièce °C', 'Estancia °C', 'Ambiente °C', 'Приміщення °C'],
   'Save Heating Curves': ['Zapisz krzywe grzewcze', 'Heizkurven speichern', 'Enregistrer les courbes de chauffe', 'Guardar curvas de calefacción', 'Salva curve climatiche', 'Зберегти криві опалення'],
   'Shift (K)': ['Przesunięcie (K)', 'Niveau (K)', 'Décalage (K)', 'Desplazamiento (K)', 'Spostamento (K)', 'Зсув (K)'],
