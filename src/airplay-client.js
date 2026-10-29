@@ -5,6 +5,7 @@ const fs = require('fs');
 const { start: startAirplaySender } = require('@lox-audioserver/node-airplay-sender');
 const { Bonjour } = require('bonjour-service');
 const pairing = require('./airplay-pairing');
+const video = require('./airplay-video');
 
 /**
  * Sends prerecorded audio (any format ffmpeg can decode — the paging voice
@@ -46,6 +47,7 @@ class AirplayClient {
     this._speakers = (config.airplay?.speakers || []).filter((s) => s && s.id && s.host);
     this._pairings = new Map(); // speakerId → pairing in progress
     this._sessions = new Map(); // speakerId → what's playing: { title, since, volume, stop(), setVolume() }
+    this._videoFonts = config.airplay?.videoFonts; // { bold, regular } .ttf paths, if the usual ones aren't there
   }
 
   // ── Now playing (dashboard media player) ──────────────────────────────
@@ -170,6 +172,14 @@ class AirplayClient {
     const isUrl = /^https?:\/\//i.test(String(filePath));
     if (!isUrl && !fs.existsSync(filePath)) throw new Error(`Audio file not found: ${filePath}`);
     this.stop(speakerId);
+
+    // a station on a paired Apple TV: as video, with the dashboard's full-screen
+    // picture (airplay-video.js) — plain audio if that can't start
+    if (opts.video && isUrl && speaker.video !== false && pairing.get(speakerId) && await video.isAppleTv(speaker.host, speaker.port || 7000)) {
+      try { return await this._playVideo(speaker, filePath, opts) } catch (err) {
+        console.warn(`[AirPlay] ${speaker.name}: video didn't start (${err.message}) — playing audio only`);
+      }
+    }
 
     // Apple TV / HomePod may ask for a PIN (on-screen code) or an AirPlay
     // password instead of accepting anyone. A PIN device works once it has
@@ -307,6 +317,42 @@ class AirplayClient {
         setTimeout(() => finish(), remaining + 500);
       });
     });
+  }
+
+  // Resolves once the TV plays. The session is in _sessions from the start, like
+  // an audio one (now playing, volume, mute; its metadata → the picture's text
+  // and cover), and waits with what arrives while the video starts (~8 s)
+  async _playVideo(speaker, url, opts) {
+    const token = Symbol('session');
+    const volume = opts.volume ?? speaker.volume ?? 60;
+    let tv = null, stopped = false;
+    const sess = {
+      token, title: opts.title || url, url, since: Date.now(), volume, video: true, ready: false, meta: null,
+      stop: () => { stopped = true; tv?.stop() },
+      setVolume: (v) => tv?.setVolume(v),
+      sendMeta: (m) => tv?.setMeta(m),
+    };
+    this._sessions.set(speaker.id, sess);
+    const own = () => this._sessions.get(speaker.id)?.token === token;
+    try {
+      tv = await video.start({
+        host: speaker.host, port: speaker.port || 7000, creds: pairing.get(speaker.id),
+        source: url, title: opts.title || '', where: `Radio · ${speaker.name}`,
+        eq: eqFilter(opts.eq)[1] || '', volume, fonts: this._videoFonts,
+        onEnd: (err) => {
+          if (own()) this._sessions.delete(speaker.id);
+          if (err) console.warn(`[AirPlay] ${speaker.name}: ${err.message}`);
+        },
+      });
+    } catch (err) {
+      if (own()) this._sessions.delete(speaker.id);
+      if (stopped) return; // stopped while starting: nothing to fall back to
+      throw err;
+    }
+    if (stopped) { tv.stop(); return }
+    sess.ready = true;
+    if (sess.muted || sess.volume !== volume) tv.setVolume(sess.muted ? 0 : sess.volume);
+    if (sess.meta) tv.setMeta(sess.meta);
   }
 
   // ── Pairing with a PIN (Apple TV) or AirPlay password ──────────────────

@@ -2150,6 +2150,7 @@ Speakers are a fixed, manually-configured list — same choice as `paging.rooms`
 | `port` | `5000` | RAOP port |
 | `airplay2` | `true` | Use AirPlay 2 auth; set `false` for older AirPlay 1-only receivers |
 | `volume` | `60` | Playback volume (0–100) sent at session start |
+| `video` | `true` | A paired Apple TV gets radio as video with the visualizer (see [Apple TV: the visualizer on the TV](#apple-tv-the-visualizer-on-the-tv)); `false` = audio only |
 
 **API:** `GET /api/airplay/speakers` (list), `GET /api/airplay/discover` (admin-only; one-shot mDNS scan, ~4s, returns `[{name, host, port, airplay2, model}]` — works even before any speaker is configured/enabled), `POST /api/airplay/:id/play-message` with `{"messageId": "..."}` to replay one of the [paging voice messages](#paging-room-intercom) out loud on a speaker, or `POST /api/airplay/:id/play` with a raw audio body (any ffmpeg-readable format) for an ad-hoc clip. All resolve/error based on whether the AirPlay session actually stayed up — a `connection_refused` or similar drop is reported as a failure, not a silent no-op.
 
@@ -4595,6 +4596,15 @@ Device `lgwebos/<host with _>`: `power` (on = Wake-on-LAN), `volume`, `volumeUp`
 #### Apple TV / HomePod "now playing"
 
 When LSH plays a station on an AirPlay receiver, the receiver's screen shows it: the song (ICY title) as title, the artist, the station as album and the station logo as artwork (`src/radio-devices.js` → `AirplayClient.setMetadata`). Sent when the receiver reports ready, again a few seconds later (the AirPlay library drops info sent while the receiver is busy), and whenever the song or station changes.
+
+#### Apple TV: the visualizer on the TV
+
+A station played on a **paired Apple TV** (Settings → Media → AirPlay Speakers → Pair) is sent as video instead of plain audio, so the TV shows what the dashboard's music full screen shows: the station logo on its blurred colours, station and song, a clock, and spectrum bars along the bottom in the station's colour, moving with the music (`src/airplay-video.js`). ffmpeg decodes the stream once and renders the audio (with the equalizer) and the picture as live HLS (1280×720, 25 fps, libx264); a small HTTP server of its own, on a random port and under a random token per session, serves it to the TV; LSH verifies with the saved pairing and tells the TV to play it, as an iPhone sends a video. Volume, mute, stop and the equalizer work as before; song changes update the text, a new logo the background.
+
+- Starts ~8 s after Play (a few HLS segments first) and runs a few seconds behind the stream. If the video can't start, the station plays as plain audio.
+- Text needs ffmpeg with `drawtext` (libfreetype — Debian's has it; Homebrew's doesn't) and a font: DejaVu / Liberation Sans or Arial are found, other ones go in `airplay.videoFonts: { "bold": "/path/Bold.ttf", "regular": "/path/Regular.ttf" }`. Without it the picture is the logo and the bars.
+- Only Apple TVs (`model` from the receiver's `/info`), only stations (not announcements or voice messages), only paired ones (an Apple TV open to Everyone without a PIN plays audio). `"video": false` on a speaker turns it off.
+- CPU: a real-time 720p encode — on a Raspberry Pi / Arduino UNO Q class box that is most of a core or more.
 
 #### Spotify in Loxone
 

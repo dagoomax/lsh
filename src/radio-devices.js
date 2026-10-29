@@ -313,7 +313,7 @@ class RadioDevices {
     } else {
       const airplay = this.clients.airplayClient;
       if (!airplay) throw new Error('AirPlay isn’t enabled');
-      airplay.play(p.id, s.url, { title: s.name, volume: volume >= 0 && volume <= 100 ? volume : undefined, eq: this._eqGains(p) })
+      airplay.play(p.id, s.url, { title: s.name, volume: volume >= 0 && volume <= 100 ? volume : undefined, eq: this._eqGains(p), video: true })
         .catch((err) => console.warn(`[Radio] ${p.name}: ${err.message}`));
     }
     this.store.update(`${p.key}/station`, n);
