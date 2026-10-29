@@ -1221,7 +1221,7 @@ function addApplianceServices(acc, device, store) {
 
 function buildDeviceAccessory(device, store) {
   const acc = new Accessory(device.label, makeUUID(device.key));
-  const manufacturer = device.type === 'smartthings' ? 'Samsung SmartThings' : device.type === 'lgthinq' ? 'LG' : 'Victron Energy';
+  const manufacturer = device.type === 'smartthings' ? 'Samsung SmartThings' : device.type === 'lgthinq' ? 'LG' : device.type === 'homeassistant' ? 'Home Assistant' : 'Victron Energy';
   setInfo(acc, manufacturer, device.model || device.label, device.key);
 
   // device.homekit can list the same tag more than once (e.g. a 2-relay
@@ -1322,6 +1322,16 @@ function buildDeviceAccessory(device, store) {
           level ? `${device.key}/${level.path}` : null,
           null, null,
           stop ? () => device._writeCapability('windowShade', 'stop') : null);
+      }
+    }
+
+    if (hkType === 'ha-cover') {
+      // Home Assistant cover: `position` is 0–100 % open, written via set_cover_position.
+      if (device._writeCapability) {
+        const key = `${device.key}/position`;
+        addWindowCoveringService(acc, device.label, key, store,
+          (cmd, args = []) => device._writeCapability('position', 'set', cmd === 'setLevel' ? args : [cmd === 'open' ? 100 : 0]),
+          key);
       }
     }
 

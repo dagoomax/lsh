@@ -17,7 +17,9 @@
 // config.homeassistant = {
 //   url: 'http://homeassistant.local:8123', token,
 //   import: { enabled = true, domains = [light, switch, cover, climate, lock, fan,
-//             sensor, binary_sensor, input_boolean], entities: [] (empty = all in domains) },
+//             sensor, binary_sensor, input_boolean], entities: [] (empty = all in domains),
+//             homekit: [] (domains also published on LSH's HomeKit bridge, e.g. ['cover'];
+//             off by default — HA usually has its own HomeKit bridges) },
 //   export: { enabled = false, mqttUrl: 'mqtt://host:1883', username, password,
 //             prefix = 'homeassistant', base = 'lsh', node = 'lsh', types: [] (empty = all) },
 // }
@@ -269,8 +271,9 @@ class HomeAssistantClient {
         homekit: a.device_class === 'temperature' ? 'temperature' : a.device_class === 'humidity' ? 'humidity' : null });
     }
     this.entities.set(id, s);
+    const homekit = domain === 'cover' && (this.cfg.import?.homekit || []).includes('cover') ? ['ha-cover'] : [];
     this.registry.registerDevice({
-      key: `ha/${id}`, type: 'homeassistant', label: name, ...(room ? { room } : {}), icon: ICON[domain] || '🏠', homekit: [], sensors,
+      key: `ha/${id}`, type: 'homeassistant', label: name, ...(room ? { room } : {}), icon: ICON[domain] || '🏠', homekit, sensors,
       _writeCapability: (capId, command, args) => this._command(id, domain, capId, command, args),
     });
   }
@@ -303,7 +306,11 @@ class HomeAssistantClient {
     const call = (d, service, data = {}) => this._send({ type: 'call_service', domain: d, service, service_data: { entity_id: entityId, ...data } });
     if (capId === 'state') return call(domain === 'input_boolean' ? 'input_boolean' : domain, command === 'on' ? 'turn_on' : 'turn_off');
     if (capId === 'brightness') return Number(v) > 0 ? call('light', 'turn_on', { brightness_pct: Math.round(Number(v)) }) : call('light', 'turn_off');
-    if (capId === 'position') return call('cover', 'set_cover_position', { position: Math.round(Number(v)) });
+    if (capId === 'position') {
+      // Open/close-only covers (no SET_POSITION feature bit) can't take a position.
+      if (!((this.entities.get(entityId)?.attributes?.supported_features ?? 4) & 4)) return call('cover', Number(v) >= 50 ? 'open_cover' : 'close_cover');
+      return call('cover', 'set_cover_position', { position: Math.round(Number(v)) });
+    }
     if (capId === 'target_temperature') return call('climate', 'set_temperature', { temperature: Number(v) });
     if (capId === 'locked') return call('lock', command === 'lock' ? 'lock' : 'unlock');
     throw new Error(`Unsupported Home Assistant command ${capId}`);
