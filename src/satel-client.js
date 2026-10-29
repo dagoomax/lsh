@@ -88,15 +88,21 @@ function parseFrames(buf) {
   return { frames, remaining: buf.slice(i) };
 }
 
-function encodeBcd(code) {
-  const s = String(code).replace(/\D/g, '').padEnd(8, 'F').slice(0, 8);
-  return Buffer.from([
-    (parseInt(s[0], 16) << 4) | parseInt(s[1], 16),
-    (parseInt(s[2], 16) << 4) | parseInt(s[3], 16),
-    (parseInt(s[4], 16) << 4) | parseInt(s[5], 16),
-    (parseInt(s[6], 16) << 4) | parseInt(s[7], 16),
-  ]);
+// User code for control commands: 8 bytes = 16 hex digits, the security
+// prefix (if the panel uses prefixes) then the code, padded with F — e.g.
+// 1234 → 12 34 FF FF FF FF FF FF.
+function encodeBcd(code, prefix = '') {
+  const s = (String(prefix) + String(code)).replace(/\D/g, '').padEnd(16, 'F').slice(0, 16);
+  return Buffer.from(s, 'hex');
 }
+
+// 0xEF command result codes (INTEGRA integration protocol).
+const RESULT_TEXT = {
+  0x01: 'user code not found', 0x02: 'no access', 0x03: 'selected user does not exist',
+  0x04: 'selected user already exists', 0x05: 'wrong code or code already exists',
+  0x06: 'telephone code already exists', 0x07: 'changed code is the same', 0x08: 'other error',
+  0x11: 'cannot arm, but can use force arm', 0x12: 'cannot arm',
+};
 
 // 4-byte mask for partitions (32 partitions)
 function partitionMask(num) {
@@ -186,25 +192,41 @@ class SatelClient extends EventEmitter {
 
   async setOutput(num, on) {
     const cmd  = on ? 0x88 : 0x89;
-    const code = encodeBcd(this.cfg.armCode || '');
-    await this._send(Buffer.concat([Buffer.from([cmd]), code, outputMask(num)]));
+    await this._command(Buffer.concat([Buffer.from([cmd]), this._code(), outputMask(num)]));
+  }
+
+  _code() { return encodeBcd(this.cfg.armCode || '', this.cfg.prefix || '') }
+
+  // Send a control command and wait for the panel's 0xEF result, so a rejected
+  // code or an output the panel won't switch surfaces as an error instead of
+  // silently doing nothing. 0x00 = done, 0xFF = accepted (being processed).
+  _command(payload) {
+    return new Promise((resolve, reject) => {
+      const onFrame = (frame) => {
+        if (frame[0] !== 0xEF) return;
+        this.off('frame', onFrame); clearTimeout(timer);
+        const r = frame[1];
+        if (r === 0x00 || r === 0xFF) resolve();
+        else reject(new Error(`panel refused: ${RESULT_TEXT[r] || `result 0x${r.toString(16)}`}`));
+      };
+      const timer = setTimeout(() => { this.off('frame', onFrame); reject(new Error('no answer from the panel')); }, QUERY_TIMEOUT);
+      this.on('frame', onFrame);
+      this._send(payload).catch((err) => { this.off('frame', onFrame); clearTimeout(timer); reject(err); });
+    });
   }
 
   // ── Partition control ─────────────────────────────────────────────────────
 
   async armPartition(num) {
-    const code = this.cfg.armCode;
-    if (code) {
-      await this._send(Buffer.concat([Buffer.from([0x80]), encodeBcd(code), partitionMask(num)]));
+    if (this.cfg.armCode) {
+      await this._command(Buffer.concat([Buffer.from([0x80]), this._code(), partitionMask(num)]));
     } else {
       await this._send(Buffer.concat([Buffer.from([0x84]), partitionMask(num)]));
     }
   }
 
   async disarmPartition(num) {
-    await this._send(
-      Buffer.concat([Buffer.from([0x85]), encodeBcd(this.cfg.armCode || ''), partitionMask(num)])
-    );
+    await this._command(Buffer.concat([Buffer.from([0x85]), this._code(), partitionMask(num)]));
   }
 
   // ── Transport ─────────────────────────────────────────────────────────────
@@ -489,7 +511,7 @@ class SatelClient extends EventEmitter {
       _writeCapability: (capId, command) => {
         if (capId !== 'state') return;
         return this.setOutput(num, command === 'on')
-          .catch(err => console.error(`[Satel] Output ${num} failed: ${err.message}`));
+          .catch((err) => { console.error(`[Satel] Output ${num} failed: ${err.message}`); throw err; });
       },
     });
   }
