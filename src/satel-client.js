@@ -232,7 +232,11 @@ class SatelClient extends EventEmitter {
         this.socket = null;
         platformStatus.set('satel', false);
         console.warn('[Satel] Disconnected — reconnecting in 30 s');
-        this.reconnTimer = setTimeout(() => this._connect().catch(() => {}), RECONNECT_DELAY);
+        // A name download cut short (e.g. another integration client held the
+        // panel's single connection at startup) is finished after reconnecting.
+        this.reconnTimer = setTimeout(() => this._connect()
+          .then(() => (this._namesLoaded ? null : this._loadNames().then(() => this._relabel())))
+          .catch(() => {}), RECONNECT_DELAY);
       });
     });
   }
@@ -291,17 +295,36 @@ class SatelClient extends EventEmitter {
       for (let attempt = 0; attempt < 3 && pending.length; attempt++) {
         const missing = [];
         for (const n of pending) {
-          if (!this.socket) return; // disconnected mid-load — abort
+          if (!this.socket) { // disconnected mid-load — retried after reconnect
+            console.warn('[Satel] Name download interrupted — will retry after reconnecting');
+            return;
+          }
           const name = await this._readName(type, n);
           if (name) bucket[n] = name; else missing.push(n);
         }
         pending = missing;
       }
     }
+    this._namesLoaded = true;
     console.log(`[Satel] Names from panel — ${Object.keys(this.names.output).length} output(s), ${Object.keys(this.names.zone).length} zone(s), ${Object.keys(this.names.partition).length} partition(s), ${Object.keys(this.names.input).length} input(s)`);
     if (Object.keys(this.names.output).length > 0) {
       console.log('[Satel] Outputs:', Object.entries(this.names.output).map(([n, name]) => `${n}=${name}`).join(', '));
     }
+  }
+
+  // Re-register already-known elements so names read late replace "Zone N"
+  // labels (registerDevice() ignores a key it already has, so drop it first).
+  _relabel() {
+    const kinds = { z: ['zone', '_registerZone'], p: ['partition', '_registerPartition'],
+                    o: ['output', '_registerOutput'], i: ['input', '_registerInput'] };
+    for (const id of [...this.registered]) {
+      const [kind, register] = kinds[id[0]] || [];
+      if (!kind) continue;
+      const num = Number(id.slice(1));
+      this.sensorRegistry.devices?.delete(`satel/${kind}/${num}`);
+      this[register](num);
+    }
+    this.sensorRegistry.emit?.('devices-changed');
   }
 
   // ── Polling ───────────────────────────────────────────────────────────────
