@@ -384,6 +384,17 @@ async function main() {
     }
   }
 
+  // Heating curves (weather-compensated flow temperature). In-process and
+  // after the virtual devices: a curve may write its result to any device's
+  // setpoint via sensorRegistry.sendCommand(), virtual ones included.
+  if (config.heatingCurves?.curves?.length) {
+    const HeatingCurveClient = tryRequire('./src/heating-curve-client');
+    if (HeatingCurveClient) {
+      const heatingCurve = new HeatingCurveClient(config, store, sensorRegistry);
+      heatingCurve.start().catch((err) => console.error(`[HeatingCurve] Start failed: ${err.message}`));
+    }
+  }
+
   // Automation engine (rules / scenes / notifications) — io attached after WS setup
   let automation = null;
   const AutomationEngine = tryRequire('./src/automation-engine');

@@ -71,6 +71,7 @@ import HomeKitSection from './sections/HomeKitSection'
 import MatterSection from './sections/MatterSection'
 import HomePlanSection from './sections/HomePlanSection'
 import VirtualDevicesSection from './sections/VirtualDevicesSection'
+import HeatingCurveSection from './sections/HeatingCurveSection'
 import SmartThingsSection from './sections/SmartThingsSection'
 import SecuritySection from './sections/SecuritySection'
 import ReolinkSection from './sections/ReolinkSection'
@@ -163,6 +164,7 @@ const SECTION_COMPONENTS = {
   matter: MatterSection,
   homeplan: HomePlanSection,
   virtual: VirtualDevicesSection,
+  'heating-curves': HeatingCurveSection,
   smartthings: SmartThingsSection,
   'security-auth': SecuritySection,
   reolink: ReolinkSection,

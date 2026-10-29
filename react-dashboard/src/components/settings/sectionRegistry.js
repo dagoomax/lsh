@@ -34,6 +34,7 @@ export const CATEGORIES = [
   ] },
   { id: 'climate', label: 'Climate & Water', sections: [
     { id: 'zehnder', title: 'Zehnder Ventilation', keywords: ['zehnder', 'rekuperacja', 'rekuperator', 'recuperation', 'heat recovery', 'mvhr', 'hrv', 'wtw', 'comfoair', 'comfoconnect', 'lan c', 'whr930', 'ca350', 'ventilation', 'wentylacja'] },
+    { id: 'heating-curves', title: 'Heating Curves', keywords: ['heating curve', 'krzywa grzewcza', 'heizkurve', 'weather compensation', 'pogodówka', 'flow temperature', 'temperatura zasilania', 'boiler', 'kocioł', 'heat pump', 'pompa ciepła', 'ogrzewanie'] },
     { id: 'tado', title: 'tado°', keywords: ['tado', 'thermostat', 'termostat', 'radiator', 'grzejnik', 'głowica', 'heating', 'ogrzewanie', 'hot water', 'ciepła woda', 'smart ac'] },
     { id: 'air-conditioners', title: 'Air Conditioners', keywords: ['air conditioner', 'ac', 'aircon', 'klimatyzacja', 'klimatyzator', 'daikin', 'gree', 'sinclair', 'cooper', 'hunter', 'tosot', 'midea', 'comfee', 'carrier', 'toshiba', 'electrolux', 'mitsubishi', 'melcloud', 'sensibo', 'fujitsu', 'panasonic', 'purifier', 'oczyszczacz', 'air quality'] },
     { id: 'lgthinq', title: 'LG ThinQ', keywords: ['lg', 'thinq', 'air conditioner', 'ac'] },

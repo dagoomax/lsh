@@ -158,4 +158,23 @@ module.exports = function register(router, ctx) {
       res.status(500).json({ success: false, error: err.message });
     }
   });
+
+  router.post('/settings/heating-curves', requireAdmin, (req, res) => {
+    const curves = req.body;
+    if (!Array.isArray(curves)) {
+      return res.status(400).json({ success: false, error: 'Body must be an array of heating curves' });
+    }
+    const { normalizeCurve } = require('../heating-curve-client');
+    const seen = new Set();
+    const cleaned = curves
+      .filter((c) => c && c.id && c.name && !seen.has(String(c.id)) && seen.add(String(c.id)))
+      .map(normalizeCurve);
+    try {
+      const current = readConfigFile();
+      writeConfigFile({ ...current, heatingCurves: { ...current.heatingCurves, curves: cleaned } });
+      res.json({ success: true, message: `${cleaned.length} heating curve(s) saved. Restart to apply.` });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
 };

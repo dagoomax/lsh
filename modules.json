@@ -310,6 +310,17 @@
       ],
       "deps": {}
     },
+    "heating-curve": {
+      "entry": "src/heating-curve-client.js",
+      "configKeys": [
+        "heatingCurves"
+      ],
+      "when": "(config.heatingCurves?.curves?.length)",
+      "files": [
+        "src/heating-curve-client.js"
+      ],
+      "deps": {}
+    },
     "lsh-lan-monitor": {
       "entry": "src/lsh-lan-monitor.js",
       "configKeys": [

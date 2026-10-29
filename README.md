@@ -2028,6 +2028,22 @@ Switches, dimmers, sensors, text values, and buttons with **no real hardware beh
 
 `id` is auto-generated and stable across renames — it's the only thing that matters for wiring a device into automations/Loxone once created. Manage from Settings → Virtual Devices; new/changed devices need a restart to register.
 
+### `heatingCurves`
+
+```json
+"heatingCurves": {
+  "curves": [
+    { "id": "hk1", "name": "Radiators", "slope": 1.4, "shift": 0, "room": 20, "minFlow": 20, "maxFlow": 75,
+      "outdoorKey": "openweather/weather/temperature",
+      "targetDevice": "virtual/e5f6a7b8", "targetPath": "value" }
+  ]
+}
+```
+
+Heating curves (krzywa grzewcza / Heizkurve) — weather-compensated flow temperature. Each curve turns an outdoor temperature (any store key; OpenWeather by default) into a flow-temperature setpoint using Viessmann's curve formula: `flow = room + shift − slope · DAR · (1.4347 + 0.021·DAR + 247.9e-6·DAR²)`, `DAR = outdoor − room`, clamped to `minFlow`…`maxFlow`.
+
+Every curve is a device `heatingcurve/<id>` with `flowTemperature` and `outdoorTemperature` readings, so flows, Loxone and the API can use it. `slope` (0.2–3.5), `shift` (K, −15…40) and `room` (°C) are controllable on the device and saved back to `config.json`. With `targetDevice` + `targetPath`, the result is also written (in 0.5 °C steps) to that controllable setpoint: a boiler, a heat pump, or a virtual sensor that Loxone reads. Manage from Settings → Climate & Water → Heating Curves (with a live chart of the curves); new or changed curves need a restart.
+
 ### `openweather`
 
 ```json
