@@ -37,7 +37,7 @@ func (s *Server) smartThings() *ModuleProcess { return s.host.Get("smartthings-c
 // config.smartthings.token.
 func (s *Server) stToken() (string, error) {
 	if m := s.smartThings(); m != nil {
-		if v, err := m.Call("getToken"); err == nil {
+		if v, err := m.CallMember("smartthings-client", "getToken"); err == nil {
 			if t, ok := v.(string); ok && t != "" {
 				return t, nil
 			}
@@ -62,7 +62,7 @@ func (s *Server) stCameraToken() string {
 		return t
 	}
 	if m := s.smartThings(); m != nil {
-		if v, err := m.Call("getToken"); err == nil {
+		if v, err := m.CallMember("smartthings-client", "getToken"); err == nil {
 			t, _ := v.(string)
 			return t
 		}
@@ -131,7 +131,7 @@ func (s *Server) deliverSmartThingsToken(cfg map[string]any) {
 		if m == nil {
 			return false
 		}
-		v, err := m.Call("getToken")
+		v, err := m.CallMember("smartthings-client", "getToken")
 		token, _ := v.(string)
 		if err != nil || token == "" {
 			if err == nil {
@@ -259,7 +259,7 @@ func (s *Server) smartThingsRoutes(api *http.ServeMux) {
 			fail(w, 401, "Invalid webhook secret")
 			return
 		}
-		if _, err := m.Call("handleWebhookEvent", readBody(r)); err != nil {
+		if _, err := m.CallMember("smartthings-client", "handleWebhookEvent", readBody(r)); err != nil {
 			log.Printf("[SmartThings Webhook] Error: %v", err)
 			fail(w, 400, err.Error())
 			return

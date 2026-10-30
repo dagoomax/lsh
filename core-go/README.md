@@ -3,14 +3,26 @@
 A Go replacement for the Node core process: store, device registry, auth, core
 REST routes, Socket.IO and the module host. **Integrations stay in Node,
 unchanged**: each one runs as `src/module-worker.js` in its own process, as with
-`modules.isolate` today. `module-worker.js` additions, all of them backward compatible:
+`modules.isolate` today. **Module groups** (`groups.go`): small integrations share a process, so each
+doesn't pay for its own Node runtime (≈45 MB fresh). The default is
+"cloud" (HomeConnect, Miele, Bayrol, Tuya, Somfy, OpenWeather, …) and "local"
+(Sofar, Tradfri, OCPP, Virtual, SystemMetrics, LanMonitor, Recorder, …). On
+their own: the MQTT broker, SmartThings and object detection (TensorFlow),
+Media (AirPlay + ffmpeg), Loxone In, and anything not listed. A crash restarts
+the whole group; a member that can't load is skipped and shown in
+`/api/modules/processes` (`members[].error`). `config.modules.groups`:
+`{ "<name>": ["<label or file>", …] }` replaces the default, `false` turns it
+off. On the dev Mac: 25 processes / 1.5 GB → 6 / 466 MB.
+
+`module-worker.js` additions, all of them backward compatible:
 - a `call` message: a public method of the client, for routes that used to call
   the client object directly;
 - `init.automation`: the client gets an automation stand-in (`notify`, `flows`,
   `saveFlow` → the host's engine) as its 4th constructor argument. Opt-in,
   because other clients' 4th parameter means something else (Airbnb's
   `provider`);
-- camera-log and detection-box events are forwarded to the host. The Go host talks to the worker over Node's own IPC
+- camera-log and detection-box events are forwarded to the host;
+- `init.members`: several clients in one process (`call` takes a `member`). The Go host talks to the worker over Node's own IPC
 channel (`NODE_CHANNEL_FD` + JSON serialization on a socketpair), so the worker
 can't tell the difference.
 
@@ -125,7 +137,7 @@ Every other `/api/*` route answers `501 Not in the Go core yet`. Next steps, rou
 - **Integrations with `expose`** (tuya, shelly, lgthinq, …). They run here as plain workers: devices work, their REST routes don't.
 - **Inline integrations from `server.js`**: cameras (ffmpeg RTSP, UniFi Protect, Reolink, …), SIP, paging, HomeKit bridge, Matter, music player, Loxone Weather, heating curves, simulators. The plan is to run each as its own Node process, as with the modules.
 - **Routes of the integrations that now run as module processes** (OpenWeather forecast, TAURON hourly, object-detection model, recorder clips, waypoints, AirPlay, LAN scan, MQTT broker status): to be done over `call`.
-- **Memory:** every module process carries a Node runtime (≈45 MB fresh, ≈25–35 MB settled). 25 processes cost more in total than the ones that shared the Node main process. Grouping small integrations into shared processes is an option.
+
 - **The rest of the Settings routes**, including `GET /api/settings`: the Settings page can't load its forms from the Go core yet.
 - **Device customisation writes** (`setOverride`, rooms, plan decor): the overrides are read-only here.
 - **Server-side label translation** (`server-i18n.js`): only matters when `config.language` is not English.

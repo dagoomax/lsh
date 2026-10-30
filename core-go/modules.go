@@ -42,6 +42,8 @@ type Integration struct {
 	On         bool    `json:"on"`
 	Installed  bool    `json:"installed"`
 	Automation bool    `json:"automation"` // gets the automation stand-in as 4th constructor arg
+
+	Members []Integration `json:"-"` // a group: these clients share one process
 }
 
 type ModuleHost struct {
@@ -57,6 +59,7 @@ type ModuleHost struct {
 
 	mu       sync.Mutex
 	modules  map[string]*ModuleProcess
+	memberOf map[string]string // member file → its group's id
 	order    []string
 	stopping bool
 }
@@ -65,26 +68,27 @@ type ModuleProcess struct {
 	host *ModuleHost
 	it   Integration
 
-	mu         sync.Mutex
-	cmd        *exec.Cmd
-	conn       net.Conn
-	enc        *json.Encoder
-	state      string
-	restarts   int
-	startedAt  time.Time
-	lastExit   map[string]any
-	lastPong   time.Time
-	rss, heap  float64
-	devices    map[string]bool
-	platforms  map[string]bool
-	subscribed bool
-	fatal      string
-	pend       map[int]chan ipcMsg
-	seq        int
-	backoff    time.Duration
-	wanted     bool
-	timer      *time.Timer
-	exited     chan struct{}
+	mu            sync.Mutex
+	cmd           *exec.Cmd
+	conn          net.Conn
+	enc           *json.Encoder
+	state         string
+	restarts      int
+	startedAt     time.Time
+	lastExit      map[string]any
+	lastPong      time.Time
+	rss, heap     float64
+	devices       map[string]bool
+	platforms     map[string]bool
+	subscribed    bool
+	fatal         string
+	failedMembers map[string]string // group member file → load error
+	pend          map[int]chan ipcMsg
+	seq           int
+	backoff       time.Duration
+	wanted        bool
+	timer         *time.Timer
+	exited        chan struct{}
 }
 
 type ipcMsg struct {
@@ -106,6 +110,7 @@ type ipcMsg struct {
 	Source   json.RawMessage `json:"source,omitempty"`
 	Flow     json.RawMessage `json:"flow,omitempty"`
 	Entry    json.RawMessage `json:"entry,omitempty"`
+	File     string          `json:"file,omitempty"`
 }
 
 // HostHooks — what a module process can reach in the core beyond the store
@@ -119,7 +124,7 @@ type HostHooks struct {
 }
 
 func NewModuleHost(root, node string, store *Store, reg *Registry, ps *PlatformStatus, config func() (map[string]any, error), memoryLimitMB float64) *ModuleHost {
-	h := &ModuleHost{root: root, node: node, store: store, reg: reg, ps: ps, config: config, modules: map[string]*ModuleProcess{}}
+	h := &ModuleHost{root: root, node: node, store: store, reg: reg, ps: ps, config: config, modules: map[string]*ModuleProcess{}, memberOf: map[string]string{}}
 	if memoryLimitMB > 0 {
 		h.memoryLimit = uint64(memoryLimitMB * 1048576)
 	}
@@ -163,6 +168,9 @@ func (h *ModuleHost) Add(it Integration) *ModuleProcess {
 	m := &ModuleProcess{host: h, it: it, state: "stopped", backoff: backoffMin, devices: map[string]bool{}, platforms: map[string]bool{}, pend: map[int]chan ipcMsg{}}
 	h.mu.Lock()
 	h.modules[it.File] = m
+	for _, mem := range it.Members {
+		h.memberOf[mem.File] = it.File
+	}
 	h.order = append(h.order, it.File)
 	h.mu.Unlock()
 	m.Start()
@@ -170,9 +178,14 @@ func (h *ModuleHost) Add(it Integration) *ModuleProcess {
 }
 
 // Apply — after Settings saved a module's config: restart it, start it if
-// newly configured, stop it if no longer.
+// newly configured, stop it if no longer. A grouped member restarts its
+// group (the others with it).
 func (h *ModuleHost) Apply(it Integration) {
 	m := h.Get(it.File)
+	if m != nil && len(m.it.Members) > 0 {
+		m.Restart("settings saved for " + it.Label)
+		return
+	}
 	switch {
 	case !it.On && m != nil:
 		m.Stop()
@@ -183,10 +196,14 @@ func (h *ModuleHost) Apply(it Integration) {
 	}
 }
 
+// Get finds a process by its id or by a member's file.
 func (h *ModuleHost) Get(id string) *ModuleProcess {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return h.modules[id]
+	if m := h.modules[id]; m != nil {
+		return m
+	}
+	return h.modules[h.memberOf[id]]
 }
 
 func (h *ModuleHost) List() []map[string]any {
@@ -299,7 +316,18 @@ func (m *ModuleProcess) Start() {
 	if m.host.Hooks.Flows != nil {
 		flows = m.host.Hooks.Flows()
 	}
-	m.send(map[string]any{"t": "init", "file": m.it.File, "label": m.it.Label, "config": config, "snapshot": m.host.store.Snapshot(), "flows": flows, "automation": m.it.Automation})
+	init := map[string]any{"t": "init", "file": m.it.File, "label": m.it.Label, "config": config, "snapshot": m.host.store.Snapshot(), "flows": flows, "automation": m.it.Automation}
+	if len(m.it.Members) > 0 {
+		var members []map[string]any
+		for _, mem := range m.it.Members {
+			members = append(members, map[string]any{"file": mem.File, "label": mem.Label, "automation": mem.Automation})
+		}
+		init["members"] = members
+		m.mu.Lock()
+		m.failedMembers = map[string]string{}
+		m.mu.Unlock()
+	}
+	m.send(init)
 	log.Printf("[Modules] %s started (pid %d)", m.it.Label, cmd.Process.Pid)
 }
 
@@ -355,6 +383,12 @@ func (m *ModuleProcess) onMessage(msg ipcMsg) {
 		m.mu.Lock()
 		m.fatal = msg.Error
 		m.mu.Unlock()
+	case "memberFailed":
+		m.mu.Lock()
+		if m.failedMembers != nil {
+			m.failedMembers[msg.File] = msg.Error
+		}
+		m.mu.Unlock()
 	case "notify":
 		if h := m.host.Hooks.Notify; h != nil {
 			h(msg.Level, msg.Message, rawOrdered(msg.Source))
@@ -403,10 +437,19 @@ func (m *ModuleProcess) Write(key string, args []any) (any, error) {
 // Call runs a public method of the client object in the process
 // (getToken, handleWebhookEvent, …).
 func (m *ModuleProcess) Call(method string, args ...any) (any, error) {
+	return m.CallMember("", method, args...)
+}
+
+// CallMember is Call on one client of a group ("" = the only / first one).
+func (m *ModuleProcess) CallMember(member, method string, args ...any) (any, error) {
 	if args == nil {
 		args = []any{}
 	}
-	return m.request(map[string]any{"t": "call", "method": method, "args": args})
+	msg := map[string]any{"t": "call", "method": method, "args": args}
+	if member != "" && len(m.it.Members) > 0 {
+		msg["member"] = member
+	}
+	return m.request(msg)
 }
 
 func (m *ModuleProcess) request(msg map[string]any) (any, error) {
@@ -573,6 +616,17 @@ func (m *ModuleProcess) Info() map[string]any {
 	}
 	if m.state == "failed" {
 		info["error"] = m.fatal
+	}
+	if len(m.it.Members) > 0 {
+		var members []map[string]any
+		for _, mem := range m.it.Members {
+			e := map[string]any{"id": mem.File, "label": mem.Label}
+			if err, bad := m.failedMembers[mem.File]; bad {
+				e["error"] = err
+			}
+			members = append(members, e)
+		}
+		info["members"] = members
 	}
 	return info
 }

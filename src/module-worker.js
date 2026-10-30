@@ -133,7 +133,7 @@ class WorkerAutomation {
 // Only when forked by the host — required, this file just exports its path
 // (and the stand-ins, for tests).
 function run() {
-  let client = null;
+  let clients = []; // [{ file, label, client }] — one, or a group sharing this process
   let store = null;
   let registry = null;
   let stopping = false;
@@ -141,7 +141,9 @@ function run() {
   function shutdown(code = 0) {
     if (stopping) return;
     stopping = true;
-    try { const r = client?.stop?.(); if (r?.then) r.catch(() => {}); } catch { /* best effort */ }
+    for (const { client } of clients) {
+      try { const r = client.stop?.(); if (r?.then) r.catch(() => {}); } catch { /* best effort */ }
+    }
     setTimeout(() => process.exit(code), 300).unref();
   }
 
@@ -163,7 +165,7 @@ function run() {
       case 'init': {
         store = new WorkerStore(msg.snapshot);
         registry = new WorkerRegistry(store, msg.config?.language);
-        process.title = `lsh:${msg.file}`;
+        process.title = `lsh:${msg.file}`; // a group's file is its name
 
         // mirror this process's platform-status singleton into the server's
         const platformStatus = require('./platform-status');
@@ -172,20 +174,33 @@ function run() {
         require('./camera-log').on('entry', (entry) => send({ t: 'camlog', entry }));
         require('./detection-boxes').on('update', (entry) => send({ t: 'boxes', entry: plain(entry) }));
 
-        try {
-          const Client = require(path.resolve(__dirname, msg.file));
-          client = msg.automation
-            ? new Client(msg.config, store, registry, new WorkerAutomation(msg.flows))
-            : new Client(msg.config, store, registry);
-        } catch (err) {
-          console.error(`[${msg.label}] Load failed: ${String(err?.message || err).split('\n')[0]}`);
-          send({ t: 'fatal', error: String(err?.message || err) });
-          return shutdown(2);
+        // init.members: several clients sharing this process (small
+        // integrations grouped to save a Node runtime each). One that can't
+        // load is skipped; a single client that can't load is fatal (exit 2:
+        // the host won't retry).
+        const members = msg.members || [{ file: msg.file, label: msg.label, automation: msg.automation }];
+        for (const m of members) {
+          try {
+            const Client = require(path.resolve(__dirname, m.file));
+            const client = m.automation
+              ? new Client(msg.config, store, registry, new WorkerAutomation(msg.flows))
+              : new Client(msg.config, store, registry);
+            clients.push({ file: m.file, label: m.label, client });
+          } catch (err) {
+            console.error(`[${m.label}] Load failed: ${String(err?.message || err).split('\n')[0]}`);
+            if (!msg.members) {
+              send({ t: 'fatal', error: String(err?.message || err) });
+              return shutdown(2);
+            }
+            send({ t: 'memberFailed', file: m.file, error: String(err?.message || err) });
+          }
         }
         send({ t: 'ready' });
         setInterval(() => registry.resync(), 15_000).unref();
-        try { await client.start(); }
-        catch (err) { console.error(`[${msg.label}] Start failed: ${err?.message || err}`); }
+        await Promise.all(clients.map(async ({ label, client }) => {
+          try { await client.start(); }
+          catch (err) { console.error(`[${label}] Start failed: ${err?.message || err}`); }
+        }));
         registry.resync();
         break;
       }
@@ -204,9 +219,11 @@ function run() {
         break;
       }
       // a public method of the client itself (getToken, handleWebhookEvent, …)
-      // for hosts whose REST routes used to call the client object directly
+      // for hosts whose REST routes used to call the client object directly;
+      // msg.member picks one in a group
       case 'call': {
         try {
+          const client = (msg.member ? clients.find((c) => c.file === msg.member) : clients[0])?.client;
           if (typeof msg.method !== 'string' || msg.method.startsWith('_') || msg.method === 'constructor'
             || msg.method in Object.prototype || typeof client?.[msg.method] !== 'function') {
             throw new Error(`No method ${msg.method}`);

@@ -148,7 +148,7 @@ func main() {
 	// integrations server.js starts inline come from node/integrations.js as
 	// module processes; Loxone Out / Fibaro Out / the MCU index are Go
 	srv.applyOutBridges(boot.Config, "")
-	for _, it := range selectModules(*modules, boot.Integrations) {
+	for _, it := range groupModules(selectModules(*modules, boot.Integrations), boot.Config) {
 		host.Add(it)
 	}
 
