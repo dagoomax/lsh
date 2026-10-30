@@ -32,7 +32,7 @@ const registry = {
     if (key === 'fail/1') throw new Error('Device not found or not writable');
   },
 };
-const engine = new AutomationEngine(store, registry, { setState: async () => { throw new Error('relays are not available in the Go core yet'); } }, scenario.config || {});
+const engine = new AutomationEngine(store, registry, { setState: async () => { throw new Error('No data client connected'); } }, scenario.config || {});
 engine._load = () => {};
 engine._save = () => { trace.push(['save', JSON.stringify({ rules: engine.rules, scenes: engine.scenes, flows: engine.flows }, null, 2)]); };
 engine.setIo({ emit: (ev, d) => { if (ev === 'flow-debug') trace.push(['debug', d.label, d.key, d.payload === undefined ? '<undefined>' : d.payload]); } });

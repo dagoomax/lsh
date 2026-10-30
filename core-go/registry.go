@@ -32,6 +32,7 @@ type Registry struct {
 	writers   map[string]Writer
 	overrides map[string]any
 	listeners []func(event string, payload any)
+	types     *OMap // Victron service type → definition (device-definitions.js)
 }
 
 func NewRegistry(store *Store, overridesFile string) *Registry {
@@ -40,6 +41,66 @@ func NewRegistry(store *Store, overridesFile string) *Registry {
 		json.Unmarshal(b, &r.overrides)
 	}
 	return r
+}
+
+// SetDeviceTypes turns on Victron auto-discovery: a store key under a known
+// service ("<service>/<instance>/…") registers that device, as
+// SensorRegistry._checkTopic does.
+func (r *Registry) SetDeviceTypes(types *OMap) {
+	r.mu.Lock()
+	first := r.types == nil
+	r.types = types
+	r.mu.Unlock()
+	if first {
+		r.store.OnChange(func(c Change) { r.checkTopic(c.Key) })
+	}
+}
+
+func (r *Registry) checkTopic(topic string) {
+	service, rest, ok := strings.Cut(topic, "/")
+	if !ok {
+		return
+	}
+	r.mu.RLock()
+	def, _ := r.types.Get(service).(*OMap)
+	r.mu.RUnlock()
+	if def == nil {
+		return
+	}
+	instance, _, _ := strings.Cut(rest, "/")
+	if instance == "" {
+		return
+	}
+	key := service + "/" + instance
+	if r.Has(key) {
+		return
+	}
+	suffix := instance
+	if n, err := strconv.Atoi(leadingInt(instance)); err == nil && n == 0 {
+		suffix = "" // parseInt(instance, 10) === 0
+	}
+	d := OM("key", key, "type", service, "instance", instance,
+		"label", strings.TrimSpace(jsString(def.Get("label"))+" "+suffix), "icon", def.Get("icon"))
+	if c, ok := def.Lookup("color"); ok {
+		d.Set("color", c)
+	}
+	d.Set("sensors", def.Get("sensors"))
+	d.Set("homekit", def.Get("homekit"))
+	if r.Register(d, nil) {
+		log.Printf("[Sensors] Discovered: %v (%s)", d.Get("label"), key)
+	}
+}
+
+// leadingInt is the prefix parseInt(s, 10) reads ("0abc" → "0").
+func leadingInt(s string) string {
+	i := 0
+	if i < len(s) && (s[i] == '-' || s[i] == '+') {
+		i++
+	}
+	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+		i++
+	}
+	return s[:i]
 }
 
 // On receives 'device-discovered' (Device) and 'devices-changed' (nil).

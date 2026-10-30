@@ -28,8 +28,9 @@ import (
 )
 
 type bootInfo struct {
-	Config       map[string]any `json:"config"`
-	Integrations []Integration  `json:"integrations"`
+	Config       map[string]any  `json:"config"`
+	Integrations []Integration   `json:"integrations"`
+	DeviceTypes  json.RawMessage `json:"deviceTypes"`
 }
 
 // loadBoot asks Node for config.js's effective config and which
@@ -88,6 +89,9 @@ func main() {
 	store.StartPersistence()
 
 	reg := NewRegistry(store, filepath.Join(persistDir, "device-overrides.json"))
+	if types, ok := rawOrdered(boot.DeviceTypes).(*OMap); ok {
+		reg.SetDeviceTypes(types)
+	}
 	ps := NewPlatformStatus()
 	secret, _ := boot.Config["jwtSecret"].(string)
 	auth := NewAuth(persistDir, secret)
@@ -108,7 +112,9 @@ func main() {
 	}
 	host := NewModuleHost(*root, *nodeBin, store, reg, ps, freshConfig, memMB)
 
-	srv := &Server{root: *root, store: store, reg: reg, ps: ps, auth: auth, host: host}
+	victron := NewVictron(boot.Config, store, ps)
+	relays := &Relays{cfg: func() map[string]any { return boot.Config }, store: store, victron: victron}
+	srv := &Server{root: *root, store: store, reg: reg, ps: ps, auth: auth, host: host, victron: victron, relays: relays}
 	srv.sio = NewSocketIO(srv.sioAuthorize, srv.sioConnect)
 	srv.wireEvents()
 
@@ -122,7 +128,9 @@ func main() {
 		}
 	}
 	srv.auto = NewAutomation(store, reg, boot.Config, *automations, *dataDir, srv.sio.Emit)
+	srv.auto.relays = relays
 	srv.auto.Start()
+	victron.Start()
 
 	for _, it := range selectModules(*modules, boot.Integrations) {
 		host.Add(it)
@@ -145,6 +153,7 @@ func main() {
 	httpSrv.Shutdown(ctx)
 	cancel()
 	srv.auto.Stop()
+	victron.Stop()
 	host.StopAll()
 	if n, err := store.Persist(); err != nil {
 		log.Printf("[Store] Persist failed: %v", err)

@@ -115,6 +115,7 @@ type Automation struct {
 	config map[string]any
 	emit   func(event string, data any) // Socket.IO broadcast
 	send   func(key, sensor string, value any) error
+	relays *Relays // nil → "No data client connected", like a RelayController without a source
 
 	file, snapshotsDir, loxoneDir string
 
@@ -738,7 +739,7 @@ func (a *Automation) runAction(action, ctx *OMap) error {
 	case "device":
 		return a.send(jsString(orEmpty(jget(action, "deviceKey"))), jsString(orEmpty(jget(action, "sensor"))), jget(action, "value"))
 	case "relay":
-		return errors.New("relays are not available in the Go core yet")
+		return a.relays.SetState(jsNumber(jget(action, "index")), truthy(action.Get("on")))
 	case "notify":
 		level := action.Get("level")
 		if !truthy(level) {
@@ -1024,7 +1025,7 @@ func (a *Automation) execNode(node, msg *OMap) ([]*OMap, error) {
 		return []*OMap{msg}, err
 
 	case "relay":
-		return nil, errors.New("relays are not available in the Go core yet")
+		return []*OMap{msg}, a.relays.SetState(jsNumber(jget(c, "index")), truthy(c.Get("on")))
 
 	case "notify":
 		level := c.Get("level")

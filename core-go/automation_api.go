@@ -63,7 +63,7 @@ func (s *Server) automationRoutes(api *http.ServeMux) {
 		}
 		ok(w, data)
 	}
-	done := func(w http.ResponseWriter) { writeJSON(w, 200, map[string]any{"success": true}) }
+	done := func(w http.ResponseWriter) { writeJSON(w, 200, OM("success", true)) }
 
 	api.HandleFunc("GET /api/automation/rules", func(w http.ResponseWriter, r *http.Request) { ok(w, a.Rules()) })
 	api.HandleFunc("POST /api/automation/rules", s.admin(func(w http.ResponseWriter, r *http.Request) {

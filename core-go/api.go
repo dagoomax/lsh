@@ -8,24 +8,28 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"math"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
 type Server struct {
-	root  string
-	store *Store
-	reg   *Registry
-	ps    *PlatformStatus
-	auth  *Auth
-	host  *ModuleHost
-	sio   *SocketIO
-	auto  *Automation
+	root    string
+	store   *Store
+	reg     *Registry
+	ps      *PlatformStatus
+	auth    *Auth
+	host    *ModuleHost
+	sio     *SocketIO
+	auto    *Automation
+	victron *Victron
+	relays  *Relays
 }
 
 type ctxUser struct{}
@@ -39,11 +43,11 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 }
 
 func fail(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]any{"success": false, "error": msg})
+	writeJSON(w, status, OM("success", false, "error", msg))
 }
 
 func ok(w http.ResponseWriter, data any) {
-	writeJSON(w, 200, map[string]any{"success": true, "data": data})
+	writeJSON(w, 200, OM("success", true, "data", data))
 }
 
 func clientIP(r *http.Request) string {
@@ -70,7 +74,7 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("POST /api/auth/login", s.authLogin)
 	api.HandleFunc("POST /api/auth/logout", func(w http.ResponseWriter, r *http.Request) {
 		clearSessionCookie(w)
-		writeJSON(w, 200, map[string]any{"success": true})
+		writeJSON(w, 200, OM("success", true))
 	})
 	api.HandleFunc("GET /api/auth/me", func(w http.ResponseWriter, r *http.Request) {
 		u := userOf(r)
@@ -82,27 +86,47 @@ func (s *Server) Handler() http.Handler {
 		data["permissions"] = s.auth.Permissions(id)
 		ok(w, data)
 	})
-	api.HandleFunc("GET /api/connection", func(w http.ResponseWriter, r *http.Request) { ok(w, map[string]any{"source": nil}) })
+	api.HandleFunc("GET /api/connection", func(w http.ResponseWriter, r *http.Request) { ok(w, s.victron.Status()) })
 	api.HandleFunc("GET /api/status", func(w http.ResponseWriter, r *http.Request) {
 		g := grouped(s.store)
-		g["relays"] = []any{}
+		g["relays"] = s.relays.All()
 		ok(w, g)
 	})
-	api.HandleFunc("GET /api/relays", func(w http.ResponseWriter, r *http.Request) { ok(w, []any{}) })
+	api.HandleFunc("GET /api/relays", func(w http.ResponseWriter, r *http.Request) { ok(w, s.relays.All()) })
+	api.HandleFunc("POST /api/relay/{index}/state", s.admin(func(w http.ResponseWriter, r *http.Request) {
+		index := math.NaN() // parseInt(req.params.index)
+		if n, err := strconv.Atoi(leadingInt(r.PathValue("index"))); err == nil {
+			index = float64(n)
+		}
+		on, isBool := readBody(r).Get("on").(bool)
+		if !isBool {
+			fail(w, 400, `Body must contain { "on": true/false }`)
+			return
+		}
+		if !s.relays.Configured(index) {
+			fail(w, 404, "Relay not found")
+			return
+		}
+		if err := s.relays.SetState(index, on); err != nil {
+			fail(w, 500, err.Error())
+			return
+		}
+		ok(w, OM("index", index, "on", on))
+	}))
 	api.HandleFunc("GET /api/devices", func(w http.ResponseWriter, r *http.Request) { ok(w, s.reg.AllReadings()) })
 	api.HandleFunc("GET /api/devices/{key...}", s.deviceGet)
 	api.HandleFunc("POST /api/device/{key...}", s.deviceCommand) // …/<key>/command
 	api.HandleFunc("GET /api/device/{key...}", s.deviceSet)      // …/<key>/set?sensor=&value=
 	api.HandleFunc("GET /api/history/{key...}", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"success": true, "key": r.PathValue("key"), "points": s.store.History(r.PathValue("key"))})
+		writeJSON(w, 200, OM("success", true, "key", r.PathValue("key"), "points", s.store.History(r.PathValue("key"))))
 	})
 	api.HandleFunc("GET /api/history-status", func(w http.ResponseWriter, r *http.Request) {
-		ok(w, map[string]any{"mongoEnabled": false, "retentionDays": 90, "bufferHours": 6})
+		ok(w, OM("mongoEnabled", false, "retentionDays", 90, "bufferHours", 6))
 	})
 	api.HandleFunc("GET /api/platform-status", func(w http.ResponseWriter, r *http.Request) { ok(w, s.ps.All()) })
 	s.automationRoutes(api)
 	api.HandleFunc("GET /api/modules/processes", s.admin(func(w http.ResponseWriter, r *http.Request) {
-		ok(w, map[string]any{"isolated": true, "processes": s.host.List()})
+		ok(w, OM("isolated", true, "processes", s.host.List()))
 	}))
 	api.HandleFunc("POST /api/modules/processes/{id}/restart", s.admin(func(w http.ResponseWriter, r *http.Request) {
 		m := s.host.Get(r.PathValue("id"))
@@ -159,7 +183,7 @@ func (s *Server) withAuth(next http.Handler) http.Handler {
 			}
 		}
 		if !s.auth.HasUsers() {
-			writeJSON(w, 503, map[string]any{"success": false, "setupRequired": true, "error": "Server not configured — open the dashboard to create your admin account."})
+			writeJSON(w, 503, OM("success", false, "setupRequired", true, "error", "Server not configured — open the dashboard to create your admin account."))
 			return
 		}
 		u, bad := s.auth.UserFor(r)
@@ -208,7 +232,7 @@ func (s *Server) authSetup(w http.ResponseWriter, r *http.Request) {
 	}
 	tok, _ := s.auth.Sign(u)
 	setSessionCookie(w, r, tok)
-	writeJSON(w, 200, map[string]any{"success": true, "user": u})
+	writeJSON(w, 200, OM("success", true, "user", u))
 }
 
 func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
@@ -234,7 +258,7 @@ func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 	s.auth.LoginOK(ip)
 	tok, _ := s.auth.Sign(u)
 	setSessionCookie(w, r, tok)
-	writeJSON(w, 200, map[string]any{"success": true, "user": u})
+	writeJSON(w, 200, OM("success", true, "user", u))
 }
 
 func (s *Server) deviceGet(w http.ResponseWriter, r *http.Request) {
@@ -279,7 +303,7 @@ func (s *Server) deviceCommand(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, err.Error())
 		return
 	}
-	writeJSON(w, 200, map[string]any{"success": true})
+	writeJSON(w, 200, OM("success", true))
 }
 
 func (s *Server) deviceSet(w http.ResponseWriter, r *http.Request) {
@@ -297,7 +321,7 @@ func (s *Server) deviceSet(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, err.Error())
 		return
 	}
-	writeJSON(w, 200, map[string]any{"success": true})
+	writeJSON(w, 200, OM("success", true))
 }
 
 // Socket.IO handshake auth — same order as src/websocket.js.
@@ -318,7 +342,7 @@ func (s *Server) sioConnect(emit func(string, any)) {
 	emit("snapshot", s.store.GetAll())
 	emit("devices", s.reg.AllReadings())
 	emit("rooms", s.reg.RoomMeta())
-	emit("connection-status", map[string]any{"source": nil})
+	emit("connection-status", s.victron.Status())
 	emit("platform-status", s.ps.Visible())
 }
 
@@ -364,4 +388,5 @@ func (s *Server) wireEvents() {
 		}
 	})
 	s.ps.OnChange(func() { s.sio.Emit("platform-status", s.ps.Visible()) })
+	s.victron.OnSourceChanged(func() { s.sio.Emit("connection-status", s.victron.Status()) })
 }

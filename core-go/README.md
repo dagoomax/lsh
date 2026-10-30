@@ -24,8 +24,14 @@ are signed with `config.jwtSecret`, so a session from the Node core works here
 too. The store snapshot goes to `core-go/data/`, seeded from
 `persist/store-data.json.gz` on first start, so both cores can run side by side.
 
-Running it next to the Node core with `-modules all` polls every integration
-twice. Some cloud logins don't allow that: OAuth refresh-token rotation,
+`victron_test.go` runs the Victron path against a fake Venus OS broker
+(`testdata/fake-venus.js`, aedes) and a fake VRM API, covering portal
+discovery, keepalive, relay writes, VRM login, re-auth after 401, attribute
+mapping, and the switch MQTT → VRM → MQTT.
+
+Running it next to the Node core gives the Victron connection a second MQTT
+client, or a second VRM login polling every 15 s. Both are harmless. With
+`-modules all` it also polls every integration twice. Some cloud logins don't allow that: OAuth refresh-token rotation,
 single-session MQTT. Stop the Node core first, or choose modules.
 
 ## Ported
@@ -42,6 +48,8 @@ single-session MQTT. Stop the Node core first, or choose modules.
 | `/react/` dashboard, `public/` assets | `api.go` |
 | `src/automation-engine.js`: rules, scenes, notifications, flows (all 22 node types), time/MQTT triggers | `automation.go` |
 | `src/routes/automation.js` (rules / scenes / flows / notifications, flow snapshots, flow Loxone XML) | `automation_api.go` |
+| `src/connection-manager.js`, `mqtt-client.js`, `vrm-client.js`, `relay-controller.js`: Venus MQTT with VRM cloud fallback and back, relays, `/api/connection`, `/api/relays`, `POST /api/relay/:index/state` | `victron.go` |
+| Victron device auto-discovery from store keys (`device-definitions.js`, passed in by `node/integrations.js`) | `registry.go` |
 | JSON key order (Loxone Virtual Input checks match `/api/devices` text) | `omap.go` |
 | JS `Number()` / `String()` / `undefined` semantics used by flows | `jsval.go` |
 
@@ -59,8 +67,8 @@ byte for byte.
 
 Known differences from the Node engine:
 
-- `relay` and `page` actions/nodes fail with a notification. The relay
-  controller and paging aren't in the Go core yet.
+- `page` actions/nodes fail with a notification, because paging isn't in the
+  Go core yet.
 - `extract` uses Go's RE2 regex engine: no lookbehind, no backreferences.
   Patterns that use them fail with "Bad regex".
 - `{value}` substitution is literal: JS `String.replace` would expand `$&` / `$1`
@@ -76,7 +84,6 @@ Known differences from the Node engine:
 
 Every other `/api/*` route answers `501 Not in the Go core yet`. Next steps, roughly in order:
 
-- **Victron connection manager / relays** (MQTT → VRM fallback). Inline in `server.js`, not a module.
 - **Integrations with `expose`** (tuya, shelly, lgthinq, …). They run here as plain workers: devices work, their REST routes don't.
 - **Inline integrations from `server.js`**: Loxone in/out, Fibaro out, cameras, SIP, paging, HomeKit bridge. The plan is to run each as its own Node process, as with the modules.
 - **Device customisation writes** (`setOverride`, rooms, plan decor): the overrides are read-only here.
