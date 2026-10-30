@@ -3,6 +3,7 @@
 // English lives in the gt() fallbacks at the call sites.
 const DICT = {
   pl: {
+        'mc6.temperature': 'Temperatura', 'mc6.floor_temperature': 'Temperatura podłogi', 'mc6.humidity': 'Wilgotność', 'mc6.setpoint': 'Temperatura zadana', 'mc6.mode': 'Tryb', 'mc6.fan': 'Wentylator', 'mc6.onoff': 'Wł./Wył.', 'mc6.mode_cool': 'Chłodzenie', 'mc6.mode_heat': 'Grzanie', 'mc6.mode_fan_only': 'Wentylacja', 'mc6.mode_dry': 'Osuszanie', 'mc6.fan_high': 'Wysoki', 'mc6.fan_medium': 'Średni', 'mc6.fan_low': 'Niski', 'mc6.fan_auto': 'Auto',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Dzień dobry",
     hero_afternoon: "Dzień dobry",
@@ -135,6 +136,7 @@ const DICT = {
         's.dyson_no_devices': 'Nie znaleziono jeszcze urządzeń — uruchom powyższy skrypt logowania.',
         's.dyson_no_ip': 'brak ustawionego IP' },
   de: {
+        'mc6.temperature': 'Temperatur', 'mc6.floor_temperature': 'Bodentemperatur', 'mc6.humidity': 'Luftfeuchtigkeit', 'mc6.setpoint': 'Solltemperatur', 'mc6.mode': 'Modus', 'mc6.fan': 'Lüfter', 'mc6.onoff': 'Ein/Aus', 'mc6.mode_cool': 'Kühlen', 'mc6.mode_heat': 'Heizen', 'mc6.mode_fan_only': 'Lüften', 'mc6.mode_dry': 'Entfeuchten', 'mc6.fan_high': 'Hoch', 'mc6.fan_medium': 'Mittel', 'mc6.fan_low': 'Niedrig', 'mc6.fan_auto': 'Auto',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Guten Morgen",
     hero_afternoon: "Guten Tag",
@@ -266,6 +268,7 @@ const DICT = {
         's.dyson_no_devices': 'Noch keine Geräte gefunden — führe das obige Anmelde-Skript aus.',
         's.dyson_no_ip': 'keine IP festgelegt' },
   fr: {
+        'mc6.temperature': 'Température', 'mc6.floor_temperature': 'Température du sol', 'mc6.humidity': 'Humidité', 'mc6.setpoint': 'Consigne', 'mc6.mode': 'Mode', 'mc6.fan': 'Ventilateur', 'mc6.onoff': 'Marche/Arrêt', 'mc6.mode_cool': 'Froid', 'mc6.mode_heat': 'Chauffage', 'mc6.mode_fan_only': 'Ventilation', 'mc6.mode_dry': 'Déshumidification', 'mc6.fan_high': 'Élevée', 'mc6.fan_medium': 'Moyenne', 'mc6.fan_low': 'Basse', 'mc6.fan_auto': 'Auto',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Bonjour",
     hero_afternoon: "Bon après-midi",
@@ -397,6 +400,7 @@ const DICT = {
         's.dyson_no_devices': 'Aucun appareil trouvé pour l’instant — exécutez le script d’authentification ci-dessus.',
         's.dyson_no_ip': 'aucune IP définie' },
   es: {
+        'mc6.temperature': 'Temperatura', 'mc6.floor_temperature': 'Temperatura del suelo', 'mc6.humidity': 'Humedad', 'mc6.setpoint': 'Consigna', 'mc6.mode': 'Modo', 'mc6.fan': 'Ventilador', 'mc6.onoff': 'Encendido/Apagado', 'mc6.mode_cool': 'Frío', 'mc6.mode_heat': 'Calor', 'mc6.mode_fan_only': 'Ventilación', 'mc6.mode_dry': 'Deshumidificación', 'mc6.fan_high': 'Alta', 'mc6.fan_medium': 'Media', 'mc6.fan_low': 'Baja', 'mc6.fan_auto': 'Auto',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Buenos días",
     hero_afternoon: "Buenas tardes",
@@ -528,6 +532,7 @@ const DICT = {
         's.dyson_no_devices': 'Aún no se encontraron dispositivos — ejecuta el script de autenticación anterior.',
         's.dyson_no_ip': 'sin IP configurada' },
   it: {
+        'mc6.temperature': 'Temperatura', 'mc6.floor_temperature': 'Temperatura pavimento', 'mc6.humidity': 'Umidità', 'mc6.setpoint': 'Setpoint', 'mc6.mode': 'Modalità', 'mc6.fan': 'Ventola', 'mc6.onoff': 'Acceso/Spento', 'mc6.mode_cool': 'Raffreddamento', 'mc6.mode_heat': 'Riscaldamento', 'mc6.mode_fan_only': 'Ventilazione', 'mc6.mode_dry': 'Deumidificazione', 'mc6.fan_high': 'Alta', 'mc6.fan_medium': 'Media', 'mc6.fan_low': 'Bassa', 'mc6.fan_auto': 'Auto',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Buongiorno",
     hero_afternoon: "Buon pomeriggio",
@@ -659,6 +664,7 @@ const DICT = {
         's.dyson_no_devices': 'Nessun dispositivo trovato ancora — esegui lo script di autenticazione sopra.',
         's.dyson_no_ip': 'nessun IP impostato' },
   uk: {
+        'mc6.temperature': 'Температура', 'mc6.floor_temperature': 'Температура підлоги', 'mc6.humidity': 'Вологість', 'mc6.setpoint': 'Задана температура', 'mc6.mode': 'Режим', 'mc6.fan': 'Вентилятор', 'mc6.onoff': 'Увімк./Вимк.', 'mc6.mode_cool': 'Охолодження', 'mc6.mode_heat': 'Обігрів', 'mc6.mode_fan_only': 'Вентиляція', 'mc6.mode_dry': 'Осушення', 'mc6.fan_high': 'Висока', 'mc6.fan_medium': 'Середня', 'mc6.fan_low': 'Низька', 'mc6.fan_auto': 'Авто',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Доброго ранку",
     hero_afternoon: "Добрий день",

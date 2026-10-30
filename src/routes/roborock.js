@@ -291,6 +291,20 @@ module.exports = function register(router, ctx) {
 
   // Rendered map PNG for a Kärcher robot (cached ~30 s in the client). Also
   // the snapshotUrl of the robot's pseudo-camera in /api/cameras.
+  // Same map as an isometric open-top 3D cutaway (plan view background).
+  router.get('/karcher/:sn/map3d.png', async (req, res) => {
+    const kc = clients.karcher;
+    if (!kc) return res.status(503).send('Kärcher client not running');
+    try {
+      const buf = await kc.fetchMap3dPng(req.params.sn);
+      res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'no-cache');
+      res.send(buf);
+    } catch (err) {
+      res.status(500).send('Map error: ' + err.message);
+    }
+  });
+
   router.get('/karcher/:sn/map.png', async (req, res) => {
     const kc = clients.karcher;
     if (!kc) return res.status(503).send('Kärcher client not running');

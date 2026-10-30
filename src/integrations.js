@@ -44,7 +44,7 @@ module.exports = [
   { file: 'ocpp-server', label: 'OCPP', when: (config) => config.ocpp?.enabled },
   { file: 'dreame-client', label: 'Dreame', when: (config) => config.dreame?.devices?.length },
   // expose for /api/mc6/* timer & schedule routes
-  { file: 'mc6-client', label: 'MC6', expose: 'mc6', when: (config) => config.mc6?.broker && config.mc6?.devices?.length },
+  { file: 'mc6-client', label: 'MC6', expose: 'mc6', when: (config) => config.mc6?.devices?.length && (config.mc6.broker || config.mc6.devices.some(d => d.host)) },
   // Start Roborock client if configured (miio protocol: host + token)
   { file: 'roborock-client', label: 'Roborock', when: (config) => config.roborock?.devices?.length },
   // Kärcher Home Robots (RCV5/RCV3/RCF5) — cloud-only, see src/karcher-client.js

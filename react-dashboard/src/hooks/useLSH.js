@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { weatherText } from '../weatherConditions'
-import { getLang } from '../i18n'
+import { getLang, gt } from '../i18n'
 import { io } from 'socket.io-client'
 
 // Auth: /react is served same-origin as /api, so requests carry the
@@ -145,6 +145,18 @@ export function useLSH() {
   // changes (App re-renders on lsh-lang-changed, so getLang() moves).
   const lang = getLang()
   const localizedDevices = useMemo(() => devices.map((d) => {
+    // MC6 sensor names and mode/fan values arrive in English from
+    // src/mc6-client.js — translate via 'mc6.<path>' / 'mc6.<path>_<value>'
+    // keys (sensors keep their own `raw` display flag untouched).
+    if (d.type === 'mc6' && d.readings) {
+      const readings = {}
+      for (const [path, r] of Object.entries(d.readings)) {
+        const value = (path === 'mode' || path === 'fan') && typeof r.value === 'string'
+          ? gt(`mc6.${path}_${r.value}`, r.value) : r.value
+        readings[path] = { ...r, name: gt(`mc6.${path}`, r.name), value }
+      }
+      return { ...d, readings }
+    }
     const cond = d.type === 'openweather' && d.readings?.condition
     if (!cond || typeof cond.value !== 'string') return d
     const raw = cond.raw ?? cond.value
