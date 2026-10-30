@@ -948,6 +948,20 @@
       ],
       "deps": {}
     },
+    "atios": {
+      "entry": "src/atios-client.js",
+      "configKeys": [
+        "atios"
+      ],
+      "when": "(config.atios?.host)",
+      "files": [
+        "src/atios-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
+    },
     "unifi-access": {
       "entry": "src/unifi-access-client.js",
       "configKeys": [
@@ -1732,6 +1746,18 @@
       "when": "(config.aquilo?.gateways?.length)",
       "files": [
         "src/aquilo-client.js"
+      ],
+      "deps": {}
+    },
+    "hydrop": {
+      "entry": "src/hydrop-client.js",
+      "configKeys": [
+        "hydrop"
+      ],
+      "when": "(config.hydrop?.apiKey)",
+      "files": [
+        "src/hydrop-client.js",
+        "src/polling-client.js"
       ],
       "deps": {}
     },

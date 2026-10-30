@@ -60,6 +60,8 @@ module.exports = [
   { file: 'dahua-client', label: 'Dahua', expose: 'dahua', when: (config) => config.dahua?.devices?.length },
   // Helvar lighting routers (HelvarNet, TCP 50000) — see src/helvar-client.js
   { file: 'helvar-client', label: 'Helvar', when: (config) => config.helvar?.host },
+  // Atios SmartCore — DALI-2 lamps / groups / inputs over its local web API + bus monitor
+  { file: 'atios-client', label: 'Atios SmartCore', expose: 'atios', when: (config) => config.atios?.host },
   // UniFi Access doors (local Developer API, port 12445) — see src/unifi-access-client.js
   { file: 'unifi-access-client', label: 'UniFi Access', when: (config) => config.unifiAccess?.host && config.unifiAccess?.apiKey },
   // UniFi Play audio (PowerAmp, PoE Audio Port) — console Play app + per-speaker MQTT; see src/unifi-play-client.js
@@ -175,6 +177,8 @@ module.exports = [
   { file: 'vrbo-client', label: 'VRBO', when: (config) => config.vrbo?.listings?.length },
   // Aquilo liquid-level sensors (septic / rainwater tanks) — WiFi gateway's local /state endpoint
   { file: 'aquilo-client', label: 'Aquilo', expose: 'aquilo', when: (config) => config.aquilo?.gateways?.length },
+  // hydrop hydropmeter — water meter reader, official hydrop REST API (cloud)
+  { file: 'hydrop-client', label: 'hydrop', expose: 'hydrop', when: (config) => config.hydrop?.apiKey },
   // Zehnder ventilation (rekuperacja) — ComfoConnect LAN C, ComfoConnect Pro (Modbus TCP), ComfoAir 350/550 (RS232)
   { file: 'zehnder-client', label: 'Zehnder', expose: 'zehnder', when: (config) => (config.zehnder?.units || config.zehnder?.devices)?.length },
 ];

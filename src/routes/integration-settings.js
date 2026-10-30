@@ -2,7 +2,7 @@
 
 // Settings for the integrations that are plain "list of devices + poll
 // interval" or "account" configs — air conditioners (Daikin, Gree, Midea,
-// MELCloud, Sensibo), TECH eModule heating controllers and batteries / power stations (Zendure, UGREEN, Anker
+// MELCloud, Sensibo), TECH eModule heating controllers, the Atios SmartCore, the hydrop water meter and batteries / power stations (Zendure, UGREEN, Anker
 // SOLIX). One table describes each config section; the routes validate it,
 // keep masked secrets (••••••••) from GET /settings, write config.json and
 // restart the integration live. Clients: src/<file>.js (see src/integrations.js).
@@ -25,6 +25,8 @@ const SPECS = {
   midea: { file: 'midea-client', prefix: 'midea/', status: 'midea', list: { host: 'host', id: 'str', token: 'secret', key: 'secret', name: 'str', beep: 'bool' }, top: { pollInterval: 'num' }, rowRequired: ['id'] },
   melcloud: { file: 'melcloud-client', prefix: 'melcloud/', status: 'melcloud', top: { email: 'str', password: 'secret', pollInterval: 'num' } },
   emodule: { file: 'emodule-client', prefix: 'emodule/', status: 'emodule', top: { username: 'str', password: 'secret', pollInterval: 'num', lang: 'str', constTempTime: 'num' } },
+  atios: { file: 'atios-client', prefix: 'atios/', status: 'atios', top: { host: 'str', pollInterval: 'num' } },
+  hydrop: { file: 'hydrop-client', prefix: 'hydrop/', status: 'hydrop', top: { apiKey: 'secret', pollInterval: 'num' } },
   sensibo: { file: 'sensibo-client', prefix: 'sensibo/', status: 'sensibo', top: { apiKey: 'secret', pollInterval: 'num' } },
   tado: { file: 'tado-client', prefix: 'tado/', status: 'tado', top: { enabled: 'bool', pollInterval: 'num', dailyLimit: 'num', overlay: 'str' } },
   zendure: { file: 'zendure-client', prefix: 'zendure/', status: 'zendure', list: { host: 'host', name: 'str' }, top: { pollInterval: 'num' } },

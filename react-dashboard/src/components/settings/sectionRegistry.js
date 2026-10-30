@@ -40,6 +40,7 @@ export const CATEGORIES = [
     { id: 'air-conditioners', title: 'Air Conditioners', keywords: ['air conditioner', 'ac', 'aircon', 'klimatyzacja', 'klimatyzator', 'daikin', 'gree', 'sinclair', 'cooper', 'hunter', 'tosot', 'midea', 'comfee', 'carrier', 'toshiba', 'electrolux', 'mitsubishi', 'melcloud', 'sensibo', 'fujitsu', 'panasonic', 'purifier', 'oczyszczacz', 'air quality'] },
     { id: 'lgthinq', title: 'LG ThinQ', keywords: ['lg', 'thinq', 'air conditioner', 'ac'] },
     { id: 'climate-extra', title: 'AuxAir, Dyson, ViCare & more', keywords: ['auxair', 'aux', 'air conditioner', 'ac', 'bayrol', 'pool', 'openweather', 'weather', 'airly', 'air quality', 'vicare', 'viessmann', 'vitodens', 'boiler', 'thermomix', 'dyson', 'purifier'] },
+    { id: 'water-meter', title: 'hydrop water meter', keywords: ['hydrop', 'hydropmeter', 'water meter', 'wodomierz', 'licznik wody', 'wasserzähler', 'water', 'woda', 'consumption', 'zużycie'] },
     { id: 'aquilo', title: 'Aquilo Tank Sensors', keywords: ['aquilo', 'tank', 'septic', 'szambo', 'rainwater', 'deszczówka', 'well', 'studnia', 'liquid level', 'poziom cieczy'] },
   ] },
   { id: 'appliances', label: 'Appliances & Robots', sections: [
@@ -56,6 +57,7 @@ export const CATEGORIES = [
     { id: 'sonoff', title: 'Sonoff / eWeLink', keywords: ['sonoff', 'ewelink', 'itead', 'coolkit', 'diy', 'relay', 'plug', 'zigbee', 'przekaźnik'] },
     { id: 'lighting-extra', title: 'IKEA Dirigera & Tradfri', keywords: ['ikea', 'dirigera', 'tradfri'] },
     { id: 'helvar', title: 'Helvar', keywords: ['helvar', 'helvarnet', 'dali', 'digidim', 'imagine', 'router', '910', '920', '950', 'lighting', 'oświetlenie', 'scene', 'scena', 'ballast', 'dimmer', 'ściemniacz'] },
+    { id: 'atios', title: 'Atios SmartCore', keywords: ['atios', 'smartcore', 'dali', 'dali-2', 'lunatone', 'matter', 'lighting', 'oświetlenie', 'ballast', 'button', 'przycisk', 'occupancy'] },
     { id: 'wled', title: 'WLED', keywords: ['wled', 'led strip', 'esp32'] },
   ] },
   { id: 'security', label: 'Security & Access', sections: [

@@ -52,6 +52,22 @@ const HEATING = [
     ] },
 ]
 
+const ATIOS = [
+  { id: 'atios', title: 'Atios SmartCore', desc: 'The Atios SmartCore DALI-2 controller over its local web API, no cloud: every commissioned DALI lamp (on/off, brightness, read back from the bus), every DALI group and the whole bus (on/off, brightness, scenes 0–15), and DALI input devices — push buttons, occupancy and light sensors — live from the bus monitor. For buttons and sensors turn on System → DALI → DALI IP Interface in the SmartCore web UI; it serves one such connection, so Home Assistant’s Atios integration can’t run alongside. The SmartCore’s own relays and inputs are only reachable over Matter.',
+    top: [
+      { key: 'host', label: 'IP / host', placeholder: '192.168.1.80' },
+      { key: 'pollInterval', label: 'Poll interval', hint: '(seconds, lamp levels)', type: 'number', placeholder: '30' },
+    ] },
+]
+
+const WATER = [
+  { id: 'hydrop', title: 'hydrop water meter', desc: 'The hydropmeter optical reader on an analog water meter, through the official hydrop REST API (cloud — the reader has no local API): meter reading, flow, water used today and the reader status. Find the API key in the hydrop app. The key has a daily request quota, so keep the interval at 4 minutes or more; the reader sends a new value at least every 5 minutes.',
+    top: [
+      { key: 'apiKey', label: 'API key', type: 'password' },
+      { key: 'pollInterval', label: 'Poll interval', hint: '(seconds, min 240)', type: 'number', placeholder: '300' },
+    ] },
+]
+
 const BATTERIES = [
   { id: 'zendure', title: 'Zendure SolarFlow', desc: 'Zendure SolarFlow batteries and the SmartMeter 3CT through the official local API (zenSDK). Newer firmware keeps it off until a HEMS is added in the Zendure app — add one, then leave the HEMS screen.',
     list: [
@@ -78,6 +94,14 @@ export function AirConditionersSection({ config, reload }) {
 
 export function HeatingControllersSection({ config, reload }) {
   return <>{HEATING.map((s) => <IntegrationCard key={s.id} spec={s} saved={config[s.id]} reload={reload} />)}</>
+}
+
+export function AtiosSection({ config, reload }) {
+  return <>{ATIOS.map((s) => <IntegrationCard key={s.id} spec={s} saved={config[s.id]} reload={reload} />)}</>
+}
+
+export function WaterMeterSection({ config, reload }) {
+  return <>{WATER.map((s) => <IntegrationCard key={s.id} spec={s} saved={config[s.id]} reload={reload} />)}</>
 }
 
 export function BatteriesSection({ config, reload }) {

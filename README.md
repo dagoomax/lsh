@@ -302,6 +302,8 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `unifiAccess` | No | UniFi Access doors (unlock / lock now, lock rules, doorbell, lockdown / evacuation, live events) |
 | `onboarding` | No | Welcome city guide on the dashboard (Katowice built in, other cities written by Claude) |
 | `helvar` | No | Helvar lighting routers (HelvarNet): groups, scenes, DALI loads, multisensors |
+| `atios` | No | Atios SmartCore DALI-2 controller (local web API): DALI lamps, groups, scenes, buttons and sensors |
+| `hydrop` | No | hydrop hydropmeter water meter reader (official hydrop REST API, cloud): meter reading, flow, daily use |
 | `unifiPlay` | No | UniFi Play audio (PowerAmp, PoE Audio Port): volume, input, now playing |
 | `shelly` | No | Shelly Gen1 / Gen2 devices |
 | `boneio` | No | BoneIO relay boards (MQTT auto-discovery) |
@@ -796,6 +798,31 @@ Settings → **Managed Instances** manages other LSH instances from this site, e
 Every LSH also answers `GET /api/site/summary`, `POST /api/auth/handoff` (a managing site's API token only) and `GET /api/auth/handoff/:code` (public, single use).
 
 The standalone **Managed Instances** panel (private repo `dagoomax/lsh-panel`) is an LSH client for the same API: sign in with your LSH user on a site and manage it and its instances from one page.
+
+### `atios`
+
+The Atios SmartCore (DIN-rail Matter controller with a DALI-2 bus, 12 relays and 12 inputs) over its local web API, the one Atios' own Home Assistant integration uses (`src/atios-client.js`, uses `ws` for the bus monitor). Configure it in Settings → Lighting & Switches → **Atios SmartCore** with its IP.
+
+```json
+"atios": { "host": "192.168.1.80", "pollInterval": 30 }
+```
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `host` | — | SmartCore IP or host name |
+| `pollInterval` | `30` | Seconds between reads of every lamp's level (QUERY ACTUAL LEVEL) |
+| `monitor` | `true` | Follow the bus monitor WebSocket (`ws://<host>/`) for buttons, sensors and changes made by other controllers |
+| `lights` | — | Short addresses to use when the commissioning (NVM) list can't be read |
+
+Devices come from the commissioning stored in the SmartCore (`/api/dali/nvm`):
+- `atios/all` — the whole bus: `switch`, `level` (%), `scene` (0–15), `ipInterface`.
+- `atios/l<address>` — each DALI lamp: `switch`, `level`, `online`. HomeKit light. On = GO TO LAST ACTIVE LEVEL, level = direct arc power (1–254 mapped linearly to 1–100 %).
+- `atios/g<group>` — each DALI group: `switch`, `level`, `scene` (as last set from LSH).
+- `atios/in<address>` — each DALI input device: `button<n>` (last event: pressed, released, short press, double press, long press…), `button<n>Pressed`, `occupancy<n>` (HomeKit motion), `light<n>` (raw 0–1023), `event`.
+
+Buttons, sensors and live updates need **DALI IP Interface** on (SmartCore web UI → System → DALI). The monitor socket serves one client — Home Assistant's Atios integration or a second LSH would take it over. The SmartCore's own relays and inputs have no local API; pair the SmartCore with LSH's Matter controller for them.
+
+**Without hardware:** `node scripts/atios-simulator.js 8907`, then `"atios": { "host": "127.0.0.1:8907" }`. `test/atios.test.js` runs the client against it. Not yet tested against a real SmartCore.
 
 ### `helvar`
 
@@ -4643,6 +4670,23 @@ Every AirPlay speaker and Chromecast / Google Home / Nest of the dashboard's med
 ```
 
 (`"enabled": false` turns it off.) The selected source survives restarts.
+
+### hydrop water meter
+
+The hydrop hydropmeter, an optical reader clipped onto an analog water meter that reports over Wi-Fi to the hydrop cloud, through the official hydrop REST API (`api.hydrop-systems.com`, `src/hydrop-client.js`, no npm deps). The reader has no local API. Configure it in Settings → Climate & Water → **hydrop water meter** with the API key from the hydrop app.
+
+```json
+"hydrop": { "apiKey": "…", "pollInterval": 300 }
+```
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `apiKey` | — | hydrop API key (sent in the `apikey` header) |
+| `pollInterval` | `300` | Seconds between polls (min 240). The key has a shared daily quota (400 requests in hydrop's example), reset at 00:00 UTC; the reader sends at least every 5 minutes |
+
+One device per meter, `hydrop/<deviceID>`: `meter` (m³), `flow` (L/min, from the change between two readings), `today` (L since local midnight), `status` (green / yellow / red / grey, hourly), `lastReading`, `quota` (API calls left today, hourly).
+
+**Without a meter:** `node scripts/hydrop-simulator.js 8908`, then `"hydrop": { "apiKey": "test-key", "apiBase": "http://127.0.0.1:8908" }`. `test/hydrop.test.js` runs the client against it. Not yet tested against a real meter.
 
 ### Aquilo tank sensors
 
