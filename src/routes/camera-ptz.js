@@ -43,7 +43,8 @@ module.exports = function register(router, ctx) {
     const cfg = readConfigFile();
     const cam = (cfg.cameras || [])[Number(idx)];
     // Tuya/Smart Life cameras without ONVIF: `tuyaPtz: { deviceId }` + config.tuyaCloud
-    if (cam?.tuyaPtz) return require('../tuya-cloud-ptz').ptz(cfg.tuyaCloud, cam.tuyaPtz, op);
+    // (or, without keys, the tuya-ipc-terminal login in config.tuyaIpc)
+    if (cam?.tuyaPtz) return require('../tuya-cloud-ptz').ptz(cfg.tuyaCloud, cam.tuyaPtz, op, cfg.tuyaIpc);
     if (!cam?.onvif?.host) throw new Error('Camera has no ONVIF config');
     return require('../onvif-ptz').ptz(cam.onvif, op, speed);
   }));

@@ -11,6 +11,11 @@
 // UNVERIFIED against real hardware: written from the Tuya OpenAPI docs while
 // the camera's Tuya session was down. `GET /api/camera/ptz-info/:idx` returns
 // the device's real command specification so codes/values can be checked.
+//
+// Without tuyaCloud keys, falls back to the Smart Life web viewer's own
+// endpoints (/api/jarvis/ptz/start|end) using the tuya-ipc-terminal login
+// from config.tuyaIpc — verified on the Wejście doorbell 2026-10-30. That
+// path has no optical zoom (the web viewer only zooms digitally).
 
 const crypto = require('crypto');
 const https  = require('https');
@@ -77,10 +82,55 @@ async function call(cfg, method, path, body) {
 const sendCommands = (cfg, deviceId, commands) =>
   call(cfg, 'POST', `/v1.0/devices/${deviceId}/commands`, { commands });
 
+// ── Smart Life web viewer (app session) ───────────────────────────────
+const fs   = require('fs');
+const path = require('path');
+
+const PORTAL_DIR = { up: 'UP', right: 'RIGHT', down: 'DOWN', left: 'LEFT' };
+
+// tuya-ipc-terminal stores its login as .tuya-data/user_<region>_<email>.json
+function portalSession(ipc) {
+  if (!ipc?.dir) throw new Error('tuyaCloud keys or tuyaIpc.dir not configured');
+  const dataDir = path.join(ipc.dir, '.tuya-data');
+  const key = `${ipc.region}_${String(ipc.email || '').replace('@', '_at_').replace(/\./g, '_')}`;
+  let file = path.join(dataDir, `user_${key}.json`);
+  if (!fs.existsSync(file)) {
+    const any = fs.readdirSync(dataDir).find((f) => f.startsWith('user_') && f.endsWith('.json'));
+    if (!any) throw new Error('No tuya-ipc-terminal login found');
+    file = path.join(dataDir, any);
+  }
+  const sd = JSON.parse(fs.readFileSync(file, 'utf8')).sessionData;
+  return { host: sd.serverHost, cookie: sd.cookies.map((c) => `${c.name}=${c.value}`).join('; ') };
+}
+
+async function portalPost(ipc, apiPath, body) {
+  const { host, cookie } = portalSession(ipc);
+  const r = await fetch(`https://${host}${apiPath}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8', Accept: '*/*',
+      Origin: `https://${host}`, Referer: `https://${host}/playback`,
+      'X-Requested-With': 'XMLHttpRequest', 'Cloud-Type': 'public', Cookie: cookie,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
+  });
+  const j = await r.json().catch(() => null);
+  if (!j?.success) throw new Error(`Tuya: ${j?.errorMsg || j?.errorCode || r.status}`);
+  return j.result;
+}
+
+function portalPtz(ipc, id, op) {
+  if (op === 'stop') return portalPost(ipc, '/api/jarvis/ptz/end', { devId: id });
+  if (PORTAL_DIR[op]) return portalPost(ipc, '/api/jarvis/ptz/start', { devId: id, direction: PORTAL_DIR[op] });
+  throw new Error(op.startsWith('zoom') ? 'Zoom not supported for this camera' : `Unsupported op: ${op}`);
+}
+
 /** Continuous move on press, `stop` on release — same contract as onvif-ptz. */
-async function ptz(cfg, tuyaPtz, op) {
+async function ptz(cfg, tuyaPtz, op, ipc) {
   const id = tuyaPtz?.deviceId;
   if (!id) throw new Error('Camera has no tuyaPtz.deviceId');
+  if (!cfg?.accessId || !cfg?.accessSecret) return portalPtz(ipc, id, op);
   if (op === 'stop') {
     // Stop both axes; a camera without zoom just ignores the second command.
     await sendCommands(cfg, id, [{ code: 'ptz_stop', value: true }]);

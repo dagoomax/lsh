@@ -33,6 +33,7 @@ const ROUTE_GROUPS = [
   require('./routes/camera-patrol'),
   require('./routes/camera-siren'),
   require('./routes/camera-ir'),
+  require('./routes/camera-sd'),
   require('./routes/reolink'),
   require('./routes/mobotix'),
   require('./routes/axis'),

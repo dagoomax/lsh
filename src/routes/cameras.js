@@ -50,6 +50,7 @@ module.exports = function register(router, ctx) {
         irUrl:     `/api/camera/ir/${idx}`,
       } : {}),
       ...(c.tuyaPtz ? { ptzUrl: `/api/camera/ptz/${idx}` } : {}),
+      ...(c.tuyaPtz && cfg.tuyaIpc?.dir ? { sdUrl: `/api/camera/sd/${idx}` } : {}),
       ...(c.url && !c.snapshotUrl && !c.mjpegUrl ? { snapshotUrl: `/api/camera/snapshot/${idx}` } : {}),
     }));
     res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...yaleCams, ...stCams, ...karcherCams, ...dahuaCams, ...haCams] });
