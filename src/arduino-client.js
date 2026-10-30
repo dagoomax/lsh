@@ -2,6 +2,7 @@
 
 const mqtt           = require('mqtt');
 const platformStatus = require('./platform-status');
+const { sharedBroker, authOpts } = require('./mqtt-target');
 
 class ArduinoClient {
   constructor(config, store, sensorRegistry) {
@@ -21,16 +22,17 @@ class ArduinoClient {
       return;
     }
 
-    const mqttCfg = this._config.mqtt;
-    const host    = cfg.host || mqttCfg?.host || 'localhost';
-    const port    = cfg.port || mqttCfg?.port || 1883;
+    // blank host → the built-in broker if enabled, else the main MQTT broker
+    const shared  = cfg.host ? null : sharedBroker(this._config);
+    const host    = cfg.host || shared?.host || 'localhost';
+    const port    = (cfg.host && cfg.port) || shared?.port || cfg.port || 1883;
     const url     = `mqtt://${host}:${port}`;
     const opts    = {
       clientId:        `lsh-arduino-${process.pid}`,
       connectTimeout:  10000,
       reconnectPeriod: 5000,
+      ...(cfg.username ? { username: cfg.username, password: cfg.password || '' } : authOpts(shared)),
     };
-    if (cfg.username) { opts.username = cfg.username; opts.password = cfg.password || ''; }
 
     console.log(`[Arduino] Connecting to ${url}`);
     this._client = mqtt.connect(url, opts);

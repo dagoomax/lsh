@@ -16,6 +16,12 @@ const DOMAIN_MAP = {
   cover:         { type: 'boolean', controllable: true  },
 };
 
+// web_server.auth (Basic): ESPHome requires a non-empty username, so take it
+// from the device config; an empty one is kept for older password-only setups
+function basicAuth({ username = '', password } = {}) {
+  return password ? 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64') : null;
+}
+
 function sensorFormat(domain, deviceClass, unitOfMeasurement) {
   const u = (unitOfMeasurement || '').toLowerCase();
   const dc = (deviceClass || '').toLowerCase();
@@ -103,12 +109,13 @@ class ESPHomeClient {
   // ── Device initialisation ────────────────────────────────────────────────
 
   async _initDevice(cfg) {
-    const { host, port = 80, name, password } = cfg;
+    const { host, port = 80, name } = cfg;
+    const auth = basicAuth(cfg);
     const deviceKey = `esphome/${host.replace(/\./g, '_')}`;
     const label     = name || `ESPHome ${host}`;
 
     // Discover entities via /events SSE (initial state events)
-    const entities = await this._discoverEntities(host, port, password);
+    const entities = await this._discoverEntities(host, port, auth);
     if (!entities.size) {
       console.warn(`[ESPHome] No entities found on ${host}`);
       return;
@@ -169,7 +176,7 @@ class ESPHomeClient {
       type:   'esphome',
       sensors,
       homekit: [...deviceHomekitTags],
-      _writeCapability: async (capId, command) => this._write(host, port, password, capId, command),
+      _writeCapability: async (capId, command) => this._write(host, port, auth, capId, command),
     };
 
     this._registry.registerDevice(device);
@@ -178,11 +185,11 @@ class ESPHomeClient {
 
   // ── Entity discovery via SSE ──────────────────────────────────────────────
 
-  _discoverEntities(host, port, password) {
+  _discoverEntities(host, port, auth) {
     return new Promise((resolve) => {
       const entities = new Map();
       const headers  = { 'Accept': 'text/event-stream' };
-      if (password) headers['Authorization'] = 'Basic ' + Buffer.from(`:${password}`).toString('base64');
+      if (auth) headers['Authorization'] = auth;
 
       const req = http.get({ hostname: host, port, path: '/events', timeout: 8000, headers }, res => {
         let buf = '';
@@ -230,11 +237,12 @@ class ESPHomeClient {
 
   async _pollAll() {
     for (const [host, { cfg, entities }] of Object.entries(this._devices)) {
-      const { port = 80, password } = cfg;
+      const { port = 80 } = cfg;
+      const auth = basicAuth(cfg);
       const deviceKey = `esphome/${host.replace(/\./g, '_')}`;
       for (const [id, meta] of entities) {
         try {
-          const data = await this._get(host, port, `/${meta.domain}/${id}`, password);
+          const data = await this._get(host, port, `/${meta.domain}/${id}`, auth);
           const val  = _parseValue(meta.domain, data.value, data.state);
           if (val !== undefined) this._store.set(`${deviceKey}/${meta.domain}/${id}`, val);
         } catch { /* ignore individual poll failure */ }
@@ -245,7 +253,7 @@ class ESPHomeClient {
 
   // ── Write ─────────────────────────────────────────────────────────────────
 
-  async _write(host, port, password, capId, command) {
+  async _write(host, port, auth, capId, command) {
     // capId = "switch/<id>" or "light/<id>" or "cover/<id>"
     const [domain, id] = capId.split('/');
     let path;
@@ -257,7 +265,7 @@ class ESPHomeClient {
       return;
     }
     const headers = {};
-    if (password) headers['Authorization'] = 'Basic ' + Buffer.from(`:${password}`).toString('base64');
+    if (auth) headers['Authorization'] = auth;
     await new Promise((resolve, reject) => {
       const req = http.request({ hostname: host, port, path, method: 'POST', timeout: 5000, headers }, res => {
         res.resume();
@@ -271,9 +279,9 @@ class ESPHomeClient {
 
   // ── HTTP helper ───────────────────────────────────────────────────────────
 
-  _get(host, port, path, password) {
+  _get(host, port, path, auth) {
     const headers = {};
-    if (password) headers['Authorization'] = 'Basic ' + Buffer.from(`:${password}`).toString('base64');
+    if (auth) headers['Authorization'] = auth;
     return new Promise((resolve, reject) => {
       const req = http.get({ hostname: host, port, path, timeout: 5000, headers }, res => {
         let body = '';

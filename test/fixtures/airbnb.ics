@@ -1,0 +1,26 @@
+BEGIN:VCALENDAR
+PRODID;X-RICAL-TZSOURCE=TZINFO:-//Airbnb Inc//Hosting Calendar 1.0//EN
+CALSCALE:GREGORIAN
+VERSION:2.0
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20261030
+DTSTART;VALUE=DATE:20261027
+UID:1418fb94e984-aaa1@airbnb.com
+DESCRIPTION:Reservation URL: https://www.airbnb.com/hosting/reservations/
+ details/HMABCDEFGH\nPhone Number (Last 4 Digits): 1234
+SUMMARY:Reserved
+END:VEVENT
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20261102
+DTSTART;VALUE=DATE:20261030
+UID:1418fb94e984-aaa2@airbnb.com
+DESCRIPTION:Reservation URL: https://www.airbnb.com/hosting/reservations/details/HMZZZZ9999\nPhone Number (Last 4 Digits): 5678
+SUMMARY:Reserved
+END:VEVENT
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20261110
+DTSTART;VALUE=DATE:20261105
+UID:7f3c-blocked@airbnb.com
+SUMMARY:Airbnb (Not available)
+END:VEVENT
+END:VCALENDAR

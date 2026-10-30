@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { weatherText } from '../weatherConditions'
 import { getLang, gt } from '../i18n'
+import { mergeDeviceUpdate } from '../deviceUpdates'
 import { io } from 'socket.io-client'
 
 // Auth: /react is served same-origin as /api, so requests carry the
@@ -99,25 +100,7 @@ export function useLSH() {
     // refresh immediately instead of waiting for the 15s poll.
     socket.on('update', changes => {
       if (!changes || typeof changes !== 'object') return
-      setDevices(prev => {
-        let touched = false
-        const next = prev.map(d => {
-          let readings = d.readings
-          let devTouched = false
-          const apply = (path, sensor) => {
-            const full = `${d.key}/${path}`
-            if (!(full in changes)) return
-            if (!devTouched) { readings = { ...(readings || {}) }; devTouched = true }
-            readings[path] = { ...(readings[path] || sensor || {}), value: changes[full] }
-          }
-          Object.keys(d.readings || {}).forEach(p => apply(p))
-          ;(d.sensors || []).forEach(s => { if (!(d.readings || {})[s.path]) apply(s.path, s) })
-          if (!devTouched) return d
-          touched = true
-          return { ...d, readings }
-        })
-        return touched ? next : prev
-      })
+      setDevices(prev => mergeDeviceUpdate(prev, changes))
     })
     socket.on('platform-status', s => setPlatforms(s || {}))
     socket.on('rooms', r => setRoomsMeta(r || {}))
@@ -137,6 +120,11 @@ export function useLSH() {
 
   const runScene = useCallback(async (id) => {
     await fetch(`/api/automation/scenes/${id}/run`, { method: 'POST', credentials: 'same-origin' })
+  }, [])
+  // after the scene editor saves / deletes / toggles Apple Home
+  const reloadScenes = useCallback(async () => {
+    const scn = await apiFetch('/api/automation/scenes')
+    if (scn) setScenes(scn)
   }, [])
 
   // OpenWeather's condition text arrives in English — show it in this
@@ -163,5 +151,5 @@ export function useLSH() {
     return { ...d, readings: { ...d.readings, condition: { ...cond, raw, value: weatherText(raw, lang) } } }
   }), [devices, lang])
 
-  return { energy, devices: localizedDevices, connection, connected, lastUpdate, platforms, roomsMeta, toggleRelay, authRequired, setupRequired, onLogin, scenes, runScene }
+  return { energy, devices: localizedDevices, connection, connected, lastUpdate, platforms, roomsMeta, toggleRelay, authRequired, setupRequired, onLogin, scenes, runScene, reloadScenes }
 }

@@ -4,6 +4,8 @@
 const fs   = require('fs');
 const path = require('path');
 const engineExports = require('../automation-engine');
+const { readConfigFile } = require('./helpers');
+const { writeConfigFile } = require('../config-file-cache');
 
 module.exports = function register(router, ctx) {
   const { clients, requireAdmin, requirePermission } = ctx;
@@ -22,9 +24,18 @@ module.exports = function register(router, ctx) {
       res.json({ success: true });
     });
 
-    router.get('/automation/scenes', (req, res) => res.json({ success: true, data: automation.scenes }));
+    // `homekit` = shown in Apple Home (not in config.homekit.exclude.scenes);
+    // `inHomekit` = actually published on the running bridge right now.
+    const hkScene = (s) => {
+      const excluded = (readConfigFile().homekit?.exclude?.scenes || []).map(String).includes(String(s.id));
+      const pool = clients.homekitBridge;
+      return { ...s, homekit: !excluded, inHomekit: !!pool?.has(`scene:${s.id}`) };
+    };
+    router.get('/automation/scenes', (req, res) => res.json({ success: true, data: automation.scenes.map(hkScene) }));
     router.post('/automation/scenes', requireAdmin, (req, res) => {
-      try { res.json({ success: true, data: automation.saveScene(req.body) }); }
+      // homekit / inHomekit are derived fields from the GET above — never stored on the scene
+      const { homekit, inHomekit, ...scene } = req.body || {};
+      try { res.json({ success: true, data: hkScene(automation.saveScene(scene)) }); }
       catch (err) { res.status(400).json({ success: false, error: err.message }); }
     });
     router.delete('/automation/scenes/:id', requireAdmin, (req, res) => {
@@ -34,6 +45,23 @@ module.exports = function register(router, ctx) {
     router.post('/automation/scenes/:id/run', async (req, res) => {
       try { res.json({ success: true, data: await automation.runScene(req.params.id) }); }
       catch (err) { res.status(400).json({ success: false, error: err.message }); }
+    });
+    // Show / hide one scene in Apple Home — the same config.homekit.exclude.scenes
+    // list Settings → HomeKit edits, applied to the running bridge at once.
+    router.post('/automation/scenes/:id/homekit', requireAdmin, (req, res) => {
+      const id = String(req.params.id);
+      const scene = automation.scenes.find((s) => String(s.id) === id);
+      if (!scene) return res.status(404).json({ success: false, error: 'Scene not found' });
+      const on = req.body?.on !== false;
+      const cur = readConfigFile();
+      const ex = { devices: [], types: [], cameras: [], scenes: [], relays: [], ...(cur.homekit?.exclude || {}) };
+      const scenes = new Set((ex.scenes || []).map(String));
+      if (on) scenes.delete(id); else scenes.add(id);
+      const exclude = { ...ex, scenes: [...scenes] };
+      try { writeConfigFile({ ...cur, homekit: { ...(cur.homekit || {}), exclude } }); }
+      catch (err) { return res.status(500).json({ success: false, error: err.message }); }
+      clients.homekitBridge?.applyExclude?.(exclude);
+      res.json({ success: true, data: hkScene(scene), homekitRunning: !!clients.homekitBridge });
     });
 
     // ── Flows (Node-RED-style) ──

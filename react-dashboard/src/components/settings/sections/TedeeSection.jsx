@@ -19,7 +19,7 @@ export default function TedeeSection({ config, reload }) {
 
   return (
     <SettingsCard icon={LockIcon} title="Tedee Smart Lock" badge={{ label: gt('common.optional', 'Optional') }}
-      desc="Controls Tedee smart locks through a Tedee Bridge's local REST API — no cloud round-trip for lock control. Enable it in the Tedee app first (select the Bridge → Settings → API → toggle on), which is also where the API token is shown.">
+      desc="Controls Tedee smart locks through a Tedee Bridge's local REST API — no cloud round-trip for lock control. Enable it in the Tedee app first (select the Bridge → Settings → API → toggle on), which is also where the API token is shown. With a Tedee Keypad, the guest portal creates each stay's PIN on the lock (5–8 digits), valid only during the stay.">
       <ListEditor rows={devices} onChange={setDevices} fields={FIELDS} addLabel="+ Add Bridge"
         renderExtra={(row, i) => (
           <Button variant="secondary" busy={test.busy && testingIdx === i}

@@ -28,11 +28,18 @@ const createApiRoutes   = require('./src/api-routes');
 const setupWebSocket    = require('./src/websocket');
 const INTEGRATIONS      = require('./src/integrations');
 const McpBots           = require('./src/mcp-bots');
+const ModuleHost        = require('./src/module-host');
+const TenantPortal      = require('./src/tenant-portal');
 const mountMcpOAuth     = require('./src/routes/mcp-oauth');
 
 function tryRequire(mod, hint) {
   try { return require(mod); }
-  catch { console.warn(`[Server] Optional module unavailable: ${mod}${hint ? ' — ' + hint : ''}`); return null; }
+  catch (err) {
+    // the first line of the error says which package or file is actually missing
+    const why = String(err?.message || err).split('\n')[0];
+    console.warn(`[Server] Optional module unavailable: ${mod} (${why})${hint ? ' — ' + hint : ''}`);
+    return null;
+  }
 }
 
 async function main() {
@@ -48,6 +55,13 @@ async function main() {
   const connectionMgr   = new ConnectionManager(config, store);
   const relayController = new RelayController(config, store);
   const sensorRegistry  = new SensorRegistry(store, config.language); // server-side label translation
+
+  // Built-in MQTT broker — up before any MQTT client below connects to it
+  let mqttBroker = null;
+  if (config.mqttBroker?.enabled) {
+    const MqttBroker = tryRequire('./src/mqtt-broker', 'npm install aedes@0.51');
+    if (MqttBroker) { mqttBroker = new MqttBroker(config); await mqttBroker.start(); }
+  }
 
   // Motion-detector events → agenda feed (src/motion-log.js). Generic across
   // platforms — indexes each device's motion-ish sensors once (on discovery,
@@ -93,14 +107,6 @@ async function main() {
     if (UnifiProtectClient) {
       unifiProtect = new UnifiProtectClient(config, store, sensorRegistry);
       unifiProtect.start().catch((err) => console.error(`[UniFi Protect] Start failed: ${err.message}`));
-    }
-  }
-
-  if (config.unifiAccess?.host && config.unifiAccess?.apiKey) {
-    const UnifiAccessClient = tryRequire('./src/unifi-access-client');
-    if (UnifiAccessClient) {
-      const unifiAccess = new UnifiAccessClient(config, store, sensorRegistry);
-      unifiAccess.start().catch((err) => console.error(`[UniFi Access] Start failed: ${err.message}`));
     }
   }
 
@@ -167,7 +173,7 @@ async function main() {
   }
 
   let mqttExplorer = null;
-  if (config.mqtt?.host) {
+  if (require('./src/mqtt-target').sharedBroker(config)) {
     const MqttExplorer = tryRequire('./src/mqtt-explorer');
     if (MqttExplorer) mqttExplorer = new MqttExplorer(config);
   }
@@ -248,6 +254,12 @@ async function main() {
     '/flows.html': '/react/flows', '/login.html': '/react/', '/setup.html': '/react/',
   };
   app.get(Object.keys(LEGACY_PAGES), (req, res) => res.redirect(301, LEGACY_PAGES[req.path]));
+
+  // Guest portal for rental stays (Airbnb / Booking / VRBO) — public links
+  // carrying their own per-stay token, so mounted before the auth middleware
+  const tenantPortal = new TenantPortal(store, sensorRegistry);
+  app.use('/guest', tenantPortal.router());
+  tenantPortal.start();
 
   app.use(auth.middleware(isSecure));
   // Furniture-picture uploads for the home plan arrive as base64 JSON and
@@ -405,7 +417,7 @@ async function main() {
     }
   }
 
-  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient, mcpBots: new McpBots() };
+  const apiClients = { unifiProtect, reolink, kenik, mobotix, axis, yale, simulators, mqttExplorer, mqttBroker, auth, isSecure, ffmpegRtsp, automation, sipServer, pagingManager, openweather, objectDetection, airplayClient, mcpBots: new McpBots(), tenantPortal };
 
   // MCP server — exposes devices/sensors as tools for an external Claude
   // (Desktop, Claude Code, claude.ai) to query/control. Opt-in: it's a
@@ -557,8 +569,29 @@ async function main() {
   // Integrations whose whole wiring is construct-and-start — listed in
   // src/integrations.js. Anything needing more (extra constructor args,
   // setIo, a reference held here) stays written out inline above/below.
+  //
+  // Each one runs in its own child process (src/module-host.js), restarted by
+  // a watchdog when it crashes, hangs or outgrows its memory limit. Modules
+  // with an `expose` stay in this process: their REST routes call into the
+  // client object directly. config.modules.isolate: false runs everything
+  // in-process as before; config.modules.inProcess: ['shelly-client', …]
+  // keeps single modules here.
+  const isolate = config.modules?.isolate !== false;
+  const inProcess = new Set(config.modules?.inProcess || []);
+  // always there when isolation is on, so Settings can start a module that
+  // gets configured later (moduleHost.apply) without a server restart
+  const moduleHost = isolate ? new ModuleHost(config, store, sensorRegistry, { loadConfig }) : null;
+  if (moduleHost) apiClients.moduleHost = moduleHost;
   for (const it of INTEGRATIONS) {
     if (!it.when(config)) continue;
+    if (isolate && !it.expose && !inProcess.has(it.file) && !inProcess.has(it.label)) {
+      if (!fs.existsSync(path.join(__dirname, 'src', `${it.file}.js`))) {
+        console.warn(`[Server] Optional module unavailable: ./src/${it.file} (file not installed)`);
+        continue;
+      }
+      moduleHost.add(it);
+      continue;
+    }
     const Client = tryRequire(`./src/${it.file}`, it.hint);
     if (!Client) continue;
     const client = new Client(config, store, sensorRegistry);

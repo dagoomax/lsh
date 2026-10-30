@@ -59,10 +59,11 @@ function isConfigured(mod, config) {
 }
 
 function depInstalled(name) {
-  // package.json is always resolvable, even for ESM-only packages whose
-  // main entry require.resolve() would reject
-  try { require.resolve(`${name}/package.json`, { paths: [ROOT] }); return true; }
-  catch { return fs.existsSync(path.join(ROOT, 'node_modules', name, 'package.json')); }
+  // A plain file check, never require.resolve(): Node caches a failed lookup
+  // for the life of the process, so probing a package before the startup
+  // install would keep it "missing" even once npm has put it on disk — the
+  // integration then stayed unavailable until the next restart.
+  return fs.existsSync(path.join(ROOT, 'node_modules', name, 'package.json'));
 }
 
 function moduleStatus(id, mod, config, state) {

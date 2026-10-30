@@ -68,11 +68,15 @@ function setupWebSocket(httpServer, store, sensorRegistry, connectionMgr, auth, 
     });
   });
 
-  // Batch data updates (debounce per tick)
+  // Batch data updates (debounce per tick). Unchanged values are left out:
+  // browsers already have them (snapshot on connect, then every batch), and
+  // they're most of the traffic, since polling clients re-publish every value
+  // on every poll. A key already in the batch still takes the latest value.
   let pending = {};
   let scheduled = false;
 
-  store.on('change', ({ key, value }) => {
+  store.on('change', ({ key, value, changed }) => {
+    if (changed === false && !Object.hasOwn(pending, key)) return;
     pending[key] = value;
     if (!scheduled) {
       scheduled = true;

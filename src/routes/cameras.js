@@ -36,6 +36,7 @@ module.exports = function register(router, ctx) {
     const axisCams    = axis ? axis.getCameras() : [];
     const yaleCams    = yale ? yale.getCameras() : [];
     const karcherCams = clients.karcher ? clients.karcher.getCameras() : [];
+    const dahuaCams   = clients.dahua ? clients.dahua.getCameras() : [];
     const haCams      = clients.homeassistant ? clients.homeassistant.getCameras() : [];
     // Manual cameras with an `onvif` section get PTZ through the generic proxy;
     // ones with an RTSP `url` but no snapshot/MJPEG source of their own (e.g.
@@ -51,6 +52,6 @@ module.exports = function register(router, ctx) {
       ...(c.tuyaPtz ? { ptzUrl: `/api/camera/ptz/${idx}` } : {}),
       ...(c.url && !c.snapshotUrl && !c.mjpegUrl ? { snapshotUrl: `/api/camera/snapshot/${idx}` } : {}),
     }));
-    res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...yaleCams, ...stCams, ...karcherCams, ...haCams] });
+    res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...yaleCams, ...stCams, ...karcherCams, ...dahuaCams, ...haCams] });
   });
 };

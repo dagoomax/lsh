@@ -147,6 +147,52 @@ module.exports = function register(router, ctx) {
     }
   });
 
+  // Ecovacs Deebot / yeedi robot vacuums — login test + save
+  router.post('/settings/test-ecovacs', requireAdmin, async (req, res) => {
+    const current = readConfigFile();
+    const { email, country } = req.body;
+    let { password } = req.body;
+    if (password && password.includes('•')) password = current.ecovacs?.password || '';
+    if (!email || !password) return res.status(400).json({ success: false, error: 'email and password are required' });
+
+    let ecovacs;
+    try { ecovacs = require('../ecovacs-client'); }
+    catch (err) { return res.status(500).json({ success: false, error: `Module load failed: ${err.message}` }); }
+
+    try {
+      const { devices } = await ecovacs.login({ email, password, country });
+      res.json({
+        success: true,
+        message: `Login OK — ${devices.length} robot(s) found`,
+        data: { devices: devices.map(ecovacs.describe) },
+      });
+    } catch (err) {
+      res.json({ success: false, error: err.message });
+    }
+  });
+
+  router.post('/settings/ecovacs', requireAdmin, (req, res) => {
+    const current = readConfigFile();
+    const { email, country, did } = req.body;
+    let { password } = req.body;
+    const prev = current.ecovacs || {};
+    if (!password || password.includes('•')) password = prev.password || '';
+    const ecovacs = {
+      ...prev,
+      email: (email || '').trim(),
+      password,
+      country: (String(country || 'PL').trim().toUpperCase().match(/^[A-Z]{2}$/) || ['PL'])[0],
+      did: (did || '').trim(),
+    };
+    if (!ecovacs.email || !ecovacs.password) return res.status(400).json({ success: false, error: 'email and password are required' });
+    try {
+      writeConfigFile({ ...current, ecovacs });
+      res.json({ success: true, message: 'Ecovacs settings saved. Restart to apply.' });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Landroid (Worx / Kress / Landxcape robot mower) — login test + save
   router.post('/settings/test-landroid', requireAdmin, async (req, res) => {
     const current = readConfigFile();

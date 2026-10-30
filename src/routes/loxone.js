@@ -402,9 +402,11 @@ module.exports = function register(router, ctx) {
   router.post('/settings/test-boneio', requireAdmin, async (req, res) => {
     const mqttLib = require('mqtt');
     const cfg     = readConfigFile();
-    const host    = req.body.host || cfg.mqtt?.host || 'localhost';
-    const port    = parseInt(req.body.port || cfg.mqtt?.port || 1883);
-    const client  = mqttLib.connect(`mqtt://${host}:${port}`, { connectTimeout: 5000, reconnectPeriod: 0 });
+    const { sharedBroker, authOpts } = require('../mqtt-target');
+    const shared  = req.body.host ? null : sharedBroker(cfg);
+    const host    = req.body.host || shared?.host || 'localhost';
+    const port    = parseInt((req.body.host && req.body.port) || shared?.port || req.body.port || 1883);
+    const client  = mqttLib.connect(`mqtt://${host}:${port}`, { connectTimeout: 5000, reconnectPeriod: 0, ...authOpts(shared) });
     const timer   = setTimeout(() => { client.end(true); res.json({ success: false, error: `Cannot reach ${host}:${port} — connection timed out` }); }, 6000);
     client.once('connect', () => {
       clearTimeout(timer);

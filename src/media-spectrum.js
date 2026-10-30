@@ -14,24 +14,31 @@ const BANDS = 48;
 const MAX_STREAMS = 3;
 const LINGER_MS = 4000;
 
-// iterative radix-2 FFT, in place
+// FFT tables for size N, computed once: the bit-reversal permutation and the
+// twiddle factors e^(−2πik/N), k < N/2 (a stage of size `len` uses every
+// (N/len)-th one)
+const REV = new Uint16Array(N);
+for (let i = 0; i < N; i++) {
+  let r = 0;
+  for (let b = 1, x = i; b < N; b <<= 1, x >>= 1) r = (r << 1) | (x & 1);
+  REV[i] = r;
+}
+const COS = Float64Array.from({ length: N / 2 }, (_, k) => Math.cos((-2 * Math.PI * k) / N));
+const SIN = Float64Array.from({ length: N / 2 }, (_, k) => Math.sin((-2 * Math.PI * k) / N));
+
+// iterative radix-2 FFT of N points, in place
 function fft(re, im) {
-  const n = re.length;
-  for (let i = 1, j = 0; i < n; i++) {
-    let bit = n >> 1;
-    for (; j & bit; bit >>= 1) j ^= bit;
-    j ^= bit;
-    if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]] }
+  for (let i = 1; i < N; i++) {
+    const j = REV[i];
+    if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t }
   }
-  for (let len = 2; len <= n; len <<= 1) {
-    const ang = (-2 * Math.PI) / len, wr = Math.cos(ang), wi = Math.sin(ang);
-    for (let i = 0; i < n; i += len) {
-      let cr = 1, ci = 0;
-      for (let k = 0; k < len / 2; k++) {
-        const a = i + k, b = a + len / 2;
-        const tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+  for (let len = 2; len <= N; len <<= 1) {
+    const half = len >> 1, step = N / len;
+    for (let i = 0; i < N; i += len) {
+      for (let k = 0, w = 0; k < half; k++, w += step) {
+        const a = i + k, b = a + half, wr = COS[w], wi = SIN[w];
+        const tr = re[b] * wr - im[b] * wi, ti = re[b] * wi + im[b] * wr;
         re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
-        const ncr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = ncr;
       }
     }
   }
@@ -41,17 +48,19 @@ const HANN = Float64Array.from({ length: N }, (_, i) => 0.5 - 0.5 * Math.cos((2 
 // band edges: 40 Hz … 11 kHz, logarithmic (as ears hear it)
 const EDGES = Array.from({ length: BANDS + 1 }, (_, i) => Math.max(1, Math.round((40 * Math.pow(11000 / 40, i / BANDS)) / (RATE / N))));
 
+// work buffers, reused: this runs ~21 times a second per stream
+const RE = new Float64Array(N), IM = new Float64Array(N);
+
 // 1024 samples (−1…1) → BANDS levels 0–255
 function bands(samples) {
-  const re = new Float64Array(N), im = new Float64Array(N);
-  for (let i = 0; i < N; i++) re[i] = samples[i] * HANN[i];
-  fft(re, im);
+  for (let i = 0; i < N; i++) { RE[i] = samples[i] * HANN[i]; IM[i] = 0 }
+  fft(RE, IM);
   const out = new Uint8Array(BANDS);
   for (let b = 0; b < BANDS; b++) {
     const lo = EDGES[b], hi = Math.max(lo + 1, EDGES[b + 1]);
-    let peak = 0;
-    for (let k = lo; k < hi && k < N / 2; k++) peak = Math.max(peak, Math.hypot(re[k], im[k]));
-    const db = 20 * Math.log10(peak / (N / 4) + 1e-9); // ≈ dBFS
+    let peak = 0; // squared magnitude: one square root per band, not one per bin
+    for (let k = lo; k < hi && k < N / 2; k++) { const m = RE[k] * RE[k] + IM[k] * IM[k]; if (m > peak) peak = m }
+    const db = 20 * Math.log10(Math.sqrt(peak) / (N / 4) + 1e-9); // ≈ dBFS
     out[b] = Math.max(0, Math.min(255, Math.round(((db + 48) / 40) * 255))); // −48 … −8 dBFS → 0 … 255 (radio is loud and compressed)
   }
   return out;
@@ -70,9 +79,14 @@ class SpectrumHub {
     }
     clearTimeout(s.timer);
     s.watchers.add(onFrame);
+    let watching = true;
     return () => {
+      if (!watching) return;
+      watching = false;
       s.watchers.delete(onFrame);
-      if (!s.watchers.size) s.timer = setTimeout(() => this._stop(url), LINGER_MS);
+      if (s.watchers.size) return;
+      clearTimeout(s.timer);
+      s.timer = setTimeout(() => this._stop(url, s), LINGER_MS);
     };
   }
 
@@ -83,25 +97,33 @@ class SpectrumHub {
       '-i', url, '-vn', '-ac', '1', '-ar', String(RATE), '-f', 's16le', 'pipe:1',
     ], { stdio: ['ignore', 'pipe', 'ignore'] });
     s.proc = proc;
-    let buf = Buffer.alloc(0);
+    // s16le PCM straight into the frame; a chunk can end halfway through a
+    // sample, its low byte waits in `low` for the next one
     const samples = new Float64Array(N);
+    let fill = 0, low = -1;
+    const push = (v) => {
+      samples[fill++] = v / 32768;
+      if (fill < N) return;
+      fill = 0;
+      const frame = bands(samples);
+      for (const w of s.watchers) { try { w(frame) } catch { /* a watcher went away */ } }
+    };
     proc.stdout.on('data', (chunk) => {
-      buf = buf.length ? Buffer.concat([buf, chunk]) : chunk;
-      while (buf.length >= N * 2) {
-        for (let i = 0; i < N; i++) samples[i] = buf.readInt16LE(i * 2) / 32768;
-        buf = buf.subarray(N * 2);
-        const frame = bands(samples);
-        for (const w of s.watchers) { try { w(frame) } catch { /* a watcher went away */ } }
-      }
+      let i = 0;
+      if (low >= 0) { push(((chunk[0] << 8) | low) << 16 >> 16); low = -1; i = 1 }
+      for (; i + 1 < chunk.length; i += 2) push(((chunk[i + 1] << 8) | chunk[i]) << 16 >> 16);
+      if (i < chunk.length) low = chunk[i];
     });
     proc.on('error', () => this._stop(url));
     proc.on('close', () => { if (this.streams.get(url) === s) this.streams.delete(url) });
     return s;
   }
 
-  _stop(url) {
+  // `only`: just that decoder — a linger timer mustn't take down a newer one
+  // of the same station
+  _stop(url, only = null) {
     const s = this.streams.get(url);
-    if (!s) return;
+    if (!s || (only && s !== only)) return;
     this.streams.delete(url);
     clearTimeout(s.timer);
     try { s.proc?.kill('SIGKILL') } catch { /* gone */ }

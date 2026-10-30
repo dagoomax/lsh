@@ -2,6 +2,7 @@
 
 const mqtt           = require('mqtt');
 const platformStatus = require('./platform-status');
+const { sharedBroker, brokerUrl, authOpts } = require('./mqtt-target');
 
 const HISTORY_MAX = 100; // messages kept per topic
 
@@ -20,11 +21,13 @@ class MqttExplorer {
   setIo(io) { this._io = io; }
 
   start() {
-    const { host, port = 1883 } = this._config.mqtt;
-    const url = `mqtt://${host}:${port}`;
-    console.log('[MQTT Explorer] Connecting to ' + url);
+    const target = sharedBroker(this._config);
+    if (!target) return;
+    const url = brokerUrl(target);
+    console.log('[MQTT Explorer] Connecting to ' + url + (target.builtIn ? ' (built-in broker)' : ''));
 
     this._client = mqtt.connect(url, {
+      ...authOpts(target),
       clientId:        `explorer-${Math.random().toString(16).slice(2, 10)}`,
       reconnectPeriod: 10000,
       connectTimeout:  10000,

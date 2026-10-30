@@ -11,8 +11,13 @@ import SmartHomeSection from './sections/SmartHomeSection'
 import RoborockSection from './sections/RoborockSection'
 import DreameSection from './sections/DreameSection'
 import KarcherSection from './sections/KarcherSection'
+import EcovacsSection from './sections/EcovacsSection'
 import MobotixSection from './sections/MobotixSection'
 import AxisSection from './sections/AxisSection'
+import DahuaSection from './sections/DahuaSection'
+import TuyaSection, { TechToySection } from './sections/TuyaSection'
+import MqttBrokerSection from './sections/MqttBrokerSection'
+import SonoffSection from './sections/SonoffSection'
 import YaleSection from './sections/YaleSection'
 import AeotecSection from './sections/AeotecSection'
 import AiDetectionSection from './sections/AiDetectionSection'
@@ -32,6 +37,14 @@ import KnxSection from './sections/KnxSection'
 import BoneioGrentonSection from './sections/BoneioGrentonSection'
 import SmartBobSection from './sections/SmartBobSection'
 import AquiloSection from './sections/AquiloSection'
+import AirbnbSection, { BookingSection, VrboSection } from './sections/AirbnbSection'
+import UnifiAccessSection, { UnifiPlaySection } from './sections/UnifiAccessSection'
+import HelvarSection from './sections/HelvarSection'
+import TenantSection from './sections/TenantSection'
+import NukiSection from './sections/NukiSection'
+import TtlockSection from './sections/TtlockSection'
+import UsbRadioSection from './sections/UsbRadioSection'
+import AjaxSection, { JablotronSection } from './sections/AjaxSection'
 import ZehnderSection from './sections/ZehnderSection'
 import { AirConditionersSection, BatteriesSection } from './sections/IntegrationsSection'
 import ArduinoSection from './sections/ArduinoSection'
@@ -80,8 +93,14 @@ const SECTION_COMPONENTS = {
   roborock: RoborockSection,
   dreame: DreameSection,
   karcher: KarcherSection,
+  ecovacs: EcovacsSection,
   mobotix: MobotixSection,
   axis: AxisSection,
+  dahua: DahuaSection,
+  tuya: TuyaSection,
+  techtoy: TechToySection,
+  'mqtt-broker': MqttBrokerSection,
+  sonoff: SonoffSection,
   yale: YaleSection,
   aeotec: AeotecSection,
   aidetect: AiDetectionSection,
@@ -101,6 +120,18 @@ const SECTION_COMPONENTS = {
   'boneio-grenton': BoneioGrentonSection,
   smartbob: SmartBobSection,
   aquilo: AquiloSection,
+  airbnb: AirbnbSection,
+  'unifi-access': UnifiAccessSection,
+  'unifi-play': UnifiPlaySection,
+  helvar: HelvarSection,
+  booking: BookingSection,
+  vrbo: VrboSection,
+  tenant: TenantSection,
+  nuki: NukiSection,
+  ttlock: TtlockSection,
+  'usb-radio': UsbRadioSection,
+  ajax: AjaxSection,
+  jablotron: JablotronSection,
   zehnder: ZehnderSection,
   'air-conditioners': AirConditionersSection,
   'home-batteries': BatteriesSection,

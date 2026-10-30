@@ -11,4 +11,6 @@ module.exports = [
   { id: 'lsh-can', entry: 'src/lsh-can-scan.js' },
   // Settings → System → Modbus scan (Modbus TCP sweep, RTU via serialport)
   { id: 'lsh-modbus', entry: 'src/lsh-modbus-scan.js' },
+  // Settings → Z-Wave / Zigbee USB → find the stick's ports (probes via serialport)
+  { id: 'usb-radio', entry: 'src/usb-radio-scan.js' },
 ];

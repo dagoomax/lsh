@@ -23,18 +23,25 @@
     "src/manuals.js",
     "src/mcp-bots.js",
     "src/media-spectrum.js",
+    "src/microcontroller-index-client.js",
     "src/mobotix-client.js",
+    "src/module-host.js",
+    "src/module-worker.js",
     "src/mongo.js",
     "src/motion-log.js",
     "src/mqtt-client.js",
+    "src/mqtt-explorer.js",
+    "src/mqtt-target.js",
     "src/paging-messages.js",
     "src/platform-status.js",
     "src/private-events.js",
     "src/relay-controller.js",
     "src/reolink-client.js",
     "src/routes/agenda.js",
+    "src/routes/airbnb.js",
     "src/routes/airly.js",
     "src/routes/airplay.js",
+    "src/routes/ajax.js",
     "src/routes/announce.js",
     "src/routes/apple-music.js",
     "src/routes/aquilo.js",
@@ -53,6 +60,7 @@
     "src/routes/cameras.js",
     "src/routes/claude-code.js",
     "src/routes/css-themes.js",
+    "src/routes/dahua.js",
     "src/routes/device-customization.js",
     "src/routes/devices.js",
     "src/routes/domatiq.js",
@@ -67,6 +75,7 @@
     "src/routes/google-calendar.js",
     "src/routes/grenton.js",
     "src/routes/helpers.js",
+    "src/routes/helvar.js",
     "src/routes/history.js",
     "src/routes/home-plan.js",
     "src/routes/homeassistant.js",
@@ -96,7 +105,9 @@
     "src/routes/modbus-emu.js",
     "src/routes/modules.js",
     "src/routes/mongodb.js",
+    "src/routes/mqtt-broker.js",
     "src/routes/mqtt-explorer.js",
+    "src/routes/nuki.js",
     "src/routes/object-detection.js",
     "src/routes/openweather.js",
     "src/routes/paging.js",
@@ -124,11 +135,16 @@
     "src/routes/tariff.js",
     "src/routes/tauron-tariff.js",
     "src/routes/tedee.js",
+    "src/routes/tenant.js",
     "src/routes/terminal.js",
     "src/routes/thermomix.js",
     "src/routes/tidal.js",
+    "src/routes/ttlock.js",
+    "src/routes/tuya-sonoff.js",
     "src/routes/ui-preferences.js",
+    "src/routes/unifi-access.js",
     "src/routes/unifi-protect.js",
+    "src/routes/usb-radio.js",
     "src/routes/vclu.js",
     "src/routes/vitodens.js",
     "src/routes/vrm.js",
@@ -144,12 +160,26 @@
     "src/server-i18n.js",
     "src/simulator-manager.js",
     "src/system-metrics-client.js",
+    "src/tenant-portal.js",
     "src/vrm-client.js",
     "src/websocket.js",
     "src/wiring-docs.js",
     "src/wiring-links.js"
   ],
   "modules": {
+    "mqtt-broker": {
+      "entry": "src/mqtt-broker.js",
+      "configKeys": [
+        "mqttBroker"
+      ],
+      "when": "(config.mqttBroker?.enabled)",
+      "files": [
+        "src/mqtt-broker.js"
+      ],
+      "deps": {
+        "aedes": "^0.51.3"
+      }
+    },
     "satel": {
       "entry": "src/satel-client.js",
       "configKeys": [
@@ -174,17 +204,6 @@
         "ws": "^7.5.11"
       }
     },
-    "unifi-access": {
-      "entry": "src/unifi-access-client.js",
-      "configKeys": [
-        "unifiAccess"
-      ],
-      "when": "(config.unifiAccess?.host && config.unifiAccess?.apiKey)",
-      "files": [
-        "src/unifi-access-client.js"
-      ],
-      "deps": {}
-    },
     "yale": {
       "entry": "src/yale-client.js",
       "configKeys": [
@@ -193,17 +212,6 @@
       "when": "((config.yale?.username && config.yale?.password) || config.yale?.accessToken)",
       "files": [
         "src/yale-client.js"
-      ],
-      "deps": {}
-    },
-    "mqtt-explorer": {
-      "entry": "src/mqtt-explorer.js",
-      "configKeys": [
-        "mqtt"
-      ],
-      "when": "(config.mqtt?.host)",
-      "files": [
-        "src/mqtt-explorer.js"
       ],
       "deps": {}
     },
@@ -333,9 +341,9 @@
       ],
       "deps": {
         "@tensorflow/tfjs": "^4.22.0",
-        "jpeg-js": "^0.4.4",
         "@tensorflow-models/coco-ssd": "^2.2.3",
-        "@tensorflow-models/mobilenet": "^2.1.1"
+        "@tensorflow-models/mobilenet": "^2.1.1",
+        "jpeg-js": "^0.4.4"
       }
     },
     "mcp-server": {
@@ -687,6 +695,32 @@
       ],
       "deps": {}
     },
+    "tuya": {
+      "entry": "src/tuya-client.js",
+      "configKeys": [
+        "tuya"
+      ],
+      "when": "((config.tuya?.accessId && config.tuya?.accessSecret) || config.tuya?.devices?.length)",
+      "files": [
+        "src/tuya-client.js"
+      ],
+      "deps": {
+        "tuyapi": "^7.7.1"
+      }
+    },
+    "ewelink": {
+      "entry": "src/ewelink-client.js",
+      "configKeys": [
+        "sonoff"
+      ],
+      "when": "((config.sonoff?.appId && config.sonoff?.password) || config.sonoff?.devices?.length)",
+      "files": [
+        "src/ewelink-client.js"
+      ],
+      "deps": {
+        "multicast-dns": "^7.2.5"
+      }
+    },
     "tradfri": {
       "entry": "src/tradfri-client.js",
       "configKeys": [
@@ -827,6 +861,69 @@
         "jpeg-js": "^0.4.4"
       }
     },
+    "ecovacs": {
+      "entry": "src/ecovacs-client.js",
+      "configKeys": [
+        "ecovacs"
+      ],
+      "when": "(config.ecovacs?.email)",
+      "files": [
+        "src/ecovacs-client.js"
+      ],
+      "deps": {
+        "ecovacs-deebot": "^0.9.5"
+      }
+    },
+    "dahua": {
+      "entry": "src/dahua-client.js",
+      "configKeys": [
+        "dahua"
+      ],
+      "when": "(config.dahua?.devices?.length)",
+      "files": [
+        "src/dahua-client.js",
+        "src/http-digest.js",
+        "src/mjpeg-relay.js"
+      ],
+      "deps": {}
+    },
+    "helvar": {
+      "entry": "src/helvar-client.js",
+      "configKeys": [
+        "helvar"
+      ],
+      "when": "(config.helvar?.host)",
+      "files": [
+        "src/helvar-client.js"
+      ],
+      "deps": {}
+    },
+    "unifi-access": {
+      "entry": "src/unifi-access-client.js",
+      "configKeys": [
+        "unifiAccess"
+      ],
+      "when": "(config.unifiAccess?.host && config.unifiAccess?.apiKey)",
+      "files": [
+        "src/polling-client.js",
+        "src/unifi-access-client.js"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
+    },
+    "unifi-play": {
+      "entry": "src/unifi-play-client.js",
+      "configKeys": [
+        "unifiPlay"
+      ],
+      "when": "((config.unifiPlay?.host && config.unifiPlay?.apiKey) || config.unifiPlay?.devices?.length)",
+      "files": [
+        "src/polling-client.js",
+        "src/unifi-play-client.js"
+      ],
+      "deps": {}
+    },
     "waveshare-modbus": {
       "entry": "src/waveshare-modbus-client.js",
       "configKeys": [
@@ -845,7 +942,34 @@
       ],
       "when": "(config.tedee?.devices?.length)",
       "files": [
+        "src/lock-codes.js",
         "src/tedee-client.js"
+      ],
+      "deps": {}
+    },
+    "nuki": {
+      "entry": "src/nuki-client.js",
+      "configKeys": [
+        "nuki"
+      ],
+      "when": "(config.nuki?.bridges?.length || config.nuki?.webToken)",
+      "files": [
+        "src/lock-codes.js",
+        "src/nuki-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
+    },
+    "ttlock": {
+      "entry": "src/ttlock-client.js",
+      "configKeys": [
+        "ttlock"
+      ],
+      "when": "(config.ttlock?.clientId && config.ttlock?.username && config.ttlock?.password)",
+      "files": [
+        "src/lock-codes.js",
+        "src/polling-client.js",
+        "src/ttlock-client.js"
       ],
       "deps": {}
     },
@@ -1092,14 +1216,44 @@
     "zwave-js": {
       "entry": "src/zwave-js-client.js",
       "configKeys": [
-        "zwaveJs"
+        "zwaveJs",
+        "zwaveUsb"
       ],
-      "when": "(config.zwaveJs?.host)",
+      "when": "(config.zwaveJs?.host || config.zwaveUsb?.port)",
       "files": [
         "src/zwave-js-client.js"
       ],
       "deps": {
         "ws": "^7.5.11"
+      }
+    },
+    "zwave-usb": {
+      "entry": "src/zwave-usb-client.js",
+      "configKeys": [
+        "zwaveUsb"
+      ],
+      "when": "(config.zwaveUsb?.port)",
+      "files": [
+        "src/zwave-usb-client.js"
+      ],
+      "deps": {
+        "zwave-js": "^15.31.2",
+        "@zwave-js/server": "^3.11.0"
+      }
+    },
+    "zigbee": {
+      "entry": "src/zigbee-client.js",
+      "configKeys": [
+        "zigbee"
+      ],
+      "when": "(config.zigbee?.port)",
+      "files": [
+        "src/zigbee-client.js",
+        "src/zigbee-map.js"
+      ],
+      "deps": {
+        "zigbee-herdsman": "^11.1.1",
+        "zigbee-herdsman-converters": "^26.124.0"
       }
     },
     "vera": {
@@ -1175,6 +1329,19 @@
       ],
       "deps": {}
     },
+    "homekit-controller": {
+      "entry": "src/homekit-controller-client.js",
+      "configKeys": [
+        "homekitController"
+      ],
+      "when": "(config.homekitController?.enabled)",
+      "files": [
+        "src/homekit-controller-client.js"
+      ],
+      "deps": {
+        "hap-controller": "^0.10.2"
+      }
+    },
     "homey": {
       "entry": "src/homey-client.js",
       "configKeys": [
@@ -1224,6 +1391,31 @@
       "files": [
         "src/dsc-client.js",
         "src/dsc-itv2.js"
+      ],
+      "deps": {}
+    },
+    "ajax": {
+      "entry": "src/ajax-client.js",
+      "configKeys": [
+        "ajax"
+      ],
+      "when": "(config.ajax?.accounts?.length)",
+      "files": [
+        "src/ajax-client.js",
+        "src/sia-dc09.js"
+      ],
+      "deps": {}
+    },
+    "jablotron": {
+      "entry": "src/jablotron-client.js",
+      "configKeys": [
+        "jablotron"
+      ],
+      "when": "(config.jablotron?.accounts?.length)",
+      "files": [
+        "src/ajax-client.js",
+        "src/jablotron-client.js",
+        "src/sia-dc09.js"
       ],
       "deps": {}
     },
@@ -1417,6 +1609,44 @@
         "ws": "^7.5.11"
       }
     },
+    "airbnb": {
+      "entry": "src/airbnb-client.js",
+      "configKeys": [
+        "airbnb"
+      ],
+      "when": "(config.airbnb?.listings?.length)",
+      "files": [
+        "src/airbnb-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
+    },
+    "booking": {
+      "entry": "src/booking-client.js",
+      "configKeys": [
+        "booking"
+      ],
+      "when": "(config.booking?.listings?.length)",
+      "files": [
+        "src/airbnb-client.js",
+        "src/booking-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
+    },
+    "vrbo": {
+      "entry": "src/vrbo-client.js",
+      "configKeys": [
+        "vrbo"
+      ],
+      "when": "(config.vrbo?.listings?.length)",
+      "files": [
+        "src/airbnb-client.js",
+        "src/polling-client.js",
+        "src/vrbo-client.js"
+      ],
+      "deps": {}
+    },
     "aquilo": {
       "entry": "src/aquilo-client.js",
       "configKeys": [
@@ -1477,6 +1707,18 @@
       "tool": true,
       "files": [
         "src/lsh-modbus-scan.js"
+      ],
+      "deps": {
+        "serialport": "^13.0.0"
+      }
+    },
+    "usb-radio": {
+      "entry": "src/usb-radio-scan.js",
+      "configKeys": [],
+      "when": null,
+      "tool": true,
+      "files": [
+        "src/usb-radio-scan.js"
       ],
       "deps": {
         "serialport": "^13.0.0"

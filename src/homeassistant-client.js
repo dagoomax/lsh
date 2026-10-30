@@ -51,6 +51,8 @@ class HomeAssistantClient {
     this.backoff = 2000;
     this.mqtt = null;
     this.exported = new Map(); // objectId → { deviceKey, path, sensor, component }
+    this.names = new Map();    // entity_id → { label, room } from HA's device / entity / area registries
+    this._renameTimer = null;
     this.onStore = null;
   }
 
@@ -135,6 +137,11 @@ class HomeAssistantClient {
       if (!p) return;
       this.pending.delete(m.id);
       if (m.success) p.resolve(m.result); else p.reject(new Error(m.error?.message || 'Home Assistant error'));
+    } else if (m.type === 'event' && /^(entity|device|area)_registry_updated$/.test(m.event?.event_type || '')) {
+      // renamed / moved in HA — refresh labels and rooms once things settle
+      clearTimeout(this._renameTimer);
+      this._renameTimer = setTimeout(() => this._refreshNames().catch((err) => console.error(`[HomeAssistant] Name refresh failed: ${err.message}`)), 2000);
+      this._renameTimer.unref?.();
     } else if (m.type === 'event' && m.event?.event_type === 'state_changed') {
       const ns = m.event.data?.new_state;
       if (ns && this.entities.has(ns.entity_id)) this._applyState(ns);
@@ -142,18 +149,78 @@ class HomeAssistantClient {
     }
   }
 
-  async _sync() {
-    const [states, registry] = await Promise.all([
+  // Names the way HA shows them, from its registries: an entity name set by
+  // the user wins; otherwise device name (the user's, else the model's) plus
+  // the entity's own name; the entity's or else its device's area is the room.
+  // friendly_name alone isn't enough — HA leaves it out of states it restored
+  // while an integration (e.g. Z-Wave) wasn't loaded yet.
+  _buildNames(states, entities, devices, areas) {
+    const ent = new Map(entities.map((e) => [e.entity_id, e]));
+    const dev = new Map(devices.map((d) => [d.id, d]));
+    const area = new Map(areas.map((a) => [a.area_id, a.name]));
+    this.names.clear();
+    for (const s of states) {
+      const e = ent.get(s.entity_id), d = e?.device_id ? dev.get(e.device_id) : null;
+      const devName = d ? (d.name_by_user || d.name || '') : '';
+      let label = e?.name || null;
+      if (!label && e?.has_entity_name && devName) label = e.original_name ? `${devName} ${e.original_name}` : devName;
+      label = label || s.attributes?.friendly_name || e?.original_name || s.entity_id;
+      const room = area.get(e?.area_id) || area.get(d?.area_id) || null;
+      this.names.set(s.entity_id, { label, room });
+    }
+  }
+
+  _nameOf(s) {
+    return this.names.get(s.entity_id) || { label: s.attributes?.friendly_name || s.entity_id, room: null };
+  }
+
+  // Re-label imported devices after a rename in HA. A label or room the user
+  // set in LSH (device customization) stays.
+  async _refreshNames() {
+    const [states, entities, devices, areas] = await Promise.all([
       this._send({ type: 'get_states' }),
       this._send({ type: 'config/entity_registry/list' }).catch(() => []),
+      this._send({ type: 'config/device_registry/list' }).catch(() => []),
+      this._send({ type: 'config/area_registry/list' }).catch(() => []),
     ]);
+    this._buildNames(states, entities, devices, areas);
+    this._applyNames();
+  }
+
+  _applyNames() {
+    let changed = 0;
+    for (const id of this.entities.keys()) {
+      const dev = this.registry.devices?.get(`ha/${id}`);
+      if (!dev) continue;
+      const { label, room } = this._nameOf({ entity_id: id, attributes: this.entities.get(id)?.attributes });
+      const o = this.registry.overrides?.[dev.key] || {};
+      if (o.label) { if (dev._origLabel !== label) dev._origLabel = label }
+      else if (dev.label !== label) { dev.label = label; changed++ }
+      const single = dev.sensors?.length === 1 && dev.sensors[0].path === 'state';
+      if (single && dev.sensors[0].label !== label && !['light', 'switch', 'fan', 'input_boolean'].includes(id.split('.')[0])) dev.sensors[0].label = label;
+      if (!o.room && (dev.room || null) !== room) { if (room) dev.room = room; else delete dev.room; changed++ }
+    }
+    if (changed) {
+      this.registry.emit?.('devices-changed');
+      console.log(`[HomeAssistant] Names / rooms updated on ${changed} device(s)`);
+    }
+  }
+
+  async _sync() {
+    const [states, registry, devices, areas] = await Promise.all([
+      this._send({ type: 'get_states' }),
+      this._send({ type: 'config/entity_registry/list' }).catch(() => []),
+      this._send({ type: 'config/device_registry/list' }).catch(() => []),
+      this._send({ type: 'config/area_registry/list' }).catch(() => []),
+    ]);
+    this._buildNames(states, registry, devices, areas);
     const node = this.cfg.export?.node || 'lsh';
     const ownExports = new Set(registry.filter((r) => String(r.unique_id || '').startsWith(`${node}_`)).map((r) => r.entity_id));
     const domains = this.cfg.import?.domains?.length ? this.cfg.import.domains : DEFAULT_DOMAINS;
     const wanted = this.cfg.import?.entities?.length ? new Set(this.cfg.import.entities) : null;
     this.available = states
       .filter((s) => !ownExports.has(s.entity_id))
-      .map((s) => ({ entity_id: s.entity_id, name: s.attributes?.friendly_name || s.entity_id, domain: s.entity_id.split('.')[0], state: s.state, unit: s.attributes?.unit_of_measurement || '' }));
+      .map((s) => ({ entity_id: s.entity_id, name: this._nameOf(s).label, domain: s.entity_id.split('.')[0], state: s.state, unit: s.attributes?.unit_of_measurement || '' }));
     const camerasOn = this.cfg.import?.cameras !== false;
     this.cameras.clear();
     for (const s of states) {
@@ -164,7 +231,11 @@ class HomeAssistantClient {
       if (!this.entities.has(s.entity_id)) this._registerEntity(s);
       this._applyState(s);
     }
+    this._applyNames();
     await this._send({ type: 'subscribe_events', event_type: 'state_changed' });
+    for (const t of ['entity_registry_updated', 'device_registry_updated', 'area_registry_updated']) {
+      await this._send({ type: 'subscribe_events', event_type: t }).catch(() => {});
+    }
     this.status.import.connected = true;
     this.status.import.entities = this.entities.size;
     this._updatePlatform();
@@ -174,7 +245,7 @@ class HomeAssistantClient {
 
   _registerEntity(s) {
     const id = s.entity_id, domain = id.split('.')[0], a = s.attributes || {};
-    const name = a.friendly_name || id;
+    const { label: name, room } = this._nameOf(s);
     const sensors = [];
     if (['light', 'switch', 'fan', 'input_boolean'].includes(domain)) {
       sensors.push({ path: 'state', label: 'On', format: 'on-off', controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off', capabilityId: 'state', homekit: domain === 'light' ? 'light' : 'switch' });
@@ -199,7 +270,7 @@ class HomeAssistantClient {
     }
     this.entities.set(id, s);
     this.registry.registerDevice({
-      key: `ha/${id}`, type: 'homeassistant', label: name, icon: ICON[domain] || '🏠', homekit: [], sensors,
+      key: `ha/${id}`, type: 'homeassistant', label: name, ...(room ? { room } : {}), icon: ICON[domain] || '🏠', homekit: [], sensors,
       _writeCapability: (capId, command, args) => this._command(id, domain, capId, command, args),
     });
   }

@@ -29,6 +29,10 @@ module.exports = [
   // persist/dyson-tokens.json, produced by scripts/dyson-auth.js)
   { file: 'dyson-client', label: 'Dyson', when: (config) => config.dyson?.enabled },
   { file: 'dirigera-client', label: 'Dirigera', when: (config) => config.dirigera?.host && config.dirigera?.token },
+  // Tuya / Smart Life — cloud project (Tuya IoT OpenAPI) and/or LAN (tuyapi); see src/tuya-client.js
+  { file: 'tuya-client', label: 'Tuya', expose: 'tuya', when: (config) => (config.tuya?.accessId && config.tuya?.accessSecret) || config.tuya?.devices?.length },
+  // Sonoff / eWeLink — CoolKit cloud and/or LAN (mDNS + /zeroconf); see src/ewelink-client.js
+  { file: 'ewelink-client', label: 'Sonoff', expose: 'sonoff', when: (config) => (config.sonoff?.appId && config.sonoff?.password) || config.sonoff?.devices?.length },
   { file: 'tradfri-client', label: 'Tradfri', hint: 'npm install node-tradfri-client', when: (config) => config.tradfri?.host },
   // Start ESPHome client if devices are configured
   { file: 'esphome-client', label: 'ESPHome', when: (config) => config.esphome?.devices?.length },
@@ -50,9 +54,23 @@ module.exports = [
   // Kärcher Home Robots (RCV5/RCV3/RCF5) — cloud-only, see src/karcher-client.js
   // exposed for /api/karcher/* (map), /api/cameras and the HomeKit bridge
   { file: 'karcher-client', label: 'Karcher', expose: 'karcher', when: (config) => config.karcher?.email },
+  // Ecovacs Deebot / yeedi robot vacuums — cloud-only, see src/ecovacs-client.js
+  { file: 'ecovacs-client', label: 'Ecovacs', when: (config) => config.ecovacs?.email },
+  // Dahua NVRs / IP cameras — local CGI API; exposed for /api/cameras and /api/dahua/*
+  { file: 'dahua-client', label: 'Dahua', expose: 'dahua', when: (config) => config.dahua?.devices?.length },
+  // Helvar lighting routers (HelvarNet, TCP 50000) — see src/helvar-client.js
+  { file: 'helvar-client', label: 'Helvar', when: (config) => config.helvar?.host },
+  // UniFi Access doors (local Developer API, port 12445) — see src/unifi-access-client.js
+  { file: 'unifi-access-client', label: 'UniFi Access', when: (config) => config.unifiAccess?.host && config.unifiAccess?.apiKey },
+  // UniFi Play audio (PowerAmp, PoE Audio Port) — console Play app + per-speaker MQTT; see src/unifi-play-client.js
+  { file: 'unifi-play-client', label: 'UniFi Play', when: (config) => (config.unifiPlay?.host && config.unifiPlay?.apiKey) || config.unifiPlay?.devices?.length },
   { file: 'waveshare-modbus-client', label: 'Waveshare', when: (config) => config.waveshare?.devices?.length },
   // Start Tedee Bridge client if configured — local REST API, no cloud
   { file: 'tedee-client', label: 'Tedee', when: (config) => config.tedee?.devices?.length },
+  // Nuki smart locks / Opener — local Bridge API and/or Nuki Web (keypad codes for the guest portal)
+  { file: 'nuki-client', label: 'Nuki', when: (config) => config.nuki?.bridges?.length || config.nuki?.webToken },
+  // TTLock (and Sciener-based brands) — TTLock Open Platform cloud; passcodes for the guest portal
+  { file: 'ttlock-client', label: 'TTLock', when: (config) => config.ttlock?.clientId && config.ttlock?.username && config.ttlock?.password },
   // Start Home Connect client if configured — Bosch/Siemens/Gaggenau/Neff
   // (OAuth device flow via scripts/homeconnect-auth.js; tokens persisted + auto-refreshed)
   { file: 'homeconnect-client', label: 'HomeConnect', when: (config) => config.homeConnect },
@@ -85,7 +103,12 @@ module.exports = [
   { file: 'zway-client', label: 'Z-Way', when: (config) => config.zway?.host },
   // Start Z-Wave JS client if configured (Z-Wave JS Server / Z-Wave JS UI —
   // distinct from the Z-Way/RaZberry REST integration above)
-  { file: 'zwave-js-client', label: 'Z-Wave JS', expose: 'zwaveJs', when: (config) => config.zwaveJs?.host },
+  { file: 'zwave-js-client', label: 'Z-Wave JS', expose: 'zwaveJs', when: (config) => config.zwaveJs?.host || config.zwaveUsb?.port },
+  // Z-Wave / Zigbee USB sticks (Aeotec Z-Stick 10 Pro, Z-Wave.Me Z-Station, …):
+  // zwave-js + Z-Wave JS Server on 127.0.0.1 for the client above, and
+  // zigbee-herdsman with the Zigbee2MQTT device definitions
+  { file: 'zwave-usb-client', label: 'Z-Wave USB', when: (config) => config.zwaveUsb?.port },
+  { file: 'zigbee-client', label: 'Zigbee', when: (config) => config.zigbee?.port },
   { file: 'vera-client', label: 'Vera', when: (config) => config.vera?.host },
   { file: 'knx-client', label: 'KNX', hint: 'npm install knx', when: (config) => config.knx?.host },
   { file: 'fibaro-client', label: 'Fibaro', when: (config) => config.fibaro?.host },
@@ -93,6 +116,8 @@ module.exports = [
   { file: 'modbus-client', label: 'Modbus', when: (config) => config.modbus?.devices?.length },
   // Start Domatiq CAN bus bridge if configured (domatiq-loxone-bridge ESP32 gateway)
   { file: 'domatiq-client', label: 'Domatiq', when: (config) => config.domatiq?.host },
+  // HomeKit accessories pulled in (LSH as controller) — pairings from scripts/homekit-pair.js
+  { file: 'homekit-controller-client', label: 'HomeKitC', hint: 'npm install hap-controller', when: (config) => config.homekitController?.enabled },
   { file: 'homey-client', label: 'Homey', when: (config) => config.homey?.token && (config.homey?.host || config.homey?.homeyId) },
   // Victron devices over Bluetooth, read by the LSH host itself (Arduino UNO Q)
   { file: 'lsh-ble-client', label: 'LSH BLE', expose: 'lshBle', when: (config) => config.lshBle?.devices?.length },
@@ -100,6 +125,10 @@ module.exports = [
   // Modbus device emulator — LSH answers Modbus TCP/RTU register queries
   { file: 'modbus-emulator', label: 'ModbusEmu', expose: 'modbusEmu', when: (config) => config.modbusEmu?.enabled },
   { file: 'dsc-client', label: 'DSC', expose: 'dsc', when: (config) => config.dsc?.enabled && (config.dsc?.type2Key || config.dsc?.type1Code) },
+  // Ajax Systems Hub — LSH is the monitoring station it reports to over SIA DC-09 (local, read-only)
+  { file: 'ajax-client', label: 'Ajax', when: (config) => config.ajax?.accounts?.length },
+  // Jablotron JA-100 / JA-100+ — the same SIA DC-09 receiver (src/jablotron-client.js)
+  { file: 'jablotron-client', label: 'Jablotron', when: (config) => config.jablotron?.accounts?.length },
   // TECH Sterowniki Sinum central — local REST API (token or login)
   { file: 'sinum-client', label: 'Sinum', expose: 'sinum', when: (config) => config.sinum?.host && (config.sinum?.token || (config.sinum?.username && config.sinum?.password)) },
   // vCLU (Virtual CLU) — devices + scenes through its MCP endpoint (bot token)
@@ -131,6 +160,12 @@ module.exports = [
   { file: 'announcer', label: 'Announce', expose: 'announce', when: (config) => config.announce?.enabled },
   // Home Assistant — imports HA entities (WebSocket API) and/or exports LSH devices (MQTT Discovery)
   { file: 'homeassistant-client', label: 'HomeAssistant', expose: 'homeassistant', when: (config) => (config.homeassistant?.url && config.homeassistant?.token) || config.homeassistant?.export?.enabled },
+  // Airbnb / Booking / VRBO reservations — listing calendar export links (iCal); see src/airbnb-client.js
+  { file: 'airbnb-client', label: 'Airbnb', when: (config) => config.airbnb?.listings?.length },
+  // Booking.com — the same engine, its own config / devices (src/booking-client.js)
+  { file: 'booking-client', label: 'Booking.com', when: (config) => config.booking?.listings?.length },
+  // VRBO — the same engine (src/vrbo-client.js)
+  { file: 'vrbo-client', label: 'VRBO', when: (config) => config.vrbo?.listings?.length },
   // Aquilo liquid-level sensors (septic / rainwater tanks) — WiFi gateway's local /state endpoint
   { file: 'aquilo-client', label: 'Aquilo', expose: 'aquilo', when: (config) => config.aquilo?.gateways?.length },
   // Zehnder ventilation (rekuperacja) — ComfoConnect LAN C, ComfoConnect Pro (Modbus TCP), ComfoAir 350/550 (RS232)

@@ -69,7 +69,14 @@ module.exports = function register(router, ctx) {
     if (Array.isArray(safe.reolink?.cameras)) safe.reolink.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.mobotix?.cameras)) safe.mobotix.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
     if (Array.isArray(safe.axis?.cameras)) safe.axis.cameras.forEach((c) => { if (c.password) c.password = '••••••••'; });
+    if (Array.isArray(safe.dahua?.devices)) safe.dahua.devices.forEach((d) => { if (d.password) d.password = '••••••••'; });
     if (Array.isArray(safe.tedee?.devices)) safe.tedee.devices.forEach((d) => { if (d.apiToken) d.apiToken = '••••••••'; });
+    if (Array.isArray(safe.nuki?.bridges)) safe.nuki.bridges.forEach((b) => { if (b.token) b.token = '••••••••'; });
+    if (safe.nuki?.webToken)        safe.nuki.webToken        = '••••••••';
+    if (safe.ttlock?.clientSecret)  safe.ttlock.clientSecret  = '••••••••';
+    if (safe.ttlock?.password)      safe.ttlock.password      = '••••••••';
+    if (Array.isArray(safe.ajax?.accounts)) safe.ajax.accounts.forEach((a) => { if (a.key) a.key = '••••••••'; });
+    if (Array.isArray(safe.jablotron?.accounts)) safe.jablotron.accounts.forEach((a) => { if (a.key) a.key = '••••••••'; });
     if (safe.yale?.password)        safe.yale.password        = '••••••••';
     if (Array.isArray(safe.cameras)) safe.cameras.forEach((c) => { if (c.onvif?.password) c.onvif.password = '••••••••'; });
     if (safe.somfy?.token)          safe.somfy.token          = '••••••••';
@@ -89,6 +96,13 @@ module.exports = function register(router, ctx) {
     }
     if (safe.roborock?.cloud?.password) safe.roborock.cloud.password = '••••••••';
     if (safe.karcher?.password) safe.karcher.password = '••••••••';
+    if (safe.ecovacs?.password) safe.ecovacs.password = '••••••••';
+    if (safe.mqttBroker?.password) safe.mqttBroker.password = '••••••••';
+    if (safe.tuya?.accessSecret) safe.tuya.accessSecret = '••••••••';
+    if (Array.isArray(safe.tuya?.devices)) safe.tuya.devices.forEach((d) => { if (d.key) d.key = '••••••••'; });
+    if (safe.sonoff?.password) safe.sonoff.password = '••••••••';
+    if (safe.sonoff?.appSecret) safe.sonoff.appSecret = '••••••••';
+    if (Array.isArray(safe.sonoff?.devices)) safe.sonoff.devices.forEach((d) => { if (d.devicekey) d.devicekey = '••••••••'; });
     if (safe.landroid?.password) safe.landroid.password = '••••••••';
     if (safe.sony?.psk) safe.sony.psk = '••••••••';
     if (safe.ezviz?.password) safe.ezviz.password = '••••••••';

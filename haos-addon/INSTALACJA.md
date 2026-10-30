@@ -1,145 +1,207 @@
-# LSH — instalacja jako dodatek Home Assistant OS
+# LSH w Home Assistant — instrukcja instalacji
 
-Ten dokument opisuje instalację LSH na **Home Assistant OS (HAOS)** jako dodatku (add-on) zarządzanego przez Supervisora — zamiast na osobnym urządzeniu. Wersja angielska: [`lsh/DOCS.md`](lsh/DOCS.md), ogólne informacje o tym folderze: [`README.md`](README.md).
+LSH instaluje się w **Home Assistant OS** (także Home Assistant Green / Yellow) jako dodatek zarządzany przez Supervisora. Działa obok Home Assistant na tym samym urządzeniu, z własnym panelem na porcie **3000**. Wersja angielska (widoczna w zakładce *Dokumentacja* dodatku): [`lsh/DOCS.md`](lsh/DOCS.md).
 
-## Dlaczego nie po prostu `npm install` na HAOS?
+**Wersja dodatku: 1.0.9.** Zawiera m.in.:
+- **Nowy wygląd panelu.**
+- **Nowe integracje:** Tuya / Smart Life i Sonoff / eWeLink.
+- **Wbudowany broker MQTT.**
+- **Model 3D mieszkania** z prawdziwymi urządzeniami.
+- **Sceny eksportowane do Apple Home.**
 
-HAOS to zamknięty, jednozadaniowy system operacyjny — nie daje dostępu do instalowania dowolnego oprogramowania bezpośrednio na hoście. Jedynym oficjalnym sposobem rozszerzania go są **dodatki Supervisora** (kontenery Docker zarządzane przez wbudowany mechanizm HA). Ten folder (`haos-addon/`) pakuje LSH właśnie w ten sposób.
+## Spis treści
 
-## Wymagania
-
-- Home Assistant OS (lub Home Assistant Supervised) w wersji obsługującej dodatki niestandardowe — praktycznie każda aktualna instalacja.
-- Dostęp do **Ustawienia → Dodatki → Sklep z dodatkami** w interfejsie HA.
-- Połączenie sieciowe hosta HA z internetem (pierwsze uruchomienie pobiera i buduje LSH z GitHuba — patrz niżej).
-
-## Instalacja krok po kroku
-
-1. W Home Assistant przejdź do **Ustawienia → Dodatki → Sklep z dodatkami**.
-2. Kliknij ⋮ (trzy kropki, prawy górny róg) → **Repozytoria**.
-3. Wklej **czysty** adres repozytorium (nie link `/tree/...` do podfolderu — Supervisor wymaga adresu, który da się sklonować przez `git clone`):
-   ```
-   https://github.com/dagoomax/lsh
-   ```
-4. Zatwierdź. Supervisor czyta `repository.yaml` z **głównego katalogu** repozytorium, a następnie przeszukuje je **rekursywnie** w poszukiwaniu pliku `config.yaml` — znajdzie `haos-addon/lsh/config.yaml` automatycznie, nie trzeba wskazywać podfolderu ręcznie.
-5. Na liście dodatków pojawi się **LSH**. Otwórz go i kliknij **Zainstaluj**.
-6. Pierwsza instalacja **klonuje i buduje LSH z GitHuba** (kompilacja natywnych modułów Node.js) — to potrwa kilka minut, w zależności od wydajności hosta. Kolejne starty są już natychmiastowe.
-7. Po zbudowaniu kliknij **Uruchom**.
-
-## Home Assistant Green — skrót
-
-Home Assistant Green to `aarch64` (ARM 64-bit) — dodatek jest dla niego wspierany. Kroki są takie same jak wyżej, z kilkoma uwagami:
-
-1. **Dodanie repozytorium jednym kliknięciem** (otwórz na komputerze w tej samej sieci co Green):
-   ```
-   https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fdagoomax%2Flsh
-   ```
-   albo ręcznie: **Ustawienia → Dodatki → Sklep z dodatkami → ⋮ → Repozytoria** → `https://github.com/dagoomax/lsh`.
-2. ⋮ → **Sprawdź aktualizacje** (odświeża sklep) → **LSH** → **Zainstaluj**. Green buduje obraz sam (pobiera LSH z GitHuba i kompiluje zależności) — może to potrwać **kilkanaście minut**, nie przerywaj.
-3. Na stronie dodatku włącz **Uruchom przy starcie** i **Watchdog**, potem **Uruchom**. Postęp w zakładce **Dziennik** — LSH jest gotowy, gdy pojawi się linia `[Automation] Started`.
-4. Otwórz `http://<ip-green>:3000` (np. `http://homeassistant.local:3000`) → utwórz konto administratora → konfiguracja w **Ustawieniach** LSH.
-
-**Aktualizacje.** Dodatek pobiera kod LSH w chwili budowania obrazu, a Home Assistant przebudowuje go przy zmianie wersji dodatku. Instrukcja krok po kroku: [Przebudowa na Home Assistant Green](#przebudowa-na-home-assistant-green). Konfiguracja, użytkownicy, tokeny, flowy i parowanie HomeKit zostają (są w `/data`).
-
-**Połączenie z Home Assistant na tym samym Green.** W LSH: **Ustawienia → Home Assistant** → adres `http://127.0.0.1:8123` i długoterminowy token dostępu (Home Assistant → profil użytkownika → **Bezpieczeństwo → Tokeny długoterminowe**).
-
-**Porty.** 3000, 3443, 47128 i 8554 są zajęte bezpośrednio na Green — inny dodatek używający portu 3000 będzie kolidował.
-
-**Odtwarzacz muzyki i Loxone.** Po skonfigurowaniu Spotify lub Apple Music (**Ustawienia → Media**) pojawia się urządzenie `music/player` z wyborem źródła. Pliki do Loxone Config: **Ustawienia → Loxone XML Templates → Music outputs.xml / Music inputs.xml** — w polu adresu wpisz `<ip-green>:3000`, żeby Miniserver łączył się z Green. W Loxone podłącz blok **Radio Buttons** do wyjścia „Music Source”: 0 = stop, 1 = Spotify, 2 = Apple Music.
-
-## Przebudowa na Home Assistant Green
-
-Tak wgrywasz na Green nową wersję LSH, np. **1.0.8**, która naprawia znikanie ustawień po restarcie. Wszystko robisz w przeglądarce, w interfejsie Home Assistant. Terminal ani SSH nie są potrzebne.
-
-> ⚠️ **Nigdy nie klikaj „Odinstaluj”**, żeby „zacząć od nowa”. Odinstalowanie kasuje `/data` dodatku: konfigurację, konta, tokeny API, flowy i parowanie HomeKit.
-
-### 1. Kopia zapasowa (2 minuty)
-
-1. **Ustawienia → System → Kopie zapasowe → Utwórz kopię zapasową**.
-2. Wybierz **Częściowa**, zaznacz tylko dodatek **LSH** i zatwierdź.
-
-Jeśli coś pójdzie źle, tę kopię przywrócisz w tym samym miejscu.
-
-### 2. Pobranie nowej wersji
-
-1. **Ustawienia → Dodatki → Sklep z dodatkami**.
-2. ⋮ (prawy górny róg) → **Sprawdź aktualizacje**.
-3. Otwórz **Ustawienia → Dodatki → LSH**. Przy wersji powinien być przycisk **Aktualizuj** (np. 1.0.7 → 1.0.8). Kliknij go.
-4. Green buduje obraz od zera: pobiera LSH z GitHuba i instaluje pakiety wszystkich integracji. Trwa to **10–25 minut**. Nie zamykaj tego i nie restartuj Green.
-
-Jeśli przycisku **Aktualizuj** nie ma:
-- Odczekaj kilka minut i powtórz **Sprawdź aktualizacje**, bo sklep odświeża się z opóźnieniem.
-- Jeśli nadal go nie ma, wejdź w ⋮ → **Repozytoria** i sprawdź, czy jest tam `https://github.com/dagoomax/lsh`.
-
-### 3. Sprawdzenie, że to nowy kod
-
-Na stronie dodatku otwórz zakładkę **Dziennik**. Pierwsza linia po starcie wygląda tak:
-
-```
-LSH add-on 1.0.8 · main @ 1a2b3c4 · built 2026-10-16
-```
-
-Numer wersji i data budowania mówią, z którego kodu powstał obraz. LSH jest gotowy, gdy w dzienniku pojawi się `[Automation] Started`.
-
-### 4. Test restartu
-
-1. Otwórz `http://<ip-green>:3000` i zaloguj się.
-2. W **Ustawieniach** zapisz dowolną drobną zmianę.
-3. Na stronie dodatku kliknij **Uruchom ponownie**.
-4. Po minucie odśwież LSH. Zmiana musi być na miejscu.
-
-Ustawień, które zniknęły **przed** aktualizacją, nie da się odzyskać, bo przepadły razem ze starym kontenerem. Wpisz je raz jeszcze (np. głośniki AirPlay) i zapisz. Od 1.0.8 zostają na stałe.
-
-### Przebudowa bez zmiany wersji
-
-Na stronie dodatku ⋮ → **Przebuduj** buduje obraz jeszcze raz z tą samą wersją. Docker może przy tym użyć zapamiętanej kopii kodu. Sprawdź datę budowania w pierwszej linii dziennika. Jeśli się nie zmieniła, nowy kod przyjdzie dopiero z następną wersją dodatku (krok 2).
-
-### Gdy coś pójdzie nie tak
-
-- **Budowanie kończy się błędem.** Zwykle to sieć: Green musi mieć dostęp do `github.com` i `registry.npmjs.org`. Szczegóły są w **Ustawienia → System → Logi → Supervisor**. Spróbuj ponownie przez **Aktualizuj** albo **Przebuduj**. Stara wersja działa do czasu udanego zbudowania nowej.
-- **LSH nie startuje po aktualizacji.** Przeczytaj **Dziennik** dodatku. W ostateczności przywróć kopię z kroku 1: **Ustawienia → System → Kopie zapasowe → kopia → Przywróć**.
-- **Port 3000 zajęty.** Inny dodatek używa tego portu. Zatrzymaj go albo zmień jego port.
-
-## Pierwsze uruchomienie
-
-1. Otwórz `http://<adres-ip-home-assistant>:3000` w przeglądarce.
-2. Zostaniesz przekierowany na `/setup.html` — tam zakładasz konto administratora.
-3. Całą dalszą konfigurację integracji (Victron, Loxone, KNX, Shelly, UniFi, …) robi się z poziomu zakładki **Ustawienia** w samym LSH — to normalny sposób konfiguracji LSH, ręczna edycja `config.json` rzadko jest potrzebna. Pełny opis wszystkich integracji: [główny README projektu](../README.md).
-
-## Porty (sieć hosta)
-
-Dodatek działa z `host_network: true` — to wymagane, żeby HomeKit mógł ogłaszać się przez mDNS (dociera tylko w sieci lokalnej przy trybie hosta), dokładnie tak samo jak w zwykłym wdrożeniu Docker Compose. Wszystkie porty są więc wystawione bezpośrednio na hoście HA:
-
-| Port | Przeznaczenie |
-|---|---|
-| 3000 | Panel WWW / API (HTTP) |
-| 3443 | HTTPS (jeśli skonfigurowano TLS) |
-| 47128 | Most HomeKit |
-| 8554 | Proxy RTSP (jeśli włączono `ffmpegRtsp`) |
-
-## Dane trwałe i kopie zapasowe
-
-`config.json`, `automations.json` (flowy, reguły, sceny), folder `persist/` (parowanie HomeKit, tokeny API, użytkownicy — **nigdy nie usuwać**) oraz `certs/` znajdują się w katalogu `/data` dodatku, który Supervisor zachowuje automatycznie między restartami, aktualizacjami **i uwzględnia w kopiach zapasowych Home Assistant**.
-
-## Podłączenie do Home Assistant
-
-Po uruchomieniu LSH można odczytywać/sterować urządzeniami z poziomu Home Assistant przez REST API LSH. Przykład (czujnik + przełącznik) w `configuration.yaml` znajduje się w sekcji **"Home Assistant integration example"** głównego README — potrzebny będzie token API wygenerowany w LSH (**Ustawienia → Tokeny API**).
-
-## Ograniczenia
-
-- Brak panelu opcji Supervisora (`options`/`schema`) — LSH konfiguruje się wyłącznie przez własny interfejs Ustawień, tak samo jak w każdym innym wdrożeniu.
-- Brak trybu Ingress (osadzenia panelu w bocznym menu HA) — LSH otwiera się na swoim własnym porcie, z własnym logowaniem.
-- Zadeklarowane architektury to `amd64` i `aarch64` — 32-bitowy `armv7` (starsze Raspberry Pi) nie jest testowany pod kątem kompilacji natywnych modułów LSH.
-
-## Rozwiązywanie problemów
-
-**Instalacja/build trwa bardzo długo albo kończy się błędem sieci.** Dockerfile dodatku pobiera źródła LSH z GitHuba (`git clone`) i instaluje zależności (`npm ci`) przy każdym budowaniu obrazu — wymaga to działającego dostępu hosta HA do internetu. Sprawdź połączenie sieciowe hosta i spróbuj **Odśwież → Zbuduj ponownie**.
-
-**Po restarcie dodatku zniknęła konfiguracja.** W wersjach do 1.0.7 zapis w Ustawieniach trafiał do kontenera zamiast do `/data`, a flowy w ogóle nie były w `/data`. Restart je kasował. Naprawione w 1.0.8: zaktualizuj według [Przebudowa na Home Assistant Green](#przebudowa-na-home-assistant-green) i zapisz ustawienia jeszcze raz.
-
-**Dodatek nie pojawia się po dodaniu repozytorium.** Supervisor wyszukuje `config.yaml` rekursywnie w całym repozytorium — jeśli mimo to dodatek się nie pojawia, sprawdź w logach Supervisora (**Ustawienia → System → Logi**, wybierz *Supervisor*) komunikat o błędnym repozytorium; zwykle oznacza to chwilowy problem z pobraniem repozytorium z GitHuba, nie błąd w samym dodatku.
-
-**HomeKit / wykrywanie mDNS nie działa.** Upewnij się, że host HA rzeczywiście korzysta z sieci hosta (nie jest to możliwe do zmiany z poziomu tego dodatku — `host_network: true` jest ustawione na stałe w `config.yaml`, ponieważ bez tego HomeKit nie działa w ogóle).
+1. [Wymagania](#1-wymagania)
+2. [Instalacja](#2-instalacja)
+3. [Pierwsze uruchomienie](#3-pierwsze-uruchomienie)
+4. [Połączenie LSH z Home Assistant](#4-połączenie-lsh-z-home-assistant)
+5. [LSH w menu bocznym Home Assistant](#5-lsh-w-menu-bocznym-home-assistant)
+6. [MQTT: broker LSH czy Mosquitto](#6-mqtt-broker-lsh-czy-mosquitto)
+7. [Porty](#7-porty)
+8. [Dane, kopie zapasowe, aktualizacje](#8-dane-kopie-zapasowe-aktualizacje)
+9. [Rozwiązywanie problemów](#9-rozwiązywanie-problemów)
 
 ---
 
-*Ten plik dotyczy wyłącznie instalacji na HAOS jako dodatku Supervisora. Ogólna dokumentacja LSH (konfiguracja integracji, REST API, itd.) jest w języku angielskim — patrz [główny README](../README.md).*
+## 1. Wymagania
+
+- **System:**
+  - Home Assistant OS albo Home Assistant Supervised. Instalacje *Container* i *Core* nie mają dodatków; tam użyj Dockera, opisanego w [głównym README](../README.md).
+  - Procesor 64-bitowy: `amd64` (PC, NUC, maszyna wirtualna) albo `aarch64` (Green, Yellow, Raspberry Pi 4/5 z 64-bitowym systemem).
+- **Miejsce i pamięć:** około **1,5 GB** wolnego miejsca na obraz i **300–500 MB RAM** w działaniu.
+- **Internet podczas instalacji:** obraz jest budowany na Twoim urządzeniu, więc Home Assistant musi mieć dostęp do `github.com` i `registry.npmjs.org`. Później LSH działa bez internetu, poza integracjami chmurowymi.
+
+## 2. Instalacja
+
+### Dodanie repozytorium
+
+Najprościej: otwórz ten link na komputerze w tej samej sieci co Home Assistant i potwierdź:
+
+```
+https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fdagoomax%2Flsh
+```
+
+Ręcznie:
+
+1. **Ustawienia → Dodatki → Sklep z dodatkami**.
+2. ⋮ (prawy górny róg) → **Repozytoria**.
+3. Wklej adres i kliknij **Dodaj**:
+   ```
+   https://github.com/dagoomax/lsh
+   ```
+   Wklej sam adres repozytorium, bez `/tree/...`. Supervisor sam znajdzie dodatek w folderze `haos-addon/lsh`.
+
+### Instalacja dodatku
+
+1. W sklepie: ⋮ → **Sprawdź aktualizacje**, potem otwórz **LSH** (sekcja *LSH* na dole listy).
+2. Kliknij **Zainstaluj**. Home Assistant pobiera LSH z GitHuba i buduje obraz razem z pakietami wszystkich integracji:
+   - **około 5 minut** na komputerze PC lub NUC,
+   - **10–25 minut** na Green i Raspberry Pi.
+
+   Nie zamykaj tej strony i nie restartuj urządzenia.
+3. Po instalacji włącz **Uruchom przy starcie** i **Watchdog**.
+4. Kliknij **Uruchom** i otwórz zakładkę **Dziennik**.
+   - Pierwsza linia pokazuje, co zostało zbudowane, np. `LSH add-on 1.0.9 · main @ 66ce10a · built 2026-10-25`.
+   - LSH jest gotowy, gdy pojawi się linia `[Automation] Started`.
+
+> ⚠️ **Nigdy nie używaj „Odinstaluj”**, żeby zacząć od nowa. Odinstalowanie kasuje dane dodatku: konfigurację, konta, tokeny, flowy, sceny, model 3D i parowanie HomeKit.
+
+## 3. Pierwsze uruchomienie
+
+1. Otwórz `http://<adres-home-assistant>:3000`, np. `http://homeassistant.local:3000` albo `http://192.168.1.50:3000`.
+2. LSH poprosi o utworzenie **konta administratora**. Login i hasło LSH są niezależne od kont Home Assistant.
+3. Integracje konfigurujesz w **Ustawieniach** LSH (ikona koła zębatego w nagłówku), m.in.:
+   - **Energia:** Victron (Cerbo GX / VRM), falowniki, magazyny energii, taryfy.
+   - **Oświetlenie i przełączniki:** Shelly, Tuya / Smart Life, Sonoff / eWeLink, IKEA, WLED.
+   - **Platformy i huby:** Loxone, KNX, Fibaro, **Home Assistant**, **HomeKit**, Matter.
+
+   Pakiety wszystkich integracji są już w obrazie, więc każda zaczyna działać od razu po zapisaniu ustawień i restarcie dodatku.
+4. Po zmianie ustawień, które wymagają restartu, kliknij na stronie dodatku **Uruchom ponownie**. Komunikat w LSH mówi, kiedy jest to potrzebne.
+
+## 4. Połączenie LSH z Home Assistant
+
+Są dwa niezależne kierunki. Możesz włączyć jeden albo oba, pętli nie będzie: LSH nie importuje własnych urządzeń z powrotem.
+
+### 4a. Urządzenia Home Assistant w LSH (import)
+
+1. W Home Assistant: kliknij swój profil (lewy dolny róg) → **Bezpieczeństwo** → **Tokeny długoterminowe** → **Utwórz token**, nazwij go np. „LSH” i skopiuj.
+2. W LSH: **Ustawienia → Platformy i huby → Home Assistant**:
+   - **Home Assistant URL:** `http://127.0.0.1:8123`. Dodatek działa w sieci hosta, więc to adres Home Assistanta na tym samym urządzeniu.
+   - **Long-lived access token:** wklej token.
+   - Zostaw włączone **Import entities**, wybierz domeny lub konkretne encje i zapisz.
+3. Urządzenia z HA pojawią się w LSH z nazwami i pokojami (obszarami) z Home Assistant. Można nimi sterować, dodawać je do scen i flowów, do modelu 3D i do Apple Home.
+
+### 4b. Urządzenia LSH w Home Assistant
+
+Wybierz **jeden** z dwóch sposobów.
+
+**Sposób 1 — HomeKit Device.** Najprostszy, bez dodatkowych dodatków.
+
+LSH ogłasza się w sieci jako most HomeKit, a Home Assistant ma wbudowaną integrację, która takie mosty obsługuje.
+
+1. W LSH: **Ustawienia → Platformy i huby → HomeKit** — sprawdź, że most jest włączony, i zapisz **kod PIN** (domyślnie `031-45-154`).
+2. W Home Assistant: **Ustawienia → Urządzenia i usługi**. Powinno pojawić się wykryte urządzenie **„LSH”** (integracja *HomeKit Device*). Kliknij **Konfiguruj**, wpisz PIN.
+   - Jeśli się nie pojawi: **Dodaj integrację → HomeKit Device**.
+3. Urządzenia LSH (światła ze ściemnianiem i kolorem, rolety, przełączniki, czujniki, sceny) pojawią się w HA jako normalne encje.
+
+⚠️ **Most HomeKit można sparować tylko z jednym „domem”.** Jeśli LSH jest już dodany do aplikacji **Dom** na iPhonie, Home Assistant go nie sparuje. Wtedy użyj sposobu 2, albo usuń LSH z aplikacji Dom i zrób z Home Assistanta jedyny dom dla tego mostu.
+
+**Sposób 2 — MQTT Discovery.** Działa razem z Apple Home.
+
+1. W Home Assistant zainstaluj dodatek **Mosquitto broker** (Sklep z dodatkami), uruchom go i dodaj integrację **MQTT**, którą HA zwykle wykrywa sam.
+2. Utwórz w Home Assistant zwykłego użytkownika, np. `lsh` z hasłem: **Ustawienia → Osoby → Użytkownicy**. Mosquitto loguje użytkowników Home Assistant.
+3. W LSH: **Ustawienia → Platformy i huby → Home Assistant** → włącz **Publish LSH devices to Home Assistant (MQTT Discovery)**:
+   - **MQTT broker:** `mqtt://127.0.0.1:1883`
+   - **Username / Password:** użytkownik z punktu 2.
+   - Prefiks `homeassistant` zostaw bez zmian i zapisz.
+4. Urządzenia LSH pojawią się w HA same, w integracji **MQTT**, z aktualnym stanem i sterowaniem.
+
+Do prostych przypadków jest jeszcze REST API: przykład `sensor:` / `switch:` do `configuration.yaml` jest w głównym README, w sekcji *Home Assistant integration example*. Token tworzysz w LSH: **Ustawienia → Ogólne → Bezpieczeństwo i uwierzytelnianie → Tokeny API**.
+
+## 5. LSH w menu bocznym Home Assistant
+
+Dodatek nie ma trybu Ingress, ale panel LSH można dodać do menu HA jako stronę:
+
+1. **Ustawienia → Pulpity → Dodaj pulpit → Strona internetowa**.
+2. Adres: `http://<adres-home-assistant>:3000`, tytuł np. „LSH”, ikona `mdi:home-lightning-bolt`.
+3. LSH pojawi się w menu bocznym. Logujesz się raz, w ramce.
+
+Działa, gdy Home Assistant jest otwierany przez `http://` w sieci domowej. Przy dostępie przez `https://`, np. Nabu Casa, przeglądarka zablokuje stronę `http://` w ramce. Wtedy otwieraj LSH bezpośrednio albo skonfiguruj w LSH HTTPS na porcie 3443.
+
+## 6. MQTT: broker LSH czy Mosquitto
+
+LSH ma własny, wbudowany broker MQTT (**Ustawienia → Ogólne → MQTT Broker**). W Home Assistant zwykle działa już dodatek **Mosquitto**, który zajmuje port **1883**, a w sieci hosta dwa brokery nie mogą mieć tego samego portu.
+
+- **Masz Mosquitto (zalecane w HA):** nie włączaj brokera LSH.
+  - W integracjach LSH korzystających z MQTT (Arduino / Button+, BoneIO, SmartBob) wpisz host `127.0.0.1`, port `1883` i użytkownika Home Assistant.
+  - Twoje urządzenia (Tasmota, ESP, Zigbee2MQTT) też łączą się z Mosquitto.
+- **Nie masz Mosquitto:** włącz broker LSH. Integracje LSH z pustym hostem MQTT użyją go same, a urządzenia ustawiasz na `<adres-home-assistant>:1883`.
+- **Chcesz obu:** włącz broker LSH na innym porcie, np. **1884**.
+
+Jeśli port jest zajęty, LSH nie zatrzymuje się. Karta brokera pokazuje komunikat „port 1883 is already in use”.
+
+## 7. Porty
+
+Dodatek działa w **sieci hosta** (`host_network`). Jest to konieczne, bo HomeKit, Tuya, Sonoff i AirPlay wykrywają urządzenia przez mDNS i rozgłoszenia UDP, które docierają tylko w sieci lokalnej. Porty są więc otwierane bezpośrednio na urządzeniu z Home Assistant:
+
+| Port | Do czego | Kiedy |
+|---|---|---|
+| 3000 | panel WWW i API | zawsze |
+| 3443 | HTTPS | gdy skonfigurowano TLS |
+| 47128 | most HomeKit | gdy HomeKit włączony |
+| 1883 | broker MQTT LSH | gdy włączony (patrz punkt 6) |
+| 5540 | most Matter | gdy włączony |
+| 8554 | proxy RTSP kamer | gdy włączony `ffmpegRtsp` |
+| 6066 | prognoza pogody dla Loxone | gdy włączona |
+
+Inny dodatek na tym samym porcie, np. drugi panel na 3000, będzie kolidował. Wtedy zatrzymaj go albo zmień jego port.
+
+## 8. Dane, kopie zapasowe, aktualizacje
+
+**Gdzie są dane.** Wszystko, co zapisujesz w LSH, trafia do katalogu `/data` dodatku:
+- `config.json`, czyli ustawienia,
+- `automations.json`, czyli flowy, reguły i sceny,
+- `persist/`: konta, tokeny API, parowanie HomeKit, model 3D z przypisaniami urządzeń, historia,
+- `certs/`.
+
+Supervisor zachowuje ten katalog przy restartach i aktualizacjach.
+
+**Kopie zapasowe.** Dodatek wchodzi w kopie zapasowe Home Assistant. Przed aktualizacją zrób kopię częściową: **Ustawienia → System → Kopie zapasowe → Utwórz kopię → Częściowa**, zaznacz tylko **LSH**.
+
+**Aktualizacja do nowej wersji:**
+
+1. **Ustawienia → Dodatki → Sklep z dodatkami** → ⋮ → **Sprawdź aktualizacje**.
+2. **Ustawienia → Dodatki → LSH** → **Aktualizuj**. Obraz buduje się od nowa, tyle samo czasu co przy instalacji. Stara wersja działa, dopóki nowa się nie zbuduje.
+3. W **Dzienniku** pierwsza linia pokazuje nową wersję i datę budowania.
+4. Test: zmień coś drobnego w Ustawieniach LSH, kliknij **Uruchom ponownie** na stronie dodatku i po minucie odśwież LSH. Zmiana musi zostać.
+
+Przycisk **Przebuduj** buduje obraz jeszcze raz z tą samą wersją, ale Docker może użyć zapamiętanej kopii kodu. Jeśli data budowania w dzienniku się nie zmieniła, nowy kod przyjdzie dopiero z następną wersją dodatku.
+
+## 9. Rozwiązywanie problemów
+
+**Dodatek nie pojawia się w sklepie.** ⋮ → **Sprawdź aktualizacje**. Potem sprawdź w ⋮ → **Repozytoria**, czy jest tam `https://github.com/dagoomax/lsh`. Błędy repozytorium widać w **Ustawienia → System → Logi → Supervisor**.
+
+**Budowanie kończy się błędem.** Najczęściej to sieć: urządzenie musi mieć dostęp do `github.com` i `registry.npmjs.org`. Szczegóły są w logach Supervisora. Spróbuj ponownie przez **Zainstaluj** / **Aktualizuj**.
+
+**LSH nie odpowiada na porcie 3000.** Sprawdź **Dziennik** dodatku. Start trwa 10–30 sekund. Jeśli w dzienniku jest `EADDRINUSE :3000`, port zajmuje inny dodatek.
+
+**Integracja nie startuje.** Dziennik pokazuje powód, np. `Optional module unavailable: ./src/tuya-client (Cannot find module 'tuyapi')`. Pakiety są instalowane przy budowaniu obrazu, więc najczęściej pomaga **Aktualizuj** / **Przebuduj**.
+
+**Home Assistant nie widzi mostu HomeKit LSH.** Sprawdź, czy w LSH most jest włączony i czy dodatek działa (port 47128). Jeśli LSH jest sparowany z aplikacją Dom na iPhonie, HA go nie sparuje — patrz [4b](#4b-urządzenia-lsh-w-home-assistant).
+
+**Urządzenia LSH nie pojawiają się w HA przez MQTT.** W LSH, w karcie Home Assistant, status eksportu powinien pokazywać „broker connected”. Jeśli nie:
+- Sprawdź użytkownika i hasło. Mosquitto przyjmuje tylko użytkowników Home Assistant.
+- Sprawdź, czy integracja MQTT w HA jest dodana.
+
+**Tuya / Sonoff nie są wykrywane lokalnie.** Urządzenia muszą być w tej samej sieci (VLAN) co Home Assistant. Tryb **Auto** i tak używa chmury dla urządzeń niewidocznych w sieci.
+
+**Ustawienia znikają po restarcie.** Dotyczyło wersji do 1.0.7 i jest naprawione od 1.0.8. Zaktualizuj dodatek i zapisz ustawienia jeszcze raz.
+
+---
+
+*Ograniczenia:*
+- *LSH konfiguruje się wyłącznie we własnych Ustawieniach (dodatek nie ma panelu opcji Supervisora).*
+- *Brak Ingress.*
+- *32-bitowy `armv7` nie jest wspierany.*
+
+*Pełna dokumentacja integracji (po angielsku): [główny README](../README.md).*

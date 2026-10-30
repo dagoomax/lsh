@@ -128,7 +128,7 @@ Home Assistant is the most popular open home automation platform and has a huge 
 
 ---
 
-A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect, UniFi Access, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), generic Modbus TCP/RTU, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, Tedee smart locks, Sofar Solar inverters, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Google Home / Nest speakers and displays, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
+A self-hosted home automation dashboard built on Node.js. Aggregates live data from Victron Energy, SolarEdge, Samsung SmartThings, Loxone, Satel, UniFi Protect (incl. SuperLink sensors), UniFi Access, UniFi Play, Reolink, MOBOTIX, Axis (VAPIX), KENIK, Shelly, BoneIO, Dreame, Homey, IKEA Dirigera, IKEA Tradfri, Philips Hue, WLED, Helvar (DALI / Digidim), LG ThinQ, ESPHome (ESP32/ESP8266), KNX, CAN bus (SocketCAN/SLCAN — also NMEA 2000/Victron VE.Can and CANopen), generic Modbus TCP/RTU, Fibaro Home Center, Z-Way / RaZberry (Z-Wave), MiCasaVerde / Vera, Wiren Board, Somfy TaHoma, Bayrol Pool Manager Connect, AUX Air (AC Freedom), Miele, Grenton, Ampio, Aqara, Roborock (miio + cloud), Worx Landroid / Kress / Landxcape mowers, Viessmann ViCare, Thermomix (Cookidoo), VENTS/Blauberg HRV, MC6 AC controllers, Waveshare Modbus relays, Tedee smart locks, Sofar Solar inverters, OpenWeatherMap, Airly air quality, SmartTub hot tubs (Jacuzzi / Sundance / Watkins), Sonos speakers, Denon / Marantz AV receivers, Bang & Olufsen network speakers, Sony Bravia Android/Google TVs, other Android TV / Google TV devices (TCL, Sharp, ...), Google Home / Nest speakers and displays, Arduino / SmartBob / generic MQTT devices, virtual devices, and Suppla smart-home into a single real-time web UI with relay control, HomeKit integration (including HomeKit Secure Video and two-way audio), local camera object detection, SIP softphone, MQTT explorer, FFmpeg RTSP proxy, a Node-RED-style flow editor, and multi-language support.
 
 📋 **[Full list of supported hardware & platforms →](docs/SUPPORTED-HARDWARE.md)**
 
@@ -299,7 +299,9 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `loxone` | No | Loxone Miniserver local API |
 | `satel` | No | Satel INTEGRA alarm panel |
 | `unifi` | No | UniFi Protect cameras and NVR |
-| `unifiAccess` | No | UniFi Access door controllers (lock/unlock, door status) |
+| `unifiAccess` | No | UniFi Access doors (unlock / lock now, lock rules, doorbell, lockdown / evacuation, live events) |
+| `helvar` | No | Helvar lighting routers (HelvarNet): groups, scenes, DALI loads, multisensors |
+| `unifiPlay` | No | UniFi Play audio (PowerAmp, PoE Audio Port): volume, input, now playing |
 | `shelly` | No | Shelly Gen1 / Gen2 devices |
 | `boneio` | No | BoneIO relay boards (MQTT auto-discovery) |
 | `dreame` | No | Dreame robot vacuums and air purifiers |
@@ -744,12 +746,38 @@ With an **`apiKey`** LSH also uses the rest of the Protect 6.x public API (`src/
 | **Live video** | Reads each camera's RTSPS stream (`/cameras/{id}/rtsps-stream`) and gives it to HomeKit and the RTSP proxy — UniFi cameras get live view, not just snapshots. A missing stream is created on the console (quality `streamQuality`, default `high`); `"createStreams": false` never changes the console. Protect's `?enableSrtp` suffix is dropped for ffmpeg. |
 | **Live device state** | `/subscribe/devices` WebSocket: sensor temperature / humidity / light / battery / open-close, floodlight and siren state update immediately (the 30 s poll stays as a safety net). Both WebSockets send a ping every 3 min — the console's proxy drops idle tunnels after 10 min. |
 | **Smart detections** | `smartDetectZone` / `smartDetectLine` events → per-camera `person`, `vehicle`, `animal`, `package` sensors (for each type the camera supports), back to 0 when the event ends (or after 60 s). |
+| **SuperLink sensors** | USL Entry, Motion, Environmental, glass break… paired to a SuperLink Gateway are ordinary `/sensors` (`"type": "USL-…"`). Besides the UP Sense readings they get `leak` (mount type *leak*, or a leak timestamp; `sensorWaterLeak` events; HomeKit leak sensor), `tamper` (`sensorTamper`) and `signal` (dBm). A leak-mounted Environmental reports no temperature / humidity / light, so those aren't registered. |
 | **Floodlights** | `/lights` → device with `switch` (forces the light on / off) and PIR `motion`; HomeKit light + motion sensor. |
 | **Sirens** | `/sirens` → `siren` toggle (play for `sirenDuration` s — 5, 10, 20 or 30, default 10 — / stop). |
 | **Relays** | `/relays` → one toggle per output (`output<n>`). |
 | **Alarm Manager** | `POST /api/unifi/alarm/<triggerId>` fires a Protect Alarm Manager webhook trigger (for flows / Loxone). |
 
 Sirens and relays are marked **sensitive**: MCP bots can only switch them with *Allow locks, alarm, gates and doors*. Tested against `node scripts/unifi-protect-simulator.js 7443` (`"host": "127.0.0.1:7443", "apiKey": "simkey"`; `test/unifi-protect.test.js`) — not yet against a real console.
+
+### `helvar`
+
+```json
+"helvar": {
+  "host": "10.254.1.1",
+  "port": 50000,
+  "fade": 1,
+  "pollSeconds": 30,
+  "sensorSeconds": 5
+}
+```
+
+**Helvar** lighting (DALI, Digidim, Imagine) through a Helvar router (905, 910, 920, 950) and **HelvarNet**, the router's Ethernet I/O protocol: TCP port 50000, ASCII messages (`>V:2,C:13,G:17,L:60,F:9000#`). No login. Settings → **Helvar** tests the connection, saves and starts the module live (`src/helvar-client.js`, its own process).
+
+LSH discovers what's programmed in Designer: the workgroup's routers (`C:108`), every subnet's devices (`C:100`), groups (`C:165` / `C:164`) and scene names (`C:166`).
+
+| Device | Sensors |
+|---|---|
+| `helvar/group-<n>` | `switch`, `level` (Direct Level, `C:13`), `scene` (recall by `3`, `2.5` = block 2 scene 5, or the scene's name, `C:11`), `lastScene` (`C:109`), `power` (W, `C:161`). HomeKit light |
+| `helvar/<c>_<r>_<s>_<d>` (ballasts, dimmers, relays) | `switch`, `level` (`C:14`), `power` (W), `fault` (lamp failure / missing / faulty from the device state). HomeKit light |
+| Multisensors (312, 320, 321) | `motion` (`C:151`), `lux` (light level %, `C:150`). HomeKit motion |
+| 444 Mini Input Unit | `input1` … `input8` |
+
+Panels, buttons and IR receivers aren't shown. `fade` is the fade time in seconds for LSH's commands (sent in 1/100 s). Cluster and router come from the 3rd and 4th octets of each router's IP (`cluster` / `router` override them). Changes made from panels, sensors and schedules arrive at once when **Push Messages** is True in Designer (root node → HelvarNet); without it LSH sees them on the next poll (loads and groups every `pollSeconds`, sensors every `sensorSeconds`). Tested against `node scripts/helvar-simulator.js` (`test/helvar.test.js`), not yet against a real router.
 
 ### `unifiAccess`
 
@@ -760,9 +788,41 @@ Sirens and relays are marked **sensitive**: MCP bots can only switch them with *
 }
 ```
 
-Connects to **UniFi Access**'s local "Developer API" (a separate product/token from UniFi Protect above, even on the same console) — fixed port `12445`, authenticated with a single Bearer token. Generate one in the Access console: **Settings → Security → Advanced → API Token**.
+Connects to **UniFi Access**'s local Developer API (a separate token from UniFi Protect above, even on the same console): port `12445`, one Bearer token. Create it in the Access app: **Settings → General → Advanced → API Token** (older versions: Settings → Security → Advanced), with the door, device and system-log permissions. Settings → **UniFi Access** saves it and starts the module live (`src/unifi-access-client.js`, its own process).
 
-Discovers every door and registers it as a device with two sensors: `contact` (door position: open/closed) and `lock` (current lock state, controllable — exposed to HomeKit as a lock). Only **unlock** is a real remote action; UniFi Access doors re-lock themselves on their own configured schedule/timeout, so there is no "lock now" call in the Developer API — sending `lock` is a no-op and the next poll (30 s) reconciles the dashboard back to the door's true state.
+Every door becomes a device `unifiAccess/<door id>`:
+
+| Sensor | What it does |
+|---|---|
+| `contact` | Door position sensor (DPS) open / closed; empty when the door has none |
+| `lock` | Lock relay. **unlock** = one remote unlock (logged as actor "LSH"), **lock** = `lock_now` (ends a temporary unlock and the unlock schedule). HomeKit lock |
+| `doorbell` | 1 while an intercom / reader on that door is ringing (`access.remote_view`), back to 0 when it's answered, declined or times out |
+| `keepUnlocked` / `keepLocked` | Lock rules `keep_unlock` / `keep_lock`; off = `reset` |
+| `unlockFor` | Unlock for N minutes (1–480, lock rule `custom`) |
+| `setRule` | Any lock rule by name: `keep_lock`, `keep_unlock`, `custom:15`, `reset`, `lock_early`, `lock_now` |
+| `lockRule`, `lockRuleEnds` | The current rule (`schedule`, `custom`, …) and when it ends |
+| `lastAccess` | Who opened it last and how ("Anna · nfc") |
+
+`unifiAccess/system` has `lockdown` and `evacuation` (all doors at once — turning one on releases the other), `doors`, `openDoors` and `readers`. Doors and the system device are **sensitive** (MCP bots need *Allow locks, alarm, gates and doors*). Rings, door position and lock changes, access logs and emergency changes arrive over the notifications WebSocket (`/api/v1/developer/devices/notifications`, Access 1.20.11+); a 30 s poll reconciles everything. Lock rules and emergency need Access 1.24.6+. Tested against `node scripts/unifi-access-simulator.js` (`"host": "127.0.0.1:12445", "apiKey": "simtoken"`; `test/unifi-access.test.js`), not yet against a real console.
+
+### `unifiPlay`
+
+```json
+"unifiPlay": {
+  "host": "192.168.1.1",
+  "apiKey": "",
+  "devices": [{ "host": "192.168.1.60", "name": "Patio" }],
+  "mqtt": { "certFile": "/home/lsh/unifi-play/client.crt", "keyFile": "/home/lsh/unifi-play/client.key" },
+  "pollSeconds": 30
+}
+```
+
+**UniFi Play**: Ubiquiti's audio line (PowerAmp `UPL-AMP`, PoE Audio Port `UPL-PORT`). Ubiquiti publishes no API for it. LSH uses the two channels the Play app itself uses (protocol as documented by the MIT-licensed ha-unifiplay project):
+
+- **Console** (`host` + `apiKey`: the UniFi OS API key, Control Plane → Integrations): `GET /proxy/apollo/api/v1/devices` gives each device's name, model, firmware, volume, input, streaming service and now playing. Read-only, polled every `pollSeconds`.
+- **Each device's MQTT broker** (TLS, port 8883): live state and control: `volume` (0–100), `muted` (volume 0 / restore), `source` (`streaming`, `speakers` = HDMI eARC, `lineIn`, and on the Port also `spdif`, `usb`), `player` (`play`, `pause`, `next`, `prev`) and `locate`. The broker accepts only a client certificate signed by Ubiquiti's CA. **LSH does not ship one**: `mqtt.certFile` / `mqtt.keyFile` point at the files you provide. Without them the devices are read-only. `devices` adds speakers by IP (no console, or a Port the console lists without an address); they need the certificate.
+
+Devices are `unifiPlay/<mac>` with `online`, `playing`, `volume`, `muted`, `source`, `service`, `title`, `artist`, `album`. To play announcements or chimes on them, add them as AirPlay speakers (`airplay`). Tested with a fake console and MQTT broker (`test/unifi-play.test.js`), not on real hardware; a firmware update can change the protocol.
 
 ### `shelly`
 
@@ -859,6 +919,29 @@ First run: set `securityCode` from the sticker on the gateway back. The server g
 Lights, plugs and Zigbee accessories are **auto-discovered** and polled every `pollInterval` seconds (default 5). Color/white-ambiance lights expose brightness, color temperature and hue/saturation (HomeKit `light-rw`, full color control); smart plugs are switches; Hue motion sensors register as one device with motion + temperature + lux + battery; dimmer switches report their last `buttonevent` and battery.
 
 For development without a bridge, run `node scripts/hue-simulator.js` (a fake bridge on port 8180 with a color light, dimmable light, plug, motion trio and a dimmer switch) and point the config at `"host": "127.0.0.1", "port": 8180, "username": "sim"`.
+
+### `homekitController`
+
+```json
+"homekitController": {
+  "enabled": true,
+  "pollInterval": 60
+}
+```
+
+**HomeKit accessories → LSH (→ Loxone).** LSH acts as a HomeKit *controller*, the way the Home app does, and pulls third-party HomeKit accessories in as `homekitc` devices. This is the opposite direction to the `homekit` bridge (LSH devices → Apple Home). From there they work like any other LSH device. Loxone reads their state through `/api/loxone/inputs.xml?type=homekitc` (virtual HTTP inputs) and controls them through `/api/loxone/outputs.xml?type=homekitc` (virtual outputs). For push instead of polling, use `loxoneOut` mappings.
+
+Only HomeKit over IP (Wi-Fi/Ethernet) works. BLE and Thread accessories are not supported. A HomeKit accessory accepts one controller: **remove it from the Home app first** (or factory-reset it), then pair it with LSH:
+
+```bash
+node scripts/homekit-pair.js                       # list accessories, shows which are ready to pair
+node scripts/homekit-pair.js <id> <setup-code>     # pair (code from the label, 123-45-678)
+node scripts/homekit-pair.js --remove <id>         # unpair
+```
+
+Pairings are stored in `persist/homekit-controller.json`; restart LSH after pairing. Each accessory behind a paired bridge becomes its own device. Every readable characteristic becomes a sensor, and writable ones become controls: on/off and 0/1 states (lock target, active) become toggles, numbers become sliders, colour temperature is converted from mireds to Kelvin, and hue + saturation become one colour control that takes Loxone's composite RGB value. Values arrive by HAP event subscription, and `pollInterval` is a fallback. IP/port changes are followed via mDNS. These devices are never re-exposed through the LSH HomeKit bridge.
+
+For development without accessories, run `node scripts/homekit-accessory-simulator.js` (a fake bridge with a colour bulb, temperature/humidity sensor and lock; setup code `031-45-154`).
 
 ### EV chargers
 
@@ -1074,12 +1157,12 @@ For development without hardware, run `node scripts/aqara-simulator.js` (a fake 
 ```json
 "esphome": {
   "devices": [
-    { "name": "Living Room ESP32", "host": "192.168.1.80", "port": 80, "password": "optional" }
+    { "name": "Living Room ESP32", "host": "192.168.1.80", "port": 80, "username": "optional", "password": "optional" }
   ]
 }
 ```
 
-Each device must have `web_server:` enabled in its ESPHome YAML configuration. The `password` field is optional and matches the `web_server.auth.password` setting. Multiple devices are supported.
+Each device must have `web_server:` enabled in its ESPHome YAML configuration. `username`/`password` are optional and match `web_server.auth` (Basic) — current ESPHome rejects an empty username, so set both. Multiple devices are supported.
 
 **mmWave presence sensors** (e.g. [Sensy-One](https://sensy-one.com/) S1/E1, and anything else running stock ESPHome firmware with `web_server:` on — no dedicated LSH client needed) bridge to HomeKit/Matter as occupancy sensors: entities with `device_class: presence` map to `homekit: occupancy` (confirmed against Sensy-One's own published ESPHome firmware source, which uses `presence` rather than Home Assistant's more common `occupancy` device class), and `device_class: motion` maps the usual way. This also fixed a real pre-existing gap: ESPHome `binary_sensor` entities (motion/contact/smoke/leak/occupancy) never reached HomeKit or Matter at all before — verified live end-to-end (fake entity set → `esphome-client.js` → `homekit-bridge.js`'s accessory builder), confirming `OccupancySensor`/`MotionSensor` HAP services are actually produced, not just that the tag looked right.
 
@@ -1338,6 +1421,8 @@ Connects to a **Somfy TaHoma** installation and discovers roller shutters, awnin
 
 **`devices`** — optional name filter array. Leave empty to discover all. Example: `["Salon", "Bedroom"]`.
 
+**`tiltPresets`** — optional one-tap slat buttons for venetian blinds (io covers with `setOrientation`), shown under the Tilt slider at the top of the device popup. `true` gives Closed / Half / Open (0 / 50 / 100 % open); an array sets your own values, e.g. `[0, 30, 100]`. Off by default.
+
 **Control:** Each device exposes these sensors, controllable via `GET /api/device/<key>/set?sensor=<path>&value=<v>` (or `POST /api/device/<key>/command`):
 
 | Sensor | Type | Command |
@@ -1559,6 +1644,102 @@ Support for **WLED** addressable-LED controllers (ESP8266 / ESP32) via the local
 
 ---
 
+### `mqttBroker`
+
+```json
+"mqttBroker": { "enabled": true, "port": 1883, "username": "", "password": "" }
+```
+
+A **built-in MQTT broker** (Aedes, module `mqtt-broker`) for ESP / Arduino boards, Button+, Tasmota, Shelly MQTT, Zigbee2MQTT and anything else that speaks MQTT — no Cerbo GX or separate Mosquitto needed. It listens on all interfaces; with `username` set every client must log in with it, otherwise it is open on the LAN like a default Mosquitto. Retained messages live in memory.
+
+LSH's own general-purpose MQTT clients — Arduino, BoneIO, Flows' MQTT nodes, the MQTT Explorer page — use it whenever their own host is left blank (`src/mqtt-target.js`); Victron keeps talking to `mqtt.host` (the GX). Settings → General → MQTT Broker shows whether it's running and who is connected; `GET /api/mqtt-broker/status`.
+
+---
+
+### `tuya`
+
+```json
+"tuya": {
+  "mode": "auto",
+  "region": "eu",
+  "accessId": "…",
+  "accessSecret": "…",
+  "uid": "",
+  "pollInterval": 30,
+  "devices": [
+    { "name": "Desk plug", "id": "bf12…", "key": "a1b2…", "ip": "192.168.1.60", "version": "3.4" }
+  ]
+}
+```
+
+**Tuya / Smart Life** devices (and the many brands built on Tuya — LSC, Nedis, BlitzWolf, Gosund, Moes, …): plugs and power strips, wall switches, bulbs and LED strips, dimmers, curtain motors, and temperature / humidity / door / motion / leak / smoke sensors. Module `tuya` (npm `tuyapi` for LAN control).
+
+| Field | Default | Description |
+|---|---|---|
+| `mode` | `auto` | `auto` = LAN for every device it can reach, cloud for the rest; `cloud`; `local` (no cloud at all) |
+| `region` | `eu` | Tuya data centre: `eu`, `eu-w`, `us`, `us-e`, `cn`, `in` |
+| `accessId` / `accessSecret` | — | Cloud project keys from [iot.tuya.com](https://iot.tuya.com) → Cloud → your project → Overview |
+| `uid` | all linked | Limit to one linked app account |
+| `pollInterval` | `30` | Cloud status poll (s) for devices without a LAN link |
+| `devices[]` | — | LAN devices: `id`, `key` (local key), `ip` (found by UDP broadcast if empty), `version` (`3.1`–`3.5`, detected if empty), `name`, optional `dps` map (`{ "20": "switch_led", "22": "bright_value_v2" }`) |
+
+**Cloud setup:** create a Cloud project (Smart Home, your data centre), subscribe it to *IoT Core*, then *Devices → Link App Account* and scan the QR code with the Smart Life / Tuya app. Every device of that account appears with its DP model and its **local key**, so in `auto` mode LSH then connects to each device on the LAN (port 6668) and only falls back to the cloud when the LAN link is down. **Local only:** list each device's `id` and `key` (from the cloud project, or tools like tinytuya's wizard); DPs follow the common Tuya layouts unless `dps` maps them.
+
+**Controls:** on/off per socket / gang / USB, brightness, colour temperature (2700–6500 K), colour (HSV), curtain open / close / stop / position. Readings: power, voltage, current, energy, temperature, humidity, battery, contact, motion, leak, smoke. Lights, switches, covers and sensors are bridged to HomeKit. `GET /api/tuya/status` shows each device's link (LAN / cloud, IP, protocol). Test without hardware: `node scripts/tuya-simulator.js` (cloud API), tests in `test/tuya-sonoff.test.js`.
+
+**TESLA Smart** (Tuya inside), added in the TESLA Smart or Smart Life app and linked to the cloud project:
+- **Wi-Fi plugs and power strips:** every socket and the USB block switch separately (`switch`, `switch_2`, …, `switch_usb1`), with metering where the plug has it. For example, the Power Strip 3+4 USB gives three sockets plus USB.
+- **Zigbee accessories on the TESLA Smart Zigbee Hub:** radiator heads, plugs, door, motion, gas and smoke sensors, and buttons. Any Tuya Zigbee gateway (`wg`/`wg2`) works the same way.
+  - Its sub-devices come from the cloud (`/v1.0/devices/<hub>/sub-devices`).
+  - In `auto` mode they're controlled locally through the hub's own LAN connection, addressed by their node id (tuyapi `cid`). The cloud is the fallback.
+  - A local-only sub-device is `{ "id", "gateway": "<hub id>", "cid": "<node id>", "dps": {…} }`.
+- **Radiator heads / thermostats (`wkf`):** `heatingSetpoint` (writable, from `temp_set` with its scale and range), `temperature` and `thermostatMode` (`auto` / `manual` / `holiday`, writable).
+- **Other sensors:** `gas`, `co`, `tamper`, `batteryLow` (from `battery_state`).
+- **Buttons:** `button<n>` (`single_click` / `double_click` / `long_press`), for flows.
+- **HomeKit:** Tuya motion, leak, smoke and CO sensors now reach HomeKit too; before, only contact sensors did.
+- **Zigbee without the hub:** TESLA Smart Zigbee devices can pair straight to LSH's own Zigbee USB stick instead (see `zigbee`). Their Tuya-based definitions come from the Zigbee2MQTT library.
+
+**TechToy** (same company as TESLA Smart, also set up in the TESLA Smart app) — bulbs, table lamps, LED strips, Christmas lights, plugs — are Tuya devices too. They get their own Settings entry (Settings → **TechToy**): it lists the TechToy devices LSH found, above the shared Tuya connection (`config.tuya`). Devices are recognised from the cloud product name: device field `brand` is `TechToy` / `TESLA Smart`, also in `GET /api/tuya/status`. TechToy Zigbee bulbs work through the TESLA Smart Zigbee Hub or pair straight to the Zigbee USB stick (Zigbee2MQTT knows e.g. the Smart bulb RGB 9W E27).
+
+The simulator includes a TechToy bulb and plug, a TESLA Smart power strip, and a Zigbee hub with a radiator head, a plug, a gas sensor and a button. Written against Tuya's documented API and the tuyapi `cid` option; not checked with a real TESLA Smart device.
+
+---
+
+### `sonoff`
+
+```json
+"sonoff": {
+  "mode": "auto",
+  "region": "eu",
+  "email": "you@example.com",
+  "password": "…",
+  "countryCode": "+48",
+  "appId": "…",
+  "appSecret": "…",
+  "pollInterval": 30,
+  "devices": [
+    { "name": "Garage relay", "id": "1000abcdef", "devicekey": "", "host": "192.168.1.70" }
+  ]
+}
+```
+
+**Sonoff / eWeLink** devices: BASIC / MINI / 4CH / DUALR3 relays, S26 / S40 plugs, POW / POWR3 metering, D1 and KING-M4 dimmers, B02 / B05 bulbs, TH temperature sensors, curtain motors, and Zigbee sensors behind a Sonoff bridge. Module `ewelink` (npm `multicast-dns` for LAN discovery).
+
+| Field | Default | Description |
+|---|---|---|
+| `mode` | `auto` | `auto` = LAN for devices that announce themselves, cloud for the rest; `cloud`; `local` |
+| `region` | `eu` | eWeLink account region: `eu`, `us`, `as`, `cn` (a wrong one is corrected at sign-in) |
+| `email` *or* `phoneNumber`, `password`, `countryCode` | — | eWeLink app account |
+| `appId` / `appSecret` | — | Your own app from [dev.ewelink.cc](https://dev.ewelink.cc) (CoolKit open platform) — the cloud API needs one |
+| `pollInterval` | `30` | Cloud status poll (s) |
+| `devices[]` | — | LAN / DIY devices: `id`, `devicekey` (empty for DIY mode), `host` (found over mDNS if empty), `name` |
+
+**How it works:** the cloud (CoolKit API v2) lists the account's devices with their params and each one's `devicekey`. Sonoff firmware announces itself on the LAN over mDNS (`_ewelink._tcp`) with its state in TXT records, AES-128-CBC encrypted with MD5(devicekey) — so in `auto` mode LSH reads those announcements and switches relays, plugs and the D1 dimmer with a POST to `http://<ip>:8081/zeroconf/…`, using the cloud only for devices it can't reach locally (and for bulbs, curtains and Zigbee sub-devices, which have no LAN API). Devices switched to **DIY mode** work with `mode: "local"` and no account at all.
+
+**Controls:** on/off per channel, brightness, colour (B05), curtain position / open / close / stop (uiid 11, DUALR3 motor mode). Readings: power, voltage, current, temperature, humidity, battery, door contact, motion. Everything is bridged to HomeKit. `GET /api/sonoff/status`. Test without hardware: `node scripts/ewelink-simulator.js` (cloud API + one LAN device on mDNS).
+
+---
+
 ### `zway`
 
 ```json
@@ -1591,6 +1772,63 @@ Connects to a **Z-Wave JS Server** (the WebSocket JSON-RPC server bundled with [
 **Supported Command Classes:** binary switches (on/off), multilevel switches / dimmers, binary & multilevel sensors (temperature → HomeKit, humidity, illuminance, power…), meters, thermostat setpoints, door locks, battery levels, notifications. Anything else falls back to a generic read-only sensor.
 
 Live updates arrive as `value updated` events over the same socket; writes go through `node.set_value`.
+
+### `zwaveUsb` / `zigbee` — Z-Wave and Zigbee USB sticks
+
+LSH can run its own Z-Wave and Zigbee networks on a USB stick, with no Z-Wave JS UI, Zigbee2MQTT or MQTT broker. Set it up in Settings → Platforms & Hubs → **Z-Wave & Zigbee USB**: pick the stick, **Find ports**, then Save. Changes apply live.
+
+```json
+"zwaveUsb": { "port": "/dev/serial/by-id/usb-Silicon_Labs_CP2105_Dual_USB_to_UART_Bridge_Controller_00F4C829-if01-port0", "region": "Europe" },
+"zigbee":   { "port": "/dev/serial/by-id/usb-Silicon_Labs_CP2105_Dual_USB_to_UART_Bridge_Controller_00F4C829-if00-port0",
+              "adapter": "ember", "channel": 15, "rtscts": false, "names": { "0x00158d0001a2b3c4": "Czujnik salon" } }
+```
+
+**Sticks:**
+
+| Stick | Z-Wave | Zigbee | Notes |
+|---|---|---|---|
+| Aeotec Z-Stick 10 Pro (ZWA060) | EFR32ZG23, 800 series, Long Range | EFR32MG21, `ember` | Zigbee firmware **7.4.3+** is needed (older is EZSP 8). Z-Wave 7.23.2 recommended. |
+| Z-Wave.Me Z-Station | ZGM130S, 700 series | EFR32MG21P, `ember` | Needs the Zigbee NCP firmware, **2024.04.22+**. |
+| Single-radio | Aeotec Z-Stick 7, Zooz ZST10/ZST39, HA Connect ZWA-2 | HA Connect ZBT-1/2, Sonoff ZBDongle-E (`ember`), ZBDongle-P (`zstack`), ConBee (`deconz`) | |
+
+Both dual sticks are one Silicon Labs CP2105 chip with two UARTs, so they have the same USB ids. Which port is Z-Wave and which is Zigbee (`if00`/`if01`, `ttyUSB0`/`1`) differs between units. **Find ports** (tool module `usb-radio`, `src/usb-radio-scan.js`) asks each free port directly: a Z-Wave Serial API `GET_VERSION`, then an EmberZNet ASH reset. It only reads; nothing is changed on the radios. A `port` can also be `tcp://host:port` (ser2net, network coordinators).
+
+**Z-Wave** (`src/zwave-usb-client.js`, its own process):
+- Runs the zwave-js driver on the stick and the Z-Wave JS Server on `127.0.0.1:3010` (`serverPort`).
+- The regular `zwaveJs` client connects to that, so devices, commands and inclusion (S2 PIN, exclusion) work exactly like with an external Z-Wave JS UI.
+- If `zwaveJs.host` is also set, that external server is used instead.
+- Network security keys (S0, S2, Long Range) are generated on first start in `persist/zwave/keys.json` (mode 600). The driver cache is in `persist/zwave/cache`. **Back up `persist/zwave`**: securely included devices only talk to these keys.
+
+**Zigbee** (`src/zigbee-client.js` + `src/zigbee-map.js`, its own process):
+- Uses zigbee-herdsman with zigbee-herdsman-converters, the device library Zigbee2MQTT uses.
+- Each device becomes `zigbee/<ieee>` with the usual LSH sensor paths:
+
+  | Device | Sensors |
+  |---|---|
+  | Light | `switch`, `level`, `colorTemperature`, `hue`/`saturation`/`color` (HomeKit light) |
+  | Plug / relay | `switch`, `switch_<endpoint>` |
+  | Cover | `windowShade`, `level` |
+  | Lock | `lock` |
+  | Thermostat | `heatingSetpoint`, `temperature`, `thermostatMode` |
+  | Readings | temperature, humidity, battery, contact (1 = open), motion, presence, leak, smoke, illuminance, power, energy, `linkquality`, `action`, … |
+
+- Device settings (Zigbee2MQTT's `config` category) are left out.
+- `zigbee/coordinator` holds `permitJoin` (pairing, 4 min), the channel, PAN ID, firmware and device count.
+- `POST /api/usb-radio/zigbee/permit` and `/remove` drive it from Settings.
+- The network (PAN ID, extended PAN ID, network key) is created on first start in `persist/zigbee/network.json`. The device database and coordinator backup are kept next to it.
+- **Coming from Zigbee2MQTT:** put its `pan_id`, `ext_pan_id` and `network_key` into `network.json` (same names; arrays or hex) before the first start, and use the same `channel`. Paired devices then stay paired. Stop Zigbee2MQTT first: a port can only be open in one program.
+
+**npm packages:** the modules install zwave-js and @zwave-js/server (`zwave-usb`), and zigbee-herdsman with zigbee-herdsman-converters (`zigbee`), on demand. They're large: about 130 MB together on disk. Measured RAM: about 170 MB for the Z-Wave process and 95 MB for Zigbee.
+
+**API:**
+- `GET /api/usb-radio/status`
+- `GET /api/usb-radio/ports`
+- `POST /api/usb-radio/probe`
+- `POST /api/settings/usb-radio`
+
+**Testing:** done without a real stick. The Z-Wave side is tested end to end against zwave-js's own mock controller (`test/usb-radio.test.js`, when zwave-js is installed). The Zigbee side is tested with Zigbee2MQTT's real definitions and converters on a stand-in coordinator (`test/zigbee.test.js`).
+
+**Docker:** pass the stick through (`devices: ["/dev/serial/by-id/…:/dev/serial/by-id/…"]`). The Home Assistant add-on maps USB serial ports (`uart: true`).
 
 ### `vera`
 
@@ -2059,6 +2297,31 @@ Exposed to HomeKit the same way as Roborock above (`Fanv2` impersonation).
 
 ---
 
+### `ecovacs`
+
+```json
+"ecovacs": {
+  "email": "you@example.com",
+  "password": "",
+  "country": "PL",
+  "did": "",
+  "pollSeconds": 60
+}
+```
+
+Connects **Ecovacs Deebot** robot vacuums (and yeedi) — the same account as the Ecovacs Home app, cloud only (Ecovacs has no local API). Built on the [`ecovacs-deebot`](https://github.com/mrbungle64/ecovacs-deebot.js) library (npm dep, installed with the module; GPL-3.0), which handles the portal login and the per-robot MQTT session (XMPP for legacy models). Current JSON-protocol models (OZMO 920/950, T8, T9, T10, X1, N8, U2) are the best supported.
+
+- `email` / `password` — Ecovacs Home account. Settings → Appliances & Robots → **Ecovacs Deebot** has a Test Login button that lists the robots with their ids.
+- `country` — two-letter code of the country the account was registered in (default `PL`); it picks the Ecovacs region.
+- `did` — optional, limit to one robot on a multi-robot account.
+- `pollSeconds` — battery / clean / charge state is pushed by the robot and also re-requested this often (default 60, min 30).
+
+Each robot is a device `ecovacs/<did>`: `battery` (%), `status` (Cleaning / Returning / Charging / Paused / Idle / Error), `cleaning` (toggle — on starts an auto clean, off sends it to the dock; HomeKit switch), `error` (text, empty when fine), `charging`, `online`. `POST /api/device/ecovacs/<did>/command` also takes `stop`, `pause`, `resume` and `locate` through `_writeCapability`. A stable client id is kept in `persist/ecovacs.json`; a failed login is retried every 60 s.
+
+**Not implemented**: rooms / spot areas, maps, suction and water level, consumables.
+
+---
+
 ### `landroid`
 
 ```json
@@ -2438,6 +2701,32 @@ Support for **Reolink PoE cameras and NVRs**. Each entry is one camera: a standa
 - `siren: true` — adds a manual siren trigger (`AudioAlarmPlay`) — momentary, no persistent on/off state
 
 **AI object detection** — cameras with onboard AI (most PoE models) get polled every `aiPollInterval` seconds (top-level, default 5) via `cmd=GetAiState`. Each category the camera actually supports — **person**, **vehicle**, **pet**, **face**, and any newer category a model reports — shows up as its own device (`Driveway — Person`, `Driveway — Vehicle`, …), each exposed to HomeKit as a motion sensor, so "person detected" and "vehicle detected" can drive separate automations instead of one generic motion trigger. Set `"aiDetect": false` on a camera to skip AI polling for it (e.g. to cut down on request volume for a large NVR); cameras without AI hardware simply never register any detection devices, no toggle needed.
+
+---
+
+### `dahua`
+
+```json
+"dahua": {
+  "devices": [
+    { "name": "dom", "host": "192.168.1.108", "username": "lsh", "password": "secret",
+      "port": 80, "https": false, "rtspPort": 554, "stream": "main", "events": true }
+  ],
+  "holdSeconds": 10, "pollSeconds": 60,
+  "mjpeg": { "fps": 10, "width": 640, "stream": "sub" }
+}
+```
+
+**Dahua NVRs and IP cameras** (and the OEM lines built on the same firmware: Imou, Amcrest, Lorex, …) over the local HTTP CGI API with HTTP Digest auth (`src/dahua-client.js`, no npm deps). Settings → Cameras → **Dahua NVR & Cameras**; **Test** shows the model and the connected channels. Create a separate user on the NVR for LSH.
+
+- **Cameras** — every *connected* channel of an NVR (unused inputs are skipped; set `channels: [1, 3]` to pick) becomes a camera tile named after the channel title. Snapshots are proxied at `/api/dahua/snapshot/<device>/<channel>` so the password never reaches the browser; the RTSP URL is `rtsp://user:pass@host:554/cam/realmonitor?channel=<n>&subtype=0` (`stream: "sub"` → `subtype=1`) for go2rtc / HomeKit / recording. `webrtcUrls: { "1": "http://go2rtc:1984/api/webrtc?src=brama" }` adds live view per channel.
+- **Events** — LSH keeps the NVR's `eventManager.cgi?action=attach` stream open (heartbeat every 5 s, reconnects with backoff). Each channel is a device `dahua/<device>/<channel>` with `motion` (VideoMotion start/stop, HomeKit motion sensor) and `online` (NVR channel state, VideoLoss). **Person / Vehicle** (SmartMotionHuman / SmartMotionVehicle, or the object type of an IVS rule) and **Line crossing / Intrusion** (CrossLineDetection / CrossRegionDetection) each become their own device `dahua/<device>/<channel>/<kind>` with `detected` the first time the NVR reports one — a separate HomeKit motion sensor each, like Reolink's AI categories. Pulse-type events stay on for `holdSeconds`. `events: false` turns the stream off.
+- **Loxone app** — it shows only JPEG / MJPEG, not RTSP. Per channel LSH serves **live MJPEG** at `/api/dahua/mjpeg/<device>/<channel>?token=<API token>`: ffmpeg converts the NVR's sub-stream (`mjpeg.stream`, default `sub`) to `mjpeg.fps` (default 10) at `mjpeg.width` (default 640 px) — started by the first viewer, one ffmpeg per channel shared by every viewer, stopped 10 s after the last one leaves; `?fps=` / `?width=` override per URL. **Snapshots** take `?width=` to scale the NVR's 4K still down. In Loxone Config add an **Intercom (custom)** block per camera with the live address as the video stream and the snapshot as the image; Settings → Dahua lists both addresses for every camera. Needs `ffmpeg` (`ffmpegRtsp.ffmpegPath` if it's not on the PATH). Load: about 5–8 % of a Raspberry Pi 5 core per watched camera at 640 px / 10 fps.
+- `GET /api/dahua/status` — per device: reachable, model, event stream up, channels with their Loxone addresses, MJPEG viewers.
+
+Test without hardware: `node scripts/dahua-simulator.js 8096` (login `admin` / `admin123`, type events such as `CrossLineDetection Pulse 1 Human`) and add host `127.0.0.1`, port `8096`. `test/dahua.test.js`.
+
+**Not implemented**: PTZ, playback / recordings search, two-way audio, alarm outputs.
 
 ---
 
@@ -4234,6 +4523,190 @@ Every AirPlay speaker and Chromecast / Google Home / Nest of the dashboard's med
 
 Every tank the receiver reports becomes device `aquilo/<id>` (tanks added later appear on the next poll): `fill` (%), `level` (cm), `overflow` (on at ≥ `overflowPct`), `stale` (on when the last transmission is older than `staleHours` — battery or radio died; the receiver keeps repeating the last reading), `lastRead`, and — when the receiver's firmware reports them — `battery` (%), `daysLeft`, `toFull` (cm), `lastEmptied`. HomeKit: fill as a level (humidity) sensor plus overflow as a leak sensor. API: `GET /api/aquilo/status`, `POST /api/aquilo/test {"host":"…"}`, `POST /api/settings/aquilo`. Test without hardware: `node scripts/aquilo-simulator.js 8095` and add gateway `127.0.0.1:8095`.
 
+### Airbnb (rental reservations)
+
+Reservations of short-term rental listings, from each listing's **calendar export link** (iCal). Airbnb has no public host API; in Airbnb go to Calendar → Availability → Connect calendars → **Export calendar**. VRBO links work too, and a Booking.com link added here is read with Booking's rules (below) (`src/airbnb-client.js`, no npm deps, runs in its own process). Settings → Home → **Airbnb**: add a listing with its link and your check-in and check-out times, **Test calendar link**, **Save**. Changes apply live.
+
+```json
+"airbnb": {
+  "listings": [{ "name": "Mieszkanie", "ical": "https://www.airbnb.com/calendar/ical/123.ics?s=…",
+                 "checkIn": "15:00", "checkOut": "11:00", "prepareHours": 3, "room": "Mieszkanie" }],
+  "pollMinutes": 30
+}
+```
+
+Each listing becomes a device `airbnb/<name>`. Its states change at the configured times, not only when the calendar is fetched:
+
+| Sensor | Meaning |
+|---|---|
+| `occupied` | A guest is between check-in and check-out time. Also a HomeKit occupancy sensor. |
+| `prepare` | The next check-in is within `prepareHours`. Use it to start heating or cooling. |
+| `checkInToday`, `checkOutToday`, `turnover` | Arrival today, departure today, or both on the same day. |
+| `guest`, `nextGuest` | Reservation code · …last 4 phone digits. Airbnb shares no names. |
+| `nextCheckIn`, `nextCheckOut`, `daysToNext` | The upcoming dates. |
+| `nights30`, `occupancy30` | Booked nights and % over the next 30 days. |
+| `reservations` | The next 10 stays (object). |
+
+- **Blocked dates:** "Airbnb (Not available)" and VRBO's "Blocked" are not counted as stays.
+- **Guest names:** VRBO's "Reserved - <name>" puts the guest's name in `guest` / `nextGuest`.
+- **The link is a secret:** anyone who has it can read the calendar. LSH never logs it.
+
+### Booking.com (rental reservations)
+
+The same engine as Airbnb, with its own module, Settings section (Settings → Home → **Booking.com**), devices (`booking/<name>`) and platform-bar entry (`src/booking-client.js`). The link comes from the Extranet: Rates & Availability → Sync calendars → **Export calendar**.
+
+```json
+"booking": {
+  "listings": [{ "name": "Apartament", "ical": "https://ical.booking.com/v1/export?t=…",
+                 "checkIn": "15:00", "checkOut": "11:00", "prepareHours": 3, "closedAsStays": true }],
+  "pollMinutes": 30
+}
+```
+
+Booking.com exports every unavailable night as `CLOSED - Not available`, so a reservation and a date you closed yourself look the same. The export also has no reservation code or guest details. With `closedAsStays` (default on), every closed period counts as a stay and `guest` shows `Booking.com`. Turn it off only if you never close dates by hand and want closed periods ignored. The sensors are the same as Airbnb's (see the table above).
+
+### VRBO (rental reservations)
+
+The same engine again, with its own module, Settings section (Settings → Home → **VRBO**), devices (`vrbo/<name>`) and platform-bar entry (`src/vrbo-client.js`). The link comes from VRBO: Calendar → Import/Export → **Export calendar**.
+
+```json
+"vrbo": {
+  "listings": [{ "name": "Domek", "ical": "https://www.vrbo.com/icalendar/….ics?nonTentative",
+                 "checkIn": "16:00", "checkOut": "10:00", "prepareHours": 3 }],
+  "pollMinutes": 30
+}
+```
+
+- **Stays:** `Reserved - <guest name>` counts as a stay, and the name shows in `guest` / `nextGuest`.
+- **Blocks:** `Blocked` (your own blocks) doesn't count.
+- **Not checked against a live account:** this format is taken from VRBO's exports, not from a real VRBO calendar.
+
+### Guest portal (rental tenants)
+
+A guest link and a door PIN for every Airbnb, Booking.com or VRBO stay, valid only during the stay (`src/tenant-portal.js`, core, no npm deps). Set it up in Settings → Home → **Guest portal**: switch it on and give the **public address** guests will open (LSH must be reachable from the internet, e.g. through a reverse proxy or tunnel). Then add a property per listing:
+- the rental device;
+- the devices the guest may control;
+- Wi-Fi details, information and house rules;
+- the PIN mode;
+- how many hours before check-in and after check-out access lasts.
+
+```json
+"tenant": {
+  "enabled": true, "publicUrl": "https://lsh.example.com",
+  "properties": [{ "name": "Mieszkanie", "listing": "airbnb/mieszkanie", "devices": ["shelly/salon", "daikin/ac"],
+                   "wifi": { "ssid": "Guest", "password": "…" }, "info": "…", "rules": "…",
+                   "pin": { "mode": "phone4", "digits": 4 }, "earlyHours": 0, "lateHours": 1 }]
+}
+```
+
+- **Guest link `/guest/<token>`:**
+  - It needs no login and the page is in the guest's language: en, pl, de, fr, es, it or uk.
+  - Before the stay, it shows only the welcome and the dates. During the stay, it adds Wi-Fi, the door code and controls for the chosen devices. Afterwards it shows nothing.
+  - Guests can only send commands to the listed devices, and to sensors that can be controlled. Each link is limited to 60 commands per minute.
+- **The guest list:** Settings lists every current and upcoming stay with its link and PIN, ready to paste into the booking message.
+- **Door PIN:**
+  - It's the last 4 digits of the guest's phone (Airbnb) or a code generated for the stay (`mode: "random"`, 4–8 digits).
+  - The device `tenant/<property>` (`active`, `doorPin`, `guest`, `lastVisit`) feeds flows, for example to set a lock's code.
+  - A keypad checks a PIN with `POST /api/tenant/check-pin {"pin":"4321","property":"mieszkanie"}` using an API token. The response is `{valid, property, guest, until}`.
+- **How links work:**
+  - Links and generated PINs are HMACs of the stay, made with a secret in `persist/tenant-secret.json`. Nothing is stored per stay.
+  - **Reset all links** creates a new secret, which revokes every link at once.
+  - A guest who changes their dates gets a new link.
+
+### Nuki
+
+Nuki Smart Lock (1.0–4.0, Smart Door) and Nuki Opener (`src/nuki-client.js`, no npm deps, runs in its own process). Settings → Security & Access → **Nuki**.
+
+- **Local, through a Nuki Bridge:** turn on Developer mode in the Nuki app (Bridge → Manage Bridge), which also shows the token. Requests use the hashed token (`ts`, `rnr`, `hash`), so the token itself never goes over the LAN.
+- **Through Nuki Web:** an API token from web.nuki.io (Menu → API). It is used for state and control when there's no Bridge, and always for **keypad codes**.
+
+```json
+"nuki": { "bridges": [{ "host": "192.168.1.50", "port": 8080, "token": "…" }], "webToken": "…", "pollSeconds": 15 }
+```
+
+Each device is `nuki/<nukiId>`:
+- **Lock:** `lock` (HomeKit lock), `open` (unlatch), `status`, `battery`, `batteryCritical`, `door`, `keypadBatteryCritical`.
+- **Opener:** `ringToOpen`, `open`, `status`.
+
+**Not checked against real hardware:**
+- The Bridge part follows Nuki's Bridge HTTP API 1.13 as published; that doc page is no longer online.
+- The Web part follows Nuki Web API 4.23's swagger.
+- `node scripts/nuki-simulator.js` stands in for both.
+
+### TTLock
+
+Locks used with the TTLock app (many brands are TTLock inside) through the TTLock Open Platform cloud (`src/ttlock-client.js`, no npm deps, runs in its own process). Settings → Security & Access → **TTLock**: enter the client ID and secret of an application registered on the TTLock open platform, plus the TTLock app account the locks are in.
+
+```json
+"ttlock": { "clientId": "…", "clientSecret": "…", "username": "you@example.com", "password": "…", "region": "eu", "pollSeconds": 60 }
+```
+
+- **Login:** OAuth with the password MD5-hashed. The token is kept in `persist/ttlock-token.json` and refreshed automatically.
+- **Devices:** each lock is `ttlock/<lockId>` with `lock` (HomeKit lock), `status`, `battery`, `door` (door sensor) and `gateway`.
+- **Gateway needed:** state, lock/unlock and passcodes need the lock connected to a TTLock gateway (G2/G3/G4).
+- **Guest PINs:** stays become period passcodes, 4–9 digits, so Airbnb's phone last 4 digits work.
+- **Not checked against a real lock:** TTLock's documentation site no longer serves its API pages. The calls follow the Home Assistant TTLock integration, and `node scripts/ttlock-simulator.js` stands in for the cloud.
+
+### Lock codes for guests (Nuki, Tedee, TTLock)
+
+In the guest portal, set a property's **Lock for keypad codes**. Each current and upcoming stay's PIN then becomes a keypad code on that lock, limited to the stay's window. The guest portal publishes the wanted codes at `tenant/<property>/codes`. The lock's module creates and deletes them (`src/lock-codes.js`) and reports the result in `tenant/<property>/lockCodes`.
+
+- **Which codes:** only codes named `LSH-<id> …` are touched, so codes you set up in the lock's app stay.
+- **PIN format:** the PIN follows the lock's rules.
+  - Nuki: 6 digits from 1–9, not starting with 12.
+  - Tedee: 5–8 digits.
+  - TTLock: 4–9 digits.
+
+  So with Nuki or Tedee, Airbnb's phone last 4 digits are replaced by a generated code.
+- **Nuki codes** need Nuki Web; they are created as auth type 13, keypad code.
+- **Tedee codes** go through the Bridge's local `/lock/{id}/pin` API (Bridge API spec 1.19) and need a Tedee Keypad.
+
+### Ajax Systems
+
+An Ajax alarm (Hub, Hub Plus, Hub 2 / 2 Plus, Hub Hybrid) reports to LSH over **SIA DC-09**, with LSH acting as the monitoring station (`src/ajax-client.js` + `src/sia-dc09.js`, no npm deps, runs in its own process). It works on the LAN, with no Ajax cloud.
+
+**It's read-only.** Arming and disarming would need Ajax's Enterprise API, which is only for certified partners.
+
+**Setup:**
+1. In the Ajax app: Hub → Settings → Monitoring Station → **SIA DC-09**.
+2. Enter LSH's IP and port (default **12128**, TCP and UDP), an object number (account), and optionally an encryption key (16/24/32 characters).
+3. Enter the same values under Settings → Security & Access → **Ajax**. Changes apply live.
+
+```json
+"ajax": { "port": 12128, "accounts": [{ "account": "A1B2", "name": "Dom", "key": "…16 chars…", "pingMinutes": 1, "zones": { "5": "Kuchnia – zalanie" } }] }
+```
+
+**The device `ajax/<account>` shows:**
+- `mode`: Disarmed / Armed / Night / Partial, plus `armed`.
+- `alarm` (intrusion), `fire`, `water`, `gas`, `panic`, `tamper`, `powerTrouble` and `batteryLow`. Disarming clears `alarm` and `panic`.
+- `online`: a message or link test arrived within 3 ping intervals.
+- `lastEvent`, for example "Intrusion alarm · Kuchnia".
+
+Every event is also published as `ajax/<account>/event` (`{ code, text, zone, zoneName, area, at }`) for flows. LSH understands both SIA-DCS and Contact ID (ADM-CID) and acknowledges every message, so the Hub doesn't retry.
+
+**Security:** with a key set, unencrypted messages are refused. Encrypted messages with a timestamp outside −40 s…+20 s are refused as replays, as pysiaalarm does. The framing and CRC are checked against pysiaalarm's test vectors.
+
+**Testing:** to try it without a Hub, run `node scripts/sia-send.js 127.0.0.1:12128 A1B2 Nri1/BA005 [key]`.
+
+### Jablotron
+
+Jablotron JA-100 / JA-100+ with a LAN communicator reports to LSH over **SIA DC-09**, with LSH acting as the alarm receiving centre (ARC). It uses the same receiver as Ajax (`src/jablotron-client.js`, runs in its own process, default port **12129**, TCP and UDP).
+
+**It's read-only.** Setting and unsetting would need the JA-121T bus interface or the MyJABLOTRON cloud, and neither is used.
+
+**Setup:**
+1. In F-Link (service mode, usually done by the installer): Parameters → ARC → a channel with **SIA DC-09** over IP. Enter LSH's IP and port, the object number, optionally an AES key, and a periodic test.
+2. Enter the same values under Settings → Security & Access → **Jablotron**.
+
+```json
+"jablotron": { "port": 12129, "accounts": [{ "account": "0042", "name": "JA-100", "key": "…", "pingMinutes": 1,
+               "zones": { "3": "Hall PIR" }, "areas": { "1": "Dom", "2": "Garaż" } }] }
+```
+
+**The device `jablotron/<account>`** has the same sensors as Ajax. On top of that, every named section gets its own state (`area<n>`: Disarmed / Armed / Night / Partial). The panel `mode` is then Armed when all sections are set, Disarmed when none are, and Partial otherwise.
+
+Section names also work for Ajax (groups).
+
 ### Zehnder ventilation (rekuperacja)
 
 Zehnder heat-recovery ventilation units (`src/zehnder-client.js` + `src/zehnder/*`, no npm deps). Settings → Climate & Appliances → **Zehnder Ventilation** (Find LAN C gateways, Test, Save — applied live). Three ways in, one device model:
@@ -4261,7 +4734,7 @@ Each unit becomes `zehnder/<host>` with what its interface offers — controls: 
 
 Both ways (`src/homeassistant-client.js`, dep `ws`, installed on demand):
 
-- **Import** — Home Assistant entities become LSH devices `ha/<entity_id>` via HA's WebSocket API: `light` (on/off + brightness), `switch`, `fan`, `input_boolean`, `cover` (position), `climate` (current/target temperature, mode), `lock`, `sensor`, `binary_sensor` (HomeKit motion/contact by `device_class`). Live through `state_changed` events; commands go out as `call_service`. **Cameras** (`camera.*`) are added to Cameras with snapshot + live MJPEG proxied through LSH (`GET /api/homeassistant/camera/:entity/snapshot|mjpeg`, HA's `camera_proxy` / `camera_proxy_stream`; the token stays server-side) — `import.cameras: false` turns that off. HA has no RTSP source to hand out, so these cameras aren't offered to HomeKit / the RTSP proxy.
+- **Import** — Home Assistant entities become LSH devices `ha/<entity_id>` via HA's WebSocket API: `light` (on/off + brightness), `switch`, `fan`, `input_boolean`, `cover` (position), `climate` (current/target temperature, mode), `lock`, `sensor`, `binary_sensor` (HomeKit motion/contact by `device_class`). Live through `state_changed` events; commands go out as `call_service`. **Names and rooms** come from HA's registries the way HA shows them: an entity name you set in HA wins, otherwise the device name (yours from HA, else the model) plus the entity's own name (e.g. a Z-Wave *Roller Shutter 3* renamed *Roleta Jadalnia* gives `Roleta Jadalnia` and `Roleta Jadalnia Electric consumption [W]`); the entity's or its device's **area** becomes the LSH room. Renames and area moves in HA apply live; a name or room you set in LSH (device customization) is kept. **Cameras** (`camera.*`) are added to Cameras with snapshot + live MJPEG proxied through LSH (`GET /api/homeassistant/camera/:entity/snapshot|mjpeg`, HA's `camera_proxy` / `camera_proxy_stream`; the token stays server-side) — `import.cameras: false` turns that off. HA has no RTSP source to hand out, so these cameras aren't offered to HomeKit / the RTSP proxy.
 - **Export** — LSH devices appear in HA through **MQTT Discovery** on a broker HA's MQTT integration uses: toggles → `switch`, ranges → `number`, on/off readings → `binary_sensor`, everything else → `sensor`, one HA device per LSH device. Retained configs at `<prefix>/<component>/<node>/<object>/config`, state `<base>/<object>/state`, commands `<base>/<object>/set`, availability `<base>/<node>/status` (LWT). Republished when HA sends `online` on `<prefix>/status`.
 
 No loops: entities whose `unique_id` starts with `<node>_` (LSH's exports) are never imported, and `homeassistant`-type devices are never exported.

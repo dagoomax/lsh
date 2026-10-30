@@ -1238,6 +1238,7 @@ export const CAT_ICON_COMPONENT = {
   Victron:  GridPowerIcon,
   Lighting: BulbIcon,
   Switches: SwitchOutletIcon,
+  Blinds:   ShutterIcon,
   Climate:  ThermometerIcon,
   Media:    SpeakerIcon,
   Security: SecurityIcon,

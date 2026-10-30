@@ -15,16 +15,32 @@
 // low-power box (AMD GX-215JJ), enough to pin a core at a 30s poll interval. If tfjs/coco-ssd aren't installed, server.js's tryRequire skips
 // this client with a warning instead of crashing.
 
-const tf      = require('@tensorflow/tfjs');
-require('@tensorflow/tfjs-backend-cpu');
-let TF_BACKEND = 'cpu';
-try {
-  require('@tensorflow/tfjs-node'); // registers the 'tensorflow' backend on the shared tfjs-core
-  TF_BACKEND = 'tensorflow';
-} catch { /* optional — stay on the pure-JS CPU backend */ }
+// tfjs-node still calls util.isNullOrUndefined / util.isArray, which Node 23+
+// removed — without these every model load fails with "is not a function"
+{
+  const util = require('util');
+  if (typeof util.isNullOrUndefined !== 'function') util.isNullOrUndefined = (v) => v === null || v === undefined;
+  if (typeof util.isArray !== 'function') util.isArray = Array.isArray;
+}
+// TensorFlow (~45 MB before any model) is loaded on first use — with the
+// first frame a camera delivers — not when LSH starts, so configured cameras
+// that are offline cost no memory. require.resolve only checks it's there.
+let tf = null, cocoSsd = null, mobilenet = null;
+const HAS_TF_NODE = (() => { try { require.resolve('@tensorflow/tfjs-node'); return true; } catch { return false; } })();
+let TF_BACKEND = HAS_TF_NODE ? 'tensorflow' : 'cpu';
+function loadTf() {
+  if (tf) return tf;
+  tf = require('@tensorflow/tfjs');
+  require('@tensorflow/tfjs-backend-cpu');
+  if (HAS_TF_NODE) {
+    try { require('@tensorflow/tfjs-node'); } // registers the 'tensorflow' backend on the shared tfjs-core
+    catch { TF_BACKEND = 'cpu'; } // optional — stay on the pure-JS CPU backend
+  }
+  cocoSsd = require('@tensorflow-models/coco-ssd');
+  mobilenet = require('@tensorflow-models/mobilenet');
+  return tf;
+}
 const jpeg     = require('jpeg-js');
-const cocoSsd  = require('@tensorflow-models/coco-ssd');
-const mobilenet = require('@tensorflow-models/mobilenet');
 const cameraLog = require('./camera-log');
 const platformStatus = require('./platform-status');
 const { grabFrame } = require('./rtsp-snapshot');
@@ -142,7 +158,7 @@ function rawToTensor({ width, height, data }) {
   for (let i = 0, j = 0; i < data.length; i += 4, j += 3) {
     rgb[j] = data[i]; rgb[j + 1] = data[i + 1]; rgb[j + 2] = data[i + 2];
   }
-  return tf.tensor3d(rgb, [height, width, 3]);
+  return loadTf().tensor3d(rgb, [height, width, 3]);
 }
 
 // Crops just a prediction's bbox out of the decoded frame for MobileNet
@@ -165,7 +181,7 @@ function cropToTensor(raw, bbox) {
       rgb[dstIdx] = raw.data[srcIdx]; rgb[dstIdx + 1] = raw.data[srcIdx + 1]; rgb[dstIdx + 2] = raw.data[srcIdx + 2];
     }
   }
-  return tf.tensor3d(rgb, [h, w, 3]);
+  return loadTf().tensor3d(rgb, [h, w, 3]);
 }
 
 // Draws a plain rectangle outline (no library — jpeg-js only decodes/
@@ -239,19 +255,12 @@ class ObjectDetectionClient {
     if (!inUse.has(this._defaultBase)) {
       this._modelStatus = { base: this._defaultBase, loading: false, loaded: false, error: null, unused: true };
     }
-    await Promise.all([...inUse].map((base) => this._loadModel(base).catch((err) =>
-      console.error(`[ObjectDetection] Preload of model "${base}" failed: ${err.message}`))));
-
-    if (cfg.petVerification !== false) {
-      console.log('[ObjectDetection] Loading MobileNet (pet breed verification)…');
-      try {
-        this._petModel = await mobilenet.load({ version: 2, alpha: 1.0 });
-      } catch (err) {
-        console.error(`[ObjectDetection] MobileNet failed to load, pet verification disabled: ${err.message}`);
-      }
-    }
-
-    console.log(`[ObjectDetection] Model ready — watching ${cams.length} camera(s)`);
+    // The models (each ~175–195 MB RSS) load with the first frame a camera
+    // actually delivers, not at startup — a camera that's offline, or a stream
+    // that isn't running on this machine, then costs nothing but a cheap retry.
+    this._inUse = inUse
+    this._camFail = new Map() // camera url → { fails, skipUntil }
+    console.log(`[ObjectDetection] Watching ${cams.length} camera(s) — models load with the first frame`);
 
     const ms = Math.max(cfg.pollInterval || 15, 5) * 1000;
     this._timer = setInterval(() => this._pollAll(cams), ms);
@@ -261,6 +270,25 @@ class ObjectDetectionClient {
   stop() {
     if (this._timer) clearInterval(this._timer);
     this._timer = null;
+  }
+
+  // Loads the models in use (and MobileNet for pets) once. false = they can't
+  // load here, so detection is switched off instead of grabbing frames forever.
+  _ensureModels() {
+    if (this._modelsReady) return this._modelsReady;
+    const cfg = this._config.objectDetection || {};
+    this._modelsReady = (async () => {
+      await Promise.all([...(this._inUse || [this._defaultBase])].map((base) => this._loadModel(base).catch((err) =>
+        console.error(`[ObjectDetection] Model "${base}" failed to load: ${err.message}`))));
+      if (!this._models.size) return false;
+      if (cfg.petVerification !== false) {
+        console.log('[ObjectDetection] Loading MobileNet (pet breed verification)…');
+        try { this._petModel = await mobilenet.load({ version: 2, alpha: 1.0 }); }
+        catch (err) { console.error(`[ObjectDetection] MobileNet failed to load, pet verification disabled: ${err.message}`); }
+      }
+      return true;
+    })();
+    return this._modelsReady;
   }
 
   // Fetches (and caches) a coco-ssd base model, keyed by base id so distinct
@@ -275,6 +303,7 @@ class ObjectDetectionClient {
     const b = MODEL_BASE_IDS.includes(base) ? base : MODEL_BASE_IDS[0];
     if (this._modelLoading.has(b)) return this._modelLoading.get(b);
     if (isDefault) this._modelStatus = { base: b, loading: true, loaded: false, error: null };
+    loadTf();
     console.log(`[ObjectDetection] Loading COCO-SSD model (${b}, ${TF_BACKEND} backend)…`);
     const promise = (async () => {
       try {
@@ -335,8 +364,25 @@ class ObjectDetectionClient {
     await Promise.all(cams.map(async (cam) => {
       const camName = cam.name || 'Camera';
       const camSlug = slugify(camName);
+      // a camera that keeps failing is retried less and less often (15 s → 10 min)
+      const fail = this._camFail?.get(cam.url) || { fails: 0, skipUntil: 0 };
+      if (Date.now() < fail.skipUntil) return;
       try {
-        const buffer = await grabFrame(cam.url, ffmpegPath);
+        let buffer;
+        try { buffer = await grabFrame(cam.url, ffmpegPath); }
+        catch (err) {
+          fail.fails++;
+          if (fail.fails >= 3) fail.skipUntil = Date.now() + Math.min(10 * 60_000, 15_000 * 2 ** (fail.fails - 2));
+          this._camFail?.set(cam.url, fail);
+          if (fail.fails === 1 || fail.fails === 3) console.error(`[ObjectDetection] "${camName}" unreachable: ${err.message}${fail.fails >= 3 ? ' — retrying less often' : ''}`);
+          return;
+        }
+        if (fail.fails) { console.log(`[ObjectDetection] "${camName}" is back`); this._camFail?.delete(cam.url); }
+        if (!(await this._ensureModels())) {
+          if (this._timer) { clearInterval(this._timer); this._timer = null; }
+          console.error('[ObjectDetection] No detection model could be loaded — object detection is off until LSH restarts');
+          return;
+        }
         const raw    = jpeg.decode(buffer, { useTArray: true });
         const tensor = rawToTensor(raw);
         const model  = this._modelFor(cam.model);

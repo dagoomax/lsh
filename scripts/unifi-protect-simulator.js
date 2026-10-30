@@ -44,6 +44,12 @@ function startSimulator({ port = 7443, createdStreams = false } = {}) {
   const streams = { 'cam-door': { high: `rtsps://127.0.0.1:7441/doorHIGH?enableSrtp`, medium: null, low: null }, 'cam-drive': { high: null }, 'cam-plain': createdStreams ? { high: null } : { high: null } };
   const sensors = [
     { id: 'sen-hall', name: 'Hall sensor', mountType: 'door', isOpened: false, isMotionDetected: false, stats: { temperature: { value: 21.5 }, humidity: { value: 40 }, light: { value: 12 } }, batteryStatus: { percentage: 90 } },
+    // SuperLink (USL-*) — field shapes from a Protect 6.x bootstrap dump of a USL Environmental
+    { id: 'usl-bath', name: 'Bathroom leak', type: 'USL-Environmental-EU', marketName: 'USL Environmental', mountType: 'leak', isOpened: null, isMotionDetected: false,
+      leakDetectedAt: null, tamperingDetectedAt: null, stats: { temperature: { value: null }, humidity: { value: null }, light: { value: null } },
+      batteryStatus: { percentage: 92, isLow: false }, bluetoothConnectionState: { signalQuality: 100, signalStrength: -38 }, bridge: 'usl-gw-1' },
+    { id: 'usl-door', name: 'Back door', type: 'USL-Entry', marketName: 'USL Entry', mountType: 'door', isOpened: false, tamperingDetectedAt: null,
+      batteryStatus: { percentage: 80, isLow: false }, bluetoothConnectionState: { signalStrength: -61 }, bridge: 'usl-gw-1' },
   ];
   const lights = [{ id: 'light-yard', name: 'Yard floodlight', isLightOn: false, isLightForceEnabled: false, isPirMotionDetected: false, isDark: true, lightModeSettings: { mode: 'motion' }, lightDeviceSettings: { ledLevel: 6 } }];
   const sirens = [{ id: 'siren-1', name: 'Siren', volume: 100, sirenStatus: { isActive: false } }];

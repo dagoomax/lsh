@@ -16,6 +16,23 @@ module.exports = function register(router, ctx) {
     }
   });
 
+  // Integration processes (src/module-host.js): pid, memory, restarts.
+  router.get('/modules/processes', requireAdmin, (req, res) => {
+    const host = ctx.clients?.moduleHost;
+    res.json({ success: true, data: { isolated: !!host, processes: host ? host.list() : [] } });
+  });
+
+  router.post('/modules/processes/:id/restart', requireAdmin, async (req, res) => {
+    const m = ctx.clients?.moduleHost?.get(req.params.id);
+    if (!m) return res.status(404).json({ success: false, error: 'No such module process' });
+    try {
+      await m.restart('restarted from Settings');
+      res.json({ success: true, data: m.info() });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Fetch a module's files from GitHub + npm-install its deps. update=true
   // re-fetches files that are already present. Takes effect on restart.
   router.post('/modules/:id/install', requireAdmin, async (req, res) => {

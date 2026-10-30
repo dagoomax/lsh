@@ -6,13 +6,14 @@ import { usePaging }         from './hooks/usePaging'
 import { gt }                from './i18n'
 import Header                from './components/Header'
 import PlatformBar           from './components/PlatformBar'
-import SceneStrip            from './components/SceneStrip'
 import DeviceList, { Toast } from './components/DeviceList'
 import IncomingCall          from './components/IncomingCall'
 import { PagingPanel }       from './components/PagingWidget'
 import LockScreen            from './components/LockScreen'
 import LoginScreen           from './components/LoginScreen'
 import SetupScreen           from './components/SetupScreen'
+import AuroraBackdrop        from './components/AuroraBackdrop'
+import { useHomePrefs }      from './homePrefs'
 // Full-page views load on first open, so the dashboard itself starts faster
 // (wall tablets, phones on mobile data)
 const SettingsPage   = lazy(() => import('./components/settings/SettingsPage'))
@@ -38,7 +39,7 @@ const viewFromPath = () => {
 // Energy flow + relays rendered as the top section (see DeviceList). No more
 // split screen between devices and energy.
 export default function App() {
-  const { energy, devices, connection, connected, platforms, roomsMeta, toggleRelay, authRequired, setupRequired, onLogin, scenes, runScene } = useLSH()
+  const { energy, devices, connection, connected, platforms, roomsMeta, toggleRelay, authRequired, setupRequired, onLogin, scenes, runScene, reloadScenes } = useLSH()
   const [locked, setLocked] = useState(() => localStorage.getItem('lsh-locked') === '1')
   const lock   = () => { localStorage.setItem('lsh-locked', '1'); setLocked(true) }
   const unlock = () => { localStorage.setItem('lsh-locked', '0'); setLocked(false) }
@@ -54,6 +55,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop)
   }, [])
   const paging = usePaging()
+  const { wallpaper } = useHomePrefs()
   const [pagingOpen, setPagingOpen] = useState(false)
 
   // Re-render the whole tree when the language changes (gt() reads it live)
@@ -136,7 +138,9 @@ export default function App() {
   }
 
   return (
-    <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--bg)', overflow:'hidden' }}>
+    <div className={wallpaper !== 'off' ? 'aurora-on' : undefined}
+      style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--bg)', overflow:'hidden', isolation:'isolate' }}>
+      <AuroraBackdrop wallpaper={wallpaper} />
       <Toast />
       <IncomingCall />
       <MusicOverlay />
@@ -148,10 +152,10 @@ export default function App() {
 
       <div style={{ flex:1, paddingTop:56, overflow:'hidden', display:'flex', flexDirection:'column' }}>
         <PlatformBar platforms={platforms} devices={devices} />
-        <SceneStrip scenes={scenes} runScene={runScene} />
         {devices.length === 0 && !energy
           ? <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text3)', fontSize:13 }}>Loading…</div>
-          : <DeviceList devices={devices} energy={energy} roomsMeta={roomsMeta} onToggleRelay={toggleRelay} />
+          : <DeviceList devices={devices} energy={energy} roomsMeta={roomsMeta} onToggleRelay={toggleRelay}
+              scenes={scenes} runScene={runScene} reloadScenes={reloadScenes} />
         }
       </div>
     </div>

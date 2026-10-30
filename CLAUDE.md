@@ -34,7 +34,7 @@ npm run build              # build to dist/
 ### Core spine (everything flows through these)
 
 - `config.js` — loads `config.json`, spreads it through, applies env-var overrides for curated keys (mqtt/vrm/solaredge/…)
-- `src/data-store.js` — `DataStore`: central EventEmitter key→value store with a per-key history ring buffer (~6 h) and gzipped persistence to `persist/store-data.json.gz`. If `config.mongo.uri` is set it persists the snapshot to MongoDB instead (via `src/mongo.js`), keeping the gzip file as a synchronous shutdown-safe fallback
+- `src/data-store.js` — `DataStore`: central EventEmitter key→value store with a per-key history ring buffer (~6 h) and gzipped persistence to `persist/store-data.json.gz`. If `config.mongo.uri` is set it persists the snapshot to MongoDB instead (via `src/mongo.js`), keeping the gzip file as a synchronous shutdown-safe fallback. Every `set()`/`update()` emits `change` `{ key, value, changed }` — `changed` is false when a primitive value repeats the stored one (most polling traffic); listeners that push values out should skip repeats (`websocket.js` does) or dedupe per target (`loxone-out-client.js`, `fibaro-out-client.js`)
 - `src/sensor-registry.js` — `SensorRegistry`: device catalog. Victron devices are auto-discovered from store keys via `device-definitions.js` (`KNOWN_SERVICES`); all other integrations call `registerDevice()` explicitly
 - `src/connection-manager.js` — Victron data source with automatic MQTT (local Venus OS) → VRM (cloud) fallback; emits `source-changed`, which re-points `relay-controller.js` at the active client
 - `src/api-routes.js` — builds the `/api` router: shared middleware (`requireAdmin`, …) and a `ctx` object, then registers `src/routes/*.js` in `ROUTE_GROUPS` order (Express matches in registration order — keep it). Each route file exports `register(router, ctx)`; shared helpers live in `src/routes/helpers.js`
@@ -53,6 +53,10 @@ Every `src/*-client.js` follows the same shape — copy an existing one (e.g. `s
 6. Wire it up: if it's just construct-and-start, add an entry to `src/integrations.js` (`file`, `label`, `when: (config) => …`, optional `expose` for an `apiClients` key); otherwise write it out inline in `server.js`. REST routes go in a new `src/routes/<name>.js` added to `ROUTE_GROUPS`
    - Polling clients should extend `src/polling-client.js` (`PollingClient`): it owns the schedule, overlap guard, backoff and `platformStatus` — implement `_pollImpl()` and throw when a poll didn't really return data
 7. Run `node scripts/gen-modules-manifest.js` — regenerates `modules.json` and moves the client's npm deps out of `package.json` (then `npm install --package-lock-only`)
+
+### Integration processes
+
+Every entry in `src/integrations.js` without an `expose` runs in its own child process: `src/module-host.js` forks `src/module-worker.js` per module, and the worker constructs the client with stand-ins for the store and registry that forward over IPC (`store.set` → the real DataStore; `registerDevice` → the real SensorRegistry with a `_writeCapability` that calls back into the process; `platform-status` mirrored; store `change` events forwarded only once the client listens). A watchdog pings each process every 10 s and restarts one that exits, stops answering for 30 s, or exceeds `config.modules.memoryLimitMB` (default 512), with backoff. `GET /api/modules/processes` / `POST /api/modules/processes/:id/restart` (Settings → Integration Modules). Modules with `expose` stay in the server process because their REST routes call the client object directly. `config.modules.isolate: false` turns isolation off; `config.modules.inProcess: ['<file>' | '<label>']` keeps single modules in-process. A module that only works through the shared object (mutating another module's device, reading `sensorRegistry.getDevices()` for devices it didn't register) needs `inProcess` or an `expose`.
 
 ### Integration modules (on-demand install)
 

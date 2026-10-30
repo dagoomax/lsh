@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect, useMemo, memo, lazy, Suspense } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef, memo, lazy, Suspense } from 'react'
 import {
   resolveIcon, CAT_ICON_COMPONENT, GridPowerIcon,
   SwitchOutletIcon, BulbIcon, ShutterIcon, ThermometerIcon,
   HumidityIcon, MotionIcon, DoorIcon, SecurityIcon, PlugIcon, SensorIcon, RelayIcon, MyIcon,
-  BatteryIcon, SignalIcon, PowerIcon,
+  BatteryIcon, SignalIcon, PowerIcon, StarIcon,
 } from './Icons'
 // the device popup and the Graphs tab load on first use (prefetched when the browser is idle)
 const loadModal = () => import('./DeviceModal')
@@ -25,6 +25,10 @@ import DashboardGrid, { hasCustomLayout, seedLayoutFromDevices, isWidgetPinned }
 import WeatherForecast from './WeatherForecast'
 import MusicHub from './MusicHub'
 import HomeHero from './HomeHero'
+import HomeModel3D from './HomeModel3D'
+import HomeEditor from './HomeEditor'
+import ScenesSection from './Scenes'
+import { useHomePrefs, orderSections, isTileWide } from '../homePrefs'
 
 const FIBARO_SENSOR_ICON = {
   switch:      SwitchOutletIcon,
@@ -191,9 +195,22 @@ async function sendCommand(key, sensor, value) {
 
 
 // ── Categories ────────────────────────────────────────────────────────────────
+// Shutters, venetian blinds, awnings: a position/slat control, a cover
+// reading, or a cover category. Somfy lights and plugs stay out.
+const BLIND_CATEGORIES = new Set(['cover', 'blind', 'blinds', 'shutter', 'curtain', 'awning'])
+function isBlind(d) {
+  if (BLIND_CATEGORIES.has(d.category)) return true
+  const sensors = d.sensors || []
+  if (d.type === 'somfy') return !sensors.some(s => s.capabilityId === 'light' || s.capabilityId === 'intensity')
+  return sensors.some(s => s.capabilityId === 'position' || s.capabilityId === 'orientation')
+    || d.readings?.cover_position != null
+}
+
 export function getGroup(d) {
   if (['vebus','battery','solarcharger'].includes(d.type)) return 'Victron'
+  if (isBlind(d)) return 'Blinds'
   if (['auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo'].includes(d.type)) return 'Climate'
+  if (d.type === 'zehnder' || d.category === 'ventilation') return 'Climate'
   if (d.type === 'smarttub') return 'Climate'
   if (d.type === 'sonos' || d.type === 'radio')  return 'Media'
   if (d.type === 'googlehome' || d.type === 'googletv' || d.type === 'sony') return 'Media'
@@ -210,7 +227,7 @@ export function getGroup(d) {
   return 'Other'
 }
 
-const CATS = ['All','Victron','Lighting','Switches','Climate','Media','Security','Sensors','Other','Plan','Graphs']
+const CATS = ['All','Victron','Lighting','Switches','Blinds','Climate','Media','Security','Sensors','Other','Plan','Graphs']
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 function Toggle({ on, onChange }) {
@@ -307,6 +324,10 @@ function ColorPicker({ hueDeg, sat, onCommit }) {
 // so a socket tick only re-renders the tiles whose readings actually changed
 export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, revealIndex }) {
   const [localState, setLocalState] = useState({})
+  const [dragLevel, setDragLevel] = useState(null)
+  const homePrefs = useHomePrefs() // per-device tile size (Edit Home View / device popup)
+  const dimDrag = useRef(null)
+  const suppressClick = useRef(false)
   const r = device.readings || {}
 
   useEffect(() => {
@@ -324,7 +345,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   }, [device.key, onCommand])
 
   const isOn     = merged.switch?.value===1 || merged.switch?.value==='on' || merged.switch?.value===true
-  const level    = merged.level?.value ?? 100
+  const level    = Math.round(merged.level?.value ?? 100)
   const ct       = merged.colorTemperature?.value ?? 4000
   const hasSwitch= r.switch != null
   const hasLevel = r.level != null
@@ -372,8 +393,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   // Bento-style: media players and dimmable lights earn a wider card (room for
   // now-playing/transport, or a full-width brightness slider) the way Homey
   // features them, instead of a cramped 1×1 tile.
-  const isWide   = isSonos || isDenon || device.type === 'sony' || device.type === 'beosound'
-    || (hasLevel && hasSwitch)
+  const isWide   = isTileWide(device, homePrefs) // default + the user's Edit Home View override
 
   // Mirrors HEAT_MODES order in src/smarttub-client.js — value is the index
   const SPA_MODES = ['Eco','Day','Auto','Ready','Rest']
@@ -483,7 +503,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const fibaroTemps    = fibaroSensors.filter(s => s.unit === '°C' && s.value != null)
   const fibaroOnCount  = fibaroSwitches.filter(s => s.value === true || s.value === 1).length
 
-  const statusText = (() => {
+  const statusText = dragLevel != null ? (dragLevel > 0 ? `${dragLevel}%` : 'Off') : (() => {
     if (isDenon) {
       if (!denonPower) return 'Standby'
       const parts = []
@@ -528,23 +548,83 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
     return isOn ? 'On' : 'Off'
   })()
 
-  const tileOn = (isOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying) || (isDenon && denonPower) || (isSpa && spaHeater)
+  // Drag-to-dim: a horizontal swipe across a dimmable light's tile sets its
+  // brightness relative to where it was (Homey-style); vertical movement is
+  // left to page scrolling and a plain tap still opens the popup. Dragging up
+  // from off turns the light on, dragging to 0 turns it off.
+  const canDim = hasLevel && hasSwitch && !hasMy && !hasUpDn
+  const dimming = dragLevel != null
+  const shownOn = dimming ? dragLevel > 0 : isOn
+  const shownLevel = dimming ? dragLevel : level
+  const onDimDown = e => {
+    if (!canDim || e.button > 0 || e.target.closest('button, input, [role="switch"], .tile-icon')) return
+    dimDrag.current = { x: e.clientX, y: e.clientY, from: isOn ? level : 0, active: false, w: e.currentTarget.offsetWidth }
+    // Mouse: claim the pointer straight away. WebKit (Safari, the macOS app's
+    // WKWebView) otherwise starts a text-selection / native drag on press and
+    // the moves never reach us. Touch keeps the default so the page can scroll.
+    if (e.pointerType === 'mouse') {
+      e.preventDefault()
+      e.currentTarget.setPointerCapture(e.pointerId)
+    }
+  }
+  const onDimMove = e => {
+    const d = dimDrag.current
+    if (!d) return
+    const dx = e.clientX - d.x, dy = e.clientY - d.y
+    if (!d.active) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        d.active = true
+        if (!e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.setPointerCapture(e.pointerId)
+      } else {
+        if (Math.abs(dy) > 10) dimDrag.current = null // it's a scroll
+        return
+      }
+    }
+    setDragLevel(Math.round(Math.max(0, Math.min(100, d.from + (dx / Math.max(1, d.w)) * 120))))
+  }
+  const onDimUp = () => {
+    const d = dimDrag.current
+    dimDrag.current = null
+    if (!d?.active) return
+    suppressClick.current = true
+    const v = dragLevel ?? d.from
+    if (v <= 0) { if (isOn) cmd('switch', 0) }
+    else {
+      cmd('level', v)
+      if (!isOn) cmd('switch', 1)
+    }
+    setDragLevel(null)
+  }
+
+  const tileOn = (shownOn && hasSwitch) || (isAC && acOn) || (isSonos && sonosPlaying) || (isDenon && denonPower) || (isSpa && spaHeater)
 
   return (
-    <div onClick={() => onOpen?.(device.key)} className={`device-tile${isWide ? ' wide' : ''}`} data-on={String(tileOn)} data-cat={getGroup(device)}
+    <div onClick={() => { if (suppressClick.current) { suppressClick.current = false; return } onOpen?.(device.key) }}
+      className={`device-tile${isWide ? ' wide' : ''}`} data-on={String(tileOn)} data-cat={getGroup(device)}
       // Dimmable light that's on: brightness drawn as a fill level (CSS reads --level)
-      data-dim={hasLevel && isOn ? '' : undefined}
+      data-dim={hasLevel && shownOn ? '' : undefined}
+      data-dimming={dimming || undefined}
+      onPointerDown={canDim ? onDimDown : undefined}
+      onPointerMove={canDim ? onDimMove : undefined}
+      onPointerUp={canDim ? onDimUp : undefined}
+      onPointerCancel={canDim ? () => { dimDrag.current = null; setDragLevel(null) } : undefined}
+      onDragStart={canDim ? e => e.preventDefault() : undefined}
       style={{
       padding: '14px',
       display: 'flex', flexDirection: 'column',
       minHeight: 124,
+      ...(canDim ? { touchAction: 'pan-y', userSelect: 'none', WebkitUserSelect: 'none' } : null),
       ...(revealIndex != null ? { '--i': revealIndex } : null),
-      ...(hasLevel && isOn ? { '--level': level } : null),
+      ...(hasLevel && shownOn ? { '--level': shownLevel } : null),
     }}>
 
       {/* Top row: icon left + control right */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-        <div className="tile-icon" data-on={String(tileOn)}>
+        {/* Apple-Home-style: tapping the icon toggles, the rest of the tile opens the popup */}
+        <div className="tile-icon" data-on={String(tileOn)}
+          role={hasSwitch && !isSonos && !isAC ? 'button' : undefined}
+          onClick={hasSwitch && !isSonos && !isAC ? e => { e.stopPropagation(); cmd('switch', isOn ? 0 : 1) } : undefined}
+          style={hasSwitch && !isSonos && !isAC ? { cursor: 'pointer' } : undefined}>
           <IconComp size={21} color={tileOn ? '#fff' : activeColor} />
         </div>
 
@@ -587,7 +667,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
       {/* Sliders when on */}
       {tileOn && (hasLevel || hasCT) && (
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:10 }}>
-          {hasLevel && <Slider value={level} onCommit={v => cmd('level', v)} />}
+          {hasLevel && <Slider value={shownLevel} onCommit={v => cmd('level', v)} />}
           {hasCT    && <CTSlider value={ct}  onCommit={v => cmd('colorTemperature', v)} />}
         </div>
       )}
@@ -1171,7 +1251,7 @@ function RoomIconEditor({ room, current, onClose }) {
   )
 }
 
-export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRelay }) {
+export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRelay, scenes = [], runScene, reloadScenes }) {
   // fetch the device popup's code once the dashboard is idle, so the first tap opens instantly
   useEffect(() => {
     const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1500))
@@ -1250,6 +1330,50 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
   const counts = {}
   for (const d of devices) {
     const g = getGroup(d); counts[g] = (counts[g]||0)+1
+  }
+
+  // ── Customisable home view (the "All" tab) ──
+  const homePrefs = useHomePrefs()
+  const [homeEditing, setHomeEditing] = useState(false)
+  const hiddenDevSet = new Set(homePrefs.hiddenDevices)
+  const homeVisible = visible.filter(d => !hiddenDevSet.has(d.key))
+  const devByKey = new Map(devices.map(d => [d.key, d]))
+  const favDevices = homePrefs.favs.map(k => devByKey.get(k)).filter(Boolean)
+  const homeSections = [
+    { id: 'hero',      label: gt('home_sec_hero', 'Summary') },
+    { id: 'scenes',    label: gt('scenes', 'Scenes'), count: scenes.filter(s => s.enabled !== false).length },
+    ...(energy ? [{ id: 'energy', label: gt('energy', 'Energy'), Icon: GridPowerIcon }] : []),
+    { id: 'model3d',   label: gt('home_sec_model', '3D model') },
+    { id: 'music',     label: gt('home_sec_music', 'Music') },
+    { id: 'weather',   label: gt('home_sec_weather', 'Weather forecast') },
+    { id: 'doorbells', label: gt('home_sec_doorbells', 'Doorbells') },
+    { id: 'system',    label: gt('home_sec_system', 'System monitor') },
+    { id: 'mcu',       label: gt('home_sec_mcu', 'Microcontroller index') },
+    { id: 'cameras',   label: gt('home_sec_cameras', 'Cameras') },
+    { id: 'favs',      label: gt('home_favs', 'Favourites'), Icon: StarIcon, count: favDevices.length },
+    ...CATS.filter(c => !['All','Plan','Graphs'].includes(c) && counts[c])
+      .map(c => ({ id: 'cat:' + c, label: gt('cat_' + c.toLowerCase(), c), Icon: CAT_ICON_COMPONENT[c], count: counts[c] })),
+  ]
+  const homeOrder = orderSections(homeSections.map(x => x.id), homePrefs.order)
+  // A titled tile grid — the favourites section and each device category
+  // (same header style: icon, name, count, on-count badge).
+  const renderTileSection = (key, label, Icon, items) => {
+    const onN = items.filter(d => { const sw = d.readings?.switch?.value; return sw===1 || sw==='on' || sw===true }).length
+    return (
+      <div data-cat={key === 'favs' ? undefined : key}>
+        <div className="tile-sec-head">
+          {Icon && <span className={`tile-sec-ic${key === 'favs' ? ' fav' : ''}`}><Icon size={15} color={key === 'favs' ? 'var(--gold)' : 'var(--cat-c, var(--accent-lt))'} /></span>}
+          <span className="tile-sec-title">{label}</span>
+          <span className="tile-sec-count">{items.length}</span>
+          {onN > 0 && <span className="badge badge-yellow">{onN} {gt('b_on', 'on')}</span>}
+        </div>
+        <div className="device-grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:10 }}>
+          {items.map((d, i) => (
+            <DeviceTile key={d.key} device={d} onCommand={onCommand} onOpen={setOpenKey} revealIndex={i} />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -1427,10 +1551,34 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
           {cat === 'Plan' && (
             <HomePlan devices={devices} roomsMeta={roomsMeta} groupOf={getGroup} onOpen={setOpenKey} energy={energy} />
           )}
-          {cat === 'All' && <HomeHero energy={resolvedEnergy} onCount={onCount} liveCount={liveCount} />}
-          {/* Energy as the top section of the overview */}
-          {cat === 'All' && energy && (
-            <div className="card" style={{
+          {cat === 'Media' && <MusicHub />}
+          {cat !== 'Graphs' && cat !== 'Plan' && cat !== 'All' && visible.length === 0 && (
+            <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>
+              {gt('no_devices', 'No devices in this category')}
+            </div>
+          )}
+          {cat !== 'All' && cat !== 'Graphs' && cat !== 'Plan' && <div className="device-grid" style={{
+            display:'grid',
+            gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
+            gap:10,
+            paddingTop:8,
+          }}>
+            {visible.map((d, i) => (
+              <DeviceTile key={d.key} device={d} onCommand={onCommand} onOpen={setOpenKey} revealIndex={i} />
+            ))}
+          </div>}
+          {/* "All" view = the customisable home view: sections render in the
+              order saved by the Edit Home View sheet (HomeEditor), switched-off
+              ones are skipped. Device categories are sections too, so they can
+              be reordered among the widgets; with a custom grid layout active
+              they collapse into that one grid, placed where the first category is. */}
+          {cat === 'All' && (() => {
+            let gridPlaced = false
+            const renderSection = (id) => {
+              switch (id) {
+                case 'hero':      return <HomeHero energy={resolvedEnergy} onCount={onCount} liveCount={liveCount} />
+                case 'scenes':    return <ScenesSection scenes={scenes} runScene={runScene} reloadScenes={reloadScenes} devices={devices} />
+                case 'energy':    return energy ? (<div className="card" style={{
               margin:'8px 0 12px',
               borderRadius:'var(--radius-lg)', overflow:'hidden',
             }}>
@@ -1468,88 +1616,44 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
                   )}
                 </div>
               )}
-            </div>
-          )}
-          {(cat === 'Media' || (cat === 'All' && !(hasCustomLayout() && isWidgetPinned('widget:media')))) && <MusicHub />}
-          {cat === 'All' && <WeatherForecast />}
-          {cat === 'All' && <YaleDoorbells devices={devices} />}
-          {cat === 'All' && <SystemMetrics devices={devices} />}
-          {cat === 'All' && <MicrocontrollerIndex devices={devices} />}
-          {cat === 'All' && <Cameras />}
-          {cat !== 'Graphs' && cat !== 'Plan' && visible.length === 0 && (
-            <div style={{ color:'var(--text3)', fontSize:13, padding:'20px 0', textAlign:'center' }}>
-              {gt('no_devices', 'No devices in this category')}
-            </div>
-          )}
-          {cat === 'All' && customLayoutActive && (
-            <DashboardGrid devices={devices} onCommand={onCommand} onOpen={setOpenKey} />
-          )}
-          {cat === 'All' && !customLayoutActive && visible.length > 0 && (
-            <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:8 }}>
-              <button
-                onClick={() => { seedLayoutFromDevices(visible.map(d => d.key)); setCustomLayoutActive(true) }}
-                style={{
-                  fontSize:12, fontWeight:600, padding:'6px 12px', borderRadius:999, cursor:'pointer',
-                  border:'1px solid var(--border)', background:'var(--white-04)', color:'var(--text2)',
-                }}
-              >🎛 {gt('dash_edit_customize', 'Customize Dashboard')}</button>
-            </div>
-          )}
-          {cat !== 'All' && cat !== 'Graphs' && cat !== 'Plan' && <div className="device-grid" style={{
-            display:'grid',
-            gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
-            gap:10,
-            paddingTop:8,
-          }}>
-            {visible.map((d, i) => (
-              <DeviceTile key={d.key} device={d} onCommand={onCommand} onOpen={setOpenKey} revealIndex={i} />
-            ))}
-          </div>}
-          {/* "All" view: chunked into per-category sections (same taxonomy as the
-              sidebar) instead of one undifferentiated wall of tiles — Lighting
-              alone can be 30+ devices, so a flat grid made everything equally
-              hard to scan. Order/labels/on-count badge intentionally mirror the
-              sidebar category list so both stay one mental model. */}
-          {cat === 'All' && !customLayoutActive && visible.length > 0 && (() => {
-            const sectionCats = CATS.filter(c => !['All','Plan','Graphs'].includes(c))
-            const sections = sectionCats
-              .map(c => ({ cat: c, items: visible.filter(d => getGroup(d) === c) }))
-              .filter(s => s.items.length > 0)
-            const indexOf = new Map()
-            sections.flatMap(s => s.items).forEach((d, i) => indexOf.set(d.key, i))
+            </div>) : null
+                case 'model3d':   return <HomeModel3D onOpenPlan={() => { setCat('Plan'); setRoomFilter(null) }} devices={devices} groupOf={getGroup} onOpen={setOpenKey} />
+                case 'music':     return hasCustomLayout() && isWidgetPinned('widget:media') ? null : <MusicHub />
+                case 'weather':   return <WeatherForecast />
+                case 'doorbells': return <YaleDoorbells devices={devices} />
+                case 'system':    return <SystemMetrics devices={devices} />
+                case 'mcu':       return <MicrocontrollerIndex devices={devices} />
+                case 'cameras':   return <Cameras />
+                case 'favs':      return favDevices.length > 0 ? renderTileSection('favs', gt('home_favs', 'Favourites'), StarIcon, favDevices) : null
+                default: {
+                  if (!id.startsWith('cat:')) return null
+                  if (customLayoutActive) {
+                    if (gridPlaced) return null
+                    gridPlaced = true
+                    return <DashboardGrid devices={devices} onCommand={onCommand} onOpen={setOpenKey} />
+                  }
+                  const c = id.slice(4)
+                  const items = homeVisible.filter(d => getGroup(d) === c)
+                  return items.length ? renderTileSection(c, gt('cat_' + c.toLowerCase(), c), CAT_ICON_COMPONENT[c], items) : null
+                }
+              }
+            }
             return (
-              <div style={{ display:'flex', flexDirection:'column', gap:22, paddingTop:8 }}>
-                {sections.map(({ cat: c, items }) => {
-                  const CatIcon = CAT_ICON_COMPONENT[c]
-                  const onN = items.filter(d => {
-                    const sw = d.readings?.switch?.value
-                    return sw===1 || sw==='on' || sw===true
-                  }).length
-                  return (
-                    <div key={c} data-cat={c}>
-                      <div style={{
-                        display:'flex', alignItems:'center', gap:8, marginBottom:10, paddingBottom:8,
-                        borderBottom:'1px solid var(--sep)',
-                      }}>
-                        <CatIcon size={15} color="var(--cat-c, var(--accent-lt))" />
-                        <span style={{ fontSize:13, fontWeight:700, color:'var(--text2)' }}>
-                          {gt('cat_' + c.toLowerCase(), c)}
-                        </span>
-                        <span className="badge badge-gray">{items.length}</span>
-                        {onN > 0 && <span className="badge badge-yellow">{onN} {gt('b_on', 'on')}</span>}
-                      </div>
-                      <div className="device-grid" style={{
-                        display:'grid',
-                        gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))',
-                        gap:10,
-                      }}>
-                        {items.map(d => (
-                          <DeviceTile key={d.key} device={d} onCommand={onCommand} onOpen={setOpenKey} revealIndex={indexOf.get(d.key)} />
-                        ))}
-                      </div>
-                    </div>
-                  )
+              <div style={{ display:'flex', flexDirection:'column', gap:14, paddingTop:4 }}>
+                {homeOrder.filter(id => !homePrefs.hidden.includes(id)).map(id => {
+                  const el = renderSection(id)
+                  return el ? <div key={id} data-home-section={id}>{el}</div> : null
                 })}
+                <div style={{ display:'flex', justifyContent:'flex-end', gap:8, flexWrap:'wrap' }}>
+                  {!customLayoutActive && visible.length > 0 && (
+                    <button className="home-edit-btn"
+                      onClick={() => { seedLayoutFromDevices(homeVisible.map(d => d.key)); setCustomLayoutActive(true) }}
+                    >🎛 {gt('dash_edit_customize', 'Customize Dashboard')}</button>
+                  )}
+                  <button className="home-edit-btn" data-primary onClick={() => setHomeEditing(true)}>
+                    ✎ {gt('home_edit_title', 'Edit Home View')}
+                  </button>
+                </div>
               </div>
             )
           })()}
@@ -1561,6 +1665,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
       <Suspense fallback={null}>
         <DeviceModal device={openDevice} rooms={rooms} onClose={() => setOpenKey(null)} onCommand={onCommand} />
       </Suspense>
+      <HomeEditor open={homeEditing} onClose={() => setHomeEditing(false)} sections={homeSections} devices={devices} />
     </div>
   )
 }

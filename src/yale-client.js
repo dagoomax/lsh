@@ -121,6 +121,8 @@ function resolveBrand(ecoSystem) {
 const AUTH_FILE = path.join(__dirname, '..', 'persist', 'yale-auth.json');
 
 const DEFAULT_POLL_INTERVAL_S = 30;
+const AUTH_BACKOFF_START_MS = 5 * 60 * 1000;
+const AUTH_BACKOFF_MAX_MS = 6 * 60 * 60 * 1000;
 const MIN_POLL_INTERVAL_S     = 10;
 const REQUEST_TIMEOUT_MS      = 10_000;
 const UPDATE_FAILURE_TOLERANCE = 3;
@@ -401,24 +403,31 @@ class YaleClient {
     this._timer = null;
   }
 
+  // A login the account rejects won't start working by retrying every poll —
+  // and hammering it can get the account locked. Back off 5 min, doubling up
+  // to 6 h; a successful poll resets it.
+  _authFailed(message) {
+    this._authBackoff = Math.min((this._authBackoff || AUTH_BACKOFF_START_MS / 2) * 2, AUTH_BACKOFF_MAX_MS);
+    this._authBlockedUntil = Date.now() + this._authBackoff;
+    console.error(`${message} Next attempt in ${Math.round(this._authBackoff / 60000)} min.`);
+    platformStatus.set('yale', false);
+  }
+
   async _poll() {
+    if (this._authBlockedUntil && Date.now() < this._authBlockedUntil) return;
     try {
       const state = await this._auth.ensureAuthenticated();
       if (state === 'requires_validation') {
-        console.error('[Yale] Account requires one-time verification — run `node scripts/yale-verify.js` and follow the prompts, then restart LSH.');
-        platformStatus.set('yale', false);
-        return;
+        return this._authFailed('[Yale] Account requires one-time verification — run `node scripts/yale-verify.js` and follow the prompts, then restart LSH.');
       }
       if (state === 'bad_password') {
-        console.error('[Yale] Login rejected — check yale.username/yale.password in config.json.');
-        platformStatus.set('yale', false);
-        return;
+        return this._authFailed('[Yale] Login rejected — check yale.username/yale.password in config.json.');
       }
       if (state === 'requires_token') {
-        console.error('[Yale] yale_global needs an access token — set yale.accessToken (and yale.refreshToken) in config.json, or its token expired and could not be refreshed.');
-        platformStatus.set('yale', false);
-        return;
+        return this._authFailed('[Yale] yale_global needs an access token — set yale.accessToken (and yale.refreshToken) in config.json, or its token expired and could not be refreshed.');
       }
+      this._authBackoff = 0;
+      this._authBlockedUntil = 0;
 
       const doorbells = await this._auth.get('/users/doorbells/mine');
       for (const [id, data] of Object.entries(doorbells || {})) this._syncDoorbell(id, data);

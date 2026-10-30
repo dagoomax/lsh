@@ -133,13 +133,15 @@ class BridgePool {
   // event handlers below). HAP-NodeJS supports adding bridged accessories
   // to an already-published Bridge, which this file already relied on for
   // those late-discovery paths before this pool existed.
-  add(accessory, key) {
-    if (key && this.byKey?.has(key)) return; // already bridged
+  // `release` (optional) undoes what building the accessory hooked up — its
+  // store listeners — and runs when it's removed again.
+  add(accessory, key, release) {
+    if (key && this.byKey?.has(key)) { release?.(); return } // already bridged
     let bridge = this.bridges[this.bridges.length - 1];
     if (bridge._count >= MAX_ACCESSORIES_PER_BRIDGE) bridge = this._addBridge();
     bridge.addBridgedAccessory(accessory);
     bridge._count++;
-    if (key) (this.byKey ||= new Map()).set(key, { accessory, bridge });
+    if (key) (this.byKey ||= new Map()).set(key, { accessory, bridge, release });
   }
 
   // Take a bridged accessory out again (HomeKit exclusions, applied live)
@@ -147,6 +149,7 @@ class BridgePool {
     const e = this.byKey?.get(key);
     if (!e) return false;
     try { e.bridge.removeBridgedAccessory(e.accessory) } catch (err) { console.warn(`[HomeKit] Remove ${key}: ${err.message}`) }
+    e.release?.();
     e.bridge._count--;
     this.byKey.delete(key);
     return true;
@@ -180,6 +183,20 @@ class BridgePool {
     console.log(`[HomeKit] Standalone accessory "${accessory.displayName}" on port ${port}  PIN: ${this.config.pin}  Setup URI: ${uri}`);
     return { username, port, uri };
   }
+}
+
+// Builds an accessory and returns [accessory, release]: release() removes the
+// store listeners the build added (each add*Service below subscribes), so an
+// accessory taken out of the bridge stops being updated and can be collected
+// instead of staying behind for good. The builders are synchronous, so the
+// listeners that appear while one runs are its own.
+function buildTracked(store, build) {
+  const before = new Set(store.listeners('change'));
+  const release = (fns) => () => { for (const fn of fns) store.off('change', fn) };
+  const added = () => store.listeners('change').filter((fn) => !before.has(fn));
+  let accessory;
+  try { accessory = build() } catch (err) { release(added())(); throw err }
+  return [accessory, release(added())];
 }
 
 // ── Per-service builders ──────────────────────────────────────────────────
@@ -1544,13 +1561,14 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
         }
       });
 
-    store.on('change', ({ key, value }) => {
+    const onChange = ({ key, value }) => {
       if (key === `system/0/Relay/${relay.index}/State`) {
         switchSvc.getCharacteristic(Characteristic.On).updateValue(value === 1);
       }
-    });
+    };
+    store.on('change', onChange);
 
-    pool.add(acc, `relay:${relay.index}`);
+    pool.add(acc, `relay:${relay.index}`, () => store.off('change', onChange));
     console.log(`[HomeKit] Relay switch: ${relay.name}`);
   };
   for (const relay of config.relays) addRelay(relay);
@@ -1621,11 +1639,13 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
       if (pool.excluded('device', device.key, device.type)) return;
       for (const s of dimmerSensors(device)) {
         if (pool.has(`device:${device.key}#${s.path}`)) continue;
-        pool.add(buildDimmerAccessory(device, s, store), `device:${device.key}#${s.path}`);
+        const [acc, release] = buildTracked(store, () => buildDimmerAccessory(device, s, store));
+        pool.add(acc, `device:${device.key}#${s.path}`, release);
         console.log(`[HomeKit] Light${added ? ' added' : ''}: ${s.name || device.label}`);
       }
       if (device.homekit && device.homekit.length > 0 && !pool.has(`device:${device.key}`)) {
-        pool.add(buildDeviceAccessory(device, store), `device:${device.key}`);
+        const [acc, release] = buildTracked(store, () => buildDeviceAccessory(device, store));
+        pool.add(acc, `device:${device.key}`, release);
         console.log(`[HomeKit] Sensor${added ? ' added' : ''}: ${device.label} (${device.homekit.join(', ')})`);
       }
     };
@@ -1646,10 +1666,16 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
   }
 
   // ── Scene switches (LSH automation scenes as momentary switches) ──────────
-  if (automation?.scenes?.length) {
+  // Apple Home has no API for creating its own scenes, so each LSH scene is
+  // published as a switch that runs it and springs back off: it shows up in
+  // the Home app, works with Siri ("turn on Movie night") and can be used
+  // inside Home-app scenes and automations. Kept in sync live — see syncScenes.
+  if (automation) {
+    const sceneNames = new Map(); // scene id → name it was published under
     const addScene = (scene) => {
       if (pool.excluded('scene', scene.id) || pool.has(`scene:${scene.id}`)) return;
       const name = `${scene.name}`;
+      sceneNames.set(scene.id, name);
       const acc  = new Accessory(name, makeUUID(`scene-${scene.id}`));
       acc.category = Categories.SWITCH;
       setInfo(acc, 'LSH Scene', name, `SCENE-${scene.id}`);
@@ -1671,6 +1697,31 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
     };
     for (const scene of automation.scenes) addScene(scene);
     adders.push(() => { for (const scene of automation.scenes || []) addScene(scene) });
+
+    // Scene added / renamed / deleted in LSH → mirror it on the bridge without
+    // a restart. A rename updates the published names in place (same UUID), so
+    // Apple Home keeps the accessory, its room and any Home-app scene using it.
+    pool.syncScenes = () => {
+      const live = new Map((automation.scenes || []).map((s) => [s.id, s]));
+      for (const key of [...(pool.byKey?.keys() || [])]) {
+        if (!key.startsWith('scene:')) continue;
+        const id = key.slice(6);
+        const scene = live.get(id);
+        if (!scene) { pool.remove(key); sceneNames.delete(id); console.log(`[HomeKit] Scene switch removed: ${id}`); continue; }
+        if (scene.name !== sceneNames.get(id)) {
+          const acc = pool.byKey.get(key).accessory;
+          acc.getService(Service.AccessoryInformation)?.getCharacteristic(Characteristic.Name).updateValue(scene.name);
+          acc.getService(Service.Switch)?.getCharacteristic(Characteristic.Name).updateValue(scene.name);
+          acc.displayName = scene.name;
+          sceneNames.set(id, scene.name);
+          console.log(`[HomeKit] Scene switch renamed: ${scene.name}`);
+        }
+      }
+      for (const scene of live.values()) addScene(scene);
+    };
+    automation.onScenesChanged?.(() => {
+      try { pool.syncScenes(); } catch (err) { console.error(`[HomeKit] Scene sync failed: ${err.message}`); }
+    });
   }
   pool.scenes = () => automation?.scenes || [];
   pool.relays = () => config.relays || [];

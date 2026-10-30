@@ -955,11 +955,12 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
       <div className="plan-viewport" ref={viewportRef}
         style={{ position: 'relative', overflow: focusRoom ? 'hidden' : undefined }}>
       {plan?.model?.url && showModelView && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 20, background: 'var(--card)' }}>
+        <div className="pmv-full">
           <Suspense fallback={
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontSize: 13 }}>…</div>
           }>
-            <PlanModelViewer model={plan.model} />
+            <PlanModelViewer model={plan.model} devices={devices} groupOf={groupOf} onOpen={onOpen}
+              onClose={() => { setShowModelView(false); setShowModelAlign(false) }} />
           </Suspense>
         </div>
       )}
