@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -24,6 +25,7 @@ type Server struct {
 	auth  *Auth
 	host  *ModuleHost
 	sio   *SocketIO
+	auto  *Automation
 }
 
 type ctxUser struct{}
@@ -31,7 +33,9 @@ type ctxUser struct{}
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false) // like res.json(): <, >, & stay as they are
+	enc.Encode(v)
 }
 
 func fail(w http.ResponseWriter, status int, msg string) {
@@ -50,13 +54,14 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
-func readBody(r *http.Request) map[string]any {
-	var body map[string]any
-	json.NewDecoder(http.MaxBytesReader(nil, r.Body, 1<<20)).Decode(&body)
-	if body == nil {
-		body = map[string]any{}
+// readBody parses a JSON object body, key order kept (scenes, flows and
+// rules are stored back exactly as sent).
+func readBody(r *http.Request) *OMap {
+	raw, _ := io.ReadAll(http.MaxBytesReader(nil, r.Body, 8<<20))
+	if o, ok := rawOrdered(raw).(*OMap); ok {
+		return o
 	}
-	return body
+	return NewOMap()
 }
 
 func (s *Server) Handler() http.Handler {
@@ -95,7 +100,7 @@ func (s *Server) Handler() http.Handler {
 		ok(w, map[string]any{"mongoEnabled": false, "retentionDays": 90, "bufferHours": 6})
 	})
 	api.HandleFunc("GET /api/platform-status", func(w http.ResponseWriter, r *http.Request) { ok(w, s.ps.All()) })
-	api.HandleFunc("GET /api/automation/scenes", func(w http.ResponseWriter, r *http.Request) { ok(w, []any{}) })
+	s.automationRoutes(api)
 	api.HandleFunc("GET /api/modules/processes", s.admin(func(w http.ResponseWriter, r *http.Request) {
 		ok(w, map[string]any{"isolated": true, "processes": s.host.List()})
 	}))
@@ -186,8 +191,8 @@ func (s *Server) authSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b := readBody(r)
-	name, _ := b["adminUsername"].(string)
-	pw, _ := b["adminPassword"].(string)
+	name := b.Str("adminUsername")
+	pw := b.Str("adminPassword")
 	if name == "" || pw == "" {
 		fail(w, 400, "adminUsername and adminPassword required")
 		return
@@ -213,8 +218,8 @@ func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b := readBody(r)
-	name, _ := b["username"].(string)
-	pw, _ := b["password"].(string)
+	name := b.Str("username")
+	pw := b.Str("password")
 	if name == "" || pw == "" {
 		fail(w, 400, "username and password required")
 		return
@@ -239,27 +244,15 @@ func (s *Server) deviceGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if sensor := r.URL.Query().Get("sensor"); sensor != "" {
-		rd, _ := d["readings"].(map[string]any)[sensor].(map[string]any)
+		rd, _ := d.Get("readings").(*OMap).Get(sensor).(*OMap)
 		if rd == nil {
 			fail(w, 404, "Sensor '"+sensor+"' not found")
 			return
 		}
-		w.Write([]byte(jsString(rd["value"])))
+		w.Write([]byte(jsString(rd.Get("value"))))
 		return
 	}
 	ok(w, d)
-}
-
-// String(value) as JS prints it, for the plain-text ?sensor= reply.
-func jsString(v any) string {
-	switch x := v.(type) {
-	case string:
-		return x
-	case nil:
-		return "null"
-	}
-	b, _ := json.Marshal(v)
-	return string(b)
 }
 
 func (s *Server) deviceCommand(w http.ResponseWriter, r *http.Request) {
@@ -273,10 +266,10 @@ func (s *Server) deviceCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b := readBody(r)
-	sensor, _ := b["sensor"].(string)
-	value, has := b["value"]
+	sensor := b.Str("sensor")
+	value, has := b.Lookup("value")
 	if !has {
-		value, has = b["on"] // legacy
+		value, has = b.Lookup("on") // legacy
 	}
 	if sensor == "" || !has {
 		fail(w, 400, "Body must contain { sensor: string, value: any }")

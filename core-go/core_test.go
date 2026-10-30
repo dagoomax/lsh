@@ -33,6 +33,8 @@ func newTestCore(t *testing.T) (*Server, *ModuleProcess) {
 	srv := &Server{root: root, store: store, reg: reg, ps: ps, auth: NewAuth(t.TempDir(), "test-secret"), host: host}
 	srv.sio = NewSocketIO(srv.sioAuthorize, srv.sioConnect)
 	srv.wireEvents()
+	srv.auto = NewAutomation(store, reg, map[string]any{}, filepath.Join(t.TempDir(), "automations.json"), t.TempDir(), srv.sio.Emit)
+	srv.auto.Start()
 	fake, _ := filepath.Abs("testdata/fake-client.js")
 	m := host.Add(Integration{File: fake, Label: "Fake", On: true, Installed: true})
 	t.Cleanup(host.StopAll)

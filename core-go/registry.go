@@ -18,7 +18,7 @@ import (
 	"sync"
 )
 
-type Device = map[string]any
+type Device = *OMap
 
 // Writer runs a device's _writeCapability(capabilityId, command, args) —
 // for module devices it forwards to the module process.
@@ -59,36 +59,33 @@ func (r *Registry) emit(event string, payload any) {
 }
 
 func (r *Registry) applyOverride(d Device) {
-	key, _ := d["key"].(string)
-	o, ok := r.overrides[key].(map[string]any)
+	o, ok := r.overrides[d.Str("key")].(map[string]any)
 	if !ok {
 		return
 	}
 	if v, ok := o["room"].(string); ok && v != "" {
-		d["room"] = v
+		d.Set("room", v)
 	}
 	if v, ok := o["icon"].(string); ok && v != "" {
-		d["customIcon"] = v
+		d.Set("customIcon", v)
 	}
 	if v, ok := o["label"].(string); ok && v != "" {
-		if _, has := d["_origLabel"]; !has {
-			d["_origLabel"] = d["label"]
-		}
-		d["label"] = v
+		d.Set("_origLabel", d.Get("label"))
+		d.Set("label", v)
 	}
 	if v, ok := o["permanent"].(bool); ok && v {
-		d["permanent"] = true
+		d.Set("permanent", true)
 	}
 	for _, f := range []string{"planX", "planY", "planFloor", "camAngle", "camFov", "camRange"} {
 		if v, ok := o[f]; ok && v != nil {
-			d[f] = v
+			d.Set(f, v)
 		}
 	}
 }
 
 // Register adds a device (ignored when the key exists, like the JS registry).
 func (r *Registry) Register(d Device, w Writer) bool {
-	key, _ := d["key"].(string)
+	key := d.Str("key")
 	if key == "" {
 		return false
 	}
@@ -104,7 +101,7 @@ func (r *Registry) Register(d Device, w Writer) bool {
 		r.writers[key] = w
 	}
 	r.mu.Unlock()
-	log.Printf("[Sensors] Registered: %v (%s)", d["label"], key)
+	log.Printf("[Sensors] Registered: %v (%s)", d.Get("label"), key)
 	r.emit("device-discovered", d)
 	return true
 }
@@ -112,7 +109,7 @@ func (r *Registry) Register(d Device, w Writer) bool {
 // Refresh replaces a device a module re-sent (changed, or after a restart),
 // keeping the dashboard's customisations on top.
 func (r *Registry) Refresh(d Device, w Writer) {
-	key, _ := d["key"].(string)
+	key := d.Str("key")
 	r.mu.Lock()
 	if _, exists := r.devices[key]; !exists {
 		r.mu.Unlock()
@@ -135,41 +132,44 @@ func (r *Registry) Has(key string) bool {
 	return ok
 }
 
-func sensorsOf(d Device) []map[string]any {
-	arr, _ := d["sensors"].([]any)
-	out := make([]map[string]any, 0, len(arr))
+func sensorsOf(d Device) []*OMap {
+	arr, _ := d.Get("sensors").([]any)
+	out := make([]*OMap, 0, len(arr))
 	for _, s := range arr {
-		if m, ok := s.(map[string]any); ok {
+		if m, ok := s.(*OMap); ok {
 			out = append(out, m)
 		}
 	}
 	return out
 }
 
+// {...device, readings} with readings[path] = {...sensor, value, timestamp}
+// — key order as Node builds it.
 func (r *Registry) readings(d Device) Device {
-	key, _ := d["key"].(string)
-	readings := map[string]any{}
+	key := d.Str("key")
+	readings := NewOMap()
 	for _, s := range sensorsOf(d) {
-		p, _ := s["path"].(string)
+		p := jsString(s.Get("path"))
 		full := key + "/" + p
 		v := r.store.Get(full)
 		if v == nil {
 			continue
 		}
-		rd := make(map[string]any, len(s)+2)
-		for k, x := range s {
-			rd[k] = x
-		}
-		rd["value"] = v
-		rd["timestamp"] = r.store.Timestamp(full)
-		readings[p] = rd
+		rd := s.Clone()
+		rd.Set("value", v)
+		rd.Set("timestamp", r.store.Timestamp(full))
+		readings.Set(p, rd)
 	}
-	out := make(Device, len(d)+1)
-	for k, v := range d {
-		out[k] = v
-	}
-	out["readings"] = readings
+	out := d.Clone()
+	out.Set("readings", readings)
 	return out
+}
+
+// Device is the registered descriptor itself (no readings).
+func (r *Registry) Device(key string) Device {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.devices[key]
 }
 
 func (r *Registry) DeviceReadings(key string) Device {
@@ -220,6 +220,7 @@ func (r *Registry) Keys() []string {
 
 // SendCommand — same dispatch as SensorRegistry.sendCommand().
 func (r *Registry) SendCommand(key, path string, value any) error {
+	value = clean(value)
 	r.mu.RLock()
 	d, ok := r.devices[key]
 	w := r.writers[key]
@@ -227,18 +228,18 @@ func (r *Registry) SendCommand(key, path string, value any) error {
 	if !ok || w == nil {
 		return errors.New("Device not found or not writable")
 	}
-	var sensor map[string]any
+	var sensor *OMap
 	for _, s := range sensorsOf(d) {
-		if s["path"] == path {
+		if s.Get("path") == path {
 			sensor = s
 		}
 	}
-	if sensor == nil || sensor["controllable"] != true {
+	if sensor == nil || sensor.Get("controllable") != true {
 		return errors.New("Sensor not controllable")
 	}
-	capID, cmd := sensor["capabilityId"], sensor["writeCmd"]
+	capID, cmd := sensor.Get("capabilityId"), sensor.Get("writeCmd")
 	var err error
-	switch sensor["type"] {
+	switch sensor.Get("type") {
 	case "range", "color-temp", "text":
 		_, err = w([]any{capID, cmd, []any{value}})
 	case "color":
@@ -248,16 +249,16 @@ func (r *Registry) SendCommand(key, path string, value any) error {
 		}
 		if lvl, ok := c["level"]; ok {
 			for _, s := range sensorsOf(d) {
-				if s["path"] == "level" && s["controllable"] == true {
-					wc := s["writeCmd"]
+				if s.Get("path") == "level" && s.Get("controllable") == true {
+					wc := s.Get("writeCmd")
 					if wc == nil {
 						wc = "setLevel"
 					}
-					w([]any{s["capabilityId"], wc, []any{lvl}}) // colour still applies if this fails
+					w([]any{s.Get("capabilityId"), wc, []any{lvl}}) // colour still applies if this fails
 				}
 			}
 		}
-		_, err = w([]any{capID, "setColor", []any{map[string]any{"hue": c["hue"], "saturation": c["saturation"]}}})
+		_, err = w([]any{capID, "setColor", []any{OM("hue", c["hue"], "saturation", c["saturation"])}})
 	default:
 		on := false
 		switch v := value.(type) {
@@ -269,9 +270,9 @@ func (r *Registry) SendCommand(key, path string, value any) error {
 			on = v == "on" || v == "1" || v == "true"
 		}
 		if on {
-			_, err = w([]any{capID, sensor["writeOn"]})
+			_, err = w([]any{capID, sensor.Get("writeOn")})
 		} else {
-			_, err = w([]any{capID, sensor["writeOff"]})
+			_, err = w([]any{capID, sensor.Get("writeOff")})
 		}
 	}
 	return err
@@ -306,9 +307,9 @@ func rgbToHsv(r, g, b float64) (h, s, v float64) {
 }
 
 func normalizeColor(value any) map[string]any {
-	if m, ok := value.(map[string]any); ok {
-		h, hok := toNum(m["hue"])
-		s, sok := toNum(m["saturation"])
+	if m, ok := value.(*OMap); ok {
+		h, hok := toNum(m.Get("hue"))
+		s, sok := toNum(m.Get("saturation"))
 		if hok && sok {
 			return map[string]any{"hue": clamp(h, 0, 100), "saturation": clamp(s, 0, 100)}
 		}

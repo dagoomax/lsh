@@ -40,6 +40,35 @@ single-session MQTT. Stop the Node core first, or choose modules.
 | `src/module-host.js` (watchdog, memory limit, backoff, commands, change forwarding) | `modules.go` |
 | routes: auth (setup/login/logout/me), status, connection, devices, device command/set, history, modules/processes | `api.go` |
 | `/react/` dashboard, `public/` assets | `api.go` |
+| `src/automation-engine.js`: rules, scenes, notifications, flows (all 22 node types), time/MQTT triggers | `automation.go` |
+| `src/routes/automation.js` (rules / scenes / flows / notifications, flow snapshots, flow Loxone XML) | `automation_api.go` |
+| JSON key order (Loxone Virtual Input checks match `/api/devices` text) | `omap.go` |
+| JS `Number()` / `String()` / `undefined` semantics used by flows | `jsval.go` |
+
+The engine runs `-automations` (default `core-go/data/automations.json`, seeded
+from the checkout's `automations.json`), so editing flows in the Go core doesn't
+touch the Node core's file. `http` saveAs files and `loxoneXml` files go to
+`core-go/data/flow-snapshots/` and `core-go/data/flow-loxone/`.
+
+`automation_test.go` runs each scenario through the real Node engine
+(`testdata/engine-harness.js`) and through the Go one and requires identical
+traces: commands, notifications, store writes, debug taps, flow devices, saved
+JSON, Loxone XML. That covers every comparison operator × 10 thresholds × 21
+payload types. `roundtrip_test.go` checks the real `automations.json` saves back
+byte for byte.
+
+Known differences from the Node engine:
+
+- `relay` and `page` actions/nodes fail with a notification. The relay
+  controller and paging aren't in the Go core yet.
+- `extract` uses Go's RE2 regex engine: no lookbehind, no backreferences.
+  Patterns that use them fail with "Bad regex".
+- `{value}` substitution is literal: JS `String.replace` would expand `$&` / `$1`
+  inside a payload.
+- `http` nodes: 10 s to connect and receive headers, 70 s for the whole
+  response. Node used a 10 s idle timeout.
+- `POST /api/automation/scenes/:id/homekit` isn't ported (no HomeKit bridge
+  yet). `inHomekit` is always false.
 
 `GET /api/core` reports the Go process's own memory and counts.
 
@@ -47,7 +76,6 @@ single-session MQTT. Stop the Node core first, or choose modules.
 
 Every other `/api/*` route answers `501 Not in the Go core yet`. Next steps, roughly in order:
 
-- **Automation engine** (`automation-engine.js`: rules, scenes, flows). Scenes return `[]` for now.
 - **Victron connection manager / relays** (MQTT → VRM fallback). Inline in `server.js`, not a module.
 - **Integrations with `expose`** (tuya, shelly, lgthinq, …). They run here as plain workers: devices work, their REST routes don't.
 - **Inline integrations from `server.js`**: Loxone in/out, Fibaro out, cameras, SIP, paging, HomeKit bridge. The plan is to run each as its own Node process, as with the modules.

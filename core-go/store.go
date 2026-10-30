@@ -169,8 +169,11 @@ func (s *Store) History(key string) [][2]float64 {
 // ── Persistence ─────────────────────────────────────────────────────────
 
 type persisted struct {
-	SavedAt int64             `json:"savedAt"`
-	Data    map[string]Entry  `json:"data"`
+	SavedAt int64 `json:"savedAt"`
+	Data    map[string]struct {
+		Value     json.RawMessage `json:"value"`
+		Timestamp int64           `json:"timestamp"`
+	} `json:"data"`
 	History []json.RawMessage `json:"history"` // [key, [[t, v], …]]
 }
 
@@ -219,7 +222,7 @@ func (s *Store) Load(seedFrom string) {
 	}
 	for k, e := range raw.Data {
 		if _, ok := s.data[k]; !ok {
-			s.data[k] = e
+			s.data[k] = Entry{Value: rawOrdered(e.Value), Timestamp: e.Timestamp}
 		}
 	}
 	series := len(s.history)

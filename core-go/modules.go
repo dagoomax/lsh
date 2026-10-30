@@ -88,7 +88,7 @@ type ipcMsg struct {
 	T        string          `json:"t"`
 	K        string          `json:"k,omitempty"`
 	V        json.RawMessage `json:"v,omitempty"`
-	Device   map[string]any  `json:"device,omitempty"`
+	Device   json.RawMessage `json:"device,omitempty"`
 	Writable bool            `json:"writable,omitempty"`
 	All      map[string]bool `json:"all,omitempty"`
 	ID       int             `json:"id,omitempty"`
@@ -278,21 +278,14 @@ func (m *ModuleProcess) readLoop(conn net.Conn) {
 	}
 }
 
-func decodeAny(raw json.RawMessage) any {
-	if len(raw) == 0 {
-		return nil
-	}
-	var v any
-	json.Unmarshal(raw, &v)
-	return v
-}
-
 func (m *ModuleProcess) onMessage(msg ipcMsg) {
 	switch msg.T {
 	case "set":
-		m.host.store.SetFrom(msg.K, decodeAny(msg.V), m)
+		m.host.store.SetFrom(msg.K, rawOrdered(msg.V), m)
 	case "dev":
-		m.device(msg.Device, msg.Writable)
+		if d, ok := rawOrdered(msg.Device).(*OMap); ok {
+			m.device(d, msg.Writable)
+		}
 	case "ps":
 		m.mu.Lock()
 		for name := range msg.All {
@@ -329,8 +322,8 @@ func (m *ModuleProcess) onMessage(msg ipcMsg) {
 	}
 }
 
-func (m *ModuleProcess) device(d map[string]any, writable bool) {
-	key, _ := d["key"].(string)
+func (m *ModuleProcess) device(d *OMap, writable bool) {
+	key := d.Str("key")
 	if key == "" {
 		return
 	}
@@ -369,7 +362,7 @@ func (m *ModuleProcess) Write(key string, args []any) (any, error) {
 		if !res.OK {
 			return nil, errors.New(res.Error)
 		}
-		return decodeAny(res.Value), nil
+		return rawOrdered(res.Value), nil
 	case <-time.After(commandTimeout):
 		m.mu.Lock()
 		delete(m.pend, id)

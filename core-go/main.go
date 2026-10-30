@@ -63,6 +63,7 @@ func main() {
 	port := flag.Int("port", 3002, "HTTP port")
 	dataDir := flag.String("data", "", "where this core keeps its store snapshot (default <root>/core-go/data)")
 	nodeBin := flag.String("node", "node", "node binary for the integration processes")
+	automations := flag.String("automations", "", "automations.json this core runs and edits (default <data>/automations.json, seeded from <root>/automations.json)")
 	modules := flag.String("modules", "all", `"all" (every configured integration), "none", or a comma list of src/ file names or .js paths`)
 	flag.Parse()
 
@@ -111,6 +112,18 @@ func main() {
 	srv.sio = NewSocketIO(srv.sioAuthorize, srv.sioConnect)
 	srv.wireEvents()
 
+	if *automations == "" {
+		*automations = filepath.Join(*dataDir, "automations.json")
+		if _, err := os.Stat(*automations); err != nil {
+			if b, err := os.ReadFile(filepath.Join(*root, "automations.json")); err == nil {
+				os.MkdirAll(*dataDir, 0o755)
+				os.WriteFile(*automations, b, 0o644)
+			}
+		}
+	}
+	srv.auto = NewAutomation(store, reg, boot.Config, *automations, *dataDir, srv.sio.Emit)
+	srv.auto.Start()
+
 	for _, it := range selectModules(*modules, boot.Integrations) {
 		host.Add(it)
 	}
@@ -131,6 +144,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	httpSrv.Shutdown(ctx)
 	cancel()
+	srv.auto.Stop()
 	host.StopAll()
 	if n, err := store.Persist(); err != nil {
 		log.Printf("[Store] Persist failed: %v", err)
