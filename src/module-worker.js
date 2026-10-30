@@ -178,6 +178,21 @@ function run() {
         }
         break;
       }
+      // a public method of the client itself (getToken, handleWebhookEvent, …)
+      // for hosts whose REST routes used to call the client object directly
+      case 'call': {
+        try {
+          if (typeof msg.method !== 'string' || msg.method.startsWith('_') || msg.method === 'constructor'
+            || msg.method in Object.prototype || typeof client?.[msg.method] !== 'function') {
+            throw new Error(`No method ${msg.method}`);
+          }
+          const value = await client[msg.method](...(msg.args || []));
+          send({ t: 'res', id: msg.id, ok: true, value: plain(value) });
+        } catch (err) {
+          send({ t: 'res', id: msg.id, ok: false, error: err?.message || String(err) });
+        }
+        break;
+      }
       case 'ping': {
         const m = process.memoryUsage();
         send({ t: 'pong', n: msg.n, rss: m.rss, heap: m.heapUsed });

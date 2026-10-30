@@ -201,3 +201,23 @@ func TestNormalizeColor(t *testing.T) {
 		t.Fatalf("composite: %v", c)
 	}
 }
+
+func TestModuleCall(t *testing.T) {
+	srv, m := newTestCore(t)
+	waitFor(t, "running", func() bool { return m.Info()["state"] == "running" })
+	if v, err := m.Call("getToken"); err != nil || v != "tok-123" {
+		t.Fatalf("getToken: %v %v", v, err)
+	}
+	if _, err := m.Call("handleWebhookEvent", OM("deviceId", "1", "attribute", "temp", "value", 20.5)); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "webhook value", func() bool { return srv.store.Get("fake/1/temp") == 20.5 })
+	if _, err := m.Call("handleWebhookEvent", OM()); err == nil || err.Error() != "bad payload" {
+		t.Fatalf("thrown error: %v", err)
+	}
+	for _, name := range []string{"_secret", "nope", "constructor", "toString", "hasOwnProperty"} {
+		if _, err := m.Call(name); err == nil {
+			t.Fatalf("%s should be refused", name)
+		}
+	}
+}

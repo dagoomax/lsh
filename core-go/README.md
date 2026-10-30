@@ -3,7 +3,9 @@
 A Go replacement for the Node core process: store, device registry, auth, core
 REST routes, Socket.IO and the module host. **Integrations stay in Node,
 unchanged**: each one runs as `src/module-worker.js` in its own process, as with
-`modules.isolate` today. The Go host talks to the worker over Node's own IPC
+`modules.isolate` today. `module-worker.js` gained one message, `call` (a public method of the client,
+for routes that used to call the client object directly). Everything else
+about it is as before. The Go host talks to the worker over Node's own IPC
 channel (`NODE_CHANNEL_FD` + JSON serialization on a socketpair), so the worker
 can't tell the difference.
 
@@ -62,6 +64,7 @@ single-session MQTT. Stop the Node core first, or choose modules.
 | `src/connection-manager.js`, `mqtt-client.js`, `vrm-client.js`, `relay-controller.js`: Venus MQTT with VRM cloud fallback and back, relays, `/api/connection`, `/api/relays`, `POST /api/relay/:index/state` | `victron.go` |
 | Victron device auto-discovery from store keys (`device-definitions.js`, passed in by `node/integrations.js`) | `registry.go` |
 | Loxone In (`src/loxone-client.js`) runs **unchanged as a module process**; started when `config.loxone.host` is set | `loxone_api.go` |
+| SmartThings (`src/smartthings-client.js`) runs **unchanged as a module process**. Its routes (webhook, camera snapshot / image proxy / capture / presets, Settings test / save, token) and the 24 h OAuth token delivery are Go, calling the client's `getToken` / `handleWebhookEvent` through the module channel's `call` message | `smartthings_api.go` |
 | `src/loxone-out-client.js`: store → Miniserver Virtual Inputs | `loxone_out.go` |
 | `src/fibaro-out-client.js`: store → Home Center global variables | `fibaro_out.go` |
 | `src/loxone-xml.js` + `src/zip.js`, and the routes `/api/loxone/inputs.xml`, `outputs.xml`, `sipout.xml`, `scenes.xml` | `loxone_xml.go`, `loxone_api.go` |
@@ -92,6 +95,12 @@ Known differences from the Node engine:
   inside a payload.
 - `http` nodes: 10 s to connect and receive headers, 70 s for the whole
   response. Node used a 10 s idle timeout.
+- `POST /api/settings/smartthings` keeps the OAuth fields (`clientId`,
+  `clientSecret`). Node's save rebuilt the section from token / deviceIds /
+  webhook fields only, which dropped them. The save also applies at once:
+  the module restarts.
+- SmartThings `take` doesn't write the camera event log yet (camera-log
+  isn't ported).
 - Loxone: the `cameras-discovered` event (VideoIntercom → HomeKit camera) has
   no listener until the HomeKit bridge is ported.
 - `outputs.xml` with a string `min`/`max` on a range sensor works in Go. Node

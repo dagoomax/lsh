@@ -134,11 +134,13 @@ func main() {
 
 	// integrations server.js starts inline: Loxone In as a module process;
 	// Loxone Out / Fibaro Out are Go (loxone_out.go, fibaro_out.go)
-	boot.Integrations = append(boot.Integrations, loxoneInModule(boot.Config, *root))
+	boot.Integrations = append(boot.Integrations, loxoneInModule(boot.Config, *root), smartThingsModule(boot.Config, *root))
 	srv.applyOutBridges(boot.Config, "")
 	for _, it := range selectModules(*modules, boot.Integrations) {
 		host.Add(it)
 	}
+
+	srv.deliverSmartThingsToken(boot.Config)
 
 	httpSrv := &http.Server{Addr: fmt.Sprintf(":%d", *port), Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {

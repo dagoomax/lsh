@@ -357,6 +357,19 @@ func (m *ModuleProcess) device(d *OMap, writable bool) {
 
 // Write asks the process to run one of its devices' _writeCapability.
 func (m *ModuleProcess) Write(key string, args []any) (any, error) {
+	return m.request(map[string]any{"t": "write", "key": key, "args": args})
+}
+
+// Call runs a public method of the client object in the process
+// (getToken, handleWebhookEvent, …).
+func (m *ModuleProcess) Call(method string, args ...any) (any, error) {
+	if args == nil {
+		args = []any{}
+	}
+	return m.request(map[string]any{"t": "call", "method": method, "args": args})
+}
+
+func (m *ModuleProcess) request(msg map[string]any) (any, error) {
 	m.mu.Lock()
 	if m.enc == nil || m.state != "running" {
 		st := m.state
@@ -368,7 +381,8 @@ func (m *ModuleProcess) Write(key string, args []any) (any, error) {
 	ch := make(chan ipcMsg, 1)
 	m.pend[id] = ch
 	m.mu.Unlock()
-	if err := m.send(map[string]any{"t": "write", "id": id, "key": key, "args": args}); err != nil {
+	msg["id"] = id
+	if err := m.send(msg); err != nil {
 		return nil, err
 	}
 	select {

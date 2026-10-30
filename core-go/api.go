@@ -128,6 +128,7 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("GET /api/platform-status", func(w http.ResponseWriter, r *http.Request) { ok(w, s.ps.All()) })
 	s.automationRoutes(api)
 	s.loxoneRoutes(api)
+	s.smartThingsRoutes(api)
 	api.HandleFunc("GET /api/modules/processes", s.admin(func(w http.ResponseWriter, r *http.Request) {
 		ok(w, OM("isolated", true, "processes", s.host.List()))
 	}))

@@ -30,6 +30,13 @@ class FakeClient {
     });
     platformStatus.set('fake', true);
   }
+  // public methods reached through the module channel's 'call'
+  async getToken() { return 'tok-123'; }
+  handleWebhookEvent(payload) {
+    if (!payload?.deviceId) throw new Error('bad payload');
+    this.store.set(`fake/1/${payload.attribute}`, payload.value);
+  }
+  _secret() { return 'never'; }
   stop() {}
 }
 
