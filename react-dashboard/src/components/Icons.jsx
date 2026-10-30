@@ -1109,6 +1109,22 @@ export function MinusIcon({ color = 'currentColor', size = 24 }) {
   )
 }
 
+export function ExpandIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+    </svg>
+  )
+}
+
+export function CollapseIcon({ color = 'currentColor', size = 24 }) {
+  return (
+    <svg {...s(color, size)}>
+      <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>
+    </svg>
+  )
+}
+
 // ── Weather condition icons — same outline style as everything else, swapped
 // in for the emoji the server sends (see weatherIcons.js) rather than
 // rendering the raw emoji glyph. ──────────────────────────────────────────

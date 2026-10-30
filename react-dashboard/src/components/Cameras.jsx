@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { io } from 'socket.io-client'
-import { CameraIcon, ChevronIcon, PlusIcon, MinusIcon } from './Icons'
+import { CameraIcon, ChevronIcon, PlusIcon, MinusIcon, ExpandIcon, CollapseIcon } from './Icons'
 import { gt } from '../i18n'
 
 // Full-parity port of the classic dashboard's camera grid + modal
@@ -423,6 +423,31 @@ function CameraPresets({ deviceId }) {
 const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const hhmm = (s) => new Date(s * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
+// Thumbnails exist only for segments already copied to disk by tuya-sd-archive.js
+function SdThumb({ seg, sdUrl, active, onClick }) {
+  const [failed, setFailed] = useState(false)
+  return (
+    <div onClick={onClick} style={{
+      position: 'relative', aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', cursor: 'pointer',
+      background: 'var(--white-05)',
+      border: active ? '2px solid var(--accent)' : '1px solid var(--border)',
+    }}>
+      {seg.archived && !failed ? (
+        <img src={`${sdUrl}/${seg.st}-${seg.ed}.jpg`} alt="" loading="lazy" onError={() => setFailed(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      ) : (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <CameraIcon size={20} color="var(--text3)" />
+        </div>
+      )}
+      <span style={{
+        position: 'absolute', left: 4, bottom: 4, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 6,
+        color: '#fff', background: 'rgba(10,14,20,0.65)',
+      }}>{hhmm(seg.st)}</span>
+    </div>
+  )
+}
+
 function SdRecordings({ sdUrl }) {
   const [open, setOpen]       = useState(false)
   const [date, setDate]       = useState(() => localDate(new Date(Date.now() - 6 * 864e5)))
@@ -485,8 +510,8 @@ function SdRecordings({ sdUrl }) {
         </div>
       )}
       {inHour.length > 0 && (
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {inHour.map(s => <span key={s.st} style={chip(playing?.st === s.st)} onClick={() => setPlaying(s)}>{hhmm(s.st)}</span>)}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 6 }}>
+          {inHour.map(s => <SdThumb key={s.st} seg={s} sdUrl={sdUrl} active={playing?.st === s.st} onClick={() => setPlaying(s)} />)}
         </div>
       )}
       {playing && (
@@ -516,6 +541,34 @@ function CameraModal({ cam, onClose }) {
   const [lightboxIndex, setLightboxIndex] = useState(null)
   const [classFilter, setClassFilter] = useState('all')
   const previewRef            = useRef(null)
+  const [fullscreen, setFullscreen] = useState(false)
+
+  // Fullscreen the whole preview box so PTZ / talk overlays stay usable.
+  // iPhone Safari has no element fullscreen — fall back to the native video player.
+  useEffect(() => {
+    const sync = () => {
+      const el = document.fullscreenElement || document.webkitFullscreenElement
+      setFullscreen(!!el && el === previewRef.current)
+    }
+    document.addEventListener('fullscreenchange', sync)
+    document.addEventListener('webkitfullscreenchange', sync)
+    return () => {
+      document.removeEventListener('fullscreenchange', sync)
+      document.removeEventListener('webkitfullscreenchange', sync)
+    }
+  }, [])
+
+  const toggleFullscreen = useCallback(() => {
+    const el = previewRef.current
+    if (!el) return
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      (document.exitFullscreen || document.webkitExitFullscreen)?.call(document)
+    } else if (el.requestFullscreen || el.webkitRequestFullscreen) {
+      (el.requestFullscreen || el.webkitRequestFullscreen).call(el)
+    } else if (videoRef.current?.webkitEnterFullscreen && videoRef.current.srcObject) {
+      videoRef.current.webkitEnterFullscreen()
+    }
+  }, [])
 
   const timelineClasses = useMemo(() => {
     if (!timeline) return []
@@ -647,7 +700,8 @@ function CameraModal({ cam, onClose }) {
         else if (e.key === 'ArrowRight') setLightboxIndex(i => Math.min((filteredTimeline?.length || 1) - 1, i + 1))
         return
       }
-      if (e.key === 'Escape') onClose()
+      // Esc in fullscreen only leaves fullscreen (the browser handles that)
+      if (e.key === 'Escape' && !(document.fullscreenElement || document.webkitFullscreenElement)) onClose()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
@@ -712,7 +766,14 @@ function CameraModal({ cam, onClose }) {
             </div>
 
             {/* video/preview area */}
-            <div ref={previewRef} style={{ position: 'relative', margin: '0 18px', borderRadius: 14, overflow: 'hidden', background: '#000', aspectRatio: '16/9' }}>
+            <div ref={previewRef}
+              onDoubleClick={e => { if (!e.target.closest('button')) toggleFullscreen() }}
+              style={{
+                position: 'relative', overflow: 'hidden', background: '#000',
+                ...(fullscreen
+                  ? { width: '100vw', height: '100vh', margin: 0, borderRadius: 0 }
+                  : { margin: '0 18px', borderRadius: 14, aspectRatio: '16/9' }),
+              }}>
               <video ref={videoRef} autoPlay playsInline muted
                 style={{ width: '100%', height: '100%', objectFit: 'contain', display: showVideo ? 'block' : 'none' }} />
               {!showVideo && imgSrc && (
@@ -725,6 +786,18 @@ function CameraModal({ cam, onClose }) {
                 </div>
               )}
               <DetectionBoxesOverlay containerRef={previewRef} boxes={boxes} />
+              {(showVideo || imgSrc) && (
+                <button onClick={toggleFullscreen}
+                  title={fullscreen ? gt('cam_exit_fullscreen', 'Exit fullscreen') : gt('cam_fullscreen', 'Fullscreen')}
+                  style={{
+                    position: 'absolute', right: 12, top: 12, width: 34, height: 34, borderRadius: 10,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                    color: '#e9eef5', background: 'rgba(10,14,20,0.55)', border: '1px solid rgba(255,255,255,0.08)',
+                    backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                  }}>
+                  {fullscreen ? <CollapseIcon size={16} /> : <ExpandIcon size={16} />}
+                </button>
+              )}
               <PtzPad ptzUrl={cam?.ptzUrl} />
               <CameraPresets deviceId={cam?._smartthings ? cam._deviceId : null} />
               {canTalk && (
