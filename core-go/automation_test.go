@@ -157,7 +157,7 @@ func goTrace(t *testing.T, sc scenario) (events []string, saved string) {
 			}
 		}
 		if x, ok := s.Get("xml").(*OMap); ok {
-			add("xml", buildInputsXML(x.Get("device").(*OMap), x.Str("host"), x.Str("token")))
+			add("xml", strings.Join(buildInputsXMLs([]*OMap{x.Get("device").(*OMap)}, xmlOpts{host: x.Str("host"), token: x.Str("token")}), "\n"))
 		}
 		wait := st.Wait
 		if wait == 0 {

@@ -42,9 +42,11 @@ type Store struct {
 	mu        sync.RWMutex
 	data      map[string]Entry
 	history   map[string][][2]float64
-	listeners []func(Change)
+	listeners []*listener
 	file      string
 }
+
+type listener struct{ fn func(Change) }
 
 func NewStore(file string) *Store {
 	return &Store{data: map[string]Entry{}, history: map[string][][2]float64{}, file: file}
@@ -52,11 +54,23 @@ func NewStore(file string) *Store {
 
 func nowMs() int64 { return time.Now().UnixMilli() }
 
-// OnChange registers a listener; listeners run synchronously, outside the lock.
-func (s *Store) OnChange(fn func(Change)) {
+// OnChange registers a listener; listeners run synchronously, outside the
+// lock. The returned func removes it.
+func (s *Store) OnChange(fn func(Change)) func() {
+	l := &listener{fn}
 	s.mu.Lock()
-	s.listeners = append(s.listeners, fn)
+	s.listeners = append(s.listeners, l)
 	s.mu.Unlock()
+	return func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		for i, x := range s.listeners {
+			if x == l {
+				s.listeners = append(s.listeners[:i:i], s.listeners[i+1:]...)
+				return
+			}
+		}
+	}
 }
 
 func (s *Store) Set(key string, value any) { s.SetFrom(key, value, nil) }
@@ -69,8 +83,8 @@ func (s *Store) SetFrom(key string, value any, from any) {
 	listeners := s.listeners
 	s.mu.Unlock()
 	ch := Change{Key: key, Value: value, Changed: !had || !samePrimitive(prev.Value, value), From: from}
-	for _, fn := range listeners {
-		fn(ch)
+	for _, l := range listeners {
+		l.fn(ch)
 	}
 }
 

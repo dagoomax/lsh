@@ -226,6 +226,17 @@ func (r *Registry) readings(d Device) Device {
 	return out
 }
 
+// Devices — the descriptors in registration order (getDevices()).
+func (r *Registry) Devices() []Device {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]Device, 0, len(r.order))
+	for _, k := range r.order {
+		out = append(out, r.devices[k])
+	}
+	return out
+}
+
 // Device is the registered descriptor itself (no readings).
 func (r *Registry) Device(key string) Device {
 	r.mu.RLock()

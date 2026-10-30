@@ -151,6 +151,20 @@ func (h *ModuleHost) Add(it Integration) *ModuleProcess {
 	return m
 }
 
+// Apply — after Settings saved a module's config: restart it, start it if
+// newly configured, stop it if no longer.
+func (h *ModuleHost) Apply(it Integration) {
+	m := h.Get(it.File)
+	switch {
+	case !it.On && m != nil:
+		m.Stop()
+	case it.On && m == nil:
+		h.Add(it)
+	case it.On:
+		m.Restart("settings saved")
+	}
+}
+
 func (h *ModuleHost) Get(id string) *ModuleProcess {
 	h.mu.Lock()
 	defer h.mu.Unlock()

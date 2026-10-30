@@ -132,6 +132,10 @@ func main() {
 	srv.auto.Start()
 	victron.Start()
 
+	// integrations server.js starts inline: Loxone In as a module process;
+	// Loxone Out / Fibaro Out are Go (loxone_out.go, fibaro_out.go)
+	boot.Integrations = append(boot.Integrations, loxoneInModule(boot.Config, *root))
+	srv.applyOutBridges(boot.Config, "")
 	for _, it := range selectModules(*modules, boot.Integrations) {
 		host.Add(it)
 	}
@@ -154,6 +158,14 @@ func main() {
 	cancel()
 	srv.auto.Stop()
 	victron.Stop()
+	srv.out.mu.Lock()
+	if srv.out.loxoneOut != nil {
+		srv.out.loxoneOut.Stop()
+	}
+	if srv.out.fibaroOut != nil {
+		srv.out.fibaroOut.Stop()
+	}
+	srv.out.mu.Unlock()
 	host.StopAll()
 	if n, err := store.Persist(); err != nil {
 		log.Printf("[Store] Persist failed: %v", err)

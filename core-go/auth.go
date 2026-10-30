@@ -126,6 +126,19 @@ func (a *Auth) VerifyAPIToken(token string) bool {
 	return ok
 }
 
+// TokenValue — an API token's value by id, for server-side embedding (the
+// Loxone XML exports). Never put it in an API response.
+func (a *Auth) TokenValue(id string) string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, t := range a.loadTokens() {
+		if t.ID == id {
+			return t.Token
+		}
+	}
+	return ""
+}
+
 func (a *Auth) Sign(u map[string]any) (string, error) {
 	claims := jwt.MapClaims{"id": u["id"], "username": u["username"], "role": u["role"], "iat": time.Now().Unix(), "exp": time.Now().Add(tokenTTL).Unix()}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(a.secret)

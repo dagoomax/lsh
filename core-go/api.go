@@ -5,7 +5,6 @@ package main
 // Routes not ported yet answer 501 so the dashboard degrades per widget.
 
 import (
-	"encoding/json"
 	"io"
 	"log"
 	"math"
@@ -30,6 +29,7 @@ type Server struct {
 	auto    *Automation
 	victron *Victron
 	relays  *Relays
+	out     outBridges
 }
 
 type ctxUser struct{}
@@ -37,9 +37,11 @@ type ctxUser struct{}
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false) // like res.json(): <, >, & stay as they are
-	enc.Encode(v)
+	b, err := marshalJS(v) // like res.json(): <, >, & as they are, no trailing newline
+	if err != nil {
+		b = []byte(`{"success":false,"error":"response encoding failed"}`)
+	}
+	w.Write(b)
 }
 
 func fail(w http.ResponseWriter, status int, msg string) {
@@ -125,6 +127,7 @@ func (s *Server) Handler() http.Handler {
 	})
 	api.HandleFunc("GET /api/platform-status", func(w http.ResponseWriter, r *http.Request) { ok(w, s.ps.All()) })
 	s.automationRoutes(api)
+	s.loxoneRoutes(api)
 	api.HandleFunc("GET /api/modules/processes", s.admin(func(w http.ResponseWriter, r *http.Request) {
 		ok(w, OM("isolated", true, "processes", s.host.List()))
 	}))

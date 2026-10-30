@@ -979,7 +979,7 @@ func (a *Automation) execNode(node, msg *OMap) ([]*OMap, error) {
 			token = "YOUR_API_TOKEN"
 		}
 		if d := a.reg.Device(key); d != nil {
-			if xml := buildInputsXML(d, jsString(host), jsString(token)); xml != "" {
+			if xml := strings.Join(buildInputsXMLs([]*OMap{d}, xmlOpts{host: jsString(host), token: jsString(token)}), "\n"); xml != "" {
 				if err := os.MkdirAll(a.loxoneDir, 0o755); err != nil {
 					return nil, err
 				}
@@ -1131,7 +1131,7 @@ func (a *Automation) execNode(node, msg *OMap) ([]*OMap, error) {
 	return []*OMap{msg}, nil
 }
 
-// ── Loxone Virtual HTTP Input XML (src/loxone-xml.js buildInputsXml, one device) ──
+// ── Loxone XML helpers shared with loxone_xml.go ──
 
 func xmlEsc(s string) string {
 	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;").Replace(s)
@@ -1163,47 +1163,6 @@ func checkPattern(s *OMap) string {
 		j = strings.TrimSuffix(j, `"value":0`) + `"value":\v`
 	}
 	return j
-}
-
-func buildInputsXML(d *OMap, host, token string) string {
-	var cmds []string
-	label := jsString(d.Get("label"))
-	for _, s := range sensorsOf(d) {
-		if !isInputSensor(s) {
-			continue
-		}
-		isRange := s.Get("type") == "range" || s.Get("type") == "color-temp"
-		orNum := func(v any, def float64) string {
-			if isNullish(v) {
-				return numberToString(def)
-			}
-			return jsString(v)
-		}
-		minVal, maxVal := "0", "1000000"
-		if isRange {
-			minVal, maxVal = orNum(s.Get("min"), 0), orNum(s.Get("max"), 100)
-		} else if s.Get("type") == "boolean" {
-			maxVal = "1"
-		}
-		name := s.Get("name")
-		if !truthy(name) {
-			name = s.Get("label")
-		}
-		if !truthy(name) {
-			name = s.Get("path")
-		}
-		cmds = append(cmds, fmt.Sprintf("\t<VirtualInHttpCmd Title=\"%s\" Comment=\"%s\" Check=\"%s\" "+
-			"Signed=\"true\" Analog=\"true\" SourceValLow=\"0\" DestValLow=\"0\" SourceValHigh=\"0\" DestValHigh=\"0\" "+
-			"DefVal=\"0\" MinVal=\"%s\" MaxVal=\"%s\"/>",
-			xmlEsc(label+" "+jsString(name)), xmlEsc(d.Str("key")+"/"+jsString(s.Get("path"))), xmlEsc(checkPattern(s)), minVal, maxVal))
-	}
-	if len(cmds) == 0 {
-		return ""
-	}
-	return "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-		fmt.Sprintf("<VirtualInHttp Title=\"%s (feedback)\" Comment=\"Reads device states from LSH /api/devices\" "+
-			"Address=\"http://%s/api/devices?token=%s\" PollingTime=\"5000\">\n%s\n</VirtualInHttp>\n",
-			xmlEsc("LSH "+label), xmlEsc(host), xmlEsc(token), strings.Join(cmds, "\n"))
 }
 
 // ── CRUD + notifications ────────────────────────────────────────────────────
