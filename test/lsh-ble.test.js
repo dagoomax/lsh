@@ -202,6 +202,15 @@ test('lsh-lan: identify() and private-MAC vendor detection', () => {
   assert.equal(identify(base).kind, 'unknown');
   assert.equal(vendorOf('DA:A1:19:00:00:01'), 'Private / randomised MAC');
   assert.equal(vendorOf(null), null);
+  // MA-M / MA-S blocks resolve to the company, not "IEEE Registration Authority"
+  if (vendorOf('BC:34:00:26:73:00')) assert.equal(vendorOf('BC:34:00:26:73:00'), 'LifeSmart');
+  assert.equal(identify({ ...base, self: true, ports: [8123] }).kind, 'lsh');
+  assert.equal(identify({ ...base, mdns: { services: [{ type: '_hap._tcp', name: 'Sensibo-CE00C8' }] } }).integration, 'sensibo');
+  assert.equal(identify({ ...base, vendor: 'tado GmbH', mdns: { services: [{ type: '_hap._tcp', name: 'tado Internet Bridge' }] } }).integration, 'tado');
+  assert.equal(identify({ ...base, vendor: 'Private / randomised MAC', mdns: { services: [{ type: '_companion-link._tcp', name: 'iPad' }] } }).kind, 'apple');
+  assert.equal(identify({ ...base, vendor: 'Private / randomised MAC', hostname: 'macbookpro-1.home' }).kind, 'apple');
+  assert.equal(identify({ ...base, hostname: 'dsc-tl280.home' }).integration, 'dsc');
+  assert.equal(identify({ ...base, vendor: 'Espressif Inc.' }).kind, 'esp');
   assert.ok(Array.isArray(localNetworks()));
 });
 

@@ -108,9 +108,11 @@ class LanMonitor {
 
   async check(dev, arp) {
     const prev = this.status.get(dev.key) || { online: null, fails: 0 };
-    // Follow the MAC if the device moved to another IP.
+    // Follow the MAC if the device moved to another IP — only when that MAC
+    // is at a single IP (a Wi-Fi bridge answers for all its clients with one).
     let ip = dev.ip;
-    if (dev.mac) for (const [aip, mac] of arp) if (mac === dev.mac && aip !== ip) { ip = aip; inventory.setIp(dev.key, ip); }
+    const atIps = dev.mac ? [...arp].filter(([, mac]) => mac === dev.mac).map(([aip]) => aip) : [];
+    if (!dev.sharedMac && atIps.length === 1 && atIps[0] !== ip) { ip = atIps[0]; inventory.setIp(dev.key, ip); }
     const ports = [...new Set([...(dev.ports || []).slice(0, 4), ...FALLBACK_PORTS])].slice(0, 7);
     let up = null;
     for (const port of ports) {

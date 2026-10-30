@@ -35,7 +35,9 @@ function save() {
   fs.renameSync(tmp, FILE);
 }
 
-const keyOf = (h) => (h.mac && h.mac !== '00:00:00:00:00:00' ? h.mac.toUpperCase() : `ip:${h.ip}`);
+// A MAC shared by several IPs (devices behind a Wi-Fi bridge) can't tell
+// them apart, so those are keyed by IP like devices without a MAC.
+const keyOf = (h) => (h.mac && h.mac !== '00:00:00:00:00:00' && !h.sharedMac ? h.mac.toUpperCase() : `ip:${h.ip}`);
 
 const cleanTags = (tags) => [...new Set((Array.isArray(tags) ? tags : String(tags || '').split(','))
   .map((t) => String(t).trim().toLowerCase().replace(/[^a-z0-9 _-]/g, '').slice(0, 24))
@@ -71,7 +73,7 @@ function mergeScan(scan) {
       name: h.name || dev.name || null, vendor: h.vendor || dev.vendor || null, hostname: h.hostname || dev.hostname || null,
       kind: h.id?.kind || dev.kind || null, kindLabel: h.id?.label || dev.kindLabel || null,
       integration: h.id?.integration || dev.integration || null, ports: h.ports?.length ? h.ports : (dev.ports || []),
-      gateway: !!h.gateway,
+      gateway: !!h.gateway, sharedMac: !!h.sharedMac,
     });
     h.key = key;
     h.saved = view(dev);

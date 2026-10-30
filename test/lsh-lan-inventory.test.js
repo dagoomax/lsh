@@ -64,3 +64,14 @@ test('saved LAN devices: baseline, new, ip-changed, mark known, user tags, monit
   inv.remove('AA:00:00:00:00:03');
   assert.equal(inv.get('AA:00:00:00:00:03'), null);
 });
+
+test('saved LAN devices: a MAC shared by several IPs (Wi-Fi bridge) is keyed by IP', () => {
+  const mac = 'AA:00:00:00:00:77';
+  inv.mergeScan({ hosts: [host('192.168.1.56', mac, { sharedMac: true }), host('192.168.1.58', mac, { sharedMac: true })] });
+  const a = inv.get('ip:192.168.1.56'), b = inv.get('ip:192.168.1.58');
+  assert.ok(a && b, 'two devices, not one flipping between IPs');
+  assert.equal(a.mac, mac);
+  assert.equal(a.sharedMac, true);
+  assert.ok(!a.tags.includes('ip-changed') && !b.tags.includes('ip-changed'));
+  assert.equal(inv.get(mac), null);
+});

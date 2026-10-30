@@ -11,6 +11,7 @@ const KIND_ICON = {
   shelly: '🔌', hue: '💡', sonos: '🔊', esphome: '📟', loxone: '🏠', fibaro: '🏠', wled: '🌈', cast: '📺', androidtv: '📺',
   airplay: '🎵', homekit: '🏡', matter: '🧩', homeassistant: '🏠', nodered: '🔀', mqtt: '📨', knx: '🔗', modbus: '🔗',
   camera: '📷', printer: '🖨️', victron: '🔋', apple: '🍎', network: '📶', web: '🌐', unknown: '❔',
+  lsh: '🏠', homey: '🏠', climate: '🌡️', appliance: '🧺', vacuum: '🧹', alarm: '🚨', samsung: '📺', esp: '📟', iot: '🔌',
 }
 const PHASES = ['ARP sweep', 'TCP probes', 'Bonjour / mDNS', 'UPnP / SSDP', 'Vendor lookup', 'Fingerprinting']
 
@@ -197,6 +198,7 @@ export default function LanScanSection() {
                   <div className="lan-tile-chips">
                     {h.self && <span className="stg-ble-chip">{tr('this host')}</span>}
                     {h.gateway && <span className="stg-ble-chip">{tr('gateway')}</span>}
+                    {h.sharedMac && <span className="stg-ble-chip" title={tr('Several IPs answer with this MAC address — usually devices behind a Wi-Fi bridge or repeater. They are told apart by IP.')}>{tr('shared MAC')}</span>}
                     {h.id?.label && h.name !== h.id.label && <span className="lan-kind">{h.id.label}</span>}
                     {h.id?.integration && <span className="stg-ble-chip lan-int">{tr('LSH · {integration}', { integration: h.id.integration })}</span>}
                     <TagChips tags={h.saved?.tags}/>

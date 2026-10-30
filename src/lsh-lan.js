@@ -60,7 +60,10 @@ function vendorOf(mac) {
   if (first & 0x02) return 'Private / randomised MAC'
   // Not cached on failure: the module may be installed while LSH runs.
   if (!OUI) { try { OUI = require('oui-data') } catch { return null } }
-  const v = OUI[mac.replace(/[:-]/g, '').slice(0, 6).toUpperCase()]
+  // Small blocks first: MA-S (36-bit), MA-M (28-bit), then MA-L (24-bit) —
+  // the MA-L entry of a sub-assigned block is just "IEEE Registration Authority".
+  const hex = mac.replace(/[:-]/g, '').toUpperCase()
+  const v = OUI[hex.slice(0, 9)] || OUI[hex.slice(0, 7)] || OUI[hex.slice(0, 6)]
   return v ? v.split('\n')[0].trim() : null
 }
 
@@ -302,6 +305,8 @@ function identify(h) {
   const title = (h.http?.web?.title || '').toLowerCase()
   const vendor = (h.vendor || '').toLowerCase()
   const has = (p) => h.ports.includes(p)
+  const hostName = `${h.mdns?.hostname || ''} ${h.hostname || ''}`.toLowerCase()
+  if (h.self) return { kind: 'lsh', label: 'This LSH host', integration: null }
   if (h.gateway) return { kind: 'network', label: 'Router / gateway', integration: null }
   if (h.http?.shelly) return { kind: 'shelly', label: `Shelly ${h.http.shelly.model || ''}`.trim(), integration: 'shelly' }
   if (h.http?.hue) return { kind: 'hue', label: 'Philips Hue Bridge', integration: 'hue' }
@@ -317,10 +322,12 @@ function identify(h) {
   if (has(8123) || svc('_home-assistant') || /home assistant/.test(title)) return { kind: 'homeassistant', label: 'Home Assistant', integration: null }
   const names = `${h.mdns?.services?.map((x) => x.name).join(' ') || ''} ${h.mdns?.hostname || ''} ${h.ssdp?.description?.manufacturer || ''}`.toLowerCase()
   if (/miele/.test(names) || /miele/.test(vendor)) return { kind: 'appliance', label: 'Miele appliance', integration: 'miele' }
-  if (/tado/.test(names)) return { kind: 'climate', label: 'tado bridge', integration: null }
+  if (/tado/.test(names) || /^tado/.test(vendor)) return { kind: 'climate', label: 'tado bridge', integration: 'tado' }
   if (/athom/.test(vendor) || /homey/.test(names + ' ' + (h.hostname || ''))) return { kind: 'homey', label: 'Homey', integration: 'homey' }
   if (/viessmann/.test(vendor)) return { kind: 'climate', label: 'Viessmann heating', integration: 'vitodens' }
-  if (/sensibo/.test(names)) return { kind: 'climate', label: 'Sensibo AC controller', integration: null }
+  if (/sensibo/.test(names)) return { kind: 'climate', label: 'Sensibo AC controller', integration: 'sensibo' }
+  if (/dreame/.test(vendor)) return { kind: 'vacuum', label: 'Dreame robot vacuum', integration: 'dreame' }
+  if (/\b(dsc|tl280|tl2803g|3g2080)/.test(hostName)) return { kind: 'alarm', label: 'DSC alarm communicator', integration: 'dsc' }
   if (svc('_hap')) return { kind: 'homekit', label: 'HomeKit accessory', integration: null }
   if (svc('_matter') || has(5540)) return { kind: 'matter', label: 'Matter device', integration: 'matter' }
   if (has(1880) && /node-red/.test(title)) return { kind: 'nodered', label: 'Node-RED', integration: null }
@@ -330,12 +337,19 @@ function identify(h) {
   if (has(554) || svc('_rtsp')) return { kind: 'camera', label: 'Camera (RTSP)', integration: 'cameras' }
   if (svc('_ipp') || svc('_printer') || has(631) || has(9100)) return { kind: 'printer', label: 'Printer', integration: null }
   if (/victron|venus/.test(title) || /victron/.test(vendor)) return { kind: 'victron', label: 'Victron GX device', integration: 'mqtt' }
-  if (/apple/.test(vendor) || has(62078)) return { kind: 'apple', label: 'Apple device', integration: null }
+  // Phones, tablets and Macs hide behind a randomised MAC; Bonjour and the
+  // DHCP host name still give them away.
+  if (/apple/.test(vendor) || has(62078) || svc('_companion-link') || /\b(iphone|ipad|macbook|imac|apple-?tv|homepod)|\bmac\b/.test(hostName)) {
+    return { kind: 'apple', label: 'Apple device', integration: null }
+  }
   const netNames = `${title} ${vendor} ${server} ${h.mdns?.hostname || ''} ${h.hostname || ''} ${h.ssdp?.description?.friendlyName || ''} ${h.ssdp?.description?.manufacturer || ''}`.toLowerCase()
   if (h.gateway || /router|gateway|openwrt|mikrotik|ubiquiti|unifi|fritz|tp-link|tl-wr|linksys|velop|belkin|netgear|eero|deco|orbi|funbox|livebox|sagemcom|zyxel|asus rt|access point/.test(netNames)) {
     return { kind: 'network', label: h.gateway ? 'Router / gateway' : 'Network equipment (router, mesh node, AP)', integration: /unifi|ubiquiti/.test(netNames) ? 'unifi' : null }
   }
   if (h.http?.web) return { kind: 'web', label: h.http.web.title || 'Web server', integration: null }
+  if (/samsung/.test(vendor)) return { kind: 'samsung', label: 'Samsung device', integration: 'smartthings' }
+  if (/espressif/.test(vendor)) return { kind: 'esp', label: 'ESP32 / ESP8266 device', integration: null }
+  if (/mxchip|tuya/.test(vendor)) return { kind: 'iot', label: 'Wi-Fi smart device (Tuya-type module)', integration: 'tuya' }
   return { kind: 'unknown', label: null, integration: null }
 }
 
@@ -385,11 +399,17 @@ async function scan({ timeout = 600 } = {}) {
     }
     h.http = await httpFingerprint(ip, ports)
     h.id = identify(h)
-    h.name = h.http?.shelly?.name || h.http?.hue?.name || h.http?.sonos?.room || h.ssdp?.description?.friendlyName
+    // This host can advertise other services' names (e.g. HA's HomeKit bridge)
+    h.name = (h.self && os.hostname()) || h.http?.shelly?.name || h.http?.hue?.name || h.http?.sonos?.room || h.ssdp?.description?.friendlyName
       || bestServiceName(h.mdns) || h.mdns?.hostname || h.hostname || h.id.label || null
     return h
   })
   hosts.sort((a, b) => ipToInt(a.ip) - ipToInt(b.ip))
+  // One MAC at several IPs = devices behind a Wi-Fi bridge/repeater that
+  // answers ARP for them (MAC NAT): the MAC doesn't identify them.
+  const ipsByMac = new Map()
+  for (const h of hosts) if (h.mac) ipsByMac.set(h.mac, (ipsByMac.get(h.mac) || 0) + 1)
+  for (const h of hosts) if (h.mac && ipsByMac.get(h.mac) > 1) h.sharedMac = true
   return { networks: nets.map(({ iface, address, cidr }) => ({ iface, address, cidr })), gateway, scannedHosts: targets.length, durationMs: Date.now() - t0, hosts }
 }
 
@@ -397,8 +417,11 @@ async function scan({ timeout = 600 } = {}) {
 // generic ones (sleep proxy, device-info, workstation).
 function bestServiceName(m) {
   const svcs = m?.services || []
-  const generic = /^_(sleep-proxy|device-info|workstation|companion-link|rdlink|http)\./
-  return (svcs.find((x) => !generic.test(x.type)) || svcs[0])?.name || null
+  const generic = /^_(sleep-proxy|device-info|workstation|companion-link|rdlink|http|nrd)\./
+  // Some services are named by a UUID (Apple TV / HomePod _nrd, _sleep-proxy)
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const named = svcs.filter((x) => x.name && !uuid.test(x.name))
+  return (named.find((x) => !generic.test(x.type)) || named.find((x) => /^_companion-link\./.test(x.type)) || named[0])?.name || null
 }
 
 // ── Deep dive ───────────────────────────────────────────────────────────────
