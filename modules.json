@@ -1596,6 +1596,18 @@
       ],
       "deps": {}
     },
+    "emodule": {
+      "entry": "src/emodule-client.js",
+      "configKeys": [
+        "emodule"
+      ],
+      "when": "(config.emodule?.username && config.emodule?.password)",
+      "files": [
+        "src/emodule-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
+    },
     "tado": {
       "entry": "src/tado-client.js",
       "configKeys": [

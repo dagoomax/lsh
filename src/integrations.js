@@ -152,6 +152,8 @@ module.exports = [
   { file: 'midea-client', label: 'Midea', expose: 'midea', when: (config) => config.midea?.devices?.length },
   // Mitsubishi Electric — MELCloud (app account)
   { file: 'melcloud-client', label: 'MELCloud', expose: 'melcloud', when: (config) => config.melcloud?.email && config.melcloud?.password },
+  // TECH Sterowniki heating controllers — eModule cloud (emodul.eu account)
+  { file: 'emodule-client', label: 'eModule', expose: 'emodule', when: (config) => config.emodule?.username && config.emodule?.password },
   // Sensibo — official cloud API (any IR air conditioner)
   // tado° heating / hot water / Smart AC + presence (cloud; sign-in via Settings,
   // tokens in persist/tado-tokens.json); exposed for its Settings sign-in / apply

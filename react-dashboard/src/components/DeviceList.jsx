@@ -214,7 +214,7 @@ export function getGroup(d) {
   if (['auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo'].includes(d.type)) return 'Climate'
   if (d.type === 'zehnder' || d.category === 'ventilation') return 'Climate'
   if (d.type === 'smarttub') return 'Climate'
-  if (d.type === 'heatingcurve') return 'Climate'
+  if (d.type === 'heatingcurve' || d.type === 'emodule') return 'Climate'
   if (d.type === 'sonos' || d.type === 'radio')  return 'Media'
   if (d.type === 'googlehome' || d.type === 'googletv' || d.type === 'sony') return 'Media'
   if (d.type === 'denon' || d.type === 'lgwebos')  return 'Media'

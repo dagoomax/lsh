@@ -49,7 +49,7 @@ import TtlockSection from './sections/TtlockSection'
 import UsbRadioSection from './sections/UsbRadioSection'
 import AjaxSection, { JablotronSection } from './sections/AjaxSection'
 import ZehnderSection from './sections/ZehnderSection'
-import { AirConditionersSection, BatteriesSection } from './sections/IntegrationsSection'
+import { AirConditionersSection, BatteriesSection, HeatingControllersSection } from './sections/IntegrationsSection'
 import TadoSection from './sections/TadoSection'
 import ArduinoSection from './sections/ArduinoSection'
 import EsphomeSection from './sections/EsphomeSection'
@@ -142,6 +142,7 @@ const SECTION_COMPONENTS = {
   jablotron: JablotronSection,
   zehnder: ZehnderSection,
   'air-conditioners': AirConditionersSection,
+  'heating-controllers': HeatingControllersSection,
   tado: TadoSection,
   'home-batteries': BatteriesSection,
   arduino: ArduinoSection,

@@ -41,6 +41,17 @@ const AC = [
     ] },
 ]
 
+const HEATING = [
+  { id: 'emodule', title: 'TECH Sterowniki (eModule)', desc: 'TECH heating controllers with an Internet module (EU-L-4X WiFi, EU-L-12, EU-WiFi RS, EU-505, ST-16s WiFi and boiler / heat-pump controllers) through the eModule cloud, with the emodul.eu / eModul app account. Each zone becomes a thermostat (room temperature, setpoint, zone on/off, HomeKit); the controller tiles (sensors, pumps, valves) come in as readings. A setpoint set from LSH holds for the given number of minutes, then the zone returns to its schedule.',
+    top: [
+      { key: 'username', label: 'Username', placeholder: 'eModule login' },
+      { key: 'password', label: 'Password', type: 'password' },
+      { key: 'pollInterval', label: 'Poll interval', hint: '(seconds, min 30)', type: 'number', placeholder: '60' },
+      { key: 'constTempTime', label: 'Manual setpoint time', hint: '(minutes, 0 = until changed)', type: 'number', placeholder: '60' },
+      { key: 'lang', label: 'Tile names language', hint: '(en, pl, de, cs…)', placeholder: 'en' },
+    ] },
+]
+
 const BATTERIES = [
   { id: 'zendure', title: 'Zendure SolarFlow', desc: 'Zendure SolarFlow batteries and the SmartMeter 3CT through the official local API (zenSDK). Newer firmware keeps it off until a HEMS is added in the Zendure app — add one, then leave the HEMS screen.',
     list: [
@@ -63,6 +74,10 @@ const BATTERIES = [
 
 export function AirConditionersSection({ config, reload }) {
   return <>{AC.map((s) => <IntegrationCard key={s.id} spec={s} saved={config[s.id]} reload={reload} />)}</>
+}
+
+export function HeatingControllersSection({ config, reload }) {
+  return <>{HEATING.map((s) => <IntegrationCard key={s.id} spec={s} saved={config[s.id]} reload={reload} />)}</>
 }
 
 export function BatteriesSection({ config, reload }) {

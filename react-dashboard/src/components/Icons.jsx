@@ -706,6 +706,7 @@ const TYPE_MAP = {
   gree:         AirCondIcon,
   midea:        AirCondIcon,
   melcloud:     AirCondIcon,
+  emodule:      ThermostatIcon,
   sensibo:      AirCondIcon,
   sonos:        SpeakerIcon,
   radio:        SpeakerIcon,

@@ -67,7 +67,7 @@ const GROUPS = [
   { id: 'security',   label: 'Security & access',   keys: ['satel', 'dsc', 'unifiAccess', 'yale', 'sip'] },
   { id: 'cameras',    label: 'Cameras',             keys: ['reolink', 'axis', 'dahua', 'mobotix', 'tuya-ipc', 'objectDetection'] },
   { id: 'control',    label: 'Lighting & control',  keys: ['loxone', 'loxoneOut', 'knx', 'fibaro', 'fibaroOut', 'boneio', 'grenton', 'nippy', 'ampio', 'wirenboard', 'shelly', 'wled', 'hue', 'tradfri', 'tuya', 'sonoff', 'dirigera', 'somfy', 'suppla', 'smartbob', 'esphome', 'arduino', 'broadlink', 'can', 'lsh-ble'] },
-  { id: 'climate',    label: 'Climate & weather',   keys: ['vitodens', 'auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo', 'dyson', 'vents', 'mc6', 'airly', 'loxoneWeather', 'zehnder'] },
+  { id: 'climate',    label: 'Climate & weather',   keys: ['vitodens', 'auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo', 'emodule', 'dyson', 'vents', 'mc6', 'airly', 'loxoneWeather', 'zehnder'] },
   { id: 'outdoor',    label: 'Pool & garden',       keys: ['bayrol', 'smarttub', 'landroid', 'aquilo'] },
   { id: 'appliances', label: 'Appliances',          keys: ['lgthinq', 'homeconnect', 'miele', 'thermomix', 'roborock', 'dreame', 'karcher', 'ecovacs'] },
   { id: 'media',      label: 'Media',               keys: ['sonos', 'radio', 'lgwebos', 'denon', 'beosound', 'sony', 'googletv', 'googlehome'] },

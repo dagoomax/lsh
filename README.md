@@ -318,6 +318,7 @@ PM2's own stdout/stderr are written to `logs/pm2-out.log` and `logs/pm2-error.lo
 | `somfy` | No | Somfy TaHoma, local API or Overkiz cloud (roller shutters, awnings, gates) |
 | `bayrol` | No | Bayrol Pool Manager Connect / Automatic Cl-pH / SALT (pH, ORP, temperature, dosing rates, salt via MQTT) |
 | `auxair` | No | AUX Air (AC Freedom) — on/off, temperature, mode, fan speed via cloud API |
+| `emodule` | No | TECH Sterowniki heating controllers via the eModule cloud (emodul.eu) — zone thermostats (temperature, setpoint, on/off) and controller tiles |
 | `smarttub` | No | SmartTub hot tubs (Jacuzzi / Sundance / Watkins) — water/set temperature, heat mode, pumps, lights via cloud API |
 | `thermomix` | No | Vorwerk Thermomix (TM6 / TM7) via Cookidoo — shopping-list size, weekly meal plan, next recipe (read-only cloud) |
 | `vitodens` | No | Viessmann heating (boilers / heat pumps) via the Viessmann IoT cloud, dynamic per-installation feature discovery (see the `vitodens` section below; `vicare` is a deprecated alias for this same client) |
@@ -4696,6 +4697,28 @@ At 100 calls a day, LSH reads about every 23 minutes. It fetches all zones in on
 **API:** `GET /api/tado/auth`, `POST /api/tado/auth/start`, `POST /api/tado/auth/logout`, and options through `POST /api/settings/integration/tado`.
 
 **Without an account:** run `node scripts/tado-simulator.js 8905`, then set `"tado": { "apiBase": "http://127.0.0.1:8905/api/v2", "authBase": "http://127.0.0.1:8905/oauth2" }` and sign in from Settings. The simulator confirms the code by itself.
+
+### TECH Sterowniki (eModule)
+
+TECH Sterowniki heating controllers with an Internet module (EU-L-4X WiFi, EU-L-12, EU-WiFi RS, EU-505, ST-16s WiFi, boiler / heat-pump controllers) through eModule, the cloud behind emodul.eu and the eModul app (`src/emodule-client.js`, no npm deps). It is the API the eModule web app uses, as implemented by the Home Assistant `tech-controllers` integration — not an official public API. Configure it in Settings → Climate & Water → **TECH Sterowniki (eModule)** with the eModule login, then **Test** and **Save** (applied live).
+
+```json
+"emodule": { "username": "jan.kowalski", "password": "…", "pollInterval": 60, "constTempTime": 60, "lang": "pl" }
+```
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `username` / `password` | — | The eModule (emodul.eu / eModul app) account |
+| `pollInterval` | `60` | Seconds between polls (min 30). The cloud rate-limits — keep it at a minute or more |
+| `constTempTime` | `60` | Minutes a setpoint written from LSH holds before the zone returns to its schedule; `0` = until changed |
+| `lang` | `en` | Language of the tile names fetched from eModule (`en`, `pl`, `de`, `cs`, `sk`, `hu`, …) |
+| `modules` | all | Optional list of controller `udid`s to import |
+
+Devices:
+- `emodule/<udid>-<zoneId>` — one per registered, visible zone: `temperature`, `targetTemp` (5–35 °C, writable), `power` (zone on/off, writable), `humidity`, `heating` (relay), `openWindow` (zones with window sensors), `battery`, `signal`. Exposed to HomeKit as a thermostat (off / heat).
+- `emodule/<udid>` — the controller, with its visible tiles as read-only readings: temperature sensors (`tile<id>`, also HomeKit temperature sensors), pumps / relays (on/off), fan gear, valve opening and flow / return temperature, mixing valves, fuel level, OpenTherm temperatures and modulation, widget values.
+
+**Without an account:** run `node scripts/emodule-simulator.js 8906` and set `"emodule": { "username": "user", "password": "secret", "apiBase": "http://127.0.0.1:8906/api/v1" }`. `test/emodule.test.js` runs the client against it. Not yet tested against a real account.
 
 ### Sensibo
 
