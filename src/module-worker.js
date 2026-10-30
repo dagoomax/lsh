@@ -110,6 +110,26 @@ class WorkerRegistry extends EventEmitter {
   getAllReadings() { return this.getDevices().map((d) => this.getDeviceReadings(d.key)); }
 }
 
+// What a client gets as its 4th constructor argument when the host asks for
+// it (init.automation — object detection, the LAN monitor; other clients'
+// 4th parameter means something else): the parts of the automation engine — notifications, and reading / adding
+// flows (object detection's auto-created flows). Calls go to the host's
+// engine; `flows` is the host's list at start plus what this process saved.
+class WorkerAutomation {
+  constructor(flows) { this.flows = Array.isArray(flows) ? flows : []; }
+  notify(level, message, source) {
+    send({ t: 'notify', level, message: String(message), source: source || null });
+    return { level, message, source };
+  }
+  saveFlow(flow) {
+    const p = plain(flow);
+    send({ t: 'saveFlow', flow: p });
+    const i = this.flows.findIndex((f) => f.id === p.id);
+    if (i >= 0) this.flows[i] = p; else this.flows.push(p);
+    return p;
+  }
+}
+
 // Only when forked by the host — required, this file just exports its path
 // (and the stand-ins, for tests).
 function run() {
@@ -148,10 +168,15 @@ function run() {
         // mirror this process's platform-status singleton into the server's
         const platformStatus = require('./platform-status');
         platformStatus.on('change', (all) => send({ t: 'ps', all }));
+        // camera event log + live detection boxes → the dashboard, via the host
+        require('./camera-log').on('entry', (entry) => send({ t: 'camlog', entry }));
+        require('./detection-boxes').on('update', (entry) => send({ t: 'boxes', entry: plain(entry) }));
 
         try {
           const Client = require(path.resolve(__dirname, msg.file));
-          client = new Client(msg.config, store, registry);
+          client = msg.automation
+            ? new Client(msg.config, store, registry, new WorkerAutomation(msg.flows))
+            : new Client(msg.config, store, registry);
         } catch (err) {
           console.error(`[${msg.label}] Load failed: ${String(err?.message || err).split('\n')[0]}`);
           send({ t: 'fatal', error: String(err?.message || err) });
@@ -205,5 +230,5 @@ function run() {
   });
 }
 
-module.exports = { FILE: __filename, WorkerStore, WorkerRegistry };
+module.exports = { FILE: __filename, WorkerStore, WorkerRegistry, WorkerAutomation };
 if (require.main === module) run();

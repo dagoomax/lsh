@@ -30,6 +30,7 @@ type Server struct {
 	victron *Victron
 	relays  *Relays
 	out     outBridges
+	camera  *CameraEvents
 }
 
 type ctxUser struct{}
@@ -129,6 +130,7 @@ func (s *Server) Handler() http.Handler {
 	s.automationRoutes(api)
 	s.loxoneRoutes(api)
 	s.smartThingsRoutes(api)
+	s.cameraEventRoutes(api)
 	api.HandleFunc("GET /api/modules/processes", s.admin(func(w http.ResponseWriter, r *http.Request) {
 		ok(w, OM("isolated", true, "processes", s.host.List()))
 	}))

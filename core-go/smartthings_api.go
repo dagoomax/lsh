@@ -286,10 +286,19 @@ func (s *Server) smartThingsRoutes(api *http.ServeMux) {
 		s.proxyMedia(w, url)
 	})
 	api.HandleFunc("POST /api/smartthings-camera/{id}/take", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.stCommand(r.PathValue("id"), "imageCapture", "take", []any{}); err != nil {
+		id := r.PathValue("id")
+		if err := s.stCommand(id, "imageCapture", "take", []any{}); err != nil {
 			writeJSON(w, 200, OM("success", false, "error", err.Error()))
 			return
 		}
+		name := id
+		for _, d := range s.reg.Devices() {
+			if d.Get("instance") == id && truthy(d.Get("label")) {
+				name = jsString(d.Get("label"))
+				break
+			}
+		}
+		s.camera.Log(name, "capture-triggered", "")
 		writeJSON(w, 200, OM("success", true, "message", "Capture triggered — snapshot will update within a few seconds"))
 	})
 	api.HandleFunc("GET /api/smartthings-camera/{id}/presets", func(w http.ResponseWriter, r *http.Request) {

@@ -6,9 +6,10 @@
 const platformStatus = require('../../src/platform-status');
 
 class FakeClient {
-  constructor(config, store, registry) {
+  constructor(config, store, registry, automation) {
     this.store = store;
     this.registry = registry;
+    this.automation = automation;
   }
   async start() {
     const device = {
@@ -29,6 +30,15 @@ class FakeClient {
       if (key === 'test/ping') this.store.set('fake/1/echo', value);
     });
     platformStatus.set('fake', true);
+  }
+  // automation stand-in + camera events, as object detection uses them
+  reportCamera() {
+    require('../../src/camera-log').push('Wejście', 'motion', 'person');
+    require('../../src/detection-boxes').set('Wejście', [{ class: 'person', score: 0.9, bbox: [1, 2, 3, 4] }], 640, 480);
+    this.automation.notify('warning', 'Person at the door', 'fake');
+    const had = this.automation.flows.length;
+    this.automation.saveFlow({ id: 'fake-auto', name: 'Auto flow from fake', enabled: false, nodes: [] });
+    return { had, now: this.automation.flows.length };
   }
   // public methods reached through the module channel's 'call'
   async getToken() { return 'tok-123'; }

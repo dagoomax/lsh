@@ -37,8 +37,11 @@ func newTestCore(t *testing.T) (*Server, *ModuleProcess) {
 	srv.wireEvents()
 	srv.auto = NewAutomation(store, reg, map[string]any{}, filepath.Join(t.TempDir(), "automations.json"), t.TempDir(), srv.sio.Emit)
 	srv.auto.Start()
+	srv.camera = NewCameraEvents(srv.sio.Emit)
+	host.Hooks = HostHooks{Flows: srv.auto.Flows, Notify: func(l, m string, src any) { srv.auto.Notify(l, m, src) },
+		SaveFlow: func(f *OMap) { srv.auto.SaveFlow(f) }, CamLog: srv.camera.Push, Boxes: srv.camera.SetBoxes}
 	fake, _ := filepath.Abs("testdata/fake-client.js")
-	m := host.Add(Integration{File: fake, Label: "Fake", On: true, Installed: true})
+	m := host.Add(Integration{File: fake, Label: "Fake", On: true, Installed: true, Automation: true})
 	t.Cleanup(host.StopAll)
 	return srv, m
 }
@@ -219,5 +222,48 @@ func TestModuleCall(t *testing.T) {
 		if _, err := m.Call(name); err == nil {
 			t.Fatalf("%s should be refused", name)
 		}
+	}
+}
+
+func TestModuleAutomationAndCameraEvents(t *testing.T) {
+	srv, m := newTestCore(t)
+	waitFor(t, "running", func() bool { return m.Info()["state"] == "running" })
+	v, err := m.Call("reportCamera")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := v.(*OMap); r.Get("had") != 0.0 || r.Get("now") != 1.0 {
+		t.Fatalf("flows seen by the module: %s", must(r))
+	}
+	waitFor(t, "flow saved in the core", func() bool {
+		for _, f := range srv.auto.Flows() {
+			if f.Get("id") == "fake-auto" && f.Get("name") == "Auto flow from fake" {
+				return true
+			}
+		}
+		return false
+	})
+	waitFor(t, "notification", func() bool {
+		for _, n := range srv.auto.Notifications() {
+			if n.Get("message") == "Person at the door" && n.Get("level") == "warning" && n.Get("source") == "fake" {
+				return true
+			}
+		}
+		return false
+	})
+	waitFor(t, "camera log", func() bool {
+		r := srv.camera.Recent(10, "Wejście")
+		return len(r) == 1 && r[0].Get("type") == "motion" && r[0].Get("detail") == "person"
+	})
+	waitFor(t, "boxes", func() bool { return srv.camera.Boxes("Wejście").Get("imgWidth") == 640.0 })
+	if b := must(srv.camera.Boxes("Wejście").Get("items")); b != `[{"class":"person","score":0.9,"bbox":[1,2,3,4]}]` {
+		t.Fatalf("boxes %s", b)
+	}
+	// a restarted module starts with the core's flows, its own included
+	m.Restart("test")
+	waitFor(t, "running again", func() bool { return m.Info()["state"] == "running" })
+	v, _ = m.Call("reportCamera")
+	if v.(*OMap).Get("had") != 1.0 {
+		t.Fatalf("after restart: %s", must(v))
 	}
 }

@@ -36,11 +36,12 @@ const (
 )
 
 type Integration struct {
-	File      string  `json:"file"`
-	Label     string  `json:"label"`
-	Expose    *string `json:"expose"`
-	On        bool    `json:"on"`
-	Installed bool    `json:"installed"`
+	File       string  `json:"file"`
+	Label      string  `json:"label"`
+	Expose     *string `json:"expose"`
+	On         bool    `json:"on"`
+	Installed  bool    `json:"installed"`
+	Automation bool    `json:"automation"` // gets the automation stand-in as 4th constructor arg
 }
 
 type ModuleHost struct {
@@ -51,6 +52,8 @@ type ModuleHost struct {
 	ps          *PlatformStatus
 	config      func() (map[string]any, error)
 	memoryLimit uint64
+
+	Hooks HostHooks
 
 	mu       sync.Mutex
 	modules  map[string]*ModuleProcess
@@ -98,6 +101,21 @@ type ipcMsg struct {
 	RSS      float64         `json:"rss,omitempty"`
 	Heap     float64         `json:"heap,omitempty"`
 	Cmd      string          `json:"cmd,omitempty"` // Node-internal messages (NODE_*)
+	Level    string          `json:"level,omitempty"`
+	Message  string          `json:"message,omitempty"`
+	Source   json.RawMessage `json:"source,omitempty"`
+	Flow     json.RawMessage `json:"flow,omitempty"`
+	Entry    json.RawMessage `json:"entry,omitempty"`
+}
+
+// HostHooks — what a module process can reach in the core beyond the store
+// and registry: the automation engine (notify, flows) and the camera events.
+type HostHooks struct {
+	Flows    func() []*OMap
+	Notify   func(level, message string, source any)
+	SaveFlow func(flow *OMap)
+	CamLog   func(entry *OMap)
+	Boxes    func(entry *OMap)
 }
 
 func NewModuleHost(root, node string, store *Store, reg *Registry, ps *PlatformStatus, config func() (map[string]any, error), memoryLimitMB float64) *ModuleHost {
@@ -277,7 +295,11 @@ func (m *ModuleProcess) Start() {
 		m.onExit(cmd, err)
 	}()
 
-	m.send(map[string]any{"t": "init", "file": m.it.File, "label": m.it.Label, "config": config, "snapshot": m.host.store.Snapshot()})
+	var flows []*OMap
+	if m.host.Hooks.Flows != nil {
+		flows = m.host.Hooks.Flows()
+	}
+	m.send(map[string]any{"t": "init", "file": m.it.File, "label": m.it.Label, "config": config, "snapshot": m.host.store.Snapshot(), "flows": flows, "automation": m.it.Automation})
 	log.Printf("[Modules] %s started (pid %d)", m.it.Label, cmd.Process.Pid)
 }
 
@@ -333,6 +355,24 @@ func (m *ModuleProcess) onMessage(msg ipcMsg) {
 		m.mu.Lock()
 		m.fatal = msg.Error
 		m.mu.Unlock()
+	case "notify":
+		if h := m.host.Hooks.Notify; h != nil {
+			h(msg.Level, msg.Message, rawOrdered(msg.Source))
+		}
+	case "saveFlow":
+		if f, ok := rawOrdered(msg.Flow).(*OMap); ok && m.host.Hooks.SaveFlow != nil {
+			m.host.Hooks.SaveFlow(f)
+		}
+	case "camlog", "boxes":
+		e, ok := rawOrdered(msg.Entry).(*OMap)
+		if !ok {
+			break
+		}
+		if h := m.host.Hooks.CamLog; msg.T == "camlog" && h != nil {
+			h(e)
+		} else if h := m.host.Hooks.Boxes; msg.T == "boxes" && h != nil {
+			h(e)
+		}
 	}
 }
 

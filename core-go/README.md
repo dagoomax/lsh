@@ -3,9 +3,14 @@
 A Go replacement for the Node core process: store, device registry, auth, core
 REST routes, Socket.IO and the module host. **Integrations stay in Node,
 unchanged**: each one runs as `src/module-worker.js` in its own process, as with
-`modules.isolate` today. `module-worker.js` gained one message, `call` (a public method of the client,
-for routes that used to call the client object directly). Everything else
-about it is as before. The Go host talks to the worker over Node's own IPC
+`modules.isolate` today. `module-worker.js` additions, all of them backward compatible:
+- a `call` message: a public method of the client, for routes that used to call
+  the client object directly;
+- `init.automation`: the client gets an automation stand-in (`notify`, `flows`,
+  `saveFlow` → the host's engine) as its 4th constructor argument. Opt-in,
+  because other clients' 4th parameter means something else (Airbnb's
+  `provider`);
+- camera-log and detection-box events are forwarded to the host. The Go host talks to the worker over Node's own IPC
 channel (`NODE_CHANNEL_FD` + JSON serialization on a socketpair), so the worker
 can't tell the difference.
 
@@ -65,6 +70,9 @@ single-session MQTT. Stop the Node core first, or choose modules.
 | Victron device auto-discovery from store keys (`device-definitions.js`, passed in by `node/integrations.js`) | `registry.go` |
 | Loxone In (`src/loxone-client.js`) runs **unchanged as a module process**; started when `config.loxone.host` is set | `loxone_api.go` |
 | SmartThings (`src/smartthings-client.js`) runs **unchanged as a module process**. Its routes (webhook, camera snapshot / image proxy / capture / presets, Settings test / save, token) and the 24 h OAuth token delivery are Go, calling the client's `getToken` / `handleWebhookEvent` through the module channel's `call` message | `smartthings_api.go` |
+| The other integrations `server.js` starts inline run as module processes too, with `server.js`'s own conditions (`node/integrations.js`): the MQTT broker (first), Somfy, OpenWeather, system metrics, virtual devices, LAN monitor, object detection, camera recorder, PTZ waypoints, radio (with the AirPlay and Google Home clients in one process), TAURON tariff, Arduino. Adapters for the ones that aren't plain clients: `node/lan-monitor.js`, `node/ptz-waypoints.js`, `node/media.js` | `node/integrations.js` |
+| `src/microcontroller-index-client.js`: needs the whole registry, so it's Go | `mcu_index.go` |
+| `src/camera-log.js`, `src/detection-boxes.js`: entries from module processes → `camera-event` / `detection-boxes` socket events, `GET /api/camera-log`, `GET /api/detection-boxes` | `camera_events.go` |
 | `src/loxone-out-client.js`: store → Miniserver Virtual Inputs | `loxone_out.go` |
 | `src/fibaro-out-client.js`: store → Home Center global variables | `fibaro_out.go` |
 | `src/loxone-xml.js` + `src/zip.js`, and the routes `/api/loxone/inputs.xml`, `outputs.xml`, `sipout.xml`, `scenes.xml` | `loxone_xml.go`, `loxone_api.go` |
@@ -115,7 +123,9 @@ Known differences from the Node engine:
 Every other `/api/*` route answers `501 Not in the Go core yet`. Next steps, roughly in order:
 
 - **Integrations with `expose`** (tuya, shelly, lgthinq, …). They run here as plain workers: devices work, their REST routes don't.
-- **Inline integrations from `server.js`**: cameras, SIP, paging, HomeKit bridge, Loxone Weather. The plan is to run each as its own Node process, as with the modules.
+- **Inline integrations from `server.js`**: cameras (ffmpeg RTSP, UniFi Protect, Reolink, …), SIP, paging, HomeKit bridge, Matter, music player, Loxone Weather, heating curves, simulators. The plan is to run each as its own Node process, as with the modules.
+- **Routes of the integrations that now run as module processes** (OpenWeather forecast, TAURON hourly, object-detection model, recorder clips, waypoints, AirPlay, LAN scan, MQTT broker status): to be done over `call`.
+- **Memory:** every module process carries a Node runtime (≈45 MB fresh, ≈25–35 MB settled). 25 processes cost more in total than the ones that shared the Node main process. Grouping small integrations into shared processes is an option.
 - **The rest of the Settings routes**, including `GET /api/settings`: the Settings page can't load its forms from the Go core yet.
 - **Device customisation writes** (`setOverride`, rooms, plan decor): the overrides are read-only here.
 - **Server-side label translation** (`server-i18n.js`): only matters when `config.language` is not English.

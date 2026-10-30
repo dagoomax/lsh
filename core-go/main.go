@@ -130,11 +130,23 @@ func main() {
 	srv.auto = NewAutomation(store, reg, boot.Config, *automations, *dataDir, srv.sio.Emit)
 	srv.auto.relays = relays
 	srv.auto.Start()
+	srv.camera = NewCameraEvents(srv.sio.Emit)
+	host.Hooks = HostHooks{
+		Flows:  srv.auto.Flows,
+		Notify: func(level, msg string, source any) { srv.auto.Notify(level, msg, source) },
+		SaveFlow: func(f *OMap) {
+			if _, err := srv.auto.SaveFlow(f); err != nil {
+				log.Printf("[Automation] Flow from a module not saved: %v", err)
+			}
+		},
+		CamLog: srv.camera.Push,
+		Boxes:  srv.camera.SetBoxes,
+	}
+	startMcuIndex(boot.Config, store, reg, ps)
 	victron.Start()
 
-	// integrations server.js starts inline: Loxone In as a module process;
-	// Loxone Out / Fibaro Out are Go (loxone_out.go, fibaro_out.go)
-	boot.Integrations = append(boot.Integrations, loxoneInModule(boot.Config, *root), smartThingsModule(boot.Config, *root))
+	// integrations server.js starts inline come from node/integrations.js as
+	// module processes; Loxone Out / Fibaro Out / the MCU index are Go
 	srv.applyOutBridges(boot.Config, "")
 	for _, it := range selectModules(*modules, boot.Integrations) {
 		host.Add(it)
