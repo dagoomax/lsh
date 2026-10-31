@@ -896,7 +896,13 @@ function addThermostatService(accessory, name, deviceKey, store, writeCapability
     .onGet(() => 0)
     .onSet(() => {});
 
+  // Seed a valid value before setProps: HeatingThresholdTemperature's HAP
+  // default is 0, and raising minValue to 4 validates that still-default 0
+  // against the new minimum and throws a characteristic warning at startup
+  // (one per Sensibo pod) before any onGet/updateValue runs. Set it in range
+  // first so there's nothing illegal to warn about.
   svc.getCharacteristic(Characteristic.HeatingThresholdTemperature)
+    .updateValue(clamp(store.get(heatSetPath) ?? 20, 4, 38))
     .setProps({ minValue: 4, maxValue: 38, minStep: 0.5 })
     .onGet(() => clamp(store.get(heatSetPath) ?? 20, 4, 38))
     .onSet(async (v) => {
