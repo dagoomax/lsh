@@ -131,6 +131,7 @@ func (s *Server) Handler() http.Handler {
 	s.loxoneRoutes(api)
 	s.smartThingsRoutes(api)
 	s.cameraEventRoutes(api)
+	s.settingsRoutes(api)
 	api.HandleFunc("GET /api/modules/processes", s.admin(func(w http.ResponseWriter, r *http.Request) {
 		ok(w, OM("isolated", true, "processes", s.host.List()))
 	}))

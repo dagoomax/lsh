@@ -83,6 +83,7 @@ single-session MQTT. Stop the Node core first, or choose modules.
 | Loxone In (`src/loxone-client.js`) runs **unchanged as a module process**; started when `config.loxone.host` is set | `loxone_api.go` |
 | SmartThings (`src/smartthings-client.js`) runs **unchanged as a module process**. Its routes (webhook, camera snapshot / image proxy / capture / presets, Settings test / save, token) and the 24 h OAuth token delivery are Go, calling the client's `getToken` / `handleWebhookEvent` through the module channel's `call` message | `smartthings_api.go` |
 | The other integrations `server.js` starts inline run as module processes too, with `server.js`'s own conditions (`node/integrations.js`): the MQTT broker (first), Somfy, OpenWeather, system metrics, virtual devices, LAN monitor, object detection, camera recorder, PTZ waypoints, radio (with the AirPlay and Google Home clients in one process), TAURON tariff, Arduino. Adapters for the ones that aren't plain clients: `node/lan-monitor.js`, `node/ptz-waypoints.js`, `node/media.js` | `node/integrations.js` |
+| `src/routes/settings.js`: `GET /api/settings` (whole config.json, every secret masked — the Settings page loads its forms from this), `POST /api/settings` (merge mqtt / vrm / solaredge / smartthings / relays / server / homekit), `POST /api/settings/test-mqtt` | `settings_routes.go` |
 | `src/microcontroller-index-client.js`: needs the whole registry, so it's Go | `mcu_index.go` |
 | `src/camera-log.js`, `src/detection-boxes.js`: entries from module processes → `camera-event` / `detection-boxes` socket events, `GET /api/camera-log`, `GET /api/detection-boxes` | `camera_events.go` |
 | `src/loxone-out-client.js`: store → Miniserver Virtual Inputs | `loxone_out.go` |
@@ -115,6 +116,13 @@ Known differences from the Node engine:
   inside a payload.
 - `http` nodes: 10 s to connect and receive headers, 70 s for the whole
   response. Node used a 10 s idle timeout.
+- `GET /api/settings` masks `smartthings.cameraToken` (a camera PAT); Node left
+  it in clear. `POST /api/settings` merges the smartthings section over the
+  current one, so `webhookSecret` / `webhookUrl` / `cameraToken` survive a
+  general Settings save; Node's rebuild dropped them (same latent bug as the
+  dedicated route). `settings_routes_test.go` runs the real `settings.js`
+  redaction and merge against the Go port and allows only these two
+  differences.
 - `POST /api/settings/smartthings` keeps the OAuth fields (`clientId`,
   `clientSecret`). Node's save rebuilt the section from token / deviceIds /
   webhook fields only, which dropped them. The save also applies at once:
@@ -138,7 +146,7 @@ Every other `/api/*` route answers `501 Not in the Go core yet`. Next steps, rou
 - **Inline integrations from `server.js`**: cameras (ffmpeg RTSP, UniFi Protect, Reolink, …), SIP, paging, HomeKit bridge, Matter, music player, Loxone Weather, heating curves, simulators. The plan is to run each as its own Node process, as with the modules.
 - **Routes of the integrations that now run as module processes** (OpenWeather forecast, TAURON hourly, object-detection model, recorder clips, waypoints, AirPlay, LAN scan, MQTT broker status): to be done over `call`.
 
-- **The rest of the Settings routes**, including `GET /api/settings`: the Settings page can't load its forms from the Go core yet.
+- **The per-integration Settings test/save routes** not yet ported (most integrations beyond Loxone, Fibaro, SmartThings, MQTT): their forms load (via `GET /api/settings`) but saving them answers 501.
 - **Device customisation writes** (`setOverride`, rooms, plan decor): the overrides are read-only here.
 - **Server-side label translation** (`server-i18n.js`): only matters when `config.language` is not English.
 - **Settings, users and tokens administration, MCP, Mongo history.**
