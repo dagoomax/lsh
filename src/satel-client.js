@@ -428,17 +428,32 @@ class SatelClient extends EventEmitter {
     }
   }
 
+  // Infer a sensor kind from a Satel element's name (PL/EN): a PIR / motion
+  // detector → 'motion', a reed / door / window contact → 'contact', else null.
+  _classifyByName(label) {
+    const u = (label || '').toUpperCase();
+    if (/\b(RUCH|PIR|MOTION|CZUJKA|CZUJNIK)\b|^RUCH/.test(u)) return 'motion';
+    if (/\b(OKNO|DRZWI|BRAMA|GATE|CONTACT|REED|DOOR|WINDOW|KONTAKTRON)\b|^OKNO|^DRZWI|^BRAMA/.test(u)) return 'contact';
+    return null;
+  }
+
   // Classify a zone as a HomeKit 'motion' or 'contact' sensor (or null = not
   // exposed). An explicit cfg.zoneTypes entry wins ('motion'|'contact'|'none');
-  // otherwise infer from the zone name (PL/EN): RUCH/PIR/MOTION → motion,
-  // OKNO/DRZWI/CONTACT/REED → contact.
+  // otherwise infer from the zone name.
   _zoneHomekitType(num, label) {
     const override = this.cfg.zoneTypes?.[num] || this.cfg.zoneTypes?.[String(num)];
     if (override) return override === 'none' ? null : override;
-    const u = (label || '').toUpperCase();
-    if (/\b(RUCH|PIR|MOTION)\b|^RUCH/.test(u)) return 'motion';
-    if (/\b(OKNO|DRZWI|BRAMA|GATE|CONTACT|REED|DOOR|WINDOW)\b|^OKNO|^DRZWI|^BRAMA/.test(u)) return 'contact';
-    return null;
+    return this._classifyByName(label);
+  }
+
+  // The primary "state" reading of a detection line is not a bare violation bit:
+  // a PIR reports motion, a reed switch reports contact (open/closed). Map the
+  // zone/input kind to the sensorType + label that drive the dashboard wording,
+  // icon, and HomeKit characteristic. Unclassified lines stay a generic violation.
+  _stateSensor(kind) {
+    if (kind === 'motion')  return { sensorType: 'motion',    label: 'Motion' };
+    if (kind === 'contact') return { sensorType: 'contact',   label: 'Contact' };
+    return                         { sensorType: 'violation', label: 'Violation' };
   }
 
   _registerZone(num) {
@@ -447,6 +462,7 @@ class SatelClient extends EventEmitter {
       || this.names.zone[num];
     const label = explicit || `Zone ${num}`;
     const hk = this._zoneHomekitType(num, label);
+    const st = this._stateSensor(hk);
     this.sensorRegistry.registerDevice({
       key:     `satel/zone/${num}`,
       type:    'satel',
@@ -454,9 +470,9 @@ class SatelClient extends EventEmitter {
       named:   !!explicit,
       homekit: hk ? [hk] : [],
       sensors: [
-        { path: 'state',  label: 'Violation', sensorType: 'violation', format: 'on-off', homekit: hk },
-        { path: 'tamper', label: 'Tamper',    sensorType: 'tamper',    format: 'on-off', homekit: null },
-        { path: 'alarm',  label: 'Alarm',     sensorType: 'alarm',     format: 'on-off', homekit: null },
+        { path: 'state',  label: st.label, sensorType: st.sensorType, format: 'on-off', homekit: hk },
+        { path: 'tamper', label: 'Tamper', sensorType: 'tamper',      format: 'on-off', homekit: null },
+        { path: 'alarm',  label: 'Alarm',  sensorType: 'alarm',       format: 'on-off', homekit: null },
       ],
     });
   }
@@ -627,24 +643,35 @@ class SatelClient extends EventEmitter {
     }
   }
 
+  // An explicit cfg.inputTypes entry wins ('motion'|'contact'|'none'); otherwise
+  // infer from the input name. System/trouble inputs (battery, AC, GSM, …) won't
+  // match the name patterns and keep the plain 'input' state.
+  _inputKind(num, label) {
+    const override = this.cfg.inputTypes?.[num] || this.cfg.inputTypes?.[String(num)];
+    if (override) return override === 'none' ? null : override;
+    return this._classifyByName(label);
+  }
+
   _registerInput(num) {
     this.registered.add(`i${num}`);
     const explicit = this.cfg.inputNames?.[num] || this.cfg.inputNames?.[String(num)]
       || this.names.input[num];
     const label = explicit || `Input ${num}`;
+    const kind = this._inputKind(num, label);
+    const st   = kind ? this._stateSensor(kind) : { sensorType: 'input', label: 'State' };
     this.sensorRegistry.registerDevice({
       key:     `satel/input/${num}`,
       type:    'satel',
       label,
       named:   !!explicit,
-      homekit: [],
+      homekit: kind ? [kind] : [],
       sensors: [
         {
           path:       'state',
-          label:      'State',
-          sensorType: 'input',
+          label:      st.label,
+          sensorType: st.sensorType,
           format:     'on-off',
-          homekit:    null,
+          homekit:    kind,
         },
       ],
     });

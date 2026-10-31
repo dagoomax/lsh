@@ -47,6 +47,8 @@ const FIBARO_SENSOR_ICON = {
 }
 
 const SATEL_SENSOR_ICON = {
+  motion:     MotionIcon,
+  contact:    DoorIcon,
   violation:  SecurityIcon,
   tamper:     SecurityIcon,
   armed:      SecurityIcon,
@@ -1181,7 +1183,14 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
               const iconColor = s.sensorType === 'fire_alarm' ? (on ? '#ff9f0a'            : 'var(--text3)')
                               : s.sensorType === 'alarm'     ? (on ? 'var(--red)' : 'var(--text3)')
                               : s.sensorType === 'violation' ? (on ? 'var(--orange)'       : 'var(--text3)')
+                              : s.sensorType === 'motion'    ? (on ? 'var(--accent)'       : 'var(--text3)')
+                              : s.sensorType === 'contact'   ? (on ? 'var(--orange)'       : 'var(--green)')
                               : on ? 'var(--tile-on-ink)' : 'var(--text3)'
+              // Real-world wording for the live reading: a PIR shows Motion/Clear,
+              // a reed switch Open/Closed; everything else keeps a plain Yes/No.
+              const stateText = s.sensorType === 'motion'  ? (on ? 'Motion' : 'Clear')
+                              : s.sensorType === 'contact' ? (on ? 'Open'   : 'Closed')
+                              : (on ? 'Yes' : 'No')
               return (
                 <div key={s.path} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:4 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:4, overflow:'hidden', flex:1 }}>
@@ -1190,7 +1199,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
                   </div>
                   {s.controllable
                     ? <Toggle on={on} onChange={val => cmd(s.path, val ? (s.writeOn||'on') : (s.writeOff||'off'))} />
-                    : <span style={{ fontSize:10, color: iconColor, fontWeight:600 }}>{on ? 'Yes' : 'No'}</span>
+                    : <span style={{ fontSize:10, color: iconColor, fontWeight:600 }}>{stateText}</span>
                   }
                 </div>
               )
