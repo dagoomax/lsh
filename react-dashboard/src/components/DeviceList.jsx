@@ -204,7 +204,7 @@ function isBlind(d) {
   if (BLIND_CATEGORIES.has(d.category)) return true
   const sensors = d.sensors || []
   if (d.type === 'somfy') return !sensors.some(s => s.capabilityId === 'light' || s.capabilityId === 'intensity')
-  return sensors.some(s => s.capabilityId === 'position' || s.capabilityId === 'orientation')
+  return sensors.some(s => s.capabilityId === 'position' || s.capabilityId === 'orientation' || s.capabilityId === 'windowShade')
     || d.readings?.cover_position != null
 }
 
@@ -521,6 +521,11 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
     ...s,
     value: (merged[s.path] ?? r[s.path])?.value,
   })) : []
+  // Roller shutter = a controllable windowShade sensor (output pair). Shown as a
+  // cover control (Open/Stop/Close), not raw output rows.
+  const satelShutter      = isSatel && satelSensors.some(s => s.path === 'windowShade' && s.controllable)
+  const satelShutterState = satelSensors.find(s => s.path === 'state')?.value
+  const satelShutterOpen  = (satelSensors.find(s => s.path === 'windowShade')?.value) === 1
 
   // For TRADFRI: extract sensor values from path-keyed readings
   const tradfriSensors = isTradfri ? (device.sensors || []).map(s => ({
@@ -1152,7 +1157,23 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
             })}
           </div>
         )}
-        {isSatel && satelSensors.length > 0 && (
+        {/* Satel roller shutter (output pair): Open / Stop / Close cover control */}
+        {isSatel && satelShutter && (
+          <div style={{ marginTop:6 }}>
+            <div style={{ fontSize:10, color:'var(--text2)', marginBottom:4, textTransform:'capitalize' }}>
+              {satelShutterState === 'opening' ? '▲ Opening…' : satelShutterState === 'closing' ? '▼ Closing…' : (satelShutterOpen ? 'Open' : 'Closed')}
+            </div>
+            <div style={{ display:'flex', gap:6 }}>
+              <button className="mini-btn" title="Open" onClick={e => { e.stopPropagation(); cmd('windowShade', 'open') }}
+                style={{ flex:1, padding:'7px 10px', borderRadius:9, fontSize:13, fontWeight:700, color: satelShutterState==='opening' ? 'var(--accent)' : 'var(--text2)' }}>▲</button>
+              <button className="mini-btn" title="Stop" onClick={e => { e.stopPropagation(); cmd('windowShade', 'stop') }}
+                style={{ flex:1, padding:'7px 10px', borderRadius:9, fontSize:13, fontWeight:700, color:'var(--text2)' }}>■</button>
+              <button className="mini-btn" title="Close" onClick={e => { e.stopPropagation(); cmd('windowShade', 'close') }}
+                style={{ flex:1, padding:'7px 10px', borderRadius:9, fontSize:13, fontWeight:700, color: satelShutterState==='closing' ? 'var(--accent)' : 'var(--text2)' }}>▼</button>
+            </div>
+          </div>
+        )}
+        {isSatel && !satelShutter && satelSensors.length > 0 && (
           <div style={{ marginTop:6, display:'flex', flexDirection:'column', gap:3 }}>
             {satelSensors.map(s => {
               const on   = s.value === 1 || s.value === true

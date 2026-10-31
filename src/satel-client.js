@@ -158,6 +158,9 @@ class SatelClient extends EventEmitter {
     this._running       = false;
     this.registered     = new Set();
     this.names          = { partition: {}, zone: {}, output: {}, input: {} }; // names read from the panel
+    this._shutters      = null; // normalised cfg.shutters, built lazily
+    this._shutterOpen   = {};   // id → last settled open/closed (no position feedback from the panel)
+    this._shutterMoving = {};   // id → 'opening' | 'closing' | null (live, from output states)
     // Name loading briefly stacks one-shot 'frame' listeners; lift the default cap.
     this.setMaxListeners(50);
   }
@@ -196,6 +199,37 @@ class SatelClient extends EventEmitter {
   }
 
   _code() { return encodeBcd(this.cfg.armCode || '', this.cfg.prefix || '') }
+
+  // ── Roller shutters ─────────────────────────────────────────────────────────
+  // A shutter is wired to a pair of Satel outputs: `up` drives it open, `down`
+  // drives it closed (first number of the pair is up). cfg.shutters is a list of
+  // { id?, up, down, name? }; id defaults to the 1-based position.
+  //
+  // These are Satel roller-shutter output TYPES ("roleta w górę / w dół"), not
+  // plain bistable relays: to START a direction you give the output a single
+  // "set output" pulse (0x88) — the panel then runs the blind for its programmed
+  // travel time and interlocks the opposite direction (same as the reference
+  // node-red flow on this panel: one "Set output N" per up/down). To STOP
+  // mid-travel you turn the running output OFF (0x89); a re-pulse does NOT halt
+  // it (the panel runs the timer out) but clearing the output stops the motor
+  // immediately — verified on the panel.
+
+  _shutterList() {
+    if (this._shutters) return this._shutters;
+    this._shutters = (this.cfg.shutters || [])
+      .map((s, i) => ({ id: s.id != null ? s.id : i + 1, up: s.up, down: s.down, name: s.name || null }))
+      .filter((s) => s.up != null && s.down != null);
+    return this._shutters;
+  }
+
+  async setShutter(sh, action) {
+    if (action === 'open')  return this.setOutput(sh.up, true);
+    if (action === 'close') return this.setOutput(sh.down, true);
+    // stop: clear both direction outputs (0x89). Whichever is running stops
+    // immediately; turning off an already-off output is a harmless no-op.
+    await this.setOutput(sh.up, false);
+    await this.setOutput(sh.down, false);
+  }
 
   // Send a control command and wait for the panel's 0xEF result, so a rejected
   // code or an output the panel won't switch surfaces as an error instead of
@@ -301,7 +335,9 @@ class SatelClient extends EventEmitter {
   async _loadNames() {
     const range  = (n) => Array.from({ length: n }, (_, i) => i + 1);
     const zoneN  = this.cfg.zones      || range(this.cfg.zoneCount   || 0);
-    const outN   = this.cfg.outputs    || range(this.cfg.outputCount || 0);
+    // Shutter up outputs provide a shutter's name fallback, so fetch them too.
+    const shutN  = this._shutterList().map((s) => s.up);
+    const outN   = [...new Set([...(this.cfg.outputs || range(this.cfg.outputCount || 0)), ...shutN])];
     const partN  = this.cfg.partitions || [1];
     const inpN   = this.cfg.inputs     || [];
 
@@ -338,13 +374,16 @@ class SatelClient extends EventEmitter {
   // labels (registerDevice() ignores a key it already has, so drop it first).
   _relabel() {
     const kinds = { z: ['zone', '_registerZone'], p: ['partition', '_registerPartition'],
-                    o: ['output', '_registerOutput'], i: ['input', '_registerInput'] };
+                    o: ['output', '_registerOutput'], i: ['input', '_registerInput'],
+                    s: ['shutter', '_registerShutter'] };
     for (const id of [...this.registered]) {
       const [kind, register] = kinds[id[0]] || [];
       if (!kind) continue;
       const num = Number(id.slice(1));
       this.sensorRegistry.devices?.delete(`satel/${kind}/${num}`);
-      this[register](num);
+      // shutters re-register from their config object, everything else by number
+      if (kind === 'shutter') { const sh = this._shutterList().find((s) => s.id === num); if (sh) this._registerShutter(sh); }
+      else this[register](num);
     }
     this.sensorRegistry.emit?.('devices-changed');
   }
@@ -481,6 +520,67 @@ class SatelClient extends EventEmitter {
       this.store.update(`satel/output/${num}/state`, on ? 1 : 0);
       if (!this.registered.has(`o${num}`)) this._registerOutput(num);
     }
+
+    this._updateShutters(data);
+  }
+
+  // Sync each roller shutter from the live state of its two outputs, read from
+  // the same 0x17 outputs frame the panel just returned: up output on → opening,
+  // down on → closing, both off → stopped. There is no position feedback, so the
+  // binary windowShade (what HomeKit and the dashboard show) settles to the last
+  // direction that actually ran.
+  _updateShutters(data) {
+    for (const sh of this._shutterList()) {
+      const up = getBit(data, sh.up), down = getBit(data, sh.down);
+      if (up)   this._shutterOpen[sh.id] = 1;
+      if (down) this._shutterOpen[sh.id] = 0;
+      this._shutterMoving[sh.id] = up ? 'opening' : down ? 'closing' : null;
+      this.store.update(`satel/shutter/${sh.id}/state`,       up ? 'opening' : down ? 'closing' : 'stopped');
+      this.store.update(`satel/shutter/${sh.id}/moving`,      up || down ? 1 : 0);
+      this.store.update(`satel/shutter/${sh.id}/windowShade`, this._shutterOpen[sh.id] ?? 0);
+      if (!this.registered.has(`s${sh.id}`)) this._registerShutter(sh);
+    }
+  }
+
+  _registerShutter(sh) {
+    this.registered.add(`s${sh.id}`);
+    const explicit = sh.name
+      || this.cfg.shutterNames?.[sh.id] || this.cfg.shutterNames?.[String(sh.id)]
+      || this.names.output[sh.up];
+    const label = explicit || `Shutter ${sh.id}`;
+    this.sensorRegistry.registerDevice({
+      key:     `satel/shutter/${sh.id}`,
+      type:    'satel',
+      label,
+      named:   !!explicit,
+      icon:    '🪟',
+      homekit: ['cover-rw'],
+      sensors: [
+        {
+          path:         'windowShade',
+          label:        'Shade',
+          sensorType:   'shutter',
+          format:       'on-off',
+          controllable: true,
+          type:         'toggle',
+          writeOn:      'open',
+          writeOff:     'close',
+          capabilityId: 'windowShade',
+          homekit:      'cover-rw',
+        },
+        // Presence marker read by homekit-bridge.js's cover-rw handler — exposes
+        // HomeKit's Stop control (both outputs off is always a valid stop).
+        { path: 'stop',  label: 'Stop',     sensorType: 'shutter', format: 'string', homekit: null },
+        { path: 'state', label: 'Movement', sensorType: 'shutter', format: 'string', homekit: null },
+      ],
+      _writeCapability: (capId, command) => {
+        if (capId !== 'windowShade') return;
+        const action = command === 'open' || command === 'close' || command === 'stop' ? command
+          : (Number(command) >= 50 ? 'open' : 'close'); // setLevel / numeric → binary
+        return this.setShutter(sh, action)
+          .catch((err) => { console.error(`[Satel] Shutter ${sh.id} ${action} failed: ${err.message}`); throw err; });
+      },
+    });
   }
 
   _registerOutput(num) {

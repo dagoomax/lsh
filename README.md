@@ -715,11 +715,17 @@ Pushes live store values to **Loxone Virtual Inputs** via HTTP GET (`/dev/sps/io
   "zoneNames": { "1": "Front Door", "2": "Back Door" },
   "zoneTypes": { "5": "motion", "8": "contact", "16": "none" },
   "partitions": [1],
-  "partitionNames": { "1": "House" }
+  "partitionNames": { "1": "House" },
+  "shutters": [
+    { "up": 10, "down": 11, "name": "Living Room" },
+    { "id": 5, "up": 12, "down": 13 }
+  ]
 }
 ```
 
 Zones are exposed to **HomeKit as motion or contact sensors**. The type is inferred from the zone name — `RUCH`/`PIR`/`MOTION` → motion sensor, `OKNO`/`DRZWI`/`DOOR`/`WINDOW`/`CONTACT`/`REED` → contact sensor — and can be overridden per zone with `zoneTypes` (`"motion"`, `"contact"`, or `"none"` to keep a zone out of HomeKit). Unmatched zones are not exposed to HomeKit by default. A zone's violation drives the sensor (motion detected / contact open).
+
+**Roller shutters** (`shutters`) are each wired to a pair of panel outputs — `up` drives the shutter open, `down` drives it closed — and exposed as a single **WindowCovering in HomeKit** (and a cover tile on the dashboard) with open / close / stop. Each entry is `{ up, down, name? , id? }`; `id` defaults to the 1-based position in the list. State is kept in sync from the live output states the panel reports (up output on → opening, down on → closing, both off → stopped); there is no position feedback, so the open/closed state settles to the last direction that ran. These are Satel roller-shutter output **types** (monostable, panel-interlocked), not plain bistable relays — open/close are a single "set output" pulse and the panel runs the blind for its programmed travel time, while `stop` clears the running output (turning it off halts the motor immediately — a re-pulse would not). A shutter's name falls back to its `up` output's panel name, then `Shutter N`; override per shutter with `name` or the `shutterNames` map. The `up`/`down` outputs can also still be listed in `outputs` to expose them individually, but usually you'd leave them out and control the shutter instead.
 
 Speaks the Satel INTEGRA binary TCP protocol. Zone, output, and partition **names are downloaded from the panel automatically** on connect (via the `0xEE` read-name command, decoded as CP1250 so Polish characters survive). The `zoneNames` / `outputNames` / `partitionNames` maps are therefore optional — set an entry only to **override** the name stored in the panel; anything you leave out falls back to the panel name, then to `Zone N` / `Output N` / `Partition N`.
 

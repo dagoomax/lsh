@@ -83,6 +83,8 @@ function loadConfig() {
       outputCount:    parseInt(fileConfig.satel?.outputCount) || 0,
       outputs:        fileConfig.satel?.outputs        || null,
       outputNames:    fileConfig.satel?.outputNames    || {},
+      shutters:       fileConfig.satel?.shutters       || null,
+      shutterNames:   fileConfig.satel?.shutterNames   || {},
     },
     // .trim() on host/apiKey/etc: a stray trailing newline copy-pasted into
     // the Settings UI (or config.json directly) makes these unusable as HTTP

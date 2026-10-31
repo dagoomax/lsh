@@ -312,6 +312,14 @@ class SensorRegistry extends EventEmitter {
       }
       return device._writeCapability(sensor.capabilityId, 'setColor', [{ hue: c.hue, saturation: c.saturation }]);
     }
+    // cover / roller shutter: 'open' / 'close' / 'stop' pass straight through to
+    // the client (dashboard cover buttons, Loxone, HomeKit all speak these) —
+    // the generic on/off toggle mapping below would wrongly fold a string like
+    // 'open' to the falsy branch (writeOff).
+    if (sensor.capabilityId === 'windowShade' && typeof value === 'string'
+        && (value === 'open' || value === 'close' || value === 'stop')) {
+      return device._writeCapability(sensor.capabilityId, value);
+    }
     // toggle: normalize string 'on'/'off'/'1'/'0' and boolean/number values
     const on = value === true || value === 1 || value === 'on' || value === '1' || value === 'true';
     const command = on ? sensor.writeOn : sensor.writeOff;
