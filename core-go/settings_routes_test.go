@@ -159,3 +159,20 @@ func mustJSON(t *testing.T, o *OMap) []byte {
 	}
 	return b
 }
+
+// A save must not introduce a secret key that was absent (regression: the
+// smartthings merge used to add webhookSecret:"" on every save).
+func TestSettingsPostNoSpuriousSecret(t *testing.T) {
+	cfg := rawOrdered([]byte(`{"smartthings":{"token":"t","clientId":"c","deviceIds":[]},"homekit":{"pin":"1","setupID":"AAAA"}}`)).(*OMap)
+	srv := &Server{root: t.TempDir()}
+	out := srv.settingsMerge(cfg, NewOMap())
+	st := out.Get("smartthings").(*OMap)
+	for _, k := range []string{"webhookSecret", "cameraToken"} {
+		if _, has := st.Lookup(k); has {
+			t.Fatalf("save invented smartthings.%s", k)
+		}
+	}
+	if st.Get("token") != "t" || st.Get("clientId") != "c" {
+		t.Fatalf("lost fields: %s", must(st))
+	}
+}

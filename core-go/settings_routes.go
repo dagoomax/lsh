@@ -226,9 +226,16 @@ func (s *Server) settingsMerge(cfg, body *OMap) *OMap {
 	// and cameraToken — the same latent bug fixed in smartthings_api.go)
 	bst, cst := get(body, "smartthings"), get(cfg, "smartthings")
 	st := shallowMerge(cst, bst)
-	st.Set("token", keepSecret(bst, cst, "token"))
-	st.Set("clientSecret", keepSecret(bst, cst, "clientSecret"))
-	st.Set("webhookSecret", keepSecret(bst, cst, "webhookSecret"))
+	// Restore the real secret where the page sent back the mask — but only
+	// for keys that were actually present, so a save never introduces an
+	// empty secret field that wasn't there before.
+	for _, k := range []string{"token", "clientSecret", "webhookSecret", "cameraToken"} {
+		if _, inBody := bst.Lookup(k); inBody {
+			st.Set(k, keepSecret(bst, cst, k))
+		} else if _, inCur := cst.Lookup(k); !inCur {
+			st.Delete(k)
+		}
+	}
 	if ids, ok := bst.Get("deviceIds").([]any); ok {
 		st.Set("deviceIds", ids)
 	} else if cst.Get("deviceIds") == nil {
