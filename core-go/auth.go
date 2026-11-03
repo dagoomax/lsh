@@ -139,6 +139,61 @@ func (a *Auth) TokenValue(id string) string {
 	return ""
 }
 
+// saveTokens writes the full list (values included) and forces a reload.
+func (a *Auth) saveTokens(tokens []apiToken) error {
+	b, _ := json.MarshalIndent(tokens, "", "  ")
+	if err := os.MkdirAll(a.dir, 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(a.dir, "api-tokens.json"), b, 0o600); err != nil {
+		return err
+	}
+	a.tokens, a.tokensAt = tokens, time.Time{}
+	return nil
+}
+
+// ListTokens — id, name, createdAt only (never the value). Port of getApiTokens.
+func (a *Auth) ListTokens() []map[string]any {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	out := []map[string]any{}
+	for _, t := range a.loadTokens() {
+		out = append(out, map[string]any{"id": t.ID, "name": t.Name, "createdAt": t.CreatedAt})
+	}
+	return out
+}
+
+// CreateToken mints a static bearer token and returns its value (the one time
+// it is exposed). Port of createApiToken.
+func (a *Auth) CreateToken(name string) (string, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	tokens := append([]apiToken{}, a.loadTokens()...)
+	tb := make([]byte, 32)
+	rand.Read(tb)
+	ib := make([]byte, 8)
+	rand.Read(ib)
+	tok := apiToken{ID: hex.EncodeToString(ib), Name: strings.TrimSpace(name),
+		Token: hex.EncodeToString(tb), CreatedAt: time.Now().UTC().Format(time.RFC3339)}
+	tokens = append(tokens, tok)
+	if err := a.saveTokens(tokens); err != nil {
+		return "", err
+	}
+	return tok.Token, nil
+}
+
+func (a *Auth) DeleteToken(id string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	kept := []apiToken{}
+	for _, t := range a.loadTokens() {
+		if t.ID != id {
+			kept = append(kept, t)
+		}
+	}
+	return a.saveTokens(kept)
+}
+
 func (a *Auth) Sign(u map[string]any) (string, error) {
 	claims := jwt.MapClaims{"id": u["id"], "username": u["username"], "role": u["role"], "iat": time.Now().Unix(), "exp": time.Now().Add(tokenTTL).Unix()}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(a.secret)

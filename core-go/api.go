@@ -89,6 +89,31 @@ func (s *Server) Handler() http.Handler {
 		data["permissions"] = s.auth.Permissions(id)
 		ok(w, data)
 	})
+	// API tokens — static bearer tokens for machine access (port of src/routes/auth.js)
+	api.HandleFunc("GET /api/auth/tokens", s.admin(func(w http.ResponseWriter, r *http.Request) {
+		ok(w, s.auth.ListTokens())
+	}))
+	api.HandleFunc("POST /api/auth/tokens", s.admin(func(w http.ResponseWriter, r *http.Request) {
+		name, _ := readBody(r).Get("name").(string)
+		if strings.TrimSpace(name) == "" {
+			fail(w, 400, "Token name required")
+			return
+		}
+		tok, err := s.auth.CreateToken(name)
+		if err != nil {
+			fail(w, 500, err.Error())
+			return
+		}
+		writeJSON(w, 200, OM("success", true, "token", tok))
+	}))
+	api.HandleFunc("DELETE /api/auth/tokens/{id}", s.admin(func(w http.ResponseWriter, r *http.Request) {
+		if err := s.auth.DeleteToken(r.PathValue("id")); err != nil {
+			fail(w, 400, err.Error())
+			return
+		}
+		writeJSON(w, 200, OM("success", true))
+	}))
+
 	api.HandleFunc("GET /api/connection", func(w http.ResponseWriter, r *http.Request) { ok(w, s.victron.Status()) })
 	api.HandleFunc("GET /api/status", func(w http.ResponseWriter, r *http.Request) {
 		g := grouped(s.store)
@@ -132,6 +157,8 @@ func (s *Server) Handler() http.Handler {
 	s.smartThingsRoutes(api)
 	s.cameraEventRoutes(api)
 	s.settingsRoutes(api)
+	s.mediaRoutes(api)
+	s.simulatorsRoutes(api)
 	api.HandleFunc("GET /api/modules/processes", s.admin(func(w http.ResponseWriter, r *http.Request) {
 		ok(w, OM("isolated", true, "processes", s.host.List()))
 	}))

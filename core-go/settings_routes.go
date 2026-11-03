@@ -268,6 +268,83 @@ func (s *Server) settingsMerge(cfg, body *OMap) *OMap {
 	return cfg
 }
 
+// airplayMerge applies POST /api/settings/airplay onto cfg (ordered) — port of
+// src/routes/airplay.js: merge airplay.enabled, normalise each speaker (id+host
+// required; defaults port 5000, airplay2 true, volume 60 clamped 0–100) and
+// keep a speaker's stored password when the page sends back the "••••" mask,
+// matched by id. Exposed as a method for the differential test, like settingsMerge.
+func (s *Server) airplayMerge(cfg, body *OMap) *OMap {
+	airplay := omap(cfg.Get("airplay")).Clone()
+	if v, ok := body.Lookup("enabled"); ok {
+		airplay.Set("enabled", truthy(v))
+	}
+	if speakers, ok := body.Get("speakers").([]any); ok {
+		prev := map[string]*OMap{} // stored speakers by id, to keep masked passwords
+		for _, x := range arr(omap(cfg.Get("airplay")).Get("speakers")) {
+			if m, ok := x.(*OMap); ok {
+				if id := strings.TrimSpace(jsString(m.Get("id"))); id != "" {
+					prev[id] = m
+				}
+			}
+		}
+		out := []any{}
+		for _, x := range speakers {
+			m, ok := x.(*OMap)
+			if !ok || !truthy(m.Get("id")) || !truthy(m.Get("host")) { // Node: s && s.id && s.host
+				continue
+			}
+			id := strings.TrimSpace(jsString(m.Get("id")))
+			o := NewOMap()
+			// password: a "••••" mask → keep the stored one (by id); a real value
+			// → trimmed; empty / null / missing → omit the field (Node's `?? ''`).
+			var pw string
+			if pwRaw := m.Get("password"); pwRaw != nil && masked8(jsString(pwRaw)) {
+				if p := prev[id]; p != nil {
+					if pv := p.Get("password"); pv != nil {
+						pw = jsString(pv)
+					}
+				}
+			} else if truthy(pwRaw) {
+				pw = strings.TrimSpace(jsString(pwRaw))
+			}
+			if pw != "" {
+				o.Set("password", pw)
+			}
+			o.Set("id", id)
+			nameSrc := m.Get("name") // Node: String(s.name || s.id)
+			if !truthy(nameSrc) {
+				nameSrc = m.Get("id")
+			}
+			o.Set("name", strings.TrimSpace(jsString(nameSrc)))
+			o.Set("host", strings.TrimSpace(jsString(m.Get("host"))))
+			port := int(jsNumber(m.Get("port")))
+			if port == 0 {
+				port = 5000
+			}
+			o.Set("port", port)
+			airplay2 := true
+			if b, ok := m.Get("airplay2").(bool); ok && !b {
+				airplay2 = false
+			}
+			o.Set("airplay2", airplay2)
+			vol := int(jsNumber(m.Get("volume")))
+			if vol == 0 {
+				vol = 60
+			}
+			if vol < 0 {
+				vol = 0
+			} else if vol > 100 {
+				vol = 100
+			}
+			o.Set("volume", vol)
+			out = append(out, o)
+		}
+		airplay.Set("speakers", out)
+	}
+	cfg.Set("airplay", airplay)
+	return cfg
+}
+
 func (s *Server) settingsRoutes(api *http.ServeMux) {
 	api.HandleFunc("GET /api/settings", func(w http.ResponseWriter, r *http.Request) {
 		ok(w, s.redactSettings(readConfigOrdered(s.configPath())))
@@ -280,6 +357,17 @@ func (s *Server) settingsRoutes(api *http.ServeMux) {
 			return
 		}
 		writeJSON(w, 200, OM("success", true, "message", "Settings saved. Restart the server to apply connection changes."))
+	}))
+
+	// POST /api/settings/airplay — port of src/routes/airplay.js (logic in
+	// airplayMerge, exposed for the differential test like settingsMerge).
+	api.HandleFunc("POST /api/settings/airplay", s.admin(func(w http.ResponseWriter, r *http.Request) {
+		cfg := s.airplayMerge(readConfigOrdered(s.configPath()), readBody(r))
+		if err := writeConfigFile(s.configPath(), cfg); err != nil {
+			fail(w, 500, err.Error())
+			return
+		}
+		writeJSON(w, 200, OM("success", true, "message", "AirPlay settings saved. Restart to apply."))
 	}))
 
 	api.HandleFunc("POST /api/settings/test-mqtt", s.admin(func(w http.ResponseWriter, r *http.Request) {

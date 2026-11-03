@@ -1,8 +1,25 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { SettingsCard, ListEditor, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { DinRailIcon } from '../../Icons'
 import { gt, tr } from '../../../i18n'
+
+// Same CDN loader the HomeKit card uses for its pairing QR — no extra npm dep.
+const QRCODEJS_SRC = 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js'
+let qrcodejsPromise = null
+function loadQrcodejs() {
+  if (window.QRCode) return Promise.resolve()
+  if (!qrcodejsPromise) {
+    qrcodejsPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script')
+      s.src = QRCODEJS_SRC
+      s.onload = resolve
+      s.onerror = () => reject(new Error('Failed to load QR library'))
+      document.head.appendChild(s)
+    })
+  }
+  return qrcodejsPromise
+}
 
 const GRENTON_TYPES = ['light', 'dimmer', 'switch', 'blind', 'temperature', 'sensor']
 const GRENTON_FIELDS = [
@@ -52,6 +69,46 @@ function GrentonCard({ grenton, reload }) {
   const save = useSettingsSave('/api/settings/grenton')
   const simToggle = useSettingsSave('/api/simulators/grenton')
 
+  // Endpoint QR — gives the GATE's Lua script the LSH URL + an API token so a
+  // real Grenton installation can call LSH (GET /api/devices, POST
+  // /api/device/:key/command) and drive LSH-provided objects as a vCLU.
+  const [syncUrl, setSyncUrl] = useState(() => window.location.origin)
+  const [syncToken, setSyncToken] = useState('')
+  const [syncBusy, setSyncBusy] = useState(false)
+  const [syncErr, setSyncErr] = useState('')
+  const [copied, setCopied] = useState('')
+  const qrRef = useRef(null)
+
+  const generateSync = async () => {
+    setSyncBusy(true); setSyncErr(''); setCopied('')
+    try {
+      const res = await fetch('/api/auth/tokens', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: `Grenton GATE ${new Date().toISOString().slice(0, 10)}` }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.token) throw new Error(data.error || `HTTP ${res.status}`)
+      setSyncToken(data.token)
+      const cleanUrl = syncUrl.replace(/\/+$/, '')
+      const payload = `url: ${cleanUrl}\ntoken: ${data.token}`
+      await loadQrcodejs()
+      if (qrRef.current) {
+        qrRef.current.innerHTML = ''
+        // eslint-disable-next-line no-undef
+        new window.QRCode(qrRef.current, {
+          text: payload, width: 180, height: 180,
+          colorDark: '#e6edf3', colorLight: '#161b22', correctLevel: window.QRCode.CorrectLevel.M,
+        })
+      }
+    } catch (err) { setSyncErr(err.message) }
+    finally { setSyncBusy(false) }
+  }
+
+  const copy = (value, what) => {
+    navigator.clipboard?.writeText(value).then(() => { setCopied(what); setTimeout(() => setCopied(''), 1500) }).catch(() => {})
+  }
+
   const toggleSim = (checked) => {
     setSimEnabled(checked)
     simToggle.save({ enabled: checked }).then(res => {
@@ -69,6 +126,33 @@ function GrentonCard({ grenton, reload }) {
       <Field label="Token" hint="(optional — must match the Lua script)" type="password" value={token} onChange={setToken}/>
       <Toggle label="Run local simulator" hint="(off by default; disable when using a real GATE module)" checked={simEnabled} onChange={toggleSim}/>
       {simStatus && <span className="stg-hint">{simStatus}</span>}
+
+      <h4 className="stg-subheading">{tr('Sync the Grenton GATE to LSH')}</h4>
+      <p className="stg-hint">{tr('Scan with your phone camera (not the myGrenton app) to copy the LSH address and API token into the GATE Lua script, so the GATE can call LSH and drive its objects as a vCLU.')}</p>
+      <Field label={tr('LSH URL')} hint={tr('(as reachable from the GATE on your LAN)')} value={syncUrl} onChange={setSyncUrl} placeholder="http://192.168.1.50:3001"/>
+      <div className="stg-actions">
+        <Button variant="secondary" busy={syncBusy} onClick={generateSync}>{tr('Generate QR & token')}</Button>
+      </div>
+      {syncToken && (
+        <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap', marginTop: 8 }}>
+          <div ref={qrRef} style={{ width: 180, height: 180, background: '#161b22', borderRadius: 12, flexShrink: 0 }}/>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="stg-hint" style={{ textTransform: 'uppercase', fontWeight: 700, fontSize: 11 }}>{tr('LSH URL')}</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <code style={{ wordBreak: 'break-all' }}>{syncUrl.replace(/\/+$/, '')}</code>
+              <Button variant="secondary" onClick={() => copy(syncUrl.replace(/\/+$/, ''), 'url')}>{copied === 'url' ? tr('Copied') : tr('Copy')}</Button>
+            </div>
+            <div className="stg-hint" style={{ textTransform: 'uppercase', fontWeight: 700, fontSize: 11, marginTop: 10 }}>{tr('API token')}</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <code style={{ wordBreak: 'break-all' }}>{syncToken}</code>
+              <Button variant="secondary" onClick={() => copy(syncToken, 'token')}>{copied === 'token' ? tr('Copied') : tr('Copy')}</Button>
+            </div>
+            <p className="stg-hint" style={{ marginTop: 10 }}>{tr('Shown once — a new token saved under Users & API tokens. The myGrenton app will not accept this code; scan it with a plain camera or QR reader.')}</p>
+          </div>
+        </div>
+      )}
+      {syncErr && <p className="stg-banner err">{tr('QR error: {syncErr}', { syncErr })}</p>}
+
       <h4 className="stg-subheading">{tr('Objects')}</h4>
       <ListEditor rows={devices} onChange={setDevices} fields={GRENTON_FIELDS} addLabel="+ Add Object"/>
       <div className="stg-actions">

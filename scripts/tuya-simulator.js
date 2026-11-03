@@ -41,6 +41,39 @@ const DEVICES = () => [
       ['battery_percentage', 4, 'ro', v(0, 100, 0, '%')],
     ],
     state: { va_temperature: 215, va_humidity: 58, battery_percentage: 87 } },
+  // Air conditioner (category kt) — stand-in for a Rotenso Versu (Tuya inside):
+  // power switch, target/current temperature, mode and fan speed. LSH's Tuya
+  // client exposes switch→Power, temp_set→Setpoint, mode→thermostatMode and
+  // temp_current→temperature (windspeed/fan is not yet controllable in LSH).
+  { id: 'bf0sim0klima', name: 'Klima salon', category: 'kt', product_name: 'Rotenso Versu (sim)', local_key: 'k3y0klima0000000',
+    props: [
+      ['switch', 1, 'rw', { type: 'bool' }],
+      ['temp_set', 2, 'rw', v(16, 31, 0, '℃')],
+      ['temp_current', 3, 'ro', v(-20, 50, 0, '℃')],
+      ['mode', 4, 'rw', { type: 'enum', range: ['cold', 'hot', 'wet', 'wind', 'auto'] }],
+      ['windspeed', 5, 'rw', { type: 'enum', range: ['1', '2', '3', 'auto'] }],
+    ],
+    state: { switch: true, temp_set: 22, temp_current: 24, mode: 'cold', windspeed: 'auto' } },
+  // Second air conditioner — to show the Grenton vCLU bridge covers every Tuya AC.
+  { id: 'bf0sim0klima2', name: 'Klima sypialnia', category: 'kt', product_name: 'Rotenso Versu (sim)', local_key: 'k3y0klima2000000',
+    props: [
+      ['switch', 1, 'rw', { type: 'bool' }],
+      ['temp_set', 2, 'rw', v(16, 31, 0, '℃')],
+      ['temp_current', 3, 'ro', v(-20, 50, 0, '℃')],
+      ['mode', 4, 'rw', { type: 'enum', range: ['cold', 'hot', 'wet', 'wind', 'auto'] }],
+      ['windspeed', 5, 'rw', { type: 'enum', range: ['1', '2', '3', 'auto'] }],
+    ],
+    state: { switch: false, temp_set: 20, temp_current: 22, mode: 'auto', windspeed: '2' } },
+  // Third air conditioner — appears later, to demonstrate auto-sync picking it up.
+  { id: 'bf0sim0klima3', name: 'Klima biuro', category: 'kt', product_name: 'Rotenso Versu (sim)', local_key: 'k3y0klima3000000',
+    props: [
+      ['switch', 1, 'rw', { type: 'bool' }],
+      ['temp_set', 2, 'rw', v(16, 31, 0, '℃')],
+      ['temp_current', 3, 'ro', v(-20, 50, 0, '℃')],
+      ['mode', 4, 'rw', { type: 'enum', range: ['cold', 'hot', 'wet', 'wind', 'auto'] }],
+      ['windspeed', 5, 'rw', { type: 'enum', range: ['1', '2', '3', 'auto'] }],
+    ],
+    state: { switch: true, temp_set: 23, temp_current: 25, mode: 'hot', windspeed: '1' } },
   // TESLA Smart (Tuya white label)
   { id: 'bf0tslstrip', name: 'Listwa TESLA', category: 'cz', product_name: 'TESLA Smart Power Strip 3+4 USB', local_key: 'k3y0strip0000000',
     props: [['switch_1', 1, 'rw', { type: 'bool' }], ['switch_2', 2, 'rw', { type: 'bool' }], ['switch_3', 3, 'rw', { type: 'bool' }], ['switch_usb1', 7, 'rw', { type: 'bool' }]],

@@ -78,6 +78,12 @@ module.exports = [
   { file: 'homeconnect-client', label: 'HomeConnect', when: (config) => config.homeConnect },
   // Start Grenton client if configured (GATE HTTP module + LSH listener script)
   { file: 'grenton-client', label: 'Grenton', when: (config) => config.grenton?.host && config.grenton?.devices?.length },
+  // Grenton-style view of every Tuya air conditioner — exposes each as the
+  // in-process objects grenton/AC_<id>_{PWR,SET,MODE,TMP}, two-way. It reads and
+  // commands the Tuya devices directly, so `expose` keeps it in the server
+  // process (a forked worker can't reach another module's devices). Replaces
+  // scripts/grenton-vclu-sim.js + grenton-klima-autosync.js.
+  { file: 'grenton-vclu-client', label: 'GrentonVclu', expose: 'grentonVclu', when: (config) => config.grentonVclu?.enabled },
   // Start Philips Hue client if configured (local bridge, CLIP v1 REST)
   { file: 'hue-client', label: 'Hue', when: (config) => config.hue?.host && config.hue?.username },
   // Start Miele client if configured (OAuth password grant, or one-off
