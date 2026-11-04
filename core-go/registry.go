@@ -103,7 +103,7 @@ func leadingInt(s string) string {
 	return s[:i]
 }
 
-// On receives 'device-discovered' (Device) and 'devices-changed' (nil).
+// On receives 'device-discovered' (Device) and 'devices-changed' (the Device).
 func (r *Registry) On(fn func(event string, payload any)) {
 	r.mu.Lock()
 	r.listeners = append(r.listeners, fn)
@@ -183,7 +183,7 @@ func (r *Registry) Refresh(d Device, w Writer) {
 		r.writers[key] = w
 	}
 	r.mu.Unlock()
-	r.emit("devices-changed", nil)
+	r.emit("devices-changed", d) // payload lets the module host re-mirror the changed descriptor
 }
 
 func (r *Registry) Has(key string) bool {

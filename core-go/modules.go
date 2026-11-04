@@ -111,6 +111,8 @@ type ipcMsg struct {
 	Flow     json.RawMessage `json:"flow,omitempty"`
 	Entry    json.RawMessage `json:"entry,omitempty"`
 	File     string          `json:"file,omitempty"`
+	Path     string          `json:"path,omitempty"` // cmd: a cross-module sendCommand's sensor path
+	Rid      int             `json:"rid,omitempty"`  // cmd: the worker's own request id, echoed in cmdres
 }
 
 // HostHooks — what a module process can reach in the core beyond the store
@@ -148,6 +150,41 @@ func NewModuleHost(root, node string, store *Store, reg *Registry, ps *PlatformS
 			}
 		}
 	})
+	// a device registered OR re-pushed (descriptor changed) by any module
+	// reaches the `expose` modules that read other modules' devices, so their
+	// mirrored catalog stays current. Gated on the same readiness as 'chg'
+	// (subscribed, set only once init is on the wire) so a dev+ can never arrive
+	// before the worker has built its registry; devices that registered during
+	// that window are covered by the catalog Start() sends right after.
+	reg.On(func(event string, payload any) {
+		if event != "device-discovered" && event != "devices-changed" {
+			return
+		}
+		d, ok := payload.(Device)
+		if !ok || d == nil {
+			return
+		}
+		key := d.Str("key")
+		h.mu.Lock()
+		mods := make([]*ModuleProcess, 0, len(h.modules))
+		for _, m := range h.modules {
+			mods = append(mods, m)
+		}
+		h.mu.Unlock()
+		for _, m := range mods {
+			if !m.shared() {
+				continue
+			}
+			m.mu.Lock()
+			own := m.devices[key]
+			ready := m.subscribed && m.enc != nil
+			m.mu.Unlock()
+			if own || !ready {
+				continue // the module that registered it, or it isn't past init yet
+			}
+			m.send(map[string]any{"t": "dev+", "device": d})
+		}
+	})
 	go func() {
 		for range time.Tick(pingEvery) {
 			h.mu.Lock()
@@ -175,6 +212,23 @@ func (h *ModuleHost) Add(it Integration) *ModuleProcess {
 	h.mu.Unlock()
 	m.Start()
 	return m
+}
+
+// shared reports whether this module needs the shared registry — an `expose`
+// module (in server.js it stays in-process for exactly this reason). The host
+// mirrors every other module's devices into it, forwards all store changes to
+// it, and bridges its sendCommand back to the real registry. Without this a
+// forked worker sees only the devices it registered itself.
+func (m *ModuleProcess) shared() bool {
+	if m.it.Expose != nil {
+		return true
+	}
+	for _, mem := range m.it.Members {
+		if mem.Expose != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // Apply — after Settings saved a module's config: restart it, start it if
@@ -328,6 +382,19 @@ func (m *ModuleProcess) Start() {
 		m.mu.Unlock()
 	}
 	m.send(init)
+	if m.shared() {
+		// Only now, with init on the wire (so the worker has built its store and
+		// registry), open the gates: subscribe to store changes and let the
+		// device-discovered listener push dev+. Then mirror the catalog, captured
+		// AFTER the gates open — a device registered during startup is caught
+		// either here or by a dev+, never lost in the gap between the two. This
+		// keeps the module's reads of other modules' devices live, as the shared
+		// in-process registry would under server.js.
+		m.mu.Lock()
+		m.subscribed = true
+		m.mu.Unlock()
+		m.send(map[string]any{"t": "devs", "devices": m.host.reg.Devices()})
+	}
 	log.Printf("[Modules] %s started (pid %d)", m.it.Label, cmd.Process.Pid)
 }
 
@@ -363,6 +430,11 @@ func (m *ModuleProcess) onMessage(msg ipcMsg) {
 		m.mu.Lock()
 		m.subscribed = true
 		m.mu.Unlock()
+	case "cmd":
+		// a shared module commanding another module's device — run the real
+		// registry dispatch off the read loop so a write that routes back to a
+		// worker (even this one) can't block this loop from reading its reply
+		go m.handleCmd(msg)
 	case "ready":
 		m.mu.Lock()
 		m.state = "running"
@@ -432,6 +504,18 @@ func (m *ModuleProcess) device(d *OMap, writable bool) {
 // Write asks the process to run one of its devices' _writeCapability.
 func (m *ModuleProcess) Write(key string, args []any) (any, error) {
 	return m.request(map[string]any{"t": "write", "key": key, "args": args})
+}
+
+// handleCmd runs a sendCommand a shared module forwarded (it reached for a
+// device it did not register) through the real registry, then returns the
+// outcome. The registry dispatches to whichever process owns the device.
+func (m *ModuleProcess) handleCmd(msg ipcMsg) {
+	err := m.host.reg.SendCommand(msg.K, msg.Path, rawOrdered(msg.V))
+	res := map[string]any{"t": "cmdres", "rid": msg.Rid, "ok": err == nil}
+	if err != nil {
+		res["error"] = err.Error()
+	}
+	m.send(res)
 }
 
 // Call runs a public method of the client object in the process

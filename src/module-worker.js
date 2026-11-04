@@ -79,10 +79,19 @@ class WorkerRegistry extends EventEmitter {
     this.language = language || 'en';
     this.devices = new Map();
     this._sent = new Map(); // key → JSON last sent, to notice descriptors changed later
+    // Devices owned by OTHER modules, pushed in by the host for an `expose`
+    // module that needs the shared registry (it reads/commands devices it did
+    // not register itself — e.g. grenton-vclu-client over the Tuya devices).
+    // In-process (server.js) the shared SensorRegistry gives this for free; a
+    // forked worker gets it mirrored here instead.
+    this.foreign = new Map();
+    this._rpcSeq = 0;
+    this._pending = new Map(); // rpc id → { resolve, reject }
   }
   registerDevice(device) {
     if (this.devices.has(device.key)) return;
     this.devices.set(device.key, device);
+    this.foreign.delete(device.key); // own always shadows a mirrored copy
     this._push(device);
     this.emit('device-discovered', device);
   }
@@ -96,9 +105,17 @@ class WorkerRegistry extends EventEmitter {
   // Several clients add sensors or rename a device after registering it —
   // in-process the server saw that through the shared object; here it's resent.
   resync() { for (const d of this.devices.values()) this._push(d); }
-  getDevices() { return Array.from(this.devices.values()); }
+  // Host mirrored another module's device(s) in.
+  ingestCatalog(list) { for (const d of list || []) this.ingestDevice(d); }
+  ingestDevice(d) { if (d && d.key && !this.devices.has(d.key)) this.foreign.set(d.key, d); }
+  _descriptor(key) { return this.devices.get(key) || this.foreign.get(key) || null; }
+  getDevices() {
+    const out = Array.from(this.devices.values());
+    for (const [key, d] of this.foreign) if (!this.devices.has(key)) out.push(d);
+    return out;
+  }
   getDeviceReadings(key) {
-    const device = this.devices.get(key);
+    const device = this._descriptor(key);
     if (!device) return null;
     const readings = {};
     for (const s of device.sensors || []) {
@@ -108,6 +125,32 @@ class WorkerRegistry extends EventEmitter {
     return { ...device, readings };
   }
   getAllReadings() { return this.getDevices().map((d) => this.getDeviceReadings(d.key)); }
+  // Command a device — own or another module's. The host runs the real
+  // SensorRegistry.sendCommand(), which dispatches to whichever process owns
+  // the device, and answers with a 'cmdres'. Resolves when the host confirms
+  // the write (the write's return value isn't carried back — nothing uses it)
+  // and rejects with the host's error otherwise, like calling
+  // sensorRegistry.sendCommand() in-process under server.js. A timeout guards
+  // the pending promise so a dropped 'cmdres' can't hang the caller or leak the
+  // entry (the host's own dispatch times out first at 30 s and sends an error).
+  sendCommand(key, path, value) {
+    const id = ++this._rpcSeq;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        if (this._pending.delete(id)) reject(new Error('command timed out (no host response)'));
+      }, 35000);
+      if (timer.unref) timer.unref();
+      this._pending.set(id, { resolve, reject, timer });
+      send({ t: 'cmd', rid: id, k: key, path, v: plain(value) }); // k/v match the host's ipc fields
+    });
+  }
+  _resolveRpc(id, ok, value, error) {
+    const p = this._pending.get(id);
+    if (!p) return;
+    this._pending.delete(id);
+    if (p.timer) clearTimeout(p.timer);
+    if (ok) p.resolve(value); else p.reject(new Error(error || 'command failed'));
+  }
 }
 
 // What a client gets as its 4th constructor argument when the host asks for
@@ -165,6 +208,7 @@ function run() {
       case 'init': {
         store = new WorkerStore(msg.snapshot);
         registry = new WorkerRegistry(store, msg.config?.language);
+        if (Array.isArray(msg.devices)) registry.ingestCatalog(msg.devices); // `expose` module: other modules' devices
         process.title = `lsh:${msg.file}`; // a group's file is its name
 
         // mirror this process's platform-status singleton into the server's
@@ -206,6 +250,17 @@ function run() {
       }
       case 'chg':
         store?._remote(msg.k, msg.v, msg.ts);
+        break;
+      // host mirrored in another module's device catalog / a newly-registered
+      // device, and the result of a sendCommand this worker forwarded
+      case 'devs':
+        registry?.ingestCatalog(msg.devices);
+        break;
+      case 'dev+':
+        registry?.ingestDevice(msg.device);
+        break;
+      case 'cmdres':
+        registry?._resolveRpc(msg.rid, msg.ok, msg.value, msg.error);
         break;
       case 'write': {
         const device = registry?.devices.get(msg.key);

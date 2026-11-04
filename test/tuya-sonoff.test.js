@@ -49,7 +49,7 @@ test('Tuya cloud: devices, readings and control through the simulator', async ()
   try {
     await client.start();
     const keys = registry.getDevices().map((d) => d.key).filter((k) => k.startsWith('tuya/bf0sim0')).sort();
-    assert.deepEqual(keys, ['tuya/bf0sim0bulb', 'tuya/bf0sim0curt', 'tuya/bf0sim0plug', 'tuya/bf0sim0th00']);
+    assert.deepEqual(keys, ['tuya/bf0sim0bulb', 'tuya/bf0sim0curt', 'tuya/bf0sim0klima', 'tuya/bf0sim0klima2', 'tuya/bf0sim0klima3', 'tuya/bf0sim0plug', 'tuya/bf0sim0th00']);
     const v = store.values;
     assert.equal(v['tuya/bf0sim0bulb/switch'], 1);
     assert.equal(v['tuya/bf0sim0bulb/level'], 50);
@@ -103,7 +103,7 @@ test('Tuya probe lists the project devices with their local keys', async () => {
   const sim = await tuyaSim.startSimulator({ port: 0 });
   try {
     const list = await TuyaClient.probe({ accessId: 'sim-id', accessSecret: 'sim-secret', baseUrl: sim.url });
-    assert.equal(list.length, 12);
+    assert.equal(list.length, 15);
     assert.ok(list.every((d) => d.hasKey));
     await assert.rejects(TuyaClient.probe({ accessId: 'sim-id', accessSecret: 'wrong', baseUrl: sim.url }), /sign invalid/);
   } finally { await sim.close(); }

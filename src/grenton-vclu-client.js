@@ -18,9 +18,11 @@ const platformStatus = require('./platform-status');
 // module restart.
 //
 // Because it reads and commands devices owned by the Tuya module (not ones it
-// registered itself), it must run in the server process — its integrations.js
-// entry carries `expose`, which keeps it in-process (a forked module worker
-// can neither see another module's devices nor command them).
+// registered itself), it needs the shared registry. Its integrations.js entry
+// carries `expose`, which under server.js keeps it in-process; on the Go core
+// (where every integration is a forked worker) `expose` instead makes the host
+// mirror the whole device catalog + store into this worker and bridge its
+// sendCommand back to the real registry — so it works the same either way.
 //
 // config.grentonVclu = { enabled: true, pollInterval: 3 }
 
