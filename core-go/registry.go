@@ -244,6 +244,14 @@ func (r *Registry) Device(key string) Device {
 	return r.devices[key]
 }
 
+// Writable reports whether a device has a write capability — i.e. a scene
+// action targeting it can actually be replayed.
+func (r *Registry) Writable(key string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.writers[key] != nil
+}
+
 func (r *Registry) DeviceReadings(key string) Device {
 	r.mu.RLock()
 	d, ok := r.devices[key]

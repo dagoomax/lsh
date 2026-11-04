@@ -98,6 +98,18 @@ func (s *Server) automationRoutes(api *http.ServeMux) {
 		a.DeleteScene(r.PathValue("id"))
 		done(w)
 	}))
+	// Capture the whole current state (lighting, setpoints, modes, volume,
+	// colour…) into a scene in one tap. { name, icon } label it; { id }
+	// re-captures into an existing scene.
+	api.HandleFunc("POST /api/automation/scenes/snapshot", s.admin(func(w http.ResponseWriter, r *http.Request) {
+		body := readBody(r)
+		saved, err := a.SnapshotScene(body.Str("name"), body.Str("icon"), body.Str("id"))
+		if err != nil {
+			fail(w, 400, err.Error())
+			return
+		}
+		ok(w, s.hkScene(saved, s.excludedScenes()))
+	}))
 	runScene := func(w http.ResponseWriter, r *http.Request) {
 		scene, err := a.RunScene(r.PathValue("id"))
 		okOr400(w, scene, err)

@@ -272,6 +272,8 @@ export default function ScenesSection({ scenes, runScene, reloadScenes, devices 
   const [editing, setEditing] = useState(null) // scene object, 'new', or null
   const [running, setRunning] = useState(null)
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [snapping, setSnapping] = useState(false)
+  const [snapErr, setSnapErr] = useState(null)
   const shown = (scenes || []).filter(s => s.enabled !== false)
   const inHome = shown.filter(s => s.inHomekit).length
   const notInHome = shown.filter(s => s.homekit === false)
@@ -292,6 +294,17 @@ export default function ScenesSection({ scenes, runScene, reloadScenes, devices 
       await reloadScenes?.()
     } finally { setBulkBusy(false) }
   }
+  // Snapshot the whole house as it is right now into a new scene, then open it
+  // so the user can rename / trim before it sticks (the engine already saved it
+  // with a dated default name).
+  const snapshot = async () => {
+    setSnapping(true); setSnapErr(null)
+    try {
+      const { data } = await api('/api/automation/scenes/snapshot', { method: 'POST', body: {} })
+      await reloadScenes?.()
+      setEditing(data)
+    } catch (e) { setSnapErr(e.message) } finally { setSnapping(false) }
+  }
 
   return (
     <div>
@@ -303,12 +316,17 @@ export default function ScenesSection({ scenes, runScene, reloadScenes, devices 
             <HomeAppIcon size={13} /> {inHome}/{shown.length}
           </span>
         )}
+        <button type="button" className="he-text-btn" style={{ marginLeft: 'auto', fontSize: 13 }} disabled={snapping} onClick={snapshot}
+          title={gt('scene_snapshot_hint', 'Save the current state of every device — lights, temperatures, modes — as a new scene')}>
+          {snapping ? '…' : `📸 ${gt('scene_snapshot', 'Snapshot current state')}`}
+        </button>
         {notInHome.length > 0 && (
-          <button type="button" className="he-text-btn" style={{ marginLeft: 'auto', fontSize: 13 }} disabled={bulkBusy} onClick={addAllToHome}>
+          <button type="button" className="he-text-btn" style={{ marginLeft: 8, fontSize: 13 }} disabled={bulkBusy} onClick={addAllToHome}>
             {bulkBusy ? '…' : gt('scene_add_all_home', 'Add all to Apple Home')}
           </button>
         )}
       </div>
+      {snapErr && <div className="sc-err" style={{ marginBottom: 10 }}>{snapErr}</div>}
       <div className="sc-grid">
         {shown.map(s => (
           <div key={s.id} className="sc-tile" data-running={running === s.id || undefined}

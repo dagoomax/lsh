@@ -1308,6 +1308,124 @@ func (a *Automation) RunScene(id string) (*OMap, error) {
 	return scene, nil
 }
 
+// snapshotActions captures the current state of every controllable device into
+// scene actions — the "save the house exactly as it is right now" button.
+// Unlike the dashboard editor (which models only each device's hero switch +
+// level), this records EVERY controllable sensor with a stable settable value:
+// lighting on/off and brightness, thermostat setpoints, HVAC modes, speaker
+// volume, colour… Momentary controls (cover up/down/stop, scene buttons) have
+// no state to restore, so snapshotValue drops them.
+func (a *Automation) snapshotActions() []any {
+	actions := []any{}
+	for _, d := range a.reg.Devices() {
+		key := d.Str("key")
+		if key == "" || !a.reg.Writable(key) {
+			continue
+		}
+		snap := a.reg.DeviceReadings(key)
+		if snap == nil {
+			continue
+		}
+		readings, _ := snap.Get("readings").(*OMap)
+		if readings == nil {
+			continue
+		}
+		for _, s := range sensorsOf(d) {
+			if !truthy(s.Get("controllable")) || truthy(s.Get("hidden")) {
+				continue
+			}
+			path := jsString(s.Get("path"))
+			rd, _ := readings.Get(path).(*OMap)
+			if rd == nil {
+				continue // no live reading yet → nothing to capture
+			}
+			value, okv := snapshotValue(s, rd.Get("value"))
+			if !okv {
+				continue // momentary / non-settable sensor
+			}
+			actions = append(actions, OM("type", "device", "deviceKey", key, "sensor", path, "value", value))
+		}
+	}
+	return actions
+}
+
+// SnapshotScene builds (or, when id is given, re-captures into) a scene from the
+// live device state.
+func (a *Automation) SnapshotScene(name, icon, id string) (*OMap, error) {
+	actions := a.snapshotActions()
+	if len(actions) == 0 {
+		return nil, errors.New("No controllable devices with a current state to capture")
+	}
+	var existing *OMap
+	if id != "" {
+		existing = a.sceneByID(id)
+	}
+	scene := NewOMap()
+	if existing != nil {
+		scene = existing.Clone() // keeps id + any fields the dashboard doesn't model
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		if existing != nil && truthy(existing.Get("name")) {
+			name = existing.Str("name")
+		} else {
+			name = "Snapshot " + time.Now().Format("2006-01-02 15:04")
+		}
+	}
+	scene.Set("name", name)
+	if icon == "" {
+		if existing != nil && truthy(existing.Get("icon")) {
+			icon = existing.Str("icon")
+		} else {
+			icon = "📸"
+		}
+	}
+	scene.Set("icon", icon)
+	if existing != nil {
+		scene.Set("enabled", existing.Get("enabled") != false)
+	} else {
+		scene.Set("enabled", true)
+	}
+	scene.Set("actions", actions)
+	return a.SaveScene(scene) // assigns a fresh id when there's no existing one
+}
+
+// A controllable sensor's live reading → the value SendCommand needs to restore
+// it. Returns ok=false for anything with no stable settable state, so
+// snapshotActions leaves it out of the scene.
+var momentaryPaths = map[string]bool{"up": true, "down": true, "stop": true, "my": true, "open": true, "close": true}
+
+func snapshotValue(sensor *OMap, raw any) (any, bool) {
+	if raw == nil {
+		return nil, false
+	}
+	if momentaryPaths[jsString(sensor.Get("path"))] {
+		return nil, false // cover / press buttons — momentary, no state
+	}
+	switch jsString(sensor.Get("type")) {
+	case "range", "color-temp":
+		n := jsNumber(raw)
+		if math.IsNaN(n) {
+			return nil, false
+		}
+		return n, true
+	case "text":
+		return jsString(raw), true
+	case "color":
+		return raw, true // object { hue, saturation } or scalar — SendCommand normalises both
+	case "toggle":
+		if b, ok := raw.(bool); ok {
+			return b, true
+		}
+		if sv, ok := raw.(string); ok {
+			return sv == "on" || sv == "1" || sv == "true", true
+		}
+		return jsNumber(raw) == 1, true
+	default:
+		return nil, false // unknown / read-only-shaped sensor type
+	}
+}
+
 func (a *Automation) resetFlowState(id string) {
 	for k := range a.flowState {
 		if strings.HasPrefix(k, id+":") {

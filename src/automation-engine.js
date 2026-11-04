@@ -812,6 +812,69 @@ class AutomationEngine {
     await this.runActions(scene.actions || [], { source: `scene:${scene.name}` });
     return scene;
   }
+
+  // Capture the current state of every controllable device into scene actions —
+  // the "save the house exactly as it is right now" button. Unlike the
+  // dashboard editor (which models only each device's hero switch + level),
+  // this records EVERY controllable sensor that has a stable settable value:
+  // lighting on/off and brightness, thermostat setpoints, HVAC modes, speaker
+  // volume, colour… Momentary controls (cover up/down/stop, scene buttons)
+  // have no state to restore, so they're skipped (see snapshotValue below).
+  snapshotActions() {
+    const actions = [];
+    for (const device of this._registry.getDevices()) {
+      if (!device || !device._writeCapability) continue; // not writable → can't be replayed
+      const snap = this._registry.getDeviceReadings(device.key);
+      const readings = snap?.readings || {};
+      for (const sensor of device.sensors || []) {
+        if (!sensor.controllable || sensor.hidden) continue;
+        const reading = readings[sensor.path];
+        if (!reading) continue; // no live reading yet → nothing to capture
+        const value = snapshotValue(sensor, reading.value);
+        if (value === undefined) continue; // momentary / non-settable sensor
+        actions.push({ type: 'device', deviceKey: device.key, sensor: sensor.path, value });
+      }
+    }
+    return actions;
+  }
+
+  // Build (or re-capture into, when `id` is given) a scene from the live state.
+  snapshotScene({ name, icon, id } = {}) {
+    const actions = this.snapshotActions();
+    if (!actions.length) throw new Error('No controllable devices with a current state to capture');
+    const existing = id ? this.scenes.find((s) => s.id === id) : null;
+    const scene = {
+      ...(existing || {}),
+      name: (name && name.trim()) || existing?.name
+        || `Snapshot ${new Date().toLocaleString()}`,
+      icon: icon || existing?.icon || '📸',
+      enabled: existing ? existing.enabled !== false : true,
+      actions,
+    };
+    if (existing) scene.id = existing.id; else delete scene.id; // fresh id from saveScene
+    return this.saveScene(scene);
+  }
+}
+
+// A controllable sensor's live reading → the value sendCommand() needs to
+// restore it. Returns undefined for anything with no stable settable state, so
+// snapshotActions() leaves it out of the scene.
+const MOMENTARY_PATHS = new Set(['up', 'down', 'stop', 'my', 'open', 'close']);
+function snapshotValue(sensor, raw) {
+  if (raw == null) return undefined;
+  if (MOMENTARY_PATHS.has(sensor.path)) return undefined; // cover/press buttons — momentary
+  switch (sensor.type) {
+    case 'range':
+    case 'color-temp': {
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : undefined;
+    }
+    case 'text':  return String(raw);
+    case 'color': return raw; // object { hue, saturation } or scalar — normalizeColor() handles both
+    case 'toggle':
+      return raw === true || raw === 1 || raw === 'on' || raw === '1' || raw === 'true';
+    default:      return undefined; // unknown / read-only-shaped sensor type
+  }
 }
 
 // `device`/`virtual` node value field: exact "{value}" preserves the live

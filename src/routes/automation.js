@@ -42,6 +42,14 @@ module.exports = function register(router, ctx) {
       automation.deleteScene(req.params.id);
       res.json({ success: true });
     });
+    // Capture the whole current state (lighting, setpoints, modes, volume,
+    // colour…) into a scene in one tap. { name, icon } label it; { id }
+    // re-captures into an existing scene.
+    router.post('/automation/scenes/snapshot', requireAdmin, (req, res) => {
+      const { name, icon, id } = req.body || {};
+      try { res.json({ success: true, data: hkScene(automation.snapshotScene({ name, icon, id })) }); }
+      catch (err) { res.status(400).json({ success: false, error: err.message }); }
+    });
     const runScene = async (req, res) => {
       try { res.json({ success: true, data: await automation.runScene(req.params.id) }); }
       catch (err) { res.status(400).json({ success: false, error: err.message }); }
