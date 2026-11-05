@@ -30,6 +30,7 @@ import HomeModel3D from './HomeModel3D'
 import HomeEditor from './HomeEditor'
 import ScenesSection from './Scenes'
 import CityGuideCard, { CityGuidePage, useGuide } from './CityGuide'
+import RoomServiceCard, { useRoomService } from './RoomServiceCard'
 import { useHomePrefs, orderSections, isTileWide } from '../homePrefs'
 
 const FIBARO_SENSOR_ICON = {
@@ -1418,6 +1419,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
 
   // ── Customisable home view (the "All" tab) ──
   const guide = useGuide()
+  const roomService = useRoomService()
   const homePrefs = useHomePrefs()
   const [homeEditing, setHomeEditing] = useState(false)
   const hiddenDevSet = new Set(homePrefs.hiddenDevices)
@@ -1427,6 +1429,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
   const homeSections = [
     { id: 'hero',      label: gt('home_sec_hero', 'Summary') },
     ...(guide ? [{ id: 'guide', label: gt('home_sec_guide', 'Welcome guide') }] : []),
+    ...(roomService?.enabled && !roomService?.hideHotelServices ? [{ id: 'room-service', label: gt('home_sec_roomservice', 'Room service') }] : []),
     { id: 'scenes',    label: gt('scenes', 'Scenes'), count: scenes.filter(s => s.enabled !== false).length },
     ...(energy ? [{ id: 'energy', label: gt('energy', 'Energy'), Icon: GridPowerIcon }] : []),
     { id: 'model3d',   label: gt('home_sec_model', '3D model') },
@@ -1707,6 +1710,7 @@ export default function DeviceList({ devices, energy, roomsMeta = {}, onToggleRe
                 case 'model3d':   return <HomeModel3D onOpenPlan={() => { setCat('Plan'); setRoomFilter(null) }} devices={devices} groupOf={getGroup} onOpen={setOpenKey} />
                 case 'music':     return hasCustomLayout() && isWidgetPinned('widget:media') ? null : <MusicHub />
                 case 'guide':     return <CityGuideCard onOpen={() => { setCat('Guide'); setRoomFilter(null) }} />
+                case 'room-service': return <RoomServiceCard data={roomService} />
                 case 'weather':   return <WeatherForecast />
                 case 'doorbells': return <YaleDoorbells devices={devices} />
                 case 'system':    return <SystemMetrics devices={devices} />

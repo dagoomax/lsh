@@ -45,6 +45,64 @@ func trunc(s string, n int) string {
 }
 
 func (s *Server) mediaRoutes(api *http.ServeMux) {
+	// GET /api/media/targets — the speakers and what they're playing, plus the
+	// saved stations (config.media.stations). Port of media.js /media/targets.
+	// The live speakers run in the media module (a forked Node process), but
+	// each is mirrored into the registry as a radio/* device with its playback
+	// state in the store, so the target list is rebuilt from there. (url/since
+	// for AirPlay live only in the module and aren't in the store, so they come
+	// back empty — the favourites list and the speaker picker don't need them.)
+	api.HandleFunc("GET /api/media/targets", func(w http.ResponseWriter, r *http.Request) {
+		targets := []any{}
+		for _, d := range s.reg.Devices() {
+			key := d.Str("key")
+			if d.Str("type") != "radio" || key == "radio/all" {
+				continue
+			}
+			get := func(p string) any { return s.store.Get(key + "/" + p) }
+			state := "idle"
+			if jsNumber(get("playing")) == 1 {
+				state = "playing"
+			}
+			title := jsString(get("title"))
+			if title == "" {
+				title = jsString(get("nowPlaying"))
+			}
+			t := NewOMap()
+			switch {
+			case strings.HasPrefix(key, "radio/airplay-"):
+				t.Set("id", "airplay:"+strings.TrimPrefix(key, "radio/airplay-"))
+				t.Set("kind", "airplay")
+				t.Set("url", jsString(get("url")))
+			case strings.HasPrefix(key, "radio/cast-"):
+				t.Set("id", "cast:"+strings.TrimPrefix(key, "radio/cast-"))
+				t.Set("kind", "chromecast")
+				if ps := jsString(get("playbackState")); ps != "" {
+					state = ps
+				}
+				t.Set("url", jsString(get("mediaUrl")))
+			default:
+				t.Set("id", key)
+				t.Set("kind", "")
+				t.Set("url", jsString(get("url")))
+			}
+			t.Set("name", d.Str("label"))
+			t.Set("deviceKey", key)
+			t.Set("state", state)
+			t.Set("title", title)
+			if v := get("volume"); v != nil {
+				t.Set("volume", jsNumber(v))
+			} else {
+				t.Set("volume", nil)
+			}
+			t.Set("muted", jsNumber(get("mute")) == 1)
+			targets = append(targets, t)
+		}
+		cfg := readConfigOrdered(s.configPath())
+		stations := cleanStations(omap(cfg.Get("media")).Get("stations"))
+		ok(w, OM("targets", targets, "stations", stations))
+	})
+
 	// GET /api/media/radio?q=&country= — internet radio directory
 	api.HandleFunc("GET /api/media/radio", func(w http.ResponseWriter, r *http.Request) {
 		q := trunc(strings.TrimSpace(r.URL.Query().Get("q")), 80)

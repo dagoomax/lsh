@@ -261,6 +261,10 @@ async function main() {
   app.use('/guest', tenantPortal.router());
   tenantPortal.start();
 
+  // Public, no-login room-service ordering page a per-room QR code opens;
+  // mounted before the auth middleware (its /api/order/* calls are public too).
+  app.use('/order', require('./src/room-service').orderPageRouter());
+
   app.use(auth.middleware(isSecure));
   // Furniture-picture uploads for the home plan arrive as base64 JSON and
   // need a bigger body cap; every other endpoint keeps the ~100 kb default.
@@ -613,8 +617,16 @@ async function main() {
   // gets configured later (moduleHost.apply) without a server restart
   const moduleHost = isolate ? new ModuleHost(config, store, sensorRegistry, { loadConfig }) : null;
   if (moduleHost) apiClients.moduleHost = moduleHost;
+  // License: the free tier caps how many integrations start.
+  const licenseLimits = require('./src/license').resolveLicense(config).limits;
+  let startedIntegrations = 0;
   for (const it of INTEGRATIONS) {
     if (!it.when(config)) continue;
+    if (licenseLimits.maxIntegrations > 0 && startedIntegrations >= licenseLimits.maxIntegrations) {
+      console.warn(`[License] Free tier: skipping ${it.label} — max ${licenseLimits.maxIntegrations} integrations (upgrade: Managed 499 PLN)`);
+      continue;
+    }
+    startedIntegrations++;
     if (isolate && !it.expose && !inProcess.has(it.file) && !inProcess.has(it.label)) {
       if (!fs.existsSync(path.join(__dirname, 'src', `${it.file}.js`))) {
         console.warn(`[Server] Optional module unavailable: ./src/${it.file} (file not installed)`);

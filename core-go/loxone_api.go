@@ -149,6 +149,14 @@ func (s *Server) loxoneRoutes(api *http.ServeMux) {
 				fail(w, 404, "No matching devices")
 				return
 			}
+			// Free tier: Loxone export is capped to 1 input and 1 output device.
+			lim := s.lic().Limits.LoxoneInputs
+			if kind == "outputs" {
+				lim = s.lic().Limits.LoxoneOutputs
+			}
+			if lim > 0 && len(devices) > lim {
+				devices = devices[:lim]
+			}
 			o := s.xmlOpts(r)
 			polling := jsNumber(q.Get("polling"))
 			if math.IsNaN(polling) || polling == 0 {

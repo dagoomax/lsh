@@ -30,6 +30,11 @@ module.exports = function register(router, ctx) {
     }
     if (!devices.length)  return res.status(404).json({ success: false, error: 'No matching devices' });
 
+    // Free tier: Loxone export is capped to 1 input and 1 output device.
+    const limits = require('../license').resolveLicense(require('./helpers').readConfigFile()).limits;
+    const lim = kind === 'inputs' ? limits.loxoneInputs : limits.loxoneOutputs;
+    if (lim > 0 && devices.length > lim) devices = devices.slice(0, lim);
+
     // ?tokenId= resolves an API token server-side (used by the Settings UI,
     // where token values are never exposed to the browser)
     let embedToken = req.query.token;

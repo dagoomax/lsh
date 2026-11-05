@@ -89,6 +89,7 @@ var settingsSecretLeaves = [][]string{
 	{"ecovacs", "password"}, {"mqttBroker", "password"}, {"tuya", "accessSecret"}, {"sonoff", "password"},
 	{"sonoff", "appSecret"}, {"landroid", "password"}, {"sony", "psk"}, {"ezviz", "password"},
 	{"openweather", "apiKey"}, {"airly", "apiKey"},
+	{"roomService", "stripe", "secretKey"},
 }
 
 // Secrets inside arrays of objects: {array path..., field}.

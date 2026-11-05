@@ -6,6 +6,8 @@ package main
 // integration adds its own fields and the dashboard reads them as-is.
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +19,16 @@ import (
 	"strings"
 	"sync"
 )
+
+// randSuffix returns n random hex characters (decor item ids, like the JS
+// registry's Math.random().toString(36).slice(2, 6)).
+func randSuffix(n int) string {
+	b := make([]byte, (n+1)/2)
+	if _, err := rand.Read(b); err != nil {
+		return "0000"[:n]
+	}
+	return hex.EncodeToString(b)[:n]
+}
 
 type Device = *OMap
 
@@ -31,16 +43,33 @@ type Registry struct {
 	order     []string
 	writers   map[string]Writer
 	overrides map[string]any
+	ovFile    string // persist/device-overrides.json — written back by the customize/decor/room writers
 	listeners []func(event string, payload any)
 	types     *OMap // Victron service type → definition (device-definitions.js)
 }
 
 func NewRegistry(store *Store, overridesFile string) *Registry {
-	r := &Registry{store: store, devices: map[string]Device{}, writers: map[string]Writer{}, overrides: map[string]any{}}
+	r := &Registry{store: store, devices: map[string]Device{}, writers: map[string]Writer{}, overrides: map[string]any{}, ovFile: overridesFile}
 	if b, err := os.ReadFile(overridesFile); err == nil {
 		json.Unmarshal(b, &r.overrides)
 	}
 	return r
+}
+
+// saveOverrides persists the overrides map (atomic temp + rename). Caller holds r.mu.
+func (r *Registry) saveOverrides() error {
+	if r.ovFile == "" {
+		return nil
+	}
+	b, err := json.MarshalIndent(r.overrides, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := r.ovFile + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, r.ovFile)
 }
 
 // SetDeviceTypes turns on Victron auto-discovery: a store key under a known
@@ -282,6 +311,357 @@ func (r *Registry) RoomMeta() any {
 		return m
 	}
 	return map[string]any{}
+}
+
+func roundDP(v float64, dp int) float64 {
+	p := math.Pow(10, float64(dp))
+	return math.Round(v*p) / p
+}
+
+// SetOverride mirrors SensorRegistry.setOverride: room / icon / label /
+// permanent / plan position / camera FOV on a device, persisted to
+// device-overrides.json. Fields absent from body are left unchanged; a field
+// present but empty clears it. Returns the updated device.
+func (r *Registry) SetOverride(key string, body *OMap) (Device, error) {
+	r.mu.Lock()
+	d, ok := r.devices[key]
+	if !ok {
+		r.mu.Unlock()
+		return nil, fmt.Errorf("Unknown device: %s", key)
+	}
+	o := map[string]any{}
+	if cur, ok := r.overrides[key].(map[string]any); ok {
+		for k, v := range cur {
+			o[k] = v
+		}
+	}
+	setStr := func(ovKey, devKey string, raw any, max int, prefixKeep string) {
+		t := strings.TrimSpace(jsString(raw))
+		v := t
+		if prefixKeep != "" && strings.HasPrefix(t, prefixKeep) {
+			if len(v) > 24 {
+				v = v[:24]
+			}
+		} else if len(v) > max {
+			v = v[:max]
+		}
+		if v != "" {
+			o[ovKey] = v
+			d.Set(devKey, v)
+		} else {
+			delete(o, ovKey)
+			d.Delete(devKey)
+		}
+	}
+	if raw, has := body.Lookup("room"); has {
+		setStr("room", "room", raw, 40, "")
+	}
+	if raw, has := body.Lookup("icon"); has {
+		setStr("icon", "customIcon", raw, 8, "svg:")
+	}
+	if raw, has := body.Lookup("label"); has {
+		v := strings.TrimSpace(jsString(raw))
+		if len(v) > 60 {
+			v = v[:60]
+		}
+		if v != "" {
+			if d.Get("_origLabel") == nil {
+				d.Set("_origLabel", d.Get("label"))
+			}
+			o["label"] = v
+			d.Set("label", v)
+		} else {
+			delete(o, "label")
+			if orig := d.Get("_origLabel"); orig != nil {
+				d.Set("label", orig)
+				d.Delete("_origLabel")
+			}
+		}
+	}
+	if raw, has := body.Lookup("permanent"); has {
+		if raw == true || raw == "true" {
+			o["permanent"] = true
+			d.Set("permanent", true)
+		} else {
+			delete(o, "permanent")
+			d.Delete("permanent")
+		}
+	}
+	if raw, has := body.Lookup("planFloor"); has {
+		v := jsString(raw)
+		if v == "cellar" || v == "floor1" || v == "floor2" {
+			o["planFloor"] = v
+			d.Set("planFloor", v)
+		} else {
+			delete(o, "planFloor")
+			d.Delete("planFloor")
+		}
+	}
+	for _, field := range []string{"planX", "planY"} {
+		raw, has := body.Lookup(field)
+		if !has {
+			continue
+		}
+		if v := jsNumber(raw); !math.IsNaN(v) {
+			cv := roundDP(math.Min(1, math.Max(0, v)), 3)
+			o[field] = cv
+			d.Set(field, cv)
+		} else {
+			delete(o, field)
+			d.Delete(field)
+		}
+	}
+	for _, c := range []struct {
+		field  string
+		lo, hi float64
+		dp     int
+		angle  bool
+	}{{"camAngle", 0, 360, 1, true}, {"camFov", 20, 170, 0, false}, {"camRange", 0.4, 15, 2, false}} {
+		raw, has := body.Lookup(c.field)
+		if !has {
+			continue
+		}
+		v := jsNumber(raw)
+		if raw == "" || raw == nil || math.IsNaN(v) {
+			delete(o, c.field)
+			d.Delete(c.field)
+			continue
+		}
+		var cv float64
+		if c.angle {
+			cv = roundDP(math.Mod(math.Mod(v, 360)+360, 360), c.dp)
+		} else {
+			cv = roundDP(math.Min(c.hi, math.Max(c.lo, v)), c.dp)
+		}
+		o[c.field] = cv
+		d.Set(c.field, cv)
+	}
+	if len(o) > 0 {
+		r.overrides[key] = o
+	} else {
+		delete(r.overrides, key)
+	}
+	err := r.saveOverrides()
+	r.mu.Unlock()
+	r.emit("devices-changed", d)
+	return d, err
+}
+
+// ── Plan decor (furniture placed from the dashboard), under "_decor" ─────────
+
+func (r *Registry) getDecorLocked() map[string]any {
+	if m, ok := r.overrides["_decor"].(map[string]any); ok {
+		return m
+	}
+	return map[string]any{}
+}
+
+func (r *Registry) GetDecor() any {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.getDecorLocked()
+}
+
+// saveDecorLocked stores decor back (dropping it entirely when no floor has
+// items) and persists. Caller holds r.mu.
+func (r *Registry) saveDecorLocked(decor map[string]any) (any, error) {
+	any_ := false
+	for k, v := range decor {
+		if k == "_hidden" {
+			continue
+		}
+		if arr, ok := v.([]any); ok && len(arr) > 0 {
+			any_ = true
+		}
+	}
+	if any_ {
+		r.overrides["_decor"] = decor
+	} else {
+		delete(r.overrides, "_decor")
+	}
+	err := r.saveOverrides()
+	return r.getDecorLocked(), err
+}
+
+func validFloor(f string) bool { return f == "cellar" || f == "floor1" || f == "floor2" }
+
+func (r *Registry) AddDecor(floor, emoji, image string, x, y float64, hideAuto string) (any, error) {
+	if !validFloor(floor) {
+		return nil, fmt.Errorf("Bad floor")
+	}
+	e := strings.TrimSpace(emoji)
+	if len(e) > 8 {
+		e = e[:8]
+	}
+	img := strings.TrimSpace(image)
+	if len(img) > 400 {
+		img = img[:400]
+	}
+	if img != "" && !(strings.HasPrefix(img, "/") || strings.HasPrefix(img, "http://") || strings.HasPrefix(img, "https://")) {
+		return nil, fmt.Errorf("Bad image URL")
+	}
+	if e == "" && img == "" {
+		return nil, fmt.Errorf("Emoji or image required")
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	decor := cloneDecor(r.getDecorLocked())
+	item := map[string]any{
+		"id": base36Now() + randSuffix(4),
+		"x":  math.Min(1, math.Max(0, x)),
+		"y":  math.Min(1, math.Max(0, y)),
+	}
+	if img != "" {
+		item["image"] = img
+	} else {
+		item["emoji"] = e
+	}
+	if hideAuto != "" {
+		if len(hideAuto) > 120 {
+			hideAuto = hideAuto[:120]
+		}
+		item["autoId"] = hideAuto
+	}
+	arr, _ := decor[floor].([]any)
+	decor[floor] = append(arr, item)
+	if hideAuto != "" {
+		decor["_hidden"] = addUnique(decor["_hidden"], hideAuto)
+	}
+	return r.saveDecorLocked(decor)
+}
+
+func (r *Registry) HideAutoDecor(autoId string) (any, error) {
+	id := strings.TrimSpace(autoId)
+	if id == "" {
+		return nil, fmt.Errorf("id required")
+	}
+	if len(id) > 120 {
+		id = id[:120]
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	decor := cloneDecor(r.getDecorLocked())
+	decor["_hidden"] = addUnique(decor["_hidden"], id)
+	return r.saveDecorLocked(decor)
+}
+
+func (r *Registry) MoveDecor(id string, x, y float64) (any, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	decor := cloneDecor(r.getDecorLocked())
+	for f, v := range decor {
+		if f == "_hidden" {
+			continue
+		}
+		arr, _ := v.([]any)
+		for _, it := range arr {
+			if m, ok := it.(map[string]any); ok && jsString(m["id"]) == id {
+				m["x"] = math.Min(1, math.Max(0, x))
+				m["y"] = math.Min(1, math.Max(0, y))
+			}
+		}
+	}
+	return r.saveDecorLocked(decor)
+}
+
+func (r *Registry) RemoveDecor(id string) (any, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	decor := cloneDecor(r.getDecorLocked())
+	var removedAuto string
+	for f, v := range decor {
+		if f == "_hidden" {
+			continue
+		}
+		arr, _ := v.([]any)
+		kept := make([]any, 0, len(arr))
+		for _, it := range arr {
+			m, _ := it.(map[string]any)
+			if m != nil && jsString(m["id"]) == id {
+				if a := jsString(m["autoId"]); a != "" {
+					removedAuto = a
+				}
+				continue
+			}
+			kept = append(kept, it)
+		}
+		decor[f] = kept
+	}
+	if removedAuto != "" {
+		if hid, ok := decor["_hidden"].([]any); ok {
+			out := make([]any, 0, len(hid))
+			for _, h := range hid {
+				if jsString(h) != removedAuto {
+					out = append(out, h)
+				}
+			}
+			decor["_hidden"] = out
+		}
+	}
+	return r.saveDecorLocked(decor)
+}
+
+// SetRoomIcon mirrors setRoomIcon: room → { icon } under "_rooms".
+func (r *Registry) SetRoomIcon(room, icon string) (any, error) {
+	name := strings.TrimSpace(room)
+	if len(name) > 40 {
+		name = name[:40]
+	}
+	if name == "" {
+		return nil, fmt.Errorf("Room name required")
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	rooms, _ := r.overrides["_rooms"].(map[string]any)
+	if rooms == nil {
+		rooms = map[string]any{}
+	}
+	v := strings.TrimSpace(icon)
+	if len(v) > 8 {
+		v = v[:8]
+	}
+	if v != "" {
+		rooms[name] = map[string]any{"icon": v}
+	} else {
+		delete(rooms, name)
+	}
+	if len(rooms) > 0 {
+		r.overrides["_rooms"] = rooms
+	} else {
+		delete(r.overrides, "_rooms")
+	}
+	err := r.saveOverrides()
+	var out any = map[string]any{}
+	if m, ok := r.overrides["_rooms"].(map[string]any); ok {
+		out = m
+	}
+	return out, err
+}
+
+// cloneDecor shallow-copies the floor map and each floor's slice so edits don't
+// mutate the stored arrays until saveDecorLocked commits them.
+func cloneDecor(src map[string]any) map[string]any {
+	out := map[string]any{}
+	for k, v := range src {
+		if arr, ok := v.([]any); ok {
+			cp := make([]any, len(arr))
+			copy(cp, arr)
+			out[k] = cp
+		} else {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+func addUnique(list any, v string) []any {
+	arr, _ := list.([]any)
+	for _, x := range arr {
+		if jsString(x) == v {
+			return arr
+		}
+	}
+	return append(arr, v)
 }
 
 func (r *Registry) Count() int {

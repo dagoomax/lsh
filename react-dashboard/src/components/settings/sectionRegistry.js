@@ -24,6 +24,7 @@ export const CATEGORIES = [
     { id: 'booking', title: 'Booking.com', keywords: ['booking', 'booking.com', 'extranet', 'rental', 'wynajem', 'najem', 'hotel', 'apartament', 'reservation', 'rezerwacja', 'ical', 'check-in'] },
     { id: 'vrbo', title: 'VRBO', keywords: ['vrbo', 'homeaway', 'expedia', 'rental', 'wynajem', 'najem', 'vacation', 'reservation', 'rezerwacja', 'ical', 'check-in'] },
     { id: 'tenant', title: 'Guest portal', keywords: ['guest', 'gość', 'tenant', 'najemca', 'portal', 'pin', 'door code', 'kod do drzwi', 'wifi', 'airbnb', 'booking', 'vrbo', 'check-in'] },
+    { id: 'room-service', title: 'Room Service', keywords: ['room service', 'roomservice', 'obsługa pokoju', 'menu', 'order', 'zamówienie', 'zamów', 'restaurant', 'restauracja', 'food', 'jedzenie', 'kitchen', 'kuchnia', 'qr', 'apple pay', 'stripe', 'receipt', 'rachunek', 'folio', 'hotel', 'guest', 'gość'] },
   ] },
   { id: 'energy', label: 'Energy', sections: [
     { id: 'connection', title: 'Victron (MQTT & VRM)', keywords: ['victron', 'venus', 'cerbo', 'mqtt', 'vrm', 'gx'] },

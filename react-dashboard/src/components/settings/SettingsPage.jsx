@@ -44,6 +44,7 @@ import WebhooksSection from './sections/WebhooksSection'
 import LocationsSection from './sections/LocationsSection'
 import OnboardingSection from './sections/OnboardingSection'
 import TenantSection from './sections/TenantSection'
+import RoomServiceSection from './sections/RoomServiceSection'
 import NukiSection from './sections/NukiSection'
 import TtlockSection from './sections/TtlockSection'
 import UsbRadioSection from './sections/UsbRadioSection'
@@ -135,6 +136,7 @@ const SECTION_COMPONENTS = {
   booking: BookingSection,
   vrbo: VrboSection,
   tenant: TenantSection,
+  'room-service': RoomServiceSection,
   nuki: NukiSection,
   ttlock: TtlockSection,
   'usb-radio': UsbRadioSection,
@@ -238,7 +240,16 @@ export default function SettingsPage({ onClose, onOpenCssEditor }) {
   useEffect(() => { load() }, [])
 
   // not memoized: cheap, and the translated titles change when the phrase book arrives
-  const filtered = filterCategories(query, tr)
+  let filtered = filterCategories(query, tr)
+  // "Hide hotel & rental services" (config.hideHotelServices): drop the
+  // guest-facing rental sections. Room Service stays visible — it carries the
+  // toggle that turns this back off.
+  if (config?.hideHotelServices) {
+    const hidden = new Set(['airbnb', 'booking', 'vrbo', 'tenant', 'onboarding'])
+    filtered = filtered
+      .map((cat) => ({ ...cat, sections: cat.sections.filter((s) => !hidden.has(s.id)) }))
+      .filter((cat) => cat.sections.length)
+  }
 
   const active = findSection(activeId)
   const ActiveComponent = SECTION_COMPONENTS[activeId]

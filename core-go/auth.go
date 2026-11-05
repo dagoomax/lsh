@@ -32,7 +32,7 @@ const (
 
 var apiTokenUser = map[string]any{"id": "api-token", "username": "api-token", "role": "admin"}
 
-var publicAPI = []string{"/api/auth/login", "/api/auth/setup", "/api/auth/handoff/", "/api/webhooks/smartthings"}
+var publicAPI = []string{"/api/auth/login", "/api/auth/setup", "/api/auth/handoff/", "/api/webhooks/smartthings", "/api/order/"}
 
 type User struct {
 	ID           string          `json:"id"`

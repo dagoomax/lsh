@@ -111,6 +111,7 @@ module.exports = function register(router, ctx) {
     if (safe.ezviz?.codes) safe.ezviz.codes = Object.fromEntries(Object.keys(safe.ezviz.codes).map((k) => [k, '••••••••']));
     if (safe.openweather?.apiKey) safe.openweather.apiKey = '••••••••';
     if (safe.airly?.apiKey) safe.airly.apiKey = '••••••••';
+    if (safe.roomService?.stripe?.secretKey) safe.roomService.stripe.secretKey = '••••••••';
     if (safe.esphome?.devices) {
       safe.esphome.devices = safe.esphome.devices.map(d =>
         d.password ? { ...d, password: '••••••••' } : d

@@ -21,3 +21,12 @@ config.json.bak*
 
 # camera clips (src/camera-recorder.js)
 recordings/
+
+# License server (keys/admin token/issued licenses stay local — never committed)
+license-server/
+# config.json snapshots (contain secrets)
+config.json.pre-*
+# Go core prebuild binary backups
+core-go/*.prebuild.*
+# License test embeds issued license keys — keep local only
+core-go/license_test.go

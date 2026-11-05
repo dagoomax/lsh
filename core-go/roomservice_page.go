@@ -1,0 +1,261 @@
+package main
+
+import "net/http"
+
+// serveOrderPage serves the public, no-login guest ordering page at /order
+// (and /order/<room>). It is fully self-contained: it fetches /api/order/menu,
+// builds a cart, and places the order through /api/order/*. The room comes
+// from the URL (?room= or /order/<room>), which the per-room QR code encodes.
+func (s *Server) serveOrderPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("X-Robots-Tag", "noindex, nofollow")
+	w.Write([]byte(orderPageHTML))
+}
+
+const orderPageHTML = `<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Room service</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f1e9; --bg2:#efe7da; --card:#fffdf9; --ink:#23201b; --sub:#8a7f6e;
+    --line:#e6ddcd; --accent:#9a7b34; --accent-ink:#fff8ec;
+    --gold:#b7935a; --good:#5a7d4f; --bad:#b4442f;
+    --shadow:0 6px 24px rgba(60,45,20,.07); --radius:14px;
+    --serif:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#15130f; --bg2:#1c1915; --card:#201c17; --ink:#f3ece0; --sub:#a99d88;
+           --line:#322c23; --accent:#caa158; --accent-ink:#1a1611; --gold:#d8b878;
+           --shadow:0 8px 30px rgba(0,0,0,.45); }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.45 var(--sans);-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(120% 60% at 50% 0,var(--bg2),var(--bg) 60%);background-attachment:fixed}
+  main{max-width:600px;margin:0 auto;padding:0 20px 150px}
+  header{text-align:center;padding:40px 10px 24px}
+  .crest{width:40px;height:1px;background:var(--gold);margin:0 auto 18px;position:relative}
+  .crest::before{content:"◆";position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+    color:var(--gold);font-size:12px;background:var(--bg);padding:0 8px}
+  h1{font-family:var(--serif);font-size:40px;font-weight:600;letter-spacing:.01em;margin:0;line-height:1.05}
+  .room{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--sub);margin-top:12px}
+  .cat{font-family:var(--serif);font-style:italic;font-size:24px;color:var(--gold);
+    margin:34px 2px 14px;display:flex;align-items:center;gap:14px}
+  .cat::after{content:"";flex:1;height:1px;background:var(--line)}
+  .item{display:flex;align-items:baseline;gap:12px;padding:15px 2px;border-bottom:1px solid var(--line)}
+  .item .info{flex:1;min-width:0}
+  .item .name{font-family:var(--serif);font-size:21px;font-weight:600;line-height:1.1}
+  .item .desc{color:var(--sub);font-size:13.5px;margin-top:3px;font-style:italic}
+  .item .price{font-family:var(--serif);font-size:20px;font-weight:600;color:var(--gold);
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .stepper{display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .stepper button{width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:19px;line-height:1;
+    background:transparent;color:var(--gold);border:1px solid var(--gold);transition:.15s}
+  .stepper button.plus{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .stepper button:active{transform:scale(.92)}
+  .stepper .q{min-width:16px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums;font-size:16px}
+  .hidden{display:none !important}
+  .bar{position:fixed;left:0;right:0;bottom:0;padding:14px 20px calc(16px + env(safe-area-inset-bottom));
+    background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(14px) saturate(1.3);
+    border-top:1px solid var(--line)}
+  .bar .inner{max-width:600px;margin:0 auto}
+  .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:none;
+    border-radius:12px;padding:17px;font-size:15px;font-weight:600;letter-spacing:.04em;cursor:pointer;
+    background:var(--accent);color:var(--accent-ink);font-family:var(--sans)}
+  .btn.sec{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .btn[disabled]{opacity:.5}
+  .btn+.btn{margin-top:10px}
+  .total{font-variant-numeric:tabular-nums}
+  .sheet-bg{position:fixed;inset:0;background:rgba(25,18,8,.5);backdrop-filter:blur(3px);
+    display:flex;align-items:flex-end;z-index:20}
+  .sheet{background:var(--bg);width:100%;max-width:600px;margin:0 auto;border-radius:22px 22px 0 0;
+    padding:26px 20px calc(22px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto;
+    border-top:2px solid var(--gold)}
+  .sheet h2{font-family:var(--serif);font-weight:600;margin:0 0 16px;font-size:28px;text-align:center}
+  label{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sub);margin:14px 2px 6px;font-weight:600}
+  input,textarea{width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);
+    border-radius:10px;padding:13px;font-size:16px;font-family:inherit}
+  input:focus,textarea:focus{outline:none;border-color:var(--gold)}
+  .lines{border-top:1px solid var(--line);margin-bottom:4px}
+  .line{display:flex;justify-content:space-between;padding:10px 2px;border-bottom:1px solid var(--line)}
+  .line .q{color:var(--gold);margin-right:10px;font-variant-numeric:tabular-nums}
+  .sumline{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--serif);
+    font-size:24px;font-weight:600;padding:14px 2px 18px}
+  .sumline span:last-child{color:var(--gold)}
+  .msg{text-align:center;padding:30px 16px}
+  .msg .big{font-family:var(--serif);font-size:52px;color:var(--gold);line-height:1}
+  .msg h2{font-family:var(--serif);font-size:30px;margin:14px 0 8px}
+  .msg p{color:var(--sub);margin:0}
+  .err{color:var(--bad);text-align:center;font-size:14px;margin-top:12px;min-height:18px}
+  #pay-el{margin-top:16px}
+</style></head>
+<body><main>
+  <header>
+    <div class="crest"></div>
+    <h1 id="title">Room Service</h1>
+    <div class="room" id="room-label"></div>
+  </header>
+  <div id="menu"></div>
+  <div id="empty" class="msg hidden"><div class="big">🍽️</div><h2>Menu unavailable</h2>
+    <p>Room service isn’t available right now.</p></div>
+</main>
+
+<div class="bar hidden" id="cartbar"><div class="inner">
+  <button class="btn" id="review"><span id="cart-count"></span> · <span class="total" id="cart-total"></span></button>
+</div></div>
+
+<div class="sheet-bg hidden" id="checkout"><div class="sheet">
+  <h2>Your order</h2>
+  <div class="lines" id="co-lines"></div>
+  <div class="sumline"><span>Total</span><span class="total" id="co-total"></span></div>
+  <label for="room">Room / table</label>
+  <input id="room" placeholder="e.g. 101" autocomplete="off">
+  <label for="note">Note for the kitchen (optional)</label>
+  <textarea id="note" rows="2" placeholder="Allergies, timing…"></textarea>
+  <div id="pay-choice">
+    <button class="btn" id="pay-room">Add to my room bill</button>
+    <button class="btn sec" id="pay-card">Pay now</button>
+    <button class="btn sec" id="co-cancel">Back to menu</button>
+  </div>
+  <div id="pay-card-panel" class="hidden">
+    <div id="pay-el"></div>
+    <button class="btn" id="pay-submit" style="margin-top:14px">Pay <span class="total" id="pay-amt"></span></button>
+    <button class="btn sec" id="pay-back">Back</button>
+  </div>
+  <div class="err" id="err"></div>
+</div></div>
+
+<div class="sheet-bg hidden" id="done"><div class="sheet"><div class="msg">
+  <div class="big">✅</div>
+  <h2>Order received</h2>
+  <p id="done-text"></p>
+  <button class="btn" id="done-ok" style="margin-top:24px">Done</button>
+</div></div></div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  var cfg=null, cart={}, stripe=null, elements=null, payIntent=null;
+  var params=new URLSearchParams(location.search);
+  var room=params.get('room')||decodeURIComponent((location.pathname.match(/^\/order\/(.+)$/)||[])[1]||'');
+
+  function money(n){ return new Intl.NumberFormat(undefined,{style:'currency',currency:cfg.currency}).format(n); }
+  function count(){ return Object.values(cart).reduce(function(a,b){return a+b},0); }
+  function total(){ var t=0; cfg.menu.forEach(function(i){ t+=(cart[i.id]||0)*i.price }); return Math.round(t*100)/100; }
+  function lines(){ return cfg.menu.filter(function(i){return cart[i.id]}).map(function(i){return {id:i.id,name:i.name,price:i.price,qty:cart[i.id]}}); }
+
+  fetch('/api/order/menu').then(function(r){ if(!r.ok) throw 0; return r.json() })
+    .then(function(j){ cfg=j.data; render(); })
+    .catch(function(){ $('#menu').classList.add('hidden'); $('#empty').classList.remove('hidden'); });
+
+  function render(){
+    if(cfg.title) { $('#title').textContent=cfg.title; document.title=cfg.title; }
+    if(room) $('#room-label').textContent='Room '+room;
+    var cats={}, order=[];
+    cfg.menu.forEach(function(i){ var c=i.category||'Menu'; if(!cats[c]){cats[c]=[];order.push(c)} cats[c].push(i); });
+    var html='';
+    order.forEach(function(c){
+      html+='<div class="cat">'+esc(c)+'</div>';
+      cats[c].forEach(function(i){
+        html+='<div class="item" data-id="'+esc(i.id)+'"><div class="info"><div class="name">'+esc(i.name)+'</div>'+
+          (i.desc?'<div class="desc">'+esc(i.desc)+'</div>':'')+'</div>'+
+          '<div class="price">'+money(i.price)+'</div>'+
+          '<div class="stepper"><button class="minus" aria-label="Remove">−</button>'+
+          '<span class="q">0</span><button class="plus" aria-label="Add">+</button></div></div>';
+      });
+    });
+    $('#menu').innerHTML=html;
+    $('#menu').addEventListener('click',function(e){
+      var it=e.target.closest('.item'); if(!it) return; var id=it.getAttribute('data-id');
+      if(e.target.classList.contains('plus')) cart[id]=(cart[id]||0)+1;
+      else if(e.target.classList.contains('minus')) cart[id]=Math.max(0,(cart[id]||0)-1);
+      else return;
+      if(!cart[id]) delete cart[id];
+      it.querySelector('.q').textContent=cart[id]||0;
+      updateBar();
+    });
+  }
+  function updateBar(){
+    var n=count();
+    if(n){ $('#cartbar').classList.remove('hidden'); $('#cart-count').textContent=n+(n===1?' item':' items'); $('#cart-total').textContent=money(total()); }
+    else $('#cartbar').classList.add('hidden');
+  }
+
+  $('#review').addEventListener('click',function(){
+    var l=lines(), h='';
+    l.forEach(function(x){ h+='<div class="line"><span><span class="q">'+x.qty+'×</span>'+esc(x.name)+'</span><span>'+money(x.price*x.qty)+'</span></div>'; });
+    $('#co-lines').innerHTML=h; $('#co-total').textContent=money(total()); $('#pay-amt').textContent=money(total());
+    if(room) $('#room').value=room;
+    $('#pay-room').classList.toggle('hidden', !cfg.payToRoom);
+    $('#pay-card').classList.toggle('hidden', !(cfg.stripe&&cfg.stripe.enabled));
+    showPanel(false); $('#err').textContent='';
+    $('#checkout').classList.remove('hidden');
+  });
+  $('#co-cancel').addEventListener('click',function(){ $('#checkout').classList.add('hidden'); });
+
+  function place(payment, intentId){
+    return fetch('/api/order/place',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({room:$('#room').value.trim(),items:lines(),note:$('#note').value,payment:payment,paymentIntentId:intentId||''})})
+      .then(function(r){ return r.json().then(function(j){ if(!r.ok||!j.success) throw new Error(j.error||'Order failed'); return j.data; }); });
+  }
+  function finish(d){
+    $('#checkout').classList.add('hidden');
+    $('#done-text').textContent = (d.payment==='card'?'Payment received. ':'Charged to your room. ')+'The staff have been notified.';
+    $('#done').classList.remove('hidden');
+    cart={}; updateBar(); document.querySelectorAll('.q').forEach(function(q){ if(q.closest('.item')) q.textContent='0'; });
+  }
+  $('#done-ok').addEventListener('click',function(){ $('#done').classList.add('hidden'); });
+
+  $('#pay-room').addEventListener('click',function(){
+    var b=this; b.disabled=true; $('#err').textContent='';
+    place('room').then(finish).catch(function(e){ $('#err').textContent=e.message; b.disabled=false; });
+  });
+
+  function showPanel(card){ $('#pay-choice').classList.toggle('hidden',card); $('#pay-card-panel').classList.toggle('hidden',!card); }
+  $('#pay-back').addEventListener('click',function(){ showPanel(false); });
+
+  $('#pay-card').addEventListener('click',function(){
+    var b=this; b.disabled=true; $('#err').textContent='';
+    fetch('/api/order/pay',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({room:$('#room').value.trim(),items:lines()})})
+      .then(function(r){ return r.json().then(function(j){ if(!r.ok||!j.success) throw new Error(j.error||'Payment setup failed'); return j.data; }); })
+      .then(function(d){
+        payIntent=d.paymentIntentId;
+        return loadStripe().then(function(){
+          stripe=Stripe(d.publishableKey);
+          elements=stripe.elements({clientSecret:d.clientSecret});
+          $('#pay-el').innerHTML=''; elements.create('payment').mount('#pay-el');
+          showPanel(true); b.disabled=false;
+        });
+      })
+      .catch(function(e){ $('#err').textContent=e.message; b.disabled=false; });
+  });
+
+  $('#pay-submit').addEventListener('click',function(){
+    var b=this; b.disabled=true; $('#err').textContent='';
+    stripe.confirmPayment({elements:elements,redirect:'if_required'}).then(function(res){
+      if(res.error) throw new Error(res.error.message);
+      return place('card',payIntent);
+    }).then(finish).catch(function(e){ $('#err').textContent=e.message; b.disabled=false; });
+  });
+
+  function loadStripe(){
+    return new Promise(function(res,rej){
+      if(window.Stripe) return res();
+      var s=document.createElement('script'); s.src='https://js.stripe.com/v3/';
+      s.onload=res; s.onerror=function(){rej(new Error('Could not load Stripe'))}; document.head.appendChild(s);
+    });
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]}); }
+})();
+</script>
+</body></html>`

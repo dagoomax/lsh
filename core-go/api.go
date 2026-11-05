@@ -31,6 +31,7 @@ type Server struct {
 	relays  *Relays
 	out     outBridges
 	camera  *CameraEvents
+	license *LicenseInfo
 }
 
 type ctxUser struct{}
@@ -152,13 +153,25 @@ func (s *Server) Handler() http.Handler {
 		ok(w, OM("mongoEnabled", false, "retentionDays", 90, "bufferHours", 6))
 	})
 	api.HandleFunc("GET /api/platform-status", func(w http.ResponseWriter, r *http.Request) { ok(w, s.ps.All()) })
+	api.HandleFunc("GET /api/license", func(w http.ResponseWriter, r *http.Request) {
+		l := s.lic()
+		ok(w, OM(
+			"tier", l.Tier, "licensee", l.Licensee, "exp", l.Exp, "reason", l.Reason,
+			"limits", OM("maxIntegrations", l.Limits.MaxIntegrations, "loxoneInputs", l.Limits.LoxoneInputs, "loxoneOutputs", l.Limits.LoxoneOutputs, "hotel", l.Limits.Hotel),
+			"pricing", OM("managed", "499 PLN", "hotel", "call"),
+		))
+	})
 	s.automationRoutes(api)
 	s.loxoneRoutes(api)
 	s.smartThingsRoutes(api)
 	s.cameraEventRoutes(api)
 	s.settingsRoutes(api)
 	s.mediaRoutes(api)
+	s.coverRoutes(api)
 	s.simulatorsRoutes(api)
+	s.dashboardRoutes(api)
+	s.dashboardRoutes2(api)
+	s.roomServiceRoutes(api)
 	api.HandleFunc("GET /api/modules/processes", s.admin(func(w http.ResponseWriter, r *http.Request) {
 		ok(w, OM("isolated", true, "processes", s.host.List()))
 	}))
@@ -197,6 +210,8 @@ func (s *Server) Handler() http.Handler {
 			reactFS.ServeHTTP(w, r)
 		case strings.HasPrefix(p, "/api/"):
 			s.withAuth(api).ServeHTTP(w, r)
+		case p == "/order" || strings.HasPrefix(p, "/order/"):
+			s.serveOrderPage(w, r)
 		default:
 			public.ServeHTTP(w, r)
 		}
@@ -314,6 +329,10 @@ func (s *Server) deviceGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deviceCommand(w http.ResponseWriter, r *http.Request) {
+	if key, found := strings.CutSuffix(r.PathValue("key"), "/customize"); found {
+		s.deviceCustomize(w, r, key)
+		return
+	}
 	key, found := strings.CutSuffix(r.PathValue("key"), "/command")
 	if !found {
 		fail(w, http.StatusNotImplemented, "Not in the Go core yet: POST "+r.URL.Path)

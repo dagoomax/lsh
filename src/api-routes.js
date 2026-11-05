@@ -126,6 +126,7 @@ const ROUTE_GROUPS = [
   require('./routes/zehnder'),
   require('./routes/integration-settings'),
   require('./routes/media'),
+  require('./routes/room-service'),
 ];
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {

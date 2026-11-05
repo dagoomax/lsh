@@ -167,13 +167,18 @@ class SatelClient extends EventEmitter {
 
   async start() {
     await this._connect();
-    await this._loadNames();
-    await this._pollAll(true);
+    this._running = true;
+    // Register every device from the FIRST state poll (a handful of fast queries)
+    // BEFORE the slow (~90 s) name download, so even a brief or flaky panel
+    // connection is enough to bring zones, outputs and shutters online. They come
+    // up labelled "Zone N" etc.; _loadNames() relabels them once names arrive.
+    // (Blocking startup on the name scan meant a panel that dropped the link
+    // mid-scan registered zero devices — all-or-nothing. This makes it resilient.)
+    try { await this._pollAll(true); } catch {}
     // Self-scheduling loop: the next poll is queued only after the current one
     // settles, so a slow/timed-out query can never overlap the next request on
     // the socket. The loop keeps ticking across disconnects (polls fail harmlessly
     // until _connect succeeds again) and stops only via stop().
-    this._running = true;
     const loop = async () => {
       if (!this._running) return;
       try { await this._pollAll(); } catch {}
@@ -181,6 +186,12 @@ class SatelClient extends EventEmitter {
     };
     this.pollTimer = setTimeout(loop, POLL_MS);
     console.log(`[Satel] Started — ${this.cfg.host}:${this.cfg.port || 7094}`);
+    // Download element names in the background (best-effort) and relabel devices
+    // when they arrive — never block startup or polling on the name scan. If the
+    // connection drops mid-scan, the reconnect path (_connect) resumes it.
+    if (!this._namesLoaded) {
+      this._loadNames().then(() => this._relabel()).catch(() => {});
+    }
   }
 
   stop() {

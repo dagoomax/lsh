@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -78,6 +79,7 @@ func main() {
 	}
 	persistDir := filepath.Join(*root, "persist")
 	log.SetFlags(log.Ldate | log.Ltime)
+	log.SetOutput(io.MultiWriter(os.Stderr, logBuf)) // keep stderr; also buffer per category for GET /api/logs
 
 	boot, err := loadBoot(*nodeBin, *root)
 	if err != nil {
@@ -115,6 +117,12 @@ func main() {
 	victron := NewVictron(boot.Config, store, ps)
 	relays := &Relays{cfg: func() map[string]any { return boot.Config }, store: store, victron: victron}
 	srv := &Server{root: *root, store: store, reg: reg, ps: ps, auth: auth, host: host, victron: victron, relays: relays}
+	srv.license = resolveLicense(boot.Config)
+	if srv.license.Tier == "free" {
+		log.Printf("[License] Free tier (%s) — max %d integrations, Loxone export 1 input/1 output, hotel features off", srv.license.Reason, licenseTiers["free"].MaxIntegrations)
+	} else {
+		log.Printf("[License] %s tier — licensed to %q", srv.license.Tier, srv.license.Licensee)
+	}
 	srv.sio = NewSocketIO(srv.sioAuthorize, srv.sioConnect)
 	srv.wireEvents()
 
@@ -148,7 +156,12 @@ func main() {
 	// integrations server.js starts inline come from node/integrations.js as
 	// module processes; Loxone Out / Fibaro Out / the MCU index are Go
 	srv.applyOutBridges(boot.Config, "")
-	for _, it := range groupModules(selectModules(*modules, boot.Integrations), boot.Config) {
+	mods := groupModules(selectModules(*modules, boot.Integrations), boot.Config)
+	if max := srv.license.Limits.MaxIntegrations; max > 0 && len(mods) > max {
+		log.Printf("[License] Free tier: starting %d of %d integrations — upgrade (Managed 499 PLN) to raise the limit", max, len(mods))
+		mods = mods[:max]
+	}
+	for _, it := range mods {
 		host.Add(it)
 	}
 
