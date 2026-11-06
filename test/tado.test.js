@@ -45,7 +45,7 @@ test('tado: zones as devices, overlays, schedule, presence, API quota', async ()
   TadoClient.saveTokens({ ...TadoClient.loadTokens(), expiresAt: 0 });
 
   const store = fakeStore(), registry = new SensorRegistry(store, 'en');
-  const c = new TadoClient({ tado: { enabled: true, apiBase: `${base}/api/v2`, authBase: `${base}/oauth2` } }, store, registry);
+  const c = new TadoClient({ tado: { enabled: true, startDelay: 0, apiBase: `${base}/api/v2`, authBase: `${base}/oauth2` } }, store, registry);
   const v = (k) => store.values[k];
   try {
     await c.start();
@@ -118,7 +118,7 @@ test('tado: an expired sign-in says so', async () => {
   const sim = await startSimulator({ port: 0 });
   const base = `http://127.0.0.1:${sim.port}`;
   TadoClient.saveTokens({ accessToken: null, refreshToken: 'revoked', expiresAt: 0 });
-  const c = new TadoClient({ tado: { enabled: true, apiBase: `${base}/api/v2`, authBase: `${base}/oauth2` } }, fakeStore(), new SensorRegistry(fakeStore(), 'en'));
+  const c = new TadoClient({ tado: { enabled: true, startDelay: 0, apiBase: `${base}/api/v2`, authBase: `${base}/oauth2` } }, fakeStore(), new SensorRegistry(fakeStore(), 'en'));
   c.tokens = TadoClient.loadTokens();
   try {
     await assert.rejects(c._pollImpl(), /sign-in expired/);
@@ -136,4 +136,51 @@ test('tado: overlay termination from config', () => {
   assert.deepEqual(TadoClient.termination(), { typeSkillBasedApp: 'NEXT_TIME_BLOCK' });
   assert.deepEqual(TadoClient.termination('manual'), { typeSkillBasedApp: 'MANUAL' });
   assert.deepEqual(TadoClient.termination(90), { typeSkillBasedApp: 'TIMER', durationInSeconds: 5400 });
+});
+
+test('tado: a failed poll retries soon, a rate limit waits the interval', () => {
+  const c = new TadoClient({ tado: { enabled: true } }, fakeStore(), {});
+  c._intervalMs = 9000 * 1000;
+  c._failures = 1;
+  assert.equal(c._nextDelay(), 60000);
+  c._failures = 3;
+  assert.equal(c._nextDelay(), 240000);
+  c._failures = 20;
+  assert.equal(c._nextDelay(), 9000 * 1000, 'never later than the normal interval');
+  c._failures = 0;
+  assert.equal(c._nextDelay(), 9000 * 1000);
+  c._failures = 1;
+  c._rateLimited = true;
+  assert.equal(c._nextDelay(), 9000 * 1000);
+});
+
+test('tado: discovery that fails halfway is redone on the next poll', async () => {
+  const sim = await startSimulator({ port: 0 });
+  const base = `http://127.0.0.1:${sim.port}`;
+  const a = await TadoClient.startDeviceAuth({ authBase: `${base}/oauth2` });
+  await TadoClient.pollDeviceAuth(a.deviceCode, { authBase: `${base}/oauth2` });
+  await TadoClient.pollDeviceAuth(a.deviceCode, { authBase: `${base}/oauth2` });
+
+  const store = fakeStore(), registry = new SensorRegistry(store, 'en');
+  const c = new TadoClient({ tado: { enabled: true, startDelay: 0, apiBase: `${base}/api/v2`, authBase: `${base}/oauth2` } }, store, registry);
+  const call = c._call.bind(c);
+  let failZones = true;
+  c._call = (method, p, body) => {
+    if (failZones && p.endsWith('/zones')) { failZones = false; throw new Error('fetch failed') }
+    return call(method, p, body);
+  };
+  const error = console.error;
+  console.error = () => {};
+  try {
+    await c.start();
+    assert.equal(c._failures, 1);
+    assert.equal(c.homes.size, 0);
+    await c._poll();
+    assert.equal(c._failures, 0);
+    assert.ok(registry.devices.has('tado/4711-1'), 'zones found on the retry');
+  } finally {
+    console.error = error;
+    c.stop();
+    await sim.close?.();
+  }
 });

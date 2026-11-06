@@ -26,6 +26,8 @@
 // sized to stay under the limit — the ratelimit-policy header's quota when
 // tado sends it, else config.tado.dailyLimit (default 100) — keeping a fifth
 // of it for commands. With 100 a day that is about one poll every 23 minutes.
+// A failed poll retries from a minute, doubling up to the interval, so a brief
+// failure doesn't leave tado down for a whole interval; a 429 waits it out.
 //
 // Devices:
 //   tado/<home>-<zone>  heating: a thermostat (power, set temperature, room
@@ -39,7 +41,11 @@
 // A manual change lasts until the next schedule block by default;
 // config.tado.overlay = 'manual' (until changed) or a number of minutes.
 //
-// config.tado = { enabled, pollInterval?, dailyLimit = 100, overlay = 'next' }
+// The first poll waits config.tado.startDelay seconds (default 30): LSH's
+// startup can stall the event loop long enough to time requests out, and an
+// aborted refresh could lose the token tado has just rotated.
+//
+// config.tado = { enabled, pollInterval?, dailyLimit = 100, overlay = 'next', startDelay = 30 }
 //   (apiBase / authBase override the endpoints, for tests)
 // Tested against scripts/tado-simulator.js (test/tado.test.js) — not yet
 // against a real tado account.
@@ -52,6 +58,7 @@ const { registerAc, publishAc, MODES } = require('./ac-common');
 const CLIENT_ID = '1bb50063-6b0c-4d11-bd99-387f4a91cc46';
 const TOKEN_FILE = process.env.LSH_TADO_TOKENS || path.join(__dirname, '..', 'persist', 'tado-tokens.json');
 const TIMEOUT_MS = 15000;
+const RETRY_MS = 60000;
 const AUTH_BASE = 'https://login.tado.com/oauth2';
 const API_BASE = 'https://my.tado.com/api/v2';
 
@@ -158,7 +165,19 @@ class TadoClient extends PollingClient {
     if (!this.tokens?.refreshToken) throw new Error('tado: not signed in — Settings → tado → Sign in');
     const fixed = Number(this.cfg.pollInterval);
     this._fixedInterval = Number.isFinite(fixed) && fixed > 0 ? Math.max(60, fixed) * 1000 : null;
+    const delay = Number(this.cfg.startDelay ?? 30) * 1000;
+    if (delay > 0) await new Promise((resolve) => { this._startTimer = setTimeout(resolve, delay) });
     await this.startPolling(this._fixedInterval || 30 * 60 * 1000);
+  }
+
+  stop() {
+    clearTimeout(this._startTimer);
+    super.stop();
+  }
+
+  _nextDelay() {
+    if (!this._failures || this._rateLimited) return super._nextDelay();
+    return Math.min(this._intervalMs, RETRY_MS * 2 ** (this._failures - 1));
   }
 
   // Poll interval that keeps a day's polls within 80 % of the API quota
@@ -192,6 +211,7 @@ class TadoClient extends PollingClient {
       body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     this._readQuota(res.headers);
+    this._rateLimited = res.status === 429;
     if (res.status === 401) { this.tokens.accessToken = null; throw new Error('tado: access refused (401)') }
     if (res.status === 429) throw new Error('tado: daily API limit reached — polling slows down until it resets');
     if (res.status === 204) return null;
@@ -216,7 +236,6 @@ class TadoClient extends PollingClient {
     for (const h of homes) {
       if (this.homes.has(h.id)) continue;
       const home = { id: h.id, name: h.name || `Home ${h.id}`, key: `tado/${slug(h.id)}`, zones: new Map() };
-      this.homes.set(h.id, home);
       this._registerHome(home);
       for (const z of (await this._call('GET', `/homes/${h.id}/zones`)) || []) {
         const zone = { id: z.id, home, name: z.name || `Zone ${z.id}`, type: z.type, key: `tado/${slug(h.id)}-${slug(z.id)}`, devices: z.devices || [] };
@@ -226,6 +245,9 @@ class TadoClient extends PollingClient {
         this._registerZone(zone);
         console.log(`[tado] ${home.name}: ${zone.name} (${z.type})`);
       }
+      // only now: a home known here is never discovered again, so one that
+      // failed halfway has to stay out of the map or its zones are lost
+      this.homes.set(h.id, home);
     }
   }
 
