@@ -1445,7 +1445,8 @@
       ],
       "when": "(config.homey?.token && (config.homey?.host || config.homey?.homeyId))",
       "files": [
-        "src/homey-client.js"
+        "src/homey-client.js",
+        "src/polling-client.js"
       ],
       "deps": {}
     },

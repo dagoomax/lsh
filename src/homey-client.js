@@ -1,8 +1,6 @@
 'use strict';
 
-const platformStatus = require('./platform-status');
-
-const POLL_MS = 10_000;
+const PollingClient = require('./polling-client');
 
 // Capabilities Homey stores as 0–1 float; we scale ×100 for display and ÷100 on write
 const SCALE_01 = new Set([
@@ -73,13 +71,13 @@ function _homekitTypes(caps) {
   return types;
 }
 
-class HomeyClient {
+class HomeyClient extends PollingClient {
   constructor(config, store, sensorRegistry) {
+    super({ statusKey: 'homey', logTag: 'Homey' });
     this._config    = config;
     this._store     = store;
     this._registry  = sensorRegistry;
-    this._devices   = [];
-    this._timer     = null;
+    this._devices   = new Map(); // Homey device id → registered device
     this._baseUrl   = '';
     this._token     = '';
   }
@@ -96,94 +94,75 @@ class HomeyClient {
       this._baseUrl = `http://${cfg.host}`;
     }
 
-    // Homey Pro / SHS can be slow to answer while the host is still booting —
-    // keep retrying instead of leaving the integration down until a restart
-    try {
-      await this._discoverDevices();
-    } catch (err) {
-      platformStatus.set('homey', false);
-      if (this._stopped) return;
-      console.error(`[Homey] Start failed: ${err.message} — retrying in 60s`);
-      this._retryTimer = setTimeout(() => this.start().catch(() => {}), 60000);
-      return;
-    }
-    platformStatus.set('homey', true);
-
     const interval = (cfg.pollInterval ?? 10) * 1000;
-    this._timer = setInterval(() => this._pollAll(), interval);
-    console.log(`[Homey] Started (${cfg.mode ?? 'local'}) — ${this._devices.length} device(s), polling every ${interval / 1000}s`);
+    console.log(`[Homey] Starting (${cfg.mode ?? 'local'}), polling every ${interval / 1000}s`);
+    await this.startPolling(interval);
   }
 
-  stop() {
-    this._stopped = true;
-    if (this._timer) clearInterval(this._timer);
-    if (this._retryTimer) clearTimeout(this._retryTimer);
-    console.log('[Homey] Stopped');
-  }
+  // ── Polling ────────────────────────────────────────────────────────────
 
-  // ── Discovery ──────────────────────────────────────────────────────────
-
-  async _discoverDevices() {
+  // The device list carries every value, so one request both finds devices
+  // and refreshes them. Discovery can't be a one-off at start: while Homey is
+  // still booting, the list comes back empty or with its apps not ready yet.
+  async _pollImpl() {
     const raw   = await this._get('/api/manager/devices/device');
     // Response can be an array or an object keyed by device ID
     const items = Array.isArray(raw) ? raw : Object.values(raw);
 
     for (const item of items) {
-      if (item.available === false) continue;
-
-      const caps = new Set(item.capabilities ?? []);
-
-      const sensors = [];
-      for (const [capId, def] of Object.entries(CAP_DEFS)) {
-        if (!caps.has(capId) || def.hidden) continue;
-        const s = { path: def.path, name: def.name, format: def.format };
-        if (def.homekit)               s.homekit      = def.homekit;
-        if (def.controllable)          s.controllable = true;
-        if (def.type)                  s.type         = def.type;
-        if (def.writeOn  !== undefined)s.writeOn      = def.writeOn;
-        if (def.writeOff !== undefined)s.writeOff     = def.writeOff;
-        if (def.writeCmd)              s.writeCmd     = def.writeCmd;
-        if (def.capId)                 s.capabilityId = def.capId;
-        if (def.min != null)           s.min          = def.min;
-        if (def.max != null)           s.max          = def.max;
-        if (def.unit)                  s.unit         = def.unit;
-        sensors.push(s);
+      let device = this._devices.get(item.id);
+      if (!device) {
+        device = this._buildDevice(item);
+        if (!device) continue;
+        this._devices.set(item.id, device);
+        this._registry.registerDevice(device);
       }
-      if (sensors.length === 0) continue;
-
-      const deviceId = item.id;
-      const cls      = item.class ?? 'other';
-      const device   = {
-        key:     `homey/${deviceId}`,
-        type:    'homey',
-        instance: deviceId,
-        label:   item.name || deviceId,
-        icon:    CLASS_ICONS[cls] ?? '📟',
-        color:   CLASS_COLORS[cls] ?? 'orange',
-        sensors,
-        homekit: _homekitTypes(caps),
-        _caps:   caps,
-        _writeCapability: (capId, command, args = []) => this._writeDevice(deviceId, capId, command, args),
-      };
-
-      this._devices.push(device);
-      this._registry.registerDevice(device);
-
       this._applyCapObj(device, item.capabilitiesObj ?? {});
     }
+
+    if (this._devices.size === 0) throw new Error('Homey has no usable devices yet');
   }
 
-  // ── Polling ────────────────────────────────────────────────────────────
+  // ── Discovery ──────────────────────────────────────────────────────────
 
-  async _pollAll() {
-    for (const device of this._devices) {
-      try {
-        const data = await this._get(`/api/manager/devices/device/${device.instance}`);
-        this._applyCapObj(device, data.capabilitiesObj ?? {});
-      } catch (err) {
-        console.error(`[Homey] Poll failed for ${device.label}: ${err.message}`);
-      }
+  _buildDevice(item) {
+    if (item.available === false) return null;
+
+    const caps = new Set(item.capabilities ?? []);
+
+    const sensors = [];
+    for (const [capId, def] of Object.entries(CAP_DEFS)) {
+      if (!caps.has(capId) || def.hidden) continue;
+      const s = { path: def.path, name: def.name, format: def.format };
+      if (def.homekit)               s.homekit      = def.homekit;
+      if (def.controllable)          s.controllable = true;
+      if (def.type)                  s.type         = def.type;
+      if (def.writeOn  !== undefined)s.writeOn      = def.writeOn;
+      if (def.writeOff !== undefined)s.writeOff     = def.writeOff;
+      if (def.writeCmd)              s.writeCmd     = def.writeCmd;
+      if (def.capId)                 s.capabilityId = def.capId;
+      if (def.min != null)           s.min          = def.min;
+      if (def.max != null)           s.max          = def.max;
+      if (def.unit)                  s.unit         = def.unit;
+      sensors.push(s);
     }
+    if (sensors.length === 0) return null;
+
+    const deviceId = item.id;
+    const cls      = item.class ?? 'other';
+    const device   = {
+      key:     `homey/${deviceId}`,
+      type:    'homey',
+      instance: deviceId,
+      label:   item.name || deviceId,
+      icon:    CLASS_ICONS[cls] ?? '📟',
+      color:   CLASS_COLORS[cls] ?? 'orange',
+      sensors,
+      homekit: _homekitTypes(caps),
+      _caps:   caps,
+      _writeCapability: (capId, command, args = []) => this._writeDevice(deviceId, capId, command, args),
+    };
+    return device;
   }
 
   _applyCapObj(device, capObj) {
@@ -231,7 +210,11 @@ class HomeyClient {
       headers: { Authorization: `Bearer ${this._token}` },
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status} GET ${path}`);
+    if (!res.ok) {
+      // Homey's reason matters here, e.g. 403 "Subscription Inactive"
+      const reason = (await res.text().catch(() => '')).slice(0, 120);
+      throw new Error(`HTTP ${res.status} GET ${path}${reason ? `: ${reason}` : ''}`);
+    }
     return res.json();
   }
 
