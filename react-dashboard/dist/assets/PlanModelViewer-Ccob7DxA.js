@@ -1,4 +1,4 @@
-import{r as ce,av as BA,j as Oe,aw as IA,g as fn}from"./index-BZbt-V7b.js";/**
+import{r as ce,av as BA,j as Oe,aw as IA,g as fn}from"./index-Csn8FxaT.js";/**
  * @license
  * Copyright 2010-2024 Three.js Authors
  * SPDX-License-Identifier: MIT

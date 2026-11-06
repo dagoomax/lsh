@@ -32,6 +32,7 @@ type Server struct {
 	out     outBridges
 	camera  *CameraEvents
 	license *LicenseInfo
+	n8n     *N8n
 }
 
 type ctxUser struct{}
@@ -172,6 +173,11 @@ func (s *Server) Handler() http.Handler {
 	s.dashboardRoutes(api)
 	s.dashboardRoutes2(api)
 	s.roomServiceRoutes(api)
+	s.laundryRoutes(api)
+	if s.n8n == nil {
+		s.n8n = NewN8n(s)
+	}
+	s.n8n.routes(api)
 	api.HandleFunc("GET /api/modules/processes", s.admin(func(w http.ResponseWriter, r *http.Request) {
 		ok(w, OM("isolated", true, "processes", s.host.List()))
 	}))
@@ -212,6 +218,8 @@ func (s *Server) Handler() http.Handler {
 			s.withAuth(api).ServeHTTP(w, r)
 		case p == "/order" || strings.HasPrefix(p, "/order/"):
 			s.serveOrderPage(w, r)
+		case p == "/laundry" || strings.HasPrefix(p, "/laundry/"):
+			s.serveLaundryPage(w, r)
 		default:
 			public.ServeHTTP(w, r)
 		}

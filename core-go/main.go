@@ -167,6 +167,9 @@ func main() {
 
 	srv.deliverSmartThingsToken(boot.Config)
 
+	srv.n8n = NewN8n(srv)
+	srv.n8n.StartLoops()
+
 	httpSrv := &http.Server{Addr: fmt.Sprintf(":%d", *port), Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		log.Printf("[Server] LSH Go core on http://localhost:%d (root %s)", *port, *root)
@@ -184,6 +187,9 @@ func main() {
 	httpSrv.Shutdown(ctx)
 	cancel()
 	srv.auto.Stop()
+	if srv.n8n != nil {
+		srv.n8n.Stop()
+	}
 	victron.Stop()
 	srv.out.mu.Lock()
 	if srv.out.loxoneOut != nil {

@@ -21,7 +21,9 @@ import { P14, S14 } from './book-14.js'
 import { P15, S15 } from './book-15.js'
 import { P16, S16 } from './book-16.js'
 import { P17, S17 } from './book-17.js'
+import { P18, S18 } from './book-18.js'
+import { P19, S19 } from './book-19.js'
 
 export const LANGS = ['pl', 'de', 'fr', 'es', 'it', 'uk']
-export const BOOK = { ...P1, ...P2, ...P3, ...P4, ...P5, ...P6, ...P7, ...P8, ...P9, ...P10, ...P11, ...P12, ...P13, ...P14, ...P15, ...P16, ...P17, }
-export const SAME = [...S2, ...S3, ...S4, ...S5, ...S6, ...S7, ...S8, ...S9, ...S10, ...S11, ...S12, ...S13, ...S14, ...S15, ...S16, ...S17, ]
+export const BOOK = { ...P1, ...P2, ...P3, ...P4, ...P5, ...P6, ...P7, ...P8, ...P9, ...P10, ...P11, ...P12, ...P13, ...P14, ...P15, ...P16, ...P17, ...P18, ...P19, }
+export const SAME = [...S2, ...S3, ...S4, ...S5, ...S6, ...S7, ...S8, ...S9, ...S10, ...S11, ...S12, ...S13, ...S14, ...S15, ...S16, ...S17, ...S18, ...S19, ]

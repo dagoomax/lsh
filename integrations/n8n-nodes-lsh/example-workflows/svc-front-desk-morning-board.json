@@ -1,0 +1,100 @@
+{
+  "id": "MWV7ZIvwRvGT2N9Q",
+  "name": "LSH · Front-desk morning board",
+  "active": false,
+  "nodes": [
+    {
+      "id": "4b3f29d3-8cf6-48e1-9f8d-b7627f53866b",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ],
+      "parameters": {
+        "content": "🏨 Front-desk morning board\n\nRuns daily at 07:00. Pulls live occupancy from LSH (/api/hotel/rooms) and builds {{ $json.summary }}.\n\nSETUP (one step): open the \"LSH occupancy\" node → Credential for Header Auth → create one named Authorization with value:  Bearer <your LSH API token>  (Settings → n8n API is NOT this; use an LSH API token). Then ACTIVATE this workflow.\n\nTip: don't click Execute until the credential is set, or n8n errors on the empty auth slot.",
+        "height": 300,
+        "width": 480,
+        "color": 4
+      }
+    },
+    {
+      "id": "5a623001-c205-4035-a97f-25a0d43e5ab0",
+      "name": "Every day 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 7,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "0432f1c0-fb17-450d-a1c5-da1865dee949",
+      "name": "LSH occupancy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "url": "http://127.0.0.1:3001/api/hotel/rooms",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      }
+    },
+    {
+      "id": "52d02182-c33d-441f-a922-e0de4d68e3c0",
+      "name": "Board",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// LSH occupancy → front-desk morning board.\nconst r = $input.first().json;\nconst rooms = Array.isArray(r.data) ? r.data : (Array.isArray(r) ? r : []);\nconst lines = rooms.map(x => 'Room ' + x.room + (x.guest ? (' — ' + x.guest) : '') + (x.nights ? (', ' + x.nights + 'n') : ''));\nconst summary = '🏨 Front desk ' + new Date().toISOString().slice(0,10) + ': ' + rooms.length + ' room(s) occupied' + (lines.length ? (' | ' + lines.join(' · ')) : '');\nreturn [{ json: { date: new Date().toISOString().slice(0,10), occupied: rooms.length, rooms, summary } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Every day 07:00": {
+      "main": [
+        [
+          {
+            "node": "LSH occupancy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LSH occupancy": {
+      "main": [
+        [
+          {
+            "node": "Board",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

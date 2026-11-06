@@ -1,0 +1,92 @@
+{
+  "id": "CeTPpMHcX6HVc3r0",
+  "name": "LSH · Guest onboarding (all languages)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "def43565-038f-43fe-8197-a879b77f0090",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ],
+      "parameters": {
+        "content": "🌍 Guest onboarding — all LSH languages\\n\\nFires on hotel.checkin. The Code node renders the welcome + house info in en/pl/de/fr/es/it/uk ($json.localized, and $json.allLanguages as one block). No LLM needed.\\n\\nNEXT: send $json.localized[guestLanguage] (or $json.allLanguages) to the guest via SMS/WhatsApp/email/in-room display. City & portal are pulled from LSH config at build time.",
+        "height": 300,
+        "width": 480,
+        "color": 4
+      }
+    },
+    {
+      "id": "856e7a29-787a-4282-b7e9-e7e0acbc716a",
+      "name": "LSH check-in",
+      "webhookId": "be089ef7-fe84-4356-9c24-66293e3e45fb",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lsh-onboarding",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "cf538dd7-76c1-4400-8000-1f436117d9c1",
+      "name": "Onboarding (7 languages)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\n// hotel.checkin → onboarding message in all LSH languages.\nconst b = $input.first().json.body || {};\nconst d = b.data || {};\nconst guest = d.guest ? (', ' + d.guest) : '';\nconst room = d.room || '—';\nconst checkin = new Date(d.checkedInAt || Date.now());\nconst out = new Date(checkin.getTime() + (Number(d.nights) || 0) * 86400000);\nconst date = out.toISOString().slice(0, 10);\nconst CITY = \"Katowice\";\nconst PORTAL = \"https://guestportal.pl\";\nconst T = {\n  en: 'Welcome' + guest + '! Your room ' + room + ' is ready. Check-out: ' + date + '. Wi-Fi and door code: see the guest portal ' + PORTAL + '. Room service: dial 0 or scan the in-room QR menu. Need anything? Just reply. Enjoy your stay in ' + CITY + '!',\n  pl: 'Witamy' + guest + '! Pokój ' + room + ' jest gotowy. Wymeldowanie: ' + date + '. Wi-Fi i kod do drzwi: w portalu gościa ' + PORTAL + '. Room service: wybierz 0 lub zeskanuj kod QR w pokoju. Potrzebujesz czegoś? Napisz. Udanego pobytu w ' + CITY + '!',\n  de: 'Willkommen' + guest + '! Ihr Zimmer ' + room + ' ist bereit. Check-out: ' + date + '. WLAN und Türcode: im Gästeportal ' + PORTAL + '. Zimmerservice: Wählen Sie 0 oder scannen Sie den QR-Code im Zimmer. Brauchen Sie etwas? Antworten Sie einfach. Schönen Aufenthalt in ' + CITY + '!',\n  fr: 'Bienvenue' + guest + ' ! Votre chambre ' + room + ' est prête. Départ : ' + date + '. Wi-Fi et code de porte : sur le portail client ' + PORTAL + '. Room service : composez le 0 ou scannez le QR code dans la chambre. Besoin de quelque chose ? Répondez simplement. Bon séjour à ' + CITY + ' !',\n  es: '¡Bienvenido' + guest + '! Su habitación ' + room + ' está lista. Salida: ' + date + '. Wi-Fi y código de puerta: en el portal del huésped ' + PORTAL + '. Servicio de habitaciones: marque 0 o escanee el código QR de la habitación. ¿Necesita algo? Responda aquí. ¡Disfrute su estancia en ' + CITY + '!',\n  it: 'Benvenuto' + guest + '! La sua camera ' + room + ' è pronta. Check-out: ' + date + '. Wi-Fi e codice porta: nel portale ospiti ' + PORTAL + '. Servizio in camera: componga 0 o scansioni il QR in camera. Ha bisogno di qualcosa? Risponda pure. Buon soggiorno a ' + CITY + '!',\n  uk: 'Вітаємо' + guest + '! Ваш номер ' + room + ' готовий. Виїзд: ' + date + '. Wi-Fi і код від дверей: у порталі гостя ' + PORTAL + '. Обслуговування номерів: наберіть 0 або скануйте QR-код у номері. Потрібна допомога? Напишіть. Приємного перебування у ' + CITY + '!',\n};\nconst order = ['en','pl','de','fr','es','it','uk'];\nconst allLanguages = order.map(l => T[l]).join('\\n\\n──────────\\n\\n');\nreturn [{ json: { event: b.event, room, guest: d.guest || '', checkoutDate: date, localized: T, allLanguages, summary: T.en } }];\n"
+      }
+    },
+    {
+      "id": "c20cc0ad-203c-4b4a-9f6b-f5deffcc5c25",
+      "name": "Send to guest →",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "LSH check-in": {
+      "main": [
+        [
+          {
+            "node": "Onboarding (7 languages)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Onboarding (7 languages)": {
+      "main": [
+        [
+          {
+            "node": "Send to guest →",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  }
+}

@@ -25,6 +25,8 @@ export const CATEGORIES = [
     { id: 'vrbo', title: 'VRBO', keywords: ['vrbo', 'homeaway', 'expedia', 'rental', 'wynajem', 'najem', 'vacation', 'reservation', 'rezerwacja', 'ical', 'check-in'] },
     { id: 'tenant', title: 'Guest portal', keywords: ['guest', 'gość', 'tenant', 'najemca', 'portal', 'pin', 'door code', 'kod do drzwi', 'wifi', 'airbnb', 'booking', 'vrbo', 'check-in'] },
     { id: 'room-service', title: 'Room Service', keywords: ['room service', 'roomservice', 'obsługa pokoju', 'menu', 'order', 'zamówienie', 'zamów', 'restaurant', 'restauracja', 'food', 'jedzenie', 'kitchen', 'kuchnia', 'qr', 'apple pay', 'stripe', 'receipt', 'rachunek', 'folio', 'hotel', 'guest', 'gość'] },
+    { id: 'laundry', title: 'Laundry', keywords: ['laundry', 'pranie', 'pralnia', 'dry cleaning', 'pressing', 'prasowanie', 'wäsche', 'hotel', 'guest', 'gość', 'qr', 'housekeeping', 'room bill', 'rachunek'] },
+    { id: 'n8n-hotel', title: 'Hotel Automation (n8n)', keywords: ['n8n', 'hotel', 'automation', 'automatyzacja', 'workflow', 'check-in', 'check-out', 'checkin', 'checkout', 'zameldowanie', 'wymeldowanie', 'escalation', 'eskalacja', 'daily report', 'raport', 'webhook', 'order', 'zamówienie', 'staff', 'obsługa', 'scene', 'scena', 'arrival', 'departure'] },
   ] },
   { id: 'energy', label: 'Energy', sections: [
     { id: 'connection', title: 'Victron (MQTT & VRM)', keywords: ['victron', 'venus', 'cerbo', 'mqtt', 'vrm', 'gx'] },

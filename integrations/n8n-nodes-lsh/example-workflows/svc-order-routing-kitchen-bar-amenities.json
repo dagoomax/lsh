@@ -1,0 +1,91 @@
+{
+  "id": "hAG2SPwPIBixEXHZ",
+  "name": "LSH · Order routing (kitchen / bar / amenities)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "c0e6272c-ec8a-4e08-9329-7a6d265dc22f",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ],
+      "parameters": {
+        "content": "🍽️ Order routing\\n\\nFires on room-service.order. Classifies items into kitchen / bar / amenities ($json.routing) + a one-line {{ $json.summary }}.\\n\\nNEXT: split with an IF/Switch node and send each group to the right team/printer.",
+        "height": 260,
+        "width": 440,
+        "color": 4
+      }
+    },
+    {
+      "id": "5b70fda5-d799-4a42-a722-f995b0fd3001",
+      "name": "LSH event",
+      "webhookId": "e60d81f9-3e35-4d70-bf32-fe5d4faf9371",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lsh-order-routing",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "31e2fe2a-b206-4098-b1e3-dedfd400308e",
+      "name": "Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// room-service.order → route items to kitchen / bar / amenities.\nconst b = $input.first().json.body || {};\nconst o = b.data || {};\nconst DRINK = /(water|tea|coffee|juice|wine|beer|cola|soda|espresso|cappuccino|latte|woda|herbata|kawa|sok|piwo)/i;\nconst AMEN  = /(towel|toiletr|pillow|blanket|slipper|amenit|soap|shampoo|ręcznik|poduszk|kołdr|kapcie)/i;\nconst groups = { kitchen: [], bar: [], amenities: [] };\nfor (const it of (o.items || [])) {\n  const line = it.qty + '× ' + it.name;\n  if (AMEN.test(it.name)) groups.amenities.push(line);\n  else if (DRINK.test(it.name)) groups.bar.push(line);\n  else groups.kitchen.push(line);\n}\nconst parts = Object.entries(groups).filter(([,v]) => v.length).map(([k,v]) => k.toUpperCase() + ': ' + v.join(', '));\nconst summary = 'Room ' + (o.room || '?') + ' — ' + parts.join(' | ');\nreturn [{ json: { event: b.event, room: o.room, routing: groups, summary } }];"
+      }
+    },
+    {
+      "id": "ffaafb31-7333-43dc-ac33-f3a4e48338b6",
+      "name": "Connect your channel →",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "LSH event": {
+      "main": [
+        [
+          {
+            "node": "Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format": {
+      "main": [
+        [
+          {
+            "node": "Connect your channel →",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

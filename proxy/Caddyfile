@@ -8,7 +8,6 @@
 # browsers/devices trust them, install the root CA once per machine:
 #   caddy trust        (on this Mac; other devices: import
 #   ~/Library/Application Support/Caddy/pki/authorities/local/root.crt)
-
 {
 	local_certs
 	# Caddy's admin API — localhost only
@@ -25,6 +24,17 @@ https://localhost, https://lsh.local, https://192.168.1.x, https://192.168.1.2xx
 
 	# Socket.IO / WebSocket upgrades are proxied automatically by Caddy.
 
+	encode gzip
+}
+
+# n8n editor behind the same local-CA TLS, on :8444 → http://127.0.0.1:5678
+# (:8443 is taken by Tailscale here. n8n itself keeps serving plain HTTP on
+# :5678 for same-machine callers such as LSH's n8n hooks.) Same hostnames, so
+# the local CA cert already covers them.
+https://localhost:8444, https://lsh.local:8444, https://192.168.1.x:8444, https://192.168.1.2xx:8444 {
+	reverse_proxy 127.0.0.1:5678 {
+		header_up X-Real-IP {remote_host}
+	}
 	encode gzip
 }
 

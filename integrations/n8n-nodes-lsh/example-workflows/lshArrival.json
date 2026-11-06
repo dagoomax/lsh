@@ -1,0 +1,91 @@
+{
+  "id": "lshArrival",
+  "name": "LSH · Arrival / departure scene",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "🔑 Arrival / departure scene\n\nFires on BOTH \"hotel.checkin\" and \"hotel.checkout\" (point both events at this one URL in LSH).\n\nNEXT: add an HTTP Request node that calls LSH back to run a scene / set devices, e.g.\n  POST http://127.0.0.1:3001/api/device/<key>/command\nwith Header Auth (Authorization: Bearer <LSH API token>). Branch on {{ $json.action }} (arrival vs departure).\n\nProduction URL: /webhook/lsh-hotel-arrival-departure",
+        "height": 260,
+        "width": 420,
+        "color": 4
+      },
+      "id": "b91e6107-e7cc-47c0-a7e3-806043b743eb",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lsh-hotel-arrival-departure",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "cf657013-3599-49bc-a0a5-64de434fd370",
+      "name": "LSH event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "3c3a2f0b-a931-48af-b061-c83d1168d087"
+    },
+    {
+      "parameters": {
+        "jsCode": "// LSH hotel.checkin / hotel.checkout → decide which scene to run.\nconst b = $input.first().json.body || {};\nconst d = b.data || {};\nconst isIn = b.event === 'hotel.checkin';\nconst summary = isIn\n  ? '🔑 Check-in room ' + d.room + (d.guest ? (' — ' + d.guest) : '') + (d.nights ? (', ' + d.nights + ' nights') : '') + '. Run arrival scene.'\n  : '👋 Check-out room ' + d.room + '. Run departure scene.';\nreturn [{ json: { event: b.event, action: isIn ? 'arrival' : 'departure', room: d.room, summary, data: d } }];"
+      },
+      "id": "4c8b2ceb-df44-4778-a6c0-771ba98b0f30",
+      "name": "Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e3cbd6fa-202f-4280-976a-7b82a19bf7fa",
+      "name": "Connect your notifier →",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "LSH event": {
+      "main": [
+        [
+          {
+            "node": "Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format": {
+      "main": [
+        [
+          {
+            "node": "Connect your notifier →",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -315,6 +315,9 @@ func (s *Server) roomServiceRoutes(api *http.ServeMux) {
 			return
 		}
 		s.sio.Emit("room-service", nil)
+		if s.n8n != nil {
+			s.n8n.emit("room-service.ack", found)
+		}
 		ok(w, found)
 	}))
 
@@ -385,6 +388,9 @@ func (s *Server) notifyOrder(order *OMap) {
 	}
 	s.sio.Emit("room-service-order", order)
 	s.sio.Emit("room-service", nil)
+	if s.n8n != nil {
+		s.n8n.emit("room-service.order", order)
+	}
 }
 
 // ── Stripe (server side) ────────────────────────────────────────────────────

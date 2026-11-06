@@ -1,0 +1,91 @@
+{
+  "id": "KDTddLM3zzjrm7xI",
+  "name": "LSH · Guest welcome (check-in)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "c26fb865-37b0-4795-ab08-cc71fc709944",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ],
+      "parameters": {
+        "content": "👋 Guest welcome\\n\\nFires on hotel.checkin. Builds a welcome message (room, nights, checkout date) in {{ $json.summary }}.\\n\\nNEXT: connect SMS / WhatsApp / email / in-room display and send it to the guest.",
+        "height": 260,
+        "width": 440,
+        "color": 4
+      }
+    },
+    {
+      "id": "76fc5f64-ccb2-4389-9fbf-8302df56e8f0",
+      "name": "LSH event",
+      "webhookId": "3f5db564-277b-41a1-bb71-883545349612",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lsh-guest-welcome",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "a2359478-27fe-4987-b1e6-0f981db041af",
+      "name": "Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// hotel.checkin → guest welcome message (room, nights, checkout date).\nconst b = $input.first().json.body || {};\nconst d = b.data || {};\nconst checkin = new Date(d.checkedInAt || Date.now());\nconst out = new Date(checkin.getTime() + (Number(d.nights)||0)*86400000);\nconst fmt = (x) => x.toISOString().slice(0,10);\nconst summary = 'Welcome' + (d.guest ? ', ' + d.guest : '') + '! Room ' + d.room + ' is ready.'\n  + (d.nights ? ' Checkout ' + fmt(out) + ' (' + d.nights + ' night' + (d.nights===1?'':'s') + ').' : '')\n  + ' Dial 0 for room service.';\nreturn [{ json: { event: b.event, room: d.room, guest: d.guest, checkoutDate: fmt(out), summary } }];"
+      }
+    },
+    {
+      "id": "a2a791d5-8fe0-404b-a7cf-6fe54416a61f",
+      "name": "Connect your channel →",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "LSH event": {
+      "main": [
+        [
+          {
+            "node": "Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format": {
+      "main": [
+        [
+          {
+            "node": "Connect your channel →",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

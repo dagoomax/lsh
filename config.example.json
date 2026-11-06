@@ -346,6 +346,12 @@
     "password": "",
     "ringPollInterval": 3
   },
+  "funbox": {
+    "host": "192.168.1.1",
+    "username": "admin",
+    "password": "",
+    "pollSeconds": 60
+  },
   "unifiAccess": {
     "host": "192.168.1.1",
     "apiKey": ""
@@ -594,5 +600,19 @@
     "pin": "031-45-154",
     "port": 47128,
     "username": "CC:22:3D:E3:CE:F6"
+  },
+  "laundry": {
+    "enabled": false,
+    "title": "Laundry",
+    "currency": "PLN",
+    "standardHours": 24,
+    "express": true,
+    "expressHours": 4,
+    "expressSurchargePct": 50,
+    "pickupSlots": ["As soon as possible", "Morning (8:00–10:00)", "Evening (18:00–20:00)"],
+    "rooms": ["101", "102"],
+    "items": [
+      { "id": "shirt", "category": "Wash & iron", "name": "Shirt", "desc": "", "price": 25, "available": true }
+    ]
   }
 }

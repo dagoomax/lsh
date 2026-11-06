@@ -1,0 +1,91 @@
+{
+  "id": "lshRsEscalation",
+  "name": "LSH · Order escalation (unacknowledged)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "⚠️ Order escalation\n\nFires on \"room-service.escalation\" — an order left unacknowledged past the threshold set in LSH (Settings → Hotel Automation → Escalate after N minutes).\n\nNEXT: connect a louder channel (phone call via Twilio, Pushover priority, @here in Slack) and send {{ $json.summary }}.\n\nProduction URL: /webhook/lsh-room-service-escalation",
+        "height": 260,
+        "width": 420,
+        "color": 4
+      },
+      "id": "4ff8b7fc-25e6-4d3f-b5ef-24d4f882a248",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lsh-room-service-escalation",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a4dcf8e3-5a3e-4a05-a621-4593364bcfd8",
+      "name": "LSH event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "50fc2a14-467f-4ef5-abc3-bb50b6c3b0f8"
+    },
+    {
+      "parameters": {
+        "jsCode": "// LSH room-service.escalation → an urgent \"please follow up\" message.\nconst b = $input.first().json.body || {};\nconst d = b.data || {};\nconst o = d.order || {};\nconst summary = '⚠️ UNACKNOWLEDGED ' + d.waitingMinutes + ' min — room ' + (o.room || '?') + ', ' + o.total + ' ' + o.currency + '. Please follow up.';\nreturn [{ json: { event: b.event, hub: b.hub, summary, waitingMinutes: d.waitingMinutes, order: o } }];"
+      },
+      "id": "331aa8a7-6298-4f82-8bde-91b1a741e4b8",
+      "name": "Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ebf19e7b-e5d7-42b2-af40-a12bd4a56599",
+      "name": "Connect your notifier →",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "LSH event": {
+      "main": [
+        [
+          {
+            "node": "Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format": {
+      "main": [
+        [
+          {
+            "node": "Connect your notifier →",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

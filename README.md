@@ -4973,6 +4973,21 @@ Jablotron JA-100 / JA-100+ with a LAN communicator reports to LSH over **SIA DC-
 
 Section names also work for Ajax (groups).
 
+### Funbox 10 (Orange / Sagemcom gateway)
+
+Orange Poland's Funbox 10 home gateway (a Sagemcom Livebox) via its local **sysbus** API — `src/funbox-client.js`, no npm deps (uses global `fetch`). Read-only: internet/line state, public IP, up/down line rates, active-device count, uptime, model and firmware, on `funbox/gateway`.
+
+```json
+"funbox": {
+  "host": "192.168.1.1",      // gateway IP (default 192.168.1.1)
+  "username": "admin",         // sysbus admin user (default "admin")
+  "password": "",              // the gateway admin password (from the router label / Orange UI)
+  "pollSeconds": 60            // poll interval (min 15)
+}
+```
+
+Auth is the Livebox `createContext` session (admin password), re-established automatically if it expires. **Not yet verified against real Funbox 10 hardware** — the sysbus envelope and the `NMC`/`DeviceInfo`/`Devices` calls follow the documented Livebox API, but field names/units on the Funbox 10 firmware are unconfirmed; a shape mismatch surfaces as the platform showing disconnected rather than silent empty data. No reboot/config writes (read-only by design).
+
 ### Zehnder ventilation (rekuperacja)
 
 Zehnder heat-recovery ventilation units (`src/zehnder-client.js` + `src/zehnder/*`, no npm deps). Settings → Climate & Appliances → **Zehnder Ventilation** (Find LAN C gateways, Test, Save — applied live). Three ways in, one device model:

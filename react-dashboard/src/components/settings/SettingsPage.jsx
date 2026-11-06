@@ -45,6 +45,8 @@ import LocationsSection from './sections/LocationsSection'
 import OnboardingSection from './sections/OnboardingSection'
 import TenantSection from './sections/TenantSection'
 import RoomServiceSection from './sections/RoomServiceSection'
+import LaundrySection from './sections/LaundrySection'
+import N8nSection from './sections/N8nSection'
 import NukiSection from './sections/NukiSection'
 import TtlockSection from './sections/TtlockSection'
 import UsbRadioSection from './sections/UsbRadioSection'
@@ -137,6 +139,8 @@ const SECTION_COMPONENTS = {
   vrbo: VrboSection,
   tenant: TenantSection,
   'room-service': RoomServiceSection,
+  laundry: LaundrySection,
+  'n8n-hotel': N8nSection,
   nuki: NukiSection,
   ttlock: TtlockSection,
   'usb-radio': UsbRadioSection,
@@ -245,7 +249,7 @@ export default function SettingsPage({ onClose, onOpenCssEditor }) {
   // guest-facing rental sections. Room Service stays visible — it carries the
   // toggle that turns this back off.
   if (config?.hideHotelServices) {
-    const hidden = new Set(['airbnb', 'booking', 'vrbo', 'tenant', 'onboarding'])
+    const hidden = new Set(['airbnb', 'booking', 'vrbo', 'tenant', 'onboarding', 'laundry'])
     filtered = filtered
       .map((cat) => ({ ...cat, sections: cat.sections.filter((s) => !hidden.has(s.id)) }))
       .filter((cat) => cat.sections.length)

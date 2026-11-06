@@ -20,6 +20,9 @@
     "src/homekit-uri.js",
     "src/integrations.js",
     "src/kenik-client.js",
+    "src/laundry-page.js",
+    "src/laundry.js",
+    "src/license.js",
     "src/locations.js",
     "src/logger.js",
     "src/loxone-xml.js",
@@ -35,11 +38,13 @@
     "src/mqtt-client.js",
     "src/mqtt-explorer.js",
     "src/mqtt-target.js",
+    "src/n8n.js",
     "src/paging-messages.js",
     "src/platform-status.js",
     "src/private-events.js",
     "src/relay-controller.js",
     "src/reolink-client.js",
+    "src/room-service.js",
     "src/routes/agenda.js",
     "src/routes/airbnb.js",
     "src/routes/airly.js",
@@ -89,6 +94,7 @@
     "src/routes/https.js",
     "src/routes/integration-settings.js",
     "src/routes/knx.js",
+    "src/routes/laundry.js",
     "src/routes/lgthinq.js",
     "src/routes/lgwebos.js",
     "src/routes/locations.js",
@@ -113,6 +119,7 @@
     "src/routes/mongodb.js",
     "src/routes/mqtt-broker.js",
     "src/routes/mqtt-explorer.js",
+    "src/routes/n8n.js",
     "src/routes/nuki.js",
     "src/routes/object-detection.js",
     "src/routes/openweather.js",
@@ -123,6 +130,7 @@
     "src/routes/recordings.js",
     "src/routes/reolink.js",
     "src/routes/roborock.js",
+    "src/routes/room-service.js",
     "src/routes/satel-settings.js",
     "src/routes/satel-zones.js",
     "src/routes/settings.js",
@@ -701,6 +709,18 @@
       ],
       "deps": {}
     },
+    "funbox": {
+      "entry": "src/funbox-client.js",
+      "configKeys": [
+        "funbox"
+      ],
+      "when": "(config.funbox?.password)",
+      "files": [
+        "src/funbox-client.js",
+        "src/polling-client.js"
+      ],
+      "deps": {}
+    },
     "solaraccelerator": {
       "entry": "src/solaraccelerator-client.js",
       "configKeys": [
@@ -1056,6 +1076,17 @@
       "when": "(config.grenton?.host && config.grenton?.devices?.length)",
       "files": [
         "src/grenton-client.js"
+      ],
+      "deps": {}
+    },
+    "grenton-vclu": {
+      "entry": "src/grenton-vclu-client.js",
+      "configKeys": [
+        "grentonVclu"
+      ],
+      "when": "(config.grentonVclu?.enabled)",
+      "files": [
+        "src/grenton-vclu-client.js"
       ],
       "deps": {}
     },

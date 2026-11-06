@@ -1,0 +1,91 @@
+{
+  "id": "lshRsOrder",
+  "name": "LSH · Room-service order → staff alert",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "🛎️ Room-service order → staff alert\n\nFires on LSH event \"room-service.order\". The Format node builds { summary } — a ready line for your notifier.\n\nNEXT: replace the final node with Slack / Telegram / Gmail / Pushover and send {{ $json.summary }}.\n\nProduction URL: /webhook/lsh-room-service-order (active workflows only).",
+        "height": 260,
+        "width": 420,
+        "color": 4
+      },
+      "id": "d7049849-1101-48dc-b8b0-2f1a7bb65062",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lsh-room-service-order",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "805d125d-3801-4bfe-b0f5-92cc5a8c435d",
+      "name": "LSH event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "450f9177-9342-4dd8-baa5-d353596cdde4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// LSH room-service.order → a ready-to-send alert line for the kitchen/staff.\nconst b = $input.first().json.body || {};\nconst o = b.data || {};\nconst items = (o.items || []).map(i => i.qty + '× ' + i.name).join(', ');\nconst pay = o.payment === 'card' ? 'paid by card' : 'to room';\nconst summary = '🛎️ Room ' + (o.room || '?') + ': ' + items + ' = ' + o.total + ' ' + o.currency + ' (' + pay + ')' + (o.note ? ' — note: ' + o.note : '');\nreturn [{ json: { event: b.event, hub: b.hub, summary, order: o } }];"
+      },
+      "id": "f542fb20-9dc7-4a86-a0c5-83fea52ed9b4",
+      "name": "Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b514eb76-07a5-489c-a935-1cc64377ef52",
+      "name": "Connect your notifier →",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "LSH event": {
+      "main": [
+        [
+          {
+            "node": "Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format": {
+      "main": [
+        [
+          {
+            "node": "Connect your notifier →",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

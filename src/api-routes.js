@@ -127,6 +127,8 @@ const ROUTE_GROUPS = [
   require('./routes/integration-settings'),
   require('./routes/media'),
   require('./routes/room-service'),
+  require('./routes/laundry'),
+  require('./routes/n8n'),
 ];
 
 function createApiRoutes(store, relayController, sensorRegistry, connectionMgr, clients = {}) {

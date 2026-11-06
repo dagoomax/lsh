@@ -1,0 +1,91 @@
+{
+  "id": "auQKLRGqMZmKaS3j",
+  "name": "LSH · Housekeeping turnover (check-out)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "e7677e4e-3059-4d6e-adb3-133f940910ef",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ],
+      "parameters": {
+        "content": "🧹 Housekeeping turnover\\n\\nFires on hotel.checkout. Emits a cleaning task for the vacated room in {{ $json.summary }}.\\n\\nNEXT: connect your housekeeping board (Trello/Asana/Slack channel) or an in-house task list.",
+        "height": 260,
+        "width": 440,
+        "color": 4
+      }
+    },
+    {
+      "id": "2ffb13bf-82c2-4abc-bef3-9954da59059a",
+      "name": "LSH event",
+      "webhookId": "f56349a0-cdae-4f9a-b4d2-852ab2fb88a9",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lsh-housekeeping",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "1d4f2a65-795b-4c54-9e8b-0837600a7839",
+      "name": "Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// hotel.checkout → housekeeping turnover task.\nconst b = $input.first().json.body || {};\nconst d = b.data || {};\nconst at = new Date(d.at || Date.now());\nconst summary = '🧹 Turnover: room ' + d.room + ' vacated ' + at.toLocaleString() + (d.guest ? ' (was ' + d.guest + ')' : '') + ' — schedule cleaning & inspection.';\nreturn [{ json: { event: b.event, room: d.room, vacatedAt: at.toISOString(), status: 'needs-cleaning', priority: 'normal', summary } }];"
+      }
+    },
+    {
+      "id": "b55c59c2-48ce-41e6-9746-e21404a51eaf",
+      "name": "Connect your channel →",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "LSH event": {
+      "main": [
+        [
+          {
+            "node": "Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format": {
+      "main": [
+        [
+          {
+            "node": "Connect your channel →",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

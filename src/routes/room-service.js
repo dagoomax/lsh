@@ -9,6 +9,7 @@ const { readConfigFile } = require('./helpers');
 const { writeConfigFile } = require('../config-file-cache');
 const rsvc = require('../room-service');
 const { resolveLicense } = require('../license');
+const n8n = require('../n8n').shared();
 
 // Room service is a hotel-tier feature.
 const hotelLicensed = (config) => resolveLicense(config).limits.hotel === true;
@@ -58,6 +59,7 @@ module.exports = function register(router, ctx) {
     catch (err) { return res.status(500).json({ success: false, error: err.message }); }
     const n = order.items.reduce((a, b) => a + b.qty, 0);
     notify('info', `Room service — ${room || 'guest'}: ${n} item(s), ${total.toFixed(2)} ${currency} (${payment === 'card' ? 'paid by card' : '→ room'})`);
+    n8n.emit('room-service.order', order);
     res.json({ success: true, data: order });
   });
 
@@ -93,6 +95,7 @@ module.exports = function register(router, ctx) {
     if (!o) return res.status(404).json({ success: false, error: 'No such order' });
     o.status = 'ack'; o.ackAt = Date.now();
     try { rsvc.saveOrders(orders); } catch (err) { return res.status(500).json({ success: false, error: err.message }); }
+    n8n.emit('room-service.ack', o);
     res.json({ success: true, data: o });
   });
 

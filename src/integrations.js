@@ -19,6 +19,8 @@ module.exports = [
   // been merged into this one — `config.vicare.clientId` is still accepted
   // here as a legacy alias (see vitodens-client.js).
   { file: 'vitodens-client', label: 'Vitodens', when: (config) => config.vitodens?.clientId || config.vicare?.clientId },
+  // Orange Funbox 10 (Sagemcom) home gateway — local sysbus API (read-only).
+  { file: 'funbox-client', label: 'Funbox', when: (config) => config.funbox?.password },
   // Start Solar Accelerator Connect client if configured (local SA Connect
   // gateway — Deye-family hybrid inverters)
   { file: 'solaraccelerator-client', label: 'SolarAccelerator', when: (config) => config.solaraccelerator?.host },

@@ -1,0 +1,126 @@
+{
+  "id": "OR1ljselyOlcmkvt",
+  "name": "LSH · Concierge agent (multilingual, Claude)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "6f0ec326-d9cf-49fb-a2b6-25478a93c37e",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -380
+      ],
+      "parameters": {
+        "content": "🛎️ Concierge agent — multilingual (Claude)\n\nChat Trigger → AI Agent ← Claude. Replies in the guest's language across all 7 LSH languages; grounded in the hotel info (Katowice, guest portal, room service).\n\nSETUP (required — no LLM credential exists yet):\n1) Open \"Claude (attach Anthropic credential)\" → create an Anthropic API credential.\n2) Confirm/pick the model.\n3) ACTIVATE the workflow (set the Chat Trigger to Public for a guest-facing chat URL).\n\nNEXT (optional): add an HTTP Request tool to GET http://127.0.0.1:3001/api/order/menu (public, no auth) so it can quote the live room-service menu.",
+        "height": 360,
+        "width": 520,
+        "color": 4
+      }
+    },
+    {
+      "id": "c07a765a-6af5-4039-9bf6-dce4e5bdc2d9",
+      "name": "Guest chat",
+      "webhookId": "008daa30-84aa-4495-83a2-e1156da910d7",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "options": {}
+      }
+    },
+    {
+      "id": "2cc9de76-dbfb-42fe-9d3e-07314338ca8f",
+      "name": "Concierge Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "promptType": "auto",
+        "options": {
+          "systemMessage": "You are the hotel concierge for a property in Katowice, Poland.\n\nLANGUAGE: Always reply in the guest's language. Detect it from their message. The hotel supports English, Polish, German, French, Spanish, Italian and Ukrainian — be fluent in all of them. If the language is unclear, ask briefly in English and Polish.\n\nTONE: Warm, concise, professional. 1–4 sentences unless more detail is asked for.\n\nYOU CAN HELP WITH: Wi-Fi and door codes (direct guests to the guest portal https://guestportal.pl), check-in / check-out times and late check-out requests, room service (tell them to dial 0 or scan the in-room QR code / open the /order page), housekeeping, extra towels/amenities, luggage storage, taxis and local transport, and recommendations around Katowice (food, sights, getting around).\n\nRULES: Never invent hotel-specific facts you were not given — no made-up Wi-Fi passwords, door codes, prices, room numbers or availability. If you do not know a specific detail, say you will connect the guest to the front desk. For anything urgent or safety-related, tell them to call reception (dial 0) immediately."
+        }
+      }
+    },
+    {
+      "id": "828697eb-4b9b-4c9e-96ff-c4b5217b9be5",
+      "name": "Claude (attach Anthropic credential)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        120,
+        220
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-5-20250929",
+          "mode": "list",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b2e8dfb7-d0f7-40f4-bfbd-84a3fbc55733",
+      "name": "Room-service menu",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        300,
+        220
+      ],
+      "parameters": {
+        "toolDescription": "Get the current room-service menu as JSON (categories, items with names, descriptions, prices, and the currency). Call this whenever the guest asks what food or drinks are available, about prices, or wants to order room service.",
+        "method": "GET",
+        "url": "http://127.0.0.1:3001/api/order/menu"
+      }
+    }
+  ],
+  "connections": {
+    "Guest chat": {
+      "main": [
+        [
+          {
+            "node": "Concierge Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude (attach Anthropic credential)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Concierge Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Room-service menu": {
+      "ai_tool": [
+        [
+          {
+            "node": "Concierge Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  }
+}

@@ -264,6 +264,8 @@ async function main() {
   // Public, no-login room-service ordering page a per-room QR code opens;
   // mounted before the auth middleware (its /api/order/* calls are public too).
   app.use('/order', require('./src/room-service').orderPageRouter());
+  // Same for the guest laundry page; its calls live under /api/order/laundry/*.
+  app.use('/laundry', require('./src/laundry').pageRouter());
 
   app.use(auth.middleware(isSecure));
   // Furniture-picture uploads for the home plan arrive as base64 JSON and
@@ -538,6 +540,14 @@ async function main() {
     automation.setPaging(pagingManager);
     automation.start();
   }
+
+  // n8n hotel automation bridge — posts room-service / check-in / daily-report
+  // events to n8n, and runs the unacked-order escalation + daily-report timers.
+  try {
+    const n8n = require('./src/n8n').shared();
+    n8n.notify = (level, msg, source) => { try { automation?.notify(level, msg, source); } catch { /* best-effort */ } };
+    n8n.start();
+  } catch (err) { console.warn('[n8n] bridge not started:', err.message); }
 
   if (mqttExplorer) {
     mqttExplorer.setIo(io);

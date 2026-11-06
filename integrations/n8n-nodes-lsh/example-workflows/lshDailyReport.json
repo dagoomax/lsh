@@ -1,0 +1,91 @@
+{
+  "id": "lshDailyReport",
+  "name": "LSH · Daily service report",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "📊 Daily service report\n\nFires once a day at the time set in LSH (Settings → Hotel Automation → Daily report time).\n\nNEXT: connect Gmail / SMTP / Slack and send {{ $json.summary }} (or format $json.report into an HTML table).\n\nProduction URL: /webhook/lsh-daily-report",
+        "height": 260,
+        "width": 420,
+        "color": 4
+      },
+      "id": "4a067c61-3e58-47ad-83da-c81416883c6b",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lsh-daily-report",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "343f8bd0-d16b-4635-b4f2-1c59c62b1be3",
+      "name": "LSH event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "321d272c-5b96-40e4-9ca0-97a4ec3d21a2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// LSH hotel.daily-report → a one-line digest for email / chat.\nconst b = $input.first().json.body || {};\nconst d = b.data || {};\nconst rev = Object.entries(d.revenue || {}).map(([c, v]) => v + ' ' + c).join(', ') || '0';\nconst rooms = (d.byRoom || []).map(r => r.room + ':' + r.orders).join(', ') || '—';\nconst summary = '📊 ' + d.date + ': ' + d.orders + ' orders, revenue ' + rev + ', pending acks ' + d.pendingAcks + '. By room: ' + rooms;\nreturn [{ json: { event: b.event, hub: b.hub, summary, report: d } }];"
+      },
+      "id": "27567d39-82c0-469f-b907-bea69d6c59bc",
+      "name": "Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e689c7f5-3562-47d8-8e93-bab49fca51b8",
+      "name": "Connect your notifier →",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "LSH event": {
+      "main": [
+        [
+          {
+            "node": "Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format": {
+      "main": [
+        [
+          {
+            "node": "Connect your notifier →",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
