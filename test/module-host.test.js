@@ -52,3 +52,22 @@ test('integration runs in its own process: devices, values, commands, restart af
     await host.stopAll();
   }
 });
+
+test('a stall in the host itself does not count against a module', () => {
+  const pings = [];
+  const module = (lastPong) => ({ lastPong, ping() { pings.push(this.lastPong) } });
+  const host = Object.create(ModuleHost.prototype);
+  const t0 = 1_000_000;
+  const m = module(t0);
+  host.modules = new Map([['m', m]]);
+
+  // on time: the module's own lastPong stands, so a real hang is still caught
+  host._lastCheck = t0;
+  host._check(t0 + 10_000);
+  assert.equal(m.lastPong, t0);
+
+  // host frozen for 40 s
+  host._check(t0 + 50_000);
+  assert.equal(m.lastPong, t0 + 50_000);
+  assert.equal(pings.length, 2);
+});

@@ -676,28 +676,34 @@ async function main() {
     }
   }
 
-  // Start the Matter bridge if enabled — exposes LSH devices to Apple Home /
-  // Google Home / Alexa / SmartThings etc. as one bridged Matter node.
-  if (config.matter?.bridge?.enabled) {
-    const MatterBridge = tryRequire('./src/matter-bridge');
-    if (MatterBridge) {
-      const matterBridge = new MatterBridge(config, store, sensorRegistry);
-      matterBridge.start().catch((err) => console.error(`[Matter] Bridge start failed: ${err.message}`));
-      apiClients.matterBridge = matterBridge; // exposed for GET /api/matter/bridge/setup
-    }
+  // Matter's library takes about 20 s of solid CPU to load on a small board
+  // (src/matter-bridge.js alone, measured on an Arduino UNO Q). That stalls the
+  // event loop, so load it after the integrations' first network calls have
+  // finished instead of timing them out. config.matter.startDelay is in seconds.
+  if (config.matter?.bridge?.enabled || config.matter?.controller?.enabled) {
+    setTimeout(() => {
+      // Bridge: exposes LSH devices to Apple Home / Google Home / Alexa /
+      // SmartThings etc. as one bridged Matter node.
+      if (config.matter.bridge?.enabled) {
+        const MatterBridge = tryRequire('./src/matter-bridge');
+        if (MatterBridge) {
+          const matterBridge = new MatterBridge(config, store, sensorRegistry);
+          matterBridge.start().catch((err) => console.error(`[Matter] Bridge start failed: ${err.message}`));
+          apiClients.matterBridge = matterBridge; // exposed for GET /api/matter/bridge/setup
+        }
+      }
+
+      // Controller: connects to devices already commissioned via
+      // scripts/matter-commission.js.
+      if (config.matter.controller?.enabled) {
+        const MatterClient = tryRequire('./src/matter-client');
+        if (MatterClient) {
+          const matterClient = new MatterClient(config, store, sensorRegistry);
+          matterClient.start().catch((err) => console.error(`[Matter] Controller start failed: ${err.message}`));
+        }
+      }
+    }, (config.matter.startDelay ?? 60) * 1000);
   }
-
-  // Start the Matter controller if enabled — connects to devices already
-  // commissioned via scripts/matter-commission.js.
-  if (config.matter?.controller?.enabled) {
-    const MatterClient = tryRequire('./src/matter-client');
-    if (MatterClient) {
-      const matterClient = new MatterClient(config, store, sensorRegistry);
-      matterClient.start().catch((err) => console.error(`[Matter] Controller start failed: ${err.message}`));
-    }
-  }
-
-
 
   // Start Tauron dynamic-tariff tracker if enabled — a public, no-auth PSE
   // (Polish grid operator) price index that TAURON's G14dynamic tariff

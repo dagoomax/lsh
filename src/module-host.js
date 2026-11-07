@@ -265,7 +265,8 @@ class ModuleHost {
       }
     });
 
-    this._watchdog = setInterval(() => { for (const m of this.modules.values()) m.ping(); }, PING_EVERY);
+    this._lastCheck = Date.now();
+    this._watchdog = setInterval(() => this._check(), PING_EVERY);
     this._watchdog.unref();
 
     const onSignal = () => { this.stopping = true; for (const m of this.modules.values()) m.child?.kill('SIGTERM'); };
@@ -293,6 +294,18 @@ class ModuleHost {
     if (!m) return this.add(it).info();
     await m.restart('settings saved');
     return m.info();
+  }
+
+  // When the watchdog runs late, this process was stalled too: it couldn't
+  // read the pongs that arrived meanwhile, so an old lastPong says nothing
+  // about the module. Give it a fresh chance rather than kill a healthy one.
+  _check(now = Date.now()) {
+    const stalled = now - this._lastCheck > PING_EVERY * 2;
+    this._lastCheck = now;
+    for (const m of this.modules.values()) {
+      if (stalled) m.lastPong = now;
+      m.ping();
+    }
   }
 
   add(it) {
