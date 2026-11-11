@@ -3121,3 +3121,119 @@ button.gd-mini { border: 0; width: 100%; text-align: left; font: inherit; cursor
 .gd-photo figcaption:has(.gd-photo-cap) { left: 8px; display: flex; align-items: center; gap: 8px; max-width: none; }
 .gd-photo-cap { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #fff; text-shadow: none; background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); }
 .gd-photo figcaption:has(.gd-photo-cap) button { margin-left: auto; flex: none; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Living sky hero (HomeHero.jsx → HeroSky)
+   The greeting card is a window on the sky outside: the sun or the moon where
+   it really is, the colours of dawn / day / dusk / night, and the weather now
+   (clouds, rain, snow, a storm). A postcard in both themes — light text on
+   sky. All motion is transform / opacity; reduced motion gets the still sky.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root .hero.hero-live {
+  --text: #fff; --text2: rgba(255,255,255,.84); color: #fff; background: #0b1030;
+  padding: 30px 28px 24px; min-height: 236px; display: flex; flex-direction: column; justify-content: space-between;
+  isolation: isolate; border-color: transparent;
+  box-shadow: 0 22px 60px -28px rgba(0,0,0,.6), inset 0 0 0 .5px rgba(255,255,255,.16);
+}
+:root .hero.hero-live::before { display: none; }
+.hero-sky { position: absolute; inset: 0; z-index: -1; overflow: hidden; border-radius: inherit; pointer-events: none; background: var(--sky); }
+.hero-sky > * { position: absolute; }
+.hero-sky[data-phase="night"] { --sky: linear-gradient(180deg, #060a22 0%, #131948 52%, #2b2a6e 100%); }
+.hero-sky[data-phase="dawn"]  { --sky: linear-gradient(180deg, #1d2466 0%, #7a4a96 42%, #e9737d 74%, #ffb870 100%); }
+.hero-sky[data-phase="day"]   { --sky: linear-gradient(180deg, #1668d8 0%, #3f9bf2 55%, #86cdff 100%); }
+.hero-sky[data-phase="dusk"]  { --sky: linear-gradient(180deg, #1b1a56 0%, #6b3a94 40%, #e0567a 74%, #ff9b52 100%); }
+.hero-sky[data-phase="day"][data-overcast]   { --sky: linear-gradient(180deg, #3d4f69 0%, #647b97 58%, #9aacc0 100%); }
+.hero-sky[data-phase="night"][data-overcast] { --sky: linear-gradient(180deg, #090c1b 0%, #1a2036 55%, #2c3350 100%); }
+.hero-sky[data-phase="dawn"][data-overcast]  { --sky: linear-gradient(180deg, #2a3157 0%, #6c5a85 48%, #b98089 80%, #d9a98a 100%); }
+.hero-sky[data-phase="dusk"][data-overcast]  { --sky: linear-gradient(180deg, #25234e 0%, #5e4a7c 46%, #a8687e 80%, #cf9373 100%); }
+
+/* stars */
+.hero-stars { inset: 0; }
+.hero-stars i { position: absolute; width: var(--s); height: var(--s); border-radius: 50%; background: #fff; box-shadow: 0 0 4px rgba(255,255,255,.7);
+  animation: hero-twinkle var(--t) ease-in-out var(--d) infinite; }
+.hero-sky[data-phase="dawn"] .hero-stars, .hero-sky[data-phase="dusk"] .hero-stars { opacity: .45; -webkit-mask-image: linear-gradient(#000, transparent 55%); mask-image: linear-gradient(#000, transparent 55%); }
+.hero-sky[data-overcast] .hero-stars { opacity: .22; }
+.hero-shoot { position: absolute; top: 10%; left: 78%; width: 120px; height: 1.5px; border-radius: 2px; opacity: 0;
+  background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); animation: hero-shoot 13s linear 3s infinite; }
+@keyframes hero-twinkle { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
+@keyframes hero-shoot { 0%, 91% { opacity: 0; transform: translate3d(0,0,0) rotate(-22deg); } 92% { opacity: 1; } 100% { opacity: 0; transform: translate3d(-300px,121px,0) rotate(-22deg); } }
+
+/* sun and moon */
+.hero-orb { width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%; transition: left 2s ease, top 2s ease, opacity 1s; }
+.hero-orb i { position: absolute; inset: 0; border-radius: 50%; }
+.hero-sun i { background: radial-gradient(circle at 40% 38%, #fffbe0, #ffd95a 55%, #ffb22e);
+  box-shadow: 0 0 40px 12px rgba(255,214,90,.55), 0 0 130px 56px rgba(255,190,70,.34); animation: hero-pulse 6s ease-in-out infinite; }
+.hero-sun::before { content: ''; position: absolute; inset: -96px; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255,240,170,.2) 0 5deg, transparent 5deg 18deg);
+  -webkit-mask-image: radial-gradient(circle, transparent 28%, #000 33%, transparent 68%); mask-image: radial-gradient(circle, transparent 28%, #000 33%, transparent 68%);
+  animation: hero-spin 80s linear infinite; }
+.hero-moon { width: 56px; height: 56px; margin: -28px 0 0 -28px; }
+.hero-moon i { background:
+    radial-gradient(circle at 66% 30%, rgba(120,135,190,.34) 0 9%, transparent 10%),
+    radial-gradient(circle at 38% 62%, rgba(120,135,190,.28) 0 13%, transparent 14%),
+    radial-gradient(circle at 70% 70%, rgba(120,135,190,.24) 0 7%, transparent 8%),
+    radial-gradient(circle at 35% 35%, #ffffff, #dfe6ff 60%, #b9c4ee);
+  box-shadow: inset -8px -6px 0 0 rgba(110,125,185,.3), 0 0 34px 8px rgba(190,205,255,.42), 0 0 110px 44px rgba(140,160,255,.22);
+  animation: hero-pulse 9s ease-in-out infinite; }
+.hero-sky[data-overcast] .hero-orb { opacity: .4; filter: blur(4px); }
+@keyframes hero-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes hero-spin { to { transform: rotate(360deg); } }
+
+/* clouds */
+.hero-clouds { inset: 0; color: rgba(255,255,255,.22); }
+.hero-sky[data-phase="night"] .hero-clouds { color: rgba(160,172,225,.13); }
+.hero-sky[data-overcast] .hero-clouds { color: rgba(255,255,255,.26); }
+.hero-sky[data-phase="night"][data-overcast] .hero-clouds { color: rgba(170,180,220,.16); }
+.hero-clouds i { position: absolute; left: -360px; width: 300px; height: 72px; border-radius: 50%; background: currentColor; filter: blur(18px);
+  box-shadow: 96px -24px 0 12px currentColor, -84px 14px 0 -4px currentColor; animation: hero-drift 90s linear infinite; will-change: transform; }
+.hero-clouds i:nth-child(1) { top: 8%; animation-duration: 84s; animation-delay: -20s; }
+.hero-clouds i:nth-child(2) { top: 34%; animation-duration: 118s; animation-delay: -70s; transform: scale(1.3); }
+.hero-clouds i:nth-child(3) { top: 20%; animation-duration: 150s; animation-delay: -118s; }
+@keyframes hero-drift { from { transform: translate3d(0,0,0); } to { transform: translate3d(calc(100vw + 420px),0,0); } }
+
+/* rain, snow, lightning */
+.hero-rain, .hero-snow { inset: 0; }
+.hero-rain i { position: absolute; top: -22%; width: 1.5px; height: calc(26px * var(--s)); border-radius: 2px;
+  background: linear-gradient(transparent, rgba(214,232,255,.78)); animation: hero-fall var(--t) linear var(--d) infinite; }
+.hero-snow i { position: absolute; top: -6%; width: calc(5px * var(--s)); height: calc(5px * var(--s)); border-radius: 50%;
+  background: rgba(255,255,255,.92); box-shadow: 0 0 6px rgba(255,255,255,.6); animation: hero-snowfall var(--t) linear var(--d) infinite; }
+.hero-flash { inset: 0; background: #fff; opacity: 0; animation: hero-flash 9s linear infinite; }
+@keyframes hero-fall { from { transform: translate3d(0,0,0) rotate(12deg); } to { transform: translate3d(-80px,400px,0) rotate(12deg); } }
+@keyframes hero-snowfall { 0% { transform: translate3d(0,0,0); } 50% { transform: translate3d(22px,190px,0); } 100% { transform: translate3d(-6px,400px,0); } }
+@keyframes hero-flash { 0%, 91%, 100% { opacity: 0; } 92% { opacity: .5; } 93% { opacity: .08; } 94.5% { opacity: .36; } 96% { opacity: 0; } }
+
+/* keeps the greeting and the chips readable on any sky */
+.hero-haze { inset: 0; background: linear-gradient(180deg, transparent 38%, rgba(4,8,28,.34) 100%), linear-gradient(90deg, rgba(4,8,28,.26), transparent 58%); }
+
+/* the words and the chips on the sky */
+.hero-live .hero-hello h1 { text-shadow: 0 2px 22px rgba(0,0,20,.32); animation: hero-rise .7s cubic-bezier(.2,.8,.2,1) .05s backwards; }
+:root .hero-live .hero-hello p { color: rgba(255,255,255,.88); text-shadow: 0 1px 10px rgba(0,0,20,.3); animation: hero-rise .7s cubic-bezier(.2,.8,.2,1) .13s backwards; }
+:root .hero-live .hero-wx { color: #fff; text-shadow: 0 2px 16px rgba(0,0,20,.34); animation: hero-rise .7s cubic-bezier(.2,.8,.2,1) .18s backwards; }
+:root .hero-live .hero-chip {
+  background: rgba(255,255,255,.15); color: #fff;
+  -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+  box-shadow: inset 0 0 0 .5px rgba(255,255,255,.3), inset 0 1px 0 rgba(255,255,255,.18), 0 8px 22px -12px rgba(0,0,20,.5);
+  animation: hero-chip-in .6s cubic-bezier(.2,.9,.3,1.25) calc(.2s + var(--i, 0) * .07s) backwards;
+  transition: transform .22s cubic-bezier(.2,.8,.2,1), background .2s;
+}
+:root .hero-live .hero-chip:hover { transform: translateY(-2px); background: rgba(255,255,255,.22); }
+:root .hero-live .hero-chip-txt small { color: rgba(255,255,255,.8); }
+:root .hero-live .hero-chip-ico { background: color-mix(in srgb, var(--tint) 30%, rgba(255,255,255,.16)); box-shadow: 0 0 20px color-mix(in srgb, var(--tint) 42%, transparent); }
+@keyframes hero-rise { from { opacity: 0; transform: translateY(12px); } }
+@keyframes hero-chip-in { from { opacity: 0; transform: translateY(14px) scale(.94); } }
+@media (max-width: 520px) {
+  :root .hero.hero-live { padding: 22px 18px 16px; min-height: 216px; }
+  .hero-orb { transform: scale(.8); }
+}
+
+/* shooting stars across the night wallpaper */
+.aurora .aurora-shoot { display: none; }
+:root:not([data-theme="light"]) .aurora[data-pal="aurora"] .aurora-shoot { display: block; top: 12vh; left: 64vw; width: 170px; height: 1.5px; border-radius: 2px; opacity: 0;
+  background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); animation: aurora-shoot 19s linear 4s infinite; }
+:root:not([data-theme="light"]) .aurora[data-pal="aurora"] .aurora-shoot2 { top: 30vh; left: 30vw; width: 120px; animation-duration: 27s; animation-delay: 13s; }
+@keyframes aurora-shoot { 0%, 94% { opacity: 0; transform: translate3d(0,0,0) rotate(-20deg); } 95% { opacity: .9; } 100% { opacity: 0; transform: translate3d(-420px,153px,0) rotate(-20deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-sky *, .hero-sky *::before, .hero-live .hero-hello h1, .hero-live .hero-hello p, .hero-live .hero-wx, .hero-live .hero-chip { animation: none !important; }
+  .hero-rain, .hero-snow, .hero-flash, .hero-shoot { display: none; }
+}

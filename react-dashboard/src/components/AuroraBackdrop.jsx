@@ -27,6 +27,7 @@ export default function AuroraBackdrop({ wallpaper = 'auto' }) {
     <div className="aurora" data-pal={paletteFor(wallpaper, hour)} aria-hidden="true">
       <i className="aurora-b1" /><i className="aurora-b2" /><i className="aurora-b3" /><i className="aurora-b4" />
       <i className="aurora-veil" />
+      <i className="aurora-shoot" /><i className="aurora-shoot aurora-shoot2" />
     </div>
   )
 }
