@@ -828,7 +828,7 @@ Devices come from the commissioning stored in the SmartCore (`/api/dali/nvm`):
 
 Buttons, sensors and live updates need **DALI IP Interface** on (SmartCore web UI → System → DALI). The monitor socket serves one client — Home Assistant's Atios integration or a second LSH would take it over. The SmartCore's own relays and inputs have no local API; pair the SmartCore with LSH's Matter controller for them.
 
-**Without hardware:** `npm run sim:atios` (port 8907; another port: `npm run sim:atios -- 8910`), then `"atios": { "host": "127.0.0.1:8907" }`. `test/atios.test.js` runs the client against it. Not yet tested against a real SmartCore.
+**Without hardware:** `npm run sim:atios` simulates a full DALI line on port 8907: 64 lamps in 8 groups, plus a button panel and a sensor per group (`npm run sim:atios -- <port> <lamps>` for another port or a smaller line), then `"atios": { "host": "127.0.0.1:8907" }`. `test/atios.test.js` runs the client against it. Not yet tested against a real SmartCore.
 
 ### `helvar`
 
