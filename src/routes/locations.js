@@ -26,7 +26,13 @@ const L = require('../locations');
 
 const VERSION = require('../../package.json').version;
 // Never through the proxy: account and token management, shells
-const BLOCKED = /^\/(auth\/(tokens|users|change-password|setup|handoff)|terminal|claude-code)(\/|$)/;
+// (case-insensitive, as Express matches routes)
+const BLOCKED = /^\/(auth\/(tokens|users|change-password|setup|handoff)|terminal|claude-code)(\/|$)/i;
+// What a viewer on the hub may read from a location. The hub's token is an
+// admin there, so anything else — settings, exports, orders, GETs that do
+// something (…/set, …/run) — is for hub admins only.
+const VIEWER_READS = /^\/(devices|device|history|history-status|rooms|status|site\/summary|automation\/scenes)(\/|$)/i;
+const VIEWER_ACTS = /\/(set|run)\/?$/i;
 const HOP = new Set(['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'set-cookie']);
 const HANDOFF_MS = 60_000;
 
@@ -168,19 +174,27 @@ module.exports = function register(router, ctx) {
   // The location's REST API through this hub
   router.all('/locations/:id/api/*', async (req, res) => {
     const loc = find(res, req.params.id); if (!loc) return;
-    const sub = `/${req.params[0] || ''}`;
+    // Express hands over the decoded path. It is checked as the location will
+    // see it and sent on re-encoded, so an encoded "?" or a dot segment can't
+    // turn a harmless-looking path into a blocked one over there.
+    const segs = String(req.params[0] || '').split('/');
+    if (segs.some((s) => s === '.' || s === '..')) return res.status(400).json({ success: false, error: 'Bad path' });
+    const sub = `/${segs.join('/')}`.replace(/\/{2,}/g, '/');
     if (BLOCKED.test(sub)) return res.status(403).json({ success: false, error: 'Not available through a hub' });
-    if (req.method !== 'GET' && req.method !== 'HEAD' && req.user?.role !== 'admin') {
+    const admin = req.user?.role === 'admin';
+    if (!admin && (!(req.method === 'GET' || req.method === 'HEAD') || !VIEWER_READS.test(sub) || VIEWER_ACTS.test(sub))) {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
+    const wire = sub.split('/').map(encodeURIComponent).join('/');
     const q = new URLSearchParams(req.query);
     q.delete('token');
     const qs = q.toString();
     const hasJson = req.is('application/json') && req.body !== undefined && !(typeof req.body === 'object' && Object.keys(req.body).length === 0 && !Number(req.headers['content-length']));
     try {
-      const up = await L.request(loc, req.method, `/api${sub}${qs ? `?${qs}` : ''}`, {
+      const up = await L.request(loc, req.method, `/api${wire}${qs ? `?${qs}` : ''}`, {
         body: hasJson ? JSON.stringify(req.body) : undefined, stream: true, timeout: 30_000,
-        headers: { Accept: req.headers.accept || 'application/json', 'X-Forwarded-For': req.ip, 'X-LSH-Hub-User': `${req.user?.username || '?'}@${siteName()}` },
+        // X-LSH-Hub-Role: the location gives the request that role, not the token's admin
+        headers: { Accept: req.headers.accept || 'application/json', 'X-Forwarded-For': req.ip, 'X-LSH-Hub-User': `${req.user?.username || '?'}@${siteName()}`,'X-LSH-Hub-Role': admin ? 'admin' : 'viewer' },
       });
       res.status(up.statusCode);
       for (const [k, v] of Object.entries(up.headers)) if (!HOP.has(k)) res.setHeader(k, v);

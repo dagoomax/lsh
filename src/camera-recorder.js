@@ -97,8 +97,10 @@ class CameraRecorder {
     const c = this.cams.get(slug);
     if (!c) throw new Error('No such camera, or recording is off for it');
     if (c.proc) {
-      clearTimeout(c.stopTimer); c.stopTimer = null;
       if (manualSeconds) this._stopIn(c, manualSeconds);
+      // motion again during the post-roll keeps a motion clip going; a
+      // fixed-length manual clip keeps its own stop time
+      else if (c.clip.trigger === 'motion') { clearTimeout(c.stopTimer); c.stopTimer = null; }
       return c.clip;
     }
     const now = new Date();

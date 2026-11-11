@@ -116,9 +116,16 @@ function openForRoom(room) {
 
 // The laundry part of hotel.daily-report: orders placed on the date (cancelled
 // ones excluded) plus everything still open now.
+// YYYY-MM-DD of a time in the server's time zone — a hotel's day is the local one.
+function localDay(t) {
+  const d = new Date(t);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 function dailySummary(date) {
   const orders = loadOrders();
-  const placed = orders.filter((o) => o.status !== 'cancelled' && new Date(Number(o.at || 0)).toISOString().slice(0, 10) === date);
+  const placed = orders.filter((o) => o.status !== 'cancelled' && localDay(Number(o.at || 0)) === date);
   const revenue = {};
   for (const o of placed) revenue[o.currency] = round2((revenue[o.currency] || 0) + Number(o.total || 0));
   return { orders: placed.length, open: orders.filter(isOpen).length, revenue };
@@ -133,4 +140,4 @@ function pageRouter() {
   return router;
 }
 
-module.exports = { STATUSES, isOpen, loadOrders, saveOrders, trimOrders, menuPublic, priceItems, roomsOf, slotsOf, expressOn, dueAt, orderId, currencyOf, openForRoom, dailySummary, pageRouter, ORDERS_FILE };
+module.exports = { STATUSES, isOpen, loadOrders, saveOrders, trimOrders, menuPublic, priceItems, roomsOf, slotsOf, expressOn, dueAt, orderId, currencyOf, openForRoom, dailySummary, localDay, pageRouter, ORDERS_FILE };

@@ -75,6 +75,7 @@ function loadConfig() {
       host:           fileConfig.satel?.host           || '',
       port:           fileConfig.satel?.port           || 7094,
       armCode:        fileConfig.satel?.armCode        || '',
+      prefix:         fileConfig.satel?.prefix         || '',
       zones:          fileConfig.satel?.zones          || null,
       zoneCount:      fileConfig.satel?.zoneCount      || 32,
       zoneNames:      fileConfig.satel?.zoneNames      || {},
@@ -168,6 +169,8 @@ function loadConfig() {
       host:           fileConfig.knx.host,
       port:           parseInt(fileConfig.knx.port) || 3671,
       groupAddresses: fileConfig.knx.groupAddresses || [],
+      lshBridge:      fileConfig.knx.lshBridge === true,
+      ets:            fileConfig.knx.ets || undefined,
     } : undefined,
     ffmpegRtsp: {
       enabled:    !!(fileConfig.ffmpegRtsp?.enabled),

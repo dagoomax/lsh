@@ -350,7 +350,14 @@ const auth = {
       const authHeader = req.headers['authorization'];
       if (authHeader?.startsWith('Bearer ')) {
         const token = authHeader.slice(7);
-        if (auth.verifyApiToken(token)) { req.user = API_TOKEN_USER; return next(); }
+        if (auth.verifyApiToken(token)) {
+          // A hub proxying one of its viewers (routes/locations.js) says so; the
+          // request then gets that role instead of the token's admin. The
+          // header can only lower what the token holder could do anyway.
+          const hubRole = req.headers['x-lsh-hub-role'];
+          req.user = hubRole && hubRole !== 'admin' ? { id: 'hub-viewer', username: 'hub-viewer', role: 'viewer' } : API_TOKEN_USER;
+          return next();
+        }
         const payload = auth.verifyToken(token);
         if (payload) { req.user = payload; return next(); }
         return res.status(401).json({ success: false, error: 'Invalid token' });

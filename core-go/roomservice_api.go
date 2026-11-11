@@ -66,10 +66,150 @@ func (s *Server) loadOrders() []*OMap {
 	return out
 }
 
-func (s *Server) saveOrders(orders []*OMap) error {
-	if len(orders) > roomServiceMaxOrders {
-		orders = orders[:roomServiceMaxOrders]
+// trimRoomOrders caps the list by dropping the oldest acknowledged orders
+// first, so a burst of new orders can't push one the staff haven't seen yet
+// off the list.
+func trimRoomOrders(orders []*OMap) []*OMap {
+	excess := len(orders) - roomServiceMaxOrders
+	if excess <= 0 {
+		return orders
 	}
+	drop := map[int]bool{}
+	for i := len(orders) - 1; i >= 0 && excess > 0; i-- {
+		if jsString(orders[i].Get("status")) != "new" {
+			drop[i] = true
+			excess--
+		}
+	}
+	kept := make([]*OMap, 0, len(orders))
+	for i, o := range orders {
+		if !drop[i] {
+			kept = append(kept, o)
+		}
+	}
+	if len(kept) > roomServiceMaxOrders {
+		kept = kept[:roomServiceMaxOrders]
+	}
+	return kept
+}
+
+// ── Used card payments ─────────────────────────────────────────────────────
+// A Stripe PaymentIntent pays for exactly one order. The ids already spent are
+// kept in their own file (the order list is capped and can be cleared), plus an
+// in-memory claim that covers the moment between checking and saving.
+
+const roomServiceMaxIntents = 5000
+
+var (
+	roomIntentMu      sync.Mutex
+	roomIntentClaimed = map[string]bool{}
+)
+
+func (s *Server) intentsPath() string { return s.persistPath("room-service-intents.json") }
+
+func (s *Server) loadIntents() []string {
+	out := []string{}
+	if b, err := os.ReadFile(s.intentsPath()); err == nil {
+		_ = json.Unmarshal(b, &out)
+	}
+	return out
+}
+
+// claimIntent reports whether this payment hasn't paid for an order yet; it is
+// then held until commitIntent (order saved) or releaseIntent (order failed).
+func (s *Server) claimIntent(id string) bool {
+	roomIntentMu.Lock()
+	defer roomIntentMu.Unlock()
+	if id == "" || roomIntentClaimed[id] {
+		return false
+	}
+	for _, v := range s.loadIntents() {
+		if v == id {
+			return false
+		}
+	}
+	for _, o := range s.loadOrders() {
+		if jsString(o.Get("paymentIntentId")) == id {
+			return false
+		}
+	}
+	roomIntentClaimed[id] = true
+	return true
+}
+
+func releaseIntent(id string) {
+	roomIntentMu.Lock()
+	delete(roomIntentClaimed, id)
+	roomIntentMu.Unlock()
+}
+
+func (s *Server) commitIntent(id string) {
+	roomIntentMu.Lock()
+	defer roomIntentMu.Unlock()
+	delete(roomIntentClaimed, id)
+	list := []string{id}
+	for _, v := range s.loadIntents() {
+		if v != id && len(list) < roomServiceMaxIntents {
+			list = append(list, v)
+		}
+	}
+	b, err := json.Marshal(list)
+	if err != nil {
+		return
+	}
+	tmp := s.intentsPath() + ".tmp"
+	if os.WriteFile(tmp, b, 0o644) == nil {
+		_ = os.Rename(tmp, s.intentsPath())
+	}
+}
+
+// ── Guest rate limit ───────────────────────────────────────────────────────
+// The guest endpoints are public, so each address gets a budget: enough for a
+// whole hotel behind one proxy, far too little to flood the order list.
+
+const (
+	guestWindow   = 10 * time.Minute
+	guestPlaceMax = 30
+	guestPayMax   = 60
+)
+
+type guestLimiter struct {
+	mu   sync.Mutex
+	hits map[string][]time.Time
+}
+
+var (
+	roomPlaceLimiter = &guestLimiter{hits: map[string][]time.Time{}}
+	roomPayLimiter   = &guestLimiter{hits: map[string][]time.Time{}}
+)
+
+func (g *guestLimiter) limited(ip string, max int) bool {
+	now := time.Now()
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	recent := g.hits[ip][:0:0]
+	for _, t := range g.hits[ip] {
+		if now.Sub(t) < guestWindow {
+			recent = append(recent, t)
+		}
+	}
+	if len(recent) >= max {
+		g.hits[ip] = recent
+		return true
+	}
+	g.hits[ip] = append(recent, now)
+	if len(g.hits) > 2000 {
+		for k, v := range g.hits {
+			if len(v) == 0 || now.Sub(v[len(v)-1]) >= guestWindow {
+				delete(g.hits, k)
+			}
+		}
+	}
+	return false
+}
+
+func (s *Server) saveOrders(orders []*OMap) error {
+	orders = trimRoomOrders(orders)
 	b, err := json.MarshalIndent(orders, "", "  ")
 	if err != nil {
 		return err
@@ -175,7 +315,7 @@ func (s *Server) roomServiceRoutes(api *http.ServeMux) {
 			fail(w, 400, "Your order is empty")
 			return
 		}
-		room := strings.TrimSpace(jsString(b.Get("room")))
+		room := clipRunes(jsString(b.Get("room")), 20)
 		payment := jsString(b.Get("payment"))
 		if payment != "card" {
 			payment = "room"
@@ -184,20 +324,51 @@ func (s *Server) roomServiceRoutes(api *http.ServeMux) {
 			fail(w, 400, "Charging to the room isn’t available — please pay now")
 			return
 		}
+		// a room charge lands on somebody's bill, so it has to name a real room
+		// (a card order may come from a table)
+		if payment == "room" {
+			if room == "" {
+				fail(w, 400, "Please enter your room number")
+				return
+			}
+			known, any := false, false
+			for _, v := range arr(rs.Get("rooms")) {
+				if t := strings.TrimSpace(jsString(v)); t != "" {
+					any = true
+					known = known || t == room
+				}
+			}
+			if any && !known {
+				fail(w, 400, "We don’t recognise that room number")
+				return
+			}
+		}
+		if roomPlaceLimiter.limited(clientIP(r), guestPlaceMax) {
+			fail(w, 429, "Too many orders — please try again in a few minutes")
+			return
+		}
 		currency := jsString(rs.Get("currency"))
 		if currency == "" {
 			currency = "PLN"
 		}
 		paid := false
+		pi := ""
 		if payment == "card" {
-			// Verify the Stripe PaymentIntent really succeeded for this amount.
-			pi := jsString(b.Get("paymentIntentId"))
+			// One payment pays for one order — a spent PaymentIntent can't be
+			// reused — and it must really have succeeded for this amount.
+			pi = jsString(b.Get("paymentIntentId"))
+			if !s.claimIntent(pi) {
+				fail(w, 402, "This payment was already used for an order")
+				return
+			}
 			okPaid, err := s.stripeVerify(pi, total, currency)
 			if err != nil {
+				releaseIntent(pi)
 				fail(w, 502, "Couldn’t confirm the payment: "+err.Error())
 				return
 			}
 			if !okPaid {
+				releaseIntent(pi)
 				fail(w, 402, "Payment not completed")
 				return
 			}
@@ -210,19 +381,26 @@ func (s *Server) roomServiceRoutes(api *http.ServeMux) {
 			"items", lines,
 			"total", total,
 			"currency", currency,
-			"note", strings.TrimSpace(jsString(b.Get("note"))),
+			"note", clipRunes(jsString(b.Get("note")), 500),
 			"payment", payment,
 			"paid", paid,
 			"status", "new",
 			"ackAt", 0,
 		)
+		if pi != "" {
+			order.Set("paymentIntentId", pi)
+		}
 		roomServiceMu.Lock()
 		orders := append([]*OMap{order}, s.loadOrders()...)
 		err := s.saveOrders(orders)
 		roomServiceMu.Unlock()
 		if err != nil {
+			releaseIntent(pi)
 			fail(w, 500, err.Error())
 			return
+		}
+		if pi != "" {
+			s.commitIntent(pi)
 		}
 		s.notifyOrder(order)
 		ok(w, order)
@@ -247,7 +425,11 @@ func (s *Server) roomServiceRoutes(api *http.ServeMux) {
 		if currency == "" {
 			currency = "PLN"
 		}
-		pi, err := s.stripeCreateIntent(total, currency, jsString(b.Get("room")))
+		if roomPayLimiter.limited(clientIP(r), guestPayMax) {
+			fail(w, 429, "Too many attempts — please try again in a few minutes")
+			return
+		}
+		pi, err := s.stripeCreateIntent(total, currency, clipRunes(jsString(b.Get("room")), 20))
 		if err != nil {
 			fail(w, 502, "Payment setup failed: "+err.Error())
 			return

@@ -45,13 +45,19 @@ class WebhookHub {
     this.subs = this._load();
     this.queues = new Map(); // id → { changes: [], timer }
     this.sentAt = new Map(); // `${id}|${key}` → ms, for throttleSeconds
+    this.held = new Map();   // `${id}|${key}` → { change, timer }: the newest change inside a throttle window
     this.prev = new Map();
     this._compile();
     this._onChange = (e) => this._change(e);
     store?.on?.('change', this._onChange);
   }
 
-  stop() { this.store?.off?.('change', this._onChange); for (const q of this.queues.values()) clearTimeout(q.timer); }
+  stop() {
+    this.store?.off?.('change', this._onChange);
+    for (const q of this.queues.values()) clearTimeout(q.timer);
+    for (const h of this.held.values()) clearTimeout(h.timer);
+    this.held.clear();
+  }
 
   _load() {
     try { const j = JSON.parse(fs.readFileSync(this.file, 'utf8')); return Array.isArray(j) ? j : []; } catch { return []; }
@@ -96,7 +102,12 @@ class WebhookHub {
     if (!s) return null;
     if (patch.enabled != null) { s.enabled = !!patch.enabled; if (s.enabled) s.failures = 0; }
     if (patch.name != null) s.name = String(patch.name).slice(0, 80);
-    if (patch.throttleSeconds != null) s.throttleSeconds = Math.max(0, Math.min(3600, Number(patch.throttleSeconds) || 0));
+    if (patch.throttleSeconds != null) {
+      const t = Math.max(0, Math.min(3600, Number(patch.throttleSeconds) || 0));
+      // a new window length: what waited on the old one goes out now
+      if (t !== s.throttleSeconds) for (const [k, h] of [...this.held]) if (k.startsWith(`${id}|`)) h.fire();
+      s.throttleSeconds = t;
+    }
     this._save();
     return s;
   }
@@ -107,6 +118,7 @@ class WebhookHub {
     if (this.subs.length === n) return false;
     const q = this.queues.get(id); if (q) clearTimeout(q.timer);
     this.queues.delete(id);
+    for (const [k, h] of this.held) if (k.startsWith(`${id}|`)) { clearTimeout(h.timer); this.held.delete(k); }
     this._save();
     return true;
   }
@@ -134,13 +146,37 @@ class WebhookHub {
     const previous = seen ? seen.value : undefined;
     const now = Date.now();
     for (const s of subs) {
+      const change = { key, value, previous: previous === undefined ? null : previous, at: new Date(now).toISOString() };
       if (s.throttleSeconds) {
         const k = `${s.id}|${key}`;
-        if (now - (this.sentAt.get(k) || 0) < s.throttleSeconds * 1000) continue;
+        const wait = (this.sentAt.get(k) || 0) + s.throttleSeconds * 1000 - now;
+        if (wait > 0) { this._hold(s, k, change, wait); continue; }
         this.sentAt.set(k, now);
       }
-      this._queue(s, { key, value, previous: previous === undefined ? null : previous, at: new Date(now).toISOString() });
+      this._queue(s, change);
     }
+  }
+
+  // Inside a throttle window the newest change waits for the window to end
+  // instead of being dropped — the subscriber always ends up with the value
+  // the key settled on. `previous` stays the value it was last sent.
+  _hold(s, k, change, wait) {
+    const h = this.held.get(k);
+    if (h) { h.change = { ...change, previous: h.change.previous }; return; }
+    const entry = { change, timer: null };
+    entry.fire = () => {
+      clearTimeout(entry.timer);
+      this.held.delete(k);
+      const sub = this.subs.find((x) => x.id === s.id);
+      if (!sub || !sub.enabled) return;
+      const c = entry.change;
+      if (JSON.stringify(c.value) === JSON.stringify(c.previous)) return; // back where it was
+      this.sentAt.set(k, Date.now());
+      this._queue(sub, c);
+    };
+    entry.timer = setTimeout(entry.fire, wait);
+    entry.timer.unref?.();
+    this.held.set(k, entry);
   }
 
   _queue(s, change) {

@@ -25,12 +25,61 @@ function loadOrders() {
   try { const a = JSON.parse(fs.readFileSync(ORDERS_FILE, "utf8")); return Array.isArray(a) ? a : []; }
   catch { return []; }
 }
+// The cap drops the oldest acknowledged orders first, so a burst of new orders
+// can't push one the staff haven't seen yet off the list.
+function trimOrders(orders) {
+  let excess = orders.length - MAX_ORDERS;
+  if (excess <= 0) return orders;
+  const drop = new Set();
+  for (let i = orders.length - 1; i >= 0 && excess > 0; i--) {
+    if (orders[i]?.status !== "new") { drop.add(i); excess--; }
+  }
+  return orders.filter((_, i) => !drop.has(i)).slice(0, MAX_ORDERS);
+}
 function saveOrders(orders) {
-  const arr = orders.slice(0, MAX_ORDERS);
+  const arr = trimOrders(orders);
   fs.mkdirSync(path.dirname(ORDERS_FILE), { recursive: true });
   const tmp = ORDERS_FILE + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(arr, null, 2));
   fs.renameSync(tmp, ORDERS_FILE);
+}
+
+// ── Used card payments ──────────────────────────────────────────────────────
+// A Stripe PaymentIntent pays for exactly one order. The ids already spent are
+// kept in their own file (the order list is capped and can be cleared), plus an
+// in-memory claim that covers the moment between checking and saving.
+const INTENTS_FILE = path.join(__dirname, "..", "persist", "room-service-intents.json");
+const MAX_INTENTS = 5000;
+const claimedIntents = new Set();
+
+function loadIntents() {
+  try { const a = JSON.parse(fs.readFileSync(INTENTS_FILE, "utf8")); return Array.isArray(a) ? a : []; }
+  catch { return []; }
+}
+// claimIntent — true if this payment hasn't paid for an order yet; it is then
+// held until commitIntent (order saved) or releaseIntent (order failed).
+function claimIntent(id) {
+  id = String(id || "");
+  if (!id || claimedIntents.has(id)) return false;
+  if (loadIntents().includes(id) || loadOrders().some((o) => o && o.paymentIntentId === id)) return false;
+  claimedIntents.add(id);
+  return true;
+}
+function releaseIntent(id) { claimedIntents.delete(String(id || "")); }
+function commitIntent(id) {
+  id = String(id || "");
+  try {
+    fs.mkdirSync(path.dirname(INTENTS_FILE), { recursive: true });
+    const tmp = INTENTS_FILE + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify([id, ...loadIntents().filter((x) => x !== id)].slice(0, MAX_INTENTS)));
+    fs.renameSync(tmp, INTENTS_FILE);
+  } finally { claimedIntents.delete(id); }
+}
+
+// The room list orders are checked against (empty = any room or table).
+function roomsOf(config) {
+  const list = config.roomService?.rooms;
+  return (Array.isArray(list) ? list : []).map((r) => String(r).trim()).filter(Boolean);
 }
 
 // menuPublic — available items only, no secret.
@@ -122,4 +171,4 @@ function orderPageRouter() {
   return r;
 }
 
-module.exports = { loadOrders, saveOrders, menuPublic, priceItems, stripeCreateIntent, stripeVerify, orderId, orderPageRouter, ORDER_PAGE_HTML };
+module.exports = { loadOrders, saveOrders, trimOrders, claimIntent, releaseIntent, commitIntent, roomsOf, MAX_ORDERS, menuPublic, priceItems, stripeCreateIntent, stripeVerify, orderId, orderPageRouter, ORDER_PAGE_HTML };

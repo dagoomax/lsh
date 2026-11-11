@@ -110,6 +110,20 @@ test('locations: pairing, overview, proxy with inherited role, handoff, revoke',
     assert.deepEqual(remote.commands[0], { key: 'shelly/lamp', sensor: 'switch', value: 1, hubUser: `anna@${os.hostname()}` });
     r = await call(h.url, 'GET', `/api/locations/${saved.id}/api/auth/tokens`);
     assert.equal(r.status, 403, 'token list not reachable through the hub');
+    // …however the path is spelled: Express matches routes whatever the case,
+    // and an encoded "?" would end the path on the location
+    for (const p of ['Auth/tokens', 'AUTH/Tokens/', 'auth/tokens%3Fx=1', 'x/../auth/tokens', 'Terminal/x']) {
+      r = await call(h.url, 'GET', `/api/locations/${saved.id}/api/${p}`);
+      assert.ok(r.status === 403 || r.status === 400 || r.status === 404, `${p} → ${r.status}`);
+    }
+    r = await call(h.url, 'POST', `/api/locations/${saved.id}/api/Auth/tokens`, { name: 'x' });
+    assert.equal(r.status, 403);
+    assert.equal(remote.tokens.length, 1, 'no token minted through the hub');
+    // a viewer on the hub reads devices, not what the hub's admin token could read
+    for (const p of ['settings/export', 'room-service/orders', 'webhooks', 'device/shelly%2Flamp/set?sensor=switch&value=1', 'automation/scenes/s1/run']) {
+      r = await call(h.url, 'GET', `/api/locations/${saved.id}/api/${p}`, null, { 'x-role': 'viewer' });
+      assert.equal(r.status, 403, `viewer: ${p}`);
+    }
 
     // "Open": a one-time link signing the browser in as anna@<hub> with her role
     r = await call(h.url, 'POST', `/api/locations/${saved.id}/open`, null, { 'x-role': 'viewer' });

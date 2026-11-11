@@ -161,7 +161,7 @@ class N8n {
     const at = this.dailyReportAt();
     if (!at) return;
     const now = new Date();
-    const today = now.toISOString().slice(0, 10);
+    const today = laundry.localDay(now); // local, like dailyReportAt
     const st = readJson(STATE_FILE, {});
     if (st.lastReportDate === today) return;
     if (now.getHours() < at.hh || (now.getHours() === at.hh && now.getMinutes() < at.mm)) return;
@@ -176,7 +176,7 @@ class N8n {
     const revenue = {};
     const byRoom = new Map();
     for (const o of orders) {
-      if (new Date(Number(o.at || 0)).toISOString().slice(0, 10) !== date) continue;
+      if (laundry.localDay(Number(o.at || 0)) !== date) continue;
       count++;
       if (o.status === 'new') pending++;
       const cur = o.currency || 'PLN';

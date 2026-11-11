@@ -65,3 +65,18 @@ test('prunes days past the limit and the oldest clips over maxMB', () => {
   assert.deepEqual(rec.clips('cam', day(0)).map((c) => c.id), ['090000']);
   assert.equal(s.get('recorder/cam/clips'), 1);
 });
+
+test('motion during a fixed-length manual clip does not cancel its stop', { skip: !hasFfmpeg && 'no ffmpeg' }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lsh-rec-'));
+  const src = path.join(dir, 'src.mp4');
+  execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=10', '-t', '60', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-y', src]);
+  const s = store();
+  const rec = new CameraRecorder({ recordingsDir: path.join(dir, 'rec'), cameras: [{ name: 'Gate', url: src, record: { postSeconds: 1 } }] }, s, null);
+  rec.start();
+  rec.trigger('gate', 'manual', 2);
+  await wait(500);
+  s.set('objectdetect/gate/any/detected', 1); // motion starts and stays on
+  for (let i = 0; i < 32 && s.get('recorder/gate/recording') !== 0; i++) await wait(250);
+  assert.equal(s.get('recorder/gate/recording'), 0, 'the manual clip ended on its own timer');
+  rec.stop();
+});

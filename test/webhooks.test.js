@@ -85,6 +85,17 @@ test('hub: batches matching changes, signs them, describes devices, pauses after
     await wait(150);
     const after = got.slice(2).map((g) => JSON.parse(g.raw).changes.map((c) => c.value)).flat();
     assert.deepEqual(after, [10], 'at most one per key per throttle window');
+    // …and the value the key settles on arrives when the window ends
+    hub.update(s.id, { throttleSeconds: 0.4 }); // the held 30 goes out with the change of window
+    await wait(600);
+    assert.equal(JSON.parse(got.at(-1).raw).changes[0].value, 30);
+    const n0 = got.length;
+    store.set('shelly/plug-1/power', 100);
+    await wait(120);
+    store.set('shelly/plug-1/power', 200); store.set('shelly/plug-1/power', 0);
+    await wait(700);
+    const late = got.slice(n0).map((g) => JSON.parse(g.raw).changes.filter((c) => c.key === 'shelly/plug-1/power').map((c) => [c.previous, c.value])).flat();
+    assert.deepEqual(late.at(-1), [100, 0], 'the last change inside the window is delivered, not dropped');
     hub.update(s.id, { throttleSeconds: 0 });
 
     // failures pause it

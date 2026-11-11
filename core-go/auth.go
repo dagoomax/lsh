@@ -323,6 +323,12 @@ func (a *Auth) UserFor(r *http.Request) (user map[string]any, bad bool) {
 	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		t := h[7:]
 		if a.VerifyAPIToken(t) {
+			// A hub proxying one of its viewers says so; the request then gets
+			// that role instead of the token's admin (the header can only lower
+			// what the token holder could do anyway).
+			if role := r.Header.Get("X-LSH-Hub-Role"); role != "" && role != "admin" {
+				return map[string]any{"id": "hub-viewer", "username": "hub-viewer", "role": "viewer"}, false
+			}
 			return apiTokenUser, false
 		}
 		if p := a.VerifyJWT(t); p != nil {
