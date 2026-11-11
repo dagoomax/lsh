@@ -23,6 +23,10 @@ test('Atios: DALI addressing and event decoding', () => {
   assert.deepEqual(decodeEvent([20, 0x80 | (1 << 2), 0x00], 24), { shortAddress: 10, instanceNumber: 1, info: 0 });
   assert.equal(decodeEvent([21, 0, 0], 24), null); // 24-bit command
   assert.equal(decodeEvent([3, 160], 16), null);
+  assert.deepEqual(AtiosClient.hsToRgb(0, 100), [254, 0, 0]);
+  assert.deepEqual(AtiosClient.hsToRgb(120, 50), [127, 254, 127]);
+  assert.deepEqual(AtiosClient.hsToRgb(0, 0), [254, 254, 254]);
+  assert.equal(Math.round(AtiosClient.rgbToHs(0, 0, 254).h), 240);
 });
 
 test('Atios: lamps, groups, broadcast, scenes and bus events', async () => {
@@ -49,6 +53,16 @@ test('Atios: lamps, groups, broadcast, scenes and bus events', async () => {
     assert.equal(sim.lamps[1].level, 0); assert.equal(sim.lamps[2].level, 0);
     await registry.sendCommand('atios/all', 'scene', 3);
     assert.equal(JSON.parse(sim.calls.filter((x) => x.path === '/api/dali/iface').at(-1).body).data[1], 0x13);
+
+    // the RGBW lamp: colour and white read back, then set over DT8
+    assert.equal(registry.devices.get('atios/l5').sensors.some((x) => x.path === 'color'), true);
+    assert.equal(registry.devices.get('atios/l1').sensors.some((x) => x.path === 'color'), false);
+    assert.equal(v('l5/hue'), 33); assert.equal(v('l5/saturation'), 100); assert.equal(v('l5/white'), 50);
+    await registry.sendCommand('atios/l5', 'color', { hue: 0, saturation: 100 });
+    assert.deepEqual(sim.lamps[5].colour, { r: 254, g: 0, b: 0, w: 127 }); // white untouched
+    await registry.sendCommand('atios/l5', 'white', 100);
+    assert.deepEqual(sim.lamps[5].colour, { r: 254, g: 0, b: 0, w: 254 });
+    assert.equal(sim.lamps[5].level, 100); // a colour change leaves the level alone (the scene above set 100)
 
     await until(() => sim.clients() > 0);
     sim.emit(24, [20, 0x04, 0x01]);               // input 10, device scheme, button pressed

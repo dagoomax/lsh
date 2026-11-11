@@ -3,13 +3,16 @@
 
 // Minimal Atios SmartCore stand-in for testing src/atios-client.js: the DALI
 // interface (lamps answer QUERY ACTUAL LEVEL and follow DAPC / OFF / last
-// active / scenes), the NVM device list, /settings, and the bus monitor
+// active / scenes; RGBW lamps also take DT8 colours — DTR0–2, ENABLE DEVICE
+// TYPE 8, SET TEMPORARY RGB / WAF DIMLEVEL, ACTIVATE, QUERY COLOUR VALUE),
+// the NVM device list, /settings, and the bus monitor
 // WebSocket on / (sim.emit(bits, data) pushes an external frame).
 //
 //   node scripts/atios-simulator.js [port=8907] [lamps=64]
 // then config.atios = { host: '127.0.0.1:8907' }
 // From the command line it simulates a full DALI line (64 lamps in groups of
-// eight, a button panel and a sensor per group); startSimulator() without
+// eight — the eighth of each an RGBW lamp — and a button panel and a sensor
+// per group); startSimulator() without
 // `lamps` keeps the small fixed set test/atios.test.js relies on.
 
 const http = require('http');
@@ -17,6 +20,8 @@ const WebSocket = require('ws');
 
 const ROOMS = ['Living room', 'Kitchen', 'Dining room', 'Hall', 'Bedroom', 'Bathroom', 'Office', 'Garage',
   'Stairs', 'Guest room', 'Terrace', 'Garden', 'Cellar', 'Laundry', 'Attic', 'Entrance'];
+
+const RGBW_FEATURES = 4 << 5; // QUERY COLOUR TYPE FEATURES: four RGBWAF channels
 
 // A DALI line of `count` lamps (short addresses 0…count-1, max 64), eight per
 // group, plus one push-button panel and one occupancy/light sensor per group.
@@ -27,9 +32,13 @@ function buildBus(count) {
   for (let a = 0; a < n; a++) {
     const g = Math.floor(a / 8);
     const last = 64 + ((a * 37) % 191);            // a spread of levels, 64…254
+    const rgbw = a % 8 === 7;
     lamps[a] = { level: a % 3 === 0 ? 0 : last, last };
+    if (rgbw) lamps[a].colour = { r: 254, g: 120, b: 20, w: 0 };
     groupOf[a] = [g];
-    controls.push({ name: `${ROOMS[g]} ${(a % 8) + 1}`, address: a });
+    controls.push(rgbw
+      ? { name: `${ROOMS[g]} RGBW`, address: a, device_types: [6, 8], color_type_features: RGBW_FEATURES }
+      : { name: `${ROOMS[g]} ${(a % 8) + 1}`, address: a, device_types: [6] });
   }
   for (let g = 0; g < groups; g++) {
     controls.push({ name: ROOMS[g], address: 128 + g, is_group: true });
@@ -41,10 +50,11 @@ function buildBus(count) {
 
 function fixtureBus() {
   return {
-    lamps: { 1: { level: 254, last: 254 }, 2: { level: 0, last: 128 } },
+    lamps: { 1: { level: 254, last: 254 }, 2: { level: 0, last: 128 }, 5: { level: 254, last: 254, colour: { r: 0, g: 254, b: 0, w: 127 } } },
     groupOf: { 1: [0], 2: [0] },
     controls: [
       { name: 'Kitchen', address: 1 }, { name: 'Hall', address: 2 },
+      { name: 'Bar', address: 5, device_types: [6, 8], color_type_features: RGBW_FEATURES },
       { name: 'Ground floor', address: 128, is_group: true },
     ],
     inputs: [
@@ -57,6 +67,9 @@ function fixtureBus() {
 function startSimulator({ port = 8907, lamps: count } = {}) {
   const calls = [];
   const { lamps, groupOf, controls, inputs } = count ? buildBus(count) : fixtureBus();
+  const dtr = [0, 0, 0];           // DTR0–2, shared by the whole bus
+  let enabledType = 0;             // ENABLE DEVICE TYPE — covers the next frame only
+  const temp = {};                 // lamp → temporary colour, applied by ACTIVATE
   const targets = (a) => {
     if (a >= 0xfe) return Object.keys(lamps);
     if (a & 0x80) { const g = (a >> 1) & 0x0f; return Object.keys(lamps).filter((k) => groupOf[k]?.includes(g)) }
@@ -79,7 +92,26 @@ function startSimulator({ port = 8907, lamps: count } = {}) {
       if (u.pathname === '/api/dali/iface' && req.method === 'POST') {
         const b = JSON.parse(body || '{}');
         const [a, x] = b.data || [];
-        const ts = targets(a);
+        if ((a & 1) && a >= 0xa0 && a <= 0xfd) { // special commands
+          if (a === 0xa3) dtr[0] = x; else if (a === 0xc3) dtr[1] = x; else if (a === 0xc5) dtr[2] = x;
+          enabledType = a === 0xc1 ? x : 0;
+          return json(200, { success: true });
+        }
+        const ts = targets(a), dt8 = enabledType === 8;
+        enabledType = 0;
+        if ((a & 1) && x >= 224) { // DT8 application extended commands
+          const cs = dt8 ? ts.filter((t) => lamps[t].colour) : [];
+          if (x === 235) for (const t of cs) Object.assign(temp[t] ||= {}, { r: dtr[0], g: dtr[1], b: dtr[2] });
+          else if (x === 236) for (const t of cs) Object.assign(temp[t] ||= {}, { w: dtr[0] });
+          else if (x === 226) for (const t of cs) {
+            for (const [k, v] of Object.entries(temp[t] || {})) if (v !== 255) lamps[t].colour[k] = v;
+            delete temp[t];
+          } else if (x === 250) {
+            const k = { 9: 'r', 10: 'g', 11: 'b', 12: 'w' }[dtr[0]];
+            return json(200, { success: true, bus_busy: false, collision_detected: false, data: cs.length && k ? lamps[cs[0]].colour[k] : null });
+          }
+          return json(200, { success: true });
+        }
         if (!(a & 1)) for (const t of ts) { lamps[t].level = x; if (x > 0) lamps[t].last = x }
         else if (x === 0x00) for (const t of ts) lamps[t].level = 0;
         else if (x === 0x0a) for (const t of ts) lamps[t].level = lamps[t].last;

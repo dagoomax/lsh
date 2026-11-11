@@ -822,13 +822,13 @@ The Atios SmartCore (DIN-rail Matter controller with a DALI-2 bus, 12 relays and
 
 Devices come from the commissioning stored in the SmartCore (`/api/dali/nvm`):
 - `atios/all` — the whole bus: `switch`, `level` (%), `scene` (0–15), `ipInterface`.
-- `atios/l<address>` — each DALI lamp: `switch`, `level`, `online`. HomeKit light. On = GO TO LAST ACTIVE LEVEL, level = direct arc power (1–254 mapped linearly to 1–100 %).
+- `atios/l<address>` — each DALI lamp: `switch`, `level`, `online`; colour lamps (DT8 with RGB channels) also `color` (`hue`, `saturation`) and, with a fourth channel, `white`. HomeKit light. On = GO TO LAST ACTIVE LEVEL, level = direct arc power (1–254 mapped linearly to 1–100 %).
 - `atios/g<group>` — each DALI group: `switch`, `level`, `scene` (as last set from LSH).
 - `atios/in<address>` — each DALI input device: `button<n>` (last event: pressed, released, short press, double press, long press…), `button<n>Pressed`, `occupancy<n>` (HomeKit motion), `light<n>` (raw 0–1023), `event`.
 
 Buttons, sensors and live updates need **DALI IP Interface** on (SmartCore web UI → System → DALI). The monitor socket serves one client — Home Assistant's Atios integration or a second LSH would take it over. The SmartCore's own relays and inputs have no local API; pair the SmartCore with LSH's Matter controller for them.
 
-**Without hardware:** `npm run sim:atios` simulates a full DALI line on port 8907: 64 lamps in 8 groups, plus a button panel and a sensor per group (`npm run sim:atios -- <port> <lamps>` for another port or a smaller line), then `"atios": { "host": "127.0.0.1:8907" }`. `test/atios.test.js` runs the client against it. Not yet tested against a real SmartCore.
+**Without hardware:** `npm run sim:atios` simulates a full DALI line on port 8907: 64 lamps in 8 groups (the eighth lamp of each group is RGBW), plus a button panel and a sensor per group (`npm run sim:atios -- <port> <lamps>` for another port or a smaller line), then `"atios": { "host": "127.0.0.1:8907" }`. `test/atios.test.js` runs the client against it. Not yet tested against a real SmartCore.
 
 ### `helvar`
 

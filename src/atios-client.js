@@ -25,9 +25,18 @@
 // short, 0x05 double, 0x09 long start, 0x0B long repeat, 0x0C long stop;
 // occupancy (-303) bit1 occupied, bit0 movement; light sensor (-304) raw level.
 //
+// Colour lamps (DT8, IEC 62386-209) with RGBWAF channels — an NVM entry with
+// device_types ∋ 8 and color_type_features >> 5 ≥ 3 — also get colour and, with
+// a fourth channel, white. A colour is written as DTR0/1/2 (special commands
+// 0xA3 / 0xC3 / 0xC5) + ENABLE DEVICE TYPE 8 (0xC1) + SET TEMPORARY RGB
+// DIMLEVEL (235) or WAF DIMLEVEL (236), then ENABLE DEVICE TYPE 8 + ACTIVATE
+// (226); channels are 0–254, 255 = MASK (leave as is). Read back with
+// DTR0 = 9…12 (red, green, blue, white) + QUERY COLOUR VALUE (250).
+//
 // Devices (from the commissioning stored in the SmartCore, NVM):
 //   atios/all        broadcast: on/off, brightness, scene 0–15
-//   atios/l<addr>    each DALI lamp (short address): on/off, brightness — polled
+//   atios/l<addr>    each DALI lamp (short address): on/off, brightness, colour
+//                    and white on RGB(W) lamps — polled
 //                    with QUERY ACTUAL LEVEL, and re-read right after another
 //                    controller (a DALI button, Matter, the web UI) sends to the bus
 //   atios/g<n>       each DALI group: on/off, brightness, scene (state as last set)
@@ -40,7 +49,8 @@
 // config.atios = { host, pollInterval = 30 (s), lights?: [short addresses]
 //   (only when the NVM can't be read), monitor = true }
 // Tested against scripts/atios-simulator.js (test/atios.test.js) — not yet
-// against a real SmartCore.
+// against a real SmartCore; the colour commands in particular follow the DALI
+// standard, not anything observed on a real DT8 lamp.
 
 const PollingClient = require('./polling-client');
 
@@ -48,7 +58,11 @@ let WebSocketLib = null;
 try { WebSocketLib = require('ws'); } catch { /* no live events, polling only */ }
 
 const TIMEOUT_MS = 5000;
-const OP = { OFF: 0x00, RECALL_MAX: 0x05, LAST_ACTIVE: 0x0a, SCENE: 0x10, QUERY_LEVEL: 0xa0 };
+const OP = { OFF: 0x00, RECALL_MAX: 0x05, LAST_ACTIVE: 0x0a, SCENE: 0x10, QUERY_LEVEL: 0xa0,
+  ACTIVATE: 226, SET_RGB: 235, SET_WAF: 236, QUERY_COLOUR: 250 };
+const SPECIAL = { DTR0: 0xa3, DTR1: 0xc3, DTR2: 0xc5, ENABLE_DT: 0xc1 };
+const DT8 = 8, MASK = 255;
+const COLOUR_VALUE = { red: 9, green: 10, blue: 11, white: 12 }; // DTR0 for QUERY COLOUR VALUE
 const BUTTON_EVENTS = {
   0x00: 'released', 0x01: 'pressed', 0x02: 'short press', 0x05: 'double press',
   0x09: 'long press', 0x0b: 'long press repeat', 0x0c: 'long press stop', 0x0e: 'free', 0x0f: 'stuck',
@@ -66,6 +80,20 @@ function addressByte(t, command) {
 // percent 0–100 ↔ DALI arc power 0–254 (1–254 when on)
 const toDali = (pct) => (pct <= 0 ? 0 : Math.max(1, Math.min(254, Math.round(1 + (pct * 253) / 100))));
 const fromDali = (lvl) => (lvl <= 0 ? 0 : Math.max(1, Math.min(100, Math.round(((lvl - 1) * 100) / 253))));
+
+// hue 0–360, saturation 0–100 at full value ↔ RGB channel levels 0–254
+function hsToRgb(h, sat) {
+  const s = Math.max(0, Math.min(100, sat)) / 100, hh = (((h % 360) + 360) % 360) / 60;
+  const x = 1 - Math.abs((hh % 2) - 1);
+  const [r, g, b] = [[1, x, 0], [x, 1, 0], [0, 1, x], [0, x, 1], [x, 0, 1], [1, 0, x]][Math.floor(hh) % 6];
+  return [r, g, b].map((c) => Math.round((1 - s + s * c) * 254));
+}
+function rgbToHs(r, g, b) {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0;
+  if (d) h = 60 * (max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4);
+  return { h: (h + 360) % 360, s: max ? (d / max) * 100 : 0 };
+}
 
 // 24-bit event frame → { shortAddress, instanceType?, instanceNumber?, info } | null
 function decodeEvent(data, bits) {
@@ -95,6 +123,16 @@ class AtiosClient extends PollingClient {
     this._wsDelay = 2000;
     this._refreshTimer = null;
     this._discovered = false;
+    this._bus = Promise.resolve(); // one frame sequence on the bus at a time
+  }
+
+  // DTRs and ENABLE DEVICE TYPE are shared by the whole bus and the latter
+  // only covers the very next frame — so a multi-frame sequence must not be
+  // interleaved with the poll's queries.
+  _seq(fn) {
+    const p = this._bus.then(fn);
+    this._bus = p.catch(() => {});
+    return p;
   }
 
   async start() {
@@ -165,9 +203,11 @@ class AtiosClient extends PollingClient {
         this.groups.set(g, grp);
         this._registerLight({ key: grp.key, name: grp.name, target: { group: g }, scenes: true, model: `DALI group ${g}` });
       } else if (a <= 63 && !this.lights.has(a)) {
-        const l = { addr: a, key: `atios/l${a}`, name: c.name || `DALI lamp ${a}` };
+        const channels = Array.isArray(c.device_types) && c.device_types.includes(DT8) ? (Number(c.color_type_features) >> 5) & 7 : 0;
+        const l = { addr: a, key: `atios/l${a}`, name: c.name || `DALI lamp ${a}`, rgb: channels >= 3, white: channels >= 4 };
         this.lights.set(a, l);
-        this._registerLight({ key: l.key, name: l.name, target: { short: a }, scenes: false, model: `DALI lamp, address ${a}`, polled: true });
+        this._registerLight({ key: l.key, name: l.name, target: { short: a }, scenes: false, polled: true, rgb: l.rgb, white: l.white,
+          model: `DALI ${l.white ? 'RGBW ' : l.rgb ? 'RGB ' : ''}lamp, address ${a}` });
       }
     }
     for (const d of inputs) this._registerInput(d);
@@ -175,17 +215,23 @@ class AtiosClient extends PollingClient {
     console.log(`[Atios] ${this.lights.size} lamp(s), ${this.groups.size} group(s), ${this.inputs.size} input device(s)`);
   }
 
-  _registerLight({ key, name, target, scenes, model, polled }) {
+  _registerLight({ key, name, target, scenes, model, polled, rgb, white }) {
     this.registry.registerDevice({
       key, type: 'atios', label: name, model: `Atios SmartCore · ${model}`, icon: '💡', color: 'yellow',
       sensors: [
         { path: 'switch', name: 'Power', format: 'on-off', controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off', capabilityId: 'switch', homekit: 'light-rw' },
         { path: 'level', name: 'Brightness', format: 'percent', controllable: true, type: 'range', capabilityId: 'switchLevel', writeCmd: 'setLevel', min: 0, max: 100, step: 1 },
+        ...(rgb ? [
+          { path: 'hue', name: 'Hue', format: 'number', hidden: true },
+          { path: 'saturation', name: 'Saturation', format: 'number', hidden: true },
+          { path: 'color', name: 'Color', format: 'color', controllable: true, type: 'color', capabilityId: 'colorControl' },
+        ] : []),
+        ...(white ? [{ path: 'white', name: 'White', format: 'percent', controllable: true, type: 'range', capabilityId: 'white', writeCmd: 'setWhite', min: 0, max: 100, step: 1 }] : []),
         ...(scenes ? [{ path: 'scene', name: 'Scene', format: 'number', controllable: true, type: 'range', min: 0, max: 15, step: 1, capabilityId: 'scene', writeCmd: 'recall' }] : []),
         ...(polled ? [{ path: 'online', name: 'Online', sensorType: 'connectivity', hidden: true }] : []),
       ],
       homekit: ['light-rw'],
-      _writeCapability: (cap, cmd, args = []) => this._write(key, target, cap, cmd, args),
+      _writeCapability: (cap, cmd, args = []) => this._seq(() => this._write(key, target, cap, cmd, args)),
     });
   }
 
@@ -239,11 +285,56 @@ class AtiosClient extends PollingClient {
       if (!Number.isInteger(n) || n < 0 || n > 15) throw new Error('scene must be 0–15');
       await this.send([addressByte(target, true), OP.SCENE + n]);
       this.store.update(`${key}/scene`, n);
+    } else if (cap === 'colorControl') {
+      const hue = Number(v?.hue), sat = Number(v?.saturation ?? 100);
+      if (!Number.isFinite(hue) || !Number.isFinite(sat)) throw new Error('colour needs { hue: 0–100, saturation: 0–100 }');
+      await this._setColour(target, OP.SET_RGB, hsToRgb(hue * 3.6, sat));
+      this.store.update(`${key}/hue`, Math.round(hue));
+      this.store.update(`${key}/saturation`, Math.round(sat));
+    } else if (cap === 'white') {
+      const pct = Math.max(0, Math.min(100, Number(v)));
+      if (!Number.isFinite(pct)) throw new Error('white must be 0–100');
+      await this._setColour(target, OP.SET_WAF, [Math.round((pct * 254) / 100), MASK, MASK]);
+      this.store.update(`${key}/white`, pct);
     } else {
       throw new Error(`can't set ${cap}`);
     }
     // a broadcast / group command changes the lamps in it
     if (target.short === undefined) this._scheduleRefresh(500);
+  }
+
+  // three channel levels into DTR0–2, into the lamp's temporary colour, then
+  // ACTIVATE — the channels left at MASK keep their value
+  async _setColour(target, op, [a, b, c]) {
+    const addr = addressByte(target, true);
+    await this.send([SPECIAL.DTR0, a]);
+    await this.send([SPECIAL.DTR1, b]);
+    await this.send([SPECIAL.DTR2, c]);
+    await this.send([SPECIAL.ENABLE_DT, DT8]);
+    await this.send([addr, op]);
+    await this.send([SPECIAL.ENABLE_DT, DT8]);
+    await this.send([addr, OP.ACTIVATE]);
+  }
+
+  async _queryColour(addr, which) {
+    await this.send([SPECIAL.DTR0, which]);
+    await this.send([SPECIAL.ENABLE_DT, DT8]);
+    const v = await this.send([addressByte({ short: addr }, true), OP.QUERY_COLOUR], { wait: true });
+    return v === null || v === MASK ? null : v;
+  }
+
+  async _readColour(l) {
+    const r = await this._queryColour(l.addr, COLOUR_VALUE.red);
+    const g = await this._queryColour(l.addr, COLOUR_VALUE.green);
+    const b = await this._queryColour(l.addr, COLOUR_VALUE.blue);
+    if (r !== null && g !== null && b !== null && r + g + b > 0) {
+      const { h, s } = rgbToHs(r, g, b);
+      this.store.update(`${l.key}/hue`, Math.round(h / 3.6));
+      this.store.update(`${l.key}/saturation`, Math.round(s));
+    }
+    if (!l.white) return;
+    const w = await this._queryColour(l.addr, COLOUR_VALUE.white);
+    if (w !== null) this.store.update(`${l.key}/white`, Math.round((w * 100) / 254));
   }
 
   // ── Polling ─────────────────────────────────────────────────────────────
@@ -259,12 +350,14 @@ class AtiosClient extends PollingClient {
   async _readLevels() {
     for (const l of this.lights.values()) {
       let lvl = null;
-      try { lvl = await this.send([addressByte({ short: l.addr }, true), OP.QUERY_LEVEL], { wait: true }) } catch { /* collision / busy */ }
+      try { lvl = await this._seq(() => this.send([addressByte({ short: l.addr }, true), OP.QUERY_LEVEL], { wait: true })) } catch { /* collision / busy */ }
       if (lvl === null) { this.store.update(`${l.key}/online`, 0); continue }
       this.store.update(`${l.key}/online`, 1);
-      if (lvl === 255) continue; // MASK — level unknown
-      this.store.update(`${l.key}/level`, fromDali(lvl));
-      this.store.update(`${l.key}/switch`, lvl > 0 ? 1 : 0);
+      if (lvl !== 255) { // 255 = MASK — level unknown
+        this.store.update(`${l.key}/level`, fromDali(lvl));
+        this.store.update(`${l.key}/switch`, lvl > 0 ? 1 : 0);
+      }
+      if (l.rgb) await this._seq(() => this._readColour(l)).catch(() => { /* collision / busy */ });
     }
   }
 
@@ -331,3 +424,5 @@ class AtiosClient extends PollingClient {
 module.exports = AtiosClient;
 module.exports.decodeEvent = decodeEvent;
 module.exports.addressByte = addressByte;
+module.exports.hsToRgb = hsToRgb;
+module.exports.rgbToHs = rgbToHs;
