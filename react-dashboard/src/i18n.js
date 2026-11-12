@@ -798,6 +798,7 @@ for (const [l, v] of Object.entries({ pl: 'Odtwarzacz', de: 'Mediaplayer', fr: '
 for (const [k, v] of Object.entries({
   heating_curve_outside: ['na zewnątrz', 'außen', 'dehors', 'fuera', 'fuori', 'надворі'],
   heating_curve_slope: ['Nachylenie', 'Neigung', 'Pente', 'Pendiente', 'Pendenza', 'Нахил'],
+  heating_curve_setpoint: ['Nastawa', 'Sollwert', 'Consigne', 'Consigna', 'Setpoint', 'Уставка'],
   heating_curve_rooms: ['Pokoje', 'Räume', 'Pièces', 'Estancias', 'Stanze', 'Кімнати'],
 })) ['pl', 'de', 'fr', 'es', 'it', 'uk'].forEach((l, i) => { DICT[l][k] = v[i] })
 

@@ -73,6 +73,21 @@ const PARAMS = {
 
 const numeric = (raw) => (raw == null || raw === '' ? NaN : Number(raw));
 
+// The room sources of a curve as [{ k: store key, n: device name, v: value,
+// s?: 1 }] — `s` marks a source that is a setpoint rather than a measurement
+// (it still counts in the average, but the tile shows it apart).
+function roomReadings(keys, store, registry) {
+  const devices = new Map((registry?.getDevices?.() || []).map((d) => [d.key, d]));
+  return keys.map((k) => {
+    const cut = k.lastIndexOf('/');
+    const device = devices.get(k.slice(0, cut));
+    const path = k.slice(cut + 1);
+    const r = { k, n: device?.label || device?.name || k.slice(0, cut), v: numeric(store.get(k)) };
+    if (/setpoint|target/i.test(path)) r.s = 1;
+    return r;
+  });
+}
+
 class HeatingCurveClient {
   constructor(config, store, sensorRegistry) {
     this._config   = config;
@@ -106,7 +121,11 @@ class HeatingCurveClient {
       sensors: [
         { path: 'flowTemperature', name: 'Flow temperature', type: 'number', unit: '°C', homekit: 'temperature', hkName: 'Flow' },
         { path: 'outdoorTemperature', name: 'Outdoor temperature', type: 'number', unit: '°C', homekit: 'temperature', hkName: 'Outdoor' },
-        ...(c.roomKeys.length ? [{ path: 'roomTemperature', name: 'Room temperature', type: 'number', unit: '°C', homekit: 'temperature', hkName: 'Rooms' }] : []),
+        ...(c.roomKeys.length ? [
+          { path: 'roomTemperature', name: 'Room temperature', type: 'number', unit: '°C', homekit: 'temperature', hkName: 'Rooms' },
+          // every room source with its name, for the dashboard tile (JSON, not shown as a reading)
+          { path: 'roomReadings', name: 'Room readings', type: 'text', hidden: true },
+        ] : []),
         ...Object.entries(PARAMS).map(([path, p]) => ({
           path, name: p.name, type: 'range', unit: p.unit || '', min: p.min, max: p.max,
           controllable: true, capabilityId: path, writeCmd: 'set',
@@ -127,11 +146,16 @@ class HeatingCurveClient {
     const outdoor = numeric(this._store.get(c.outdoorKey));
     if (!Number.isFinite(outdoor)) return;
     const key = `heatingcurve/${c.id}`;
-    const rooms = c.roomKeys.map((k) => numeric(this._store.get(k))).filter(Number.isFinite);
+    const readings = roomReadings(c.roomKeys, this._store, this._registry);
+    const rooms = readings.map((r) => r.v).filter(Number.isFinite);
     const roomActual = rooms.length ? Math.round(rooms.reduce((a, b) => a + b, 0) / rooms.length * 10) / 10 : NaN;
     const flow = Math.round(flowTemperature(outdoor, c, roomActual) * 10) / 10;
     this._store.update(`${key}/outdoorTemperature`, outdoor);
     if (Number.isFinite(roomActual)) this._store.update(`${key}/roomTemperature`, roomActual);
+    if (c.roomKeys.length) {
+      const json = JSON.stringify(readings.map((r) => ({ ...r, v: Number.isFinite(r.v) ? r.v : null })));
+      if (json !== this._store.get(`${key}/roomReadings`)) this._store.update(`${key}/roomReadings`, json);
+    }
     this._store.update(`${key}/flowTemperature`, flow);
     this._push(c, flow);
   }
@@ -182,3 +206,4 @@ class HeatingCurveClient {
 module.exports = HeatingCurveClient;
 module.exports.flowTemperature = flowTemperature;
 module.exports.normalizeCurve = normalizeCurve;
+module.exports.roomReadings = roomReadings;

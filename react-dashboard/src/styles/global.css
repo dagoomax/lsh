@@ -3253,3 +3253,17 @@ button.gd-mini { border: 0; width: 100%; text-align: left; font: inherit; cursor
   .hero-sky *, .hero-sky *::before, .hero-live .hero-hello h1, .hero-live .hero-hello p, .hero-live .hero-wx, .hero-live .hero-chip { animation: none !important; }
   .hero-rain, .hero-snow, .hero-flash, .hero-shoot { display: none; }
 }
+
+/* Heating curve tile: the room sensors behind the average, one chip each */
+.curve-rooms { display: flex; flex-wrap: wrap; gap: 4px; }
+.curve-rooms span {
+  display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 2px 7px 2px 6px; border-radius: 999px;
+  font-size: 10.5px; line-height: 1.5; color: var(--text2); background: color-mix(in srgb, var(--text) 7%, transparent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.curve-rooms i { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--green, #34c759); }
+.curve-rooms [data-state="cold"] i { background: var(--blue, #3b82f6); }
+.curve-rooms [data-state="warm"] i { background: var(--orange, #ff9500); }
+.curve-rooms b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.curve-rooms [data-setpoint] { opacity: .55; }
+.curve-rooms [data-setpoint] i { background: none; box-shadow: inset 0 0 0 1.5px currentColor; }

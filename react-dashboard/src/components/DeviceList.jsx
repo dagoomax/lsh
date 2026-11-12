@@ -246,6 +246,13 @@ function HeatingCurveTile({ device, merged, cmd }) {
   const v = (p) => { const x = merged[p]?.value ?? r[p]?.value; return x == null ? null : Number(x) }
   const p = curveParams({ room: v('room'), slope: v('slope'), shift: v('shift'), minFlow: device.minFlow, maxFlow: device.maxFlow })
   const outdoor = v('outdoorTemperature'), flow = v('flowTemperature'), rooms = v('roomTemperature')
+  // every room sensor behind the average (Hue, tado, …), coldest first
+  const sources = useMemo(() => {
+    try {
+      const list = JSON.parse(merged.roomReadings?.value ?? r.roomReadings?.value ?? '[]')
+      return (Array.isArray(list) ? list : []).filter(s => s && s.v != null).sort((a, b) => (a.s || 0) - (b.s || 0) || a.v - b.v)
+    } catch { return [] }
+  }, [merged.roomReadings?.value, r.roomReadings?.value])
   const W = 220, H = 64, lo = Math.min(20, p.minFlow), hi = Math.max(p.maxFlow, lo + 10)
   const x = (o) => ((Math.min(20, Math.max(-20, o)) + 20) / 40) * W
   const y = (f) => H - 4 - ((f - lo) / (hi - lo)) * (H - 8)
@@ -273,6 +280,17 @@ function HeatingCurveTile({ device, merged, cmd }) {
           <span style={{ marginLeft: 'auto' }}>{gt('heating_curve_rooms', 'Rooms')} {rooms.toFixed(1)}°C / {p.room.toFixed(1)}°C</span>
         )}
       </div>
+      {sources.length > 0 && (
+        <div className="curve-rooms">
+          {sources.map(s => (
+            <span key={s.k} data-setpoint={s.s ? '' : undefined}
+              data-state={s.s ? undefined : s.v < p.room - 0.5 ? 'cold' : s.v > p.room + 0.5 ? 'warm' : 'ok'}
+              title={s.s ? gt('heating_curve_setpoint', 'Setpoint') : undefined}>
+              <i/>{s.n}<b>{Number(s.v).toFixed(1)}°</b>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
-const { flowTemperature, normalizeCurve } = require('../src/heating-curve-client');
+const { flowTemperature, normalizeCurve, roomReadings } = require('../src/heating-curve-client');
 
 const curve = (over = {}) => normalizeCurve({ id: 'x', ...over });
 
@@ -36,4 +36,15 @@ test('room compensation raises flow when rooms are cold, lowers when warm', () =
   assert.ok(Math.abs(flowTemperature(0, c, 22) - (base - 6)) < 1e-9);
   assert.strictEqual(flowTemperature(0, c, NaN), base); // no room reading → plain curve
   assert.strictEqual(flowTemperature(0, curve({ roomFactor: 0 }), 15), base);
+});
+
+test('roomReadings names each source and marks setpoints', () => {
+  const values = { 'homey/a/temperature': 22.5, 'tado/1/heatingSetpoint': '21' };
+  const store = { get: (k) => (k in values ? values[k] : null) };
+  const registry = { getDevices: () => [{ key: 'homey/a', label: 'Hue Garderoba' }, { key: 'tado/1', label: 'Salon' }] };
+  const r = roomReadings(['homey/a/temperature', 'tado/1/heatingSetpoint', 'gone/x/temperature'], store, registry);
+  assert.deepStrictEqual(r[0], { k: 'homey/a/temperature', n: 'Hue Garderoba', v: 22.5 });
+  assert.deepStrictEqual(r[1], { k: 'tado/1/heatingSetpoint', n: 'Salon', v: 21, s: 1 });
+  assert.strictEqual(r[2].n, 'gone/x');
+  assert.ok(Number.isNaN(r[2].v)); // no reading yet is not 0 °C
 });
