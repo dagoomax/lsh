@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import HomePlan from './HomePlan'
 import DeviceModal from './DeviceModal'
 import { getGroup } from './DeviceList'
@@ -145,15 +145,45 @@ export default function WallDashboard({ devices, energy, roomsMeta, onClose }) {
   // SolarEdge as the source for solar/battery/grid/loads.
   const resolvedEnergy = useMemo(() => resolveEnergy(energy, loadEnergySources()), [energy])
 
+  // The left column was a fixed 260 px, so on a big wall screen its widgets
+  // sat tiny at the top of an empty card. Scale it (and the forecast under
+  // it) so the widgets fill the height: one factor, --wall-z, drives the
+  // column width, the forecast row and a CSS zoom on the widgets.
+  const dashRef = useRef(null)
+  const fitRef = useRef(null)
+  useLayoutEffect(() => {
+    const dash = dashRef.current, box = fitRef.current
+    if (!dash || !box) return
+    let z = 1
+    const fit = () => {
+      const natural = box.getBoundingClientRect().height / z // widget stack at 1×
+      if (!natural) return
+      // column height = viewport − padding (52) − gap (18) − forecast row (150·z); the card pads 40
+      const byHeight = (window.innerHeight - 52 - 18 - 40) / (natural + 150)
+      const byWidth = (window.innerWidth * 0.24) / 260 // never more than a quarter of the screen
+      const next = Math.max(0.7, Math.min(byHeight, byWidth, 2.6))
+      if (Math.abs(next - z) < 0.01) return
+      z = next
+      dash.style.setProperty('--wall-z', z.toFixed(3))
+    }
+    fit()
+    const ro = new ResizeObserver(fit) // widgets appear and grow as data arrives
+    ro.observe(box)
+    window.addEventListener('resize', fit)
+    return () => { ro.disconnect(); window.removeEventListener('resize', fit) }
+  }, [])
+
   return (
-    <div className="wall-dash">
+    <div className="wall-dash" ref={dashRef}>
       <button className="wall-exit" onClick={() => setShowExitPin(true)} title={gt('exit_wall', 'Exit wall view')} aria-label={gt('exit_wall', 'Exit wall view')}>✕</button>
       {showExitPin && <ExitPinPrompt onConfirm={onClose} onCancel={() => setShowExitPin(false)} />}
 
       <div className="wall-region wall-region-energy">
-        <EnergyRadial energy={resolvedEnergy} />
-        {evPower != null && <EvKioskCard evPower={evPower} />}
-        <ThermostatPanel devices={devices} onCommand={onCommand} />
+        <div className="wall-energy-fit" ref={fitRef}>
+          <EnergyRadial energy={resolvedEnergy} />
+          {evPower != null && <EvKioskCard evPower={evPower} />}
+          <ThermostatPanel devices={devices} onCommand={onCommand} />
+        </div>
       </div>
       <div className="wall-region wall-region-forecast"><ForecastStrip /></div>
       <div className="wall-region wall-region-rightcol">

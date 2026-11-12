@@ -14,6 +14,7 @@
     "src/data-store.js",
     "src/detection-boxes.js",
     "src/device-definitions.js",
+    "src/glb-boxes.js",
     "src/guide-generator.js",
     "src/homekit-bridge.js",
     "src/homekit-camera.js",
@@ -480,7 +481,7 @@
       "configKeys": [
         "matter"
       ],
-      "when": "(config.matter?.bridge?.enabled)",
+      "when": "(config.matter?.bridge?.enabled || config.matter?.controller?.enabled) && (config.matter.bridge?.enabled)",
       "files": [
         "src/matter-bridge.js",
         "src/matter-storage.js"
@@ -495,7 +496,7 @@
       "configKeys": [
         "matter"
       ],
-      "when": "(config.matter?.controller?.enabled)",
+      "when": "(config.matter?.bridge?.enabled || config.matter?.controller?.enabled) && (config.matter.controller?.enabled)",
       "files": [
         "src/matter-client.js",
         "src/matter-storage.js"

@@ -5,6 +5,7 @@ const fs   = require('fs');
 const path = require('path');
 const { writeConfigFile } = require('../config-file-cache');
 const { editPinOk, readConfigFile } = require('./helpers');
+const { glbToBoxes } = require('../glb-boxes');
 
 module.exports = function register(router) {
   // ── Imported 3D floor-plan model (GLB or OBJ) ──────────────
@@ -52,6 +53,29 @@ module.exports = function register(router) {
     const file = String(req.params.file || '');
     if (!/^floorplan-[a-z0-9]+\.(glb|obj)$/.test(file)) return res.status(400).end();
     res.sendFile(path.join(MODEL_DIR, file), (err) => { if (err && !res.headersSent) res.status(404).end(); });
+  });
+
+  // The model reduced to boxes, for the HTML/CSS view of the Plan
+  // (PlanHtmlModel.jsx) — see src/glb-boxes.js. GLB only: an OBJ has no
+  // per-part bounds without decoding its geometry. Parsed once per file and
+  // alignment, then served from memory.
+  let boxCache = null;
+  router.get('/plan-model/boxes', (req, res) => {
+    const model = readConfigFile().homePlan?.model;
+    const file = String(model?.url || '').split('/').pop();
+    if (!model || !/^floorplan-[a-z0-9]+\.(glb|obj)$/.test(file)) return res.status(404).json({ success: false, error: 'No model uploaded' });
+    if (model.format !== 'glb') return res.status(400).json({ success: false, error: 'The HTML view needs a .glb model' });
+    const key = [file, model.scale ?? 1, model.rotationX ?? 0, model.rotationY ?? 0].join('|');
+    try {
+      if (boxCache?.key !== key) {
+        const data = glbToBoxes(fs.readFileSync(path.join(MODEL_DIR, file)),
+          { scale: Number(model.scale) || 1, rotationX: Number(model.rotationX) || 0, rotationY: Number(model.rotationY) || 0 });
+        boxCache = { key, data };
+      }
+      res.json({ success: true, ...boxCache.data });
+    } catch (err) {
+      res.status(err.code === 'ENOENT' ? 404 : 500).json({ success: false, error: err.message });
+    }
   });
 
   // Scale/rotation so an imported model (arbitrary native scale/orientation

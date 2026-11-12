@@ -12,6 +12,7 @@ import { PLAN_SURROUNDINGS_3D } from '../planSurroundings3D'
 // Lazy: pulls in three.js + the GLTF/OBJ loaders, a meaningful chunk of code
 // nobody who hasn't imported a model needs on every page load.
 const PlanModelViewer = lazy(() => import('./PlanModelViewer'))
+const PlanHtmlModel = lazy(() => import('./PlanHtmlModel'))
 
 // Isometric home plan — rooms from config.homePlan (Settings → Home Plan),
 // falling back to an automatic grid of the rooms assigned to devices.
@@ -456,6 +457,15 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
   // a layer overlaid on the isometric board, so it's its own on/off switch
   // rather than joining showFurniture/showWalls3D etc. above.
   const [showModelView, setShowModelView] = useState(false)
+  // The same model drawn in HTML/CSS (PlanHtmlModel) takes the board's place
+  // inside the Plan view. On by default once a GLB is imported; the choice
+  // is remembered per browser. A kiosk has no toolbar to switch back with,
+  // so there it only shows when that browser chose it.
+  const [htmlModel, setHtmlModel] = useState(() => {
+    const v = localStorage.getItem('planHtmlModel')
+    return kiosk ? v === '1' : v !== '0'
+  })
+  const toggleHtmlModel = () => setHtmlModel((v) => { localStorage.setItem('planHtmlModel', v ? '0' : '1'); return !v })
   const [modelBusy, setModelBusy] = useState(false)
   const [showModelAlign, setShowModelAlign] = useState(false)
 
@@ -774,11 +784,15 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
   }
   const totalPowerW = powerDevices.reduce((sum, d) => sum + d.watts, 0)
   const solarW = energy?.solar?.power
+  // HTML model in place of the drawn board: the board's own layers, zoom and
+  // room pills have nothing to act on, so the toolbar drops them
+  const hasHtmlModel = plan.model?.url && plan.model.format === 'glb'
+  const htmlView = !!(hasHtmlModel && htmlModel)
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div className="plan-filter-bar">
-        {floors.length > 1 && (
+        {!htmlView && floors.length > 1 && (
           <div style={{ display: 'flex', gap: 6, marginRight: 10 }}>
             {floors.map((f) => (
               <button key={f} className="plan-filter-pill" data-active={String(activeFloor === f)}
@@ -806,7 +820,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
             })}
           </>
         )}
-        {floorRooms.length > 1 && (
+        {!htmlView && floorRooms.length > 1 && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {floorRooms.map((r) => (
               <button key={r.name} className="plan-filter-pill" data-active={String(focusRoom === r.name)}
@@ -817,6 +831,18 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
           </div>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, position: 'relative', flexWrap: 'wrap' }}>
+          {hasHtmlModel && (
+            <div className="plan-view-switch" role="group" aria-label={gt('plan_view', 'View')}>
+              <button type="button" data-active={String(!htmlView)} onClick={() => htmlView && toggleHtmlModel()}>
+                {gt('plan_view_board', 'Plan')}
+              </button>
+              <button type="button" data-active={String(htmlView)} onClick={() => !htmlView && toggleHtmlModel()}
+                title={gt('plan_view_model_hint', 'The imported 3D model drawn in HTML — devices, lights and walls you can slice')}>
+                {gt('plan_view_model', 'Model')}
+              </button>
+            </div>
+          )}
+          {!htmlView && <>
           {!kiosk && <button className="plan-filter-pill" data-active={String(showAdd)}
             onClick={() => setShowAdd((v) => !v)}>
             ＋ {gt('add_device', 'Add device')}
@@ -907,6 +933,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
               🏘️ {gt('surroundings', 'Surroundings')}
             </button>
           )}
+          </>}
           {!kiosk && (
             <button className="plan-filter-pill" disabled={modelBusy}
               title={gt('import_model_hint', 'Import a 3D floor-plan model (.glb or .obj) as an alternative to the drawn board')}
@@ -923,7 +950,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
             <button className="plan-filter-pill" data-active={String(showModelView)}
               onClick={() => setShowModelView((v) => !v)}
               title={gt('model_view_hint', 'Switch between the imported 3D model and the drawn board')}>
-              🧊 {gt('model_view', '3D Model')}
+              🧊 {gt('model_view_webgl', '3D Model (WebGL)')}
             </button>
           )}
           {!kiosk && plan?.model?.url && showModelView && (
@@ -944,15 +971,17 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
               🗑️
             </button>
           )}
+          {!htmlView && <>
           {!kiosk && <button className="plan-filter-pill" onClick={() => zoomBy(1 / 1.25)} title="Zoom out">−</button>}
           {!kiosk && <button className="plan-filter-pill" onClick={() => zoomBy(1.25)} title="Zoom in">+</button>}
           <button className="plan-filter-pill" onClick={() => rotate(-1)} title="Rotate left">↺</button>
           <button className="plan-filter-pill" onClick={() => rotate(1)} title="Rotate right">↻</button>
           {!kiosk && <button className="plan-filter-pill" data-active={String(mode3d)} onClick={toggle3d}
             title="Isometric / flat">3D</button>}
+          </>}
         </div>
       </div>
-      <div className="plan-viewport" ref={viewportRef}
+      <div className="plan-viewport" ref={viewportRef} data-html-model={htmlView || undefined}
         style={{ position: 'relative', overflow: focusRoom ? 'hidden' : undefined }}>
       {plan?.model?.url && showModelView && (
         <div className="pmv-full">
@@ -964,18 +993,23 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
           </Suspense>
         </div>
       )}
-      {kiosk && (
+      {htmlView && (
+        <Suspense fallback={<div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontSize: 13 }}>…</div>}>
+          <PlanHtmlModel model={plan.model} devices={devices} groupOf={groupOf} onOpen={onOpen} filter={filter} />
+        </Suspense>
+      )}
+      {!htmlView && kiosk && (
         <div className="plan-kiosk-zoom">
           <button onClick={() => zoomBy(1 / 1.25)} title="Zoom out">−</button>
           <button onClick={() => zoomBy(1.25)} title="Zoom in">+</button>
         </div>
       )}
-      {focusRoom && (
+      {!htmlView && focusRoom && (
         <button className="plan-filter-pill plan-zoom-back" onClick={unfocus}>
           ⤺ {roomsMeta[focusRoom]?.icon || '🏠'} {focusRoom}
         </button>
       )}
-      <div className="plan-stage" ref={stageRef} style={{
+      {!htmlView && <div className="plan-stage" ref={stageRef} style={{
         width: maxX * U, height: maxY * U,
         transform: focusT ? `translate(${focusT.x}px, ${focusT.y}px) scale(${focusT.s})` : 'none',
         // device chips counter-scale by this so they keep their screen size
@@ -1095,7 +1129,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
             })
           })()}
         </div>
-      </div>
+      </div>}
       </div>
     </div>
   )

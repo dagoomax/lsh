@@ -1,0 +1,138 @@
+/* ── HTML/CSS 3D model of the imported floor plan (PlanHtmlModel.jsx) ──────
+   The GLB reduced to boxes and drawn with CSS transforms — no WebGL. The
+   camera is three custom properties on .phm: --phm-yaw, --phm-tilt and
+   --phm-zoom; dragging writes them directly, so orbiting never re-renders. */
+.phm {
+  position: relative; flex: 1; min-height: 0; width: 100%; height: 100%; overflow: hidden;
+  border-radius: var(--sheet-radius, 18px);
+  background:
+    radial-gradient(120% 80% at 50% 105%, color-mix(in srgb, var(--accent, #ff2d6f) 20%, transparent), transparent 62%),
+    radial-gradient(90% 70% at 50% 40%, rgba(255,255,255,0.06), transparent 70%),
+    #0b0b12;
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+  --phm-yaw: -45deg; --phm-tilt: 55deg; --phm-zoom: 1; --phm-x: 0px; --phm-y: 0px;
+}
+.phm[data-dragging] { cursor: grabbing; }
+.phm-stage {
+  position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+  perspective: 3200px; transform: translate(var(--phm-x), var(--phm-y)) scale(var(--phm-zoom));
+}
+.phm-scene {
+  position: absolute; transform-style: preserve-3d;
+  transform: rotateX(var(--phm-tilt)) rotateZ(var(--phm-yaw));
+}
+.phm-pins { pointer-events: none; }
+.phm-pins .phm-pin { pointer-events: auto; }
+.phm[data-fly] .phm-scene { transition: transform .6s cubic-bezier(.4,.1,.2,1); }
+.phm[data-fly] .phm-stage { transition: transform .45s cubic-bezier(.4,.1,.2,1); }
+.phm[data-fly] .phm-pin-pos { transition: transform .6s cubic-bezier(.4,.1,.2,1); }
+
+/* soft shadow the building throws on the ground */
+.phm-ground {
+  position: absolute; inset: 0; border-radius: 6px; background: rgba(0,0,0,0.5);
+  box-shadow: 0 0 60px 30px rgba(0,0,0,0.5), 40px 46px 90px 20px rgba(0,0,0,0.45);
+}
+
+/* the floor plane: finishes, rugs, wall shadows and light pools, all flat */
+.phm-floor { position: absolute; inset: 0; overflow: hidden; }
+.phm-flat { position: absolute; }
+.phm-flat[data-kind="rug"] { border-radius: 3px; box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
+.phm-flat[data-kind="shadow"] { background: rgba(30,22,12,0.22); box-shadow: -5px -7px 12px 3px rgba(30,22,12,0.3); }
+.phm-glow {
+  position: absolute; border-radius: 50%; pointer-events: none; mix-blend-mode: screen;
+  background: radial-gradient(circle, rgba(255,214,150,0.95), rgba(255,190,110,0.45) 38%, transparent 70%);
+  animation: phm-glow-in .5s ease both;
+}
+@keyframes phm-glow-in { from { opacity: 0; transform: scale(.6); } }
+/* with a light on, the rest of the home dims a little so the pools read */
+.phm-dim { position: absolute; inset: 0; background: rgba(8,10,24,0.28); pointer-events: none; }
+
+/* extruded boxes */
+.phm-box { position: absolute; transform-style: preserve-3d; pointer-events: none; }
+.phm-face { position: absolute; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+/* Materials (.phm-t-* from plan-html-textures.css set --tex) over each face's
+   own shaded colour, under a contact shadow (--ao) where a side meets the floor */
+.phm-face, .phm-flat { background-image: var(--ao, none), var(--tex, none); background-size: auto, var(--tex-size, auto); }
+.phm-t-gloss { --tex: linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0) 45%, rgba(0,0,0,0.08)); --tex-size: 100% 100%; }
+.phm[data-tex] .phm-n { --ao: linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(0,0,0,0) 50%); }
+.phm[data-tex] .phm-s { --ao: linear-gradient(to top, rgba(0,0,0,0.15), rgba(0,0,0,0) 50%); }
+.phm[data-tex] .phm-w { --ao: linear-gradient(to right, rgba(0,0,0,0.15), rgba(0,0,0,0) 50%); }
+.phm[data-tex] .phm-e { --ao: linear-gradient(to left, rgba(0,0,0,0.15), rgba(0,0,0,0) 50%); }
+.phm[data-tex] .phm-top { --ao: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0) 60%); }
+.phm[data-tex] .phm-box[data-glass] .phm-face { --ao: none; --tex: linear-gradient(115deg, rgba(255,255,255,0) 28%, rgba(255,255,255,0.4) 40%, rgba(255,255,255,0) 52%, rgba(255,255,255,0.15) 70%, rgba(255,255,255,0) 80%); --tex-size: 100% 100%; }
+.phm[data-tex] .phm-flat[data-kind="rug"] { box-shadow: inset 0 0 0 2px rgba(0,0,0,0.14), inset 0 0 0 4px rgba(255,255,255,0.12), 0 1px 4px rgba(0,0,0,0.3); }
+.phm-top { inset: 0; }
+.phm-n { left: 0; right: 0; top: 0;    transform-origin: top;    transform: rotateX(90deg); }
+.phm-s { left: 0; right: 0; bottom: 0; transform-origin: bottom; transform: rotateX(-90deg); }
+.phm-w { top: 0; bottom: 0; left: 0;   transform-origin: left;   transform: rotateY(-90deg); }
+.phm-e { top: 0; bottom: 0; right: 0;  transform-origin: right;  transform: rotateY(90deg); }
+.phm-box[data-round] .phm-face { border-radius: 50%; }
+.phm-box[data-glass] .phm-face { background-color: rgba(170,215,232,0.3) !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35); }
+
+/* device pins: stand upright and face the camera whatever the orbit */
+.phm-pin-pos {
+  position: absolute; width: 0; height: 0; transform-style: preserve-3d;
+  transform: translateZ(var(--z)) rotateZ(calc(-1 * var(--phm-yaw))) rotateX(calc(-1 * var(--phm-tilt))) scale(calc(1 / var(--phm-zoom)));
+}
+.phm-pin {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -100%);
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px; border-radius: 999px; border: none;
+  background: rgba(22,22,28,0.82); color: #fff; font: inherit; font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4), inset 0 0 0 0.5px rgba(255,255,255,0.18); cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.phm-pin::after { /* the stalk down to the fixture */
+  content: ''; position: absolute; left: 50%; top: 100%; width: 1.5px; height: 7px; margin-left: -0.75px;
+  background: rgba(255,255,255,0.55);
+}
+.phm-pin i { width: 10px; height: 10px; border-radius: 50%; flex: none; background: color-mix(in srgb, var(--c) 50%, #555); transition: background .2s, box-shadow .2s; }
+.phm-pin[data-on] { background: rgba(255,255,255,0.95); color: #111; }
+.phm-pin[data-on] i { background: var(--c); box-shadow: 0 0 9px var(--c); }
+.phm-pin-text { display: none; padding-right: 6px; }
+.phm-pin-text small { opacity: .6; font-size: inherit; font-variant-numeric: tabular-nums; margin-left: 5px; }
+.phm[data-labels] .phm-pin-text, .phm-pin:hover .phm-pin-text, .phm-pin:focus-visible .phm-pin-text { display: inline; }
+.phm-pin:hover, .phm-pin:focus-visible { z-index: 5; outline: none; box-shadow: 0 2px 14px rgba(0,0,0,0.5), 0 0 0 2px var(--c); }
+.phm-pin-pos[data-dim] { opacity: .18; pointer-events: none; }
+
+/* controls */
+.phm-bar {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 30;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: calc(100% - 24px);
+  cursor: default;
+}
+.phm-seg {
+  display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px;
+  background: rgba(20,20,26,0.66); box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.12);
+  backdrop-filter: blur(16px) saturate(1.5); -webkit-backdrop-filter: blur(16px) saturate(1.5);
+}
+.phm-seg button {
+  border: none; background: none; color: rgba(255,255,255,0.75); font: inherit; font-size: 12.5px; font-weight: 600;
+  padding: 6px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; min-width: 32px; line-height: 1.2;
+}
+.phm-seg button.phm-turn { font-size: 16px; padding: 3px 9px; }
+.phm-seg button:hover { color: #fff; }
+.phm-seg button[data-active] { background: rgba(255,255,255,0.92); color: #111; }
+.phm-seg label { display: inline-flex; align-items: center; gap: 8px; padding: 0 10px 0 12px; color: rgba(255,255,255,0.75); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.phm-seg input[type="range"] { width: 110px; height: 4px; }
+.phm-seg input[type="range"]::-webkit-slider-thumb { width: 16px; height: 16px; }
+.phm-status {
+  position: absolute; left: 14px; top: 12px; z-index: 30; display: flex; align-items: center; gap: 8px; pointer-events: none;
+  padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85);
+  background: rgba(20,20,26,0.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.phm-status b { color: #ffd27a; font-variant-numeric: tabular-nums; }
+.phm-status span { opacity: .55; font-weight: 500; }
+.phm-hint {
+  position: absolute; top: 12px; right: 14px; z-index: 30; padding: 6px 12px; border-radius: 999px; font-size: 11px; pointer-events: none;
+  color: rgba(255,255,255,0.6); background: rgba(20,20,26,0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.phm-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.6); font-size: 13px; padding: 24px; text-align: center; }
+@media (max-width: 640px) {
+  .phm-hint { display: none; }
+  .phm-seg button { padding: 6px 9px; font-size: 12px; }
+  .phm-seg input[type="range"] { width: 70px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .phm[data-fly] .phm-scene, .phm[data-fly] .phm-stage, .phm[data-fly] .phm-pin-pos { transition: none; }
+  .phm-glow { animation: none; }
+}

@@ -950,6 +950,18 @@ input[type="range"]::-moz-range-thumb {
   transition: background 0.15s, color 0.15s;
 }
 .plan-filter-pill[data-active="true"] { background: var(--text); color: var(--bg); }
+/* Plan ⇄ Model: which drawing fills the viewport (HomePlan.jsx) */
+.plan-view-switch {
+  display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px;
+  background: var(--card); box-shadow: var(--shadow-1);
+}
+.plan-view-switch button {
+  border: none; background: none; color: var(--text2); font: inherit; font-size: 12.5px; font-weight: 600;
+  padding: 4px 13px; border-radius: 999px; cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.plan-view-switch button[data-active="true"] { background: var(--text); color: var(--bg); }
+/* the HTML model fills the viewport edge to edge and handles its own gestures */
+.plan-viewport[data-html-model] { padding: 8px 0 0; overflow: hidden; }
 
 /* Pseudo-3D room walls (extruded from the floor plate edges) */
 .plan-wall {
@@ -1580,8 +1592,9 @@ input[type="range"]::-moz-range-thumb {
   background: #000;
   color: #fff;
   display: grid;
-  grid-template-columns: 260px 1fr 270px;
-  grid-template-rows: 128px 1fr 150px;
+  /* --wall-z: WallDashboard.jsx scales the left column to fill its height */
+  grid-template-columns: calc(260px * var(--wall-z, 1)) 1fr 270px;
+  grid-template-rows: 128px 1fr calc(150px * var(--wall-z, 1));
   grid-template-areas:
     "energy   plan rightcol"
     "energy   plan rightcol"
@@ -1607,8 +1620,11 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 24px;
   background: #1c1c1e;
 }
-.wall-region-energy { grid-area: energy; display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 20px 16px; overflow-y: auto; }
-.wall-region-energy > .wall-thermo { align-self: stretch; }
+.wall-region-energy { grid-area: energy; display: flex; flex-direction: column; align-items: center; padding: 20px 16px; overflow-y: auto; }
+/* laid out at the 1× column width (260 − 32 padding), then zoomed as a whole */
+.wall-energy-fit { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 228px; flex-shrink: 0; zoom: var(--wall-z, 1); }
+.wall-energy-fit > .wall-thermo { align-self: stretch; }
+.wall-region-forecast .wall-forecast { zoom: var(--wall-z, 1); }
 .wall-region-forecast { grid-area: forecast; align-self: end; padding: 16px 18px; }
 .wall-region-rightcol { grid-area: rightcol; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; overflow: hidden; padding: 18px 20px; }
 .wall-region-rightcol .wall-agenda { flex: 1; min-height: 0; overflow-y: auto; align-self: stretch; }
