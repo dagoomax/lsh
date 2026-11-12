@@ -11,6 +11,7 @@ const ROUTE_GROUPS = [
   require('./routes/device-customization'),
   require('./routes/plan-decor'),
   require('./routes/plan-model'),
+  require('./routes/ring'),
   require('./routes/home-plan'),
   require('./routes/ev-charging'),
   require('./routes/tariff'),

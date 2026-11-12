@@ -38,6 +38,7 @@ module.exports = function register(router, ctx) {
     const karcherCams = clients.karcher ? clients.karcher.getCameras() : [];
     const dahuaCams   = clients.dahua ? clients.dahua.getCameras() : [];
     const haCams      = clients.homeassistant ? clients.homeassistant.getCameras() : [];
+    const ringCams    = clients.ring ? clients.ring.getCameras() : [];
     // Manual cameras with an `onvif` section get PTZ through the generic proxy;
     // ones with an RTSP `url` but no snapshot/MJPEG source of their own (e.g.
     // WHEP-only) get a thumbnail via the generic ffmpeg-grab-a-frame proxy.
@@ -54,6 +55,6 @@ module.exports = function register(router, ctx) {
       ...(c.record && c.url && clients.recorder ? { recordings: require('../camera-recorder').slugify(c.name) } : {}),
       ...(clients.waypoints?.cams.has(require('../ptz-waypoints').slugify(c.name)) ? { waypoints: require('../ptz-waypoints').slugify(c.name) } : {}),
     }));
-    res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...yaleCams, ...stCams, ...karcherCams, ...dahuaCams, ...haCams] });
+    res.json({ success: true, data: [...manualCams, ...unifiCams, ...reolinkCams, ...kenikCams, ...mobotixCams, ...axisCams, ...yaleCams, ...stCams, ...karcherCams, ...dahuaCams, ...haCams, ...ringCams] });
   });
 };

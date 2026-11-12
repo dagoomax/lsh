@@ -64,7 +64,7 @@ const genericPlatform = (key) => {
 // that isn't listed here falls into a trailing "Other" group.
 const GROUPS = [
   { id: 'energy',     label: 'Energy',              keys: ['victron-mqtt', 'victron-vrm', 'solaredge', 'sofar', 'solaraccelerator', 'tauronTariff', 'ocpp', 'easee', 'wallbox', 'zaptec', 'goecharger', 'modbus', 'modbusEmu', 'zendure', 'ugreen', 'ankerSolix'] },
-  { id: 'security',   label: 'Security & access',   keys: ['satel', 'dsc', 'unifiAccess', 'yale', 'sip'] },
+  { id: 'security',   label: 'Security & access',   keys: ['satel', 'dsc', 'unifiAccess', 'yale', 'ring', 'sip'] },
   { id: 'cameras',    label: 'Cameras',             keys: ['reolink', 'axis', 'dahua', 'mobotix', 'tuya-ipc', 'objectDetection'] },
   { id: 'control',    label: 'Lighting & control',  keys: ['loxone', 'loxoneOut', 'knx', 'fibaro', 'fibaroOut', 'boneio', 'grenton', 'nippy', 'ampio', 'wirenboard', 'shelly', 'wled', 'atios', 'hue', 'tradfri', 'tuya', 'sonoff', 'dirigera', 'somfy', 'suppla', 'smartbob', 'esphome', 'arduino', 'broadlink', 'can', 'lsh-ble'] },
   { id: 'climate',    label: 'Climate & weather',   keys: ['vitodens', 'auxair', 'daikin', 'gree', 'midea', 'melcloud', 'sensibo', 'emodule', 'dyson', 'vents', 'mc6', 'airly', 'loxoneWeather', 'zehnder'] },

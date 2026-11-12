@@ -2887,6 +2887,25 @@ Test without hardware: `node scripts/dahua-simulator.js 8096` (login `admin` / `
 
 ---
 
+### `ring`
+
+```json
+"ring": {
+  "pollInterval": 60,
+  "batterySnapshotSeconds": 600,
+  "streams": { "123456789": "http://127.0.0.1:1984/api/webrtc?src=ring_front" }
+}
+```
+
+**Ring cameras and video doorbells** through Ring's cloud (`src/ring-client.js`, no npm deps). Ring has no public or local API; this uses the private API of the Ring app, as documented by the open-source `ring-client-api`. Ring can change it without notice. **Not yet run against a real Ring account** — it is exercised against a fake Ring cloud in `test/ring.test.js`.
+
+- **Sign in once** — `node scripts/ring-auth.js` asks for the account e-mail, password and the verification code Ring sends, then restart LSH. The password is not stored; Ring's refresh token is kept in `persist/ring-auth.json` and rewritten every time Ring rotates it. `POST /api/settings/ring/login` `{ email, password, code }` does the same over the API (first call answers `needs2fa`). A token made with `ring-client-api`'s `ring-auth-cli` also works as `"refreshToken"`.
+- **Cameras** — every doorbell and camera of the account becomes a camera tile (snapshot at `/api/ring/snapshot/<id>`) and a device `ring/<id>` with `online`, `battery` (battery models), `motionDetection`, `motion`, `ding` (doorbells), `lastEvent` / `lastEventTime`, and `light` / `siren` switches where the hardware has them.
+- **Snapshots** — a wired camera gives a new picture every 10 s at most (`snapshotSeconds`), a battery one every 10 minutes (`batterySnapshotSeconds`), because each snapshot wakes the camera up.
+- **Motion and doorbell presses arrive with a delay** of up to one `pollInterval` (seconds, minimum 20): Ring pushes them to phones as notifications, and LSH reads the last event when it polls.
+- **Live video is not built in.** go2rtc (1.9.13 or newer) can stream Ring cameras: add `ring_front: ring:?device_id=…&refresh_token=…` to its config (its web UI → Add → Ring finds both values) and map the camera id to that stream's WebRTC URL in `streams`.
+- Chimes, the Ring Alarm base station and smart lighting are not covered.
+
 ### `objectDetection`
 
 ```json

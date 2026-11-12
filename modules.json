@@ -130,6 +130,7 @@
     "src/routes/private-events.js",
     "src/routes/recordings.js",
     "src/routes/reolink.js",
+    "src/routes/ring.js",
     "src/routes/roborock.js",
     "src/routes/room-service.js",
     "src/routes/satel-settings.js",
@@ -955,6 +956,18 @@
         "src/dahua-client.js",
         "src/http-digest.js",
         "src/mjpeg-relay.js"
+      ],
+      "deps": {}
+    },
+    "ring": {
+      "entry": "src/ring-client.js",
+      "configKeys": [
+        "ring"
+      ],
+      "when": "(config.ring)",
+      "files": [
+        "src/polling-client.js",
+        "src/ring-client.js"
       ],
       "deps": {}
     },

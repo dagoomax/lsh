@@ -557,6 +557,9 @@
       }
     ]
   },
+  "ring": {
+    "pollInterval": 60
+  },
   "yale": {
     "username": "you@example.com",
     "password": "",

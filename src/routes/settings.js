@@ -98,6 +98,7 @@ module.exports = function register(router, ctx) {
     }
     if (safe.roborock?.cloud?.password) safe.roborock.cloud.password = '••••••••';
     if (safe.karcher?.password) safe.karcher.password = '••••••••';
+    if (safe.ring?.refreshToken) safe.ring.refreshToken = '••••••••';
     if (safe.ecovacs?.password) safe.ecovacs.password = '••••••••';
     if (safe.mqttBroker?.password) safe.mqttBroker.password = '••••••••';
     if (safe.tuya?.accessSecret) safe.tuya.accessSecret = '••••••••';
