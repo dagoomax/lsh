@@ -61,6 +61,19 @@ const BATTERIES = [
     ] },
 ]
 
+const ZIGBEE2MQTT = { id: 'zigbee2mqtt', title: 'Zigbee2MQTT', desc: 'Devices from an existing Zigbee2MQTT install, over MQTT: they show up with their Zigbee2MQTT names, and pairing and removal go through Zigbee2MQTT. Leave the host blank to use the built-in MQTT broker (or the main MQTT broker) and point Zigbee2MQTT at it. To run the Zigbee stick from LSH itself instead, use Z-Wave & Zigbee USB.',
+  top: [
+    { key: 'baseTopic', label: 'Base topic', hint: '(Zigbee2MQTT base_topic)', placeholder: 'zigbee2mqtt' },
+    { key: 'host', label: 'MQTT host', hint: '(blank = built-in broker)', placeholder: '192.168.1.10' },
+    { key: 'port', label: 'MQTT port', type: 'number', placeholder: '1883' },
+    { key: 'username', label: 'Username' },
+    { key: 'password', label: 'Password', type: 'password' },
+  ] }
+
+export function Zigbee2MqttSection({ config, reload }) {
+  return <IntegrationCard spec={ZIGBEE2MQTT} saved={config.zigbee2mqtt} reload={reload} />
+}
+
 export function AirConditionersSection({ config, reload }) {
   return <>{AC.map((s) => <IntegrationCard key={s.id} spec={s} saved={config[s.id]} reload={reload} />)}</>
 }

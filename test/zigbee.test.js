@@ -210,3 +210,83 @@ test('Zigbee client: Zigbee2MQTT network.json (hex strings) is taken as is', () 
   assert.equal(n.networkKey[15], 0x0d);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test("Zigbee client: sensorLabels name single channels", () => {
+  const ZigbeeClient = require("../src/zigbee-client");
+  const store = { update() {}, set() {}, get() { return null; } };
+  const c = new ZigbeeClient({ zigbee: { sensorLabels: { "0xa4c138f08193ec19": { switch: "Kinkiety", switch_l2: "LedySufit" } } } }, store, { registerDevice() {} }, { Controller: class {}, zhc: {} });
+  const model = buildModel([sw("l1"), sw("l2")]);
+  const out = c._sensors({ device: { ieeeAddr: "0xa4c138f08193ec19" }, model });
+  assert.deepEqual(out.filter((s) => s.controllable).map((s) => [s.path, s.label]), [["switch", "Kinkiety"], ["switch_l2", "LedySufit"]]);
+  assert.equal(model.sensors.find((s) => s.path === "switch").label, undefined); // model untouched
+  assert.ok(c._sensors({ device: { ieeeAddr: "0xother" }, model }).every((s) => s.label === undefined)); // others keep their names
+});
+
+test("Zigbee lights: relay channels become HomeKit lights, one Lightbulb per gang", async () => {
+  const ZigbeeClient = require("../src/zigbee-client");
+  const { buildDeviceAccessory } = require("../src/homekit-bridge");
+  const { Service, Characteristic } = require("hap-nodejs");
+  const DataStore = require("../src/data-store");
+  const two = "0xa4c138f08193ec19", one = "0xa4c1387cdbd7e2bd";
+  const c = new ZigbeeClient({ zigbee: { lights: [two, one.toUpperCase()], sensorLabels: { [two]: { switch: "Kinkiety", switch_l2: "LedySufit" } } } },
+    { update() {}, set() {}, get() { return null; } }, { registerDevice() {} }, { Controller: class {}, zhc: {} });
+
+  const gang2 = { device: { ieeeAddr: two }, model: buildModel([sw("l1"), sw("l2")]) };
+  assert.deepEqual(c._homekit(gang2), ["light-rw"]);
+  const sent = [];
+  const store = new DataStore();
+  store.update("zigbee/x/switch_l2", 1);
+  const acc = buildDeviceAccessory({ key: "zigbee/x", label: "Kinkiety&LedySufit", type: "zigbee", homekit: c._homekit(gang2), sensors: c._sensors(gang2),
+    _writeCapability: async (cap, cmd) => { sent.push([cap, cmd]); } }, store);
+  const bulbs = acc.services.filter((s) => s.UUID === Service.Lightbulb.UUID);
+  assert.deepEqual(bulbs.map((s) => [s.displayName, s.subtype]), [["Kinkiety", "switch"], ["LedySufit", "switch_l2"]]);
+  assert.equal(acc.services.filter((s) => s.UUID === Service.Switch.UUID).length, 0);
+  assert.equal(await bulbs[1].getCharacteristic(Characteristic.On).handleGetRequest(), true);
+  await bulbs[0].getCharacteristic(Characteristic.On).handleSetRequest(true);
+  await bulbs[1].getCharacteristic(Characteristic.On).handleSetRequest(false);
+  assert.deepEqual(sent, [["switch", "on"], ["switch_l2", "off"]]);
+
+  // single-gang: the usual one-light path; not listed: stays a switch
+  const gang1 = { device: { ieeeAddr: one }, model: buildModel([sw("l1")]) };
+  const acc1 = buildDeviceAccessory({ key: "zigbee/y", label: "Łazienka", type: "zigbee", homekit: c._homekit(gang1), sensors: c._sensors(gang1), _writeCapability: async () => {} }, new DataStore());
+  assert.deepEqual(acc1.services.filter((s) => s.UUID === Service.Lightbulb.UUID).map((s) => s.displayName), ["Łazienka"]);
+  const plug = { device: { ieeeAddr: "0x54ef4410004310f2" }, model: buildModel([sw("l1")]) };
+  assert.deepEqual(c._homekit(plug), ["switch-rw"]);
+});
+
+test("Zigbee mesh scan: coordinator + routers asked for neighbours, sleepy devices via their parent", async () => {
+  const ZigbeeClient = require("../src/zigbee-client");
+  const values = {};
+  const store = { update(k, v) { values[k] = v; }, set(k, v) { values[k] = v; }, get(k) { return values[k] ?? null; } };
+  const coord = { ieeeAddr: "0x00000000000000c0", networkAddress: 0, type: "Coordinator",
+    lqi: async () => [{ eui64: "0x00000000000000a1", nwkAddress: 0x1111, deviceType: 1, relationship: 2, depth: 1, lqi: 200 }] };
+  const r1 = { ieeeAddr: "0x00000000000000a1", networkAddress: 0x1111, type: "Router", lastSeen: 1,
+    lqi: async () => [
+      { eui64: "0x00000000000000c0", nwkAddress: 0, deviceType: 0, relationship: 0, depth: 0, lqi: 190 },
+      { eui64: "0x00000000000000e1", nwkAddress: 0x2222, deviceType: 2, relationship: 1, depth: 2, lqi: 90 },
+      { eui64: "0x00000000000000ff", nwkAddress: 0x3333, deviceType: 1, relationship: 2, depth: 2, lqi: 40 },
+      { eui64: "0xffffffffffffffff", nwkAddress: 0x4444, deviceType: 3, relationship: 3, depth: 0, lqi: 10 },
+    ] };
+  const r2 = { ieeeAddr: "0x00000000000000a2", networkAddress: 0x5555, type: "Router", lqi: () => new Promise(() => {}) }; // never answers
+  const ed = { ieeeAddr: "0x00000000000000e1", networkAddress: 0x2222, type: "EndDevice", lqi: async () => { throw new Error("sleepy devices are not asked"); } };
+  const c = new ZigbeeClient({ zigbee: {} }, store, { registerDevice() {} }, { Controller: class {}, zhc: {} });
+  c._controller = { getDevicesByType: (t) => (t === "Coordinator" ? [coord] : []) };
+  for (const d of [r1, r2, ed]) c._devices.set(d.ieeeAddr, { device: d, key: `zigbee/${d.ieeeAddr.slice(2)}`, definition: { description: d.type } });
+  const orig = global.setTimeout;
+  global.setTimeout = (fn, ms, ...a) => orig(fn, ms === 15000 ? 50 : ms, ...a);
+  let mesh;
+  try {
+    assert.deepEqual(await c._coordinatorCommand("meshScan", "scan", []), { scanning: true });
+    await c._meshRun;
+    mesh = values["zigbee/coordinator/mesh"];
+  } finally { global.setTimeout = orig; }
+  assert.equal(values["zigbee/coordinator/meshScanning"], 0);
+  assert.deepEqual(mesh.links.map((l) => [l.source.slice(-2), l.target.slice(-2), l.lqi, l.relationship]),
+    [["c0", "a1", 200, 2], ["a1", "c0", 190, 0], ["a1", "e1", 90, 1], ["a1", "ff", 40, 2]]);
+  assert.deepEqual(mesh.failed.map((f) => [f.ieee.slice(-2), f.error]), [["a2", "no answer"]]);
+  const byIeee = Object.fromEntries(mesh.nodes.map((n) => [n.ieee.slice(-2), n]));
+  assert.equal(byIeee.c0.key, "zigbee/coordinator");
+  assert.equal(byIeee.e1.type, "EndDevice");
+  assert.equal(byIeee.ff.unknown, true);
+  assert.equal(Object.keys(byIeee).length, 5);
+});

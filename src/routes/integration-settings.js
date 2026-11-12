@@ -27,6 +27,8 @@ const SPECS = {
   sensibo: { file: 'sensibo-client', prefix: 'sensibo/', status: 'sensibo', top: { apiKey: 'secret', pollInterval: 'num' } },
   zendure: { file: 'zendure-client', prefix: 'zendure/', status: 'zendure', list: { host: 'host', name: 'str' }, top: { pollInterval: 'num' } },
   ugreen: { file: 'ugreen-client', prefix: 'ugreen/', status: 'ugreen', top: { email: 'str', password: 'secret' } },
+  // fullConfig: the test client also sees mqttBroker / mqtt, for a blank host
+  zigbee2mqtt: { file: 'zigbee2mqtt-client', prefix: 'zigbee2mqtt/', status: 'zigbee2mqtt', fullConfig: true, top: { baseTopic: 'str', host: 'str', port: 'num', username: 'str', password: 'secret' } },
   ankerSolix: { file: 'anker-solix-client', prefix: 'anker/', status: 'ankerSolix', list: { host: 'host', port: 'num', unitId: 'num', name: 'str' }, top: { pollInterval: 'num' } },
 };
 
@@ -91,11 +93,12 @@ module.exports = function register(router, ctx) {
     const it = integration(req.params.id);
     let client;
     try {
-      const current = readConfigFile()[it.expose] || {};
+      const file = readConfigFile();
+      const current = file[it.expose] || {};
       const cfg = cleanConfig(s, req.body?.config || {}, current);
       const found = [];
       const Client = require(`../${s.file}`);
-      client = new Client({ [it.expose]: cfg }, { update() {}, set() {}, get() { return null } }, { registerDevice: (d) => found.push(d.label), devices: new Map(), emit() {} });
+      client = new Client({ ...(s.fullConfig ? file : {}), [it.expose]: cfg }, { update() {}, set() {}, get() { return null } }, { registerDevice: (d) => found.push(d.label), devices: new Map(), emit() {} });
       if (typeof client._pollImpl === 'function') {
         client.startPolling = () => Promise.race([client._pollImpl(true), new Promise((_, rej) => setTimeout(() => rej(new Error('No answer within 20 s')), 20000))]);
       }

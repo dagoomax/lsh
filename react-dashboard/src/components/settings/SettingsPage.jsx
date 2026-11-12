@@ -46,7 +46,7 @@ import TtlockSection from './sections/TtlockSection'
 import UsbRadioSection from './sections/UsbRadioSection'
 import AjaxSection, { JablotronSection } from './sections/AjaxSection'
 import ZehnderSection from './sections/ZehnderSection'
-import { AirConditionersSection, BatteriesSection } from './sections/IntegrationsSection'
+import { AirConditionersSection, BatteriesSection, Zigbee2MqttSection } from './sections/IntegrationsSection'
 import ArduinoSection from './sections/ArduinoSection'
 import EsphomeSection from './sections/EsphomeSection'
 import BroadlinkSection from './sections/BroadlinkSection'
@@ -118,6 +118,7 @@ const SECTION_COMPONENTS = {
   loxonexml: LoxoneXmlSection,
   knx: KnxSection,
   'boneio-grenton': BoneioGrentonSection,
+  zigbee2mqtt: Zigbee2MqttSection,
   smartbob: SmartBobSection,
   aquilo: AquiloSection,
   airbnb: AirbnbSection,

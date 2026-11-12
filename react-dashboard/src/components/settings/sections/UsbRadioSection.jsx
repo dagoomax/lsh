@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { SettingsCard, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { gt, tr } from '../../../i18n'
+import ZigbeeMeshMap from './ZigbeeMeshMap'
 
 const api = (url, method = 'GET', body) => fetch(url, {
   method, credentials: 'include',
@@ -246,6 +247,23 @@ function ZigbeeCard({ s, reload }) {
     reload()
   }
   const joining = !!s.permitJoin && left > 0
+  // a mesh scan runs in the Zigbee process: refresh until it's done
+  const [scanStarted, setScanStarted] = useState(false)
+  const scanning = !!s.meshScanning || scanStarted
+  useEffect(() => {
+    if (!scanning) return
+    const t = setInterval(reload, 3000)
+    return () => clearInterval(t)
+  }, [scanning])
+  useEffect(() => { if (scanStarted && s.meshScanning) setScanStarted(false) }, [s.meshScanning])
+  useEffect(() => {
+    if (!scanStarted) return
+    const t = setTimeout(() => setScanStarted(false), 8000) // scan didn't start
+    return () => clearTimeout(t)
+  }, [scanStarted])
+  const scan = () => { setScanStarted(true); call('/api/usb-radio/zigbee/mesh', {}) }
+  // dashboard names (renames included) for the map
+  const meshLabels = useMemo(() => Object.fromEntries((s.devices || []).map((d) => [d.key, d.label])), [s.devices])
 
   return (
     <SettingsCard title="Zigbee network"
@@ -269,6 +287,9 @@ function ZigbeeCard({ s, reload }) {
           : <Button variant="primary" disabled={!s.running} onClick={() => call('/api/usb-radio/zigbee/permit', { on: true })}>{tr('Pair devices')}</Button>}
       </div>
       {err && <div className="stg-banner err" style={{ marginTop: 8 }}>✗ {err}</div>}
+
+      <h4 className="stg-subheading">{tr('Mesh map')}</h4>
+      <ZigbeeMeshMap mesh={s.mesh} scanning={scanning} running={s.running} onScan={scan} labels={meshLabels}/>
 
       <h4 className="stg-subheading">{tr('Devices ({n})', { n: s.devices?.length || 0 })}</h4>
       {!s.devices?.length && <p className="stg-hint">{tr('No Zigbee devices yet.')}</p>}

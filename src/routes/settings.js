@@ -42,6 +42,7 @@ module.exports = function register(router, ctx) {
     if (Array.isArray(safe.airplay?.speakers)) safe.airplay.speakers = safe.airplay.speakers.map((sp) => (sp?.password ? { ...sp, password: '••••••••' } : sp));
     if (safe.ugreen?.password) safe.ugreen.password = '••••••••';
     if (safe.melcloud?.password) safe.melcloud.password = '••••••••';
+    if (safe.zigbee2mqtt?.password) safe.zigbee2mqtt.password = '••••••••';
     if (safe.sensibo?.apiKey) safe.sensibo.apiKey = '••••••••';
     if (safe.tidal?.clientSecret) safe.tidal.clientSecret = '••••••••';
     if (Array.isArray(safe.daikin?.devices)) safe.daikin.devices = safe.daikin.devices.map((d) => (d?.key ? { ...d, key: '••••••••' } : d));

@@ -109,6 +109,9 @@ module.exports = [
   // zigbee-herdsman with the Zigbee2MQTT device definitions
   { file: 'zwave-usb-client', label: 'Z-Wave USB', when: (config) => config.zwaveUsb?.port },
   { file: 'zigbee-client', label: 'Zigbee', when: (config) => config.zigbee?.port },
+  // an existing Zigbee2MQTT over MQTT (blank host = the built-in / main broker);
+  // in-process (expose) for Settings test/apply and device removal
+  { file: 'zigbee2mqtt-client', label: 'Zigbee2MQTT', expose: 'zigbee2mqtt', when: (config) => config.zigbee2mqtt?.host || config.zigbee2mqtt?.baseTopic || config.zigbee2mqtt?.enabled },
   { file: 'vera-client', label: 'Vera', when: (config) => config.vera?.host },
   { file: 'knx-client', label: 'KNX', hint: 'npm install knx', when: (config) => config.knx?.host },
   { file: 'fibaro-client', label: 'Fibaro', when: (config) => config.fibaro?.host },

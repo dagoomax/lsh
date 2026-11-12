@@ -144,6 +144,14 @@
     "host": "192.168.1.100",
     "port": 1883
   },
+  "zigbee2mqtt": {
+    "baseTopic": "zigbee2mqtt",
+    "host": "",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "names": {}
+  },
   "lgthinq": {
     "username": "you@example.com",
     "password": "",

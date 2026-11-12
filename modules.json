@@ -56,6 +56,7 @@
     "src/routes/camera-patrol.js",
     "src/routes/camera-ptz-presets.js",
     "src/routes/camera-ptz.js",
+    "src/routes/camera-sd.js",
     "src/routes/camera-siren.js",
     "src/routes/cameras.js",
     "src/routes/claude-code.js",
@@ -829,7 +830,7 @@
       "configKeys": [
         "mc6"
       ],
-      "when": "(config.mc6?.broker && config.mc6?.devices?.length)",
+      "when": "(config.mc6?.devices?.length && (config.mc6.broker || config.mc6.devices.some(d => d.host)))",
       "files": [
         "src/mc6-client.js"
       ],
@@ -855,6 +856,7 @@
       "files": [
         "src/karcher-client.js",
         "src/karcher-map.js",
+        "src/karcher-map3d.js",
         "src/roborock-map.js"
       ],
       "deps": {
@@ -1255,6 +1257,18 @@
         "zigbee-herdsman": "^11.1.1",
         "zigbee-herdsman-converters": "^26.124.0"
       }
+    },
+    "zigbee2mqtt": {
+      "entry": "src/zigbee2mqtt-client.js",
+      "configKeys": [
+        "zigbee2mqtt"
+      ],
+      "when": "(config.zigbee2mqtt?.host || config.zigbee2mqtt?.baseTopic || config.zigbee2mqtt?.enabled)",
+      "files": [
+        "src/zigbee-map.js",
+        "src/zigbee2mqtt-client.js"
+      ],
+      "deps": {}
     },
     "vera": {
       "entry": "src/vera-client.js",

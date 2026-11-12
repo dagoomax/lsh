@@ -8,7 +8,15 @@
 //
 //   "zigbee": { "port": "/dev/serial/by-id/usb-Silicon_Labs_CP2105_…-if00-port0",
 //               "adapter": "ember", "baudRate": 115200, "rtscts": false, "channel": 15,
-//               "names": { "0x00158d0001a2b3c4": "Czujnik salon" } }
+//               "names": { "0x00158d0001a2b3c4": "Czujnik salon" },
+//               "sensorLabels": { "0xa4c138f08193ec19": { "switch": "Kinkiety", "switch_l2": "LedySufit" } } }
+//
+// lights: [ieee, …] — relay / plug channels that drive lamps show in HomeKit
+// as lights (Lightbulb) instead of switches; each channel of a multi-gang
+// relay becomes its own light.
+//
+// sensorLabels names single channels (keyed by sensor path) — a 2-gang relay
+// otherwise shows "Switch l1" / "Switch 2", which says nothing about what's wired to it.
 //
 // Sticks: Aeotec Z-Stick 10 Pro (Zigbee side: EFR32MG21, EmberZNet ≥ 7.4.3),
 // Z-Wave.Me Z-Station (EFR32MG21P, firmware ≥ 2024.04.22) — both "ember";
@@ -22,6 +30,11 @@
 // Moving from Zigbee2MQTT: put its pan_id / ext_pan_id / network_key in
 // network.json (same names) and the channel in config, and the devices stay
 // paired — they show up as they next report.
+//
+// Mesh map: the meshScan command on zigbee/coordinator asks the coordinator
+// and each router for its neighbor table (ZDO Mgmt_Lqi_req, one at a time)
+// and stores { at, nodes, links, failed } on zigbee/coordinator/mesh. Battery
+// devices sleep and don't answer; they show up through their parent's table.
 //
 // Devices: zigbee/<ieee>. zigbee/coordinator carries the network state and
 // permitJoin (pairing, 4 min) — a regular controllable sensor, so pairing
@@ -42,6 +55,7 @@ const { buildModel, ICONS } = require('./zigbee-map');
 const DIR = path.join(__dirname, '..', 'persist', 'zigbee');
 const RETRY_MS = 30_000;
 const PERMIT_JOIN_S = 240;
+const MESH_TIMEOUT_MS = 15_000; // per device
 const COORD = 'zigbee/coordinator';
 
 // Zigbee2MQTT-compatible names, hex strings or arrays
@@ -209,6 +223,9 @@ class ZigbeeClient {
         { path: 'firmware', name: 'Firmware', type: 'label' },
         { path: 'lastJoined', name: 'Last joined', type: 'label' },
         { path: 'members', name: 'Devices in the network', type: 'object', hidden: true },
+        { path: 'mesh', name: 'Mesh map', type: 'object', hidden: true },
+        { path: 'meshScanning', name: 'Mesh scan running', format: 'on-off', hidden: true },
+        { path: 'meshScan', name: 'Scan mesh', type: 'text', controllable: true, hidden: true, capabilityId: 'meshScan', writeCmd: 'scan' },
         // Settings → remove a device: the IEEE address as the value
         { path: 'remove', name: 'Remove device', type: 'text', controllable: true, hidden: true, capabilityId: 'remove', writeCmd: 'remove' },
       ],
@@ -219,6 +236,13 @@ class ZigbeeClient {
   async _coordinatorCommand(capId, command, args) {
     const c = this._controller;
     if (!c) throw new Error('The Zigbee coordinator is not running');
+    if (capId === 'meshScan') {
+      if (this._meshRun) return { scanning: true };
+      this._meshRun = this._scanMesh()
+        .catch((err) => console.error(`[Zigbee] Mesh scan: ${err.message}`))
+        .finally(() => { this._meshRun = null; this._store.update(`${COORD}/meshScanning`, 0); });
+      return { scanning: true };
+    }
     if (capId === 'permitJoin') {
       const on = command === 'on';
       await c.permitJoin(on ? PERMIT_JOIN_S : 0);
@@ -240,6 +264,50 @@ class ZigbeeClient {
       return { removed: ieee };
     }
     throw new Error(`Zigbee: unknown command ${capId}`);
+  }
+
+  // Neighbor tables of the coordinator and every router → nodes + links
+  async _scanMesh() {
+    const c = this._controller;
+    if (!c) throw new Error('The Zigbee coordinator is not running');
+    this._store.update(`${COORD}/meshScanning`, 1);
+    const coord = c.getDevicesByType('Coordinator')[0];
+    const nodes = new Map();
+    const node = (d, extra = {}) => {
+      const e = this._devices.get(d.ieeeAddr);
+      nodes.set(d.ieeeAddr, {
+        ieee: d.ieeeAddr, nwk: d.networkAddress, type: d.type,
+        key: d.type === 'Coordinator' ? COORD : e?.key || null,
+        label: d.type === 'Coordinator' ? 'Coordinator' : e ? this._label(e) : (d.modelID || d.ieeeAddr),
+        lastSeen: d.lastSeen || null, ...extra,
+      });
+    };
+    if (coord) node(coord);
+    for (const e of this._devices.values()) node(e.device);
+    const links = [];
+    const failed = [];
+    const ask = [coord, ...[...this._devices.values()].map((e) => e.device).filter((d) => d.type === 'Router')].filter(Boolean);
+    for (const d of ask) {
+      let timer;
+      try {
+        const table = await Promise.race([d.lqi(),
+          new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('no answer')), MESH_TIMEOUT_MS); })]);
+        for (const n of table) {
+          const ieee = String(n.eui64 || '').toLowerCase();
+          if (!ieee || ieee === '0xffffffffffffffff') continue;
+          if (!nodes.has(ieee)) {
+            nodes.set(ieee, { ieee, nwk: n.nwkAddress, type: ['Coordinator', 'Router', 'EndDevice'][n.deviceType] || 'Unknown', key: null, label: `Unknown ${ieee.slice(-6)}`, unknown: true });
+          }
+          links.push({ source: d.ieeeAddr, target: ieee, lqi: n.lqi, relationship: n.relationship, depth: n.depth });
+        }
+      } catch (err) {
+        failed.push({ ieee: d.ieeeAddr, error: err.message });
+      } finally { clearTimeout(timer); }
+    }
+    const mesh = { at: Date.now(), nodes: [...nodes.values()], links, failed };
+    this._store.update(`${COORD}/mesh`, mesh);
+    console.log(`[Zigbee] Mesh scan: ${mesh.nodes.length} nodes, ${links.length} links${failed.length ? `, ${failed.length} didn't answer` : ''}`);
+    return mesh;
   }
 
   _updateCount() {
@@ -313,8 +381,8 @@ class ZigbeeClient {
       icon: ICONS[model.kind] || '📡',
       model: `${definition.vendor} ${definition.model}`,
       ieee: device.ieeeAddr,
-      sensors: model.sensors,
-      homekit: model.homekit,
+      sensors: this._sensors(entry),
+      homekit: this._homekit(entry),
       _writeCapability: (capId, command, args = []) => this._write(entry.device.ieeeAddr, capId, command, args),
     });
   }
@@ -332,7 +400,29 @@ class ZigbeeClient {
   _rebuild(entry) {
     entry.model = buildModel(this._exposes(entry));
     const dev = this._registry.getDevices?.().find?.((d) => d.key === entry.key);
-    if (dev) { dev.sensors = entry.model.sensors; dev.homekit = entry.model.homekit; }
+    if (dev) { dev.sensors = this._sensors(entry); dev.homekit = this._homekit(entry); }
+  }
+
+  _isLight(entry) {
+    const l = this.cfg.lights;
+    return Array.isArray(l) && l.map((x) => String(x).toLowerCase()).includes(entry.device.ieeeAddr.toLowerCase());
+  }
+
+  // the model's sensors with config.zigbee.sensorLabels (and lights) applied
+  _sensors(entry) {
+    const labels = this.cfg.sensorLabels?.[entry.device.ieeeAddr] || {};
+    const light = this._isLight(entry);
+    return entry.model.sensors.map((s) => {
+      let out = s;
+      if (labels[s.path]) out = { ...out, label: String(labels[s.path]) };
+      if (light && s.homekit === 'switch-rw') out = { ...out, homekit: 'light-rw' };
+      return out;
+    });
+  }
+
+  _homekit(entry) {
+    const hk = entry.model.homekit;
+    return this._isLight(entry) ? [...new Set(hk.map((t) => (t === 'switch-rw' ? 'light-rw' : t)))] : hk;
   }
 
   async _onMessage(data) {
