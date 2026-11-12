@@ -290,3 +290,37 @@ test("Zigbee mesh scan: coordinator + routers asked for neighbours, sleepy devic
   assert.equal(byIeee.ff.unknown, true);
   assert.equal(Object.keys(byIeee).length, 5);
 });
+
+test("Zigbee client: multi-gang commands reach their endpoint (converters read meta.message without the _l2 postfix)", async () => {
+  const ZigbeeClient = stubHerdsman();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lsh-zigbee-"));
+  const relay = new FakeDevice("0xa4c138f08193ec19", "TS0002");
+  relay.endpoints.push(new FakeEndpoint(relay, 2));
+  FakeController.devices = [new FakeDevice("0x0000000000000001", null, "Coordinator"), relay];
+  // like zigbee-herdsman-converters' Tuya on_off: the value comes from meta.message.state
+  const TS0002 = {
+    vendor: "Tuya", model: "TS0002_basic", description: "2 gang switch module",
+    endpoint: () => ({ l1: 1, l2: 2 }),
+    exposes: [sw("l1"), sw("l2")],
+    fromZigbee: [],
+    toZigbee: [{ key: ["state", "countdown"], convertSet: async (entity, key, value, meta) => {
+      const state = typeof meta.message.state === "string" ? meta.message.state.toLowerCase() : undefined;
+      if (state === "on" || state === "off") { await entity.command("genOnOff", state, {}); return { state: { state: state.toUpperCase() } }; }
+      return {};
+    } }],
+  };
+  const store = new DataStore();
+  const registry = new SensorRegistry(store, "en");
+  const zhc = { findByDevice: async (d) => (d.modelID === "TS0002" ? TS0002 : undefined), onEvent: async () => {} };
+  const client = new ZigbeeClient({ zigbee: { port: "/dev/ttyUSB0" } }, store, registry, { Controller: FakeController, zhc, dir });
+  await client.start();
+  try {
+    const key = "zigbee/a4c138f08193ec19";
+    await registry.sendCommand(key, "switch", 1);
+    await registry.sendCommand(key, "switch_l2", 0);
+    assert.deepEqual(relay.getEndpoint(1).commands, [["genOnOff", "on", {}]]);
+    assert.deepEqual(relay.getEndpoint(2).commands, [["genOnOff", "off", {}]]);
+    assert.equal(store.get(`${key}/switch`), 1);
+    assert.equal(store.get(`${key}/switch_l2`), 0);
+  } finally { await client.stop(); }
+});

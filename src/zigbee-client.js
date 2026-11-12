@@ -475,8 +475,17 @@ class ZigbeeClient {
       if (used.has(conv) && !epName) continue; // one converter handles brightness + state together
       used.add(conv);
       const endpoint = epName ? device.getEndpoint(epMap[epName]) : defaultEp();
+      // as Zigbee2MQTT does: converters read meta.message without the endpoint
+      // postfix (state_l2 → state) — most multi-gang converters (Tuya on_off,
+      // …) take the value from there, and without this send nothing at all
+      const msg = { ...message };
+      if (epName) {
+        for (const [k, v] of Object.entries(message)) {
+          if (k.endsWith(`_${epName}`)) { delete msg[k]; msg[k.slice(0, -epName.length - 1)] = v; }
+        }
+      }
       const meta = {
-        message, mapped: definition, options: this._options(device), state: entry.state, endpoint_name: epName,
+        message: msg, mapped: definition, options: this._options(device), state: entry.state, endpoint_name: epName,
         device, publish: (p) => this._apply(entry, p), deviceExposesChanged: () => this._rebuild(entry),
       };
       const r = await conv.convertSet(endpoint, key, value, meta);
