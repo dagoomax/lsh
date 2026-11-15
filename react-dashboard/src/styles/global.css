@@ -962,6 +962,12 @@ input[type="range"]::-moz-range-thumb {
 .plan-view-switch button[data-active="true"] { background: var(--text); color: var(--bg); }
 /* the HTML model fills the viewport edge to edge and handles its own gestures */
 .plan-viewport[data-html-model] { padding: 8px 0 0; overflow: hidden; }
+/* The model views (.phm) are absolutely positioned inside and have no height
+   of their own, and the dashboard's scroll area is a plain block — without
+   this the Plan collapses to its toolbar. Fill the scroll area instead; the
+   min-height covers browsers without :has(). */
+.dash-scroll:has(.plan-viewport[data-html-model]) { display: flex; flex-direction: column; overflow: hidden; }
+.plan-viewport[data-html-model] { min-height: min(70vh, 420px); }
 
 /* Pseudo-3D room walls (extruded from the floor plate edges) */
 .plan-wall {
@@ -1634,6 +1640,19 @@ input[type="range"]::-moz-range-thumb {
   display: flex; flex-direction: column;
 }
 .wall-region-plan .plan-viewport { background: transparent; }
+/* The Plan alone (/react/plan, PlanScreen): one region, no frame. A picture
+   model needs no toolbar there, so it gets every pixel. */
+.wall-dash.plan-screen { display: flex; padding: 0; gap: 0; }
+.plan-screen .wall-region-plan { flex: 1; min-width: 0; border-radius: 0; background: #000; }
+.plan-screen:has(.phi) .plan-filter-bar { display: none; }
+.plan-screen .plan-viewport[data-html-model] { padding: 0; }
+.plan-screen .phm { border-radius: 0; }
+.plan-screen .wall-exit { opacity: .55; }
+.plan-screen .wall-exit:hover, .plan-screen .wall-exit:focus-visible { opacity: 1; }
+.plan-screen-full { left: auto; right: 14px; }
+.plan-screen .phm-status { left: 70px; top: 20px; }
+.plan-screen .phm-hint { right: 70px; top: 20px; }
+.plan-screen-full[data-active] { background: #fff; color: #000; }
 /* The filter bar's pills normally read the app's light/dark theme tokens —
    .wall-dash is deliberately theme-independent (always dark), so give them
    their own fixed dark-glass look here instead of inheriting whichever

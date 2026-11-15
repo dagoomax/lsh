@@ -201,3 +201,42 @@ export default function WallDashboard({ devices, energy, roomsMeta, onClose }) {
     </div>
   )
 }
+
+// The Plan alone, edge to edge — /react/plan. For a screen whose whole job is
+// the floor plan (a hallway tablet, a TV): the same kiosk Plan as the wall
+// view without the widgets around it. A picture model fills the screen with
+// no toolbar; ⤢ asks the browser for true full screen (it needs a tap — a
+// page cannot enter full screen on its own).
+export function PlanScreen({ devices, energy, roomsMeta, onClose }) {
+  const [openKey, setOpenKey] = useState(null)
+  const openDevice = openKey ? devices.find(d => d.key === openKey) : null
+  const rooms = [...new Set(devices.map(d => d.room).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+  const onCommand = useCallback((key, sensor, value) => { sendCommand(key, sensor, value) }, [])
+  const [showExitPin, setShowExitPin] = useState(false)
+  const [full, setFull] = useState(() => !!document.fullscreenElement)
+  useEffect(() => {
+    const sync = () => setFull(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', sync)
+    return () => document.removeEventListener('fullscreenchange', sync)
+  }, [])
+  const toggleFull = () => {
+    const el = document.documentElement
+    if (document.fullscreenElement) document.exitFullscreen?.()
+    else (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el)?.catch?.(() => {})
+  }
+  const canFull = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)
+  return (
+    <div className="wall-dash plan-screen">
+      <button className="wall-exit" onClick={() => setShowExitPin(true)} title={gt('exit_plan_screen', 'Exit plan view')} aria-label={gt('exit_plan_screen', 'Exit plan view')}>✕</button>
+      {canFull && (
+        <button className="wall-exit plan-screen-full" onClick={toggleFull} data-active={full || undefined}
+          title={gt('fullscreen', 'Full screen')} aria-label={gt('fullscreen', 'Full screen')}>⤢</button>
+      )}
+      {showExitPin && <ExitPinPrompt onConfirm={() => { if (document.fullscreenElement) document.exitFullscreen?.(); onClose() }} onCancel={() => setShowExitPin(false)} />}
+      <div className="wall-region wall-region-plan">
+        <HomePlan devices={devices} roomsMeta={roomsMeta} groupOf={getGroup} onOpen={setOpenKey} energy={energy} kiosk />
+      </div>
+      <DeviceModal device={openDevice} rooms={rooms} onClose={() => setOpenKey(null)} onCommand={onCommand} />
+    </div>
+  )
+}

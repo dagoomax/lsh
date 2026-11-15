@@ -18,6 +18,7 @@ import { useHomePrefs }      from './homePrefs'
 // (wall tablets, phones on mobile data)
 const SettingsPage   = lazy(() => import('./components/settings/SettingsPage'))
 const WallDashboard  = lazy(() => import('./components/WallDashboard'))
+const PlanScreen     = lazy(() => import('./components/WallDashboard').then((m) => ({ default: m.PlanScreen })))
 const CssEditorPage  = lazy(() => import('./components/CssEditorPage'))
 const ClaudeCodePage = lazy(() => import('./components/ClaudeCodePage'))
 const TerminalPage = lazy(() => import('./components/TerminalPage'))
@@ -29,7 +30,7 @@ const MusicPage = lazy(() => import('./components/pages/MusicPage'))
 // Full-screen views, each with its own URL under /react/ (the server serves
 // index.html for every /react/* path) so they can be bookmarked and the
 // browser back button works.
-const VIEWS = ['dashboard', 'settings', 'wall', 'css-editor', 'claude-code', 'terminal', 'logs', 'mqtt', 'flows', 'music']
+const VIEWS = ['dashboard', 'settings', 'wall', 'plan', 'css-editor', 'claude-code', 'terminal', 'logs', 'mqtt', 'flows', 'music']
 const viewFromPath = () => {
   const seg = window.location.pathname.replace(/^\/react\/?/, '').split('/')[0]
   return VIEWS.includes(seg) ? seg : 'dashboard'
@@ -126,6 +127,14 @@ export default function App() {
           <ToolPage onClose={() => setView('dashboard')}/>
         </Suspense>
       </div>
+    )
+  }
+
+  if (view === 'plan') {
+    return (
+      <Suspense fallback={<PageLoading/>}>
+        <PlanScreen devices={devices} energy={energy} roomsMeta={roomsMeta} onClose={() => setView('dashboard')}/>
+      </Suspense>
     )
   }
 

@@ -968,6 +968,13 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
               <ModelAlignForm model={plan.model} onSave={saveModelTransform} />
             </div>
           )}
+          {!kiosk && (
+            <button className="plan-filter-pill" title={gt('plan_screen_hint', 'Show only the plan, filling the screen — for a wall tablet or TV')}
+              aria-label={gt('plan_screen', 'Plan full screen')}
+              onClick={() => { window.history.pushState({}, '', '/react/plan'); window.dispatchEvent(new PopStateEvent('popstate')) }}>
+              ⤢
+            </button>
+          )}
           {!kiosk && plan?.model?.url && (
             <button className="plan-filter-pill" onClick={removeModel} title={gt('remove_model', 'Remove imported model')}>
               🗑️
