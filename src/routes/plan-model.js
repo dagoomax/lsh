@@ -1,6 +1,6 @@
 'use strict';
 
-// Imported 3D floor-plan model (GLB or OBJ) — split out of src/api-routes.js; registered in order by createApiRoutes().
+// Imported floor-plan model (GLB, OBJ, or a rendered picture) — split out of src/api-routes.js; registered in order by createApiRoutes().
 const fs   = require('fs');
 const path = require('path');
 const { writeConfigFile } = require('../config-file-cache');
@@ -15,8 +15,18 @@ module.exports = function register(router) {
   // time — uploading a new one replaces it. Body: { name, data } with data
   // a base64 data-URI; the format (glb/obj) comes from the filename
   // extension since browsers don't reliably report a MIME type for either.
-  const MODEL_DIR = path.join(__dirname, '..', '..', 'persist', 'plan-model');
-  const MODEL_EXT = new Set(['glb', 'obj']);
+  // LSH_PLAN_MODEL_DIR: the tests point this at a temp folder (an upload clears the directory)
+  const MODEL_DIR = process.env.LSH_PLAN_MODEL_DIR || path.join(__dirname, '..', '..', 'persist', 'plan-model');
+  // A picture (a render of the home, e.g. out of Blender) is a model too: it
+  // is shown flat and devices are pinned onto it by hand (/plan-model/pins).
+  const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
+  const MODEL_EXT = new Set(['glb', 'obj', ...IMAGE_EXT]);
+  const FILE_RE = /^floorplan-[a-z0-9]+\.(glb|obj|png|jpe?g|webp)$/;
+  // The extension picks the viewer, so a picture must really be that picture
+  const isImage = (ext, buf) => (
+    ext === 'png' ? buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+      : ext === 'webp' ? buf.subarray(0, 4).toString('latin1') === 'RIFF' && buf.subarray(8, 12).toString('latin1') === 'WEBP'
+        : buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff);
 
   const clearModelDir = () => {
     try {
@@ -28,12 +38,13 @@ module.exports = function register(router) {
     if (!editPinOk(req)) return res.status(403).json({ success: false, error: 'PIN_REQUIRED' });
     const name = String(req.body?.name || '');
     const ext = name.toLowerCase().split('.').pop();
-    if (!MODEL_EXT.has(ext)) return res.status(400).json({ success: false, error: 'File must be .glb or .obj' });
+    if (!MODEL_EXT.has(ext)) return res.status(400).json({ success: false, error: 'File must be .glb, .obj, .png, .jpg or .webp' });
     const m = String(req.body?.data || '').match(/^data:[^;]*;base64,([A-Za-z0-9+/=]+)$/);
     if (!m) return res.status(400).json({ success: false, error: 'data must be a base64 data-URI' });
     const buf = Buffer.from(m[1], 'base64');
     if (!buf.length) return res.status(400).json({ success: false, error: 'Empty file' });
     if (buf.length > 50 * 1024 * 1024) return res.status(400).json({ success: false, error: 'Model too large (max 50 MB)' });
+    if (IMAGE_EXT.has(ext) && !isImage(ext, buf)) return res.status(400).json({ success: false, error: `Not a valid .${ext} image` });
     try {
       fs.mkdirSync(MODEL_DIR, { recursive: true });
       clearModelDir();
@@ -41,7 +52,7 @@ module.exports = function register(router) {
       fs.writeFileSync(path.join(MODEL_DIR, file), buf);
       const cfg = readConfigFile();
       cfg.homePlan = cfg.homePlan || {};
-      cfg.homePlan.model = { url: `/api/plan-model/file/${file}`, format: ext, name: name.slice(0, 80) };
+      cfg.homePlan.model = { url: `/api/plan-model/file/${file}`, format: ext, name: name.slice(0, 80), ...(IMAGE_EXT.has(ext) ? { image: true } : {}) };
       writeConfigFile(cfg);
       res.json({ success: true, model: cfg.homePlan.model });
     } catch (err) {
@@ -51,7 +62,7 @@ module.exports = function register(router) {
 
   router.get('/plan-model/file/:file', (req, res) => {
     const file = String(req.params.file || '');
-    if (!/^floorplan-[a-z0-9]+\.(glb|obj)$/.test(file)) return res.status(400).end();
+    if (!FILE_RE.test(file)) return res.status(400).end();
     res.sendFile(path.join(MODEL_DIR, file), (err) => { if (err && !res.headersSent) res.status(404).end(); });
   });
 
@@ -63,7 +74,7 @@ module.exports = function register(router) {
   router.get('/plan-model/boxes', (req, res) => {
     const model = readConfigFile().homePlan?.model;
     const file = String(model?.url || '').split('/').pop();
-    if (!model || !/^floorplan-[a-z0-9]+\.(glb|obj)$/.test(file)) return res.status(404).json({ success: false, error: 'No model uploaded' });
+    if (!model || !FILE_RE.test(file)) return res.status(404).json({ success: false, error: 'No model uploaded' });
     if (model.format !== 'glb') return res.status(400).json({ success: false, error: 'The HTML view needs a .glb model' });
     const key = [file, model.scale ?? 1, model.rotationX ?? 0, model.rotationY ?? 0].join('|');
     try {
@@ -117,6 +128,30 @@ module.exports = function register(router) {
       }
     }
     cfg.homePlan.model = { ...cfg.homePlan.model, bindings };
+    writeConfigFile(cfg);
+    res.json({ success: true, model: cfg.homePlan.model });
+  });
+
+  // Where each device sits on a picture model, as fractions of the picture's
+  // width and height (0–1, origin top-left) so a pin stays put at any size.
+  // Body: { pins: { deviceKey: { x, y } | null } } — merged; null takes the
+  // device off the picture.
+  router.post('/plan-model/pins', (req, res) => {
+    if (!editPinOk(req)) return res.status(403).json({ success: false, error: 'PIN_REQUIRED' });
+    const cfg = readConfigFile();
+    if (!cfg.homePlan?.model) return res.status(400).json({ success: false, error: 'No model uploaded' });
+    if (!cfg.homePlan.model.image) return res.status(400).json({ success: false, error: 'Pins are for picture models' });
+    const patch = req.body?.pins;
+    if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return res.status(400).json({ success: false, error: 'pins object required' });
+    const pins = { ...(cfg.homePlan.model.pins || {}) };
+    for (const [key, pos] of Object.entries(patch)) {
+      if (!key || key.length > 200 || key === '__proto__') continue;
+      if (pos === null) { delete pins[key]; continue; }
+      const x = Number(pos?.x), y = Number(pos?.y);
+      if (!(x >= 0 && x <= 1 && y >= 0 && y <= 1)) continue;
+      pins[key] = { x: +x.toFixed(4), y: +y.toFixed(4) };
+    }
+    cfg.homePlan.model = { ...cfg.homePlan.model, pins };
     writeConfigFile(cfg);
     res.json({ success: true, model: cfg.homePlan.model });
   });

@@ -136,3 +136,62 @@
   .phm[data-fly] .phm-scene, .phm[data-fly] .phm-stage, .phm[data-fly] .phm-pin-pos { transition: none; }
   .phm-glow { animation: none; }
 }
+
+/* ── A picture as the model (PlanImageModel.jsx) ───────────────────────────
+   Same shell, bar and pins as above; the scene is one flat image that pans
+   and zooms, with pins held at fractions of its width and height. */
+.phi { --phm-zoom: 1; }
+.phi-stage {
+  position: absolute; left: 50%; top: calc(50% - 22px); width: 0; height: 0;
+  transform: translate(var(--phm-x), var(--phm-y)) scale(var(--phm-zoom));
+}
+.phi-canvas { position: absolute; }
+.phi-canvas img {
+  display: block; width: 100%; height: 100%; pointer-events: none;
+  filter: drop-shadow(0 24px 50px rgba(0,0,0,0.55));
+}
+.phi-pin-pos {
+  position: absolute; width: 0; height: 0; z-index: 2;
+  transform: scale(calc(1 / var(--phm-zoom))); /* pins keep their size while the picture zooms */
+}
+.phi-pin-pos:hover, .phi-pin-pos:focus-within { z-index: 6; }
+.phi-glow {
+  position: absolute; width: 22%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%;
+  pointer-events: none; mix-blend-mode: screen; z-index: 1;
+  background: radial-gradient(circle, rgba(255,214,150,0.6), rgba(255,190,110,0.25) 40%, transparent 70%);
+  animation: phm-glow-in .5s ease both;
+}
+.phi[data-armed] { cursor: crosshair; }
+.phi[data-edit] .phm-pin { cursor: grab; touch-action: none; }
+.phi[data-edit][data-dragging] .phm-pin { cursor: grabbing; }
+.phi-pin-x {
+  display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; margin: 0 2px 0 -2px;
+  border-radius: 50%; background: rgba(127,127,127,0.3); font-size: 13px; line-height: 1; cursor: pointer;
+}
+.phi-pin-x:hover, .phi-pin-x:focus-visible { background: #ff453a; color: #fff; outline: none; }
+
+/* devices that are not on the picture yet */
+.phi-tray {
+  position: absolute; top: 48px; right: 14px; bottom: 66px; z-index: 30; width: 230px; max-width: calc(100% - 28px);
+  display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 14px; cursor: default;
+  background: rgba(20,20,26,0.72); box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.12);
+  backdrop-filter: blur(16px) saturate(1.5); -webkit-backdrop-filter: blur(16px) saturate(1.5);
+}
+.phi-tray input {
+  width: 100%; border: none; border-radius: 9px; padding: 7px 10px; font: inherit; font-size: 13px;
+  background: rgba(255,255,255,0.1); color: #fff; outline: none;
+}
+.phi-tray input:focus-visible { box-shadow: 0 0 0 2px var(--accent, #0a84ff); }
+.phi-tray-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; touch-action: pan-y; }
+.phi-tray-list button {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; border: none; border-radius: 9px; text-align: left;
+  background: none; color: rgba(255,255,255,0.85); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.phi-tray-list button i { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--c); }
+.phi-tray-list button small { margin-left: auto; padding-left: 8px; opacity: .5; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.phi-tray-list button:hover { background: rgba(255,255,255,0.08); }
+.phi-tray-list button[data-active] { background: rgba(255,255,255,0.92); color: #111; }
+.phi-tray-empty { padding: 10px 8px; font-size: 12px; color: rgba(255,255,255,0.5); }
+@media (max-width: 640px) {
+  .phi-tray { top: auto; left: 12px; right: 12px; bottom: 62px; width: auto; height: 38%; }
+}

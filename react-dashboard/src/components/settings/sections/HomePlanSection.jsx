@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SettingsCard, ListEditor, Field, Toggle, Button, ResultBanner } from '../primitives'
 import { useSettingsSave } from '../../../hooks/useSettingsSave'
 import { PlanIcon } from '../../Icons'
 import { tr } from '../../../i18n'
+import { postWithPin } from '../../../postWithPin'
 
 const FLOORS = [['cellar', 'Cellar'], ['floor1', '1st Floor'], ['floor2', '2nd Floor']]
 const ROOM_FIELDS = [
@@ -13,6 +14,81 @@ const ROOM_FIELDS = [
   { key: 'w', label: 'W', type: 'number', default: 3 },
   { key: 'd', label: 'D', type: 'number', default: 3 },
 ]
+
+const MODEL_EXT = ['glb', 'obj', 'png', 'jpg', 'jpeg', 'webp']
+const MODEL_MAX = 50 * 1024 * 1024
+
+// The imported model — a 3D file or a rendered picture — that the Plan shows in
+// place of the drawn board. The same import as the Plan's own toolbar button,
+// here because a wall tablet's Plan has no toolbar. It saves on its own, apart
+// from "Save Plan" below.
+function ImportedModel({ model, onChange }) {
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+  const input = useRef(null)
+
+  const upload = async (file) => {
+    if (!file) return
+    setResult(null)
+    const ext = file.name.toLowerCase().split('.').pop()
+    if (!MODEL_EXT.includes(ext)) return setResult({ ok: false, message: 'File must be .glb, .obj, .png, .jpg or .webp' })
+    if (file.size > MODEL_MAX) return setResult({ ok: false, message: 'Model too large (max 50 MB)' })
+    setBusy(true)
+    try {
+      const data = await new Promise((resolve, reject) => {
+        const fr = new FileReader()
+        fr.onload = () => resolve(fr.result)
+        fr.onerror = () => reject(fr.error)
+        fr.readAsDataURL(file)
+      })
+      const d = await postWithPin('/api/plan-model/upload', { name: file.name, data })
+      if (d === null) return
+      if (!d.success) return setResult({ ok: false, message: d.error || 'Upload failed' })
+      onChange(d.model)
+      // a picture takes the board's place on the Plan in this browser straight away
+      if (d.model.image) { try { localStorage.setItem('planHtmlModel', '1') } catch { /* private mode */ } }
+      setResult({ ok: true, message: d.model.image ? tr('Imported — open the Plan and use "Place devices" to pin your devices on the picture') : tr('Imported — open the Plan to see it') })
+    } catch {
+      setResult({ ok: false, message: 'Could not read the file' })
+    } finally {
+      setBusy(false)
+      if (input.current) input.current.value = ''
+    }
+  }
+
+  const remove = async () => {
+    if (!window.confirm(tr('Remove the imported floor-plan model?'))) return
+    setResult(null)
+    const d = await postWithPin('/api/plan-model/remove', {})
+    if (d === null) return
+    if (!d.success) return setResult({ ok: false, message: d.error || 'Failed' })
+    onChange(null)
+    setResult({ ok: true, message: 'Removed' })
+  }
+
+  const pinned = Object.keys(model?.pins || {}).length
+  return (
+    <>
+      <h4 className="stg-subheading">{tr('Imported model')}</h4>
+      <p className="stg-hint">
+        {tr('A 3D model (.glb or .obj) or a rendered picture of the home (.png, .jpg, .webp), shown on the Plan in place of the drawn board. Only one is kept: importing another replaces it and the device positions made on it.')}
+      </p>
+      <p className="stg-hint">
+        {model === undefined ? tr('Loading…')
+          : !model ? tr('No model imported')
+            : <><b>{model.name}</b> — {model.image ? tr('Picture') : tr('3D model')}{model.image ? ` · ${pinned} ${tr('devices pinned')}` : ''}</>}
+      </p>
+      <div className="stg-actions">
+        <Button busy={busy} onClick={() => input.current?.click()}>{model ? tr('Replace model…') : tr('Import model…')}</Button>
+        {model && <Button variant="danger" onClick={remove}>{tr('Remove model')}</Button>}
+        <ResultBanner result={result}/>
+        <input ref={input} type="file" style={{ display: 'none' }} aria-label={tr('Imported model')}
+          accept=".glb,.obj,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+          onChange={(e) => upload(e.target.files?.[0])}/>
+      </div>
+    </>
+  )
+}
 
 const LAYER_TOGGLES = [
   ['furniture', 'Furniture (auto-generated per-room icons, or the 3D furniture layer)'],
@@ -29,6 +105,7 @@ export default function HomePlanSection() {
   const [singleFloor, setSingleFloor] = useState(false)
   const [floors, setFloors] = useState({ cellar: { image: '', w: 12, h: 9 }, floor1: { image: '', w: 12, h: 9 }, floor2: { image: '', w: 12, h: 9 } })
   const [defaultLayers, setDefaultLayers] = useState({})
+  const [model, setModel] = useState(undefined) // undefined = loading, null = none imported
   const save = useSettingsSave('/api/settings/home-plan')
 
   useEffect(() => {
@@ -37,7 +114,8 @@ export default function HomePlanSection() {
       setSingleFloor(!!d.plan?.singleFloor)
       if (d.plan?.floors) setFloors(prev => ({ ...prev, ...d.plan.floors }))
       setDefaultLayers(d.plan?.defaultLayers || {})
-    }).catch(() => setRooms([]))
+      setModel(d.plan?.model?.url ? d.plan.model : null)
+    }).catch(() => { setRooms([]); setModel(null) })
   }, [])
 
   const setFloor = (key, patch) => setFloors(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
@@ -65,6 +143,8 @@ export default function HomePlanSection() {
           </div>
         </div>
       ))}
+
+      <ImportedModel model={model} onChange={setModel}/>
 
       <h4 className="stg-subheading">{tr('Rooms')}</h4>
       {rooms == null

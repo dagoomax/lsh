@@ -109,7 +109,8 @@ module.exports = function register(router, ctx) {
     }
     try {
       const cfg = readConfigFile();
-      cfg.homePlan = { rooms, floors, singleFloor: !!req.body?.singleFloor, defaultLayers };
+      // keep what this form doesn't edit — the imported model and the devices placed on it
+      cfg.homePlan = { ...(cfg.homePlan?.model ? { model: cfg.homePlan.model } : {}), rooms, floors, singleFloor: !!req.body?.singleFloor, defaultLayers };
       writeConfigFile(cfg);
       res.json({ success: true, message: `Saved ${rooms.length} room(s), ${Object.keys(floors).length} floor image(s)` });
     } catch (err) {

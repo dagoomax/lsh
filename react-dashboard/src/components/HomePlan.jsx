@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { resolveIcon, CAT_ICON_COMPONENT } from './Icons'
 import { gt } from '../i18n'
+import { postWithPin } from '../postWithPin'
 import { EDIT_EMOJI } from '../emoji'
 import PlanFurniture3D from './PlanFurniture3D'
 import { PLAN_FURNITURE_3D } from '../planFurniture3D'
@@ -13,6 +14,8 @@ import { PLAN_SURROUNDINGS_3D } from '../planSurroundings3D'
 // nobody who hasn't imported a model needs on every page load.
 const PlanModelViewer = lazy(() => import('./PlanModelViewer'))
 const PlanHtmlModel = lazy(() => import('./PlanHtmlModel'))
+const PlanImageModel = lazy(() => import('./PlanImageModel'))
+const IMAGE_EXT = ['png', 'jpg', 'jpeg', 'webp']
 
 // Isometric home plan — rooms from config.homePlan (Settings → Home Plan),
 // falling back to an automatic grid of the rooms assigned to devices.
@@ -113,25 +116,6 @@ function computeDecorations(room) {
 const isOn = (d) => {
   const v = d.readings?.switch?.value
   return v === 1 || v === true || v === 'on'
-}
-
-// POST JSON to a PIN-gated endpoint. On 403 the user is prompted for the
-// edit PIN (up to twice) and the request is retried with the entered value.
-// Returns the parsed response, or null if the user cancelled the prompt.
-async function postWithPin(url, body) {
-  let pin = sessionStorage.getItem('lsh-edit-pin') || ''
-  for (let prompts = 0; ; prompts++) {
-    const res = await fetch(url, {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...body, pin }),
-    })
-    if (res.status !== 403 || prompts >= 2) return res.json().catch(() => ({}))
-    const entered = window.prompt(gt('pin_prompt', 'Enter edit PIN'))
-    if (entered == null) return null
-    pin = entered.trim()
-    sessionStorage.setItem('lsh-edit-pin', pin)
-  }
 }
 
 // Persist a dragged chip position ({planX, planY} fractions), PIN-gated
@@ -610,8 +594,9 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
   const uploadModel = async (file) => {
     if (!file) return
     const ext = file.name.toLowerCase().split('.').pop()
-    if (ext !== 'glb' && ext !== 'obj') {
-      window.alert(gt('model_bad_type', 'File must be .glb or .obj'))
+    const isImage = IMAGE_EXT.includes(ext)
+    if (ext !== 'glb' && ext !== 'obj' && !isImage) {
+      window.alert(gt('model_bad_type2', 'File must be .glb, .obj, .png, .jpg or .webp'))
       return
     }
     setModelBusy(true)
@@ -636,7 +621,9 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
       if (d === null) return
       if (!d.success) { window.alert(d.error || 'Upload failed'); return }
       setPlan((p) => ({ ...p, model: d.model }))
-      setShowModelView(true)
+      // a picture has no WebGL view — it takes the board's place, like the HTML model
+      if (isImage) { setShowModelView(false); setShowModelAlign(false); localStorage.setItem('planHtmlModel', '1'); setHtmlModel(true) }
+      else setShowModelView(true)
     } finally {
       setModelBusy(false)
       if (modelRef.current) modelRef.current.value = ''
@@ -658,6 +645,15 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
     if (d === null) return
     if (!d.success) { window.alert(d.error || 'Failed'); return }
     setPlan((p) => ({ ...p, model: d.model }))
+  }
+
+  // Device positions on a picture model; false tells the view to undo its optimistic move
+  const saveModelPins = async (pins) => {
+    const d = await postWithPin('/api/plan-model/pins', { pins })
+    if (d === null) return false
+    if (!d.success) { window.alert(d.error || 'Failed'); return false }
+    setPlan((p) => ({ ...p, model: d.model }))
+    return true
   }
 
   if (!plan) {
@@ -786,8 +782,13 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
   const solarW = energy?.solar?.power
   // HTML model in place of the drawn board: the board's own layers, zoom and
   // room pills have nothing to act on, so the toolbar drops them
-  const hasHtmlModel = plan.model?.url && plan.model.format === 'glb'
-  const htmlView = !!(hasHtmlModel && htmlModel)
+  const imageModel = !!(plan.model?.url && plan.model.image)
+  const hasHtmlModel = plan.model?.url && (plan.model.format === 'glb' || imageModel)
+  // A wall tablet shows a picture model without being told to: importing one is
+  // a statement that this is what the home looks like. (The HTML rendering of a
+  // GLB stays opt-in there.) Switching back to the board is still remembered.
+  const kioskPicture = kiosk && imageModel && localStorage.getItem('planHtmlModel') !== '0'
+  const htmlView = !!(hasHtmlModel && (htmlModel || kioskPicture))
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -837,7 +838,8 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
                 {gt('plan_view_board', 'Plan')}
               </button>
               <button type="button" data-active={String(htmlView)} onClick={() => !htmlView && toggleHtmlModel()}
-                title={gt('plan_view_model_hint', 'The imported 3D model drawn in HTML — devices, lights and walls you can slice')}>
+                title={imageModel ? gt('plan_view_picture_hint', 'The imported picture of the home with your devices pinned on it')
+                  : gt('plan_view_model_hint', 'The imported 3D model drawn in HTML — devices, lights and walls you can slice')}>
                 {gt('plan_view_model', 'Model')}
               </button>
             </div>
@@ -936,31 +938,31 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
           </>}
           {!kiosk && (
             <button className="plan-filter-pill" disabled={modelBusy}
-              title={gt('import_model_hint', 'Import a 3D floor-plan model (.glb or .obj) as an alternative to the drawn board')}
+              title={gt('import_model_hint2', 'Import a 3D floor-plan model (.glb or .obj) or a rendered picture (.png, .jpg, .webp) as an alternative to the drawn board')}
               onClick={() => modelRef.current?.click()}>
-              {modelBusy ? '…' : '📦'} {gt('import_model', 'Import 3D Model')}
+              {modelBusy ? '…' : '📦'} {gt('import_model2', 'Import Model')}
             </button>
           )}
           {!kiosk && (
             <input ref={modelRef} type="file" style={{ display: 'none' }}
-              accept=".glb,.obj"
+              accept=".glb,.obj,.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
               onChange={(e) => uploadModel(e.target.files?.[0])}/>
           )}
-          {plan?.model?.url && (
+          {plan?.model?.url && !imageModel && (
             <button className="plan-filter-pill" data-active={String(showModelView)}
               onClick={() => setShowModelView((v) => !v)}
               title={gt('model_view_hint', 'Switch between the imported 3D model and the drawn board')}>
               🧊 {gt('model_view_webgl', '3D Model (WebGL)')}
             </button>
           )}
-          {!kiosk && plan?.model?.url && showModelView && (
+          {!kiosk && plan?.model?.url && !imageModel && showModelView && (
             <button className="plan-filter-pill" data-active={String(showModelAlign)}
               onClick={() => setShowModelAlign((v) => !v)}
               title={gt('model_align_hint', 'Adjust scale/rotation to align the model')}>
               🎚️ {gt('align', 'Align')}
             </button>
           )}
-          {!kiosk && showModelAlign && plan?.model?.url && (
+          {!kiosk && showModelAlign && plan?.model?.url && !imageModel && (
             <div className="plan-add-panel" onClick={(e) => e.stopPropagation()} style={{ minWidth: 190 }}>
               <div className="plan-add-head">{gt('align_model', 'Align Model')}</div>
               <ModelAlignForm model={plan.model} onSave={saveModelTransform} />
@@ -983,7 +985,7 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
       </div>
       <div className="plan-viewport" ref={viewportRef} data-html-model={htmlView || undefined}
         style={{ position: 'relative', overflow: focusRoom ? 'hidden' : undefined }}>
-      {plan?.model?.url && showModelView && (
+      {plan?.model?.url && !imageModel && showModelView && (
         <div className="pmv-full">
           <Suspense fallback={
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontSize: 13 }}>…</div>
@@ -995,7 +997,9 @@ export default function HomePlan({ devices, roomsMeta = {}, groupOf, onOpen, ene
       )}
       {htmlView && (
         <Suspense fallback={<div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontSize: 13 }}>…</div>}>
-          <PlanHtmlModel model={plan.model} devices={devices} groupOf={groupOf} onOpen={onOpen} filter={filter} />
+          {imageModel
+            ? <PlanImageModel model={plan.model} devices={devices} groupOf={groupOf} onOpen={onOpen} filter={filter} kiosk={kiosk} onSavePins={saveModelPins} />
+            : <PlanHtmlModel model={plan.model} devices={devices} groupOf={groupOf} onOpen={onOpen} filter={filter} />}
         </Suspense>
       )}
       {!htmlView && kiosk && (

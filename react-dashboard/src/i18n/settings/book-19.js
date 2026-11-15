@@ -1,6 +1,134 @@
 // Settings phrase book, part 19 — Laundry
 // Order: [pl, de, fr, es, it, uk].
 export const P19 = {
+  "3D model": [
+    "Model 3D",
+    "3D-Modell",
+    "Modèle 3D",
+    "Modelo 3D",
+    "Modello 3D",
+    "3D-модель"
+  ],
+  "A 3D model (.glb or .obj) or a rendered picture of the home (.png, .jpg, .webp), shown on the Plan in place of the drawn board. Only one is kept: importing another replaces it and the device positions made on it.": [
+    "Model 3D (.glb lub .obj) albo wyrenderowany obraz domu (.png, .jpg, .webp), wyświetlany w Planie zamiast rysowanej planszy. Przechowywany jest tylko jeden: import kolejnego zastępuje go razem z rozmieszczeniem urządzeń.",
+    "Ein 3D-Modell (.glb oder .obj) oder ein gerendertes Bild des Hauses (.png, .jpg, .webp), das im Plan anstelle des gezeichneten Grundrisses angezeigt wird. Es wird nur eines gespeichert: Ein weiterer Import ersetzt es samt den darauf gesetzten Gerätepositionen.",
+    "Un modèle 3D (.glb ou .obj) ou une image rendue de la maison (.png, .jpg, .webp), affichés dans le Plan à la place du plan dessiné. Un seul est conservé : en importer un autre le remplace, ainsi que les positions d'appareils qui y ont été définies.",
+    "Un modelo 3D (.glb u .obj) o una imagen renderizada de la casa (.png, .jpg, .webp), que se muestra en el Plano en lugar del tablero dibujado. Solo se guarda uno: al importar otro se sustituye junto con las posiciones de dispositivos definidas en él.",
+    "Un modello 3D (.glb o .obj) o un'immagine renderizzata della casa (.png, .jpg, .webp), mostrati nella Pianta al posto della planimetria disegnata. Ne viene conservato uno solo: importarne un altro lo sostituisce insieme alle posizioni dei dispositivi impostate.",
+    "3D-модель (.glb або .obj) чи відрендерене зображення будинку (.png, .jpg, .webp), які показуються на Плані замість намальованої схеми. Зберігається лише одна: імпорт іншої замінює її разом із розміщенням пристроїв."
+  ],
+  "Could not read the file": [
+    "Nie udało się odczytać pliku",
+    "Die Datei konnte nicht gelesen werden",
+    "Impossible de lire le fichier",
+    "No se pudo leer el archivo",
+    "Impossibile leggere il file",
+    "Не вдалося прочитати файл"
+  ],
+  "File must be .glb, .obj, .png, .jpg or .webp": [
+    "Plik musi mieć format .glb, .obj, .png, .jpg lub .webp",
+    "Die Datei muss .glb, .obj, .png, .jpg oder .webp sein",
+    "Le fichier doit être au format .glb, .obj, .png, .jpg ou .webp",
+    "El archivo debe ser .glb, .obj, .png, .jpg o .webp",
+    "Il file deve essere .glb, .obj, .png, .jpg o .webp",
+    "Файл має бути у форматі .glb, .obj, .png, .jpg або .webp"
+  ],
+  "Import model…": [
+    "Importuj model…",
+    "Modell importieren…",
+    "Importer un modèle…",
+    "Importar modelo…",
+    "Importa modello…",
+    "Імпортувати модель…"
+  ],
+  "Imported model": [
+    "Zaimportowany model",
+    "Importiertes Modell",
+    "Modèle importé",
+    "Modelo importado",
+    "Modello importato",
+    "Імпортована модель"
+  ],
+  "Model too large (max 50 MB)": [
+    "Model jest za duży (maks. 50 MB)",
+    "Modell zu groß (max. 50 MB)",
+    "Modèle trop volumineux (50 Mo max.)",
+    "Modelo demasiado grande (máx. 50 MB)",
+    "Modello troppo grande (max 50 MB)",
+    "Модель завелика (макс. 50 МБ)"
+  ],
+  "No model imported": [
+    "Nie zaimportowano modelu",
+    "Kein Modell importiert",
+    "Aucun modèle importé",
+    "Ningún modelo importado",
+    "Nessun modello importato",
+    "Модель не імпортовано"
+  ],
+  "Picture": [
+    "Obraz",
+    "Bild",
+    "Image",
+    "Imagen",
+    "Immagine",
+    "Зображення"
+  ],
+  "Remove model": [
+    "Usuń model",
+    "Modell entfernen",
+    "Supprimer le modèle",
+    "Quitar modelo",
+    "Rimuovi modello",
+    "Видалити модель"
+  ],
+  "Remove the imported floor-plan model?": [
+    "Usunąć zaimportowany model planu?",
+    "Das importierte Grundrissmodell entfernen?",
+    "Supprimer le modèle de plan importé ?",
+    "¿Quitar el modelo de plano importado?",
+    "Rimuovere il modello di pianta importato?",
+    "Видалити імпортовану модель плану?"
+  ],
+  "Removed": [
+    "Usunięto",
+    "Entfernt",
+    "Supprimé",
+    "Eliminado",
+    "Rimosso",
+    "Видалено"
+  ],
+  "Replace model…": [
+    "Zastąp model…",
+    "Modell ersetzen…",
+    "Remplacer le modèle…",
+    "Reemplazar modelo…",
+    "Sostituisci modello…",
+    "Замінити модель…"
+  ],
+  "devices pinned": [
+    "przypiętych urządzeń",
+    "Geräte platziert",
+    "appareils placés",
+    "dispositivos colocados",
+    "dispositivi posizionati",
+    "пристроїв розміщено"
+  ],
+  "Imported — open the Plan and use \"Place devices\" to pin your devices on the picture": [
+    "Zaimportowano — otwórz Plan i użyj „Rozmieść urządzenia”, aby przypiąć urządzenia do obrazu",
+    "Importiert — öffnen Sie den Plan und setzen Sie Ihre Geräte mit „Geräte platzieren“ auf das Bild",
+    "Importé — ouvrez le Plan et utilisez « Placer les appareils » pour épingler vos appareils sur l'image",
+    "Importado: abra el Plano y use «Colocar dispositivos» para fijar sus dispositivos en la imagen",
+    "Importato: apri la Pianta e usa «Posiziona dispositivi» per fissare i dispositivi sull'immagine",
+    "Імпортовано — відкрийте План і скористайтеся «Розмістити пристрої», щоб закріпити пристрої на зображенні"
+  ],
+  "Imported — open the Plan to see it": [
+    "Zaimportowano — otwórz Plan, aby go zobaczyć",
+    "Importiert — öffnen Sie den Plan, um es zu sehen",
+    "Importé — ouvrez le Plan pour le voir",
+    "Importado: abra el Plano para verlo",
+    "Importato: apri la Pianta per vederlo",
+    "Імпортовано — відкрийте План, щоб побачити"
+  ],
   "(ISO code; blank uses the room-service currency)": [
     "(kod ISO; puste = waluta room service)",
     "(ISO-Code; leer = Room-Service-Währung)",
@@ -312,7 +440,47 @@ export const P19 = {
     "Marcar entregado",
     "Segna consegnato",
     "Позначити доставленим"
+  ],
+  "(optional, one name or id per line — leave empty for all)": [
+    "(opcjonalnie, jedna nazwa lub id w wierszu — puste = wszystkie)",
+    "(optional, ein Name oder eine ID pro Zeile — leer = alle)",
+    "(facultatif, un nom ou un id par ligne — vide = tous)",
+    "(opcional, un nombre o id por línea — vacío = todos)",
+    "(facoltativo, un nome o id per riga — vuoto = tutti)",
+    "(необов'язково, одна назва або id на рядок — порожньо = усі)"
+  ],
+  "Adds every player of a Music Assistant server as a media device: play, pause, skip, volume and what is playing. Create the token in Music Assistant: Settings → Profile → Long-lived access tokens.": [
+    "Dodaje każdy odtwarzacz serwera Music Assistant jako urządzenie multimedialne: odtwarzanie, pauza, następny utwór, głośność i informacja, co gra. Token utwórz w Music Assistant: Settings → Profile → Long-lived access tokens.",
+    "Fügt jeden Player eines Music-Assistant-Servers als Mediengerät hinzu: Wiedergabe, Pause, Überspringen, Lautstärke und was gerade läuft. Das Token erstellen Sie in Music Assistant: Settings → Profile → Long-lived access tokens.",
+    "Ajoute chaque lecteur d'un serveur Music Assistant comme appareil multimédia : lecture, pause, piste suivante, volume et titre en cours. Créez le jeton dans Music Assistant : Settings → Profile → Long-lived access tokens.",
+    "Añade cada reproductor de un servidor Music Assistant como dispositivo multimedia: reproducir, pausar, saltar, volumen y qué está sonando. Cree el token en Music Assistant: Settings → Profile → Long-lived access tokens.",
+    "Aggiunge ogni lettore di un server Music Assistant come dispositivo multimediale: riproduzione, pausa, brano successivo, volume e cosa è in riproduzione. Crea il token in Music Assistant: Settings → Profile → Long-lived access tokens.",
+    "Додає кожен програвач сервера Music Assistant як медіапристрій: відтворення, пауза, наступний трек, гучність і що зараз грає. Токен створіть у Music Assistant: Settings → Profile → Long-lived access tokens."
+  ],
+  "Also add players hidden in Music Assistant": [
+    "Dodaj też odtwarzacze ukryte w Music Assistant",
+    "Auch in Music Assistant ausgeblendete Player hinzufügen",
+    "Ajouter aussi les lecteurs masqués dans Music Assistant",
+    "Añadir también los reproductores ocultos en Music Assistant",
+    "Aggiungi anche i lettori nascosti in Music Assistant",
+    "Додавати також програвачі, приховані в Music Assistant"
+  ],
+  "Only these players": [
+    "Tylko te odtwarzacze",
+    "Nur diese Player",
+    "Uniquement ces lecteurs",
+    "Solo estos reproductores",
+    "Solo questi lettori",
+    "Лише ці програвачі"
+  ],
+  "Server address": [
+    "Adres serwera",
+    "Serveradresse",
+    "Adresse du serveur",
+    "Dirección del servidor",
+    "Indirizzo del server",
+    "Адреса сервера"
   ]
 }
 
-export const S19 = []
+export const S19 = ['Music Assistant']

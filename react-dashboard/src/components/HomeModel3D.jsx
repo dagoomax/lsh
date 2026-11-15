@@ -7,6 +7,8 @@ import { gt } from '../i18n'
 // dashboard itself loads as fast as before. The model turns slowly until
 // someone drags it; ⤢ makes it full screen, "Open plan" jumps to the Plan view.
 const PlanModelViewer = lazy(() => import('./PlanModelViewer'))
+// a picture model (PNG/JPG/WebP) has nothing for three.js to load — it gets the flat pinned view
+const PlanImageModel = lazy(() => import('./PlanImageModel'))
 
 export default function HomeModel3D({ onOpenPlan, devices, groupOf, onOpen }) {
   const [model, setModel] = useState(undefined) // undefined = loading, null = none imported
@@ -42,7 +44,7 @@ export default function HomeModel3D({ onOpenPlan, devices, groupOf, onOpen }) {
         {onOpenPlan && !full && (
           <button type="button" className="home-edit-btn" onClick={onOpenPlan}>{gt('plan_open', 'Open plan')}</button>
         )}
-        {!full && (
+        {!full && !model.image && (
           <button type="button" className="hm3d-btn" onClick={() => setFull(true)}
             title={gt('fullscreen', 'Full screen')} aria-label={gt('fullscreen', 'Full screen')}>⤢</button>
         )}
@@ -50,9 +52,11 @@ export default function HomeModel3D({ onOpenPlan, devices, groupOf, onOpen }) {
       <div className="hm3d-stage">
         {near || full
           ? <Suspense fallback={<div className="hm3d-wait">{gt('loading', 'Loading…')}</div>}>
-              <PlanModelViewer model={model} autoRotate transparent showHint={full}
-                devices={devices} groupOf={groupOf} onOpen={onOpen} compact={!full}
-                onClose={full ? () => setFull(false) : undefined} />
+              {model.image
+                ? <PlanImageModel model={model} devices={devices} groupOf={groupOf} onOpen={onOpen} kiosk />
+                : <PlanModelViewer model={model} autoRotate transparent showHint={full}
+                    devices={devices} groupOf={groupOf} onOpen={onOpen} compact={!full}
+                    onClose={full ? () => setFull(false) : undefined} />}
             </Suspense>
           : <div className="hm3d-wait">{gt('loading', 'Loading…')}</div>}
       </div>
