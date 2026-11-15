@@ -63,7 +63,7 @@ const toggleIn = (list, id, on) => {
 
 export const toggleFav = (key, on) => setHomePrefs(p => ({ favs: toggleIn(p.favs, key, on) }))
 // Bento default: media players and dimmable lights get a 2-column tile.
-const WIDE_TYPES = new Set(['sonos', 'radio', 'denon', 'lgwebos', 'sony', 'beosound', 'heatingcurve'])
+const WIDE_TYPES = new Set(['sonos', 'musicassistant', 'radio', 'denon', 'lgwebos', 'sony', 'beosound', 'heatingcurve'])
 export function defaultWide(device) {
   const r = device?.readings || {}
   return WIDE_TYPES.has(device?.type) || (r.level != null && r.switch != null)

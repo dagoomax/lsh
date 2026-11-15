@@ -120,6 +120,7 @@
     "src/routes/mongodb.js",
     "src/routes/mqtt-broker.js",
     "src/routes/mqtt-explorer.js",
+    "src/routes/music-assistant.js",
     "src/routes/n8n.js",
     "src/routes/nuki.js",
     "src/routes/object-detection.js",
@@ -970,6 +971,19 @@
         "src/ring-client.js"
       ],
       "deps": {}
+    },
+    "music-assistant": {
+      "entry": "src/music-assistant-client.js",
+      "configKeys": [
+        "musicAssistant"
+      ],
+      "when": "(config.musicAssistant?.url)",
+      "files": [
+        "src/music-assistant-client.js"
+      ],
+      "deps": {
+        "ws": "^7.5.11"
+      }
     },
     "helvar": {
       "entry": "src/helvar-client.js",

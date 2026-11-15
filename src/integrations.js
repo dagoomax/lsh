@@ -62,6 +62,7 @@ module.exports = [
   { file: 'dahua-client', label: 'Dahua', expose: 'dahua', when: (config) => config.dahua?.devices?.length },
   // Ring cameras / video doorbells — cloud-only; exposed for /api/cameras and /api/ring/*
   { file: 'ring-client', label: 'Ring', expose: 'ring', when: (config) => config.ring },
+  { file: 'music-assistant-client', label: 'MusicAssistant', expose: 'musicAssistant', when: (config) => config.musicAssistant?.url },
   // Helvar lighting routers (HelvarNet, TCP 50000) — see src/helvar-client.js
   { file: 'helvar-client', label: 'Helvar', when: (config) => config.helvar?.host },
   // Atios SmartCore — DALI-2 lamps / groups / inputs over its local web API + bus monitor

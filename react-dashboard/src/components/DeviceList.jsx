@@ -219,7 +219,7 @@ export function getGroup(d) {
   if (d.type === 'zehnder' || d.category === 'ventilation') return 'Climate'
   if (d.type === 'smarttub') return 'Climate'
   if (d.type === 'heatingcurve' || d.type === 'emodule') return 'Climate'
-  if (d.type === 'sonos' || d.type === 'radio')  return 'Media'
+  if (d.type === 'sonos' || d.type === 'radio' || d.type === 'musicassistant')  return 'Media'
   if (d.type === 'googlehome' || d.type === 'googletv' || d.type === 'sony') return 'Media'
   if (d.type === 'denon' || d.type === 'lgwebos')  return 'Media'
   if (d.type === 'ezviz') return d.kind === 'smart plug' ? 'Switches' : 'Security'
@@ -450,7 +450,7 @@ export const DeviceTile = memo(function DeviceTile({ device, onCommand, onOpen, 
   const ac        = acView(device, merged)
   const isAC      = !!ac
   // radio (src/radio-devices.js: the media player's speakers) has the same play / volume / mute tile
-  const isSonos  = device.type === 'sonos' || device.type === 'radio'
+  const isSonos  = device.type === 'sonos' || device.type === 'radio' || device.type === 'musicassistant'
   const isRadio  = device.type === 'radio'
   // LG webOS TVs share the Denon tile: power, volume, mute, source pills (inputs)
   const isTv     = device.type === 'lgwebos'

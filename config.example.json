@@ -560,6 +560,10 @@
   "ring": {
     "pollInterval": 60
   },
+  "musicAssistant": {
+    "url": "http://192.168.1.20:8095",
+    "token": ""
+  },
   "yale": {
     "username": "you@example.com",
     "password": "",

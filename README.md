@@ -2906,6 +2906,24 @@ Test without hardware: `node scripts/dahua-simulator.js 8096` (login `admin` / `
 - **Live video is not built in.** go2rtc (1.9.13 or newer) can stream Ring cameras: add `ring_front: ring:?device_id=…&refresh_token=…` to its config (its web UI → Add → Ring finds both values) and map the camera id to that stream's WebRTC URL in `streams`.
 - Chimes, the Ring Alarm base station and smart lighting are not covered.
 
+### `musicAssistant`
+
+```json
+"musicAssistant": {
+  "url": "http://192.168.1.20:8095",
+  "token": "<long-lived access token>",
+  "players": ["Kitchen", "Living room"],
+  "includeHidden": false
+}
+```
+
+**[Music Assistant](https://www.music-assistant.io/) players as media devices** (`src/music-assistant-client.js`, uses the `ws` package). LSH keeps one WebSocket to the server (`/ws`), signs in with the token and follows the server's player and queue events — nothing is polled. **Not yet run against a real Music Assistant server**; it follows the protocol of the official client and is exercised against a fake server in `test/music-assistant.test.js`.
+
+- **Token** — Music Assistant 2.7 and later (API schema 28+) require one: in Music Assistant open Settings → Profile → Long-lived access tokens, create a token and paste it here or in Settings → Denon, Sony, Sonos & Google Home → Music Assistant ("Test connection" checks it). Older servers need no token.
+- **Devices** — each player becomes `musicassistant/<player id>` with `playing` (play/pause), `prev`, `next`, `stop`, `volume`, `mute`, `shuffle`, `power` (where the speaker supports it) and the read-only `track`, `artist`, `album`, `state`, `group`, `available`. Groups and stereo pairs are players too; the per-protocol legs of a speaker (its AirPlay/Cast/DLNA transport) are skipped. `players` limits the import to the listed names or ids; `includeHidden` also adds players hidden in the Music Assistant UI.
+- **Play something** — `POST /api/music-assistant/play` `{ player, media, option?, radio? }` (also `GET` with a query, for Loxone and flows). `player` is a player id, its name or the LSH device key; `media` is a Music Assistant URI such as `library://playlist/3` or `spotify://track/…`; `option` is `play`, `replace`, `next`, `replace_next` or `add`. `GET /api/music-assistant/search?q=…&types=track,playlist` finds URIs; `GET /api/music-assistant/players` lists every player the server has; `GET /api/music-assistant/status` shows the connection.
+- Browsing the library, queue editing, grouping players and announcements are not covered.
+
 ### `objectDetection`
 
 ```json

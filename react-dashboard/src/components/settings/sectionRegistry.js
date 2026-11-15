@@ -86,7 +86,7 @@ export const CATEGORIES = [
     { id: 'aidetect', title: 'AI Camera Detection', keywords: ['ai', 'detection', 'person', 'object', 'yolo', 'motion'] },
   ] },
   { id: 'media', label: 'Media & Intercom', sections: [
-    { id: 'media-all', title: 'Denon, Sony, Sonos & Google Home', keywords: ['denon', 'marantz', 'sony', 'bravia', 'tv', 'sonos', 'google home', 'chromecast', 'nest'] },
+    { id: 'media-all', title: 'Denon, Sony, Sonos & Google Home', keywords: ['denon', 'marantz', 'sony', 'bravia', 'tv', 'sonos', 'google home', 'chromecast', 'nest', 'music assistant', 'mass'] },
     { id: 'unifi-play', title: 'UniFi Play', keywords: ['unifi', 'play', 'ubiquiti', 'poweramp', 'power amp', 'poe audio port', 'audio', 'speaker', 'głośnik', 'amplifier', 'wzmacniacz', 'multiroom'] },
     { id: 'airplay', title: 'AirPlay Speakers', keywords: ['airplay', 'homepod', 'apple tv', 'speaker'] },
     { id: 'lgwebos', title: 'LG webOS TVs', keywords: ['lg', 'webos', 'tv', 'television', 'telewizor', 'remote'] },

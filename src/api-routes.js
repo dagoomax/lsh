@@ -29,6 +29,7 @@ const ROUTE_GROUPS = [
   require('./routes/paging'),
   require('./routes/airplay'),
   require('./routes/sonos'),
+  require('./routes/music-assistant'),
   require('./routes/simulators'),
   require('./routes/camera-ptz'),
   require('./routes/recordings'),
