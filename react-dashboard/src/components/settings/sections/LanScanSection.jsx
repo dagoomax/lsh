@@ -2,49 +2,38 @@ import { useEffect, useMemo, useState } from 'react'
 import { SettingsCard, Button } from '../primitives'
 import LanTopology, { GROUPS, groupOf } from '../LanTopology'
 import LanDevices, { TagChips, DeviceIcon } from '../LanDevices'
+import ScanRadar, { KindIcon, ScanIcon, plain } from '../ScanRadar'
 import { tr, trn } from '../../../i18n'
 
 // Settings → System → LAN scan — what's on this LSH host's local network
 // (tool module lsh-lan, installed from here on first use). Click a host for
 // a deep dive.
-const KIND_ICON = {
-  shelly: '🔌', hue: '💡', sonos: '🔊', esphome: '📟', loxone: '🏠', fibaro: '🏠', wled: '🌈', cast: '📺', androidtv: '📺',
-  airplay: '🎵', homekit: '🏡', matter: '🧩', homeassistant: '🏠', nodered: '🔀', mqtt: '📨', knx: '🔗', modbus: '🔗',
-  camera: '📷', printer: '🖨️', victron: '🔋', apple: '🍎', network: '📶', web: '🌐', unknown: '❔',
-  lsh: '🏠', homey: '🏠', climate: '🌡️', appliance: '🧺', vacuum: '🧹', alarm: '🚨', samsung: '📺', esp: '📟', iot: '🔌',
-}
 const PHASES = ['ARP sweep', 'TCP probes', 'Bonjour / mDNS', 'UPnP / SSDP', 'Vendor lookup', 'Fingerprinting']
 
 const latencyClass = (ms) => (ms == null ? '' : ms < 60 ? 'good' : ms < 250 ? 'ok' : 'slow')
 
-// Stable pseudo-random position for a host on the radar (by IP)
-function blip(h, i) {
+// Radar: each device group has its own sector; the distance from the centre
+// follows the response time (log scale — 10 / 50 / 300 ms rings).
+const latR = (ms) => (ms == null ? 0.93 : Math.min(0.9, 0.2 + (Math.log10(1 + ms) / Math.log10(301)) * 0.7))
+const RINGS = [10, 50, 300].map((ms) => ({ r: latR(ms), label: `${ms} ms` }))
+function blip(h) {
   const n = h.ip.split('.').reduce((a, x) => a * 31 + Number(x), 7)
-  const g = GROUPS.indexOf(groupOf(h))
-  const angle = (g / GROUPS.length) * Math.PI * 2 + ((n % 100) / 100) * 0.55
-  const r = 0.28 + ((n >> 3) % 60) / 100
-  return { left: `${50 + Math.cos(angle) * r * 46}%`, top: `${50 + Math.sin(angle) * r * 46}%`, background: groupOf(h).color, color: groupOf(h).color, animationDelay: `${(i % 12) * 0.12}s` }
+  const g = groupOf(h)
+  const angle = (GROUPS.indexOf(g) / GROUPS.length) * Math.PI * 2 + ((n % 100) / 100) * 0.55 - Math.PI / 2
+  return { key: h.ip, angle, r: latR(h.latency), color: g.color, self: h.self,
+    label: h.saved?.label || h.name || h.id?.label || h.ip, sub: `${h.ip}${h.latency != null ? ` · ${h.latency} ms` : ''}` }
 }
 
-function Radar({ hosts, scanning }) {
-  return (
-    <div className={`lan-radar${scanning ? ' scanning' : ''}`} aria-hidden="true">
-      <div className="lan-radar-sweep"/>
-      <div className="lan-radar-core">📡</div>
-      {hosts.slice(0, 80).map((h, i) => <span key={h.ip} className={`lan-blip${h.self ? ' self' : ''}`} style={blip(h, i)}/>)}
-    </div>
-  )
-}
-
-function Hero({ data, busy, elapsed, onScan, needsModule, onInstall }) {
+function Hero({ data, busy, elapsed, onScan, needsModule, onInstall, selected, onPick }) {
   const hosts = data?.hosts || []
   const lsh = hosts.filter((h) => h.id?.integration).length
   const lat = hosts.map((h) => h.latency).filter((x) => x != null)
   const avg = lat.length ? Math.round(lat.reduce((a, b) => a + b, 0) / lat.length) : null
   const groups = GROUPS.map((g) => ({ g, n: hosts.filter((h) => groupOf(h) === g).length })).filter((x) => x.n)
   return (
-    <div className="lan-hero">
-      <Radar hosts={hosts} scanning={busy}/>
+    <div className={`lan-hero${busy ? ' scanning' : ''}`}>
+      <ScanRadar core="lan" scanning={busy} rings={RINGS} selected={selected} onPick={onPick}
+        blips={hosts.slice(0, 120).map(blip)} mix={groups.map(({ g, n }) => ({ color: g.color, n, label: g.label }))}/>
       <div className="lan-hero-body">
         {busy ? (
           <>
@@ -54,7 +43,7 @@ function Hero({ data, busy, elapsed, onScan, needsModule, onInstall }) {
           </>
         ) : data ? (
           <>
-            <div className="lan-hero-title">{data.networks.map((n) => n.cidr).join(' · ')}</div>
+            <div className="lan-hero-title">{[...new Set(data.networks.map((n) => n.cidr))].join(' · ')}</div>
             <div className="lan-hero-sub">{data.networks.map((n) => n.iface).join(', ')}{' '}{tr('· scanned in')}{' '}{Math.round(data.durationMs / 1000)} s{data.baseline ? ' ' + tr('· baseline saved') : ''}</div>
           </>
         ) : (
@@ -77,7 +66,7 @@ function Hero({ data, busy, elapsed, onScan, needsModule, onInstall }) {
           </div>
         )}
         <div className="lan-hero-actions">
-          <button className="lan-scan-btn" disabled={busy} onClick={onScan}>{busy ? tr('Scanning…') : data ? tr('↻ Scan again') : tr('🛰 Scan network')}</button>
+          <button className="lan-scan-btn" disabled={busy} onClick={onScan}><ScanIcon spin={busy}/>{busy ? tr('Scanning…') : plain(data ? tr('↻ Scan again') : tr('🛰 Scan network'))}</button>
           {needsModule && <Button variant="primary" busy={busy} onClick={onInstall}>{tr('Install module')}</Button>}
         </div>
       </div>
@@ -144,7 +133,8 @@ export default function LanScanSection() {
   return (
     <SettingsCard title="LAN scan"
       desc="Finds devices on this LSH host's local network — IP, MAC and vendor, names from DNS / Bonjour (mDNS) / UPnP, open ports, what each one looks like and which LSH integration would connect it. Click a device for a deep dive. Only scans this host's own LAN; takes 15–40 s.">
-      <Hero data={data} busy={busy && !needsModule} elapsed={elapsed} onScan={run} needsModule={needsModule} onInstall={install}/>
+      <Hero data={data} busy={busy && !needsModule} elapsed={elapsed} onScan={run} needsModule={needsModule} onInstall={install}
+        selected={open} onPick={(ip) => { setView('list'); setGroup(null); setFilter(''); setOpen(ip); setTimeout(() => document.querySelector(`[data-scan-key="${ip}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 80) }}/>
       {error && <div className={`stg-banner ${busy ? 'ok' : 'err'}`} style={{ marginTop: 10 }}>{busy ? '' : '✗ '}{error}</div>}
       <div className="lan-toolbar">
         <div className="lan-viewtoggle">
@@ -183,10 +173,10 @@ export default function LanScanSection() {
               const g = groupOf(h)
               const isOpen = open === h.ip
               return (
-                <div key={h.ip} className={`lan-tile${isOpen ? ' open' : ''}${h.self ? ' self' : ''}`} style={{ '--g': g.color, animationDelay: `${Math.min(i, 30) * 25}ms` }}>
+                <div key={h.ip} data-scan-key={h.ip} className={`lan-tile${isOpen ? ' open' : ''}${h.self ? ' self' : ''}`} style={{ '--g': g.color, animationDelay: `${Math.min(i, 30) * 25}ms` }}>
                   <div className="lan-tile-main" onClick={() => setOpen(isOpen ? null : h.ip)}>
                     <div className="lan-tile-icon">
-                      {h.saved?.icon ? <DeviceIcon icon={h.saved.icon} size={26}/> : <span>{h.self ? '🏠' : KIND_ICON[h.id?.kind] || '❔'}</span>}
+                      {h.saved?.icon ? <DeviceIcon icon={h.saved.icon} size={26}/> : <KindIcon kind={h.self ? 'lsh' : h.id?.kind}/>}
                       {h.id?.integration && <i className="lan-tile-badge" title={`LSH integration: ${h.id.integration}`}>✓</i>}
                     </div>
                     <div className="lan-tile-text">

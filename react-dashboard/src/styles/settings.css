@@ -510,18 +510,56 @@ select.stg-input { cursor: pointer; }
 .lan-dots i { display: inline-block; width: 5px; height: 5px; margin-left: 4px; border-radius: 50%; background: currentColor; animation: lan-dot 1.2s infinite; }
 .lan-dots i:nth-child(2) { animation-delay: 0.2s; } .lan-dots i:nth-child(3) { animation-delay: 0.4s; }
 
-.lan-radar { position: relative; flex-shrink: 0; width: 168px; height: 168px; border-radius: 50%; overflow: hidden;
-  background: repeating-radial-gradient(circle, transparent 0 27px, color-mix(in srgb, var(--lan) 30%, transparent) 27px 28px),
-              radial-gradient(circle, color-mix(in srgb, var(--lan) 18%, transparent), transparent 70%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lan) 35%, transparent), 0 0 40px color-mix(in srgb, var(--lan) 20%, transparent); }
-.lan-radar::before, .lan-radar::after { content: ''; position: absolute; background: color-mix(in srgb, var(--lan) 25%, transparent); }
-.lan-radar::before { left: 50%; top: 0; bottom: 0; width: 1px; } .lan-radar::after { top: 50%; left: 0; right: 0; height: 1px; }
-.lan-radar-sweep { position: absolute; inset: 0; border-radius: 50%; animation: lan-spin 4s linear infinite;
-  background: conic-gradient(from 0deg, transparent 0 290deg, color-mix(in srgb, var(--lan) 55%, transparent) 360deg); }
-.lan-radar.scanning .lan-radar-sweep { animation-duration: 1.3s; }
-.lan-radar-core { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 22px; z-index: 1; filter: drop-shadow(0 0 8px var(--lan)); }
-.lan-blip { position: absolute; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; box-shadow: 0 0 8px currentColor; animation: lan-blip 0.6s both, lan-ping 3.5s 0.6s infinite; }
-.lan-blip.self { width: 10px; height: 10px; margin: -5px 0 0 -5px; outline: 2px solid #ffcc00; }
+/* radar (ScanRadar.jsx) — shared by the LAN and Bluetooth scans */
+.scan-radar { position: relative; flex-shrink: 0; width: 200px; height: 200px; filter: drop-shadow(0 0 26px color-mix(in srgb, var(--lan) 26%, transparent)); }
+.scan-radar svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.scan-rim { fill: none; stroke: color-mix(in srgb, var(--lan) 55%, transparent); stroke-width: 1; }
+.scan-ring { fill: none; stroke: color-mix(in srgb, var(--lan) 34%, transparent); stroke-width: 0.7; stroke-dasharray: 1.5 3; }
+.scan-cross { fill: none; stroke: color-mix(in srgb, var(--lan) 22%, transparent); stroke-width: 0.7; }
+.scan-ticks { fill: none; stroke: color-mix(in srgb, var(--lan) 45%, transparent); stroke-width: 3; stroke-dasharray: 0.5 5.5; transform: rotate(-0.25deg); }
+.scan-ticks.major { stroke: color-mix(in srgb, var(--lan) 80%, var(--text)); stroke-width: 5; stroke-dasharray: 0.7 29.3; transform: rotate(-0.35deg); }
+.scan-mix { fill: none; stroke-width: 3.5; stroke-linecap: round; transform: rotate(-90deg); animation: scan-fade 0.7s both; }
+.scan-mix.idle { stroke: var(--white-08); stroke-width: 2; animation: none; }
+.scan-ring-label { font-size: 7.5px; font-weight: 600; fill: var(--text2); opacity: 0.85; font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--card, #000); stroke-width: 2px; stroke-opacity: 0.55; }
+.scan-sweep { animation: lan-spin var(--T) linear infinite; }
+.scan-beam { stroke: color-mix(in srgb, var(--lan) 70%, #fff); stroke-width: 1.3; stroke-linecap: round; }
+.scan-ping { fill: none; stroke: var(--lan); stroke-width: 1.2; transform-box: fill-box; transform-origin: center; animation: scan-ping 1.8s ease-out infinite; }
+.scan-ping.late { animation-delay: 0.9s; }
+.scan-core-glow { fill: var(--lan); opacity: 0.28; transform-box: fill-box; transform-origin: center; animation: scan-breathe 3s ease-in-out infinite; }
+.scan-core { fill: var(--lan); stroke: color-mix(in srgb, #fff 55%, var(--lan)); stroke-width: 1; }
+.scan-core-icon { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.scan-blip-hit { fill: transparent; }
+.scan-blip.pick { cursor: pointer; }
+.scan-blip-dot { fill: currentColor; stroke: color-mix(in srgb, #fff 70%, currentColor); stroke-width: 0.7; transform-box: fill-box; transform-origin: center; animation: lan-pop 0.5s cubic-bezier(.3,1.6,.5,1) both; transition: transform 0.15s; }
+.scan-blip:hover .scan-blip-dot, .scan-blip.sel .scan-blip-dot { transform: scale(1.5); }
+/* each blip flashes when the beam reaches its bearing (--d = fraction of a turn) */
+.scan-blip-halo { fill: currentColor; opacity: 0; transform-box: fill-box; transform-origin: center; animation: scan-halo var(--T) calc(var(--T) * var(--d)) ease-out infinite; }
+.scan-blip-ring { fill: none; stroke: #ffcc00; stroke-width: 1.3; }
+.scan-blip.sel .scan-blip-ring { stroke: var(--text); }
+.scan-tip { position: absolute; z-index: 3; transform: translate(-50%, calc(-100% - 12px)); pointer-events: none; white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis;
+  padding: 6px 10px; border-radius: 10px; font-size: 12px; display: flex; flex-direction: column; gap: 1px;
+  background: color-mix(in srgb, var(--card, #1c1c1e) 88%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 0.5px solid var(--sep); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+.scan-tip b { font-weight: 700; } .scan-tip span { color: var(--text2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.scan-btn-icon { margin-right: 8px; vertical-align: -3px; }
+.scan-btn-icon.spin { animation: lan-spin 1.2s linear infinite; }
+/* hero: faint grid, and a light running along the top edge while a scan is on */
+.lan-hero::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+  background: repeating-linear-gradient(90deg, transparent 0 31px, var(--white-04) 31px 32px), repeating-linear-gradient(0deg, transparent 0 31px, var(--white-04) 31px 32px);
+  -webkit-mask-image: radial-gradient(120% 100% at 0% 50%, #000, transparent 75%); mask-image: radial-gradient(120% 100% at 0% 50%, #000, transparent 75%); }
+.lan-hero > * { position: relative; }
+.lan-hero.scanning::after { content: ''; position: absolute; left: 0; top: 0; height: 2px; width: 40%; background: linear-gradient(90deg, transparent, var(--lan), #bf5af2, transparent); animation: scan-run 1.6s linear infinite; }
+.lan-stat { position: relative; overflow: hidden; min-width: 0; padding: 10px; }
+.lan-stat span { font-size: 10.5px; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lan-stat::before { content: ''; position: absolute; left: 12px; right: 12px; top: 0; height: 2px; border-radius: 0 0 2px 2px; background: currentColor; opacity: 0.18; }
+.lan-stat.green::before { background: var(--green); opacity: 0.8; } .lan-stat.orange::before { background: var(--orange); opacity: 0.8; } .lan-stat.ble-blue::before { background: #0a84ff; opacity: 0.8; }
+.lan-tile-icon svg { color: color-mix(in srgb, var(--g) 45%, var(--text)); }
+.ble-meter { height: 3px; border-radius: 99px; background: var(--white-08); margin-top: 10px; overflow: hidden; }
+.ble-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--g) 45%, transparent), var(--g)); animation: lan-grow 0.8s cubic-bezier(.2,.8,.2,1) both; transform-origin: left; }
+@keyframes scan-halo { 0% { opacity: 0.75; transform: scale(1); } 45% { opacity: 0; transform: scale(3.4); } 100% { opacity: 0; transform: scale(3.4); } }
+@keyframes scan-ping { from { opacity: 0.8; transform: scale(0.6); } to { opacity: 0; transform: scale(4.4); } }
+@keyframes scan-breathe { 0%, 100% { transform: scale(1); opacity: 0.28; } 50% { transform: scale(1.25); opacity: 0.12; } }
+@keyframes scan-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scan-run { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
 .lan-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 14px 0 4px; }
 .lan-search { flex: 1; min-width: 180px; max-width: 360px; }
@@ -581,19 +619,16 @@ select.stg-input { cursor: pointer; }
 
 @media (max-width: 640px) {
   .lan-hero { flex-direction: column; align-items: stretch; padding: 14px; }
-  .lan-radar { width: 132px; height: 132px; align-self: center; }
+  .scan-radar { width: 190px; height: 190px; align-self: center; }
   .lan-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lan-grid { grid-template-columns: 1fr; }
   .lan-hero-title { font-size: 19px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .lan-radar-sweep, .lan-edge-trunk, .lan-edge-self, .lan-blip, .lan-pop, .lan-tile, .lan-stat, .lan-mix i { animation: none !important; }
+  .scan-sweep, .scan-ping, .scan-core-glow, .scan-blip-halo, .scan-blip-dot, .scan-btn-icon, .lan-hero.scanning::after, .ble-meter i, .lan-edge-trunk, .lan-edge-self, .lan-pop, .lan-tile, .lan-stat, .lan-mix i { animation: none !important; }
 }
 
 /* Bluetooth scan (BleScanner.jsx) — shares the LAN scan look */
-.ble-hero .lan-blip { width: 8px; height: 8px; margin: -4px 0 0 -4px; }
-.ble-core { color: #fff; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--lan); box-shadow: 0 0 18px var(--lan); }
-.ble-core svg { display: block; }
 .lan-stat.ble-blue b { color: #0a84ff; }
 .ble-signal { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .ble-signal b { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text2); }
