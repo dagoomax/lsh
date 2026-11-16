@@ -401,6 +401,18 @@ async function main() {
     }
   }
 
+  // Master thermostats — one thermostat that drives several real zones at
+  // once (fans a setpoint out to its members, averages their temperature).
+  // In-process and after the integrations it controls, since it reaches them
+  // through sensorRegistry.sendCommand().
+  if (config.groupThermostats?.thermostats?.length) {
+    const GroupThermostatClient = tryRequire('./src/group-thermostat-client');
+    if (GroupThermostatClient) {
+      const groupThermostat = new GroupThermostatClient(config, store, sensorRegistry);
+      groupThermostat.start().catch((err) => console.error(`[GroupThermostat] Start failed: ${err.message}`));
+    }
+  }
+
   // Automation engine (rules / scenes / notifications) — io attached after WS setup
   let automation = null;
   const AutomationEngine = tryRequire('./src/automation-engine');

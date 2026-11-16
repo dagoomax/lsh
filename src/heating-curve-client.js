@@ -61,6 +61,7 @@ function normalizeCurve(c) {
     roomFactor: num(c.roomFactor, DEFAULTS.roomFactor),
     targetDevice: c.targetDevice || '',
     targetPath: c.targetPath || '',
+    enabled: c.enabled !== false, // default on; the switch writes this back to config
   };
 }
 
@@ -116,9 +117,13 @@ class HeatingCurveClient {
   _registerDevice(c) {
     const key = `heatingcurve/${c.id}`;
     this._registry.registerDevice({
-      key, label: c.name, type: 'heatingcurve', icon: '🌡️', homekit: ['temperature'],
+      // HomeKit: a Thermostat (room setpoint = target, room average = current,
+      // the on/off switch = heat/off) plus the named Flow and Outdoor
+      // temperature sensors.
+      key, label: c.name, type: 'heatingcurve', icon: '🌡️', category: 'climate', homekit: ['thermostat', 'temperature'],
       minFlow: c.minFlow, maxFlow: c.maxFlow, // the dashboard tile draws the curve with them
       sensors: [
+        { path: 'enabled', name: 'Enabled', format: 'on-off', controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off', capabilityId: 'enabled' },
         { path: 'flowTemperature', name: 'Flow temperature', type: 'number', unit: '°C', homekit: 'temperature', hkName: 'Flow' },
         { path: 'outdoorTemperature', name: 'Outdoor temperature', type: 'number', unit: '°C', homekit: 'temperature', hkName: 'Outdoor' },
         ...(c.roomKeys.length ? [
@@ -130,10 +135,38 @@ class HeatingCurveClient {
           path, name: p.name, type: 'range', unit: p.unit || '', min: p.min, max: p.max,
           controllable: true, capabilityId: path, writeCmd: 'set',
         })),
+        // hidden paths the HomeKit Thermostat service reads
+        { path: 'temperature', name: 'Current temperature', type: 'number', unit: '°C', hidden: true },
+        { path: 'heatingSetpoint', name: 'Heating setpoint', type: 'number', unit: '°C', hidden: true },
+        { path: 'thermostatMode', name: 'Thermostat mode', type: 'label', hidden: true },
+        { path: 'thermostatOperatingState', name: 'Operating state', type: 'label', hidden: true },
       ],
-      _writeCapability: (capId, command, args = []) => this._setParam(c, capId, args[0]),
+      _writeCapability: (capId, command, args = []) => this._write(c, capId, command, args[0]),
     });
     for (const path of Object.keys(PARAMS)) this._store.update(`${key}/${path}`, c[path]);
+    this._store.update(`${key}/enabled`, c.enabled ? 1 : 0);
+  }
+
+  // Dashboard sends a param path ('slope'/'room'/…) with the value in `arg`,
+  // or 'enabled' as a toggle with on/off in `command`. HomeKit sends
+  // 'thermostatHeatingSetpoint' (→ room, value in `arg`) and 'thermostatMode'
+  // (off/heat in `arg`).
+  _write(c, cap, command, arg) {
+    if (cap === 'enabled') return this._setEnabled(c, command === 'on' || command === true || command === 1);
+    if (cap === 'thermostatMode') return this._setEnabled(c, arg !== 'off');
+    if (cap === 'thermostatHeatingSetpoint' || cap === 'thermostatCoolingSetpoint') return this._setParam(c, 'room', arg);
+    return this._setParam(c, cap, arg);
+  }
+
+  _setEnabled(c, on) {
+    c.enabled = !!on;
+    this._store.update(`heatingcurve/${c.id}/enabled`, c.enabled ? 1 : 0);
+    if (c.enabled) this._lastSent.delete(c.id); // re-push the current flow on re-enable
+    this._compute(c);
+    platformStatus.set('heatingCurve', true);
+    clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => this._saveCurves(), 2000);
+    return c.enabled;
   }
 
   _onChange({ key }) {
@@ -157,12 +190,24 @@ class HeatingCurveClient {
       if (json !== this._store.get(`${key}/roomReadings`)) this._store.update(`${key}/roomReadings`, json);
     }
     this._store.update(`${key}/flowTemperature`, flow);
+
+    // HomeKit Thermostat view: current = room average (or outdoor if no room
+    // sources), target = room setpoint, mode/state from the on/off switch and
+    // whether the rooms are still below setpoint.
+    const current = Number.isFinite(roomActual) ? roomActual : outdoor;
+    this._store.update(`${key}/temperature`, current);
+    this._store.update(`${key}/heatingSetpoint`, c.room);
+    this._store.update(`${key}/thermostatMode`, c.enabled ? 'heat' : 'off');
+    const demand = c.enabled && (!Number.isFinite(roomActual) || roomActual < c.room);
+    this._store.update(`${key}/thermostatOperatingState`, demand ? 'heating' : 'idle');
+
     this._push(c, flow);
   }
 
   // Write to the target in 0.5 °C steps so a jittery outdoor reading doesn't
   // hammer a boiler's API (or its EEPROM) with every tenth of a degree.
   _push(c, flow) {
+    if (!c.enabled) return; // the switch is off — compute for display, but don't drive the boiler
     if (!c.targetDevice || !c.targetPath) return;
     const value = Math.round(flow * 2) / 2;
     if (this._lastSent.get(c.id) === value) return;
@@ -194,7 +239,7 @@ class HeatingCurveClient {
       const current = readConfigCached();
       const curves = (current.heatingCurves?.curves || []).map((saved) => {
         const live = this._curves.find((c) => c.id === String(saved.id));
-        return live ? { ...saved, slope: live.slope, shift: live.shift, room: live.room, roomFactor: live.roomFactor } : saved;
+        return live ? { ...saved, slope: live.slope, shift: live.shift, room: live.room, roomFactor: live.roomFactor, enabled: live.enabled } : saved;
       });
       writeConfigFile({ ...current, heatingCurves: { ...current.heatingCurves, curves } });
     } catch (err) {
