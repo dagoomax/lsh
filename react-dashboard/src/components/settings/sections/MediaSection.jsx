@@ -10,7 +10,6 @@ export default function MediaSection({ config, reload }) {
       <DenonCard denon={config.denon} reload={reload}/>
       <SonyCard sony={config.sony} reload={reload}/>
       <SonosCard sonos={config.sonos} reload={reload}/>
-      <MusicAssistantCard ma={config.musicAssistant} reload={reload}/>
       <GoogleHomeCard googlehome={config.googlehome} reload={reload}/>
     </>
   )
@@ -130,27 +129,3 @@ function SonosCard({ sonos, reload }) {
   )
 }
 
-function MusicAssistantCard({ ma, reload }) {
-  const [url, setUrl] = useState(ma?.url || '')
-  const [token, setToken] = useState(ma?.token || '')
-  const [playersText, setPlayersText] = useState((ma?.players || []).join('\n'))
-  const [includeHidden, setIncludeHidden] = useState(!!ma?.includeHidden)
-  const test = useSettingsSave('/api/settings/test-music-assistant')
-  const save = useSettingsSave('/api/settings/music-assistant')
-
-  return (
-    <SettingsCard icon={SpeakerIcon} title="Music Assistant" badge={{ label: gt('common.optional', 'Optional') }}
-      desc="Adds every player of a Music Assistant server as a media device: play, pause, skip, volume and what is playing. Create the token in Music Assistant: Settings → Profile → Long-lived access tokens.">
-      <Field label="Server address" value={url} onChange={setUrl} placeholder="http://192.168.1.20:8095"/>
-      <Field label="Long-lived access token" type="password" value={token} onChange={setToken}/>
-      <Field label="Only these players" hint="(optional, one name or id per line — leave empty for all)" type="textarea" value={playersText} onChange={setPlayersText}/>
-      <Toggle label="Also add players hidden in Music Assistant" checked={includeHidden} onChange={setIncludeHidden}/>
-      <div className="stg-actions">
-        <Button variant="primary" busy={save.busy}
-          onClick={() => save.save({ url, token, players: playersText.split('\n').map(s => s.trim()).filter(Boolean), includeHidden }).then(reload)}>{gt('common.save', 'Save')}</Button>
-        <Button variant="secondary" busy={test.busy} onClick={() => test.save({ url, token })}>{tr('Test connection')}</Button>
-        <ResultBanner result={save.result || test.result}/>
-      </div>
-    </SettingsCard>
-  )
-}

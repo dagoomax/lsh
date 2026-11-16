@@ -1059,3 +1059,13 @@ select.stg-input { cursor: pointer; }
 .wr-doc-note { display: flex; gap: 8px; margin: 8px 0 4px; }
 .wr-doc-note input { flex: 1; min-width: 0; }
 .wr-doc-link { text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+
+/* Music Assistant section — player list */
+.stg-ma-players { margin-top: 8px; display: flex; flex-direction: column; gap: 2px; }
+.stg-ma-player { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: var(--white-04); font-size: 13px; }
+.stg-ma-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--green); box-shadow: 0 0 6px color-mix(in srgb, var(--green) 60%, transparent); }
+.stg-ma-dot.off { background: var(--white-20); box-shadow: none; }
+.stg-ma-dot.live { animation: lan-ping 1.4s infinite; }
+.stg-ma-name { font-weight: 600; white-space: nowrap; }
+.stg-ma-now { color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.stg-ma-vol { margin-left: auto; color: var(--text2); font-variant-numeric: tabular-nums; flex-shrink: 0; }

@@ -449,14 +449,6 @@ export const P19 = {
     "(facoltativo, un nome o id per riga — vuoto = tutti)",
     "(необов'язково, одна назва або id на рядок — порожньо = усі)"
   ],
-  "Adds every player of a Music Assistant server as a media device: play, pause, skip, volume and what is playing. Create the token in Music Assistant: Settings → Profile → Long-lived access tokens.": [
-    "Dodaje każdy odtwarzacz serwera Music Assistant jako urządzenie multimedialne: odtwarzanie, pauza, następny utwór, głośność i informacja, co gra. Token utwórz w Music Assistant: Settings → Profile → Long-lived access tokens.",
-    "Fügt jeden Player eines Music-Assistant-Servers als Mediengerät hinzu: Wiedergabe, Pause, Überspringen, Lautstärke und was gerade läuft. Das Token erstellen Sie in Music Assistant: Settings → Profile → Long-lived access tokens.",
-    "Ajoute chaque lecteur d'un serveur Music Assistant comme appareil multimédia : lecture, pause, piste suivante, volume et titre en cours. Créez le jeton dans Music Assistant : Settings → Profile → Long-lived access tokens.",
-    "Añade cada reproductor de un servidor Music Assistant como dispositivo multimedia: reproducir, pausar, saltar, volumen y qué está sonando. Cree el token en Music Assistant: Settings → Profile → Long-lived access tokens.",
-    "Aggiunge ogni lettore di un server Music Assistant come dispositivo multimediale: riproduzione, pausa, brano successivo, volume e cosa è in riproduzione. Crea il token in Music Assistant: Settings → Profile → Long-lived access tokens.",
-    "Додає кожен програвач сервера Music Assistant як медіапристрій: відтворення, пауза, наступний трек, гучність і що зараз грає. Токен створіть у Music Assistant: Settings → Profile → Long-lived access tokens."
-  ],
   "Also add players hidden in Music Assistant": [
     "Dodaj też odtwarzacze ukryte w Music Assistant",
     "Auch in Music Assistant ausgeblendete Player hinzufügen",
@@ -480,6 +472,46 @@ export const P19 = {
     "Dirección del servidor",
     "Indirizzo del server",
     "Адреса сервера"
+  ],
+  "Connected to {server} {version} · {n} player(s)": [
+    "Połączono z {server} {version} · {n} odtwarzaczy",
+    "Verbunden mit {server} {version} · {n} Player",
+    "Connecté à {server} {version} · {n} lecteur(s)",
+    "Conectado a {server} {version} · {n} reproductor(es)",
+    "Connesso a {server} {version} · {n} lettori",
+    "Підключено до {server} {version} · {n} програвач(ів)"
+  ],
+  "Connects to a Music Assistant server and adds every player as a media device: play, pause, skip, volume and what is playing. The server requires a long-lived access token — create one in Music Assistant under Settings → Users → Long-lived access tokens.": [
+    "Łączy się z serwerem Music Assistant i dodaje każdy odtwarzacz jako urządzenie multimedialne: odtwarzanie, pauza, przewijanie, głośność i co jest grane. Serwer wymaga długoterminowego tokenu dostępu — utwórz go w Music Assistant w Ustawienia → Użytkownicy → Długoterminowe tokeny dostępu.",
+    "Verbindet sich mit einem Music-Assistant-Server und fügt jeden Player als Mediengerät hinzu: Wiedergabe, Pause, Überspringen, Lautstärke und was gerade läuft. Der Server benötigt ein langlebiges Zugriffstoken — erstelle es in Music Assistant unter Einstellungen → Benutzer → Langlebige Zugriffstokens.",
+    "Se connecte à un serveur Music Assistant et ajoute chaque lecteur comme appareil multimédia : lecture, pause, saut, volume et ce qui est en cours. Le serveur exige un jeton d'accès longue durée — créez-le dans Music Assistant sous Réglages → Utilisateurs → Jetons d'accès longue durée.",
+    "Se conecta a un servidor Music Assistant y añade cada reproductor como dispositivo multimedia: reproducir, pausar, saltar, volumen y qué está sonando. El servidor requiere un token de acceso de larga duración — créalo en Music Assistant en Ajustes → Usuarios → Tokens de acceso de larga duración.",
+    "Si connette a un server Music Assistant e aggiunge ogni lettore come dispositivo multimediale: riproduci, pausa, salta, volume e cosa è in riproduzione. Il server richiede un token di accesso a lunga durata — crealo in Music Assistant in Impostazioni → Utenti → Token di accesso a lunga durata.",
+    "Під'єднується до сервера Music Assistant і додає кожен програвач як медіапристрій: відтворення, пауза, перемотування, гучність і що грає. Сервер потребує довготривалого токена доступу — створіть його в Music Assistant у Налаштування → Користувачі → Довготривалі токени доступу."
+  ],
+  "Not connected — save the address and token, then restart LSH": [
+    "Brak połączenia — zapisz adres i token, a następnie uruchom ponownie LSH",
+    "Nicht verbunden — Adresse und Token speichern, dann LSH neu starten",
+    "Non connecté — enregistrez l'adresse et le jeton, puis redémarrez LSH",
+    "Sin conexión — guarda la dirección y el token, luego reinicia LSH",
+    "Non connesso — salva l'indirizzo e il token, poi riavvia LSH",
+    "Не підключено — збережіть адресу й токен, потім перезапустіть LSH"
+  ],
+  "Players": [
+    "Odtwarzacze",
+    "Player",
+    "Lecteurs",
+    "Reproductores",
+    "Lettori",
+    "Програвачі"
+  ],
+  "muted": [
+    "wyciszony",
+    "stumm",
+    "coupé",
+    "silenciado",
+    "muto",
+    "вимкнено звук"
   ]
 }
 
