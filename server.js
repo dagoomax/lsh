@@ -227,6 +227,49 @@ async function main() {
   const app = express();
   app.use(cookieParser());
 
+  // ── Security headers ───────────────────────────────────────────────────────
+  // Sent on every response (dashboard, static assets, redirects, API). Kept
+  // deliberately conservative so the React PWA, Socket.IO, camera snapshots,
+  // embedded LAN device UIs and Swagger all keep working:
+  //   - nosniff / frame SAMEORIGIN / referrer-policy are always safe to send
+  //     (SAMEORIGIN + CSP frame-ancestors 'self' block external clickjacking
+  //     while still allowing the dashboard to frame its own pages).
+  //   - HSTS only on a genuinely secure, non-localhost request, so it never
+  //     forces https on the localhost:3001 dev / macOS-app origin (HTTP there).
+  //   - CSP is permissive (inline+eval, broad img/connect/frame for LAN
+  //     devices + WebSockets) but still adds object-src 'none' and base-uri
+  //     'self'. Tighten with config.security.csp = '<policy>', or disable it
+  //     with config.security.csp = false; disable HSTS with security.hsts=false.
+  const secCfg = (config.security && typeof config.security === 'object') ? config.security : {};
+  const DEFAULT_CSP = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: http: https:",
+    "media-src 'self' data: blob: http: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' ws: wss: http: https:",
+    "frame-src 'self' http: https:",
+    "frame-ancestors 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+  ].join('; ');
+  const cspValue = secCfg.csp === false ? null : (typeof secCfg.csp === 'string' ? secCfg.csp : DEFAULT_CSP);
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-DNS-Prefetch-Control', 'off');
+    if (cspValue) res.setHeader('Content-Security-Policy', cspValue);
+    const host = String(req.headers.host || '').split(':')[0].replace(/^\[|\]$/g, '');
+    const secure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    if (secure && !isLocal && secCfg.hsts !== false) {
+      res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+    }
+    next();
+  });
+
   // React dashboard — public static files (API calls are Bearer-token protected)
   // index.html must never be cached: Safari treats `no-cache` loosely and can
   // keep serving a stale app shell that references deleted (rebuilt) bundle
