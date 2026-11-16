@@ -139,7 +139,7 @@ test('the cap drops finished orders before open ones', () => {
 
 test('daily summary skips cancelled orders', () => {
   const at = Date.now();
-  const date = new Date(at).toISOString().slice(0, 10);
+  const date = laundry.localDay(at); // same local-day bucketing dailySummary uses (UTC slice breaks near midnight in +TZ)
   laundry.saveOrders([
     { id: 'a', at, status: 'delivered', total: 10.5, currency: 'EUR' },
     { id: 'b', at, status: 'cancelled', total: 99, currency: 'EUR' },
