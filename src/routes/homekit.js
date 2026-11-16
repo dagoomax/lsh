@@ -11,7 +11,7 @@ module.exports = function register(router, ctx) {
   const { requireAdmin, clients, sensorRegistry } = ctx;
 
   // ── HomeKit QR ────────────────────────────────────────────
-  router.get('/homekit/setup-uri', (req, res) => {
+  router.get('/homekit/setup-uri', requireAdmin, (req, res) => {
     const cfg = readConfigFile();
     const pin = cfg.homekit?.pin || '031-45-154';
     const setupID = cfg.homekit?.setupID || 'HEJX';

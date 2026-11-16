@@ -125,6 +125,11 @@ module.exports = function register(router, ctx) {
       );
     }
     delete safe.jwtSecret; // never expose JWT signing secret
+    // HomeKit pairing PIN, HA long-lived token and the license key are secrets
+    // too — their save routes already preserve a masked (•) value on write.
+    if (safe.homekit?.pin) safe.homekit.pin = '••••••••';
+    if (safe.homeassistant?.token) safe.homeassistant.token = '••••••••';
+    if (safe.license?.key) safe.license.key = '••••••••';
     // Indicate whether LG tokens are persisted without exposing them
     if (safe.lgthinq) {
       const tokFile = path.join(__dirname, '..', '..', 'persist', 'lgthinq-tokens.json');
@@ -176,14 +181,18 @@ module.exports = function register(router, ctx) {
       },
       relays: body.relays || current.relays,
       server: { ...current.server, ...body.server },
-      homekit: {
-        ...current.homekit,
-        ...body.homekit,
-        // Regenerate setupID when PIN changes so QR code stays in sync
-        setupID: (body.homekit?.pin && body.homekit.pin !== current.homekit?.pin)
-          ? generateSetupID()
-          : (body.homekit?.setupID || current.homekit?.setupID || generateSetupID()),
-      },
+      homekit: (() => {
+        const hk = { ...current.homekit, ...body.homekit };
+        // The PIN is masked in GET /settings — don't let the placeholder
+        // overwrite the real one when the form is saved back.
+        hk.pin = (body.homekit?.pin && !String(body.homekit.pin).includes('•'))
+          ? body.homekit.pin : current.homekit?.pin;
+        // Regenerate setupID when the PIN actually changes so the QR stays in sync.
+        const pinChanged = hk.pin && hk.pin !== current.homekit?.pin;
+        hk.setupID = pinChanged ? generateSetupID()
+          : (body.homekit?.setupID || current.homekit?.setupID || generateSetupID());
+        return hk;
+      })(),
     };
 
     try {
