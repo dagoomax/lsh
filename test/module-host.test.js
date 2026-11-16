@@ -44,7 +44,10 @@ test('integration runs in its own process: devices, values, commands, restart af
     // a crash takes down only the module; the watchdog brings it back
     await registry.devices.get('fake/1')._writeCapability('sw', 'crash').catch(() => {});
     await until(() => m.restarts === 1 && m.state === 'running' && m.child && m.child.pid !== firstPid, 10000);
-    assert.equal(platformStatus.getAll().fake, true);
+    // The restarted module re-reports its platform status asynchronously (the
+    // fixture sets it last in start()), so poll rather than assert immediately
+    // — an immediate check races the IPC under full-suite load.
+    await until(() => platformStatus.getAll().fake === true, 10000);
     const again = await registry.sendCommand('fake/1', 'switch', false);
     assert.equal(again.pid, m.child.pid);
     assert.equal(host.list()[0].devices, 1);
