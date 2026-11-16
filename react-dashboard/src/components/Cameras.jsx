@@ -423,22 +423,32 @@ function CameraPresets({ deviceId }) {
 const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const hhmm = (s) => new Date(s * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-// Thumbnails exist only for segments already copied to disk by tuya-sd-archive.js
+// Thumbnails: from the archived file, or grabbed from the camera one by one
+// (the server answers 202 until it's made — keep asking every 10 s)
 function SdThumb({ seg, sdUrl, active, onClick }) {
-  const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const [waiting, setWaiting] = useState(false)
+  const [loaded, setLoaded]   = useState(false)
+  useEffect(() => {
+    if (!waiting) return
+    const t = setTimeout(() => { setWaiting(false); setAttempt(n => n + 1) }, seg.archived || seg.thumb ? 3000 : 10000)
+    return () => clearTimeout(t)
+  }, [waiting, seg])
+  const src = `${sdUrl}/${seg.st}-${seg.ed}.jpg${attempt ? `?r=${attempt}` : ''}`
   return (
     <div onClick={onClick} style={{
       position: 'relative', aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', cursor: 'pointer',
       background: 'var(--white-05)',
       border: active ? '2px solid var(--accent)' : '1px solid var(--border)',
     }}>
-      {seg.archived && !failed ? (
-        <img src={`${sdUrl}/${seg.st}-${seg.ed}.jpg`} alt="" loading="lazy" onError={() => setFailed(true)}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-      ) : (
+      {!loaded && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <CameraIcon size={20} color="var(--text3)" />
         </div>
+      )}
+      {!waiting && attempt < 40 && (
+        <img key={src} src={src} alt="" loading="lazy" onLoad={() => setLoaded(true)} onError={() => setWaiting(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', visibility: loaded ? 'visible' : 'hidden' }} />
       )}
       <span style={{
         position: 'absolute', left: 4, bottom: 4, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 6,
