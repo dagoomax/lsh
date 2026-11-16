@@ -16,7 +16,7 @@ const fakeStore = () => Object.assign(new EventEmitter(), {
 test('Sensibo: pods, acStates within the remote capabilities', async () => {
   const sim = await startSimulator({ port: 0 });
   const store = fakeStore(), registry = new SensorRegistry(store, 'en');
-  const c = new SensiboClient({ sensibo: { apiKey: sim.apiKey, apiBase: `http://127.0.0.1:${sim.port}` } }, store, registry);
+  const c = new SensiboClient({ sensibo: { apiKey: sim.apiKey, apiBase: `http://127.0.0.1:${sim.port}`, minRequestGapMs: 0 } }, store, registry);
   const key = `sensibo/${sim.pod.id}`;
   const v = (k) => store.values[`${key}/${k}`];
   try {
@@ -42,7 +42,7 @@ test('Sensibo: Climate React, Air Pro-style readings, Room Sensor, Pure, Element
   const sim = await startSimulator({ port: 0 });
   sim.pod.measurements.co2 = 640; sim.pod.measurements.tvoc = 90;
   const store = fakeStore(), registry = new SensorRegistry(store, 'en');
-  const c = new SensiboClient({ sensibo: { apiKey: sim.apiKey, apiBase: `http://127.0.0.1:${sim.port}` } }, store, registry);
+  const c = new SensiboClient({ sensibo: { apiKey: sim.apiKey, apiBase: `http://127.0.0.1:${sim.port}`, minRequestGapMs: 0 } }, store, registry);
   const v = (k) => store.values[k];
   try {
     await c.start();
@@ -77,4 +77,30 @@ test('Sensibo: Climate React, Air Pro-style readings, Room Sensor, Pure, Element
     assert.equal(v('sensibo/ElEm0001/airQuality'), 25);
     assert.equal(registry.devices.has('sensibo/ElEm0001') && !registry.devices.get('sensibo/ElEm0001')._writeCapability, true, 'a monitor has nothing to set');
   } finally { c.stop(); await sim.close() }
+});
+
+test('Sensibo: requests are spaced out and a 429 is retried once', async () => {
+  const origFetch = global.fetch;
+  const times = [];
+  let pending429 = true; // the first acStates POST gets rate-limited
+  global.fetch = async (url) => {
+    times.push(Date.now());
+    if (pending429 && /acStates/.test(String(url))) {
+      pending429 = false;
+      return new Response(JSON.stringify({ status: 'failure' }), { status: 429 });
+    }
+    return new Response(JSON.stringify({ status: 'success', result: { ok: true } }), { status: 200 });
+  };
+  try {
+    const c = new SensiboClient({ sensibo: { apiKey: 'k', apiBase: 'http://x', minRequestGapMs: 40, retry429Ms: 15 } }, fakeStore(), null);
+
+    const t0 = Date.now();
+    await c._call('GET', '/a');
+    await c._call('GET', '/b');
+    assert.ok(Date.now() - t0 >= 40, 'the second request waited at least minRequestGapMs');
+
+    const r = await c._call('POST', '/pods/x/acStates', { acState: {} });
+    assert.deepEqual(r, { ok: true }, 'the retried POST ultimately succeeds');
+    assert.equal(pending429, false, 'the 429 was consumed and the call retried');
+  } finally { global.fetch = origFetch; }
 });

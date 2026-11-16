@@ -32,6 +32,8 @@
 const PollingClient = require('./polling-client');
 const { registerAc, publishAc } = require('./ac-common');
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 const FIELDS = 'id,room,productModel,acState,measurements,connectionStatus,remoteCapabilities,smartMode,filtersCleaning,motionSensors';
 const isPure = (p) => /^pure/i.test(p.productModel || '');
 const isElements = (p) => /^elements/i.test(p.productModel || '');
@@ -59,6 +61,26 @@ class SensiboClient extends PollingClient {
     this.registry = sensorRegistry;
     this.api = (this.cfg.apiBase || 'https://home.sensibo.com/api/v2').replace(/\/+$/, '');
     this.pods = new Map(); // id → { id, key, state, caps }
+    // Sensibo's cloud rate-limits bursts — a scene that sets several AC units
+    // at once used to fire all the POSTs in the same tick and get 429s. Space
+    // every request out through one serial gate, and retry a 429 once after a
+    // pause, so bursts drain smoothly instead of failing. 0 disables (tests).
+    this._minGap = this.cfg.minRequestGapMs != null ? Number(this.cfg.minRequestGapMs) : 350;
+    this._retry429Ms = this.cfg.retry429Ms != null ? Number(this.cfg.retry429Ms) : 1500;
+    this._gate = Promise.resolve();
+    this._lastCall = 0;
+  }
+
+  // Serialize requests and keep them ≥ _minGap apart (chained so concurrent
+  // callers queue rather than all fire at once).
+  _throttle() {
+    const run = this._gate.then(async () => {
+      const wait = this._minGap - (Date.now() - this._lastCall);
+      if (wait > 0) await sleep(wait);
+      this._lastCall = Date.now();
+    });
+    this._gate = run.catch(() => {});
+    return run;
   }
 
   async start() {
@@ -66,14 +88,18 @@ class SensiboClient extends PollingClient {
     await this.startPolling(Math.max(30, Number(this.cfg.pollInterval) || 60) * 1000);
   }
 
-  async _call(method, p, body) {
+  async _call(method, p, body, _retried = false) {
+    if (this._minGap > 0) await this._throttle();
     const sep = p.includes('?') ? '&' : '?';
     const res = await fetch(`${this.api}${p}${sep}apiKey=${encodeURIComponent(this.cfg.apiKey)}`, {
       method, headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (res.status === 401 || res.status === 403) throw new Error('Sensibo: API key rejected');
-    if (res.status === 429) throw new Error('Sensibo: too many requests — raise pollInterval');
+    if (res.status === 429) {
+      if (!_retried) { await sleep(this._retry429Ms); return this._call(method, p, body, true); }
+      throw new Error('Sensibo: too many requests — raise pollInterval');
+    }
     const j = await res.json().catch(() => ({}));
     if (!res.ok || j.status !== 'success') throw new Error(`Sensibo ${p.split('?')[0]}: ${j.reason || j.message || `HTTP ${res.status}`}`);
     return j.result;
