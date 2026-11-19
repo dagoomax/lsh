@@ -333,6 +333,17 @@
       ],
       "deps": {}
     },
+    "group-thermostat": {
+      "entry": "src/group-thermostat-client.js",
+      "configKeys": [
+        "groupThermostats"
+      ],
+      "when": "(config.groupThermostats?.thermostats?.length)",
+      "files": [
+        "src/group-thermostat-client.js"
+      ],
+      "deps": {}
+    },
     "lsh-lan-monitor": {
       "entry": "src/lsh-lan-monitor.js",
       "configKeys": [
@@ -1489,6 +1500,19 @@
         "src/lsh-ble-inspect.js",
         "src/lsh-ble-models.json",
         "src/lsh-ble.js"
+      ],
+      "deps": {
+        "dbus-next": "^0.10.2"
+      }
+    },
+    "yale-keypad-ble": {
+      "entry": "src/yale-keypad-ble-client.js",
+      "configKeys": [
+        "yaleKeypadBle"
+      ],
+      "when": "(config.yaleKeypadBle?.devices?.length)",
+      "files": [
+        "src/yale-keypad-ble-client.js"
       ],
       "deps": {
         "dbus-next": "^0.10.2"

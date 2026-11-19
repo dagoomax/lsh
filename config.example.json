@@ -570,6 +570,13 @@
     "loginMethod": "email",
     "pollInterval": 30
   },
+  "yaleKeypadBle": {
+    "adapter": "hci0",
+    "readDeviceInfo": false,
+    "devices": [
+      { "name": "Keypad Wejście", "mac": "98:1B:B5:66:07:9F", "model": "AK-R4" }
+    ]
+  },
   "kenik": {
     "host": "192.168.1.90",
     "username": "admin",

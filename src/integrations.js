@@ -136,6 +136,8 @@ module.exports = [
   { file: 'homey-client', label: 'Homey', when: (config) => config.homey?.token && (config.homey?.host || config.homey?.homeyId) },
   // Victron devices over Bluetooth, read by the LSH host itself (Arduino UNO Q)
   { file: 'lsh-ble-client', label: 'LSH BLE', expose: 'lshBle', when: (config) => config.lshBle?.devices?.length },
+  // Yale/August keypad presence over local Bluetooth (keypad only, no lock)
+  { file: 'yale-keypad-ble-client', label: 'Yale Keypad BLE', expose: 'yaleKeypadBle', when: (config) => config.yaleKeypadBle?.devices?.length },
   // DSC PowerSeries Neo via TL280 ITv2 — the panel dials in to LSH (TCP 3072)
   // Modbus device emulator — LSH answers Modbus TCP/RTU register queries
   { file: 'modbus-emulator', label: 'ModbusEmu', expose: 'modbusEmu', when: (config) => config.modbusEmu?.enabled },
