@@ -572,7 +572,7 @@
   },
   "yaleKeypadBle": {
     "adapter": "hci0",
-    "readDeviceInfo": false,
+    "readDeviceInfo": true,
     "devices": [
       { "name": "Keypad Wejście", "mac": "98:1B:B5:66:07:9F", "model": "AK-R4" }
     ]
