@@ -43,8 +43,9 @@
  * prefix) — api-routes.js's /yale-camera/:id/snapshot proxies that so the
  * browser/dashboard never sees the content token.
  *
- * Locks are NOT handled here — this module is cameras-only by design, even
- * though the same account/API also exposes `/users/locks/mine` etc.
+ * Locks are NOT controlled here. The only lock data read is the paired
+ * Yale Access keypad (battery + last keypad use, see _syncKeypads), which is
+ * registered as its own `yale-keypad` device; `yale.keypads: false` turns it off.
  *
  * Untested against a real Yale account from this codebase — ported
  * faithfully from yalexs's documented wire protocol, but nobody has run
@@ -129,6 +130,11 @@ const UPDATE_FAILURE_TOLERANCE = 3;
 // Refresh the access token once less than this much of its lifetime remains
 // (mirrors yalexs's DEFAULT_RENEWAL_THRESHOLD of 7 days).
 const REFRESH_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
+const KEYPAD_DETAIL_REFRESH_MS = 10 * 60 * 1000;
+const KEYPAD_ACTIVITY_LIMIT = 20;
+// The keypad reports battery as a word, not a number; this percentage is an
+// approximation for the battery tile and HomeKit (yalexs maps it similarly).
+const KEYPAD_BATTERY_PCT = { full: 100, medium: 60, low: 20, critically_low: 5, critical: 5 };
 
 function authHeaders(accessToken, brand) {
   const b = brand || BRANDS[DEFAULT_ECOSYSTEM];
@@ -432,6 +438,13 @@ class YaleClient {
       const doorbells = await this._auth.get('/users/doorbells/mine');
       for (const [id, data] of Object.entries(doorbells || {})) this._syncDoorbell(id, data);
 
+      // Keypads ride on the same account; a keypad failure must not take the
+      // doorbells (and the platform badge) down with it.
+      if (this._config.yale?.keypads !== false) {
+        try { await this._syncKeypads(); }
+        catch (err) { console.error(`[Yale] keypad sync failed: ${err.message}`); }
+      }
+
       this._failCount = 0;
       platformStatus.set('yale', true);
     } catch (err) {
@@ -474,6 +487,104 @@ class YaleClient {
       this._store.set(`${key}/image`, imageUrl);
       this._contentTokens.set(id, data.contentToken || '');
     }
+  }
+
+  // ── Yale Access keypads (keypad only — the lock itself is not exposed) ──
+  //
+  // A keypad is not a device of its own in this API: it is the `keypad`
+  // object inside a lock's detail (GET /locks/:id), and its use only shows up
+  // in the house activity feed (GET /houses/:id/activities) as lock
+  // operations flagged info.keypad, or the keypad's one-touch lock button
+  // (action "onetouchlock"). Field names follow yalexs (keypad.py,
+  // activity.py). UNTESTED against a real account — see the header comment.
+  async _syncKeypads() {
+    const now = Date.now();
+    // Lock details (battery, firmware) change slowly — refresh every 10 min,
+    // the activity feed every poll.
+    if (!this._keypads || now - (this._keypadsAt || 0) > KEYPAD_DETAIL_REFRESH_MS) {
+      const locks = await this._auth.get('/users/locks/mine');
+      const found = new Map();
+      for (const [lockId, lock] of Object.entries(locks || {})) {
+        const detail = await this._auth.get(`/locks/${encodeURIComponent(lockId)}`);
+        const kp = detail?.keypad;
+        if (!kp) continue;
+        found.set(lockId, {
+          lockId,
+          houseId: detail.HouseID || lock.HouseID,
+          lockName: detail.LockName || lock.LockName || lockId,
+          id: kp._id || kp.serialNumber || lockId,
+          serial: kp.serialNumber || '',
+          firmware: kp.currentFirmwareVersion || '',
+          batteryLevel: kp.batteryLevel || '',
+        });
+      }
+      this._keypads = found;
+      this._keypadsAt = now;
+      for (const kp of found.values()) this._registerKeypad(kp);
+    }
+    if (!this._keypads.size) return;
+
+    const houses = new Set([...this._keypads.values()].map((k) => k.houseId).filter(Boolean));
+    for (const houseId of houses) {
+      const acts = await this._auth.get(`/houses/${encodeURIComponent(houseId)}/activities?limit=${KEYPAD_ACTIVITY_LIMIT}`);
+      const list = Array.isArray(acts) ? acts : (acts?.events || []);
+      for (const kp of this._keypads.values()) {
+        if (kp.houseId !== houseId) continue;
+        // Newest keypad event for this keypad's lock.
+        const ev = list
+          .filter((a) => a.deviceID === kp.lockId && (a.info?.keypad || a.action === 'onetouchlock'))
+          .sort((a, b) => Number(b.dateTime) - Number(a.dateTime))[0];
+        if (ev) this._publishKeypadEvent(kp, ev);
+      }
+    }
+  }
+
+  _registerKeypad(kp) {
+    const key = `yale-keypad/${kp.id}`;
+    if (!this._registry.devices.has(key)) {
+      this._registry.registerDevice({
+        key,
+        type: 'yale-keypad',
+        instance: kp.id,
+        label: `${kp.lockName} keypad`,
+        icon: '🔢',
+        color: 'gray',
+        category: 'security',
+        model: 'Yale Access Keypad',
+        sensors: [
+          { path: 'battery',      name: 'Battery',       format: 'percent', unit: '%', homekit: 'battery-level' },
+          { path: 'batteryLevel', name: 'Battery level', format: 'string' },
+          { path: 'lastAction',   name: 'Last action',   format: 'string' },
+          { path: 'lastUser',     name: 'Last user',     format: 'string' },
+          { path: 'lastUsed',     name: 'Last used',     format: 'string' },
+          { path: 'lock',         name: 'Lock',          format: 'string', hidden: true },
+          { path: 'firmware',     name: 'Firmware',      format: 'string', hidden: true },
+        ],
+        homekit: ['battery-level'],
+      });
+    }
+    this._store.set(`${key}/lock`, kp.lockName);
+    if (kp.firmware) this._store.set(`${key}/firmware`, kp.firmware);
+    if (kp.batteryLevel) {
+      this._store.set(`${key}/batteryLevel`, kp.batteryLevel);
+      const pct = KEYPAD_BATTERY_PCT[String(kp.batteryLevel).toLowerCase()];
+      if (pct != null) this._store.set(`${key}/battery`, pct);
+    }
+  }
+
+  _publishKeypadEvent(kp, ev) {
+    const key = `yale-keypad/${kp.id}`;
+    const stamp = `${ev.dateTime}|${ev.action}`;
+    if (this._lastKeypadEvent?.get(key) === stamp) return; // nothing new
+    (this._lastKeypadEvent ||= new Map()).set(key, stamp);
+    const u = ev.callingUser || {};
+    const named = [u.FirstName, u.LastName].filter(Boolean).join(' ');
+    const user = named || (ev.action === 'onetouchlock' ? 'keypad button' : (u.UserID || 'unknown'));
+    const action = ev.action === 'onetouchlock' ? 'lock (one-touch)' : (ev.action || 'unknown');
+    this._store.set(`${key}/lastAction`, action);
+    this._store.set(`${key}/lastUser`, user);
+    const t = Number(ev.dateTime);
+    this._store.set(`${key}/lastUsed`, Number.isFinite(t) ? new Date(t).toISOString() : String(ev.dateTime || ''));
   }
 
   /** Used by the /yale-camera/:id/snapshot proxy route — kept off the

@@ -40,7 +40,7 @@ const rand = (prefix) => `${prefix}${crypto.randomBytes(32).toString('base64url'
 const now = () => Date.now();
 
 // ── Sensitive devices: never controllable unless the bot has sensitive: true ──
-const SENSITIVE_TYPES = new Set(['satel', 'dsc', 'sip', 'tedee', 'yale', 'unifiaccess', 'unifi-access', 'nuki', 'alarm']);
+const SENSITIVE_TYPES = new Set(['satel', 'dsc', 'sip', 'tedee', 'yale', 'yale-keypad', 'unifiaccess', 'unifi-access', 'nuki', 'alarm']);
 const SENSITIVE_HK = ['lock-rw', 'door-rw'];
 const SENSITIVE_SUBTYPES = new Set(['gate', 'wicket', 'lock', 'garage_door', 'alarm_zone']);
 const SENSITIVE_PATH = /^(lock|unlock|arm|disarm|alarm|door|opendoor|open_door|gate|garage|wicket|siren)/i;

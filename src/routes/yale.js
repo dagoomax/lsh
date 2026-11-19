@@ -61,6 +61,8 @@ module.exports = function register(router, ctx) {
       writeConfigFile({
         ...current,
         yale: {
+          // Keep keys this form doesn't edit (ecoSystem, accessToken, keypads, …).
+          ...(current.yale || {}),
           username:     username     || current.yale?.username     || '',
           password:     (password && !password.includes('•')) ? password : (current.yale?.password || ''),
           loginMethod:  loginMethod === 'phone' ? 'phone' : 'email',

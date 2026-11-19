@@ -2570,6 +2570,8 @@ Untested against real hardware from this codebase — implemented against Tedee'
 
 First login on a fresh install requires a one-time email/SMS verification code. Easiest path: Settings → Cameras → **Yale Doorbell Cameras** — fill in the fields, click **Test Connection** to send the code, enter it, click **Verify**, then **Save** and restart. Headless/no-UI alternative: `node scripts/yale-verify.js`. Either way, once verified the server re-authenticates on its own indefinitely. Locks on the same account are intentionally out of scope for this integration.
 
+**Yale Access keypads** on the same account are picked up automatically (set `"keypads": false` to turn this off). Only the keypad is exposed, not the lock: each lock with a paired keypad becomes a `yale-keypad/<id>` device with **Battery** (approximated from Yale's Full/Medium/Low), **Battery level**, **Last action**, **Last user** and **Last used**, read from the house activity feed (keypad unlocks/locks and the one-touch lock button). Nothing on the keypad or lock can be controlled from LSH. Lock details refresh every 10 min, keypad activity on every poll.
+
 Untested against a real Yale account from this codebase — implemented against `yalexs`'s documented, currently-shipping wire protocol (github.com/Yale-Libs/yalexs), not guessed.
 
 ---
