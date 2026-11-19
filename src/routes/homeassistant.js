@@ -80,9 +80,13 @@ module.exports = function register(router, ctx) {
     if (errors.length) return res.status(400).json({ success: false, error: errors.join(' · ') });
 
     const homeassistant = {
+      // Keep HA keys this form doesn't edit (e.g. import.homekit: ['cover'],
+      // which bridges HA covers to HomeKit) instead of dropping them.
+      ...prev,
       url: url || undefined, token: token || undefined,
-      import: { enabled: b.import?.enabled !== false, cameras: b.import?.cameras !== false, domains: list(b.import?.domains), entities: list(b.import?.entities) },
+      import: { ...prev.import, enabled: b.import?.enabled !== false, cameras: b.import?.cameras !== false, domains: list(b.import?.domains), entities: list(b.import?.entities) },
       export: {
+        ...prev.export,
         enabled: !!ex.enabled, mqttUrl: String(ex.mqttUrl || '').trim() || undefined,
         username: String(ex.username || '').trim() || undefined, password: keep(ex.password, prev.export?.password) || undefined,
         prefix: ex.prefix || 'homeassistant', base: ex.base || 'lsh', node: ex.node || 'lsh', types: list(ex.types),
