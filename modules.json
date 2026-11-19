@@ -686,6 +686,17 @@
       ],
       "deps": {}
     },
+    "homey-out": {
+      "entry": "src/homey-out-client.js",
+      "configKeys": [
+        "homeyOut"
+      ],
+      "when": "(config.homeyOut?.mappings?.length)",
+      "files": [
+        "src/homey-out-client.js"
+      ],
+      "deps": {}
+    },
     "domatiq-out": {
       "entry": "src/domatiq-out-client.js",
       "configKeys": [

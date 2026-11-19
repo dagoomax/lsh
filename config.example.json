@@ -577,6 +577,12 @@
       { "name": "Keypad Wejście", "mac": "98:1B:B5:66:07:9F", "model": "AK-R4" }
     ]
   },
+  "homeyOut": {
+    "mappings": [
+      { "storeKey": "yale-keypad-ble/keypad_wejscie/online", "variable": "Keypad Wejście obecny", "type": "boolean" },
+      { "storeKey": "yale-keypad-ble/keypad_wejscie/rssi", "variable": "Keypad Wejście sygnał", "type": "number" }
+    ]
+  },
   "kenik": {
     "host": "192.168.1.90",
     "username": "admin",

@@ -953,6 +953,15 @@ async function main() {
     }
   }
 
+  // Push LSH values out to Homey as Logic variables (reuses config.homey creds)
+  if (config.homeyOut?.mappings?.length) {
+    const HomeyOutClient = tryRequire('./src/homey-out-client');
+    if (HomeyOutClient) {
+      const homeyOut = new HomeyOutClient(config, store);
+      homeyOut.start().catch((err) => console.error(`[HomeyOut] Start failed: ${err.message}`));
+    }
+  }
+
 
 
 

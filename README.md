@@ -1491,6 +1491,29 @@ Two mapping forms, mixable:
 
 ---
 
+### `homeyOut`
+
+```json
+"homeyOut": {
+  "mappings": [
+    { "storeKey": "yale-keypad-ble/keypad_wejscie/online", "variable": "Keypad Wejście obecny", "type": "boolean" },
+    { "storeKey": "yale-keypad-ble/keypad_wejscie/rssi", "variable": "Keypad Wejście sygnał", "type": "number" },
+    { "storePrefix": "satel/zone/", "variablePrefix": "LSH zone ", "type": "boolean" }
+  ]
+}
+```
+
+The outbound counterpart of `homey` — pushes live LSH store values **to Homey as Logic variables** (same pattern as `fibaroOut`/`loxoneOut`), usable in Homey Flows. It reuses the `homey` connection (host/homeyId + token), so no extra credentials. Homey does not let an outside system create a real *device* (those come from Homey apps), so this uses Logic variables instead.
+
+Two mapping forms, mixable:
+
+- `storeKey` + `variable` — one store key → one named Logic variable
+- `storePrefix` + `variablePrefix` — bulk rule: every key under the prefix → `variablePrefix` + remainder, with `/` replaced by a space
+
+`type` is `boolean`, `number`, or `string` (inferred from the value if omitted). Homey Logic names allow spaces/unicode, so names are kept as written. Missing variables are created on first push; updates are debounced 200 ms and only real changes are sent.
+
+---
+
 ### `somfy`
 
 ```json
