@@ -5073,6 +5073,7 @@ No loops: entities whose `unique_id` starts with `<node>_` (LSH's exports) are n
 |---|---|
 | `token` | HA → your profile → Security → Long-lived access tokens |
 | `import.domains` / `import.entities` | empty = the default domains / every entity in them |
+| `import.exclude` | entity ids to leave out, exact or with `*` wildcards (e.g. `"lock.*"`, `"binary_sensor.front_door_*"`) |
 | `export.types` | LSH device types to export (e.g. `["shelly","victron"]`); empty = all |
 | `export.node` | prefix of every `unique_id` — change it when two LSH hubs publish to one HA |
 

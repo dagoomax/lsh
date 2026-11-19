@@ -29,6 +29,14 @@ const platformStatus = require('./platform-status');
 
 const DEFAULT_DOMAINS = ['light', 'switch', 'cover', 'climate', 'lock', 'fan', 'sensor', 'binary_sensor', 'input_boolean'];
 const ICON = { light: '💡', switch: '🔌', cover: '🪟', climate: '🌡️', lock: '🔒', fan: '🌀', sensor: '📈', binary_sensor: '🔘', input_boolean: '🔘' };
+// import.exclude: entity ids to leave out, exact or with * wildcards
+// ("lock.front_door", "binary_sensor.front_door_*"). Applied after domains/entities.
+function excludeMatcher(list) {
+  const pats = (Array.isArray(list) ? list : []).map(String).filter(Boolean)
+    .map((p) => new RegExp(`^${p.split('*').map((x) => x.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`));
+  return pats.length ? (id) => pats.some((re) => re.test(id)) : () => false;
+}
+
 const BINARY_HOMEKIT = { motion: 'motion', occupancy: 'motion', presence: 'motion', door: 'contact', window: 'contact', opening: 'contact', garage_door: 'contact' };
 
 const num = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
@@ -220,6 +228,7 @@ class HomeAssistantClient {
     const ownExports = new Set(registry.filter((r) => String(r.unique_id || '').startsWith(`${node}_`)).map((r) => r.entity_id));
     const domains = this.cfg.import?.domains?.length ? this.cfg.import.domains : DEFAULT_DOMAINS;
     const wanted = this.cfg.import?.entities?.length ? new Set(this.cfg.import.entities) : null;
+    const excluded = excludeMatcher(this.cfg.import?.exclude);
     this.available = states
       .filter((s) => !ownExports.has(s.entity_id))
       .map((s) => ({ entity_id: s.entity_id, name: this._nameOf(s).label, domain: s.entity_id.split('.')[0], state: s.state, unit: s.attributes?.unit_of_measurement || '' }));
@@ -230,6 +239,7 @@ class HomeAssistantClient {
       if (domain === 'camera') { if (camerasOn) this.cameras.set(s.entity_id, s); continue }
       if (ownExports.has(s.entity_id) || !domains.includes(domain)) continue;
       if (wanted && !wanted.has(s.entity_id)) continue;
+      if (excluded(s.entity_id)) continue;
       if (!this.entities.has(s.entity_id)) this._registerEntity(s);
       this._applyState(s);
     }
