@@ -1145,7 +1145,7 @@
       "configKeys": [
         "hue"
       ],
-      "when": "(config.hue?.host && config.hue?.username)",
+      "when": "(config.hue?.host)",
       "files": [
         "src/hue-client.js"
       ],

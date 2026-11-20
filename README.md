@@ -990,7 +990,7 @@ First run: set `securityCode` from the sticker on the gateway back. The server g
 }
 ```
 
-**Philips Hue** via the local bridge (CLIP v1 REST — works on every bridge generation). Pairing: press the round link button on the bridge, run `node scripts/hue-auth.js <bridge-ip>` within 30 s, and paste the printed `username`.
+**Philips Hue** via the local bridge (CLIP v1 REST — works on every bridge generation). Pairing: set just `host` — LSH then pairs itself, retrying in the background until someone presses the round link button on the bridge, and saves the key to `persist/hue-auth.json` (0600; re-pairs automatically if the key is later revoked in the Hue app). A `username` in config still takes precedence, or pair by hand with `node scripts/hue-auth.js <bridge-ip>`.
 
 Lights, plugs and Zigbee accessories are **auto-discovered** and polled every `pollInterval` seconds (default 5). Color/white-ambiance lights expose brightness, color temperature and hue/saturation (HomeKit `light-rw`, full color control); smart plugs are switches; Hue motion sensors register as one device with motion + temperature + lux + battery; dimmer switches report their last `buttonevent` and battery.
 

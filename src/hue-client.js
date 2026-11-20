@@ -1,6 +1,8 @@
 'use strict';
 
+const fs             = require('fs');
 const http           = require('http');
+const path           = require('path');
 const platformStatus = require('./platform-status');
 
 // Philips Hue via the local bridge (CLIP v1 REST API — supported by every
@@ -9,10 +11,33 @@ const platformStatus = require('./platform-status');
 // exposes (ZLLPresence / ZLLTemperature / ZLLLightLevel) share a Zigbee MAC in
 // their uniqueid and are grouped into one dashboard device.
 //
-// Pairing: press the bridge link button, then run `node scripts/hue-auth.js
-// <bridge-ip>` once and paste the printed username here.
+// Pairing: set only `host` and LSH pairs itself — it keeps asking the bridge
+// for a username in the background, so whenever someone presses the round
+// link button the key is created, saved to persist/hue-auth.json (0600) and
+// lights start importing, no timing to coordinate. A `username` in config
+// still wins (or pair manually with `node scripts/hue-auth.js <bridge-ip>`).
 //
 // config.hue = { host: '192.168.1.x', username: '...', pollInterval: 5 }
+
+const AUTH_FILE   = process.env.LSH_HUE_AUTH || path.join(__dirname, '..', 'persist', 'hue-auth.json');
+const PAIR_RETRY_MS = 5000;
+
+function loadSavedUsername(host) {
+  try {
+    const j = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
+    return j?.[host]?.username || null;
+  } catch { return null; }
+}
+
+function saveUsername(host, username) {
+  let all = {};
+  try { all = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8')) || {}; } catch {}
+  all[host] = { username, pairedAt: new Date().toISOString() };
+  fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
+  const tmp = `${AUTH_FILE}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(all, null, 2), { mode: 0o600 });
+  fs.renameSync(tmp, AUTH_FILE);
+}
 
 // Hue scales ↔ LSH conventions (0-100, Kelvin, °C — SmartThings compat)
 const briToPct  = (bri) => Math.round((bri / 254) * 100);
@@ -32,20 +57,58 @@ class HueClient {
     this._registry = sensorRegistry;
     this._timer    = null;
     this._known    = new Set();   // registered device keys
+    this._pairTimer = null;
+    this._stopped  = false;
+    this._username = this._cfg.username || null;
   }
 
   async start() {
-    if (!this._cfg.host || !this._cfg.username) {
-      console.log('[Hue] No host/username configured');
+    if (!this._cfg.host) {
+      console.log('[Hue] No host configured');
       return;
     }
+    platformStatus.set('hue', false);
+    if (!this._username) this._username = loadSavedUsername(this._cfg.host);
+    if (!this._username) {
+      console.log(`[Hue] Not paired — press the link button on the bridge at ${this._cfg.host}; LSH pairs automatically`);
+      this._pairLoop();
+      return;
+    }
+    await this._startPolling();
+  }
+
+  async _startPolling() {
     await this._poll();
     const ms = Math.max(2, this._cfg.pollInterval || 5) * 1000;
     this._timer = setInterval(() => this._poll().catch(() => {}), ms);
   }
 
+  // Ask the bridge for a username until the link button is pressed (error 101).
+  async _pairLoop() {
+    this._pairTimer = null;
+    if (this._stopped) return;
+    try {
+      const res = await this._raw('POST', '/api', { devicetype: 'lsh#server' });
+      const r = Array.isArray(res) ? res[0] : null;
+      if (r?.success?.username) {
+        this._username = r.success.username;
+        try { saveUsername(this._cfg.host, this._username); }
+        catch (err) { console.error(`[Hue] Paired but could not save username: ${err.message}`); }
+        console.log(`[Hue] Paired with bridge ${this._cfg.host}`);
+        await this._startPolling();
+        return;
+      }
+      if (r?.error && r.error.type !== 101) console.error(`[Hue] Pairing error: ${r.error.description}`);
+    } catch (err) {
+      console.error(`[Hue] Pairing request failed: ${err.message}`);
+    }
+    this._pairTimer = setTimeout(() => this._pairLoop(), PAIR_RETRY_MS);
+  }
+
   stop() {
+    this._stopped = true;
     if (this._timer) clearInterval(this._timer);
+    if (this._pairTimer) clearTimeout(this._pairTimer);
     platformStatus.set('hue', false);
   }
 
@@ -190,13 +253,29 @@ class HueClient {
 
   // ── HTTP ─────────────────────────────────────────────────────────────────
 
-  _req(method, path, body) {
+  async _req(method, p, body) {
+    const j = await this._raw(method, `/api/${this._username}${p}`, body);
+    const err = Array.isArray(j) && j.find((e) => e.error);
+    if (err) {
+      // Key revoked on the bridge (deleted in the Hue app) → forget it and re-pair.
+      if (err.error.type === 1 && !this._cfg.username && !this._pairTimer && !this._stopped) {
+        console.error('[Hue] Bridge rejected the saved username — re-pairing (press the link button)');
+        this._username = null;
+        if (this._timer) { clearInterval(this._timer); this._timer = null; }
+        this._pairLoop();
+      }
+      throw new Error(err.error.description || 'Hue error');
+    }
+    return j;
+  }
+
+  _raw(method, fullPath, body) {
     const data = body ? JSON.stringify(body) : null;
     return new Promise((resolve, reject) => {
       const req = http.request({
         hostname: this._cfg.host,
         port:     this._cfg.port || 80,
-        path:     `/api/${this._cfg.username}${path}`,
+        path:     fullPath,
         method,
         timeout:  8000,
         headers:  data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {},
@@ -204,12 +283,8 @@ class HueClient {
         let out = '';
         res.on('data', (c) => out += c);
         res.on('end', () => {
-          try {
-            const j = JSON.parse(out);
-            const err = Array.isArray(j) && j.find((e) => e.error);
-            if (err) return reject(new Error(err.error.description || 'Hue error'));
-            resolve(j);
-          } catch { reject(new Error('Non-JSON response from bridge')); }
+          try { resolve(JSON.parse(out)); }
+          catch { reject(new Error('Non-JSON response from bridge')); }
         });
       });
       req.on('error', reject);

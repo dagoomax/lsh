@@ -90,7 +90,7 @@ module.exports = [
   // scripts/grenton-vclu-sim.js + grenton-klima-autosync.js.
   { file: 'grenton-vclu-client', label: 'GrentonVclu', expose: 'grentonVclu', when: (config) => config.grentonVclu?.enabled },
   // Start Philips Hue client if configured (local bridge, CLIP v1 REST)
-  { file: 'hue-client', label: 'Hue', when: (config) => config.hue?.host && config.hue?.username },
+  { file: 'hue-client', label: 'Hue', when: (config) => config.hue?.host },
   // Start Miele client if configured (OAuth password grant, or one-off
   // scripts/miele-auth.js; tokens persisted + auto-refreshed)
   { file: 'miele-client', label: 'Miele', when: (config) => config.miele },
