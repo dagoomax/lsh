@@ -497,12 +497,25 @@ class KarcherClient {
       const pose = live.status === 'fulfilled' ? live.value.robot : null;
       const { renderMap } = require('./karcher-map');
       const { buf, w, h, rgba } = renderMap(map, { pose });
-      this._mapCache.set(sn, { at: Date.now(), buf, w, h, rgba });
+      this._mapCache.set(sn, { at: Date.now(), buf, w, h, rgba, map, pose });
       return buf;
     })();
     this._mapCache.set(sn, { ...(hit || {}), pending });
     try { return await pending; }
     catch (err) { this._mapCache.delete(sn); if (hit?.buf) return hit.buf; throw err; }
+  }
+
+  // Isometric 3D cutaway of the same map (src/karcher-map3d.js), re-rendered
+  // only when fetchMapPng has pulled a newer map.
+  async fetchMap3dPng(sn) {
+    await this.fetchMapPng(sn);
+    const hit = this._mapCache.get(sn);
+    if (!hit?.map) throw new Error('No map data yet');
+    if (hit.buf3d && hit.at3d === hit.at) return hit.buf3d;
+    const { renderMap3D } = require('./karcher-map3d');
+    const { buf } = renderMap3D(hit.map, { pose: hit.pose });
+    hit.buf3d = buf; hit.at3d = hit.at;
+    return buf;
   }
 
   _registerDevice(entry) {

@@ -201,7 +201,7 @@ class PtzWaypoints {
     (config.cameras || []).forEach((cam, idx) => {
       if (cam.waypoints === false) return;
       let ptz = null;
-      if (cam.tuyaPtz) ptz = (op) => require('./tuya-cloud-ptz').ptz(config.tuyaCloud, cam.tuyaPtz, op);
+      if (cam.tuyaPtz) ptz = (op) => require('./tuya-cloud-ptz').ptz(config.tuyaCloud, cam.tuyaPtz, op, config.tuyaIpc);
       else if (cam.onvif?.host) ptz = (op) => require('./onvif-ptz').ptz(cam.onvif, op);
       const frame = frameSource(cam, ffmpegPath);
       if (!ptz || !frame) return;

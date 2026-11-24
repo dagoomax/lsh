@@ -3,6 +3,7 @@
 // English lives in the gt() fallbacks at the call sites.
 const DICT = {
   pl: {
+        'mc6.temperature': 'Temperatura', 'mc6.floor_temperature': 'Temperatura podłogi', 'mc6.humidity': 'Wilgotność', 'mc6.setpoint': 'Temperatura zadana', 'mc6.mode': 'Tryb', 'mc6.fan': 'Wentylator', 'mc6.onoff': 'Wł./Wył.', 'mc6.mode_cool': 'Chłodzenie', 'mc6.mode_heat': 'Grzanie', 'mc6.mode_fan_only': 'Wentylacja', 'mc6.mode_dry': 'Osuszanie', 'mc6.fan_high': 'Wysoki', 'mc6.fan_medium': 'Średni', 'mc6.fan_low': 'Niski', 'mc6.fan_auto': 'Auto',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Dzień dobry",
     hero_afternoon: "Dzień dobry",
@@ -104,6 +105,8 @@ const DICT = {
         cam_no_events: 'Brak wydarzeń', cam_no_snapshot: 'Brak zdjęcia', cam_no_stream: 'Nie skonfigurowano adresu strumienia', cam_view_image: 'Zobacz zdjęcie', cam_presets: 'Pozycje', cam_no_presets: 'Brak zapisanych pozycji', cam_preset_name: 'Nazwa',
         cam_stats_today: 'Dzisiaj', cam_stats_week: '7 dni', cam_timeline: 'Oś czasu detekcji',
         cam_timeline_none: 'Brak detekcji pasujących do filtra',
+        cam_sd_recordings: 'Nagrania z karty SD', cam_sd_show: 'Pokaż', cam_sd_loading: 'Pytam kamerę…',
+        cam_sd_none: 'Brak nagrań tego dnia', cam_fullscreen: 'Pełny ekran', cam_exit_fullscreen: 'Zamknij pełny ekran',
         clean_rooms: 'Sprzątaj pokoje', clean_selected: 'Sprzątaj wybrane', consumables: 'Materiały eksploatacyjne',
         live_map: 'Mapa na żywo', map_unavailable: 'Mapa niedostępna',
         dash_edit_add_widget: 'Dodaj widget', scenes: 'Sceny', scene: 'scena', scene_new: 'Nowa scena', scene_edit: 'Edytuj scenę', scene_name_ph: 'Nazwa sceny, np. Wieczór filmowy', scene_devices: 'Akcesoria', scene_add_devices: 'Dodaj akcesoria', scene_search: 'Szukaj urządzeń…', scene_no_match: 'Brak pasujących urządzeń', scene_remove_dev: 'Usuń ze sceny', scene_capture_hint: 'Dodane akcesoria startują z obecnym stanem — dostosuj je i zapisz.', scene_other_actions: '+ {n} inne akcje z Flows / API, zachowane bez zmian.', scene_in_apple_home: 'Pokaż w Apple Home', scene_apple_hint: 'Pojawi się w aplikacji Dom jako przełącznik o nazwie sceny: dodaj go do ulubionych, powiedz „Hej Siri, włącz {name}” albo użyj go w scenach i automatyzacjach aplikacji Dom.', scene_save_test: 'Zapisz i przetestuj', scene_delete: 'Usuń scenę', scene_need_name: 'Nadaj scenie nazwę', scene_hk_status: 'Sceny opublikowane w Apple Home', scene_add_all_home: 'Dodaj wszystkie do Apple Home', open: 'Otwarte', closed: 'Zamknięte', home_edit_title: 'Edytuj widok główny', home_sec_model: 'Model 3D', plan_cam: 'Kamera', plan_assign: 'Przypisz', plan_unplaced: '{n} bez miejsca', plan_hidden: 'ukryte', plan_remove_dev: 'Usuń z modelu', pin_needed_plan: 'Wymagany PIN edycji — odblokuj edycję w widoku Planu', plan_cam_iso: 'Izometria', plan_cam_top: 'Z góry', plan_cam_front: 'Przód', plan_cam_side: 'Bok', plan_cut: 'Przekrój', plan_cut_hint: 'Przetnij model na pół, aby zajrzeć do środka', plan_model_hint: 'Przeciągnij, aby obrócić · przewiń, aby przybliżyć', plan_view: 'Widok', plan_view_board: 'Plan', plan_view_model: 'Model', exit_plan_screen: 'Zamknij widok planu', plan_screen: 'Plan na pełnym ekranie', plan_screen_hint: 'Pokaż sam plan na całym ekranie — dla tabletu ściennego lub telewizora', plan_view_picture_hint: 'Zaimportowany obraz domu z przypiętymi urządzeniami', model_bad_type2: 'Plik musi mieć format .glb, .obj, .png, .jpg lub .webp', import_model2: 'Importuj model', import_model_hint2: 'Zaimportuj model 3D (.glb lub .obj) albo wyrenderowany obraz (.png, .jpg, .webp) jako alternatywę dla rysowanego planu', phi_place: 'Rozmieść urządzenia', phi_hint: 'Przeciągnij, aby przesunąć · przewiń, aby przybliżyć · dwuklik resetuje', phi_edit_hint: 'Wybierz urządzenie i stuknij w obraz · przeciągnij pinezkę, aby ją przesunąć', phi_tap_to_place: 'Stuknij w obraz tam, gdzie jest {name}', phi_all_placed: 'Wszystkie urządzenia są już na obrazie', phi_search_more: 'użyj wyszukiwania, aby zawęzić listę', phi_load_failed: 'Nie udało się wczytać obrazu', plan_view_model_hint: 'Zaimportowany model 3D narysowany w HTML — urządzenia, światła i ściany, które można przyciąć', model_view_webgl: 'Model 3D (WebGL)', phm_hint: 'Przeciągnij, aby obrócić · przewiń, aby przybliżyć · Shift + przeciągnij, aby przesunąć · dwuklik resetuje', phm_lights_on: 'świateł włączonych', phm_devices: 'urządzeń na modelu', phm_walls: 'Ściany', phm_walls_hint: 'Przytnij ściany niżej, aby zajrzeć do pokoi', phm_labels: 'Etykiety', textures: 'Tekstury', phm_textures_hint: 'Wykończenia na modelu: drewno, płytki, kamień i tkaniny', phm_turn_left: 'Obróć w lewo', phm_turn_right: 'Obróć w prawo', plan_open: 'Otwórz plan', fullscreen: 'Pełny ekran', home_wallpaper: 'Tapeta', wall_auto: 'Pora dnia', wall_aurora: 'Zorza', wall_sunset: 'Zachód', wall_ocean: 'Ocean', wall_forest: 'Las', wall_off: 'Brak', home_sections: 'Sekcje', home_sections_hint: 'Przeciągnij ≡, aby zmienić kolejność. Wyłączone sekcje nadal są dostępne z paska bocznego.', home_favs: 'Ulubione', home_favs_empty: 'Otwórz urządzenie i stuknij ☆, aby dodać je tutaj.', home_hidden_devices: 'Ukryte na widoku głównym', home_show: 'Pokaż', home_reset: 'Przywróć', home_reset_confirm: 'Stuknij ponownie', home_fav: 'Dodaj do ulubionych', home_unfav: 'Usuń z ulubionych', home_show_in: 'Pokaż na widoku głównym', home_wide: 'Szeroki kafelek', home_sec_hero: 'Podsumowanie', home_sec_music: 'Muzyka', home_sec_weather: 'Prognoza pogody', home_sec_doorbells: 'Dzwonki', home_sec_system: 'Monitor systemu', home_sec_mcu: 'Indeks mikrokontrolerów', home_sec_cameras: 'Kamery', dash_edit_customize: 'Dostosuj pulpit', dash_edit_done: 'Gotowe',
@@ -135,6 +138,7 @@ const DICT = {
         's.dyson_no_devices': 'Nie znaleziono jeszcze urządzeń — uruchom powyższy skrypt logowania.',
         's.dyson_no_ip': 'brak ustawionego IP' },
   de: {
+        'mc6.temperature': 'Temperatur', 'mc6.floor_temperature': 'Bodentemperatur', 'mc6.humidity': 'Luftfeuchtigkeit', 'mc6.setpoint': 'Solltemperatur', 'mc6.mode': 'Modus', 'mc6.fan': 'Lüfter', 'mc6.onoff': 'Ein/Aus', 'mc6.mode_cool': 'Kühlen', 'mc6.mode_heat': 'Heizen', 'mc6.mode_fan_only': 'Lüften', 'mc6.mode_dry': 'Entfeuchten', 'mc6.fan_high': 'Hoch', 'mc6.fan_medium': 'Mittel', 'mc6.fan_low': 'Niedrig', 'mc6.fan_auto': 'Auto',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Guten Morgen",
     hero_afternoon: "Guten Tag",
@@ -266,6 +270,7 @@ const DICT = {
         's.dyson_no_devices': 'Noch keine Geräte gefunden — führe das obige Anmelde-Skript aus.',
         's.dyson_no_ip': 'keine IP festgelegt' },
   fr: {
+        'mc6.temperature': 'Température', 'mc6.floor_temperature': 'Température du sol', 'mc6.humidity': 'Humidité', 'mc6.setpoint': 'Consigne', 'mc6.mode': 'Mode', 'mc6.fan': 'Ventilateur', 'mc6.onoff': 'Marche/Arrêt', 'mc6.mode_cool': 'Froid', 'mc6.mode_heat': 'Chauffage', 'mc6.mode_fan_only': 'Ventilation', 'mc6.mode_dry': 'Déshumidification', 'mc6.fan_high': 'Élevée', 'mc6.fan_medium': 'Moyenne', 'mc6.fan_low': 'Basse', 'mc6.fan_auto': 'Auto',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Bonjour",
     hero_afternoon: "Bon après-midi",
@@ -397,6 +402,7 @@ const DICT = {
         's.dyson_no_devices': 'Aucun appareil trouvé pour l’instant — exécutez le script d’authentification ci-dessus.',
         's.dyson_no_ip': 'aucune IP définie' },
   es: {
+        'mc6.temperature': 'Temperatura', 'mc6.floor_temperature': 'Temperatura del suelo', 'mc6.humidity': 'Humedad', 'mc6.setpoint': 'Consigna', 'mc6.mode': 'Modo', 'mc6.fan': 'Ventilador', 'mc6.onoff': 'Encendido/Apagado', 'mc6.mode_cool': 'Frío', 'mc6.mode_heat': 'Calor', 'mc6.mode_fan_only': 'Ventilación', 'mc6.mode_dry': 'Deshumidificación', 'mc6.fan_high': 'Alta', 'mc6.fan_medium': 'Media', 'mc6.fan_low': 'Baja', 'mc6.fan_auto': 'Auto',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Buenos días",
     hero_afternoon: "Buenas tardes",
@@ -528,6 +534,7 @@ const DICT = {
         's.dyson_no_devices': 'Aún no se encontraron dispositivos — ejecuta el script de autenticación anterior.',
         's.dyson_no_ip': 'sin IP configurada' },
   it: {
+        'mc6.temperature': 'Temperatura', 'mc6.floor_temperature': 'Temperatura pavimento', 'mc6.humidity': 'Umidità', 'mc6.setpoint': 'Setpoint', 'mc6.mode': 'Modalità', 'mc6.fan': 'Ventola', 'mc6.onoff': 'Acceso/Spento', 'mc6.mode_cool': 'Raffreddamento', 'mc6.mode_heat': 'Riscaldamento', 'mc6.mode_fan_only': 'Ventilazione', 'mc6.mode_dry': 'Deumidificazione', 'mc6.fan_high': 'Alta', 'mc6.fan_medium': 'Media', 'mc6.fan_low': 'Bassa', 'mc6.fan_auto': 'Auto',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Buongiorno",
     hero_afternoon: "Buon pomeriggio",
@@ -659,6 +666,7 @@ const DICT = {
         's.dyson_no_devices': 'Nessun dispositivo trovato ancora — esegui lo script di autenticazione sopra.',
         's.dyson_no_ip': 'nessun IP impostato' },
   uk: {
+        'mc6.temperature': 'Температура', 'mc6.floor_temperature': 'Температура підлоги', 'mc6.humidity': 'Вологість', 'mc6.setpoint': 'Задана температура', 'mc6.mode': 'Режим', 'mc6.fan': 'Вентилятор', 'mc6.onoff': 'Увімк./Вимк.', 'mc6.mode_cool': 'Охолодження', 'mc6.mode_heat': 'Обігрів', 'mc6.mode_fan_only': 'Вентиляція', 'mc6.mode_dry': 'Осушення', 'mc6.fan_high': 'Висока', 'mc6.fan_medium': 'Середня', 'mc6.fan_low': 'Низька', 'mc6.fan_auto': 'Авто',
     // dashboard: home hero, energy, header, doorbells
     hero_morning: "Доброго ранку",
     hero_afternoon: "Добрий день",

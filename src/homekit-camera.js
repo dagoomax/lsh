@@ -565,8 +565,12 @@ class CameraDelegate {
     // ultrafast preset is the one that keeps up in real time on low-power
     // hosts (x264's default "medium" managed 0.47x at 1080p on an AMD
     // GX-215JJ, so recordings fell behind and failed).
+    // The copied stream keeps the camera's own SPS, which may claim a higher
+    // level than the one negotiated (the Wejście doorbell says 5.0 for
+    // 1080p15, which fits 4.0) — rewrite the level so the Home hub gets what
+    // it agreed to.
     const videoArgs = this.cam.hksvVideo === 'copy'
-      ? ['-codec:v', 'copy']
+      ? ['-codec:v', 'copy', '-bsf:v', `h264_metadata=level=${level.replace('.', '')}`]
       : [
           '-codec:v', 'libx264',
           '-preset', 'ultrafast', '-tune', 'zerolatency',

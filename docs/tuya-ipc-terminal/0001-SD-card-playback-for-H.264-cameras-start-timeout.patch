@@ -1,0 +1,447 @@
+From 77fffcdb084a8335d43db7aa92732dc2a144b526 Mon Sep 17 00:00:00 2001
+From: dagoomax <dagoomax@gmail.com>
+Date: Fri, 30 Oct 2026 20:35:45 +0100
+Subject: [PATCH 1/2] SD-card playback for H.264 cameras, start timeout
+
+- `cameras recordings <camera> <YYYY-MM-DD> [--json]` lists a day's SD-card
+  segments (protocol 312 recordQueryByDay on a replay session; pages arrive
+  out of order and some never arrive, so collect until quiet)
+- RTSP /<camera>/replay/<start>-<end> plays one segment (playbackStart);
+  the camera serves one replay session at a time, at 1x, video only
+- Bridge start gives up after 20s instead of waiting forever while the
+  stream lock is held
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ cmd/cameras/cameras.go |  73 +++++++++++++++++++++++
+ pkg/rtsp/bridge.go     |  66 ++++++++++++++++++++-
+ pkg/rtsp/protocol.go   |   9 +++
+ pkg/tuya/mqtt.go       |   2 +
+ pkg/tuya/mqttCamera.go | 132 ++++++++++++++++++++++++++++++++++++++++-
+ 5 files changed, 278 insertions(+), 4 deletions(-)
+
+diff --git a/cmd/cameras/cameras.go b/cmd/cameras/cameras.go
+index 30d32e1..90a30f7 100644
+--- a/cmd/cameras/cameras.go
++++ b/cmd/cameras/cameras.go
+@@ -1,6 +1,7 @@
+ package cameras
+ 
+ import (
++	"encoding/json"
+ 	"errors"
+ 	"fmt"
+ 	"net/http"
+@@ -12,6 +13,7 @@ import (
+ 	"github.com/spf13/cobra"
+ 	"golang.org/x/net/publicsuffix"
+ 
++	"tuya-ipc-terminal/pkg/rtsp"
+ 	"tuya-ipc-terminal/pkg/storage"
+ 	"tuya-ipc-terminal/pkg/tuya"
+ )
+@@ -32,10 +34,81 @@ func NewCamerasCmd() *cobra.Command {
+ 	cmd.AddCommand(newListCmd())
+ 	cmd.AddCommand(newRefreshCmd())
+ 	cmd.AddCommand(newInfoCmd())
++	cmd.AddCommand(newRecordingsCmd())
+ 
+ 	return cmd
+ }
+ 
++func newRecordingsCmd() *cobra.Command {
++	cmd := &cobra.Command{
++		Use:   "recordings [device-id|name] [YYYY-MM-DD]",
++		Short: "List a day's SD-card recordings",
++		Long: `List the SD-card recording segments of one day. Each segment can be played
++over RTSP at /<camera>/replay/<start>-<end> (unix seconds).`,
++		Args: cobra.ExactArgs(2),
++		RunE: runRecordings,
++	}
++
++	cmd.Flags().Bool("json", false, "Print segments as JSON")
++
++	return cmd
++}
++
++func runRecordings(cmd *cobra.Command, args []string) error {
++	day, err := time.ParseInLocation("2006-01-02", args[1], time.Local)
++	if err != nil {
++		return fmt.Errorf("invalid date %q, want YYYY-MM-DD", args[1])
++	}
++
++	cameras, err := storageManager.GetAllCameras()
++	if err != nil {
++		return fmt.Errorf("failed to get cameras: %v", err)
++	}
++
++	var targetCamera *storage.CameraInfo
++	for _, cam := range cameras {
++		if cam.DeviceID == args[0] || cam.DeviceName == args[0] {
++			targetCamera = &cam
++			break
++		}
++	}
++
++	if targetCamera == nil {
++		return fmt.Errorf("camera not found: %s", args[0])
++	}
++
++	user, err := getUserFromKey(targetCamera.UserKey)
++	if err != nil {
++		return err
++	}
++
++	bridge := rtsp.NewWebRTCBridge(targetCamera, "replay", user, storageManager)
++	if err := bridge.Start(); err != nil {
++		return fmt.Errorf("failed to open replay session: %v", err)
++	}
++	defer bridge.Stop()
++
++	records, err := bridge.SDList(day.Year(), int(day.Month()), day.Day())
++	if err != nil {
++		return fmt.Errorf("failed to list recordings: %v", err)
++	}
++
++	if asJSON, _ := cmd.Flags().GetBool("json"); asJSON {
++		out, _ := json.Marshal(records)
++		fmt.Println(string(out))
++		return nil
++	}
++
++	fmt.Printf("%d recording(s) on %s:\n", len(records), args[1])
++	for _, r := range records {
++		fmt.Printf("  %s - %s  %s/replay/%d-%d\n",
++			time.Unix(r.StartTime, 0).Format("15:04:05"), time.Unix(r.EndTime, 0).Format("15:04:05"),
++			targetCamera.RTSPPath, r.StartTime, r.EndTime)
++	}
++
++	return nil
++}
++
+ func newListCmd() *cobra.Command {
+ 	cmd := &cobra.Command{
+ 		Use:   "list",
+diff --git a/pkg/rtsp/bridge.go b/pkg/rtsp/bridge.go
+index 4b914c8..39a63d7 100644
+--- a/pkg/rtsp/bridge.go
++++ b/pkg/rtsp/bridge.go
+@@ -34,6 +34,9 @@ type WebRTCBridge struct {
+ 	user           *storage.UserSession
+ 	storageManager *storage.StorageManager
+ 
++	// SD-card playback instead of live view (resolution "replay[-<start>-<end>]")
++	replay tuya.Replay
++
+ 	// WebRTC components
+ 	peerConnection *pion.PeerConnection
+ 	dataChannel    *pion.DataChannel
+@@ -78,9 +81,38 @@ func NewWebRTCBridge(camera *storage.CameraInfo, streamResolution string, user *
+ 
+ 	wb.rtpForwarder.OnBackchannelAudio = wb.ForwardBackchannelAudioPacket
+ 
++	if replay, ok := parseReplay(streamResolution); ok {
++		wb.replay = replay
++		wb.resolution = "hd"
++	}
++
+ 	return wb
+ }
+ 
++// parseReplay turns "replay" or "replay-<start>-<end>" (unix seconds) into
++// the offer's replay block.
++func parseReplay(resolution string) (tuya.Replay, bool) {
++	if resolution == "replay" {
++		return tuya.Replay{IsReplay: 1}, true
++	}
++
++	var start, end int64
++	if n, _ := fmt.Sscanf(resolution, "replay-%d-%d", &start, &end); n == 2 && end > start {
++		return tuya.Replay{IsReplay: 1, StartTime: start, EndTime: end}, true
++	}
++
++	return tuya.Replay{}, false
++}
++
++// SDList lists a day's SD-card recordings; the bridge must be a started replay session.
++func (wb *WebRTCBridge) SDList(year, month, day int) ([]tuya.SDRecord, error) {
++	if wb.replay.IsReplay == 0 || wb.cameraClient == nil {
++		return nil, errors.New("not a started replay session")
++	}
++
++	return wb.cameraClient.QueryRecordsByDay(year, month, day)
++}
++
+ func (wb *WebRTCBridge) Start() error {
+ 	wb.mutex.Lock()
+ 	defer wb.mutex.Unlock()
+@@ -149,16 +181,44 @@ func (wb *WebRTCBridge) Start() error {
+ 
+ 	// Setup MQTT camera client
+ 	wb.setupMQTTCameraClient(&webRTCConfig.Result)
++	// The offer only flags replay; H.264 cameras don't answer an offer that
++	// carries the time range, which goes in playbackStart instead.
++	wb.cameraClient.Replay = tuya.Replay{IsReplay: wb.replay.IsReplay}
+ 
+ 	// Create and send offer
+ 	if err := wb.createAndSendOffer(); err != nil {
+ 		return fmt.Errorf("failed to create offer: %v", err)
+ 	}
+ 
+-	if err = wb.waiter.Wait(); err != nil {
++	// Don't wait forever: the caller holds the stream lock, so a camera that
++	// never answers (busy, or a replay it can't serve) would block every
++	// later connection to this server.
++	if waitCh := wb.waiter.WaitChan(); waitCh == nil {
++		err = wb.waiter.Wait() // already settled
++	} else {
++		select {
++		case err = <-waitCh:
++		case <-time.After(20 * time.Second):
++			wb.waiter.Done(errors.New("camera did not answer within 20s"))
++			err = <-waitCh
++		}
++	}
++
++	if err != nil {
++		wb.cameraClient.SendDisconnect()
++		wb.peerConnection.Close()
++		wb.mqttClient.Stop()
+ 		return fmt.Errorf("failed to establish connection: %v", err)
+ 	}
+ 
++	if wb.replay.StartTime > 0 {
++		core.Logger.Info().Msgf("Starting SD playback %d-%d", wb.replay.StartTime, wb.replay.EndTime)
++
++		if err := wb.cameraClient.SendPlaybackStart(wb.replay.StartTime, wb.replay.EndTime, wb.replay.StartTime); err != nil {
++			return fmt.Errorf("failed to start SD playback: %v", err)
++		}
++	}
++
+ 	wb.connected = true
+ 	core.Logger.Info().Msgf("WebRTC bridge started successfully for camera: %s", wb.camera.DeviceName)
+ 
+@@ -309,7 +369,9 @@ func (wb *WebRTCBridge) setupPeerConnection(webRTCConfig *tuya.WebRTCConfig) err
+ 			core.Logger.Info().Msgf("WebRTC connection established")
+ 
+ 			if !wb.isHEVC && wb.resolution == "hd" {
+-				_ = wb.cameraClient.SendResolution(0)
++				if wb.replay.IsReplay == 0 {
++					_ = wb.cameraClient.SendResolution(0)
++				}
+ 				wb.waiter.Done(nil)
+ 			}
+ 		}
+diff --git a/pkg/rtsp/protocol.go b/pkg/rtsp/protocol.go
+index ba1d889..d353a16 100644
+--- a/pkg/rtsp/protocol.go
++++ b/pkg/rtsp/protocol.go
+@@ -96,6 +96,15 @@ func extractCameraPath(rtspURL string) (string, string) {
+ 
+ 	streamResolution := "hd" // Default to HD
+ 
++	// SD-card playback: "/MyCamera/replay/<start>-<end>" (unix seconds)
++	if i := strings.LastIndex(path, "/replay/"); i > 0 {
++		streamResolution = "replay-" + path[i+len("/replay/"):]
++		if r, ok := parseReplay(streamResolution); !ok || r.StartTime == 0 {
++			return "", ""
++		}
++		return path[:i], streamResolution
++	}
++
+ 	// check if ends with "/hd" or "/sd"
+ 	if strings.HasSuffix(path, "/hd") {
+ 		streamResolution = "hd"
+diff --git a/pkg/tuya/mqtt.go b/pkg/tuya/mqtt.go
+index d8fc9ae..bacaec7 100644
+--- a/pkg/tuya/mqtt.go
++++ b/pkg/tuya/mqtt.go
+@@ -141,5 +141,7 @@ func (c *MQTTClient) consume(client mqtt.Client, msg mqtt.Message) {
+ 		cameraClient.onMqttCandidate(&rmqtt)
+ 	case "disconnect":
+ 		cameraClient.onMqttDisconnect()
++	case "recordQueryByDay":
++		cameraClient.onMqttRecordQuery(&rmqtt)
+ 	}
+ }
+diff --git a/pkg/tuya/mqttCamera.go b/pkg/tuya/mqttCamera.go
+index 6c86b6d..f6fb7b3 100644
+--- a/pkg/tuya/mqttCamera.go
++++ b/pkg/tuya/mqttCamera.go
+@@ -4,6 +4,7 @@ import (
+ 	"encoding/json"
+ 	"errors"
+ 	"fmt"
++	"sort"
+ 	"strings"
+ 	"time"
+ 	"tuya-ipc-terminal/pkg/core"
+@@ -20,6 +21,11 @@ type MQTTCameraClient struct {
+ 	SessionId    string
+ 	publishTopic string
+ 
++	// Replay switches the offer to SD-card playback
++	Replay Replay
++
++	recordPages chan RecordQueryFrame
++
+ 	HandleAnswer     func(answer AnswerFrame)
+ 	HandleCandidate  func(candidate CandidateFrame)
+ 	HandleDisconnect func()
+@@ -27,7 +33,9 @@ type MQTTCameraClient struct {
+ }
+ 
+ type Replay struct {
+-	IsReplay int `json:"is_replay"`
++	IsReplay  int   `json:"is_replay"`
++	StartTime int64 `json:"start_time,omitempty"` // unix seconds
++	EndTime   int64 `json:"end_time,omitempty"`
+ }
+ 
+ type OfferFrame struct {
+@@ -64,6 +72,41 @@ type DisconnectFrame struct {
+ 	Mode string `json:"mode"`
+ }
+ 
++// SD-card playback over protocol 312 (H.264 cameras; HEVC ones use
++// /api/jarvis/sd/* instead). Message shapes from the Smart Life web viewer.
++type RecordQueryRequest struct {
++	Mode    string `json:"mode"`
++	PageId  int    `json:"pageId"`
++	Channel int    `json:"channel"`
++	Event   string `json:"event"`
++	Year    int    `json:"year"`
++	Month   int    `json:"month"`
++	Day     int    `json:"day"`
++}
++
++type RecordQueryFrame struct {
++	ResCode      int        `json:"resCode"`
++	PageId       int        `json:"pageId"`
++	TotalPageNum int        `json:"totalPageNum"`
++	TotalFileNum int        `json:"totalFileNum"`
++	Files        []SDRecord `json:"files"`
++}
++
++// SDRecord is one continuous SD-card recording segment (unix seconds).
++type SDRecord struct {
++	StartTime int64 `json:"st"`
++	EndTime   int64 `json:"ed"`
++}
++
++type PlaybackStartFrame struct {
++	Mode             string `json:"mode"`
++	Operation        string `json:"operation"`
++	StartTime        int64  `json:"st"`
++	EndTime          int64  `json:"ed"`
++	PlayTime         int64  `json:"playTime"`
++	WebrtcSessionId  string `json:"webrtc_sessionid"`
++}
++
+ func NewMqttCameraClient(mqttClient *MQTTClient, device *Device, webrtcConfig *WebRTCConfig) *MQTTCameraClient {
+ 	return &MQTTCameraClient{
+ 		mqttClient:   mqttClient,
+@@ -92,7 +135,7 @@ func (c *MQTTCameraClient) SendOffer(sdp string, streamResolution string, stream
+ 		StreamType:        streamType,
+ 		Auth:              c.auth,
+ 		Token:             c.webrtcConfig.P2PConfig.Ices,
+-		Replay:            Replay{IsReplay: 0},
++		Replay:            c.Replay,
+ 		DatachannelEnable: isHEVC,
+ 	})
+ }
+@@ -131,6 +174,91 @@ func (c *MQTTCameraClient) SendDisconnect() error {
+ 	})
+ }
+ 
++// QueryRecordsByDay lists a day's SD-card recordings on a connected replay session.
++func (c *MQTTCameraClient) QueryRecordsByDay(year, month, day int) ([]SDRecord, error) {
++	c.recordPages = make(chan RecordQueryFrame, 64)
++
++	err := c.sendMqttMessage("recordQueryByDay", 312, utils.RandString(32, 16), RecordQueryRequest{
++		Mode:    "webrtc",
++		PageId:  -1,
++		Channel: 0,
++		Event:   "all",
++		Year:    year,
++		Month:   month,
++		Day:     day,
++	})
++	if err != nil {
++		return nil, err
++	}
++
++	// Pages (10 files each) arrive out of order and some never arrive at all —
++	// collect until every page is in, or the camera goes quiet for 3 s.
++	pages := map[int][]SDRecord{}
++	collected := func() []SDRecord {
++		records := []SDRecord{}
++		for _, files := range pages {
++			records = append(records, files...)
++		}
++		sort.Slice(records, func(i, j int) bool { return records[i].StartTime < records[j].StartTime })
++		return records
++	}
++
++	timeout := time.After(30 * time.Second)
++	var idle <-chan time.Time
++	totalPages := 0
++	for {
++		select {
++		case page := <-c.recordPages:
++			switch page.ResCode {
++			case 0:
++				pages[page.PageId] = page.Files
++				totalPages = page.TotalPageNum
++				if len(pages) >= totalPages {
++					return collected(), nil
++				}
++				idle = time.After(3 * time.Second)
++			case -4:
++				return nil, errors.New("camera does not support SD-card playback")
++			default:
++				return nil, fmt.Errorf("record query failed: resCode %d", page.ResCode)
++			}
++		case <-idle:
++			core.Logger.Warn().Msgf("recordQueryByDay: got %d of %d page(s)", len(pages), totalPages)
++			return collected(), nil
++		case <-timeout:
++			return nil, errors.New("record query timed out")
++		}
++	}
++}
++
++// SendPlaybackStart starts SD-card playback of [startTime, endTime] at playTime.
++func (c *MQTTCameraClient) SendPlaybackStart(startTime, endTime, playTime int64) error {
++	return c.sendMqttMessage("playbackStart", 312, utils.RandString(32, 16), PlaybackStartFrame{
++		Mode:            "webrtc",
++		Operation:       "start",
++		StartTime:       startTime,
++		EndTime:         endTime,
++		PlayTime:        playTime,
++		WebrtcSessionId: c.SessionId,
++	})
++}
++
++func (c *MQTTCameraClient) onMqttRecordQuery(msg *MqttMessage) {
++	core.Logger.Debug().Msgf("recordQueryByDay: %s", string(msg.Data.Message))
++
++	var frame RecordQueryFrame
++	if err := json.Unmarshal(msg.Data.Message, &frame); err != nil {
++		c.onError(err)
++		return
++	}
++
++	// Never block the MQTT callback when nobody is waiting anymore
++	select {
++	case c.recordPages <- frame:
++	default:
++	}
++}
++
+ func (c *MQTTCameraClient) onMqttAnswer(msg *MqttMessage) {
+ 	var answerFrame AnswerFrame
+ 	if err := json.Unmarshal(msg.Data.Message, &answerFrame); err != nil {
+-- 
+2.47.3
+

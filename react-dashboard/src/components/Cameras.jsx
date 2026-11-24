@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { io } from 'socket.io-client'
-import { CameraIcon, ChevronIcon, PlusIcon, MinusIcon } from './Icons'
+import { CameraIcon, ChevronIcon, PlusIcon, MinusIcon, ExpandIcon, CollapseIcon } from './Icons'
 import { gt } from '../i18n'
 
 // Full-parity port of the classic dashboard's camera grid + modal
@@ -674,6 +674,120 @@ function CameraPresets({ deviceId }) {
 }
 
 // ── Modal ────────────────────────────────────────────────────────────────
+// ── SD-card recordings — Tuya cameras via tuya-ipc-terminal (src/routes/camera-sd.js) ──
+// The camera keeps ~6 days in a loop; segments are ~5 min and stream at 1x.
+const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const hhmm = (s) => new Date(s * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+// Thumbnails: from the archived file, or grabbed from the camera one by one
+// (the server answers 202 until it's made — keep asking every 10 s)
+function SdThumb({ seg, sdUrl, active, onClick }) {
+  const [attempt, setAttempt] = useState(0)
+  const [waiting, setWaiting] = useState(false)
+  const [loaded, setLoaded]   = useState(false)
+  useEffect(() => {
+    if (!waiting) return
+    const t = setTimeout(() => { setWaiting(false); setAttempt(n => n + 1) }, seg.archived || seg.thumb ? 3000 : 10000)
+    return () => clearTimeout(t)
+  }, [waiting, seg])
+  const src = `${sdUrl}/${seg.st}-${seg.ed}.jpg${attempt ? `?r=${attempt}` : ''}`
+  return (
+    <div onClick={onClick} style={{
+      position: 'relative', aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', cursor: 'pointer',
+      background: 'var(--white-05)',
+      border: active ? '2px solid var(--accent)' : '1px solid var(--border)',
+    }}>
+      {!loaded && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <CameraIcon size={20} color="var(--text3)" />
+        </div>
+      )}
+      {!waiting && attempt < 40 && (
+        <img key={src} src={src} alt="" loading="lazy" onLoad={() => setLoaded(true)} onError={() => setWaiting(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', visibility: loaded ? 'visible' : 'hidden' }} />
+      )}
+      <span style={{
+        position: 'absolute', left: 4, bottom: 4, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 6,
+        color: '#fff', background: 'rgba(10,14,20,0.65)',
+      }}>{hhmm(seg.st)}</span>
+    </div>
+  )
+}
+
+function SdRecordings({ sdUrl }) {
+  const [open, setOpen]       = useState(false)
+  const [date, setDate]       = useState(() => localDate(new Date(Date.now() - 6 * 864e5)))
+  const [segs, setSegs]       = useState(null)
+  const [busy, setBusy]       = useState(false)
+  const [error, setError]     = useState('')
+  const [hour, setHour]       = useState(null)
+  const [playing, setPlaying] = useState(null)
+
+  const load = useCallback(async () => {
+    setBusy(true); setError(''); setSegs(null); setHour(null); setPlaying(null)
+    try {
+      const j = await (await fetch(`${sdUrl}?date=${date}`, { credentials: 'same-origin' })).json()
+      if (!j.success) throw new Error(j.error)
+      setSegs(j.data)
+      if (j.data.length) setHour(new Date(j.data[0].st * 1000).getHours())
+    } catch (e) { setError(e.message) }
+    setBusy(false)
+  }, [sdUrl, date])
+
+  const hours = useMemo(() => [...new Set((segs || []).map(s => new Date(s.st * 1000).getHours()))], [segs])
+  const inHour = (segs || []).filter(s => new Date(s.st * 1000).getHours() === hour)
+  const playNext = () => {
+    const i = segs.findIndex(s => s.st === playing.st)
+    if (segs[i + 1]) { setPlaying(segs[i + 1]); setHour(new Date(segs[i + 1].st * 1000).getHours()) }
+  }
+
+  const label = { fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }
+  const chip = (active) => ({
+    fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10, cursor: 'pointer',
+    border: '1px solid var(--border)', color: active ? '#fff' : 'var(--text2, #c9d1d9)',
+    background: active ? 'color-mix(in srgb, var(--accent) 75%, transparent)' : 'var(--white-05)',
+  })
+
+  if (!open) {
+    return (
+      <div style={{ margin: '10px 18px 0' }}>
+        <button className="mini-btn" style={chip(false)} onClick={() => setOpen(true)}>
+          🎞 {gt('cam_sd_recordings', 'SD card recordings')}
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ margin: '10px 18px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={label}>{gt('cam_sd_recordings', 'SD card recordings')}</span>
+        <input type="date" value={date} max={localDate(new Date())} onChange={e => setDate(e.target.value)}
+          style={{ fontSize: 12, padding: '3px 6px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--white-05)', color: 'inherit' }} />
+        <button className="mini-btn" style={chip(false)} onClick={load} disabled={busy}>
+          {busy ? gt('cam_sd_loading', 'Asking camera…') : gt('cam_sd_show', 'Show')}
+        </button>
+        {segs && <span style={{ fontSize: 11, color: 'var(--text3)' }}>{segs.length ? `${hhmm(segs[0].st)} – ${hhmm(segs[segs.length - 1].ed)}` : gt('cam_sd_none', 'No recordings that day')}</span>}
+        {error && <span style={{ fontSize: 11, color: 'var(--danger, #f85149)' }}>{error}</span>}
+      </div>
+      {hours.length > 0 && (
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {hours.map(h => <span key={h} style={chip(h === hour)} onClick={() => setHour(h)}>{String(h).padStart(2, '0')}</span>)}
+        </div>
+      )}
+      {inHour.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 6 }}>
+          {inHour.map(s => <SdThumb key={s.st} seg={s} sdUrl={sdUrl} active={playing?.st === s.st} onClick={() => setPlaying(s)} />)}
+        </div>
+      )}
+      {playing && (
+        <video key={playing.st} src={`${sdUrl}/${playing.st}-${playing.ed}.mp4`} controls autoPlay playsInline muted onEnded={playNext}
+          style={{ width: '100%', borderRadius: 14, background: '#000', aspectRatio: '16/9' }} />
+      )}
+    </div>
+  )
+}
+
 function CameraModal({ cam, onClose, startFull = false }) {
   const videoRef      = useRef(null)
   const imgRef        = useRef(null)
@@ -967,6 +1081,7 @@ function CameraModal({ cam, onClose, startFull = false }) {
               )}
             </div>
             <div style={{ padding: '8px 18px 0', fontSize: 11, color: 'var(--text3)' }}>{status}</div>
+            {cam?.sdUrl && <SdRecordings sdUrl={cam.sdUrl} />}
 
             {/* detection stats — from Mongo history, see object-detection.js's
                 _saveDetectionRecords; empty (not shown) if mongo isn't configured */}

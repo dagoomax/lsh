@@ -433,10 +433,13 @@ function addOccupancySensorService(accessory, name, storePath, store) {
  * options: { hasLevel, hasColor, hasColorTemp }
  * Store paths: deviceKey/switch, /level, /hue (0-100), /saturation (0-100), /colorTemperature (K)
  */
+// options.path / capabilityId / subtype: one on/off channel of a multi-channel
+// device (a 2-gang relay with two lamps) instead of the device's main switch
 function addLightbulbService(accessory, name, deviceKey, store, writeCapability, options = {}) {
-  const svc = accessory.addService(Service.Lightbulb, name);
+  const svc = options.subtype ? accessory.addService(Service.Lightbulb, name, options.subtype) : accessory.addService(Service.Lightbulb, name);
+  const swCap     = options.capabilityId || 'switch';
 
-  const swPath    = `${deviceKey}/switch`;
+  const swPath    = `${deviceKey}/${options.path || 'switch'}`;
   const levelPath = `${deviceKey}/level`;
   const huePath   = `${deviceKey}/hue`;
   const satPath   = `${deviceKey}/saturation`;
@@ -445,7 +448,7 @@ function addLightbulbService(accessory, name, deviceKey, store, writeCapability,
   svc.getCharacteristic(Characteristic.On)
     .onGet(() => store.get(swPath) === 1)
     .onSet(async (v) => {
-      await writeCapability('switch', v ? 'on' : 'off');
+      await writeCapability(swCap, v ? 'on' : 'off');
       store.update(swPath, v ? 1 : 0);
     });
 
@@ -1292,7 +1295,16 @@ function buildDeviceAccessory(device, store) {
       }
     }
 
-    if (hkType === 'light-rw') {
+    const lights = device.sensors.filter((s) => s.homekit === 'light-rw' && s.controllable);
+    if (hkType === 'light-rw' && lights.length > 1 && device._writeCapability) {
+      // several on/off lights on one device (multi-gang relay): one Lightbulb
+      // each, named by the channel's label, unique by its path
+      lights.forEach((s) => {
+        const name = s.label || `${device.label} ${s.name || s.path}`;
+        addLightbulbService(acc, name, device.key, store, (cap, cmd, args) => device._writeCapability(cap, cmd, args),
+          { path: s.path, capabilityId: s.capabilityId || s.path, subtype: s.path });
+      });
+    } else if (hkType === 'light-rw') {
       const hasSwitchLevel = device.sensors.some(s => s.path === 'level');
       const hasColor       = device.sensors.some(s => s.path === 'hue');
       const hasColorTemp   = device.sensors.some(s => s.path === 'colorTemperature');
@@ -1635,7 +1647,7 @@ function startHomekitBridge(config, store, relayController, sensorRegistry, { un
           require('./rtsp-snapshot').grabFrame(cam.url, config.ffmpegRtsp?.ffmpegPath || 'ffmpeg');
       }
       // same PTZ as the dashboard's pad (src/routes/camera-ptz.js)
-      if (cam.tuyaPtz) cam.ptz = (op) => require('./tuya-cloud-ptz').ptz(config.tuyaCloud, cam.tuyaPtz, op);
+      if (cam.tuyaPtz) cam.ptz = (op) => require('./tuya-cloud-ptz').ptz(config.tuyaCloud, cam.tuyaPtz, op, config.tuyaIpc);
       else if (cam.onvif?.host) cam.ptz = (op) => require('./onvif-ptz').ptz(cam.onvif, op);
       try { addCameraToBridge(cam, pool, store); } catch (err) {
         console.error(`[HomeKit] Camera failed (${cam.name}): ${err.message}`);

@@ -1,0 +1,107 @@
+From acac6115965e91790582601272663d10b28a5e16 Mon Sep 17 00:00:00 2001
+From: dagoomax <dagoomax@gmail.com>
+Date: Fri, 30 Oct 2026 21:08:07 +0100
+Subject: [PATCH 2/2] Ask again when the recording list comes back incomplete
+
+The camera drops a random few pages of recordQueryByDay; re-send the query
+up to 3 times and merge the pages.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ pkg/tuya/mqttCamera.go | 58 +++++++++++++++++++++++++-----------------
+ 1 file changed, 35 insertions(+), 23 deletions(-)
+
+diff --git a/pkg/tuya/mqttCamera.go b/pkg/tuya/mqttCamera.go
+index f6fb7b3..5cd4849 100644
+--- a/pkg/tuya/mqttCamera.go
++++ b/pkg/tuya/mqttCamera.go
+@@ -99,12 +99,12 @@ type SDRecord struct {
+ }
+ 
+ type PlaybackStartFrame struct {
+-	Mode             string `json:"mode"`
+-	Operation        string `json:"operation"`
+-	StartTime        int64  `json:"st"`
+-	EndTime          int64  `json:"ed"`
+-	PlayTime         int64  `json:"playTime"`
+-	WebrtcSessionId  string `json:"webrtc_sessionid"`
++	Mode            string `json:"mode"`
++	Operation       string `json:"operation"`
++	StartTime       int64  `json:"st"`
++	EndTime         int64  `json:"ed"`
++	PlayTime        int64  `json:"playTime"`
++	WebrtcSessionId string `json:"webrtc_sessionid"`
+ }
+ 
+ func NewMqttCameraClient(mqttClient *MQTTClient, device *Device, webrtcConfig *WebRTCConfig) *MQTTCameraClient {
+@@ -178,21 +178,9 @@ func (c *MQTTCameraClient) SendDisconnect() error {
+ func (c *MQTTCameraClient) QueryRecordsByDay(year, month, day int) ([]SDRecord, error) {
+ 	c.recordPages = make(chan RecordQueryFrame, 64)
+ 
+-	err := c.sendMqttMessage("recordQueryByDay", 312, utils.RandString(32, 16), RecordQueryRequest{
+-		Mode:    "webrtc",
+-		PageId:  -1,
+-		Channel: 0,
+-		Event:   "all",
+-		Year:    year,
+-		Month:   month,
+-		Day:     day,
+-	})
+-	if err != nil {
+-		return nil, err
+-	}
+-
+-	// Pages (10 files each) arrive out of order and some never arrive at all —
+-	// collect until every page is in, or the camera goes quiet for 3 s.
++	// Pages (10 files each) arrive out of order and a random few never arrive
++	// at all — collect until every page is in; when the camera goes quiet
++	// first, ask again (up to 3 times) and merge.
+ 	pages := map[int][]SDRecord{}
+ 	collected := func() []SDRecord {
+ 		records := []SDRecord{}
+@@ -203,9 +191,24 @@ func (c *MQTTCameraClient) QueryRecordsByDay(year, month, day int) ([]SDRecord,
+ 		return records
+ 	}
+ 
+-	timeout := time.After(30 * time.Second)
++	query := func() error {
++		return c.sendMqttMessage("recordQueryByDay", 312, utils.RandString(32, 16), RecordQueryRequest{
++			Mode:    "webrtc",
++			PageId:  -1,
++			Channel: 0,
++			Event:   "all",
++			Year:    year,
++			Month:   month,
++			Day:     day,
++		})
++	}
++	if err := query(); err != nil {
++		return nil, err
++	}
++
++	timeout := time.After(45 * time.Second)
+ 	var idle <-chan time.Time
+-	totalPages := 0
++	totalPages, attempts := 0, 1
+ 	for {
+ 		select {
+ 		case page := <-c.recordPages:
+@@ -223,6 +226,15 @@ func (c *MQTTCameraClient) QueryRecordsByDay(year, month, day int) ([]SDRecord,
+ 				return nil, fmt.Errorf("record query failed: resCode %d", page.ResCode)
+ 			}
+ 		case <-idle:
++			if attempts < 3 {
++				attempts++
++				core.Logger.Debug().Msgf("recordQueryByDay: got %d of %d page(s), asking again", len(pages), totalPages)
++				if err := query(); err != nil {
++					return nil, err
++				}
++				idle = time.After(3 * time.Second)
++				continue
++			}
+ 			core.Logger.Warn().Msgf("recordQueryByDay: got %d of %d page(s)", len(pages), totalPages)
+ 			return collected(), nil
+ 		case <-timeout:
+-- 
+2.47.3
+

@@ -12,13 +12,14 @@
 // the camera's Tuya session was down. `GET /api/camera/ptz-info/:idx` returns
 // the device's real command specification so codes/values can be checked.
 //
-// Without an IoT project: `tuyaPtz: { deviceId, via: "smartlife" }` drives the
-// camera through the Smart Life web player's own PTZ endpoints
-// (/api/jarvis/ptz/start|end on protect-<region>.ismartlife.me), signed in with
-// the session tuya-ipc-terminal keeps in .tuya-data/ — the same login that
-// relays the video. `session` overrides where that is: a user_*.json file or
-// its folder (default ~/tuya-ipc-terminal/.tuya-data). Pan/tilt only — the
-// web player has no zoom. Verified on a real camera (2026-10-27).
+// Without an IoT project — `tuyaPtz: { deviceId, via: "smartlife" }`, or no
+// tuyaCloud keys at all — the camera is driven through the Smart Life web
+// player's own PTZ endpoints (/api/jarvis/ptz/start|end on
+// protect-<region>.ismartlife.me), signed in with the session tuya-ipc-terminal
+// keeps in .tuya-data/ — the same login that relays the video. Where that is:
+// `tuyaPtz.session` (a user_*.json file or its folder), else config.tuyaIpc.dir,
+// else ~/tuya-ipc-terminal. Pan/tilt only — the web player has no optical zoom.
+// Verified on a real camera (Wejście doorbell, 2026-10-27/30).
 
 const crypto = require('crypto');
 const fs     = require('fs');
@@ -89,13 +90,17 @@ const sendCommands = (cfg, deviceId, commands) =>
   call(cfg, 'POST', `/v1.0/devices/${deviceId}/commands`, { commands });
 
 // ── Smart Life web session (tuya-ipc-terminal's login) ──────────────────────
-function smartLifeSession(tuyaPtz) {
-  let file = tuyaPtz.session || path.join(os.homedir(), 'tuya-ipc-terminal', '.tuya-data');
+function smartLifeSession(tuyaPtz, ipc) {
+  let file = tuyaPtz.session
+    || (ipc?.dir ? path.join(ipc.dir, '.tuya-data') : path.join(os.homedir(), 'tuya-ipc-terminal', '.tuya-data'));
   if (file.startsWith('~/')) file = path.join(os.homedir(), file.slice(2));
   if (fs.statSync(file).isDirectory()) {
     const users = fs.readdirSync(file).filter((f) => /^user_.*\.json$/.test(f));
     if (!users.length) throw new Error(`No Smart Life login in ${file} — run tuya-ipc-terminal auth add`);
-    file = path.join(file, users[0]);
+    // prefer the login matching config.tuyaIpc (user_<region>_<email>.json)
+    const want = ipc?.region && ipc?.email
+      ? `user_${ipc.region}_${String(ipc.email).replace('@', '_at_').replace(/\./g, '_')}.json` : null;
+    file = path.join(file, users.includes(want) ? want : users[0]);
   }
   // re-read every call: tuya-ipc-terminal rewrites it when the login is renewed
   const s = JSON.parse(fs.readFileSync(file, 'utf8')).sessionData || {};
@@ -103,12 +108,13 @@ function smartLifeSession(tuyaPtz) {
   return { host: s.serverHost, cookie: s.cookies.map((c) => `${c.name}=${c.value}`).join('; ') };
 }
 
-async function smartLife(tuyaPtz, urlPath, body) {
-  const { host, cookie } = smartLifeSession(tuyaPtz);
+async function smartLife(tuyaPtz, ipc, urlPath, body) {
+  const { host, cookie } = smartLifeSession(tuyaPtz, ipc);
   const res = await fetch(`https://${host}${urlPath}`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json; charset=utf-8', Origin: `https://${host}`, Referer: `https://${host}/playback`,
+      'Content-Type': 'application/json; charset=utf-8', Accept: '*/*',
+      Origin: `https://${host}`, Referer: `https://${host}/playback`,
       'X-Requested-With': 'XMLHttpRequest', 'Cloud-Type': 'public', Cookie: cookie,
     },
     body: JSON.stringify(body),
@@ -119,20 +125,22 @@ async function smartLife(tuyaPtz, urlPath, body) {
   return j.result;
 }
 
-function smartLifePtz(tuyaPtz, op) {
+function smartLifePtz(tuyaPtz, ipc, op) {
   const devId = tuyaPtz.deviceId;
-  if (op === 'stop') return smartLife(tuyaPtz, '/api/jarvis/ptz/end', { devId });
-  if (!DIR[op]) throw new Error('Smart Life PTZ has no zoom');
+  if (op === 'stop') return smartLife(tuyaPtz, ipc, '/api/jarvis/ptz/end', { devId });
+  if (!DIR[op]) throw new Error(op.startsWith('zoom') ? 'Smart Life PTZ has no zoom' : `Unsupported op: ${op}`);
   // UP / RIGHT / DOWN / LEFT, as the web player sends them — lower case moved
   // the pan but left the tilt unreliable (checked on Wejście, 2026-10-28)
-  return smartLife(tuyaPtz, '/api/jarvis/ptz/start', { devId, direction: op.toUpperCase() });
+  return smartLife(tuyaPtz, ipc, '/api/jarvis/ptz/start', { devId, direction: op.toUpperCase() });
 }
 
+const usesSmartLife = (cfg, tuyaPtz) => tuyaPtz?.via === 'smartlife' || !cfg?.accessId || !cfg?.accessSecret;
+
 /** Continuous move on press, `stop` on release — same contract as onvif-ptz. */
-async function ptz(cfg, tuyaPtz, op) {
+async function ptz(cfg, tuyaPtz, op, ipc) {
   const id = tuyaPtz?.deviceId;
   if (!id) throw new Error('Camera has no tuyaPtz.deviceId');
-  if (tuyaPtz.via === 'smartlife') return smartLifePtz(tuyaPtz, op);
+  if (usesSmartLife(cfg, tuyaPtz)) return smartLifePtz(tuyaPtz, ipc, op);
   if (op === 'stop') {
     // Stop both axes; a camera without zoom just ignores the second command.
     await sendCommands(cfg, id, [{ code: 'ptz_stop', value: true }]);
@@ -146,4 +154,7 @@ async function ptz(cfg, tuyaPtz, op) {
 /** Real command spec of the device — to verify codes/values on first use. */
 const info = (cfg, tuyaPtz) => call(cfg, 'GET', `/v1.0/devices/${tuyaPtz.deviceId}/specifications`);
 
-module.exports = { ptz, info, hasZoom: (tuyaPtz) => tuyaPtz?.via !== 'smartlife' };
+// cloudCfg omitted → only `via` decides (the IoT path may still have zoom)
+const hasZoom = (tuyaPtz, cloudCfg) => (cloudCfg === undefined ? tuyaPtz?.via !== 'smartlife' : !usesSmartLife(cloudCfg, tuyaPtz));
+
+module.exports = { ptz, info, hasZoom };

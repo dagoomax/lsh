@@ -9,6 +9,7 @@
 //   POST /settings/usb-radio        save config.zwaveUsb / config.zigbee and apply live
 //   POST /usb-radio/zigbee/permit   { on } — pairing for 4 min
 //   POST /usb-radio/zigbee/remove   { ieee }
+//   POST /usb-radio/zigbee/mesh     start a mesh scan (result in status → zigbee.mesh)
 //
 // Z-Wave inclusion goes through /wiring/zwave/* (the Z-Wave JS client is the
 // same one, pointed at the local server). The radio modules run in their own
@@ -26,7 +27,7 @@ const PORT_RE = /^(\/dev\/[\w./:+@-]+|COM\d{1,3}|tcp:\/\/[\w.-]+:\d{1,5})$/;
 const ADAPTERS = ['ember', 'zstack', 'deconz', 'zboss', 'zigate', 'ezsp'];
 const REGIONS = ['', 'Europe', 'USA', 'Australia/New Zealand', 'Hong Kong', 'India', 'Israel', 'Russia', 'China', 'Japan', 'Korea',
   'USA (Long Range)', 'Europe (Long Range)'];
-const COORD_KEYS = ['permitJoin', 'permitJoinLeft', 'devices', 'channel', 'panId', 'firmware', 'lastJoined'];
+const COORD_KEYS = ['permitJoin', 'permitJoinLeft', 'devices', 'channel', 'panId', 'firmware', 'lastJoined', 'mesh', 'meshScanning'];
 
 module.exports = function register(router, ctx) {
   const { clients, requireAdmin, sensorRegistry, store } = ctx;
@@ -149,6 +150,7 @@ module.exports = function register(router, ctx) {
     .catch((err) => res.status(/not running|not found/i.test(err.message) ? 503 : 400).json({ success: false, error: err.message }));
 
   router.post('/usb-radio/zigbee/permit', requireAdmin, (req, res) => zigbeeCmd(res, 'permitJoin', req.body?.on !== false));
+  router.post('/usb-radio/zigbee/mesh', requireAdmin, (req, res) => zigbeeCmd(res, 'meshScan', 'scan'));
   router.post('/usb-radio/zigbee/remove', requireAdmin, (req, res) => {
     const ieee = String(req.body?.ieee || '').toLowerCase();
     if (!/^0x[0-9a-f]{16}$/.test(ieee)) return res.status(400).json({ success: false, error: 'IEEE address like 0x00158d0001a2b3c4' });
