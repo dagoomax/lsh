@@ -19,6 +19,8 @@
 //   GET  /homes/<h>/state                         presence HOME / AWAY
 //   PUT  /homes/<h>/zones/<z>/overlay             manual setting { setting, termination }
 //   DELETE /homes/<h>/zones/<z>/overlay           back to the schedule
+//   POST   /homes/<h>/overlay                     several rooms' overlays in one call { overlays: [{ room, overlay }] }
+//   DELETE /homes/<h>/overlay?rooms=<z>,<z>       several rooms back to the schedule
 //   PUT|DELETE /homes/<h>/presenceLock            force home / away, or back to geofencing
 //
 // API limits: tado allows 100 calls a day without an Auto-Assist
@@ -35,8 +37,10 @@
 //                       window, low battery, resume schedule) — HomeKit Thermostat
 //                       hot water: power, temperature where the boiler takes one
 //                       AC: the shared AC model (src/ac-common.js) + resume schedule
-//   tado/<home>         presence (home/away, HomeKit occupancy), away lock,
-//                       back to automatic presence
+//   tado/<home>         heating main switch (all heating rooms: off = off until
+//                       switched on, on = every room back to its schedule —
+//                       one API call, HomeKit switch), presence (home/away,
+//                       HomeKit occupancy), away lock, back to automatic presence
 //
 // A manual change lasts until the next schedule block by default;
 // config.tado.overlay = 'manual' (until changed) or a number of minutes.
@@ -216,7 +220,7 @@ class TadoClient extends PollingClient {
     if (res.status === 429) throw new Error('tado: daily API limit reached — polling slows down until it resets');
     if (res.status === 204) return null;
     const j = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(`tado ${p}: ${j?.errors?.[0]?.title || `HTTP ${res.status}`}`);
+    if (!res.ok) throw Object.assign(new Error(`tado ${p}: ${j?.errors?.[0]?.title || `HTTP ${res.status}`}`), { status: res.status });
     return j;
   }
 
@@ -254,8 +258,9 @@ class TadoClient extends PollingClient {
   _registerHome(home) {
     this.registry.registerDevice({
       key: home.key, label: `tado ${home.name}`, type: 'tado', category: 'climate', icon: '🏠', model: 'tado home',
-      homekit: ['occupancy'],
+      homekit: ['occupancy', 'appliance'],
       sensors: [
+        { path: 'heating', label: 'Heating (all rooms)', format: 'on-off', controllable: true, type: 'toggle', writeOn: 'on', writeOff: 'off', capabilityId: 'heatingMain', homekit: 'switch', hkName: 'Heating' },
         { path: 'home', label: 'Someone home', format: 'on-off', type: 'boolean', homekit: 'occupancy' },
         { path: 'away', label: 'Away mode', format: 'on-off', controllable: true, type: 'toggle', writeOn: 'away', writeOff: 'home', capabilityId: 'presence' },
         { path: 'presenceAuto', label: 'Automatic presence', controllable: true, type: 'trigger', writeOn: 'auto', writeOff: 'auto', capabilityId: 'presenceAuto' },
@@ -263,6 +268,7 @@ class TadoClient extends PollingClient {
         { path: 'apiRemaining', label: 'API calls left today', format: 'number' },
       ],
       _writeCapability: async (cap, cmd) => {
+        if (cap === 'heatingMain') return this.setAllHeating(home, cmd === 'on' || cmd === true);
         if (cap === 'presenceAuto') { await this._call('DELETE', `/homes/${home.id}/presenceLock`); this.store.update(`${home.key}/presenceLocked`, 0); return }
         const away = cmd === 'away';
         await this._call('PUT', `/homes/${home.id}/presenceLock`, { homePresence: away ? 'AWAY' : 'HOME' });
@@ -343,12 +349,7 @@ class TadoClient extends PollingClient {
   async _pollImpl() {
     if (!this.homes.size) await this._discover();
     for (const home of this.homes.values()) {
-      const r = await this._call('GET', `/homes/${home.id}/zoneStates`);
-      if (!r?.zoneStates) throw new Error('tado: no zone states in the answer');
-      for (const [zid, zs] of Object.entries(r.zoneStates)) {
-        const zone = home.zones.get(String(zid));
-        if (zone) this._publishZone(zone, zs);
-      }
+      await this._refreshHome(home);
       if (this._polls % 4 === 0) {
         const st = await this._call('GET', `/homes/${home.id}/state`);
         if (st?.presence) {
@@ -393,10 +394,57 @@ class TadoClient extends PollingClient {
     if (s.temperature?.celsius != null) { put('heatingSetpoint', s.temperature.celsius); put('coolingSetpoint', s.temperature.celsius) }
   }
 
-  async _overlay(zone, setting) {
-    const r = await this._call('PUT', `/homes/${zone.home.id}/zones/${zone.id}/overlay`, { setting, termination: termination(this.cfg.overlay) });
-    const zs = { ...(zone.state || {}), setting: r?.setting || setting, overlayType: 'MANUAL', overlay: r || { setting } };
-    this._publishZone(zone, zs);
+  // main switch: on unless every heating room is off by hand
+  _publishMain(home) {
+    const rooms = [...home.zones.values()].filter((z) => z.type === 'HEATING' && z.state);
+    if (!rooms.length) return;
+    const offByHand = (zs) => (zs.overlay || zs.overlayType) && zs.setting?.power === 'OFF';
+    this.store.update(`${home.key}/heating`, rooms.every((z) => offByHand(z.state)) ? 0 : 1);
+  }
+
+  _overlayPublished(zone, setting, r) {
+    this._publishZone(zone, { ...(zone.state || {}), setting: r?.setting || setting, overlayType: 'MANUAL', overlay: r || { setting } });
+  }
+
+  async _overlay(zone, setting, term = termination(this.cfg.overlay)) {
+    const r = await this._call('PUT', `/homes/${zone.home.id}/zones/${zone.id}/overlay`, { setting, termination: term });
+    this._overlayPublished(zone, setting, r);
+    this._publishMain(zone.home);
+  }
+
+  // Heating main switch: off → every heating room off until switched back on;
+  // on → every heating room back to its schedule (manual settings in them
+  // end too). One call for the whole home; should tado refuse the bulk call,
+  // it falls back to one call per room.
+  async setAllHeating(home, wantOn) {
+    const rooms = [...home.zones.values()].filter((z) => z.type === 'HEATING');
+    if (!rooms.length) throw new Error('tado: no heating rooms in this home');
+    const off = { type: 'HEATING', power: 'OFF' }, manual = { typeSkillBasedApp: 'MANUAL' };
+    try {
+      if (wantOn) await this._call('DELETE', `/homes/${home.id}/overlay?rooms=${rooms.map((z) => z.id).join(',')}`);
+      else await this._call('POST', `/homes/${home.id}/overlay`, { overlays: rooms.map((z) => ({ room: String(z.id), overlay: { setting: off, termination: manual } })) });
+    } catch (err) {
+      if (![400, 404, 405, 422].includes(err.status)) throw err;
+      console.warn(`[tado] ${home.name}: all-rooms call refused (${err.message}) — setting the rooms one by one`);
+      for (const z of rooms) {
+        if (wantOn) await this._call('DELETE', `/homes/${home.id}/zones/${z.id}/overlay`);
+        else await this._call('PUT', `/homes/${home.id}/zones/${z.id}/overlay`, { setting: off, termination: manual });
+      }
+    }
+    for (const z of rooms) wantOn ? this._resumed(z) : this._overlayPublished(z, off);
+    this.store.update(`${home.key}/heating`, wantOn ? 1 : 0);
+    // the schedule's settings: one more call now rather than stale rooms until the next poll
+    if (wantOn) await this._refreshHome(home).catch((err) => console.warn(`[tado] ${home.name}: refresh after resume failed: ${err.message}`));
+  }
+
+  async _refreshHome(home) {
+    const r = await this._call('GET', `/homes/${home.id}/zoneStates`);
+    if (!r?.zoneStates) throw new Error('tado: no zone states in the answer');
+    for (const [zid, zs] of Object.entries(r.zoneStates)) {
+      const zone = home.zones.get(String(zid));
+      if (zone) this._publishZone(zone, zs);
+    }
+    this._publishMain(home);
   }
 
   // heating / hot water: { power, targetTemp }
@@ -434,6 +482,11 @@ class TadoClient extends PollingClient {
   // back to the schedule — the zone's scheduled setting arrives with the next poll
   async resume(zone) {
     await this._call('DELETE', `/homes/${zone.home.id}/zones/${zone.id}/overlay`);
+    this._resumed(zone);
+    this._publishMain(zone.home);
+  }
+
+  _resumed(zone) {
     zone.state = { ...(zone.state || {}), overlay: null, overlayType: null };
     this.store.update(`${zone.key}/modeText`, 'schedule');
     if (zone.type === 'HEATING') this.store.update(`${zone.key}/thermostatMode`, 'auto');

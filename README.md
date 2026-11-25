@@ -4819,6 +4819,7 @@ At 100 calls a day, LSH reads about every 23 minutes. It fetches all zones in on
   - **Hot water:** `power`, plus `targetTemp` where the boiler takes one, and `resumeSchedule`.
   - **AC:** the shared air-conditioner model (`power`, `mode`, `targetTemp`, `fan`, `swing`), kept within the unit's capabilities, plus `resumeSchedule`.
 - `tado/<home>`:
+  - `heating`, the heating main switch for every heating room (a HomeKit switch, *tado <home> Heating*). *Off* turns every heating room off until you switch it back on. *On* puts every heating room back on its schedule, which also ends any manual settings in those rooms. Hot water and AC are not affected. It costs one API call for the whole home, and switching on costs one more to refresh the rooms. If tado refuses the all-rooms call, LSH sets the rooms one at a time. The switch shows *off* only when every heating room has been turned off by hand.
   - `home`, someone home (HomeKit occupancy)
   - `away`, which forces away or home (presence lock)
   - `presenceAuto`, which goes back to geofencing

@@ -13,7 +13,7 @@
 
 const http = require('http');
 
-function startSimulator({ port = 8905, dailyLimit = 100 } = {}) {
+function startSimulator({ port = 8905, dailyLimit = 100, bulk = true } = {}) {
   const calls = [];
   let remaining = dailyLimit;
   let tokenN = 0;
@@ -23,6 +23,7 @@ function startSimulator({ port = 8905, dailyLimit = 100 } = {}) {
   const presence = { presence: 'HOME', presenceLocked: false };
   const zones = [
     { id: 1, name: 'Salon', type: 'HEATING', devices: [{ deviceType: 'VA02', serialNo: 'VA1', batteryState: 'NORMAL' }, { deviceType: 'RU02', serialNo: 'RU1', batteryState: 'LOW' }] },
+    { id: 2, name: 'Sypialnia', type: 'HEATING', devices: [{ deviceType: 'VA02', serialNo: 'VA2', batteryState: 'NORMAL' }] },
     { id: 0, name: 'Ciepła woda', type: 'HOT_WATER', devices: [{ deviceType: 'BX02', serialNo: 'BX1' }] },
     { id: 3, name: 'Sypialnia AC', type: 'AIR_CONDITIONING', devices: [{ deviceType: 'WR02', serialNo: 'WR1' }] },
   ];
@@ -38,6 +39,7 @@ function startSimulator({ port = 8905, dailyLimit = 100 } = {}) {
   };
   const schedule = {
     1: { type: 'HEATING', power: 'ON', temperature: { celsius: 20 } },
+    2: { type: 'HEATING', power: 'ON', temperature: { celsius: 18 } },
     0: { type: 'HOT_WATER', power: 'ON', temperature: { celsius: 50 } },
     3: { type: 'AIR_CONDITIONING', power: 'OFF' },
   };
@@ -124,6 +126,19 @@ function startSimulator({ port = 8905, dailyLimit = 100 } = {}) {
           }
           overlays[m[1]] = { type: 'MANUAL', setting: b.setting, termination: { type: b.termination?.typeSkillBasedApp || 'MANUAL' } };
           return ok(overlays[m[1]]);
+        }
+      }
+      // several rooms at once (bulk: false = an account where tado refuses it)
+      if (p === `/homes/${home.id}/overlay` && bulk) {
+        if (req.method === 'DELETE') { for (const r of (u.searchParams.get('rooms') || '').split(',')) delete overlays[r]; return json(204, undefined, rl) }
+        if (req.method === 'POST') {
+          const b = JSON.parse(body || '{}');
+          for (const { room, overlay } of b.overlays || []) {
+            const z = zones.find((x) => String(x.id) === String(room));
+            if (!z || overlay?.setting?.type !== z.type) return ok({ errors: [{ title: `room ${room}: wrong setting type` }] }, 422);
+          }
+          for (const { room, overlay } of b.overlays) overlays[room] = { type: 'MANUAL', setting: overlay.setting, termination: { type: overlay.termination?.typeSkillBasedApp || 'MANUAL' } };
+          return json(204, undefined, rl);
         }
       }
       if (p === `/homes/${home.id}/presenceLock`) {

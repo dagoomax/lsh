@@ -107,6 +107,34 @@ test('tado: zones as devices, overlays, schedule, presence, API quota', async ()
     await registry.sendCommand('tado/4711', 'presenceAuto', true);
     assert.equal(sim.presence.presenceLocked, false);
 
+    // heating main switch: every heating room, one call, hot water untouched
+    assert.equal(v('tado/4711/heating'), 1);
+    sim.overlays[1] = { type: 'MANUAL', setting: { type: 'HEATING', power: 'ON', temperature: { celsius: 23 } } };
+    let n = sim.calls.length;
+    await registry.sendCommand('tado/4711', 'heating', false);
+    assert.deepEqual(sim.calls.slice(n).map((x) => `${x.method} ${x.path}`), ['POST /api/v2/homes/4711/overlay']);
+    assert.deepEqual(sim.overlays[1].setting, { type: 'HEATING', power: 'OFF' });
+    assert.deepEqual(sim.overlays[2].setting, { type: 'HEATING', power: 'OFF' });
+    assert.equal(sim.overlays[1].termination.type, 'MANUAL', 'off until switched back on');
+    assert.equal(v('tado/4711/heating'), 0);
+    assert.equal(v('tado/4711-2/power'), 0);
+    assert.equal(v('tado/4711-2/modeText'), 'off');
+    // one room back on by hand → the main switch shows on
+    await registry.sendCommand('tado/4711-2', 'power', true);
+    assert.equal(v('tado/4711/heating'), 1);
+    await registry.sendCommand('tado/4711-2', 'power', false);
+    assert.equal(v('tado/4711/heating'), 0);
+    n = sim.calls.length;
+    await registry.sendCommand('tado/4711', 'heating', true);
+    assert.deepEqual(sim.calls.slice(n).map((x) => `${x.method} ${x.path}`), ['DELETE /api/v2/homes/4711/overlay', 'GET /api/v2/homes/4711/zoneStates']);
+    assert.equal(sim.overlays[1], undefined);
+    assert.equal(sim.overlays[2], undefined);
+    assert.equal(v('tado/4711/heating'), 1);
+    assert.equal(v('tado/4711-2/power'), 1, 'the schedule, refreshed right away');
+    assert.equal(v('tado/4711-1/targetTemp'), 20);
+    assert.equal(v('tado/4711-0/power'), 0, 'hot water left alone');
+    assert.ok(registry.devices.get('tado/4711').sensors.find((s) => s.path === 'heating' && s.homekit === 'switch'));
+
     // quota from the headers sizes the interval: 100 a day → ~22 min
     assert.equal(c.quota.limit, 100);
     assert.equal(v('tado/4711/apiRemaining'), sim.remaining);
@@ -182,5 +210,33 @@ test('tado: discovery that fails halfway is redone on the next poll', async () =
     console.error = error;
     c.stop();
     await sim.close?.();
+  }
+});
+
+test('tado: heating main switch falls back to one call per room', async () => {
+  const sim = await startSimulator({ port: 0, bulk: false });
+  const base = `http://127.0.0.1:${sim.port}`;
+  const a = await TadoClient.startDeviceAuth({ authBase: `${base}/oauth2` });
+  await TadoClient.pollDeviceAuth(a.deviceCode, { authBase: `${base}/oauth2` });
+  await TadoClient.pollDeviceAuth(a.deviceCode, { authBase: `${base}/oauth2` });
+  const store = fakeStore(), registry = new SensorRegistry(store, 'en');
+  const c = new TadoClient({ tado: { enabled: true, startDelay: 0, apiBase: `${base}/api/v2`, authBase: `${base}/oauth2` } }, store, registry);
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    await c.start();
+    await registry.sendCommand('tado/4711', 'heating', false);
+    assert.equal(sim.overlays[1].setting.power, 'OFF');
+    assert.equal(sim.overlays[2].setting.power, 'OFF');
+    assert.equal(sim.overlays[0], undefined, 'hot water left alone');
+    assert.equal(store.values['tado/4711/heating'], 0);
+    await registry.sendCommand('tado/4711', 'heating', true);
+    assert.equal(sim.overlays[1], undefined);
+    assert.equal(sim.overlays[2], undefined);
+    assert.equal(store.values['tado/4711/heating'], 1);
+  } finally {
+    console.warn = warn;
+    c.stop();
+    await sim.close();
   }
 });
