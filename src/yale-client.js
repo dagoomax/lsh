@@ -164,12 +164,15 @@ async function request(method, urlPath, { accessToken, json, brand } = {}) {
       // Surface what the API actually said. A 403 "API key is not valid" is a
       // problem with API_KEY above, NOT with the user's credentials, and
       // reporting it as "bad credentials" sends debugging the wrong way.
-      let detail = '';
-      try { const t = await res.text(); const b = JSON.parse(t); detail = b?.message || b?.code || ''; } catch { /* non-JSON body */ }
-      if (res.status === 401 || res.status === 403) {
-        throw new Error(detail ? `HTTP ${res.status}: ${detail}` : 'unauthorized (bad or expired credentials)');
+      let detail = '', text = '';
+      try { text = await res.text(); const b = JSON.parse(text); detail = b?.message || b?.code || ''; } catch { /* non-JSON body */ }
+      // Cloudflare in front of aaecosystem answers with its own HTML page
+      // ("Attention Required!") before Yale ever sees the credentials.
+      if (!detail && /<html/i.test(text) && /cloudflare/i.test(text)) {
+        detail = `blocked by Cloudflare in front of ${new URL(b.url).host} — not a password problem`;
       }
-      throw new Error(detail ? `HTTP ${res.status}: ${detail}` : `HTTP ${res.status}`);
+      const msg = detail ? `HTTP ${res.status}: ${detail}` : (res.status === 401 || res.status === 403) ? 'unauthorized (bad or expired credentials)' : `HTTP ${res.status}`;
+      throw Object.assign(new Error(msg), { status: res.status });
     }
     const newToken = res.headers.get('x-august-access-token') || res.headers.get('x-access-token');
     let body = null;
@@ -422,7 +425,14 @@ class YaleClient {
   async _poll() {
     if (this._authBlockedUntil && Date.now() < this._authBlockedUntil) return;
     try {
-      const state = await this._auth.ensureAuthenticated();
+      let state;
+      try { state = await this._auth.ensureAuthenticated(); }
+      catch (err) {
+        // A sign-in the server refuses (401/403 — wrong key, WAF block) won't
+        // clear by retrying every poll, and retrying keeps an IP block alive.
+        if (err.status === 401 || err.status === 403) return this._authFailed(`[Yale] Sign-in refused: ${err.message}.`);
+        throw err;
+      }
       if (state === 'requires_validation') {
         return this._authFailed('[Yale] Account requires one-time verification — run `node scripts/yale-verify.js` and follow the prompts, then restart LSH.');
       }
